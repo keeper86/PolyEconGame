@@ -1,6 +1,6 @@
 'use client';
 
-import PlanetDetails from '@/components/client/PlanetDetails';
+import PlanetDetails from '@/app/planets/PlanetDetails';
 import { Page } from '@/components/client/Page';
 import SecondTicker from '@/components/client/SecondTicker';
 import { useGameState } from '@/hooks/useGameState';

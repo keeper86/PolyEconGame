@@ -51,12 +51,17 @@ function makePlanet(): Planet {
             tertiary: { unoccupied: 0, company: 0, government: 0, education: 0, unableToWork: 0 },
             quaternary: { unoccupied: 0, company: 0, government: 0, education: 0, unableToWork: 0 },
         })),
+        starvationLevel: 0,
     };
 
     const env = {
         naturalDisasters: { earthquakes: 0, floods: 0, storms: 0 },
         pollution: { air: 10, water: 5, soil: 2 },
-        regenerationRates: { air: 1, water: 1, soil: 1 },
+        regenerationRates: {
+            air: { constant: 1, percentage: 0 },
+            water: { constant: 1, percentage: 0 },
+            soil: { constant: 1, percentage: 0 },
+        },
     };
 
     const government = makeAgentForPlanet('planet-1');
@@ -89,12 +94,25 @@ describe('engine basic behavior', () => {
 
     it('environmentTick reduces pollution by regenerationRates (not below 0)', () => {
         const gs: GameState = { tick: 0, planets: [planet], agents: [] };
-        const expectedAir = Math.max(0, planet.environment.pollution.air - planet.environment.regenerationRates.air);
+        const regen = planet.environment.regenerationRates;
+        const expectedAir = Math.max(
+            0,
+            planet.environment.pollution.air -
+                regen.air.constant -
+                planet.environment.pollution.air * regen.air.percentage,
+        );
         const expectedWater = Math.max(
             0,
-            planet.environment.pollution.water - planet.environment.regenerationRates.water,
+            planet.environment.pollution.water -
+                regen.water.constant -
+                planet.environment.pollution.water * regen.water.percentage,
         );
-        const expectedSoil = Math.max(0, planet.environment.pollution.soil - planet.environment.regenerationRates.soil);
+        const expectedSoil = Math.max(
+            0,
+            planet.environment.pollution.soil -
+                regen.soil.constant -
+                planet.environment.pollution.soil * regen.soil.percentage,
+        );
         environmentTick(gs);
         expect(planet.environment.pollution.air).toBe(expectedAir);
         expect(planet.environment.pollution.water).toBe(expectedWater);

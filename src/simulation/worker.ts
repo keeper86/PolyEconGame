@@ -64,7 +64,8 @@ console.log('put in water', putIntoStorageFacility(earthGovernmentStorage, water
 
 // Debounce outgoing messages so the frontend only receives updates at most once
 // per second. Internally the tick loop can run as fast as TICK_INTERVAL_MS allows.
-const DEBOUNCE_MS = 1000;
+// When TICK_INTERVAL_MS is 0 (test mode) disable debouncing so every tick is visible.
+const DEBOUNCE_MS = TICK_INTERVAL_MS === 0 ? 0 : 1000;
 let lastMessagePost = 0;
 let pendingTickMsg: OutboundMessage | null = null;
 let pendingStateMsg: OutboundMessage | null = null;

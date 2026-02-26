@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import PlanetPopulationChartRecharts from '@/components/client/PlanetPopulationChartRecharts';
-import PlanetDemography from '@/components/client/PlanetDemography';
+import PlanetPopulationChartRecharts from '@/app/planets/PlanetPopulationChartRecharts';
+import PlanetDemography from '@/app/planets/PlanetDemography';
 import type { Planet, Population, Agent, ResourceQuantity, ResourceClaim } from '../../simulation/planet';
 
 type ResourceEntry = ResourceQuantity & ResourceClaim;

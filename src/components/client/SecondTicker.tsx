@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 
@@ -30,9 +30,9 @@ export default function SecondTicker() {
     }, []);
 
     return (
-        <div className="rounded border p-2 inline-block bg-white/5">
-            <div className="text-sm text-slate-400">Server tick</div>
-            <div className="text-xl font-mono">{tick ?? '—'}</div>
+        <div className='rounded border p-2 inline-block bg-white/5'>
+            <div className='text-sm text-slate-400'>Server tick</div>
+            <div className='text-xl font-mono'>{tick ?? '—'}</div>
         </div>
     );
 }

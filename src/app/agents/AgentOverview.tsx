@@ -4,7 +4,7 @@ import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import type { Agent } from '../../simulation/planet';
 import type { ProductionFacility } from '../../simulation/facilities';
-import { Page } from './Page';
+import { Page } from '../../components/client/Page';
 
 /** One snapshot per tick, keyed by resource name → quantity. */
 export type AgentResourceSnapshot = {

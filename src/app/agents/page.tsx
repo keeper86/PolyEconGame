@@ -1,6 +1,6 @@
 'use client';
 
-import AgentOverview from '@/components/client/AgentOverview';
+import AgentOverview from '@/app/agents/AgentOverview';
 import { Page } from '@/components/client/Page';
 import SecondTicker from '@/components/client/SecondTicker';
 import { useGameState } from '@/hooks/useGameState';

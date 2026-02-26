@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Population, Planet, TransportShip, Agent } from '../simulation/planet';
-import type { AgentTimeSeries, AgentResourceSnapshot } from '@/components/client/AgentOverview';
+import type { AgentTimeSeries, AgentResourceSnapshot } from '@/app/agents/AgentOverview';
 
 export type GameState = {
     tick: number;

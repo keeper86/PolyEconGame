@@ -10,7 +10,7 @@
 export async function register(): Promise<void> {
     // Guard: only run in the Node.js server process, not in Edge Runtime.
     if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { startWorker } = await import('./workerManager');
+        const { startWorker } = await import('./workerManager');
         startWorker();
     }
 }
