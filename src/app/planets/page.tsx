@@ -3,10 +3,33 @@
 import PlanetDetails from '@/app/planets/PlanetDetails';
 import { Page } from '@/components/client/Page';
 import SecondTicker from '@/components/client/SecondTicker';
-import { useGameState } from '@/hooks/useGameState';
+import { usePlanetData, usePlanetHistory } from '@/hooks/usePlanetData';
+import { useAgentData } from '@/hooks/useAgentData';
+import type { Planet } from '@/simulation/planet';
+
+function PlanetDetailsWithHistory({
+    planet,
+    agents,
+}: {
+    planet: Planet;
+    agents: ReturnType<typeof useAgentData>['agents'];
+}) {
+    const { history } = usePlanetHistory(planet.id);
+    const agentObjects = agents.filter((a) => a.agent?.associatedPlanetId === planet.id).map((a) => a.agent);
+
+    return (
+        <PlanetDetails
+            planet={planet}
+            history={history}
+            latestPopulation={planet.population}
+            agents={agentObjects}
+        />
+    );
+}
 
 export default function PlanetsPage() {
-    const { state, popSeries } = useGameState();
+    const { tick, planets, isLoading } = usePlanetData();
+    const { agents } = useAgentData();
 
     return (
         <Page title='Planets'>
@@ -14,16 +37,10 @@ export default function PlanetsPage() {
                 <SecondTicker />
             </div>
 
-            {state?.planets && state.planets.length > 0 ? (
+            {!isLoading && tick > 0 && planets.length > 0 ? (
                 <div className='space-y-4'>
-                    {state.planets.map((p) => (
-                        <PlanetDetails
-                            key={p.id}
-                            planet={p}
-                            history={popSeries[p.id] ?? []}
-                            latestPopulation={p.population}
-                            agents={state?.agents?.filter((a) => a.associatedPlanetId === p.id) ?? []}
-                        />
+                    {planets.map((p) => (
+                        <PlanetDetailsWithHistory key={p.planetId} planet={p.planet} agents={agents} />
                     ))}
                 </div>
             ) : (
@@ -32,3 +49,4 @@ export default function PlanetsPage() {
         </Page>
     );
 }
+
