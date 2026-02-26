@@ -63,10 +63,7 @@ export function usePlanetData(): UsePlanetDataResult {
  * Hook that fetches population history for a single planet.
  * Call this inside a component that needs the time-series chart data.
  */
-export function usePlanetHistory(
-    planetId: string,
-    limit = 200,
-): { history: PlanetHistoryEntry[]; isLoading: boolean } {
+export function usePlanetHistory(planetId: string, limit = 200): { history: PlanetHistoryEntry[]; isLoading: boolean } {
     const trpc = useTRPC();
 
     const historyQuery = useQuery({

@@ -44,7 +44,12 @@ describe('snapshotRepository', () => {
         expect(row).toBeDefined();
         expect(row?.tick).toBe(1);
         expect(row?.population_total).toBeGreaterThan(0);
-        expect(row?.snapshot).toBeDefined();
+        expect(row?.planet_name).toBe(planet.name);
+        expect(row?.position).toEqual(planet.position);
+        expect(row?.demography).toBeDefined();
+        expect(row?.resources).toBeDefined();
+        expect(row?.environment).toBeDefined();
+        expect(row?.infrastructure).toBeDefined();
     });
 
     it('returns only the latest snapshot per planet', async () => {

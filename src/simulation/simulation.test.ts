@@ -17,7 +17,7 @@ describe('Simulation Worker', () => {
     beforeEach(() => {
         worker = new Worker(WORKER_PATH, {
             execArgv: ['--require', 'tsx/cjs'],
-            workerData: { tickIntervalMs: 0 }, // faster ticks for tests
+            workerData: { tickIntervalMs: 1000 }, // faster ticks for tests
         });
     });
 

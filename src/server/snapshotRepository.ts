@@ -31,12 +31,13 @@ const toAgentRef = (agent: Agent | null | undefined): AgentRef => {
 };
 
 /**
- * Produce a JSON-safe planet snapshot.
+ * Produce a flat row of resolved columns from a Planet object.
  *
- * Replaces nested Agent objects (government, resource claim/tenant) with
- * minimal {id, name} references to avoid bloated JSONB storage.
+ * Instead of storing the entire planet as a monolithic JSONB blob, we extract
+ * commonly-queried scalar fields into dedicated columns and keep only the
+ * large variable-size data (demography, resources) as JSONB.
  */
-const serialisePlanet = (planet: Planet): object => {
+const serialisePlanetRow = (planet: Planet) => {
     const resources: Record<string, unknown[]> = {};
     for (const [resourceName, entries] of Object.entries(planet.resources)) {
         resources[resourceName] = entries.map((entry) => ({
@@ -51,15 +52,21 @@ const serialisePlanet = (planet: Planet): object => {
         }));
     }
 
+    const gov = toAgentRef(planet.government);
+
     return {
-        id: planet.id,
-        name: planet.name,
-        position: planet.position,
-        population: planet.population,
-        environment: planet.environment,
-        infrastructure: planet.infrastructure,
-        government: toAgentRef(planet.government),
-        resources,
+        planet_name: planet.name,
+        position: JSON.stringify(planet.position) as unknown as Record<string, unknown>,
+        starvation_level: planet.population.starvationLevel ?? 0,
+        pollution_air: planet.environment.pollution.air ?? 0,
+        pollution_water: planet.environment.pollution.water ?? 0,
+        pollution_soil: planet.environment.pollution.soil ?? 0,
+        government_id: gov?.id ?? null,
+        government_name: gov?.name ?? null,
+        infrastructure: JSON.stringify(planet.infrastructure) as unknown as Record<string, unknown>,
+        environment: JSON.stringify(planet.environment) as unknown as Record<string, unknown>,
+        demography: JSON.stringify(planet.population.demography) as unknown as unknown[],
+        resources: JSON.stringify(resources) as unknown as Record<string, unknown>,
     };
 };
 
@@ -140,8 +147,8 @@ export const savePlanetSnapshots = async (db: Knex, tick: number, planets: Plane
     const rows = planets.map((planet) => ({
         tick,
         planet_id: planet.id,
-        population_total: computePopulationTotal(planet),
-        snapshot: serialisePlanet(planet) as object,
+        population_total: String(computePopulationTotal(planet)),
+        ...serialisePlanetRow(planet),
     }));
 
     await db('planet_snapshots').insert(rows).onConflict(['tick', 'planet_id']).ignore();
@@ -155,16 +162,16 @@ export const saveAgentSnapshots = async (db: Knex, tick: number, agents: Agent[]
     const rows = agents.map((agent) => ({
         tick,
         agent_id: agent.id,
-        wealth: agent.wealth,
+        wealth: String(agent.wealth),
         // storage / production / consumption are pre-computed summaries stored as
         // separate columns for efficient time-series queries (no need to parse the
         // full agent JSONB for chart data).
-        storage: computeAgentStorage(agent) as object,
-        production: computeAgentProduction(agent) as object,
-        consumption: computeAgentConsumption(agent) as object,
+        storage: computeAgentStorage(agent) as Record<string, unknown>,
+        production: computeAgentProduction(agent) as Record<string, unknown>,
+        consumption: computeAgentConsumption(agent) as Record<string, unknown>,
         // agent_summary stores the full Agent object so the frontend can render
         // detailed facility/worker/storage views without an extra query.
-        agent_summary: agent as unknown as object,
+        agent_summary: agent as unknown,
     }));
 
     await db('agent_snapshots').insert(rows).onConflict(['tick', 'agent_id']).ignore();
@@ -174,6 +181,9 @@ export const saveAgentSnapshots = async (db: Knex, tick: number, agents: Agent[]
  * Persist a full GameState snapshot (both planets and agents) for one tick.
  */
 export const saveGameStateSnapshot = async (db: Knex, state: GameState): Promise<void> => {
+    if (state.tick === 1) {
+        await db.raw('TRUNCATE planet_snapshots, agent_snapshots');
+    }
     await Promise.all([
         savePlanetSnapshots(db, state.tick, state.planets),
         saveAgentSnapshots(db, state.tick, state.agents),
@@ -188,8 +198,37 @@ export type PlanetSnapshotRow = {
     tick: number;
     planet_id: string;
     population_total: number;
-    snapshot: object;
+    planet_name: string;
+    position: { x: number; y: number; z: number };
+    starvation_level: number;
+    pollution_air: number;
+    pollution_water: number;
+    pollution_soil: number;
+    government_id: string | null;
+    government_name: string | null;
+    infrastructure: object;
+    environment: object;
+    demography: object;
+    resources: object;
 };
+
+/**
+ * Reconstruct a Planet-like object from resolved snapshot columns.
+ * This matches the shape the frontend expects when it casts `snapshot as Planet`.
+ */
+export const reconstructPlanetFromRow = (row: PlanetSnapshotRow): object => ({
+    id: row.planet_id,
+    name: row.planet_name,
+    position: row.position,
+    population: {
+        demography: row.demography,
+        starvationLevel: row.starvation_level,
+    },
+    environment: row.environment,
+    infrastructure: row.infrastructure,
+    government: row.government_id ? { id: row.government_id, name: row.government_name } : null,
+    resources: row.resources,
+});
 
 export type AgentSnapshotRow = {
     tick: number;
@@ -214,6 +253,48 @@ export type AgentHistoryPoint = {
 };
 
 /**
+ * All resolved planet columns we select from the database.
+ */
+const PLANET_SNAPSHOT_COLUMNS = [
+    'tick',
+    'planet_id',
+    'population_total',
+    'planet_name',
+    'position',
+    'starvation_level',
+    'pollution_air',
+    'pollution_water',
+    'pollution_soil',
+    'government_id',
+    'government_name',
+    'infrastructure',
+    'environment',
+    'demography',
+    'resources',
+] as const;
+
+/**
+ * Map a raw database row to a typed PlanetSnapshotRow.
+ */
+const toPlanetSnapshotRow = (r: Record<string, unknown>): PlanetSnapshotRow => ({
+    tick: Number(r.tick),
+    planet_id: r.planet_id as string,
+    population_total: Number(r.population_total),
+    planet_name: r.planet_name as string,
+    position: r.position as { x: number; y: number; z: number },
+    starvation_level: Number(r.starvation_level),
+    pollution_air: Number(r.pollution_air),
+    pollution_water: Number(r.pollution_water),
+    pollution_soil: Number(r.pollution_soil),
+    government_id: (r.government_id as string) ?? null,
+    government_name: (r.government_name as string) ?? null,
+    infrastructure: r.infrastructure as object,
+    environment: r.environment as object,
+    demography: r.demography as object,
+    resources: r.resources as object,
+});
+
+/**
  * Return the most recent snapshot for each planet.
  */
 export const getLatestPlanetSnapshots = async (db: Knex): Promise<PlanetSnapshotRow[]> => {
@@ -222,14 +303,9 @@ export const getLatestPlanetSnapshots = async (db: Knex): Promise<PlanetSnapshot
             ['tick', 'planet_id'],
             db('planet_snapshots').select(db.raw('MAX(tick)'), 'planet_id').groupBy('planet_id'),
         )
-        .select('tick', 'planet_id', 'population_total', 'snapshot');
+        .select(...PLANET_SNAPSHOT_COLUMNS);
 
-    return rows.map((r: Record<string, unknown>) => ({
-        tick: Number(r.tick),
-        planet_id: r.planet_id as string,
-        population_total: Number(r.population_total),
-        snapshot: r.snapshot as object,
-    }));
+    return rows.map(toPlanetSnapshotRow);
 };
 
 /**
@@ -278,11 +354,7 @@ export const getPlanetPopulationHistory = async (
  * Return resource history (storage / production / consumption) for a specific
  * agent, ordered newest-first.
  */
-export const getAgentResourceHistory = async (
-    db: Knex,
-    agentId: string,
-    limit = 100,
-): Promise<AgentHistoryPoint[]> => {
+export const getAgentResourceHistory = async (db: Knex, agentId: string, limit = 100): Promise<AgentHistoryPoint[]> => {
     const rows = await db('agent_snapshots')
         .where('agent_id', agentId)
         .orderBy('tick', 'desc')

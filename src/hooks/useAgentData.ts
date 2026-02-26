@@ -73,10 +73,7 @@ export function useAgentData(): UseAgentDataResult {
  * Hook that fetches resource history for a single agent.
  * Call this inside a component that needs the full time-series chart data.
  */
-export function useAgentHistory(
-    agentId: string,
-    limit = 100,
-): { series: AgentTimeSeries; isLoading: boolean } {
+export function useAgentHistory(agentId: string, limit = 100): { series: AgentTimeSeries; isLoading: boolean } {
     const trpc = useTRPC();
 
     const historyQuery = useQuery({

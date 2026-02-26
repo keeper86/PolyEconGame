@@ -20,6 +20,7 @@ import type { OutboundMessage } from './worker';
  * Errors during persistence are logged but do not crash the server.
  */
 export function registerSnapshotPersistence(): void {
+    console.log('[snapshotPersistence] Registered snapshot persistence listener');
     onWorkerMessage(async (msg: OutboundMessage) => {
         if (msg.type !== 'state') {
             return;

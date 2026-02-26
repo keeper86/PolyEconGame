@@ -21,12 +21,7 @@ function PlanetDetailsWithHistory({
         .filter((agent): agent is Agent => agent !== undefined);
 
     return (
-        <PlanetDetails
-            planet={planet}
-            history={history}
-            latestPopulation={planet.population}
-            agents={agentObjects}
-        />
+        <PlanetDetails planet={planet} history={history} latestPopulation={planet.population} agents={agentObjects} />
     );
 }
 
@@ -52,4 +47,3 @@ export default function PlanetsPage() {
         </Page>
     );
 }
-

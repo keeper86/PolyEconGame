@@ -15,6 +15,7 @@ import {
     getLatestAgentSnapshots,
     getPlanetPopulationHistory,
     getAgentResourceHistory,
+    reconstructPlanetFromRow,
 } from '../snapshotRepository';
 
 /** Latest snapshot for every planet (one row per planet). */
@@ -28,10 +29,9 @@ export const getLatestPlanets = () =>
                     z.object({
                         planetId: z.string(),
                         populationTotal: z.number(),
-                        // z.any() is used because the planet snapshot JSONB is a large
-                        // nested structure (see serialisePlanet in snapshotRepository).
-                        // Consumers receive a serialised Planet with AgentRef stubs for
-                        // claim/tenant fields; a full Zod schema would be very verbose.
+                        // Reconstructed Planet-like object from resolved DB columns.
+                        // z.any() is used because the Planet type has complex nested
+                        // structures that would require a very verbose Zod schema.
                         snapshot: z.any(),
                     }),
                 ),
@@ -45,7 +45,7 @@ export const getLatestPlanets = () =>
                 planets: rows.map((r) => ({
                     planetId: r.planet_id,
                     populationTotal: Number(r.population_total),
-                    snapshot: r.snapshot,
+                    snapshot: reconstructPlanetFromRow(r),
                 })),
             };
         });
