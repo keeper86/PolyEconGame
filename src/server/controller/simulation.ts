@@ -28,6 +28,10 @@ export const getLatestPlanets = () =>
                     z.object({
                         planetId: z.string(),
                         populationTotal: z.number(),
+                        // z.any() is used because the planet snapshot JSONB is a large
+                        // nested structure (see serialisePlanet in snapshotRepository).
+                        // Consumers receive a serialised Planet with AgentRef stubs for
+                        // claim/tenant fields; a full Zod schema would be very verbose.
                         snapshot: z.any(),
                     }),
                 ),
@@ -60,6 +64,10 @@ export const getLatestAgents = () =>
                         storage: z.record(z.string(), z.number()),
                         production: z.record(z.string(), z.number()),
                         consumption: z.record(z.string(), z.number()),
+                        // z.any() is used here because agentSummary is the full Agent
+                        // object stored as JSONB. The Agent type has complex nested
+                        // structures (facilities, storageFacility) that would require a
+                        // very verbose Zod schema to replicate exactly.
                         agentSummary: z.any(),
                     }),
                 ),

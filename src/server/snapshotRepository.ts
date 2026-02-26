@@ -156,9 +156,14 @@ export const saveAgentSnapshots = async (db: Knex, tick: number, agents: Agent[]
         tick,
         agent_id: agent.id,
         wealth: agent.wealth,
+        // storage / production / consumption are pre-computed summaries stored as
+        // separate columns for efficient time-series queries (no need to parse the
+        // full agent JSONB for chart data).
         storage: computeAgentStorage(agent) as object,
         production: computeAgentProduction(agent) as object,
         consumption: computeAgentConsumption(agent) as object,
+        // agent_summary stores the full Agent object so the frontend can render
+        // detailed facility/worker/storage views without an extra query.
         agent_summary: agent as unknown as object,
     }));
 
@@ -212,26 +217,41 @@ export type AgentHistoryPoint = {
  * Return the most recent snapshot for each planet.
  */
 export const getLatestPlanetSnapshots = async (db: Knex): Promise<PlanetSnapshotRow[]> => {
-    return db('planet_snapshots')
+    const rows = await db('planet_snapshots')
         .whereIn(
             ['tick', 'planet_id'],
             db('planet_snapshots').select(db.raw('MAX(tick)'), 'planet_id').groupBy('planet_id'),
         )
-        .select('tick', 'planet_id', 'population_total', 'snapshot') as Promise<PlanetSnapshotRow[]>;
+        .select('tick', 'planet_id', 'population_total', 'snapshot');
+
+    return rows.map((r: Record<string, unknown>) => ({
+        tick: Number(r.tick),
+        planet_id: r.planet_id as string,
+        population_total: Number(r.population_total),
+        snapshot: r.snapshot as object,
+    }));
 };
 
 /**
  * Return the most recent snapshot for each agent.
  */
 export const getLatestAgentSnapshots = async (db: Knex): Promise<AgentSnapshotRow[]> => {
-    return db('agent_snapshots')
+    const rows = await db('agent_snapshots')
         .whereIn(
             ['tick', 'agent_id'],
             db('agent_snapshots').select(db.raw('MAX(tick)'), 'agent_id').groupBy('agent_id'),
         )
-        .select('tick', 'agent_id', 'wealth', 'storage', 'production', 'consumption', 'agent_summary') as Promise<
-        AgentSnapshotRow[]
-    >;
+        .select('tick', 'agent_id', 'wealth', 'storage', 'production', 'consumption', 'agent_summary');
+
+    return rows.map((r: Record<string, unknown>) => ({
+        tick: Number(r.tick),
+        agent_id: r.agent_id as string,
+        wealth: Number(r.wealth),
+        storage: r.storage as Record<string, number>,
+        production: r.production as Record<string, number>,
+        consumption: r.consumption as Record<string, number>,
+        agent_summary: r.agent_summary as object,
+    }));
 };
 
 /**
@@ -242,11 +262,16 @@ export const getPlanetPopulationHistory = async (
     planetId: string,
     limit = 200,
 ): Promise<PopulationHistoryPoint[]> => {
-    return db('planet_snapshots')
+    const rows = await db('planet_snapshots')
         .where('planet_id', planetId)
         .orderBy('tick', 'desc')
         .limit(limit)
-        .select('tick', 'population_total') as Promise<PopulationHistoryPoint[]>;
+        .select('tick', 'population_total');
+
+    return rows.map((r: Record<string, unknown>) => ({
+        tick: Number(r.tick),
+        population_total: Number(r.population_total),
+    }));
 };
 
 /**
@@ -258,9 +283,16 @@ export const getAgentResourceHistory = async (
     agentId: string,
     limit = 100,
 ): Promise<AgentHistoryPoint[]> => {
-    return db('agent_snapshots')
+    const rows = await db('agent_snapshots')
         .where('agent_id', agentId)
         .orderBy('tick', 'desc')
         .limit(limit)
-        .select('tick', 'storage', 'production', 'consumption') as Promise<AgentHistoryPoint[]>;
+        .select('tick', 'storage', 'production', 'consumption');
+
+    return rows.map((r: Record<string, unknown>) => ({
+        tick: Number(r.tick),
+        storage: r.storage as Record<string, number>,
+        production: r.production as Record<string, number>,
+        consumption: r.consumption as Record<string, number>,
+    }));
 };

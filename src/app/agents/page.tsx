@@ -32,7 +32,7 @@ export default function AgentsPage() {
                     {agents.map((a) => (
                         <AgentWithHistory
                             key={a.agentId}
-                            agent={a.agent as Agent}
+                            agent={a.agent}
                             fallbackSeries={agentSeries[a.agentId] ?? { storage: [], production: [], consumption: [] }}
                         />
                     ))}

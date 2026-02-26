@@ -5,7 +5,7 @@ import { Page } from '@/components/client/Page';
 import SecondTicker from '@/components/client/SecondTicker';
 import { usePlanetData, usePlanetHistory } from '@/hooks/usePlanetData';
 import { useAgentData } from '@/hooks/useAgentData';
-import type { Planet } from '@/simulation/planet';
+import type { Planet, Agent } from '@/simulation/planet';
 
 function PlanetDetailsWithHistory({
     planet,
@@ -15,7 +15,10 @@ function PlanetDetailsWithHistory({
     agents: ReturnType<typeof useAgentData>['agents'];
 }) {
     const { history } = usePlanetHistory(planet.id);
-    const agentObjects = agents.filter((a) => a.agent?.associatedPlanetId === planet.id).map((a) => a.agent);
+    const agentObjects = agents
+        .filter((a) => a.agent?.associatedPlanetId === planet.id)
+        .map((a) => a.agent)
+        .filter((agent): agent is Agent => agent !== undefined);
 
     return (
         <PlanetDetails
