@@ -1,0 +1,58 @@
+{
+    "id": "polyecongame",
+    "realm": "polyecongame",
+    "displayName": "polyecongame Realm",
+    "enabled": true,
+    "clients": [
+        {
+            "clientId": "polyecongame-app",
+            "name": "Game Application",
+            "description": "Client for Game",
+            "rootUrl": "https://polyecongame.work",
+            "adminUrl": "https://polyecongame.work",
+            "baseUrl": "https://polyecongame.work",
+            "surrogateAuthRequired": false,
+            "enabled": true,
+            "alwaysDisplayInConsole": false,
+            "clientAuthenticatorType": "client-secret",
+            "secret": "super-secret",
+            "redirectUris": ["https://polyecongame.work/*"],
+            "webOrigins": ["https://polyecongame.work"],
+            "notBefore": 0,
+            "bearerOnly": false,
+            "consentRequired": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "serviceAccountsEnabled": false,
+            "publicClient": false,
+            "frontchannelLogout": true,
+            "protocol": "openid-connect",
+            "attributes": {},
+            "authenticationFlowBindingOverrides": {},
+            "fullScopeAllowed": true,
+            "nodeReRegistrationTimeout": -1
+        }
+    ],
+    "users": [
+        {
+            "username": "adminuser",
+            "email": "admin@example.com",
+            "firstName": "Admin",
+            "lastName": "User",
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "adminpassword",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": ["user", "admin"],
+            "clientRoles": {
+                "account": ["view-profile", "manage-account"],
+                "realm-management": ["realm-admin"]
+            }
+        }
+    ]
+}

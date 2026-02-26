@@ -1,0 +1,12 @@
+
+FROM node:24-alpine AS migrator
+WORKDIR /app
+
+# Use the minimal migrator.package.json for dependencies
+COPY migrator.package.json ./package.json
+RUN npm install --omit=dev
+
+COPY knexfile.js ./
+COPY migrations/ ./migrations/
+
+CMD ["npx", "knex", "migrate:latest"]

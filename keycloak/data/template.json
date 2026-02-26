@@ -1,0 +1,58 @@
+{
+    "id": "${KEYCLOAK_REALM}",
+    "realm": "${KEYCLOAK_REALM}",
+    "displayName": "${KEYCLOAK_REALM} Realm",
+    "enabled": true,
+    "clients": [
+        {
+            "clientId": "${KEYCLOAK_CLIENT_ID}",
+            "name": "Game Application",
+            "description": "Client for Game",
+            "rootUrl": "https://${APP_DOMAIN}",
+            "adminUrl": "https://${APP_DOMAIN}",
+            "baseUrl": "https://${APP_DOMAIN}",
+            "surrogateAuthRequired": false,
+            "enabled": true,
+            "alwaysDisplayInConsole": false,
+            "clientAuthenticatorType": "client-secret",
+            "secret": "${KEYCLOAK_CLIENT_SECRET}",
+            "redirectUris": ["https://${APP_DOMAIN}/*"],
+            "webOrigins": ["https://${APP_DOMAIN}"],
+            "notBefore": 0,
+            "bearerOnly": false,
+            "consentRequired": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "serviceAccountsEnabled": false,
+            "publicClient": false,
+            "frontchannelLogout": true,
+            "protocol": "openid-connect",
+            "attributes": {},
+            "authenticationFlowBindingOverrides": {},
+            "fullScopeAllowed": true,
+            "nodeReRegistrationTimeout": -1
+        }
+    ],
+    "users": [
+        {
+            "username": "adminuser",
+            "email": "admin@example.com",
+            "firstName": "Admin",
+            "lastName": "User",
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "adminpassword",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": ["user", "admin"],
+            "clientRoles": {
+                "account": ["view-profile", "manage-account"],
+                "realm-management": ["realm-admin"]
+            }
+        }
+    ]
+}

@@ -7,35 +7,35 @@
  * Example:  GET /api/ping  →  { "type": "pong", "tick": 5 }
  */
 
-import { NextResponse } from "next/server";
-import { sendToWorker, onWorkerMessage } from "../../../../simulation/workerManager";
-import type { OutboundMessage } from "../../../../simulation/worker";
+import { NextResponse } from 'next/server';
+import { sendToWorker, onWorkerMessage } from '../../../simulation/workerManager';
+import type { OutboundMessage } from '../../../simulation/worker';
 
 const TIMEOUT_MS = 5000;
 
 export async function GET(): Promise<NextResponse> {
-  const pong = await new Promise<OutboundMessage>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      unsubscribe();
-      reject(new Error("Worker ping timed out"));
-    }, TIMEOUT_MS);
+    const pong = await new Promise<OutboundMessage>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            unsubscribe();
+            reject(new Error('Worker ping timed out'));
+        }, TIMEOUT_MS);
 
-    const unsubscribe = onWorkerMessage((msg) => {
-      if (msg.type === "pong") {
-        clearTimeout(timer);
-        unsubscribe();
-        resolve(msg);
-      }
+        const unsubscribe = onWorkerMessage((msg) => {
+            if (msg.type === 'pong') {
+                clearTimeout(timer);
+                unsubscribe();
+                resolve(msg);
+            }
+        });
+
+        try {
+            sendToWorker({ type: 'ping' });
+        } catch (err) {
+            clearTimeout(timer);
+            unsubscribe();
+            reject(err);
+        }
     });
 
-    try {
-      sendToWorker({ type: "ping" });
-    } catch (err) {
-      clearTimeout(timer);
-      unsubscribe();
-      reject(err);
-    }
-  });
-
-  return NextResponse.json(pong);
+    return NextResponse.json(pong);
 }

@@ -1,0 +1,5 @@
+/dist
+/playwright-report
+/tools
+/.next
+/node_modules
