@@ -2,7 +2,7 @@
 
 import AgentOverview from '@/app/agents/AgentOverview';
 import { Page } from '@/components/client/Page';
-import SecondTicker from '@/components/client/SecondTicker';
+import TickDisplay from '@/components/client/TickDisplay';
 import { useAgentData, useAgentHistory } from '@/hooks/useAgentData';
 import type { AgentTimeSeries } from '@/app/agents/AgentOverview';
 import type { Agent } from '@/simulation/planet';
@@ -24,7 +24,7 @@ export default function AgentsPage() {
     return (
         <Page title='Agents'>
             <div className='mb-4'>
-                <SecondTicker />
+                <TickDisplay tick={tick} />
             </div>
 
             {!isLoading && tick > 0 && agents.length > 0 ? (

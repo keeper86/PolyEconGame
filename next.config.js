@@ -4,7 +4,7 @@ const withRoutes = nextRoutes();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
-    serverExternalPackages: ['knex', 'pino', 'pino-pretty'],
+    serverExternalPackages: ['knex', 'pino', 'pino-pretty', 'piscina'],
     reactStrictMode: true,
     trailingSlash: false,
     images: {

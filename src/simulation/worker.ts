@@ -1,9 +1,13 @@
 /**
  * simulation/worker.ts
  *
- * Runs inside a dedicated worker_thread.
+ * Runs inside a Piscina worker thread.
  * Owns the authoritative GameState and advances it on every tick.
  * Communicates with the main process via parentPort messages.
+ *
+ * Exports a default function that Piscina calls to start the simulation.
+ * The function returns a Promise that never resolves (the loop runs until
+ * the thread is terminated).
  */
 
 import { parentPort, workerData } from 'node:worker_threads';
@@ -11,6 +15,8 @@ import { advanceTick, type GameState } from './engine';
 import { alphaCentauri, earth, earthGovernment } from './entities';
 import { type Population, type TransportShip } from './planet';
 import { agriculturalProductResourceType, putIntoStorageFacility, waterResourceType } from './facilities';
+import { db } from '../server/db';
+import { saveGameStateSnapshot } from '../server/snapshotRepository';
 
 export type InboundMessage =
     | { type: 'ping' }
@@ -29,111 +35,153 @@ export type OutboundMessage =
           available?: { metal: number; energy: number };
           from?: string;
       }
-    | { type: 'populationUpdated'; planetId: string; population: Population; tick: number }
-    | { type: 'state'; state: GameState }
     // Sent by the manager to notify connected clients that the worker was restarted
     // (useful for client-side UI reset/hot-reload logic).
     | { type: 'workerRestarted'; reason?: string };
 
 // ---------------------------------------------------------------------------
-// State  (private to this worker)
+// Default export — entry point called by Piscina
 // ---------------------------------------------------------------------------
 
-const TICK_INTERVAL_MS: number = typeof workerData?.tickIntervalMs === 'number' ? workerData.tickIntervalMs : 0;
+export default function simulationTask(): Promise<void> {
+    // -----------------------------------------------------------------
+    // State  (private to this worker invocation)
+    // -----------------------------------------------------------------
 
-const state: GameState = {
-    tick: 0,
-    planets: [earth, alphaCentauri],
-    agents: [earthGovernment],
-};
+    const TICK_INTERVAL_MS: number = typeof workerData?.tickIntervalMs === 'number' ? workerData.tickIntervalMs : 0;
 
-const earthGovernmentStorage = earthGovernment.assets[earth.id]?.storageFacility;
-if (!earthGovernmentStorage) {
-    throw new Error('Earth government has no storage facility');
-}
+    const state: GameState = {
+        tick: 0,
+        planets: [earth, alphaCentauri],
+        agents: [earthGovernment],
+    };
 
-console.log(
-    'put in food',
-    putIntoStorageFacility(earthGovernmentStorage, agriculturalProductResourceType, 10000000000),
-);
-console.log('put in water', putIntoStorageFacility(earthGovernmentStorage, waterResourceType, 100000));
-
-// ---------------------------------------------------------------------------
-// Tick loop (recursive setTimeout to avoid drift / overlap)
-// ---------------------------------------------------------------------------
-
-// Debounce outgoing messages so the frontend only receives updates at most once
-// per second. Internally the tick loop can run as fast as TICK_INTERVAL_MS allows.
-// When TICK_INTERVAL_MS is 0 (test mode) disable debouncing so every tick is visible.
-const DEBOUNCE_MS = 1000;
-let lastMessagePost = 0;
-let pendingTickMsg: OutboundMessage | null = null;
-let pendingStateMsg: OutboundMessage | null = null;
-let running = true;
-
-function tryFlushMessages(now: number) {
-    if (pendingTickMsg && pendingStateMsg && now - lastMessagePost >= DEBOUNCE_MS) {
-        parentPort?.postMessage(pendingTickMsg);
-        parentPort?.postMessage(pendingStateMsg);
-        lastMessagePost = now;
-        pendingTickMsg = null;
-        pendingStateMsg = null;
+    const earthGovernmentStorage = earthGovernment.assets[earth.id]?.storageFacility;
+    if (!earthGovernmentStorage) {
+        throw new Error('Earth government has no storage facility');
     }
-}
 
-function scheduleTick(): void {
-    setTimeout(() => {
-        if (!running) {
+    console.log(
+        'put in food',
+        putIntoStorageFacility(earthGovernmentStorage, agriculturalProductResourceType, 10000000000),
+    );
+    console.log('put in water', putIntoStorageFacility(earthGovernmentStorage, waterResourceType, 100000));
+
+    // -----------------------------------------------------------------
+    // Tick loop (recursive setTimeout to avoid drift / overlap)
+    // -----------------------------------------------------------------
+
+    const DEBOUNCE_MS = 1000;
+    let lastMessagePost = 0;
+    let pendingTickMsg: OutboundMessage | null = null;
+    let running = true;
+
+    /** Safe wrapper around parentPort.postMessage that swallows EPIPE errors
+     *  which occur when the main thread has already torn down the channel
+     *  (e.g. during pool.destroy() or process shutdown). */
+    function safePostMessage(msg: OutboundMessage): void {
+        try {
+            parentPort?.postMessage(msg);
+        } catch (err: unknown) {
+            // EPIPE / ERR_WORKER_OUT means the channel is closed — nothing to do.
+            if (
+                err instanceof Error &&
+                ('code' in err
+                    ? (err as NodeJS.ErrnoException).code === 'EPIPE' ||
+                      (err as NodeJS.ErrnoException).code === 'ERR_WORKER_OUT'
+                    : false)
+            ) {
+                running = false;
+                return;
+            }
+            throw err;
+        }
+    }
+
+    function tryFlushMessages(now: number) {
+        if (pendingTickMsg && now - lastMessagePost >= DEBOUNCE_MS) {
+            safePostMessage(pendingTickMsg);
+            lastMessagePost = now;
+            pendingTickMsg = null;
+        }
+    }
+
+    function scheduleTick(): void {
+        setTimeout(async () => {
+            if (!running) {
+                return;
+            }
+            const start = Date.now();
+            state.tick += 1;
+
+            try {
+                advanceTick(state);
+            } catch (err) {
+                console.error('[worker] Error while advancing:', err);
+            }
+
+            const elapsedMs = Date.now() - start;
+            console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
+
+            // Persist snapshot directly to the database from the worker thread.
+            try {
+                await saveGameStateSnapshot(db, state);
+            } catch (err) {
+                console.error('[worker] Failed to save snapshot for tick', state.tick, err);
+            }
+
+            pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs };
+            tryFlushMessages(Date.now());
+
+            scheduleTick();
+        }, TICK_INTERVAL_MS);
+    }
+
+    // -----------------------------------------------------------------
+    // Message handler
+    // -----------------------------------------------------------------
+
+    parentPort?.on('message', (msg: InboundMessage) => {
+        if (msg.type === 'ping') {
+            const reply: OutboundMessage = { type: 'pong', tick: state.tick };
+            safePostMessage(reply);
             return;
         }
-        const start = Date.now();
-        state.tick += 1;
 
-        // Evolve population on each tick (we treat one tick ~= one year here).
-        try {
-            advanceTick(state);
-        } catch (err) {
-            console.error('[worker] Error while advancing:', err);
+        if (msg.type === 'shutdown') {
+            running = false;
+            console.log('[worker] Received shutdown request — exiting gracefully');
+            try {
+                setTimeout(() => process.exit(0), 50);
+            } catch (_e) {
+                process.exit(0);
+            }
         }
+    });
 
-        const elapsedMs = Date.now() - start;
-        console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
+    // -----------------------------------------------------------------
+    // Start the simulation loop and return a never-resolving promise
+    // so Piscina keeps this thread occupied.
+    // -----------------------------------------------------------------
 
-        // Buffer the latest tick and state; flush at most once per DEBOUNCE_MS.
-        pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs };
-        pendingStateMsg = { type: 'state', state };
-        tryFlushMessages(Date.now());
+    // Catch stray EPIPE errors that can surface during shutdown when the
+    // communication channel between worker and main thread is torn down.
+    process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EPIPE') {
+            running = false;
+            return;
+        }
+        // Re-throw anything else so it surfaces normally.
+        throw err;
+    });
 
-        scheduleTick();
-    }, TICK_INTERVAL_MS);
+    console.log(`[worker] Simulation worker started (tick interval: ${TICK_INTERVAL_MS}ms)`);
+    scheduleTick();
+
+    // The promise resolves only when `running` is set to false (shutdown).
+    // In normal operation this keeps the Piscina thread busy indefinitely.
+    return new Promise<void>(() => {
+        // intentionally never resolved — Piscina will terminate the thread
+        // via pool.destroy() when the manager shuts down.
+    });
 }
-
-// ---------------------------------------------------------------------------
-// Message handler
-// ---------------------------------------------------------------------------
-
-parentPort?.on('message', (msg: InboundMessage) => {
-    if (msg.type === 'ping') {
-        const reply: OutboundMessage = { type: 'pong', tick: state.tick };
-        parentPort?.postMessage(reply);
-        return;
-    }
-
-    if (msg.type === 'shutdown') {
-        // Stop scheduling further ticks and exit the worker thread gracefully.
-        running = false;
-        console.log('[worker] Received shutdown request — exiting gracefully');
-        try {
-            setTimeout(() => process.exit(0), 50);
-        } catch (_e) {
-            process.exit(0);
-        }
-    }
-});
-
-// ---------------------------------------------------------------------------
-// Start
-// ---------------------------------------------------------------------------
-
-console.log(`[worker] Simulation worker started (tick interval: ${TICK_INTERVAL_MS}ms)`);
-scheduleTick();

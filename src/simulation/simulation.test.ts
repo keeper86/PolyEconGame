@@ -4,25 +4,30 @@
  * Integration tests for the simulation worker lifecycle and messaging.
  */
 
-import { Worker } from 'node:worker_threads';
 import path from 'node:path';
+import { Piscina } from 'piscina';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const WORKER_PATH = path.resolve(__dirname, './worker.ts');
 const TIMEOUT = 10_000;
 
 describe('Simulation Worker', () => {
-    let worker: Worker;
+    let pool: Piscina;
 
     beforeEach(() => {
-        worker = new Worker(WORKER_PATH, {
-            execArgv: ['--require', 'tsx/cjs'],
+        pool = new Piscina({
+            filename: WORKER_PATH,
+            minThreads: 1,
+            maxThreads: 1,
+            idleTimeout: Infinity,
+            atomics: 'disabled',
             workerData: { tickIntervalMs: 1000 }, // faster ticks for tests
+            execArgv: ['--require', 'tsx/cjs'],
         });
     });
 
     afterEach(async () => {
-        await worker.terminate();
+        await pool.destroy();
     });
 
     it(
@@ -30,8 +35,13 @@ describe('Simulation Worker', () => {
         async () => {
             const ticks: number[] = [];
 
+            // Start the simulation task (never resolves normally).
+            pool.run({ command: 'start' }).catch(() => {
+                /* terminated */
+            });
+
             await new Promise<void>((resolve) => {
-                worker.on('message', (msg) => {
+                pool.on('message', (msg) => {
                     if (msg.type === 'tick') {
                         ticks.push(msg.tick);
                         if (ticks.length >= 3) {
@@ -52,9 +62,13 @@ describe('Simulation Worker', () => {
     it(
         'responds to ping with current tick',
         async () => {
+            pool.run({ command: 'start' }).catch(() => {
+                /* terminated */
+            });
+
             // Wait for at least one tick so tick > 0
             await new Promise<void>((resolve) => {
-                worker.on('message', (msg) => {
+                pool.on('message', (msg) => {
                     if (msg.type === 'tick' && msg.tick >= 1) {
                         resolve();
                     }
@@ -62,12 +76,12 @@ describe('Simulation Worker', () => {
             });
 
             const pong = await new Promise<{ type: string; tick: number }>((resolve) => {
-                worker.on('message', (msg) => {
+                pool.on('message', (msg) => {
                     if (msg.type === 'pong') {
                         resolve(msg);
                     }
                 });
-                worker.postMessage({ type: 'ping' });
+                pool.threads[0].postMessage({ type: 'ping' });
             });
 
             expect(pong.type).toBe('pong');
@@ -79,8 +93,12 @@ describe('Simulation Worker', () => {
     it(
         'includes elapsedMs in tick messages',
         async () => {
+            pool.run({ command: 'start' }).catch(() => {
+                /* terminated */
+            });
+
             const tickMsg = await new Promise<{ type: string; tick: number; elapsedMs: number }>((resolve) => {
-                worker.on('message', (msg) => {
+                pool.on('message', (msg) => {
                     if (msg.type === 'tick') {
                         resolve(msg);
                     }

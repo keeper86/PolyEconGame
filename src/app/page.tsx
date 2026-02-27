@@ -1,5 +1,5 @@
 import { Page } from '@/components/client/Page';
-import SecondTicker from '@/components/client/SecondTicker';
+import TickDisplayConnected from '@/components/client/TickDisplayConnected';
 import { APP_ROUTES } from '@/lib/appRoutes';
 import Link from 'next/link';
 
@@ -7,7 +7,7 @@ export default function LandingPage() {
     return (
         <Page title='Game'>
             <div className='mb-4'>
-                <SecondTicker />
+                <TickDisplayConnected />
             </div>
 
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'>

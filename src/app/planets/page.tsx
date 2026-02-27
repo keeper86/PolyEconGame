@@ -2,7 +2,7 @@
 
 import PlanetDetails from '@/app/planets/PlanetDetails';
 import { Page } from '@/components/client/Page';
-import SecondTicker from '@/components/client/SecondTicker';
+import TickDisplay from '@/components/client/TickDisplay';
 import { usePlanetData, usePlanetHistory } from '@/hooks/usePlanetData';
 import { useAgentData } from '@/hooks/useAgentData';
 import type { Planet, Agent } from '@/simulation/planet';
@@ -32,7 +32,7 @@ export default function PlanetsPage() {
     return (
         <Page title='Planets'>
             <div className='mb-4'>
-                <SecondTicker />
+                <TickDisplay tick={tick} />
             </div>
 
             {!isLoading && tick > 0 && planets.length > 0 ? (

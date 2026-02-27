@@ -1,35 +1,20 @@
 /**
  * snapshotPersistence.ts
  *
- * Registers a listener on the simulation worker message bus that persists
- * each GameState snapshot to the database.  This keeps the SSE stream
- * working unchanged while also populating the snapshot tables so tRPC
- * endpoints can return component-specific data.
+ * DEPRECATED — Snapshot persistence has been moved into the simulation worker
+ * thread itself (worker.ts) so the full GameState no longer needs to be
+ * serialised over the message channel.
+ *
+ * This module is kept as a no-op for backwards compatibility with existing
+ * call-sites (e.g. instrumentation.ts).  It can be safely removed once all
+ * callers have been updated.
  */
-
-import { onWorkerMessage } from './workerManager';
-import { saveGameStateSnapshot } from '../server/snapshotRepository';
-import { db } from '../server/db';
-import type { OutboundMessage } from './worker';
 
 /**
- * Register a persistent listener that saves simulation state to the DB on
- * every tick.  Call this once from the Next.js `register()` instrumentation
- * hook so snapshots are available for tRPC queries.
- *
- * Errors during persistence are logged but do not crash the server.
+ * @deprecated No-op. Snapshot persistence now happens inside the worker thread.
  */
 export function registerSnapshotPersistence(): void {
-    console.log('[snapshotPersistence] Registered snapshot persistence listener');
-    onWorkerMessage(async (msg: OutboundMessage) => {
-        if (msg.type !== 'state') {
-            return;
-        }
-
-        try {
-            await saveGameStateSnapshot(db, msg.state);
-        } catch (err) {
-            console.error('[snapshotPersistence] Failed to save snapshot for tick', msg.state.tick, err);
-        }
-    });
+    console.log(
+        '[snapshotPersistence] Snapshot persistence is now handled inside the worker thread — this call is a no-op.',
+    );
 }
