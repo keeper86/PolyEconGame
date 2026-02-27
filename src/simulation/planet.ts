@@ -125,6 +125,12 @@ export type Occupation = (typeof OCCUPATIONS)[number];
 // A single age cohort: mapping education -> occupation -> count
 export type Cohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
 
+/** Age distribution moments for a single (tenure × education) cohort. */
+export interface AgeMoments {
+    mean: number;
+    variance: number; // population variance
+}
+
 /**
  * A single tenure-year bucket in the workforce demography.
  * Tracks workers actively working at this tenure level plus a departing pipeline
@@ -135,6 +141,8 @@ export interface TenureCohort {
     /** Departing pipeline: each slot is one month of notice remaining.
      *  Slot 0 = workers whose notice expires this month. */
     departing: Record<EducationLevelType, number[]>;
+    /** Age distribution moments (mean, variance) per education level for active workers. */
+    ageMoments: Record<EducationLevelType, AgeMoments>;
 }
 
 /** Array of TenureCohort indexed by tenure year (0 = first year of employment). */
