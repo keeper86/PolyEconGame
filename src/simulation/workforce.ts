@@ -15,7 +15,7 @@
  */
 
 import type { Agent, AgeMoments, EducationLevelType, Occupation, Planet, TenureCohort, WorkforceDemography } from './planet';
-import { educationLevelKeys } from './planet';
+import { educationLevelKeys, maxAge } from './planet';
 import { MIN_EMPLOYABLE_AGE, TICKS_PER_YEAR } from './constants';
 import { mortalityProbability } from './populationHelpers';
 
@@ -23,8 +23,12 @@ import { mortalityProbability } from './populationHelpers';
 // Configuration
 // ---------------------------------------------------------------------------
 
-/** Maximum tenure tracked (years). Workers stay in the last bucket beyond this. */
-export const MAX_TENURE_YEARS = 40;
+/**
+ * Maximum tenure tracked (years). Set to maxAge so the last bucket is
+ * naturally empty — no worker hired at MIN_EMPLOYABLE_AGE can ever
+ * accumulate enough tenure years to reach it before dying.
+ */
+export const MAX_TENURE_YEARS = maxAge;
 
 /**
  * Length of the departing notice pipeline in months.
@@ -372,7 +376,8 @@ export function laborMarketMonthTick(agents: Agent[], planets: Planet[]): void {
  *
  * Advances tenure by one year for all active workers and their departing
  * pipelines, shifting every cohort from year N-1 into year N.
- * Workers already in the last bucket (MAX_TENURE_YEARS) stay there.
+ * The last bucket (MAX_TENURE_YEARS = maxAge) is never reached in practice
+ * because no worker can accumulate that much tenure before dying.
  */
 export function laborMarketYearTick(agents: Agent[]): void {
     for (const agent of agents) {
