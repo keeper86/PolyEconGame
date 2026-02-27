@@ -46,8 +46,12 @@ export const VOLUNTARY_QUIT_RATE_PER_TICK = 0.0001;
  * 10+ years → 1.5  (linear interpolation in between)
  */
 export const experienceMultiplier = (tenureYears: number): number => {
-    if (tenureYears <= 0) {return 1.0;}
-    if (tenureYears >= 10) {return 1.5;}
+    if (tenureYears <= 0) {
+        return 1.0;
+    }
+    if (tenureYears >= 10) {
+        return 1.5;
+    }
     return 1.0 + (tenureYears / 10) * 0.5;
 };
 

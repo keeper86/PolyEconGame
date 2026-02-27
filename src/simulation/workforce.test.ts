@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import {
-    TICKS_PER_MONTH,
-    MONTHS_PER_YEAR,
-    TICKS_PER_YEAR,
-    isMonthBoundary,
-    isYearBoundary,
-} from './constants';
+import { TICKS_PER_MONTH, MONTHS_PER_YEAR, TICKS_PER_YEAR, isMonthBoundary, isYearBoundary } from './constants';
 import {
     MAX_TENURE_YEARS,
     NOTICE_PERIOD_MONTHS,
