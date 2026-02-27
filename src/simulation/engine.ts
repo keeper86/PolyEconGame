@@ -6,7 +6,7 @@ import {
     queryStorageFacility,
     removeFromStorageFacility,
 } from './facilities';
-import { laborMarketMonthTick, laborMarketTick, laborMarketYearTick, totalActiveForEdu } from './workforce';
+import { laborMarketMonthTick, laborMarketTick, laborMarketYearTick, totalActiveForEdu, workforceMortalityTick, ageProductivityMultiplier, DEFAULT_HIRE_AGE_MEAN } from './workforce';
 import type { Agent, EducationLevelType, Occupation, Planet, Population } from './planet';
 import { educationLevelKeys, educationLevels, maxAge, OCCUPATIONS } from './planet';
 import {
@@ -66,6 +66,25 @@ export function productionTick(gameState: GameState) {
             for (const edu of educationLevelKeys) {
                 remainingWorker[edu] = workforce ? totalActiveForEdu(workforce, edu) : 0;
             }
+
+            // Compute age-dependent productivity multiplier per education level,
+            // weighted by the number of active workers in each tenure cohort.
+            const workerAgeProductivity = {} as Record<EducationLevelType, number>;
+            for (const edu of educationLevelKeys) {
+                let totalCount = 0;
+                let weightedMean = 0;
+                if (workforce) {
+                    for (const cohort of workforce) {
+                        const count = cohort.active[edu];
+                        if (count > 0) {
+                            weightedMean += count * cohort.ageMoments[edu].mean;
+                            totalCount += count;
+                        }
+                    }
+                }
+                const overallMean = totalCount > 0 ? weightedMean / totalCount : DEFAULT_HIRE_AGE_MEAN;
+                workerAgeProductivity[edu] = ageProductivityMultiplier(overallMean);
+            }
             assets.productionFacilities.forEach((facility) => {
                 // --- Worker allocation with downhill fallback ---
                 // For each required education level, try exact match first.
@@ -90,6 +109,7 @@ export function productionTick(gameState: GameState) {
                     let needed = req;
                     let filled = 0;
                     let overqualified = 0;
+                    let weightedAgeProd = 0;
 
                     // Walk from the exact education level upward through higher qualifications
                     for (let i = jobEduIdx; i < educationLevelKeys.length && needed > 0; i++) {
@@ -99,6 +119,7 @@ export function productionTick(gameState: GameState) {
                         if (take > 0) {
                             filled += take;
                             needed -= take;
+                            weightedAgeProd += take * workerAgeProductivity[candidateEdu];
                             if (i > jobEduIdx) {
                                 overqualified += take;
                             }
@@ -106,7 +127,9 @@ export function productionTick(gameState: GameState) {
                     }
 
                     workerAllocation[jobEdu] = { total: filled, overqualified };
-                    const levelEff = Math.min(1, filled / req);
+                    // Incorporate age-dependent productivity into the fill efficiency
+                    const avgAgeProd = filled > 0 ? weightedAgeProd / filled : 1;
+                    const levelEff = Math.min(1, filled / req) * avgAgeProd;
                     reducedEfficiencyDueToWorkers = Math.min(reducedEfficiencyDueToWorkers, levelEff);
                 }
 
@@ -333,6 +356,9 @@ export function populationTick(gameState: GameState) {
         // Extra mortality from pollution and disasters remains annual here; starvation mortality will be
         // applied directly on a per-tick basis (so that starvation can lead to rapid deaths once severe).
         const extraMortalityPerYear = pollutionMortalityRate + disasterDeathProbability;
+
+        // Apply the same mortality rates to workforce cohorts using moment-based hazard integration.
+        workforceMortalityTick(gameState.agents, planet.id, extraMortalityPerYear, population.starvationLevel);
 
         const pollutionDisabilityProb = Math.min(
             0.5,

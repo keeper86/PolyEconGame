@@ -5,12 +5,15 @@ import {
     MAX_TENURE_YEARS,
     NOTICE_PERIOD_MONTHS,
     VOLUNTARY_QUIT_RATE_PER_TICK,
+    DEFAULT_HIRE_AGE_MEAN,
     createWorkforceDemography,
     emptyTenureCohort,
     experienceMultiplier,
+    ageProductivityMultiplier,
     laborMarketMonthTick,
     laborMarketTick,
     laborMarketYearTick,
+    workforceMortalityTick,
 } from './workforce';
 import type { Agent, Planet } from './planet';
 import type { StorageFacility } from './facilities';
@@ -200,6 +203,14 @@ describe('emptyTenureCohort', () => {
             expect(cohort.active[edu]).toBe(0);
             expect(cohort.departing[edu]).toHaveLength(NOTICE_PERIOD_MONTHS);
             expect(cohort.departing[edu].every((v) => v === 0)).toBe(true);
+        }
+    });
+
+    it('initialises ageMoments with DEFAULT_HIRE_AGE_MEAN and zero variance', () => {
+        const cohort = emptyTenureCohort();
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as const) {
+            expect(cohort.ageMoments[edu].mean).toBe(DEFAULT_HIRE_AGE_MEAN);
+            expect(cohort.ageMoments[edu].variance).toBe(0);
         }
     });
 });
@@ -487,5 +498,231 @@ describe('laborMarketYearTick', () => {
 
         expect(workforce[0].departing.tertiary[1]).toBe(0);
         expect(workforce[1].departing.tertiary[1]).toBe(8);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// ageProductivityMultiplier
+// ---------------------------------------------------------------------------
+
+describe('ageProductivityMultiplier', () => {
+    it('returns 0.8 for workers aged 18 or younger', () => {
+        expect(ageProductivityMultiplier(14)).toBe(0.8);
+        expect(ageProductivityMultiplier(18)).toBe(0.8);
+    });
+
+    it('returns 1.0 for peak-productivity ages (30–50)', () => {
+        expect(ageProductivityMultiplier(30)).toBe(1.0);
+        expect(ageProductivityMultiplier(40)).toBe(1.0);
+        expect(ageProductivityMultiplier(50)).toBe(1.0);
+    });
+
+    it('interpolates between 18 and 30', () => {
+        const v = ageProductivityMultiplier(24);
+        expect(v).toBeGreaterThan(0.8);
+        expect(v).toBeLessThan(1.0);
+    });
+
+    it('declines after age 50', () => {
+        expect(ageProductivityMultiplier(60)).toBeLessThan(1.0);
+        expect(ageProductivityMultiplier(70)).toBeLessThan(ageProductivityMultiplier(60));
+    });
+
+    it('does not go below 0.7', () => {
+        expect(ageProductivityMultiplier(100)).toBeGreaterThanOrEqual(0.7);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// age moments — hiring updates ageMoments in laborMarketTick
+// ---------------------------------------------------------------------------
+
+describe('age moments — hiring', () => {
+    it('sets ageMoments.mean to the weighted mean age of hired workers', () => {
+        // Place all unoccupied workers at a single known age so we can predict the mean
+        const planet = makePlanet();
+        // Clear default spread and place 100 workers at age 25 only
+        for (const c of planet.population.demography) {
+            c.none.unoccupied = 0;
+        }
+        planet.population.demography[25].none.unoccupied = 100;
+
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 50;
+
+        laborMarketTick([agent], [planet]);
+
+        const wf = agent.assets.p.workforceDemography!;
+        const hired = wf[0].active.none;
+        expect(hired).toBeGreaterThan(0);
+        // All workers came from age 25, so mean should be exactly 25
+        expect(wf[0].ageMoments.none.mean).toBe(25);
+    });
+
+    it('merges ageMoments correctly when hiring across multiple ticks', () => {
+        // Two distinct age groups: 100 at age 20, 100 at age 40
+        const planet = makePlanet();
+        for (const c of planet.population.demography) {
+            c.none.unoccupied = 0;
+        }
+        planet.population.demography[20].none.unoccupied = 100;
+        planet.population.demography[40].none.unoccupied = 100;
+
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 200;
+
+        // Run enough ticks to hire nearly all workers
+        for (let i = 0; i < 60; i++) {
+            laborMarketTick([agent], [planet]);
+        }
+
+        const wf = agent.assets.p.workforceDemography!;
+        // Mean should be close to 30 (midpoint of 20 and 40 if hired equally)
+        expect(wf[0].ageMoments.none.mean).toBeGreaterThanOrEqual(20);
+        expect(wf[0].ageMoments.none.mean).toBeLessThanOrEqual(40);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// age moments — laborMarketYearTick advances mean by 1
+// ---------------------------------------------------------------------------
+
+describe('age moments — year tick', () => {
+    it('advances ageMoments.mean by 1 when shifting tenure years', () => {
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        wf[0].active.primary = 100;
+        wf[0].ageMoments.primary = { mean: 25, variance: 4 };
+
+        laborMarketYearTick([agent]);
+
+        expect(wf[1].active.primary).toBe(100);
+        expect(wf[1].ageMoments.primary.mean).toBe(26);
+        expect(wf[1].ageMoments.primary.variance).toBeCloseTo(4, 5);
+    });
+
+    it('merges two cohorts and advances combined mean by 1 when both land in the same bucket', () => {
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        // Place 100 workers in the last year bucket and 100 in year MAX-1.
+        // After the shift, both end up in MAX_TENURE_YEARS (the cap bucket).
+        wf[MAX_TENURE_YEARS].active.secondary = 100;
+        wf[MAX_TENURE_YEARS].ageMoments.secondary = { mean: 50, variance: 0 };
+        wf[MAX_TENURE_YEARS - 1].active.secondary = 100;
+        wf[MAX_TENURE_YEARS - 1].ageMoments.secondary = { mean: 48, variance: 0 };
+
+        laborMarketYearTick([agent]);
+
+        // After shift: wf[MAX] should contain old-MAX workers (mean 51) + old-(MAX-1) workers (mean 49)
+        // Combined mean = (100 * 51 + 100 * 49) / 200 = 50
+        expect(wf[MAX_TENURE_YEARS].active.secondary).toBe(200);
+        expect(wf[MAX_TENURE_YEARS].ageMoments.secondary.mean).toBeCloseTo(50, 5);
+    });
+
+    it('workers in distinct tenure years each advance independently', () => {
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        wf[0].active.secondary = 100;
+        wf[0].ageMoments.secondary = { mean: 25, variance: 0 };
+        wf[1].active.secondary = 100;
+        wf[1].ageMoments.secondary = { mean: 26, variance: 0 };
+
+        laborMarketYearTick([agent]);
+
+        // Old year-0 workers → year 1 (mean 26), old year-1 workers → year 2 (mean 27)
+        expect(wf[1].active.secondary).toBe(100);
+        expect(wf[1].ageMoments.secondary.mean).toBeCloseTo(26, 5);
+        expect(wf[2].active.secondary).toBe(100);
+        expect(wf[2].ageMoments.secondary.mean).toBeCloseTo(27, 5);
+    });
+
+    it('resets year-0 ageMoments to default after shifting', () => {
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        wf[0].active.none = 50;
+        wf[0].ageMoments.none = { mean: 22, variance: 2 };
+
+        laborMarketYearTick([agent]);
+
+        expect(wf[0].active.none).toBe(0);
+        expect(wf[0].ageMoments.none.mean).toBe(DEFAULT_HIRE_AGE_MEAN);
+        expect(wf[0].ageMoments.none.variance).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// workforceMortalityTick
+// ---------------------------------------------------------------------------
+
+describe('workforceMortalityTick', () => {
+    it('removes some workers from cohorts with realistic working-age mean', () => {
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        // Place workers at age 60 — noticeably higher mortality
+        wf[0].active.none = 100000;
+        wf[0].ageMoments.none = { mean: 60, variance: 0 };
+
+        // Use a high extra mortality to ensure deaths occur even after flooring
+        workforceMortalityTick([agent], 'p', 0.1, 0);
+
+        expect(wf[0].active.none).toBeLessThan(100000);
+    });
+
+    it('removes more workers for older cohorts than younger cohorts', () => {
+        const makeAgentWithAge = (ageMean: number) => {
+            const a = makeAgent();
+            a.id = `agent-${ageMean}`;
+            a.assets.p.workforceDemography![0].active.none = 100000;
+            a.assets.p.workforceDemography![0].ageMoments.none = { mean: ageMean, variance: 0 };
+            return a;
+        };
+
+        const youngAgent = makeAgentWithAge(25);
+        const oldAgent = makeAgentWithAge(70);
+
+        workforceMortalityTick([youngAgent, oldAgent], 'p', 0, 0);
+
+        const youngSurvivors = youngAgent.assets.p.workforceDemography![0].active.none;
+        const oldSurvivors = oldAgent.assets.p.workforceDemography![0].active.none;
+
+        // Older workers should have more deaths (fewer survivors)
+        expect(oldSurvivors).toBeLessThan(youngSurvivors);
+    });
+
+    it('does nothing when workforceDemography is absent', () => {
+        const agent = makeAgent();
+        agent.assets.p.workforceDemography = undefined;
+        expect(() => workforceMortalityTick([agent], 'p', 0, 0)).not.toThrow();
+    });
+
+    it('does nothing for cohorts with zero active workers', () => {
+        const agent = makeAgent();
+        // All cohorts are empty by default
+        expect(() => workforceMortalityTick([agent], 'p', 0, 0)).not.toThrow();
+        const wf = agent.assets.p.workforceDemography!;
+        for (const cohort of wf) {
+            for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as const) {
+                expect(cohort.active[edu]).toBe(0);
+            }
+        }
+    });
+
+    it('applies higher mortality under starvation', () => {
+        const agentNoStarve = makeAgent();
+        agentNoStarve.assets.p.workforceDemography![0].active.none = 100000;
+        agentNoStarve.assets.p.workforceDemography![0].ageMoments.none = { mean: 60, variance: 0 };
+
+        const agentStarve = makeAgent();
+        agentStarve.id = 'agent-starve';
+        agentStarve.assets.p.workforceDemography![0].active.none = 100000;
+        agentStarve.assets.p.workforceDemography![0].ageMoments.none = { mean: 60, variance: 0 };
+
+        workforceMortalityTick([agentNoStarve], 'p', 0, 0);
+        workforceMortalityTick([agentStarve], 'p', 0, 0.8);
+
+        const survivorsNoStarve = agentNoStarve.assets.p.workforceDemography![0].active.none;
+        const survivorsStarve = agentStarve.assets.p.workforceDemography![0].active.none;
+
+        expect(survivorsStarve).toBeLessThan(survivorsNoStarve);
     });
 });
