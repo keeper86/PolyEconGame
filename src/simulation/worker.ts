@@ -11,12 +11,12 @@
  */
 
 import { parentPort, workerData } from 'node:worker_threads';
-import { advanceTick, type GameState } from './engine';
-import { alphaCentauri, earth, earthGovernment } from './entities';
-import { type Population, type TransportShip } from './planet';
-import { agriculturalProductResourceType, putIntoStorageFacility, waterResourceType } from './facilities';
 import { db } from '../server/db';
 import { saveGameStateSnapshot } from '../server/snapshotRepository';
+import { advanceTick, type GameState } from './engine';
+import { alphaCentauri, earth, earthGovernment } from './entities';
+import { agriculturalProductResourceType, putIntoStorageFacility, waterResourceType } from './facilities';
+import { type TransportShip } from './planet';
 
 export type InboundMessage =
     | { type: 'ping' }

@@ -4,30 +4,16 @@ import PlanetDetails from '@/app/planets/PlanetDetails';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
 import { usePlanetData, usePlanetHistory } from '@/hooks/usePlanetData';
-import { useAgentData } from '@/hooks/useAgentData';
-import type { Planet, Agent } from '@/simulation/planet';
+import type { Planet } from '@/simulation/planet';
 
-function PlanetDetailsWithHistory({
-    planet,
-    agents,
-}: {
-    planet: Planet;
-    agents: ReturnType<typeof useAgentData>['agents'];
-}) {
+function PlanetDetailsWithHistory({ planet }: { planet: Planet }) {
     const { history } = usePlanetHistory(planet.id);
-    const agentObjects = agents
-        .filter((a) => a.agent?.associatedPlanetId === planet.id)
-        .map((a) => a.agent)
-        .filter((agent): agent is Agent => agent !== undefined);
 
-    return (
-        <PlanetDetails planet={planet} history={history} latestPopulation={planet.population} agents={agentObjects} />
-    );
+    return <PlanetDetails planet={planet} history={history} latestPopulation={planet.population} />;
 }
 
 export default function PlanetsPage() {
     const { tick, planets, isLoading } = usePlanetData();
-    const { agents } = useAgentData();
 
     return (
         <Page title='Planets'>
@@ -38,7 +24,7 @@ export default function PlanetsPage() {
             {!isLoading && tick > 0 && planets.length > 0 ? (
                 <div className='space-y-4'>
                     {planets.map((p) => (
-                        <PlanetDetailsWithHistory key={p.planetId} planet={p.planet} agents={agents} />
+                        <PlanetDetailsWithHistory key={p.planetId} planet={p.planet} />
                     ))}
                 </div>
             ) : (

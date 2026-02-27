@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
-import PlanetPopulationChartRecharts from '@/app/planets/PlanetPopulationChartRecharts';
 import PlanetDemography from '@/app/planets/PlanetDemography';
-import type { Planet, Population, Agent, ResourceQuantity, ResourceClaim } from '../../simulation/planet';
+import PlanetPopulationChartRecharts from '@/app/planets/PlanetPopulationChartRecharts';
+import React from 'react';
+import type { Planet, Population, ResourceClaim, ResourceQuantity } from '../../simulation/planet';
 
 type ResourceEntry = ResourceQuantity & ResourceClaim;
 
@@ -11,10 +11,9 @@ type Props = {
     planet: Planet;
     history: { tick: number; value: number }[];
     latestPopulation?: Population | undefined;
-    agents?: Agent[];
 };
 
-export default function PlanetDetails({ planet, history, latestPopulation, agents }: Props): React.ReactElement {
+export default function PlanetDetails({ planet, history, latestPopulation }: Props): React.ReactElement {
     const latestValue = history?.[0]?.value ?? '—';
     const p = planet;
     const name = p.name;
@@ -41,47 +40,6 @@ export default function PlanetDetails({ planet, history, latestPopulation, agent
                 </div>
 
                 <div className='text-sm'>
-                    <div className='mb-2 font-semibold'>Agents</div>
-                    <div className='text-xs text-gray-600 mb-3'>
-                        <div className='mb-1'>
-                            <strong>Agents:</strong>
-                            {Array.isArray(agents) && agents.length > 0 ? (
-                                <ul className='list-disc ml-5 text-xs'>
-                                    {agents.map((a) => {
-                                        const asset = a.assets?.[p.id];
-                                        const resourceClaims = asset?.resourceClaims?.length ?? 0;
-                                        const productionFacilities = asset?.productionFacilities?.length ?? 0;
-                                        const allocatedWorkers = asset?.allocatedWorkers
-                                            ? Object.values(asset.allocatedWorkers).reduce((s, v) => s + (v || 0), 0)
-                                            : 0;
-                                        const ships = a.transportShips?.length ?? 0;
-                                        const storage = Object.values(
-                                            asset?.storageFacility?.currentInStorage ?? {},
-                                        ).map((s) => {
-                                            return (
-                                                <li key={s.resource.name}>
-                                                    {s.resource.name}: {s.quantity}
-                                                </li>
-                                            );
-                                        });
-
-                                        return (
-                                            <li key={a.id}>
-                                                {a.name} — wealth: {a.wealth} — ships: {ships} — claims:{' '}
-                                                {resourceClaims} — facilities: {productionFacilities} — workers:{' '}
-                                                {allocatedWorkers}
-                                                Storage:
-                                                <ul>{storage}</ul>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            ) : (
-                                <div className='text-xs text-gray-500'>—</div>
-                            )}
-                        </div>
-                    </div>
-
                     <div className='mb-2 font-semibold'>Details</div>
                     <div className='text-xs text-gray-600'>
                         <div className='mb-1'>
