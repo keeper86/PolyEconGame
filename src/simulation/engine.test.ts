@@ -4,8 +4,9 @@ import { environmentTick, productionTick, populationTick } from './engine';
 import { agriculturalProductResourceType, putIntoStorageFacility, queryStorageFacility } from './facilities';
 import { totalPopulation } from './populationHelpers';
 import type { StorageFacility, ProductionFacility, Resource } from './facilities';
-import type { Planet, Agent } from './planet';
+import type { Planet, Agent, EducationLevelType } from './planet';
 import type { GameState } from './engine';
+import { createWorkforceDemography } from './workforce';
 
 function makeEmptyStorage(): StorageFacility {
     return {
@@ -83,6 +84,21 @@ function makePlanet(): Planet {
         },
         environment: env,
     } as Planet;
+}
+
+/**
+ * Sets up actual hired workers in the agent's workforceDemography for a planet.
+ * Workers are placed in tenure year 0. This is what productionTick now reads
+ * instead of allocatedWorkers (which is only the target).
+ */
+function setActualWorkers(agent: Agent, planetId: string, workers: Partial<Record<EducationLevelType, number>>) {
+    const assets = agent.assets[planetId];
+    if (!assets.workforceDemography) {
+        assets.workforceDemography = createWorkforceDemography();
+    }
+    for (const [edu, count] of Object.entries(workers)) {
+        assets.workforceDemography[0].active[edu as EducationLevelType] = count ?? 0;
+    }
 }
 
 describe('engine basic behavior', () => {
@@ -260,8 +276,8 @@ describe('engine basic behavior', () => {
 
         const storage = agent.assets[planet.id].storageFacility;
 
-        // allocate only 5 of the required 10 workers
-        agent.assets[planet.id].allocatedWorkers.none = 5;
+        // Set 5 actual hired workers (via workforce demography) of the required 10
+        setActualWorkers(agent, planet.id, { none: 5 });
 
         productionTick(gameState);
 
@@ -360,5 +376,145 @@ describe('engine basic behavior', () => {
         const popAfter = totalPopulation(planet.population);
         // population should have decreased (some deaths occurred during starvation)
         expect(popAfter).toBeLessThanOrEqual(popBefore);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Worker education downhill fallback in productionTick
+// ---------------------------------------------------------------------------
+
+describe('productionTick worker education fallback', () => {
+    let planet: Planet;
+
+    beforeEach(() => {
+        planet = makePlanet();
+    });
+
+    function makeFacilityWithWorkerReq(
+        planetId: string,
+        workerRequirement: Partial<Record<string, number>>,
+    ): ProductionFacility {
+        return {
+            planetId,
+            id: 'pf-test',
+            name: 'test-facility',
+            scale: 1,
+            lastTickEfficiencyInPercent: 0,
+            powerConsumptionPerTick: 0,
+            workerRequirement,
+            pollutionPerTick: { air: 0, water: 0, soil: 0 },
+            needs: [],
+            produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
+        };
+    }
+
+    it('fills worker requirement exactly when matching education is available', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        setActualWorkers(agent, planet.id, { primary: 10 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { primary: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        expect(facility.lastTickEfficiencyInPercent).toBe(100);
+        expect(facility.lastTickOverqualifiedWorkers).toBeUndefined();
+    });
+
+    it('uses higher-educated workers when lower bracket is exhausted', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // Need 10 "none" workers, but we only have secondary workers
+        setActualWorkers(agent, planet.id, { none: 0, secondary: 10 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        expect(facility.lastTickEfficiencyInPercent).toBe(100);
+        expect(facility.lastTickOverqualifiedWorkers).toEqual({ none: 10 });
+    });
+
+    it('partially fills from exact match and remainder from higher education', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // Need 10 "none", have 6 "none" + 4 "primary"
+        setActualWorkers(agent, planet.id, { none: 6, primary: 4 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        expect(facility.lastTickEfficiencyInPercent).toBe(100);
+        expect(facility.lastTickOverqualifiedWorkers).toEqual({ none: 4 });
+    });
+
+    it('reduces efficiency when even fallback cannot fill requirement', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // Need 10 "none", but only 3 total workers across all edu levels
+        setActualWorkers(agent, planet.id, { none: 1, primary: 1, secondary: 1 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        // 3/10 = 30%
+        expect(facility.lastTickEfficiencyInPercent).toBe(30);
+        expect(facility.lastTickOverqualifiedWorkers).toEqual({ none: 2 });
+    });
+
+    it('does not use lower-educated workers to fill higher requirements', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // Need 10 "secondary", only have "none" and "primary" — cannot fill
+        setActualWorkers(agent, planet.id, { none: 100, primary: 100, secondary: 0 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { secondary: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        expect(facility.lastTickEfficiencyInPercent).toBe(0);
+    });
+
+    it('deducts overqualified workers from remainingWorker so second facility sees fewer', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // 10 secondary workers total
+        setActualWorkers(agent, planet.id, { secondary: 10 });
+
+        // Facility 1 needs 6 "none" — will use 6 secondary (overqualified)
+        // Facility 2 needs 10 "secondary" — only 4 remaining
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 6 }));
+        const facility2 = makeFacilityWithWorkerReq(planet.id, { secondary: 10 });
+        facility2.id = 'pf-test-2';
+        agent.assets[planet.id].productionFacilities.push(facility2);
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const f1 = agent.assets[planet.id].productionFacilities[0];
+        const f2 = agent.assets[planet.id].productionFacilities[1];
+
+        expect(f1.lastTickEfficiencyInPercent).toBe(100);
+        expect(f1.lastTickOverqualifiedWorkers).toEqual({ none: 6 });
+
+        // Only 4 secondary remain for facility 2
+        expect(f2.lastTickEfficiencyInPercent).toBe(40);
+        expect(f2.lastTickOverqualifiedWorkers).toBeUndefined();
+    });
+
+    it('walks through multiple education levels to fill a single requirement', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // Need 10 "none", have 2 none + 3 primary + 2 secondary + 3 tertiary = 10
+        setActualWorkers(agent, planet.id, { none: 2, primary: 3, secondary: 2, tertiary: 3 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        expect(facility.lastTickEfficiencyInPercent).toBe(100);
+        // 8 overqualified (3 primary + 2 secondary + 3 tertiary)
+        expect(facility.lastTickOverqualifiedWorkers).toEqual({ none: 8 });
     });
 });

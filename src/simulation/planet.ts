@@ -125,6 +125,21 @@ export type Occupation = (typeof OCCUPATIONS)[number];
 // A single age cohort: mapping education -> occupation -> count
 export type Cohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
 
+/**
+ * A single tenure-year bucket in the workforce demography.
+ * Tracks workers actively working at this tenure level plus a departing pipeline
+ * (notice-period slots indexed 0 = soonest to depart).
+ */
+export interface TenureCohort {
+    active: Record<EducationLevelType, number>;
+    /** Departing pipeline: each slot is one month of notice remaining.
+     *  Slot 0 = workers whose notice expires this month. */
+    departing: Record<EducationLevelType, number[]>;
+}
+
+/** Array of TenureCohort indexed by tenure year (0 = first year of employment). */
+export type WorkforceDemography = TenureCohort[];
+
 // Population = array of cohorts, index = age (0 = newborns)
 export type Population = {
     demography: Cohort[];
@@ -225,6 +240,7 @@ export type Agent = {
             allocatedWorkers: {
                 [L in EducationLevelType]: number;
             };
+            workforceDemography?: WorkforceDemography;
         };
     };
 };

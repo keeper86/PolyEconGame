@@ -1,4 +1,4 @@
-import { FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from './constants';
+import { FOOD_PER_PERSON_PER_TICK, isMonthBoundary, isYearBoundary, TICKS_PER_YEAR } from './constants';
 import { extractFromClaimedResource, queryClaimedResource, regenerateRenewableResources } from './entities';
 import {
     agriculturalProductResourceType,
@@ -6,6 +6,7 @@ import {
     queryStorageFacility,
     removeFromStorageFacility,
 } from './facilities';
+import { laborMarketMonthTick, laborMarketTick, laborMarketYearTick, totalActiveForEdu } from './workforce';
 import type { Agent, EducationLevelType, Occupation, Planet, Population } from './planet';
 import { educationLevelKeys, educationLevels, maxAge, OCCUPATIONS } from './planet';
 import {
@@ -23,13 +24,22 @@ export interface GameState {
     agents: Agent[]; // includes governments and companies, can be extended in the future for individuals, organizations, etc.
 }
 
-// internalTickCounter
-let internalTickCounter = 0;
+// internalTickCounter has been removed; gameState.tick (incremented by the
+// caller before advanceTick is called) is used for all boundary checks.
 export function advanceTick(gameState: GameState) {
-    internalTickCounter++;
     environmentTick(gameState);
-    productionTick(gameState);
+    laborMarketTick(gameState.agents, gameState.planets);
     populationTick(gameState);
+    productionTick(gameState);
+
+    if (isMonthBoundary(gameState.tick)) {
+        laborMarketMonthTick(gameState.agents, gameState.planets);
+    }
+
+    if (isYearBoundary(gameState.tick)) {
+        populationAdvanceYearTick(gameState);
+        laborMarketYearTick(gameState.agents);
+    }
 }
 
 // Convert annual rates to per-tick equivalents to smooth mortality over ticks
@@ -49,17 +59,56 @@ export function productionTick(gameState: GameState) {
                 return; // this agent has no assets on this planet, skip
             }
 
-            const remainingWorker = { ...assets.allocatedWorkers }; // we'll decrement this as we allocate workers to facilities, to ensure we don't double-count workers across multiple facilities
+            // Build remaining worker pool from actual workforce demography
+            // (how many are really hired), not from allocatedWorkers (the target).
+            const remainingWorker = {} as Record<EducationLevelType, number>;
+            const workforce = assets.workforceDemography;
+            for (const edu of educationLevelKeys) {
+                remainingWorker[edu] = workforce ? totalActiveForEdu(workforce, edu) : 0;
+            }
             assets.productionFacilities.forEach((facility) => {
-                // Check if the facility can operate at full efficiency (i.e. has enough workers and resources)
-                const reducedEfficiencyDueToWorkers = Object.entries(facility.workerRequirement).reduce(
-                    (eff, [eduLevel, req]) => {
-                        const available = remainingWorker[eduLevel as EducationLevelType] || 0;
-                        const levelEff = Math.min(1, available / req);
-                        return Math.min(eff, levelEff);
-                    },
-                    1,
-                );
+                // --- Worker allocation with downhill fallback ---
+                // For each required education level, try exact match first.
+                // If not enough workers, fall through to higher education levels.
+                // Education hierarchy (low→high): none, primary, secondary, tertiary, quaternary
+                const workerAllocation: Record<EducationLevelType, { total: number; overqualified: number }> = {
+                    none: { total: 0, overqualified: 0 },
+                    primary: { total: 0, overqualified: 0 },
+                    secondary: { total: 0, overqualified: 0 },
+                    tertiary: { total: 0, overqualified: 0 },
+                    quaternary: { total: 0, overqualified: 0 },
+                };
+
+                let reducedEfficiencyDueToWorkers = 1;
+                for (const [eduLevel, req] of Object.entries(facility.workerRequirement)) {
+                    if (!req || req <= 0) {
+                        continue;
+                    }
+
+                    const jobEdu = eduLevel as EducationLevelType;
+                    const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
+                    let needed = req;
+                    let filled = 0;
+                    let overqualified = 0;
+
+                    // Walk from the exact education level upward through higher qualifications
+                    for (let i = jobEduIdx; i < educationLevelKeys.length && needed > 0; i++) {
+                        const candidateEdu = educationLevelKeys[i];
+                        const available = remainingWorker[candidateEdu] || 0;
+                        const take = Math.min(needed, available);
+                        if (take > 0) {
+                            filled += take;
+                            needed -= take;
+                            if (i > jobEduIdx) {
+                                overqualified += take;
+                            }
+                        }
+                    }
+
+                    workerAllocation[jobEdu] = { total: filled, overqualified };
+                    const levelEff = Math.min(1, filled / req);
+                    reducedEfficiencyDueToWorkers = Math.min(reducedEfficiencyDueToWorkers, levelEff);
+                }
 
                 const resourceEfficiencies = facility.needs.map((need) => {
                     const requiredAmount = need.quantity * facility.scale;
@@ -78,6 +127,16 @@ export function productionTick(gameState: GameState) {
 
                 const overallEfficiency = Math.min(reducedEfficiencyDueToWorkers, ...resourceEfficiencies);
                 facility.lastTickEfficiencyInPercent = Math.round(overallEfficiency * 100);
+
+                // Record overqualified worker usage for decision-making
+                const overqualifiedRecord: { [edu in EducationLevelType]?: number } = {};
+                for (const edu of educationLevelKeys) {
+                    if (workerAllocation[edu].overqualified > 0) {
+                        overqualifiedRecord[edu] = workerAllocation[edu].overqualified;
+                    }
+                }
+                facility.lastTickOverqualifiedWorkers =
+                    Object.keys(overqualifiedRecord).length > 0 ? overqualifiedRecord : undefined;
 
                 if (overallEfficiency <= 0) {
                     return; // facility cannot operate, skip
@@ -141,24 +200,26 @@ export function productionTick(gameState: GameState) {
                     }
                 });
 
-                Object.entries(facility.workerRequirement).forEach(([eduLevel, req]) => {
-                    const requiredWorkers = Math.floor(req * facility.scale * overallEfficiency);
-                    const usedWorkers = Math.min(requiredWorkers, remainingWorker[eduLevel as EducationLevelType] || 0);
-                    if (remainingWorker[eduLevel as EducationLevelType] < requiredWorkers) {
-                        console.warn(
-                            `Unexpected: used ${usedWorkers} workers at education level ${eduLevel} but expected to use ${requiredWorkers}. This should not happen since efficiency is scaled based on available workers.`,
-                            {
-                                planetId: planet.id,
-                                agentId: agent.id,
-                                facilityId: facility.id,
-                                educationLevel: eduLevel,
-                            },
-                        );
+                // Deduct workers actually used (scaled by efficiency) from remainingWorker.
+                // Walk the same downhill path to deduct from the correct education pools.
+                for (const [eduLevel, req] of Object.entries(facility.workerRequirement)) {
+                    if (!req || req <= 0) {
+                        continue;
                     }
+                    const jobEdu = eduLevel as EducationLevelType;
+                    const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
+                    let toDeduct = Math.floor(req * facility.scale * overallEfficiency);
 
-                    remainingWorker[eduLevel as EducationLevelType] =
-                        remainingWorker[eduLevel as EducationLevelType] - usedWorkers;
-                });
+                    for (let i = jobEduIdx; i < educationLevelKeys.length && toDeduct > 0; i++) {
+                        const candidateEdu = educationLevelKeys[i];
+                        const available = remainingWorker[candidateEdu] || 0;
+                        const take = Math.min(toDeduct, available);
+                        if (take > 0) {
+                            remainingWorker[candidateEdu] -= take;
+                            toDeduct -= take;
+                        }
+                    }
+                }
             });
         });
     });
@@ -213,11 +274,6 @@ export function populationTick(gameState: GameState) {
         // updates below (pollution regeneration) don't mutate the original planet.
 
         const { population } = planet;
-
-        if (internalTickCounter > 0 && internalTickCounter % TICKS_PER_YEAR === 0) {
-            const { totalInCohort } = calculateDemographicStats(population);
-            populationAdvanceYear(population, totalInCohort);
-        }
 
         const { populationTotal, fertileWomen, totalInCohort } = calculateDemographicStats(population);
 
@@ -380,8 +436,19 @@ export function populationTick(gameState: GameState) {
     });
 }
 
+/**
+ * populationAdvanceYearTick — called by advanceTick at every year boundary.
+ *
+ * Applies aging and education progression to every planet's population.
+ */
+export function populationAdvanceYearTick(gameState: GameState): void {
+    gameState.planets.forEach((planet) => {
+        const { totalInCohort } = calculateDemographicStats(planet.population);
+        populationAdvanceYear(planet.population, totalInCohort);
+    });
+}
+
 export const populationAdvanceYear = (population: Population, totalInCohort: number[]) => {
-    // Perform aging / education progression at the start of each year.
     // We shift cohorts to age+1 and create an empty cohort 0 which will
     // be filled over the year by per-tick births.
 

@@ -10,6 +10,7 @@ import {
 import type { Agent, Planet, Population } from './planet';
 import { maxAge } from './planet';
 import { emptyCohort } from './populationHelpers';
+import { createWorkforceDemography } from './workforce';
 
 export const agriculturalProductionFacility: ProductionFacility = {
     planetId: 'earth',
@@ -101,12 +102,13 @@ export const earthGovernment: Agent = {
             productionFacilities: [agriculturalProductionFacility, waterExtractionFacility],
             storageFacility: earthStorage,
             allocatedWorkers: {
-                none: 10000000,
-                primary: 5000000,
-                secondary: 1000000,
-                tertiary: 100000,
-                quaternary: 100000,
+                none: 1000000000,
+                primary: 500000000,
+                secondary: 100000000,
+                tertiary: 10000000,
+                quaternary: 10000000,
             },
+            workforceDemography: createWorkforceDemography(),
         },
     },
     wealth: 1000000000, // in coins
@@ -371,14 +373,8 @@ export function createPopulation(total: number): Population {
                     pop.demography[age].tertiary.education);
         } else if (age < 45) {
             // Young adults – simplified distribution
-            pop.demography[age].primary.company = Math.floor(ageCount * 0.21);
-            pop.demography[age].primary.government = Math.floor(ageCount * 0.06);
-            pop.demography[age].primary.unoccupied = Math.floor(ageCount * 0.03);
-            pop.demography[age].secondary.company = Math.floor(ageCount * 0.28);
-            pop.demography[age].secondary.government = Math.floor(ageCount * 0.08);
-            pop.demography[age].secondary.unoccupied = Math.floor(ageCount * 0.04);
-            pop.demography[age].tertiary.company = Math.floor(ageCount * 0.21);
-            pop.demography[age].tertiary.government = Math.floor(ageCount * 0.06);
+            pop.demography[age].primary.unoccupied = Math.floor(ageCount * 0.3);
+            pop.demography[age].secondary.unoccupied = Math.floor(ageCount * 0.4);
             pop.demography[age].tertiary.unoccupied =
                 ageCount -
                 (pop.demography[age].primary.company +
@@ -391,14 +387,9 @@ export function createPopulation(total: number): Population {
                     pop.demography[age].tertiary.government);
         } else if (age < 65) {
             // Old adults – similar, adjust
-            pop.demography[age].primary.company = Math.floor(ageCount * 0.24);
-            pop.demography[age].primary.government = Math.floor(ageCount * 0.12);
-            pop.demography[age].primary.unoccupied = Math.floor(ageCount * 0.04);
-            pop.demography[age].secondary.company = Math.floor(ageCount * 0.24);
-            pop.demography[age].secondary.government = Math.floor(ageCount * 0.12);
-            pop.demography[age].secondary.unoccupied = Math.floor(ageCount * 0.04);
-            pop.demography[age].tertiary.company = Math.floor(ageCount * 0.12);
-            pop.demography[age].tertiary.government = Math.floor(ageCount * 0.06);
+            pop.demography[age].primary.unoccupied = Math.floor(ageCount * 0.4);
+
+            pop.demography[age].secondary.unoccupied = Math.floor(ageCount * 0.4);
             pop.demography[age].tertiary.unoccupied =
                 ageCount -
                 (pop.demography[age].primary.company +
@@ -412,11 +403,7 @@ export function createPopulation(total: number): Population {
         } else {
             // Seniors
             pop.demography[age].primary.unoccupied = Math.floor(ageCount * 0.45);
-            pop.demography[age].primary.company = Math.floor(ageCount * 0.025);
-            pop.demography[age].primary.government = Math.floor(ageCount * 0.025);
             pop.demography[age].secondary.unoccupied = Math.floor(ageCount * 0.27);
-            pop.demography[age].secondary.company = Math.floor(ageCount * 0.015);
-            pop.demography[age].secondary.government = Math.floor(ageCount * 0.015);
             pop.demography[age].tertiary.unoccupied =
                 ageCount -
                 (pop.demography[age].primary.unoccupied +

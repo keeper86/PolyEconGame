@@ -5,6 +5,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } fro
 import type { Agent } from '../../simulation/planet';
 import type { ProductionFacility } from '../../simulation/facilities';
 import { Page } from '../../components/client/Page';
+import WorkforceDemographyPanel from './WorkforceDemographyPanel';
 
 /** One snapshot per tick, keyed by resource name → quantity. */
 export type AgentResourceSnapshot = {
@@ -112,6 +113,7 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
         const facilities: ProductionFacility[] = [];
         const storageTotals: Record<string, number> = {};
         const allocatedWorkers: Record<string, number> = {} as Record<string, number>;
+        let mergedWorkforceDemography = undefined as Agent['assets'][string]['workforceDemography'];
 
         for (const assetsEntry of Object.values(agent.assets)) {
             totalProductionFacilities += assetsEntry.productionFacilities?.length ?? 0;
@@ -129,9 +131,13 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                     allocatedWorkers[k] = (allocatedWorkers[k] || 0) + (v || 0);
                 }
             }
+            // Use the first non-undefined workforce demography found
+            if (!mergedWorkforceDemography && assetsEntry.workforceDemography) {
+                mergedWorkforceDemography = assetsEntry.workforceDemography;
+            }
         }
 
-        return { totalProductionFacilities, storageTotals, allocatedWorkers, facilities };
+        return { totalProductionFacilities, storageTotals, allocatedWorkers, facilities, mergedWorkforceDemography };
     };
 
     return (
@@ -226,6 +232,17 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                                           </div>
                                       ))}
                             </div>
+
+                            {/* Workforce demography panel */}
+                            <WorkforceDemographyPanel
+                                allocatedWorkers={
+                                    s.allocatedWorkers as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
+                                workforceDemography={s.mergedWorkforceDemography}
+                            />
 
                             {/* Time-series charts */}
                             {series && (

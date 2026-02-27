@@ -71,6 +71,15 @@ export type ProductionFacility = Facilility & {
 
     needs: { resource: Resource; quantity: number }[];
     produces: { resource: Resource; quantity: number }[];
+
+    /**
+     * Tracks how many overqualified workers were used to fill lower-education
+     * slots during the last production tick. Keyed by the *job* education level
+     * that needed filling. E.g. `{ none: 3 }` means 3 workers with higher
+     * education filled "none"-level slots.
+     * Updated every tick by productionTick; undefined before the first tick.
+     */
+    lastTickOverqualifiedWorkers?: { [jobEdu in EducationLevelType]?: number };
 };
 
 export type StorageFacility = Facilility & {
