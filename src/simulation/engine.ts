@@ -1,4 +1,4 @@
-import { FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from './constants';
+import { FOOD_PER_PERSON_PER_TICK, isMonthBoundary, isYearBoundary, TICKS_PER_YEAR } from './constants';
 import { extractFromClaimedResource, queryClaimedResource, regenerateRenewableResources } from './entities';
 import {
     agriculturalProductResourceType,
@@ -6,6 +6,7 @@ import {
     queryStorageFacility,
     removeFromStorageFacility,
 } from './facilities';
+import { laborMarketMonthTick, laborMarketTick, laborMarketYearTick } from './workforce';
 import type { Agent, EducationLevelType, Occupation, Planet, Population } from './planet';
 import { educationLevelKeys, educationLevels, maxAge, OCCUPATIONS } from './planet';
 import {
@@ -23,13 +24,22 @@ export interface GameState {
     agents: Agent[]; // includes governments and companies, can be extended in the future for individuals, organizations, etc.
 }
 
-// internalTickCounter
-let internalTickCounter = 0;
+// internalTickCounter has been removed; gameState.tick (incremented by the
+// caller before advanceTick is called) is used for all boundary checks.
 export function advanceTick(gameState: GameState) {
-    internalTickCounter++;
     environmentTick(gameState);
-    productionTick(gameState);
+    laborMarketTick(gameState.agents);
     populationTick(gameState);
+    productionTick(gameState);
+
+    if (isMonthBoundary(gameState.tick)) {
+        laborMarketMonthTick(gameState.agents);
+    }
+
+    if (isYearBoundary(gameState.tick)) {
+        populationAdvanceYearTick(gameState);
+        laborMarketYearTick(gameState.agents);
+    }
 }
 
 // Convert annual rates to per-tick equivalents to smooth mortality over ticks
@@ -214,11 +224,6 @@ export function populationTick(gameState: GameState) {
 
         const { population } = planet;
 
-        if (internalTickCounter > 0 && internalTickCounter % TICKS_PER_YEAR === 0) {
-            const { totalInCohort } = calculateDemographicStats(population);
-            populationAdvanceYear(population, totalInCohort);
-        }
-
         const { populationTotal, fertileWomen, totalInCohort } = calculateDemographicStats(population);
 
         if (populationTotal === 0) {
@@ -380,8 +385,19 @@ export function populationTick(gameState: GameState) {
     });
 }
 
+/**
+ * populationAdvanceYearTick — called by advanceTick at every year boundary.
+ *
+ * Applies aging and education progression to every planet's population.
+ */
+export function populationAdvanceYearTick(gameState: GameState): void {
+    gameState.planets.forEach((planet) => {
+        const { totalInCohort } = calculateDemographicStats(planet.population);
+        populationAdvanceYear(planet.population, totalInCohort);
+    });
+}
+
 export const populationAdvanceYear = (population: Population, totalInCohort: number[]) => {
-    // Perform aging / education progression at the start of each year.
     // We shift cohorts to age+1 and create an empty cohort 0 which will
     // be filled over the year by per-tick births.
 
