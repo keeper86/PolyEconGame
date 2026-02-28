@@ -518,3 +518,335 @@ describe('productionTick worker education fallback', () => {
         expect(facility.lastTickOverqualifiedWorkers).toEqual({ none: 8 });
     });
 });
+
+// ---------------------------------------------------------------------------
+// Two-pass allocation: exact match first, then cascade
+// ---------------------------------------------------------------------------
+
+describe('productionTick two-pass worker allocation', () => {
+    let planet: Planet;
+
+    beforeEach(() => {
+        planet = makePlanet();
+    });
+
+    function makeFacilityWithWorkerReq(
+        planetId: string,
+        workerRequirement: Partial<Record<string, number>>,
+    ): ProductionFacility {
+        return {
+            planetId,
+            id: `pf-${Math.random().toString(36).slice(2, 8)}`,
+            name: 'test-facility',
+            scale: 1,
+            lastTickEfficiencyInPercent: 0,
+            powerConsumptionPerTick: 0,
+            workerRequirement,
+            pollutionPerTick: { air: 0, water: 0, soil: 0 },
+            needs: [],
+            produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
+        };
+    }
+
+    it('does not let none-cascade starve the primary slot', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // 5 primary workers total.
+        // Facility needs none: 10, primary: 5.
+        // Old behavior: none slot processes first, cascades into primary pool,
+        // grabs all 5 primary → primary slot gets 0 → 0% efficiency.
+        // New behavior: pass 1 reserves 5 primary for the primary slot,
+        // pass 2 lets none cascade into what remains (nothing).
+        setActualWorkers(agent, planet.id, { none: 0, primary: 5 });
+        agent.assets[planet.id].productionFacilities.push(
+            makeFacilityWithWorkerReq(planet.id, { none: 10, primary: 5 }),
+        );
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        const results = facility.lastTickResults!;
+        // Primary slot should be 100% — exact match was reserved in pass 1
+        expect(results.workerEfficiency!.primary).toBe(1);
+        // None slot should be 0% — no none workers and no cascade candidates
+        expect(results.workerEfficiency!.none).toBe(0);
+        // Overall efficiency is min of all slots → 0
+        expect(facility.lastTickEfficiencyInPercent).toBe(0);
+    });
+
+    it('cascades surplus higher-edu workers to lower slots only after exact matches', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // 8 primary workers, 6 secondary workers.
+        // Facility needs none: 5, primary: 8, secondary: 6.
+        // Pass 1: primary slot takes 8 primary, secondary slot takes 6 secondary.
+        // Pass 2: none slot tries to cascade into primary (0 left), then
+        //         secondary (0 left), etc. → none stays at 0.
+        setActualWorkers(agent, planet.id, { none: 0, primary: 8, secondary: 6 });
+        agent.assets[planet.id].productionFacilities.push(
+            makeFacilityWithWorkerReq(planet.id, { none: 5, primary: 8, secondary: 6 }),
+        );
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
+        expect(results.workerEfficiency!.primary).toBe(1);
+        expect(results.workerEfficiency!.secondary).toBe(1);
+        expect(results.workerEfficiency!.none).toBe(0);
+    });
+
+    it('cascades leftover higher-edu workers after exact-match slots are filled', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // 0 none, 15 primary. Facility needs none: 5, primary: 10.
+        // Pass 1: primary slot takes 10 primary (exact). 5 primary remain.
+        // Pass 2: none slot cascades → takes 5 primary (overqualified). Done.
+        setActualWorkers(agent, planet.id, { none: 0, primary: 15 });
+        agent.assets[planet.id].productionFacilities.push(
+            makeFacilityWithWorkerReq(planet.id, { none: 5, primary: 10 }),
+        );
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
+        expect(results.workerEfficiency!.none).toBe(1);
+        expect(results.workerEfficiency!.primary).toBe(1);
+        expect(results.workerEfficiencyOverall).toBe(1);
+        // The none slot was filled with 5 overqualified primary workers
+        expect(results.overqualifiedWorkers).toEqual({ none: { primary: 5 } });
+    });
+
+    it('partially cascades when surplus is insufficient to fully fill lower slot', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // 0 none, 12 primary. Facility needs none: 5, primary: 10.
+        // Pass 1: primary slot takes 10. 2 primary remain.
+        // Pass 2: none needs 5, gets 2 from primary cascade → 2/5 = 40%.
+        setActualWorkers(agent, planet.id, { none: 0, primary: 12 });
+        agent.assets[planet.id].productionFacilities.push(
+            makeFacilityWithWorkerReq(planet.id, { none: 5, primary: 10 }),
+        );
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
+        expect(results.workerEfficiency!.primary).toBe(1);
+        expect(results.workerEfficiency!.none).toBeCloseTo(0.4, 2);
+        expect(results.overqualifiedWorkers).toEqual({ none: { primary: 2 } });
+    });
+
+    it('handles scale > 1 correctly in two-pass allocation', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // scale=10, workerReq: none=6, primary=3
+        // Effective requirement: none=60, primary=30. Total=90.
+        // Available: 30 primary, 0 none.
+        // Pass 1: primary takes 30 (exact). 0 primary remain.
+        // Pass 2: none needs 60, no cascade available → 0%.
+        setActualWorkers(agent, planet.id, { none: 0, primary: 30 });
+        const fac = makeFacilityWithWorkerReq(planet.id, { none: 6, primary: 3 });
+        fac.scale = 10;
+        agent.assets[planet.id].productionFacilities.push(fac);
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
+        // Primary exactly filled: 30 available = 30 needed
+        expect(results.workerEfficiency!.primary).toBe(1);
+        // None has nothing
+        expect(results.workerEfficiency!.none).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Idle worker persistence in productionTick
+// ---------------------------------------------------------------------------
+
+describe('productionTick idle worker persistence', () => {
+    let planet: Planet;
+
+    beforeEach(() => {
+        planet = makePlanet();
+    });
+
+    function makeFacilityWithWorkerReq(
+        planetId: string,
+        workerRequirement: Partial<Record<string, number>>,
+    ): ProductionFacility {
+        return {
+            planetId,
+            id: `fac-${Math.random().toString(36).slice(2, 8)}`,
+            name: 'Fac',
+            scale: 1,
+            lastTickEfficiencyInPercent: 0,
+            powerConsumptionPerTick: 0,
+            workerRequirement,
+            pollutionPerTick: { air: 0, water: 0, soil: 0 },
+            needs: [],
+            produces: [],
+        } as ProductionFacility;
+    }
+
+    it('persists unusedWorkers and unusedWorkerFraction after production tick', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // Facility needs 5 "none" workers, but agent has 8 hired → 3 idle
+        setActualWorkers(agent, planet.id, { none: 8 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 5 }));
+
+        const gs: GameState = { tick: 1, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const assets = agent.assets[planet.id];
+        expect(assets.unusedWorkers).toBeDefined();
+        // 8 hired - 5 used (age prod ~1.0 for default age 30) → ~3 idle
+        // Age productivity at mean 30 is 1.0, so exactly 5 drawn, 3 remaining
+        expect(assets.unusedWorkers!.none).toBe(3);
+        expect(assets.unusedWorkerFraction).toBeCloseTo(3 / 8, 2);
+    });
+
+    it('sets unusedWorkerFraction to 0 when all workers are used', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // Facility needs exactly 10 "none" workers, agent has 10
+        setActualWorkers(agent, planet.id, { none: 10 });
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 1, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const assets = agent.assets[planet.id];
+        expect(assets.unusedWorkers!.none).toBe(0);
+        expect(assets.unusedWorkerFraction).toBe(0);
+    });
+
+    it('sets unusedWorkerFraction to 0 when no workers are hired', () => {
+        const agent = makeAgentForPlanet(planet.id);
+        // No workers hired, no facilities
+        const gs: GameState = { tick: 1, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        const assets = agent.assets[planet.id];
+        expect(assets.unusedWorkerFraction).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Tenure (experience) multiplier in productionTick
+// ---------------------------------------------------------------------------
+
+describe('productionTick tenure (experience) multiplier', () => {
+    let planet: Planet;
+
+    beforeEach(() => {
+        planet = makePlanet();
+    });
+
+    function makeFacility(
+        planetId: string,
+        workerRequirement: Partial<Record<string, number>>,
+        produceQty = 100,
+    ): ProductionFacility {
+        return {
+            planetId,
+            id: `fac-${Math.random().toString(36).slice(2, 8)}`,
+            name: 'Fac',
+            scale: 1,
+            lastTickEfficiencyInPercent: 0,
+            powerConsumptionPerTick: 0,
+            workerRequirement,
+            pollutionPerTick: { air: 0, water: 0, soil: 0 },
+            needs: [],
+            produces: [{ resource: agriculturalProductResourceType, quantity: produceQty }],
+        } as ProductionFacility;
+    }
+
+    it('workers at tenure 10+ produce more efficiently than tenure 0 workers', () => {
+        // Tenure year 10 → experienceMultiplier = 1.5
+        // Tenure year 0  → experienceMultiplier = 1.0
+        // Both at mean age 30 → ageProductivity = 1.0
+        //
+        // Facility needs 10 "none" workers.
+        // Agent A: 10 workers at tenure 0, combined prod = 1.0×1.0 = 1.0 → needs 10 bodies
+        // Agent B: 10 workers at tenure 10, combined prod = 1.0×1.5 = 1.5 → needs ceil(10/1.5) = 7 bodies
+        // Both should achieve 100% efficiency (enough workers), but B has 3 idle workers.
+        const agentA = makeAgentForPlanet(planet.id);
+        const agentB = makeAgentForPlanet(planet.id);
+        agentB.id = 'agent-B';
+
+        // Agent A: 10 workers at tenure year 0
+        agentA.assets[planet.id].workforceDemography = createWorkforceDemography();
+        agentA.assets[planet.id].workforceDemography![0].active.none = 10;
+        agentA.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
+
+        // Agent B: 10 workers at tenure year 10
+        agentB.assets[planet.id].workforceDemography = createWorkforceDemography();
+        agentB.assets[planet.id].workforceDemography![10].active.none = 10;
+        agentB.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
+
+        const gsA: GameState = { tick: 0, planets: [planet], agents: [agentA] };
+        productionTick(gsA);
+        const gsB: GameState = { tick: 0, planets: [planet], agents: [agentB] };
+        productionTick(gsB);
+
+        // Both should be at 100% efficiency
+        expect(agentA.assets[planet.id].productionFacilities[0].lastTickResults!.workerEfficiencyOverall).toBe(1);
+        expect(agentB.assets[planet.id].productionFacilities[0].lastTickResults!.workerEfficiencyOverall).toBe(1);
+
+        // Agent B should have more unused workers (tenure boost means fewer bodies needed)
+        const unusedA = agentA.assets[planet.id].unusedWorkers!.none;
+        const unusedB = agentB.assets[planet.id].unusedWorkers!.none;
+        expect(unusedB).toBeGreaterThan(unusedA);
+    });
+
+    it('tenure boost allows fewer workers to fully satisfy production requirement', () => {
+        // Facility needs 10 "none". Agent has only 7 workers at tenure 10.
+        // combinedProd = 1.0 (age) × 1.5 (tenure) = 1.5
+        // effectiveFilled = 7 × 1.5 = 10.5 ≥ 10 target → 100% efficiency
+        const agent = makeAgentForPlanet(planet.id);
+        agent.assets[planet.id].workforceDemography = createWorkforceDemography();
+        agent.assets[planet.id].workforceDemography![10].active.none = 7;
+        agent.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        expect(agent.assets[planet.id].productionFacilities[0].lastTickResults!.workerEfficiencyOverall).toBe(1);
+    });
+
+    it('insufficient experienced workers produce partial efficiency', () => {
+        // Facility needs 10 "none". Agent has only 3 workers at tenure 10.
+        // combinedProd = 1.0 × 1.5 = 1.5
+        // effectiveFilled = 3 × 1.5 = 4.5 < 10 → efficiency = 4.5 / 10 = 0.45
+        const agent = makeAgentForPlanet(planet.id);
+        agent.assets[planet.id].workforceDemography = createWorkforceDemography();
+        agent.assets[planet.id].workforceDemography![10].active.none = 3;
+        agent.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        expect(agent.assets[planet.id].productionFacilities[0].lastTickResults!.workerEfficiencyOverall).toBeCloseTo(
+            0.45,
+            2,
+        );
+    });
+
+    it('mixed tenure cohorts produce weighted average tenure productivity', () => {
+        // 5 workers at tenure 0 (exp=1.0) + 5 workers at tenure 10 (exp=1.5)
+        // Weighted avg tenure prod = (5×1.0 + 5×1.5) / 10 = 1.25
+        // Combined prod per worker = 1.0 (age) × 1.25 (tenure) = 1.25
+        // Facility needs 10 "none" → bodiesNeeded = ceil(10 / 1.25) = 8
+        // We have 10 workers → take 8, 2 unused
+        const agent = makeAgentForPlanet(planet.id);
+        agent.assets[planet.id].workforceDemography = createWorkforceDemography();
+        agent.assets[planet.id].workforceDemography![0].active.none = 5;
+        agent.assets[planet.id].workforceDemography![10].active.none = 5;
+        agent.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
+
+        const gs: GameState = { tick: 0, planets: [planet], agents: [agent] };
+        productionTick(gs);
+
+        expect(agent.assets[planet.id].productionFacilities[0].lastTickResults!.workerEfficiencyOverall).toBe(1);
+        // With combined prod = 1.25, we need ceil(10/1.25) = 8 bodies from 10 → 2 idle
+        expect(agent.assets[planet.id].unusedWorkers!.none).toBe(2);
+    });
+});

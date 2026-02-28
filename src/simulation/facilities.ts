@@ -66,19 +66,49 @@ export type Facilility = PlanetaryId & {
     };
 };
 
-export type ProductionFacility = Facilility & {
-    lastTickEfficiencyInPercent: number; // efficiency achieved in the last tick, as percentage (0-100). This is updated each tick based on how well the facility's needs were met.
+/**
+ * Detailed per-source efficiency breakdown recorded every production tick.
+ * Every value is a fraction in [0, 1] (1 = fully met).
+ */
+export type LastTickResults = {
+    /** Overall efficiency actually applied to production (min of all factors). */
+    overallEfficiency: number;
 
+    /** Worker fill rate per education level, incorporating age and tenure productivity.
+     *  E.g. { none: 0.8, primary: 1.0 } means "none"-level slots were 80% effective. */
+    workerEfficiency: { [edu in EducationLevelType]?: number };
+
+    /** Combined worker efficiency (the minimum across all required edu levels). */
+    workerEfficiencyOverall: number;
+
+    /** Resource availability per resource name (fraction available / required). */
+    resourceEfficiency: { [resourceName: string]: number };
+
+    /** Overqualified workers used per *job* education level, broken down by the
+     *  actual education of the workers that filled those slots.
+     *  E.g. `{ none: { primary: 2, secondary: 1 } }` means 2 primary-educated and
+     *  1 secondary-educated workers filled "none"-level slots. */
+    overqualifiedWorkers: {
+        [jobEdu in EducationLevelType]?: {
+            [workerEdu in EducationLevelType]?: number;
+        };
+    };
+};
+
+export type ProductionFacility = Facilility & {
     needs: { resource: Resource; quantity: number }[];
     produces: { resource: Resource; quantity: number }[];
 
     /**
-     * Tracks how many overqualified workers were used to fill lower-education
-     * slots during the last production tick. Keyed by the *job* education level
-     * that needed filling. E.g. `{ none: 3 }` means 3 workers with higher
-     * education filled "none"-level slots.
-     * Updated every tick by productionTick; undefined before the first tick.
+     * Detailed results from the last production tick.
+     * `undefined` before the first tick has run.
      */
+    lastTickResults?: LastTickResults;
+
+    /** @deprecated Use `lastTickResults.overallEfficiency` instead. Kept for backward-compat during migration. */
+    lastTickEfficiencyInPercent: number;
+
+    /** @deprecated Use `lastTickResults.overqualifiedWorkers` instead. Kept for backward-compat during migration. */
     lastTickOverqualifiedWorkers?: { [jobEdu in EducationLevelType]?: number };
 };
 

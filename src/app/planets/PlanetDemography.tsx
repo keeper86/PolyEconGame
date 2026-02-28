@@ -15,6 +15,27 @@ export default function PlanetDemography({ population }: { population?: Populati
         return <div className='text-sm text-gray-500'>No demography data</div>;
     }
 
+    // Compute labor totals for ages > 14 (i.e. starting at age 15).
+    const laborCounts = new Array<number>(OCCUPATIONS.length).fill(0);
+    let laborTotal = 0;
+    for (let age = 15; age < population.demography.length; age++) {
+        const cohort: Cohort | undefined = population.demography[age];
+        if (!cohort) {
+            continue;
+        }
+        for (let eduIdx = 0; eduIdx < educationLevelKeys.length; eduIdx++) {
+            const eduKey = educationLevelKeys[eduIdx];
+            const eduObj = cohort[eduKey];
+            for (let occIdx = 0; occIdx < OCCUPATIONS.length; occIdx++) {
+                const occKey = OCCUPATIONS[occIdx];
+                const val = Number((eduObj && eduObj[occKey]) || 0);
+                laborCounts[occIdx] += val;
+                laborTotal += val;
+            }
+        }
+    }
+    const OCC_LABELS = ['Unoccupied', 'Company', 'Government', 'Education', 'UnableToWork'];
+
     // Compute totals per age, per education, per occupation
     // ages will include per-education and per-occupation counts so we can render stacked bars
     const ages: {
@@ -35,7 +56,10 @@ export default function PlanetDemography({ population }: { population?: Populati
     // Use backend-provided runtime keys and types. Assume `population.demography`
     // matches the `Cohort[]` shape from the backend.
     for (let age = 0; age < population.demography.length; age++) {
-        const cohort = population.demography[age] as Cohort;
+        const cohort: Cohort | undefined = population.demography[age];
+        if (!cohort) {
+            continue;
+        }
         let ageTotal = 0;
         const eduCounts = new Array(educationLevelKeys.length).fill(0);
         const occCounts = new Array(OCCUPATIONS.length).fill(0);
@@ -112,6 +136,25 @@ export default function PlanetDemography({ population }: { population?: Populati
 
     return (
         <div className='space-y-4'>
+            <div>
+                <h4 className='text-sm font-medium mb-2'>Labor (age &gt; 14)</h4>
+                <div className='flex flex-wrap gap-2'>
+                    {OCCUPATIONS.map((occ, i) => (
+                        <div key={occ} className='px-3 py-2 bg-white border rounded shadow-sm text-sm'>
+                            <div className='text-xs text-gray-500'>{OCC_LABELS[i] ?? occ}</div>
+                            <div className='font-medium'>{laborCounts[i].toLocaleString()}</div>
+                            <div className='text-xs text-gray-400'>
+                                {laborTotal > 0 ? ((laborCounts[i] / laborTotal) * 100).toFixed(1) + '%' : '0.0%'}
+                            </div>
+                        </div>
+                    ))}
+                    <div className='px-3 py-2 bg-white border rounded shadow-sm text-sm'>
+                        <div className='text-xs text-gray-500'>Total (age &gt; 14)</div>
+                        <div className='font-medium'>{laborTotal.toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <h4 className='text-sm font-medium mb-2'>Education distribution by age</h4>
                 <div style={{ width: '100%', height: 160 }}>

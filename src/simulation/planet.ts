@@ -125,16 +125,31 @@ export type Occupation = (typeof OCCUPATIONS)[number];
 // A single age cohort: mapping education -> occupation -> count
 export type Cohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
 
+/** Age distribution moments for a single (tenure × education) cohort. */
+export interface AgeMoments {
+    mean: number;
+    variance: number; // population variance
+}
+
 /**
  * A single tenure-year bucket in the workforce demography.
  * Tracks workers actively working at this tenure level plus a departing pipeline
- * (notice-period slots indexed 0 = soonest to depart).
+ * (notice-period slots indexed 0 = soonest to depart) and a retiring pipeline
+ * (workers transitioning to retirement / unableToWork).
  */
 export interface TenureCohort {
     active: Record<EducationLevelType, number>;
-    /** Departing pipeline: each slot is one month of notice remaining.
-     *  Slot 0 = workers whose notice expires this month. */
+    /** Departing pipeline (voluntary quit + fired combined): each slot is one
+     *  month of notice remaining.  Slot 0 = workers whose notice expires this month. */
     departing: Record<EducationLevelType, number[]>;
+    /** Subset of `departing` that tracks only **fired** workers.  The voluntary-quit
+     *  count for any slot is `departing[edu][m] − departingFired[edu][m]`. */
+    departingFired: Record<EducationLevelType, number[]>;
+    /** Retiring pipeline: same structure as departing but workers are routed to
+     *  'unableToWork' in the population demography instead of 'unoccupied'. */
+    retiring: Record<EducationLevelType, number[]>;
+    /** Age distribution moments (mean, variance) per education level for active workers. */
+    ageMoments: Record<EducationLevelType, AgeMoments>;
 }
 
 /** Array of TenureCohort indexed by tenure year (0 = first year of employment). */
@@ -238,6 +253,56 @@ export type Agent = {
             storageFacility: StorageFacility;
 
             allocatedWorkers: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Workers left idle after all production facilities drew their
+             * requirements in the last production tick.  Persisted so that
+             * `updateAllocatedWorkers` can reduce hiring targets when too many
+             * workers sit unused.
+             */
+            unusedWorkers?: {
+                [L in EducationLevelType]: number;
+            };
+            /** Fraction of total hired workforce that was idle last tick (0–1). */
+            unusedWorkerFraction?: number;
+            /**
+             * Aggregated overqualified-worker matrix across all production
+             * facilities on this planet.  `overqualifiedMatrix[jobEdu][workerEdu]`
+             * tells how many workers educated at `workerEdu` are filling slots
+             * that only require `jobEdu`.
+             */
+            overqualifiedMatrix?: {
+                [jobEdu in EducationLevelType]?: {
+                    [workerEdu in EducationLevelType]?: number;
+                };
+            };
+            /**
+             * Workers hired during the current tick, per education level.
+             * Reset at the start of every `laborMarketTick` call and
+             * accumulated during the hiring phase.  Used by the UI to show
+             * "Hired this month" in the workforce cards.
+             */
+            hiredThisTick?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Workers fired (given notice) during the current tick, per
+             * education level.  Reset at the start of every `laborMarketTick`
+             * and accumulated during the firing phase.  This captures the
+             * moment of firing (at notice), not when workers actually leave
+             * the departing pipeline.
+             */
+            firedThisTick?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Snapshot of active workers per education level taken at the
+             * start of each month (month boundary).  Used by the UI to show
+             * "Δ month" — the change in headcount since the month began.
+             * Updated in `laborMarketMonthTick` before any monthly processing.
+             */
+            activeAtMonthStart?: {
                 [L in EducationLevelType]: number;
             };
             workforceDemography?: WorkforceDemography;

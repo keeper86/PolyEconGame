@@ -20,10 +20,10 @@ export const agriculturalProductionFacility: ProductionFacility = {
     lastTickEfficiencyInPercent: 0,
     powerConsumptionPerTick: 1,
     workerRequirement: {
-        none: 60,
-        primary: 30,
-        secondary: 10,
-        tertiary: 1,
+        none: 10000,
+        primary: 100000,
+        secondary: 20000,
+        tertiary: 100,
         quaternary: 0,
     },
     pollutionPerTick: {
@@ -99,14 +99,14 @@ export const earthGovernment: Agent = {
         earth: {
             resourceClaims: ['earth-agricultural', 'earth-iron', 'earth-water'],
             resourceTenancies: ['earth-agricultural', 'earth-water'],
-            productionFacilities: [agriculturalProductionFacility, waterExtractionFacility],
+            productionFacilities: [waterExtractionFacility, agriculturalProductionFacility],
             storageFacility: earthStorage,
             allocatedWorkers: {
-                none: 1000000000,
-                primary: 500000000,
-                secondary: 100000000,
-                tertiary: 10000000,
-                quaternary: 10000000,
+                none: 0,
+                primary: 0,
+                secondary: 0,
+                tertiary: 0,
+                quaternary: 0,
             },
             workforceDemography: createWorkforceDemography(),
         },
@@ -356,7 +356,7 @@ export function createPopulation(total: number): Population {
         // (you can replace this with your own initialisation logic)
         if (age === 0) {
             // Newborns: all in 'none' education, 'unableToWork' occupation
-            pop.demography[age].none.unableToWork = 0;
+            // assign the computed ageCount to the newborn cohort (previously set to 0 by mistake)
         } else if (age < 15) {
             // Children: mostly in education
             pop.demography[age].none.education = Math.floor(ageCount * 0.8);
