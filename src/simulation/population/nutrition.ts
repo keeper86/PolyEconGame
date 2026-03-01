@@ -7,26 +7,30 @@
  *
  * ## Starvation model
  *
- * `starvationLevel` (S) represents how severely the population is starving.
- * It converges towards an **equilibrium** equal to the food shortfall:
+ * `starvationLevel` (S) is a **physiological malnutrition index** in [0, 1].
+ * It is NOT an instantaneous food gap — it represents the accumulated bodily
+ * state of the population and responds *gradually* to food deficit or surplus:
  *
- *     equilibrium = 1 − min(1, nutritionalFactor)
+ *     S_next = S + α × (foodShortfall − S)
  *
- * - With 100 % food → equilibrium = 0   (no starvation)
- * - With  50 % food → equilibrium = 0.5
- * - With  10 % food → equilibrium = 0.9
- * - With   0 % food → equilibrium = 1   (total starvation)
+ * where α = 1 / STARVATION_ADJUST_TICKS and
  *
- * S moves towards the equilibrium with a time-constant of
- * `STARVATION_ADJUST_TICKS` ticks (~30 ticks ≈ 1 month), providing an
- * inertia buffer so that a single bad tick doesn't instantly spike
- * mortality.  The downstream mortality formula uses `S⁴` which keeps the
- * non-linearity: partial food shortages cause *some* deaths but not a
- * population collapse.
+ *     foodShortfall = clamp(1 − nutritionalFactor, 0, 1)
+ *
+ * - With 100 % food → shortfall = 0, S decays towards 0
+ * - With  50 % food → shortfall = 0.5, S converges to 0.5
+ * - With   0 % food → shortfall = 1,   S converges to 1
+ *
+ * The 30-tick time-constant (~1 month) ensures that both famine onset and
+ * post-famine recovery are gradual, so recovery lag emerges automatically
+ * without any additional state variables.
+ *
+ * Food intake strictly equals available supply — there is no guaranteed
+ * over-consumption.  Starvation results purely from supply-demand imbalance.
  */
 
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
-import { agriculturalProductResourceType, queryStorageFacility, removeFromStorageFacility } from '../facilities';
+import { agriculturalProductResourceType, removeFromStorageFacility } from '../facilities';
 import type { Planet, Population } from '../planet';
 
 // ---------------------------------------------------------------------------
@@ -67,18 +71,11 @@ export function consumeFood(planet: Planet, population: Population, populationTo
     // FOOD_PER_PERSON_PER_TICK is already per-tick; compute per-tick demand
     const perTickFoodDemand = populationTotal * FOOD_PER_PERSON_PER_TICK;
 
-    const availableFood = Math.max(
-        1.2 * perTickFoodDemand,
-        queryStorageFacility(
-            planet.government.assets[planet.id]?.storageFacility,
-            agriculturalProductResourceType.name,
-        ),
-    );
-
+    // Food intake equals available supply — no guaranteed over-consumption.
     const foodConsumed = removeFromStorageFacility(
         planet.government.assets[planet.id]?.storageFacility,
         agriculturalProductResourceType.name,
-        availableFood,
+        perTickFoodDemand,
     );
 
     const nutritionalFactor = foodConsumed / perTickFoodDemand;

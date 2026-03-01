@@ -3,6 +3,14 @@
  *
  * Birth-rate calculation and newborn generation.  Separated from the main
  * population tick so fertility mechanics can be tested in isolation.
+ *
+ * ## Starvation → fertility mapping
+ *
+ * Fertility uses a nonlinear suppression factor `(1 − S^1.5)` so that:
+ *   - Small S → small fertility drop   (consistent curvature with mortality)
+ *   - Large S → near-collapse of births
+ * This is more realistic than a linear reduction because famine affects
+ * reproduction disproportionately at high stress levels.
  */
 
 import { TICKS_PER_YEAR } from '../constants';
@@ -55,7 +63,9 @@ export function computeBirthsThisTick(
     }
 
     const fertReduction = fertReductionFromPollution(pollution);
-    const lifetimeFertilityAdjusted = LIFETIME_FERTILITY * (1 - 0.5 * starvationLevel) * (1 - 0.5 * fertReduction);
+    // Nonlinear starvation suppression: S^1.5 gives steeper drop under severe famine
+    const lifetimeFertilityAdjusted =
+        LIFETIME_FERTILITY * (1 - Math.pow(starvationLevel, 1.5)) * (1 - 0.5 * fertReduction);
 
     const birthsPerYear = Math.floor(
         (lifetimeFertilityAdjusted * fertileWomen) / (END_FERTILE_AGE - START_FERTILE_AGE + 1),

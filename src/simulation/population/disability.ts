@@ -2,13 +2,26 @@
  * population/disability.ts
  *
  * Per-tick disability transition logic.  Workers in non-disabled occupations
- * may transition to 'unableToWork' based on age, pollution, and natural
- * disasters.
+ * may transition to 'unableToWork' based on age, pollution, natural
+ * disasters, and starvation.
  */
 
 import type { Cohort, Occupation, Environment } from '../planet';
 import { educationLevelKeys } from '../planet';
 import { convertAnnualToPerTick } from './mortality';
+
+// ---------------------------------------------------------------------------
+// Starvation disability coefficient
+// ---------------------------------------------------------------------------
+
+/**
+ * Coefficient for starvation-driven disability: `c × S²`.
+ * Chosen to be small relative to the pollution term so that chronic famine
+ * produces meaningful but not catastrophic workforce degradation.
+ * At S = 1: 0.05 annual disability probability.
+ * At S = 0.5: 0.05 × 0.25 = 0.0125.
+ */
+export const STARVATION_DISABILITY_COEFFICIENT = 0.05;
 
 // ---------------------------------------------------------------------------
 // Age-dependent base disability
@@ -81,14 +94,21 @@ const DISABILITY_SOURCE_OCCUPATIONS: Occupation[] = ['company', 'government', 'e
  * For each education × eligible occupation, a fraction of people is moved
  * to `unableToWork` based on the combined annual disability probability
  * converted to a per-tick rate.
+ *
+ * Starvation contributes `STARVATION_DISABILITY_COEFFICIENT × S²` to the
+ * annual probability.  Recovery lag is automatic because S itself adjusts
+ * gradually (see nutrition.ts), so no extra state variable is needed.
  */
 export function applyDisabilityTransitions(
     cohort: Cohort,
     age: number,
     environmentalDisability: EnvironmentalDisability,
+    starvationLevel: number = 0,
 ): void {
     const { pollutionDisabilityProb, disasterDisabilityProb } = environmentalDisability;
-    const totalDisabilityProb = pollutionDisabilityProb + disasterDisabilityProb + ageDependentBaseDisabilityProb(age);
+    const starvationDisabilityProb = STARVATION_DISABILITY_COEFFICIENT * Math.pow(starvationLevel, 2);
+    const totalDisabilityProb =
+        pollutionDisabilityProb + disasterDisabilityProb + ageDependentBaseDisabilityProb(age) + starvationDisabilityProb;
     const perTickDisabilityProb = convertAnnualToPerTick(totalDisabilityProb);
 
     for (const edu of educationLevelKeys) {

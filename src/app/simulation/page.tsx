@@ -151,34 +151,47 @@ if idleFraction > ACCEPTABLE_IDLE_FRACTION:
                     <h3 className='text-xl font-semibold mt-6 mb-2'>3.1 Food Consumption and Starvation</h3>
                     <p>
                         Each person consumes <code>FOOD_PER_PERSON_PER_TICK = 1/360</code> tons of food per tick
-                        (equivalent to 1 ton/person/year). A <em>starvation level</em> S ∈ [0, 1] is maintained as a
-                        persistent state variable and adjusted every tick based on the nutritional factor:
+                        (equivalent to 1 ton/person/year). Food intake equals available supply — there is no guaranteed
+                        over-consumption. Starvation results purely from supply-demand imbalance.
+                    </p>
+                    <p>
+                        <code>starvationLevel</code> (S ∈ [0, 1]) is a <strong>physiological malnutrition index</strong>{' '}
+                        — it is <em>not</em> an instantaneous food gap. S responds gradually to food deficit or surplus,
+                        so recovery lag emerges automatically without any extra state variables:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`nutritionalFactor = foodConsumed / (population · FOOD_PER_PERSON_PER_TICK)
-shortfall = max(0, 1 − min(1, nutritionalFactor))
+                        {`foodConsumed      = min(available, population × FOOD_PER_PERSON_PER_TICK)
+nutritionalFactor = foodConsumed / (population × FOOD_PER_PERSON_PER_TICK)
+foodShortfall     = clamp(1 − nutritionalFactor, 0, 1)
 
-ΔS_increase = shortfall / STARVATION_FULL_DURATION_TICKS   (= shortfall / 30)
-ΔS_recovery = nutritionalFactor / RECOVERY_DURATION_TICKS  (only when shortfall = 0)
+α = 1 / STARVATION_ADJUST_TICKS   (= 1/30, ~one month time-constant)
+S(t+1) = clamp(S(t) + α × (foodShortfall − S(t)), 0, 1)
 
-S(t+1) = clamp(S(t) + ΔS_increase − ΔS_recovery, 0, 1)`}
+During famine  → S rises gradually towards the shortfall
+After famine   → S decays gradually towards 0
+Recovery speed is emergent — no instant demographic snap-back`}
                     </pre>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>3.2 Mortality Model</h3>
                     <p>
-                        Mortality is applied independently to each age cohort. The base annual mortality rate m(age) is
-                        taken from an empirical life-table expressed in deaths per thousand. Additional contributions
-                        come from pollution, natural disasters, and starvation:
+                        Mortality is applied independently to each age cohort. Starvation affects mortality{' '}
+                        <strong>only via base amplification</strong> — it does not appear as a separate additive term,
+                        preventing double counting. The S² (convex) scaling captures the real-world observation that
+                        mild food insecurity raises morbidity modestly while severe famine causes extreme mortality:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`m_base(age)      from lookup table (per 1 000, calibrated to ~72 year life expectancy)
 
 m_pollution      = air · 0.006 + water · 0.00002 + soil · 0.00001  (annual)
 m_disasters      = earthquakes · 0.0005 + floods · 0.00005 + storms · 0.000015  (annual)
-m_starvation     = S⁴  (quartic scaling: minimal until near-full starvation)
 
-m_base_starvation(age) = m_base(age) · (1 + 99 · S⁴)   (starvation amplifies base mortality)
-m_combined       = min(1, m_base_starvation(age) + m_pollution + m_disasters + m_starvation)
+m_base_starvation(age) = m_base(age) · (1 + S² × 9)
+  S = 0   → 1×   base mortality  (fully fed)
+  S = 0.5 → 3.25× base mortality (moderate famine)
+  S = 0.9 → 8.29× base mortality (severe famine)
+  S = 1   → 10×  base mortality  (total famine)
+
+m_combined  = min(1, m_base_starvation(age) + m_pollution + m_disasters)
 
 Annual → per-tick conversion (avoids cohort oscillation):
   p_tick = 1 − (1 − m_annual)^(1 / TICKS_PER_YEAR)
@@ -188,9 +201,8 @@ deaths are distributed proportionally across education × occupation cells
 (Hamilton largest-remainder method)`}
                     </pre>
                     <p>
-                        The quartic exponent on S ensures that mortality only rises sharply when starvation is severe,
-                        reflecting the real-world observation that moderate food insecurity raises morbidity but does
-                        not immediately cause mass death.
+                        Because S itself adjusts gradually (see §3.1), mortality also rises and falls gradually after
+                        a famine event — no instant demographic snap-back occurs.
                     </p>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>3.3 Births (Fertility Model)</h3>
@@ -201,7 +213,9 @@ deaths are distributed proportionally across education × occupation cells
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`TFR_base = 2.66   (slightly above replacement to buffer child mortality)
 pollutionFertReduction = min(1, air · 0.01 + water · 0.002 + soil · 0.0005)
-TFR_adj  = TFR_base · (1 − 0.5 · S) · (1 − 0.5 · pollutionFertReduction)
+
+fertilityFactor = 1 − S^1.5   (nonlinear: near-collapse at high S, gentle at low S)
+TFR_adj  = TFR_base · fertilityFactor · (1 − 0.5 · pollutionFertReduction)
 
 fertileWomen = 0.5 · Σ_{age=18}^{45} cohort_total(age)
 
@@ -212,11 +226,14 @@ birthsPerTick = floor(birthsPerYear / TICKS_PER_YEAR)`}
                     <h3 className='text-xl font-semibold mt-6 mb-2'>3.4 Disability Transitions</h3>
                     <p>
                         At each tick, a fraction of non-disabled workers transitions to{' '}
-                        <code>unableToWork</code> due to age-related disability, pollution, or natural disasters:
+                        <code>unableToWork</code> due to age-related disability, pollution, natural disasters, or
+                        starvation. Chronic famine thus produces long-term workforce degradation even after food
+                        supply recovers (via S inertia):
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`d_pollution  = min(0.5, air · 0.0001 + water · 0.0001 + soil · 0.00002)
 d_disasters  = min(0.3, earthquakes · 0.00005 + floods · 0.000005 + storms · 0.0000015)
+d_starvation = 0.05 × S²   (small coefficient keeps this below the pollution cap)
 d_age(age):
     age < 15         → 0.001
     15 ≤ age < 50    → 0.0005
@@ -225,7 +242,7 @@ d_age(age):
     70 ≤ age ≤ 90    → 0.01 + (age − 70) / 20 · 0.32  (linear ramp to 0.33)
     age > 90         → 0.33
 
-d_total = d_pollution + d_disasters + d_age(age)
+d_total = d_pollution + d_disasters + d_starvation + d_age(age)
 d_tick  = 1 − (1 − d_total)^(1/360)      (annual → per-tick)
 disabled = floor(occupiedWorkers · d_tick)`}
                     </pre>

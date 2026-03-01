@@ -27,6 +27,7 @@ export {
     ageDependentBaseDisabilityProb,
     computeEnvironmentalDisability,
     applyDisabilityTransitions,
+    STARVATION_DISABILITY_COEFFICIENT,
 } from './disability';
 export type { EnvironmentalDisability } from './disability';
 export {
