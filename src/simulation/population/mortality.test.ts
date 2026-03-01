@@ -90,34 +90,19 @@ describe('computeEnvironmentalMortality', () => {
 });
 
 describe('computeExtraAnnualMortality', () => {
-    it('includes starvation component (quadratic)', () => {
+    it('returns zero with no pollution or disasters', () => {
         const envMort = { pollutionMortalityRate: 0, disasterDeathProbability: 0 };
-        expect(computeExtraAnnualMortality(envMort, 0)).toBe(0);
-        expect(computeExtraAnnualMortality(envMort, 1)).toBe(1); // 1² = 1
-        expect(computeExtraAnnualMortality(envMort, 0.5)).toBeCloseTo(Math.pow(0.5, 2), 8);
+        expect(computeExtraAnnualMortality(envMort)).toBe(0);
     });
 
-    it('sums pollution + disaster + starvation', () => {
+    it('sums pollution + disaster only (starvation excluded to avoid double counting)', () => {
         const envMort = { pollutionMortalityRate: 0.1, disasterDeathProbability: 0.05 };
-        const starv = 0.5;
-        const expected = 0.1 + 0.05 + Math.pow(0.5, 2);
-        expect(computeExtraAnnualMortality(envMort, starv)).toBeCloseTo(expected, 8);
+        expect(computeExtraAnnualMortality(envMort)).toBeCloseTo(0.15, 8);
     });
 
-    it('partial food (S=0.5) produces moderate extra mortality', () => {
-        const envMort = { pollutionMortalityRate: 0, disasterDeathProbability: 0 };
-        const extra = computeExtraAnnualMortality(envMort, 0.5);
-        // S² = 0.25 → 25% extra annual mortality
-        expect(extra).toBeCloseTo(0.25, 8);
-        expect(extra).toBeLessThan(0.5); // not devastating
-    });
-
-    it('severe shortage (S=0.9) produces high but not total extra mortality', () => {
-        const envMort = { pollutionMortalityRate: 0, disasterDeathProbability: 0 };
-        const extra = computeExtraAnnualMortality(envMort, 0.9);
-        // S² = 0.81
-        expect(extra).toBeCloseTo(0.81, 8);
-        expect(extra).toBeLessThan(1); // not total wipeout
+    it('pollution and disaster are additive', () => {
+        const envMort = { pollutionMortalityRate: 0.2, disasterDeathProbability: 0.03 };
+        expect(computeExtraAnnualMortality(envMort)).toBeCloseTo(0.23, 8);
     });
 });
 
@@ -153,16 +138,20 @@ describe('perTickMortality', () => {
     });
 
     it('partial starvation (S=0.5) does not collapse a young population', () => {
-        // At S=0.5, extra = 0.25.  For a 30-year-old this should be survivable.
-        const mort = perTickMortality(30, 0.5, Math.pow(0.5, 2));
-        // Annual mortality < 30% → per-tick is small
+        // At S=0.5, base mortality is amplified by (1 + 0.25 × 9) = 3.25×; extra is only env factors.
+        const mort = perTickMortality(30, 0.5, 0);
+        // Annual mortality still low for a 30-year-old even at moderate starvation
         expect(mort).toBeLessThan(0.01);
     });
 
     it('severe starvation (S=0.9) is high but most young people survive per tick', () => {
-        const mort = perTickMortality(25, 0.9, Math.pow(0.9, 2));
-        // Should be noticeable but not a per-tick wipeout
-        expect(mort).toBeGreaterThan(0.001);
-        expect(mort).toBeLessThan(0.1);
+        // Without starvation
+        const mortNormal = perTickMortality(25, 0, 0);
+        // With S=0.9: base amplified by (1 + 0.81 × 9) = 8.29×; use 6× as conservative lower bound
+        const mort = perTickMortality(25, 0.9, 0);
+        // Should be clearly higher than normal
+        expect(mort).toBeGreaterThan(mortNormal * 6);
+        // Still a per-tick survival rate above 95%
+        expect(mort).toBeLessThan(0.05);
     });
 });

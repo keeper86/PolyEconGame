@@ -7,18 +7,20 @@
  *
  * ## Starvation → mortality mapping
  *
- * `starvationLevel` (S) now tracks the food shortfall directly (see
- * nutrition.ts).  The mortality contribution uses `S²` (quadratic) so
- * that:
+ * Starvation (S) affects mortality ONLY via base amplification:
  *
- *   - S = 0   → 0     extra annual mortality (fully fed)
- *   - S = 0.5 → 0.25  (moderate — ~25 % extra annual mortality)
- *   - S = 0.9 → 0.81  (severe — ~81 % extra annual mortality)
- *   - S = 1   → 1     (extreme — doubles+ base mortality)
+ *     baseAnnualMort(age) = lifetableRate(age) × (1 + S² × k)
  *
- * In addition base mortality is amplified by `(1 + S² × 9)` which scales
- * the life-table rate up to 10× at full starvation.  Together these
- * produce heavy but survivable mortality at partial food levels.
+ * where k = 9.  This keeps mortality effects in a single place and avoids
+ * double counting.  The S² (convex) scaling means:
+ *
+ *   - S = 0   → no amplification      (fully fed)
+ *   - S = 0.5 → 3.25× base mortality  (moderate famine)
+ *   - S = 0.9 → 9.29× base mortality  (severe famine)
+ *   - S = 1   → 10×  base mortality   (total famine)
+ *
+ * Extra annual mortality (pollution + disasters) is additive on top of the
+ * amplified base rate.  Starvation does NOT appear again here.
  */
 
 import { TICKS_PER_YEAR } from '../constants';
@@ -77,20 +79,12 @@ export function computeEnvironmentalMortality(environment: Environment): Environ
 }
 
 /**
- * Compute the total extra annual mortality from pollution, disasters, and
- * starvation.  The starvation component uses S² (quadratic) so that
- * partial food shortages produce moderate — but not catastrophic — extra
- * mortality.
+ * Compute the total extra annual mortality from pollution and disasters.
+ * Starvation is NOT included here — it affects mortality only via base
+ * amplification in `perTickMortality`, preventing double counting.
  */
-export function computeExtraAnnualMortality(
-    environmentalMortality: EnvironmentalMortality,
-    starvationLevel: number,
-): number {
-    return (
-        environmentalMortality.pollutionMortalityRate +
-        environmentalMortality.disasterDeathProbability +
-        Math.pow(starvationLevel, 2)
-    );
+export function computeExtraAnnualMortality(environmentalMortality: EnvironmentalMortality): number {
+    return environmentalMortality.pollutionMortalityRate + environmentalMortality.disasterDeathProbability;
 }
 
 /**
@@ -100,7 +94,10 @@ export function computeExtraAnnualMortality(
  * - base age-dependent mortality (from life-table), amplified by starvation:
  *       baseMort × (1 + S² × 9)
  *   At S = 1 base mortality is 10× normal; at S = 0.5 it is ~3.25×.
- * - extra annual mortality from pollution + disasters + starvation (additive)
+ *   Using S² (convex curve) gives a biologically realistic damage response:
+ *   mild shortage → moderate increase; severe famine → extreme mortality.
+ * - extra annual mortality from pollution + disasters (additive)
+ *   Starvation does NOT appear in extraAnnualMortality to avoid double counting.
  *
  * Returns a value in [0, MAX_MORTALITY_PER_TICK].
  */

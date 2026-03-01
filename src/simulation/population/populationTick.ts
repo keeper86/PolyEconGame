@@ -38,7 +38,7 @@ export function populationTick(gameState: GameState): void {
 
         // 2. Pre-compute environmental factors (used by mortality & disability)
         const environmentalMortality = computeEnvironmentalMortality(planet.environment);
-        const extraAnnualMortality = computeExtraAnnualMortality(environmentalMortality, population.starvationLevel);
+        const extraAnnualMortality = computeExtraAnnualMortality(environmentalMortality);
         const environmentalDisability = computeEnvironmentalDisability(planet.environment);
 
         // Accumulator of deaths per education × occupation for workforce sync
@@ -76,7 +76,7 @@ export function populationTick(gameState: GameState): void {
             const survivorsCohort = distributeLike(survivors, cohort);
 
             // --- Disability ---
-            applyDisabilityTransitions(survivorsCohort, age, environmentalDisability);
+            applyDisabilityTransitions(survivorsCohort, age, environmentalDisability, population.starvationLevel);
 
             // --- Record deaths for workforce sync ---
             for (const edu of educationLevelKeys) {

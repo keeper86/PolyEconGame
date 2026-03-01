@@ -12,6 +12,7 @@ import {
     ageDependentBaseDisabilityProb,
     computeEnvironmentalDisability,
     applyDisabilityTransitions,
+    STARVATION_DISABILITY_COEFFICIENT,
 } from './disability';
 
 describe('ageDependentBaseDisabilityProb', () => {
@@ -146,5 +147,38 @@ describe('applyDisabilityTransitions', () => {
             }
         }
         expect(totalAfter).toBe(totalBefore);
+    });
+
+    it('starvation increases disability transitions', () => {
+        const cohortNoStarv = emptyCohort();
+        cohortNoStarv.none.company = 100000;
+        const cohortStarved = emptyCohort();
+        cohortStarved.none.company = 100000;
+
+        const envDisability = { pollutionDisabilityProb: 0, disasterDisabilityProb: 0 };
+        applyDisabilityTransitions(cohortNoStarv, 30, envDisability, 0);
+        applyDisabilityTransitions(cohortStarved, 30, envDisability, 1);
+
+        // Full starvation should produce more disability than no starvation
+        expect(cohortStarved.none.unableToWork).toBeGreaterThan(cohortNoStarv.none.unableToWork);
+    });
+
+    it('STARVATION_DISABILITY_COEFFICIENT is small relative to max pollution disability', () => {
+        // Max pollution term is capped at 0.5; coefficient should be well below that
+        expect(STARVATION_DISABILITY_COEFFICIENT).toBeLessThan(0.5);
+        expect(STARVATION_DISABILITY_COEFFICIENT).toBeGreaterThan(0);
+    });
+
+    it('zero starvation level leaves disability unchanged vs no starvation argument', () => {
+        const cohortA = emptyCohort();
+        cohortA.none.company = 10000;
+        const cohortB = emptyCohort();
+        cohortB.none.company = 10000;
+
+        const envDisability = { pollutionDisabilityProb: 0.02, disasterDisabilityProb: 0.01 };
+        applyDisabilityTransitions(cohortA, 40, envDisability, 0);
+        applyDisabilityTransitions(cohortB, 40, envDisability);
+
+        expect(cohortA.none.unableToWork).toBe(cohortB.none.unableToWork);
     });
 });
