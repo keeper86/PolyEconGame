@@ -346,7 +346,7 @@ describe('engine basic behavior', () => {
             c.none.unoccupied = 100;
         }
 
-        // first, drive starvation up to the cap and record progression
+        // first, drive starvation up and record progression
         const buildLevels: number[] = [];
         for (let i = 0; i < 35; i++) {
             populationTick(gameState);
@@ -354,19 +354,18 @@ describe('engine basic behavior', () => {
         }
 
         // diagnostic (if the test fails it helps debugging)
-
         console.log('buildLevels:', buildLevels);
 
         const before = planet.population.starvationLevel ?? 0;
         expect(before).toBeGreaterThan(0);
         const popBefore = totalPopulation(planet.population);
 
-        // Now supply a small amount of food each tick to simulate foraging/aid.
-        // The engine removes whatever is in storage, so deposit a small amount each tick.
+        // Now supply generous food each tick to ensure nutritionalFactor > 1.
+        // With the equilibrium model, S should converge towards 0.
         const recoveryTicks = 65;
         for (let i = 0; i < recoveryTicks; i++) {
-            // deposit 1 unit of agricultural product per tick
-            putIntoStorageFacility(govStorage, agriculturalProductResourceType, 1);
+            // deposit plenty of agricultural product per tick
+            putIntoStorageFacility(govStorage, agriculturalProductResourceType, 10);
             populationTick(gameState);
         }
 

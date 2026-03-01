@@ -337,3 +337,9 @@ export type Agent = {
 };
 
 export type Company = Agent;
+
+export interface GameState {
+    tick: number;
+    planets: Planet[];
+    agents: Agent[]; // includes governments and companies, can be extended in the future for individuals, organizations, etc.
+}
