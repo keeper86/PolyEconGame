@@ -1,4 +1,4 @@
-import { type LucideIcon, FileText, Gamepad, Globe, Home, User, Users } from 'lucide-react';
+import { type LucideIcon, FileText, FlaskConical, Gamepad, Globe, Home, User, Users } from 'lucide-react';
 
 import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
@@ -72,6 +72,14 @@ export const APP_ROUTES = {
         isPublic: true,
         isSecondaryNav: true,
         description: 'Legal information and imprint',
+    },
+    simulation: {
+        path: '/simulation',
+        label: 'Simulation Model',
+        icon: FlaskConical,
+        isPublic: true,
+        isSecondaryNav: true,
+        description: 'Scientific description of the simulation model with mathematical formulations',
     },
 } as const satisfies RouteManifest;
 

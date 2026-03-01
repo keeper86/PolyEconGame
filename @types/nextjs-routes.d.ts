@@ -22,7 +22,8 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/api/trpc/[trpc]", { "trpc": string }>
     | StaticRoute<"/imprint">
     | StaticRoute<"/planets">
-    | StaticRoute<"/pong">;
+    | StaticRoute<"/pong">
+    | StaticRoute<"/simulation">;
 
   interface StaticRoute<Pathname> {
     pathname: Pathname;

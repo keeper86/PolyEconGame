@@ -25,6 +25,13 @@ export default function LandingPage() {
                     <h2 className='text-lg font-semibold'>{APP_ROUTES.planets.label}</h2>
                     <p className='text-sm text-muted-foreground'>{APP_ROUTES.planets.description}</p>
                 </Link>
+                <Link
+                    href={APP_ROUTES.simulation.path}
+                    className='block p-4 border rounded-md hover:bg-accent transition-colors'
+                >
+                    <h2 className='text-lg font-semibold'>{APP_ROUTES.simulation.label}</h2>
+                    <p className='text-sm text-muted-foreground'>{APP_ROUTES.simulation.description}</p>
+                </Link>
             </div>
         </Page>
     );
