@@ -219,6 +219,9 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
         let unusedWorkerFraction = 0;
         type OQMatrix = { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
         const overqualifiedMatrix: OQMatrix = {};
+        const deathsThisMonth: Record<string, number> = {} as Record<string, number>;
+        const deathsPrevMonth: Record<string, number> = {} as Record<string, number>;
+        const availableOnMarket: Record<string, number> = {} as Record<string, number>;
         let mergedWorkforceDemography = undefined as Agent['assets'][string]['workforceDemography'];
 
         for (const assetsEntry of Object.values(agent.assets)) {
@@ -283,6 +286,23 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
             if (!mergedWorkforceDemography && assetsEntry.workforceDemography) {
                 mergedWorkforceDemography = assetsEntry.workforceDemography;
             }
+            // Accumulate death counters
+            if (assetsEntry.deathsThisMonth) {
+                for (const [k, v] of Object.entries(assetsEntry.deathsThisMonth)) {
+                    deathsThisMonth[k] = (deathsThisMonth[k] || 0) + (v || 0);
+                }
+            }
+            if (assetsEntry.deathsPrevMonth) {
+                for (const [k, v] of Object.entries(assetsEntry.deathsPrevMonth)) {
+                    deathsPrevMonth[k] = (deathsPrevMonth[k] || 0) + (v || 0);
+                }
+            }
+            // Accumulate available (unoccupied) workers on the labor market
+            if (assetsEntry.availableOnMarket) {
+                for (const [k, v] of Object.entries(assetsEntry.availableOnMarket)) {
+                    availableOnMarket[k] = (availableOnMarket[k] || 0) + (v || 0);
+                }
+            }
         }
 
         return {
@@ -297,6 +317,9 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
             overqualifiedMatrix,
             facilities,
             mergedWorkforceDemography,
+            deathsThisMonth,
+            deathsPrevMonth,
+            availableOnMarket,
         };
     };
 
@@ -410,6 +433,24 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                                 }
                                 unusedWorkerFraction={s.unusedWorkerFraction}
                                 overqualifiedMatrix={s.overqualifiedMatrix}
+                                deathsThisMonth={
+                                    s.deathsThisMonth as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
+                                deathsPrevMonth={
+                                    s.deathsPrevMonth as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
+                                availableOnMarket={
+                                    s.availableOnMarket as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
                             />
 
                             {/* Time-series charts */}

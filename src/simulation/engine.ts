@@ -554,7 +554,8 @@ export function populationTick(gameState: GameState) {
 
         // Extra mortality from pollution and disasters remains annual here; starvation mortality will be
         // applied directly on a per-tick basis (so that starvation can lead to rapid deaths once severe).
-        const extraMortalityPerYear = pollutionMortalityRate + disasterDeathProbability;
+        const extraMortalityPerYear =
+            pollutionMortalityRate + disasterDeathProbability + Math.pow(population.starvationLevel, 4);
 
         // We'll compute population-level deaths below (per age cohort) and
         // apply them deterministically to workforce demography so both
@@ -595,8 +596,7 @@ export function populationTick(gameState: GameState) {
                 continue;
             }
 
-            const baseAnnualMort = mortalityProbability(age) * (1 + Math.pow(population.starvationLevel, 6) * 99);
-
+            const baseAnnualMort = mortalityProbability(age) * (1 + Math.pow(population.starvationLevel, 4) * 99);
             const combinedAnnualMort = Math.min(1, baseAnnualMort + extraMortalityPerYear); // starvation can add up to 50% additional mortality at max starvation level, scaled by age for sacrifice
 
             // starvationLevel is a per-planet, per-tick index in 0..STARVATION_MAX_LEVEL. We treat it as

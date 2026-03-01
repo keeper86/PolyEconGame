@@ -4,6 +4,7 @@ import {
     agriculturalProductResourceType,
     arableLandResourceType,
     ironOreDepositResourceType,
+    ironOreResourceType,
     waterResourceType,
     waterSourceResourceType,
 } from './facilities';
@@ -35,7 +36,7 @@ export const agriculturalProductionFacility: ProductionFacility = {
         { resource: waterResourceType, quantity: 1000 },
         { resource: arableLandResourceType, quantity: 1000 },
     ],
-    produces: [{ resource: agriculturalProductResourceType, quantity: 1000 }],
+    produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
 };
 
 export const waterExtractionFacility: ProductionFacility = {
@@ -59,6 +60,58 @@ export const waterExtractionFacility: ProductionFacility = {
     },
     needs: [{ resource: waterSourceResourceType, quantity: 1000 }],
     produces: [{ resource: waterResourceType, quantity: 1000 }],
+};
+
+export const ironExtractionFacility: ProductionFacility = {
+    planetId: 'earth',
+    id: 'earth-iron-extraction',
+    name: 'Iron Extraction Facility',
+    scale: 1,
+    lastTickEfficiencyInPercent: 0,
+    powerConsumptionPerTick: 0.8,
+    workerRequirement: {
+        none: 0,
+        primary: 0,
+        secondary: 1,
+        tertiary: 0,
+        quaternary: 0,
+    },
+    pollutionPerTick: {
+        air: 0.000001,
+        water: 0.00001,
+        soil: 0.000001,
+    },
+    needs: [{ resource: ironOreDepositResourceType, quantity: 1000 }],
+    produces: [{ resource: ironOreResourceType, quantity: 1000 }],
+};
+
+export const testCompanyStorage: StorageFacility = {
+    planetId: 'earth',
+    id: 'test-company-storage',
+    name: 'Test Company Storage',
+    scale: 1,
+    powerConsumptionPerTick: 0.1,
+    workerRequirement: {
+        none: 10,
+        primary: 10,
+        secondary: 5,
+        tertiary: 0,
+        quaternary: 0,
+    },
+    pollutionPerTick: {
+        air: 0,
+        water: 0,
+        soil: 0,
+    },
+    capacity: {
+        volume: 100000000000, // in cubic meters
+        mass: 10000000000000, // in tons
+    },
+    current: {
+        mass: 0,
+        volume: 0,
+    },
+    currentInStorage: {},
 };
 
 export const earthStorage: StorageFacility = {
@@ -114,6 +167,30 @@ export const earthGovernment: Agent = {
     wealth: 1000000000, // in coins
 };
 
+export const testCompany: Agent = {
+    id: 'test-company',
+    name: 'Test Company',
+    associatedPlanetId: 'earth',
+    transportShips: [],
+    assets: {
+        earth: {
+            resourceClaims: [],
+            resourceTenancies: ['earth-iron'],
+            productionFacilities: [ironExtractionFacility],
+            storageFacility: testCompanyStorage,
+            allocatedWorkers: {
+                none: 0,
+                primary: 0,
+                secondary: 0,
+                tertiary: 0,
+                quaternary: 0,
+            },
+            workforceDemography: createWorkforceDemography(),
+        },
+    },
+    wealth: 1000000000, // in coins
+};
+
 export const earth: Planet = {
     id: 'earth',
     name: 'Earth',
@@ -131,7 +208,7 @@ export const earth: Planet = {
                 regenerationRate: 0,
                 maximumCapacity: 5000000,
                 claim: earthGovernment,
-                tenant: null,
+                tenant: testCompany,
                 tenantCostInCoins: 0,
             },
         ],

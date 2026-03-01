@@ -1,4 +1,5 @@
 import type { Agent, Planet } from './planet';
+import { MIN_EMPLOYABLE_AGE } from './constants';
 
 type OccupationTotals = {
     company: number;
@@ -12,7 +13,7 @@ type OccupationTotals = {
 /**
  * Compute population occupation totals for ages > MIN_AGE (default 14)
  */
-export function computePopulationOccupationTotals(planet: Planet, minAge = 15): OccupationTotals {
+export function computePopulationOccupationTotals(planet: Planet, minAge = MIN_EMPLOYABLE_AGE): OccupationTotals {
     const totals: OccupationTotals = {
         company: 0,
         government: 0,
@@ -86,7 +87,7 @@ export function computeAgentWorkforceTotals(agents: Agent[], planetId: string) {
 export function checkPopulationWorkforceConsistency(agents: Agent[], planets: Planet[]) {
     const discrepancies: string[] = [];
     for (const planet of planets) {
-        const popTotals = computePopulationOccupationTotals(planet, 15);
+        const popTotals = computePopulationOccupationTotals(planet, MIN_EMPLOYABLE_AGE);
         const agentTotals = computeAgentWorkforceTotals(agents, planet.id);
 
         // Provide a detailed breakdown when discrepancies occur
@@ -133,9 +134,65 @@ export function checkPopulationWorkforceConsistency(agents: Agent[], planets: Pl
         const popCompany = popTotals.company;
         const agentCompany = agentTotals.company;
         if (agentCompany > popCompany) {
-            discrepancies.push(
+            // Build per-agent breakdown for company counts so we can identify
+            // which agent(s) are reporting more active company workers than
+            // the authoritative population representation.
+            const agentCompanyByAgent: Record<string, number> = {};
+            for (const agent of agents) {
+                let sum = 0;
+                const assets = agent.assets[planet.id];
+                if (!assets || !assets.workforceDemography) {
+                    agentCompanyByAgent[agent.id] = 0;
+                    continue;
+                }
+                for (const cohort of assets.workforceDemography) {
+                    for (const [, v] of Object.entries(cohort.active)) {
+                        sum += v as number;
+                    }
+                }
+                // Only include non-government agents here (company totals)
+                agentCompanyByAgent[agent.id] = /gov|government/i.test(agent.id) ? 0 : sum;
+            }
+
+            // Build per-education breakdown for the population company counts
+            const popByEdu: Record<string, number> = {};
+            for (let age = 15; age < planet.population.demography.length; age++) {
+                const cohort = planet.population.demography[age];
+                for (const edu of Object.keys(cohort) as Array<keyof typeof cohort>) {
+                    popByEdu[edu] = (popByEdu[edu] ?? 0) + (cohort[edu].company ?? 0);
+                }
+            }
+
+            // And per-education breakdown from agents (company agents only)
+            const agentByEdu: Record<string, number> = {};
+            for (const agent of agents) {
+                if (/gov|government/i.test(agent.id)) {
+                    continue;
+                }
+                const assets = agent.assets[planet.id];
+                if (!assets || !assets.workforceDemography) {
+                    continue;
+                }
+                for (const cohort of assets.workforceDemography) {
+                    for (const [edu, v] of Object.entries(cohort.active)) {
+                        agentByEdu[edu] = (agentByEdu[edu] ?? 0) + (v as number);
+                    }
+                }
+            }
+
+            const lines = [
                 `Planet ${planet.id}: agents report company active=${agentCompany} but population has company=${popCompany}`,
-            );
+                `Per-agent (company active):`,
+            ];
+            for (const [aid, count] of Object.entries(agentCompanyByAgent)) {
+                lines.push(`${aid}: ${count}`);
+            }
+            lines.push('Per-education (agents -> population company):');
+            const edus = new Set([...Object.keys(agentByEdu), ...Object.keys(popByEdu)]);
+            for (const edu of edus) {
+                lines.push(`${edu}: ${agentByEdu[edu] ?? 0} -> ${popByEdu[edu] ?? 0}`);
+            }
+            discrepancies.push(lines.join('\n'));
         }
     }
 

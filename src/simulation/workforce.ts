@@ -235,7 +235,7 @@ export function totalRetiringForEdu(workforce: WorkforceDemography, edu: Educati
  * Count total unoccupied people for a given education level across all
  * employable ages (≥ MIN_EMPLOYABLE_AGE) in a planet's population.
  */
-function totalUnoccupiedForEdu(planet: Planet, edu: EducationLevelType): number {
+export function totalUnoccupiedForEdu(planet: Planet, edu: EducationLevelType): number {
     let total = 0;
     const demography = planet.population.demography;
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
@@ -433,6 +433,14 @@ export function laborMarketTick(agents: Agent[], planets: Planet[]): void {
             if (!planet) {
                 continue;
             }
+
+            // Snapshot available (unoccupied) workers on the labor market so
+            // the UI can display how deep the hiring pool is per edu level.
+            const availableOnMarket = {} as Record<EducationLevelType, number>;
+            for (const edu of educationLevelKeys) {
+                availableOnMarket[edu] = totalUnoccupiedForEdu(planet, edu);
+            }
+            assets.availableOnMarket = availableOnMarket;
 
             const occupation: Occupation = planet.government.id === agent.id ? 'government' : 'company';
 
@@ -763,6 +771,17 @@ export function laborMarketMonthTick(agents: Agent[], planets: Planet[]): void {
             }
             assets.activeAtMonthStart = snapshot;
 
+            // --- Rotate death counters: this month → prev month, reset this month ---
+            assets.deathsPrevMonth = assets.deathsThisMonth ?? ({} as Record<EducationLevelType, number>);
+            const freshDeaths = {} as Record<EducationLevelType, number>;
+            for (const edu of educationLevelKeys) {
+                if (!assets.deathsPrevMonth[edu]) {
+                    assets.deathsPrevMonth[edu] = 0;
+                }
+                freshDeaths[edu] = 0;
+            }
+            assets.deathsThisMonth = freshDeaths;
+
             const planet = planetMap.get(planetId);
             const occupation: Occupation = planet && planet.government.id === agent.id ? 'government' : 'company';
 
@@ -1088,7 +1107,19 @@ export function applyPopulationDeathsToWorkforce(
                     continue;
                 }
 
-                const wf = agent.assets[planetId]?.workforceDemography;
+                // Accumulate deaths into the per-agent monthly death counter
+                const assets = agent.assets[planetId];
+                if (assets) {
+                    if (!assets.deathsThisMonth) {
+                        assets.deathsThisMonth = {} as Record<EducationLevelType, number>;
+                        for (const e of educationLevelKeys) {
+                            assets.deathsThisMonth[e] = 0;
+                        }
+                    }
+                    assets.deathsThisMonth[edu] += toRemoveForAgent;
+                }
+
+                const wf = assets?.workforceDemography;
                 if (!wf) {
                     continue;
                 }

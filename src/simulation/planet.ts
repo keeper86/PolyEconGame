@@ -305,6 +305,32 @@ export type Agent = {
             activeAtMonthStart?: {
                 [L in EducationLevelType]: number;
             };
+            /**
+             * Deaths that occurred since the start of the current month,
+             * per education level.  Accumulated in
+             * `applyPopulationDeathsToWorkforce` and reset at month
+             * boundaries in `laborMarketMonthTick`.
+             */
+            deathsThisMonth?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Deaths from the previous month, per education level.
+             * Rotated from `deathsThisMonth` at each month boundary
+             * so the UI can show "deaths (prev month)".
+             */
+            deathsPrevMonth?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Number of unoccupied (available for hiring) people per
+             * education level on the associated planet's labor market.
+             * Updated at the start of each `laborMarketTick` call so the
+             * UI can display how deep the hiring pool is.
+             */
+            availableOnMarket?: {
+                [L in EducationLevelType]: number;
+            };
             workforceDemography?: WorkforceDemography;
         };
     };

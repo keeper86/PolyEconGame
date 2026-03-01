@@ -66,8 +66,11 @@ function EducationCard({
     label,
     badgeClassName,
     target,
+    available,
     active,
     unused,
+    deaths,
+    deathsPrev,
     // number of overqualified workers filling slots for this job edu
     overqualified,
     // breakdown: workerEdu -> count for this job edu
@@ -90,8 +93,11 @@ function EducationCard({
     label: string;
     badgeClassName: string;
     target: number;
+    available?: number;
     active: number;
     unused: number;
+    deaths?: number;
+    deathsPrev?: number;
     overqualified?: number;
     overqualifiedBreakdown?: { [workerEdu in EducationLevelType]?: number };
     voluntaryNext: number;
@@ -161,6 +167,13 @@ function EducationCard({
                     </>
                 }
             />
+            {typeof available === 'number' && (
+                <Stat
+                    label='Available'
+                    value={fmt(available)}
+                    valueClassName={available > 0 ? 'text-blue-600' : 'text-muted-foreground'}
+                />
+            )}
             <Stat label='Total' value={fmt(totalWorkforce)} valueClassName='text-foreground' bold />
             <Stat
                 label='Worker '
@@ -172,6 +185,16 @@ function EducationCard({
 
             {/* ── Breakdown: Active + On notice = Total ── */}
             <Stat label='Active' value={fmt(active)} />
+
+            {/* Deaths this month (and last month) */}
+            {typeof deaths === 'number' && (
+                <Stat
+                    label='Deaths'
+                    value={typeof deathsPrev === 'number' ? `${fmt(deaths)} (${fmt(deathsPrev)})` : fmt(deaths)}
+                    valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
+                />
+            )}
+
             {/* On-notice — collapsible breakdown. The total (with next-month counter) stays visible */}
             <div className='flex items-baseline justify-between gap-2'>
                 <button
@@ -293,6 +316,9 @@ export function EducationLevelCards({
     overallAgeProductivity,
     overallMeanTenure,
     overallTenureProductivity,
+    availableByEdu,
+    deathsByEdu,
+    deathsPrevByEdu,
 }: {
     allocatedWorkers: Record<EducationLevelType, number>;
     activeByEdu: Record<EducationLevelType, number>;
@@ -313,6 +339,9 @@ export function EducationLevelCards({
     overallTenureProductivity: number;
     overqualifiedByEdu?: Record<EducationLevelType, number>;
     overqualifiedBreakdown?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
+    availableByEdu?: Record<EducationLevelType, number>;
+    deathsByEdu?: Record<EducationLevelType, number>;
+    deathsPrevByEdu?: Record<EducationLevelType, number>;
 }): React.ReactElement {
     const totalActive = sumByEdu(activeByEdu);
     const totalRet = sumByEdu(retiringByEdu);
@@ -329,8 +358,11 @@ export function EducationLevelCards({
                     label={eduLabel(edu)}
                     badgeClassName={EDU_COLORS[edu].badge}
                     target={allocatedWorkers[edu] ?? 0}
+                    available={availableByEdu?.[edu]}
                     active={activeByEdu[edu]}
                     unused={unusedWorkers?.[edu] ?? 0}
+                    deaths={deathsByEdu?.[edu]}
+                    deathsPrev={deathsPrevByEdu?.[edu]}
                     overqualified={overqualifiedByEdu?.[edu] ?? 0}
                     overqualifiedBreakdown={overqualifiedBreakdown?.[edu]}
                     voluntaryNext={nextMonthVoluntaryByEdu[edu]}
@@ -351,8 +383,11 @@ export function EducationLevelCards({
                 label='Total'
                 badgeClassName='border-foreground/30 bg-muted text-foreground font-semibold'
                 target={sumByEdu(allocatedWorkers)}
+                available={availableByEdu ? sumByEdu(availableByEdu) : undefined}
                 active={totalActive}
                 unused={totalUnused}
+                deaths={deathsByEdu ? sumByEdu(deathsByEdu) : undefined}
+                deathsPrev={deathsPrevByEdu ? sumByEdu(deathsPrevByEdu) : undefined}
                 overqualified={totalOverqualified}
                 voluntaryNext={sumByEdu(nextMonthVoluntaryByEdu)}
                 voluntaryTotal={totalVol}

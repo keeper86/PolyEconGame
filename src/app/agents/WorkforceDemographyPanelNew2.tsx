@@ -24,6 +24,12 @@ export type WorkforceDemographyPanelProps = {
     unusedWorkerFraction?: number;
     /** Overqualified worker matrix aggregated across assets: jobEdu -> workerEdu -> count */
     overqualifiedMatrix?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
+    /** Deaths this month per education level. */
+    deathsThisMonth?: Record<EducationLevelType, number>;
+    /** Deaths previous month per education level. */
+    deathsPrevMonth?: Record<EducationLevelType, number>;
+    /** Available (unoccupied) workers on the labor market per education level. */
+    availableOnMarket?: Record<EducationLevelType, number>;
 };
 
 // ---------------------------------------------------------------------------
@@ -35,6 +41,9 @@ export default function WorkforceDemographyPanel({
     workforceDemography,
     unusedWorkers,
     overqualifiedMatrix,
+    deathsThisMonth,
+    deathsPrevMonth,
+    availableOnMarket,
 }: WorkforceDemographyPanelProps): React.ReactElement {
     const summary = useMemo(
         () => (workforceDemography && workforceDemography.length > 0 ? computeSummary(workforceDemography) : null),
@@ -100,6 +109,9 @@ export default function WorkforceDemographyPanel({
                                 overallAgeProductivity={summary.overallAgeProductivity}
                                 overallMeanTenure={summary.overallMeanTenure}
                                 overallTenureProductivity={summary.overallTenureProductivity}
+                                deathsByEdu={deathsThisMonth}
+                                deathsPrevByEdu={deathsPrevMonth}
+                                availableByEdu={availableOnMarket}
                             />
                         </div>
 

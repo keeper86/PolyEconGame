@@ -338,16 +338,37 @@ export const getPlanetPopulationHistory = async (
     planetId: string,
     limit = 200,
 ): Promise<PopulationHistoryPoint[]> => {
-    const rows = await db('planet_snapshots')
-        .where('planet_id', planetId)
-        .orderBy('tick', 'desc')
-        .limit(limit)
-        .select('tick', 'population_total');
+        // Use a bucketing approach to sample up to `limit` rows evenly across the
+        // planet's full history (newest-first). This buckets rows by their
+        // row-number (ordered by tick DESC) and picks the newest row per bucket.
+        // It's deterministic and avoids returning only the most recent `limit`
+        // rows when the history is longer than `limit`.
+        const sql = `
+        WITH numbered AS (
+            SELECT ps.tick, ps.population_total,
+                         row_number() OVER (ORDER BY tick DESC) - 1 AS rn,
+                         count(*) OVER() AS cnt
+            FROM planet_snapshots ps
+            WHERE planet_id = ?
+        ), bucketed AS (
+            SELECT n.*, floor(n.rn::double precision * ?::double precision / GREATEST(n.cnt,1)::double precision) AS bucket
+            FROM numbered n
+        ), chosen AS (
+            SELECT DISTINCT ON (bucket) bucket, tick, population_total
+            FROM bucketed
+            ORDER BY bucket, tick DESC
+        )
+        SELECT tick, population_total FROM chosen ORDER BY bucket ASC;
+        `;
 
-    return rows.map((r: Record<string, unknown>) => ({
-        tick: Number(r.tick),
-        population_total: Number(r.population_total),
-    }));
+        const raw = await db.raw(sql, [planetId, limit]);
+        // knex/pg returns rows in different shapes depending on the client wrapper
+        const resultRows = (raw.rows ?? raw) as Array<Record<string, unknown>>;
+
+        return resultRows.map((r) => ({
+                tick: Number(r.tick),
+                population_total: Number(r.population_total),
+        }));
 };
 
 /**
