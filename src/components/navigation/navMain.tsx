@@ -1,7 +1,7 @@
 'use client';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import type { RouteMetadata } from '@/lib/appRoutes';
 import { APP_ROUTES, isRoute, isRouteManifest } from '@/lib/appRoutes';
-import { SidebarMenuItem, SidebarMenuButton, SidebarMenu, useSidebar } from '@/components/ui/sidebar';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import React from 'react';
@@ -28,7 +28,7 @@ function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.E
                 className={isSub ? 'font-normal text-muted-foreground' : 'text-md'}
                 onClick={handleClick}
             >
-                <Link href={route.path} aria-disabled={!showRoute(route)}>
+                <Link href={route.path as unknown as '/'} aria-disabled={!showRoute(route)}>
                     {route.icon && !isSub ? <route.icon width={16} height={16} /> : null}
                     <span>{route.label}</span>
                 </Link>

@@ -2,6 +2,14 @@
 // This setup will run before each test. You can add global configuration here, like
 // setting up mocks for shared modules, configuring testing utilities, etc.
 import '@testing-library/jest-dom';
+import { beforeEach } from 'vitest';
+import { seedRng } from '../../src/simulation/utils/stochasticRound';
+
+// Seed the stochastic rounding PRNG before each test to ensure deterministic
+// behaviour across all simulation tests.
+beforeEach(() => {
+    seedRng(42);
+});
 
 // Provide a jsdom-friendly mock for window.matchMedia used by `useIsMobile`.
 // jsdom does not implement matchMedia by default which causes tests to throw.

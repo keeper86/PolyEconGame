@@ -14,11 +14,12 @@ declare module "nextjs-routes" {
     | StaticRoute<"/">
     | StaticRoute<"/account">
     | StaticRoute<"/agents">
+    | DynamicRoute<"/agents/[agentId]", { "agentId": string }>
+    | DynamicRoute<"/agents/[agentId]/[planetId]", { "agentId": string; "planetId": string }>
     | DynamicRoute<"/api/auth/[...nextauth]", { "nextauth": string[] }>
     | StaticRoute<"/api/ping">
     | DynamicRoute<"/api/public/[...trpc]", { "trpc": string[] }>
     | StaticRoute<"/api/public/openapi.json">
-    | StaticRoute<"/api/simulation/restart">
     | DynamicRoute<"/api/trpc/[trpc]", { "trpc": string }>
     | StaticRoute<"/imprint">
     | StaticRoute<"/planets">

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emptyCohort } from '../populationHelpers';
+import { emptyCohort } from './populationHelpers';
 import { educationLevelKeys } from '../planet';
 import {
     ageDependentBaseDisabilityProb,

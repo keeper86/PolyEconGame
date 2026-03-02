@@ -338,12 +338,12 @@ export const getPlanetPopulationHistory = async (
     planetId: string,
     limit = 200,
 ): Promise<PopulationHistoryPoint[]> => {
-        // Use a bucketing approach to sample up to `limit` rows evenly across the
-        // planet's full history (newest-first). This buckets rows by their
-        // row-number (ordered by tick DESC) and picks the newest row per bucket.
-        // It's deterministic and avoids returning only the most recent `limit`
-        // rows when the history is longer than `limit`.
-        const sql = `
+    // Use a bucketing approach to sample up to `limit` rows evenly across the
+    // planet's full history (newest-first). This buckets rows by their
+    // row-number (ordered by tick DESC) and picks the newest row per bucket.
+    // It's deterministic and avoids returning only the most recent `limit`
+    // rows when the history is longer than `limit`.
+    const sql = `
         WITH numbered AS (
             SELECT ps.tick, ps.population_total,
                          row_number() OVER (ORDER BY tick DESC) - 1 AS rn,
@@ -361,14 +361,309 @@ export const getPlanetPopulationHistory = async (
         SELECT tick, population_total FROM chosen ORDER BY bucket ASC;
         `;
 
-        const raw = await db.raw(sql, [planetId, limit]);
-        // knex/pg returns rows in different shapes depending on the client wrapper
-        const resultRows = (raw.rows ?? raw) as Array<Record<string, unknown>>;
+    const raw = await db.raw(sql, [planetId, limit]);
+    // knex/pg returns rows in different shapes depending on the client wrapper
+    const resultRows = (raw.rows ?? raw) as Array<Record<string, unknown>>;
 
-        return resultRows.map((r) => ({
-                tick: Number(r.tick),
-                population_total: Number(r.population_total),
-        }));
+    return resultRows.map((r) => ({
+        tick: Number(r.tick),
+        population_total: Number(r.population_total),
+    }));
+};
+
+// ---------------------------------------------------------------------------
+// Agent list summary (lightweight — no full agent_summary blob)
+// ---------------------------------------------------------------------------
+
+/** Shape returned by getAgentListSummaries for each agent. */
+export type AgentListSummary = {
+    agentId: string;
+    name: string;
+    associatedPlanetId: string;
+    wealth: number;
+    facilityCount: number;
+    avgEfficiency: number | null;
+    totalWorkers: number;
+    unusedWorkerFraction: number;
+    topResources: Array<{ name: string; quantity: number }>;
+    shipCount: number;
+};
+
+/**
+ * Compute card-level summary data from a full Agent JSONB blob.
+ * Runs server-side so only the small summary is sent to the client.
+ */
+const summariseAgentBlob = (agentId: string, wealth: number, blob: unknown): AgentListSummary => {
+    // blob is the Agent object stored as JSONB
+    const a = blob as Agent;
+
+    let facilityCount = 0;
+    let efficiencySum = 0;
+    let efficiencyN = 0;
+    const storageTotals: Record<string, number> = {};
+    let totalWorkers = 0;
+    let unusedWorkerFraction = 0;
+
+    for (const assets of Object.values(a.assets ?? {})) {
+        const facs = assets.productionFacilities ?? [];
+        facilityCount += facs.length;
+        for (const f of facs) {
+            if (f.lastTickResults) {
+                efficiencySum += f.lastTickResults.overallEfficiency;
+                efficiencyN += 1;
+            }
+        }
+
+        const stor = assets.storageFacility;
+        if (stor?.currentInStorage) {
+            for (const [rName, entry] of Object.entries(stor.currentInStorage)) {
+                storageTotals[rName] = (storageTotals[rName] || 0) + (entry?.quantity || 0);
+            }
+        }
+
+        if (assets.allocatedWorkers) {
+            for (const v of Object.values(assets.allocatedWorkers)) {
+                totalWorkers += (v as number) ?? 0;
+            }
+        }
+        unusedWorkerFraction = Math.max(unusedWorkerFraction, assets.unusedWorkerFraction ?? 0);
+    }
+
+    const topResources = Object.entries(storageTotals)
+        .filter(([, qty]) => qty > 0)
+        .sort(([, x], [, y]) => y - x)
+        .slice(0, 3)
+        .map(([name, quantity]) => ({ name, quantity }));
+
+    return {
+        agentId,
+        name: a.name ?? agentId,
+        associatedPlanetId: a.associatedPlanetId ?? '',
+        wealth,
+        facilityCount,
+        avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
+        totalWorkers,
+        unusedWorkerFraction,
+        topResources,
+        shipCount: a.transportShips?.length ?? 0,
+    };
+};
+
+/**
+ * Return lightweight summary data for every agent (latest tick only).
+ * Fetches the full agent_summary JSONB but computes the summary server-side
+ * so only a small payload is sent to the client.
+ */
+export const getAgentListSummaries = async (db: Knex): Promise<{ tick: number; agents: AgentListSummary[] }> => {
+    const rows = await db('agent_snapshots')
+        .whereIn(
+            ['tick', 'agent_id'],
+            db('agent_snapshots').select(db.raw('MAX(tick)'), 'agent_id').groupBy('agent_id'),
+        )
+        .select('tick', 'agent_id', 'wealth', 'agent_summary');
+
+    const tick = rows.length > 0 ? Math.max(...rows.map((r: Record<string, unknown>) => Number(r.tick))) : 0;
+    const agents = rows.map((r: Record<string, unknown>) =>
+        summariseAgentBlob(r.agent_id as string, Number(r.wealth), r.agent_summary),
+    );
+    return { tick, agents };
+};
+
+// ---------------------------------------------------------------------------
+// Single agent detail (full Agent blob for one agent)
+// ---------------------------------------------------------------------------
+
+/** Shape returned by getLatestAgentSnapshot. */
+export type AgentDetailRow = AgentSnapshotRow;
+
+/**
+ * Return the latest snapshot for a single agent by ID.
+ * Returns `undefined` if the agent is not found.
+ */
+export const getLatestAgentSnapshot = async (db: Knex, agentId: string): Promise<AgentDetailRow | undefined> => {
+    const row = await db('agent_snapshots')
+        .where('agent_id', agentId)
+        .orderBy('tick', 'desc')
+        .first('tick', 'agent_id', 'wealth', 'storage', 'production', 'consumption', 'agent_summary');
+
+    if (!row) {
+        return undefined;
+    }
+
+    const r = row as Record<string, unknown>;
+    return {
+        tick: Number(r.tick),
+        agent_id: r.agent_id as string,
+        wealth: Number(r.wealth),
+        storage: r.storage as Record<string, number>,
+        production: r.production as Record<string, number>,
+        consumption: r.consumption as Record<string, number>,
+        agent_summary: r.agent_summary as object,
+    };
+};
+
+// ---------------------------------------------------------------------------
+// Agent overview (top-level stats + per-planet summaries)
+// ---------------------------------------------------------------------------
+
+/** Per-planet summary returned by getAgentOverview. */
+export type AgentPlanetSummary = {
+    planetId: string;
+    facilityCount: number;
+    avgEfficiency: number | null;
+    totalWorkers: number;
+    unusedWorkerFraction: number;
+    topResources: Array<{ name: string; quantity: number }>;
+};
+
+/** Shape returned by getAgentOverview. */
+export type AgentOverviewData = {
+    agentId: string;
+    name: string;
+    associatedPlanetId: string;
+    wealth: number;
+    shipCount: number;
+    planets: AgentPlanetSummary[];
+};
+
+/**
+ * Summarise a single planet's assets from the Agent JSONB blob.
+ */
+const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][string]): AgentPlanetSummary => {
+    let facilityCount = 0;
+    let efficiencySum = 0;
+    let efficiencyN = 0;
+    const storageTotals: Record<string, number> = {};
+    let totalWorkers = 0;
+
+    const facs = assets.productionFacilities ?? [];
+    facilityCount = facs.length;
+    for (const f of facs) {
+        if (f.lastTickResults) {
+            efficiencySum += f.lastTickResults.overallEfficiency;
+            efficiencyN += 1;
+        }
+    }
+
+    const stor = assets.storageFacility;
+    if (stor?.currentInStorage) {
+        for (const [rName, entry] of Object.entries(stor.currentInStorage)) {
+            storageTotals[rName] = (storageTotals[rName] || 0) + (entry?.quantity || 0);
+        }
+    }
+
+    if (assets.allocatedWorkers) {
+        for (const v of Object.values(assets.allocatedWorkers)) {
+            totalWorkers += (v as number) ?? 0;
+        }
+    }
+
+    const topResources = Object.entries(storageTotals)
+        .filter(([, qty]) => qty > 0)
+        .sort(([, x], [, y]) => y - x)
+        .slice(0, 3)
+        .map(([name, quantity]) => ({ name, quantity }));
+
+    return {
+        planetId,
+        facilityCount,
+        avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
+        totalWorkers,
+        unusedWorkerFraction: assets.unusedWorkerFraction ?? 0,
+        topResources,
+    };
+};
+
+/**
+ * Return overview data for a single agent: top-level stats plus per-planet
+ * summaries.  Computes everything server-side from the agent_summary JSONB
+ * so only a lightweight payload is sent to the client.
+ */
+export const getAgentOverview = async (
+    db: Knex,
+    agentId: string,
+): Promise<{ tick: number; overview: AgentOverviewData | null }> => {
+    const row = await db('agent_snapshots')
+        .where('agent_id', agentId)
+        .orderBy('tick', 'desc')
+        .first('tick', 'agent_id', 'wealth', 'agent_summary');
+
+    if (!row) {
+        return { tick: 0, overview: null };
+    }
+
+    const r = row as Record<string, unknown>;
+    const tick = Number(r.tick);
+    const a = r.agent_summary as Agent;
+
+    const planets: AgentPlanetSummary[] = Object.entries(a.assets ?? {}).map(([planetId, assets]) =>
+        summarisePlanetAssets(planetId, assets),
+    );
+
+    return {
+        tick,
+        overview: {
+            agentId: a.id ?? (r.agent_id as string),
+            name: a.name ?? (r.agent_id as string),
+            associatedPlanetId: a.associatedPlanetId ?? '',
+            wealth: Number(r.wealth),
+            shipCount: a.transportShips?.length ?? 0,
+            planets,
+        },
+    };
+};
+
+// ---------------------------------------------------------------------------
+// Agent planet detail (full assets for one agent on one planet)
+// ---------------------------------------------------------------------------
+
+/** Shape returned by getAgentPlanetDetail. */
+export type AgentPlanetDetailData = {
+    agentId: string;
+    agentName: string;
+    planetId: string;
+    /** The full per-planet assets object, passed as-is so the UI can render
+     *  facilities, workforce demography, storage, etc. */
+    assets: Agent['assets'][string];
+};
+
+/**
+ * Return the full per-planet assets for a single agent on a single planet.
+ * Extracts from the agent_summary JSONB blob server-side and returns only
+ * the relevant planet slice.
+ */
+export const getAgentPlanetDetail = async (
+    db: Knex,
+    agentId: string,
+    planetId: string,
+): Promise<{ tick: number; detail: AgentPlanetDetailData | null }> => {
+    const row = await db('agent_snapshots')
+        .where('agent_id', agentId)
+        .orderBy('tick', 'desc')
+        .first('tick', 'agent_id', 'agent_summary');
+
+    if (!row) {
+        return { tick: 0, detail: null };
+    }
+
+    const r = row as Record<string, unknown>;
+    const tick = Number(r.tick);
+    const a = r.agent_summary as Agent;
+    const assets = a.assets?.[planetId];
+
+    if (!assets) {
+        return { tick, detail: null };
+    }
+
+    return {
+        tick,
+        detail: {
+            agentId: a.id ?? (r.agent_id as string),
+            agentName: a.name ?? (r.agent_id as string),
+            planetId,
+            assets,
+        },
+    };
 };
 
 /**

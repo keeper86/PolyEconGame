@@ -7,7 +7,7 @@
  */
 
 // Orchestrator (main entry points used by the engine)
-export { populationTick, populationAdvanceYearTick } from './populationTick';
+export { populationTick } from './populationTick';
 
 // Sub-modules re-exported for direct use / testing
 export { populationAdvanceYear } from './aging';
@@ -20,6 +20,7 @@ export {
     computeEnvironmentalMortality,
     computeExtraAnnualMortality,
     perTickMortality,
+    applyMortality,
     MAX_MORTALITY_PER_TICK,
 } from './mortality';
 export type { EnvironmentalMortality } from './mortality';
@@ -27,14 +28,17 @@ export {
     ageDependentBaseDisabilityProb,
     computeEnvironmentalDisability,
     applyDisabilityTransitions,
+    applyDisability,
     STARVATION_DISABILITY_COEFFICIENT,
 } from './disability';
 export type { EnvironmentalDisability } from './disability';
 export {
     computeBirthsThisTick,
     applyBirths,
+    populationBirthsTick,
     fertReductionFromPollution,
     START_FERTILE_AGE,
     END_FERTILE_AGE,
     LIFETIME_FERTILITY,
 } from './fertility';
+export { emptyAccumulator } from './populationHelpers';

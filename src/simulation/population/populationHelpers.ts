@@ -1,5 +1,6 @@
-import type { EducationLevelType, Cohort, Occupation, Population } from './planet';
-import { educationLevels, educationLevelKeys, OCCUPATIONS } from './planet';
+import type { EducationLevelType, Cohort, Occupation, Population, PopulationTickAccumulator } from '../planet';
+import { educationLevels, educationLevelKeys, OCCUPATIONS } from '../planet';
+import { distributeProportionally } from '../utils/distributeProportionally';
 
 export const educationGraduationProbabilityForAge = (age: number, level: EducationLevelType): number => {
     const { graduationAge, graduationPreAgeProbability, graduationProbability } = educationLevels[level];
@@ -59,37 +60,16 @@ export function distributeLike(total: number, source: Cohort): Cohort {
     if (srcTotal === 0) {
         throw new Error('Cannot distribute from empty cohort');
     }
-    const percentages: number[] = [];
-    // Maintain a consistent order: EDUCATION_LEVELS x OCCUPATIONS
+
+    // Build weights in consistent order: EDUCATION_LEVELS x OCCUPATIONS
+    const weights: number[] = [];
     for (const l of educationLevelKeys) {
         for (const o of OCCUPATIONS) {
-            percentages.push(source[l][o] / srcTotal);
+            weights.push(source[l][o]);
         }
     }
 
-    // Use the largest-remainder method (Hamilton method) to avoid biasing
-    // all rounding remainder into the last cell. This computes exact quotas,
-    // floors them, then distributes remaining units to cells with largest
-    // fractional parts.
-    const quotas: number[] = percentages.map((p) => p * total);
-    const floors: number[] = quotas.map((q) => Math.floor(q));
-    const fractions: { idx: number; frac: number }[] = quotas.map((q, i) => ({ idx: i, frac: q - Math.floor(q) }));
-
-    const allocated = floors.reduce((s, v) => s + v, 0);
-    const remaining = total - allocated;
-
-    // Sort indices by descending fractional part, tie-breaker by index to be deterministic
-    fractions.sort((a, b) => {
-        if (b.frac !== a.frac) {
-            return b.frac - a.frac;
-        }
-        return a.idx - b.idx;
-    });
-
-    const counts = floors.slice();
-    for (const f of fractions.slice(0, remaining)) {
-        counts[f.idx] += 1;
-    }
+    const counts = distributeProportionally(total, weights);
 
     const result = emptyCohort();
     let idx = 0;
@@ -139,4 +119,21 @@ export function totalPopulation(pop: Population): number {
         total += sumCohort(c);
     }
     return total;
+}
+
+// --- Accumulator helpers ---
+
+/**
+ * Create a zeroed education × occupation accumulator, e.g. for
+ * `population.tickDeaths` or `population.tickNewDisabilities`.
+ */
+export function emptyAccumulator(): PopulationTickAccumulator {
+    const acc = {} as PopulationTickAccumulator;
+    for (const edu of educationLevelKeys) {
+        acc[edu] = {} as Record<Occupation, number>;
+        for (const occ of OCCUPATIONS) {
+            acc[edu][occ] = 0;
+        }
+    }
+    return acc;
 }

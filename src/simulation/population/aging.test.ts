@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emptyCohort, sumCohort } from '../populationHelpers';
+import { emptyCohort, sumCohort } from './populationHelpers';
 import type { Cohort, Population } from '../planet';
 import { maxAge } from '../planet';
 import { populationAdvanceYear } from './aging';
@@ -102,7 +102,7 @@ describe('populationAdvanceYear', () => {
         expect(sumCohort(population.demography[maxAge])).toBe(10);
     });
 
-    it('people at maxAge are lost (age cap)', () => {
+    it('people at maxAge remain at maxAge (they die via per-tick mortality)', () => {
         const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
         demography[maxAge].none.unoccupied = 5;
         const population = makePopulation(demography);
@@ -110,12 +110,8 @@ describe('populationAdvanceYear', () => {
 
         populationAdvanceYear(population, tic);
 
-        // The loop only processes ages 0..maxAge-1, so maxAge inhabitants
-        // are not shifted (they die of old age effectively).
-        let totalAfter = 0;
-        for (const c of population.demography) {
-            totalAfter += sumCohort(c);
-        }
-        expect(totalAfter).toBe(0);
+        // maxAge survivors are carried over — they cannot age further but
+        // will eventually die via per-tick mortality, not by aging out.
+        expect(sumCohort(population.demography[maxAge])).toBe(5);
     });
 });

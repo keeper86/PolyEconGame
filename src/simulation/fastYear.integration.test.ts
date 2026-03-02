@@ -18,11 +18,11 @@ vi.doMock('./constants', () => {
 
 // Now import simulation modules which will use the mocked constants
 import { advanceTick } from './engine';
-import { createWorkforceDemography } from './workforce';
 import { createPopulation } from './entities';
-import { totalPopulation } from './populationHelpers';
+import { totalPopulation } from './population/populationHelpers';
 import { TICKS_PER_YEAR } from './constants';
 import type { Planet, Agent, Infrastructure, Environment } from './planet';
+import { createWorkforceDemography } from './workforce/workforceHelpers';
 
 function makeStorageFacility() {
     return {

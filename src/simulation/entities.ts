@@ -10,19 +10,19 @@ import {
 } from './facilities';
 import type { Agent, Planet, Population } from './planet';
 import { maxAge } from './planet';
-import { emptyCohort } from './populationHelpers';
-import { createWorkforceDemography } from './workforce';
+import { emptyCohort } from './population/populationHelpers';
+import { createWorkforceDemography } from './workforce/workforceHelpers';
 
 export const agriculturalProductionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-agricultural',
     name: 'Agricultural Facility',
-    scale: 20000,
+    scale: 2000,
     lastTickEfficiencyInPercent: 0,
     powerConsumptionPerTick: 1,
     workerRequirement: {
         none: 10000,
-        primary: 100000,
+        primary: 40000,
         secondary: 20000,
         tertiary: 100,
         quaternary: 0,
@@ -36,14 +36,14 @@ export const agriculturalProductionFacility: ProductionFacility = {
         { resource: waterResourceType, quantity: 1000 },
         { resource: arableLandResourceType, quantity: 1000 },
     ],
-    produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
+    produces: [{ resource: agriculturalProductResourceType, quantity: 1000 }],
 };
 
 export const waterExtractionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-water-extraction',
     name: 'Water Extraction Facility',
-    scale: 20000,
+    scale: 2000,
     lastTickEfficiencyInPercent: 0,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
@@ -324,17 +324,6 @@ export const extractFromClaimedResource = (
         }
     }
     return extracted;
-};
-
-export const regenerateRenewableResources = (planet: Planet): void => {
-    for (const resourceEntries of Object.values(planet.resources)) {
-        for (const entry of resourceEntries) {
-            if (entry.regenerationRate > 0) {
-                const toRegenerate = Math.min(entry.regenerationRate, entry.maximumCapacity - entry.quantity);
-                entry.quantity += toRegenerate;
-            }
-        }
-    }
 };
 
 export const alphaCentauri: Planet = {

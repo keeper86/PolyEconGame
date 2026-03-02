@@ -1,0 +1,560 @@
+import { describe, it, expect } from 'vitest';
+
+import { TICKS_PER_MONTH, MONTHS_PER_YEAR } from '../constants';
+import type { Agent, EducationLevelType } from '../planet';
+
+import { laborMarketTick } from './laborMarketTick';
+import { laborMarketMonthTick } from './laborMarketMonthTick';
+import { laborMarketYearTick } from './laborMarketYearTick';
+import { syncWorkforceWithPopulation } from './workforceSync';
+import { applyMortality } from '../population/mortality';
+import { applyDisability } from '../population/disability';
+import { calculateDemographicStats } from '../population/demographics';
+import {
+    makeAgent,
+    makeStorageFacility,
+    makePlanet,
+    totalPopulation,
+    sumWorkforceForEdu,
+    assertTotalPopulationConserved,
+    assertWorkforcePopulationConsistency,
+    assertAllNonNegative,
+} from './testHelpers';
+import {
+    createWorkforceDemography,
+    NOTICE_PERIOD_MONTHS,
+    totalActiveForEdu,
+    totalRetiringForEdu,
+} from './workforceHelpers';
+
+// ============================================================================
+// Full tick cycle — month boundary
+// ============================================================================
+
+describe('full tick cycle — conservation across month boundary', () => {
+    it('conserves population through 30 ticks + month tick', () => {
+        const planet = makePlanet({ none: 20000, primary: 10000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 2000;
+        agent.assets.p.allocatedWorkers.primary = 500;
+
+        const before = totalPopulation(planet);
+
+        for (let t = 0; t < TICKS_PER_MONTH; t++) {
+            laborMarketTick([agent], [planet]);
+            assertWorkforcePopulationConsistency(planet, [agent], `tick ${t}`);
+        }
+        laborMarketMonthTick([agent], [planet]);
+        assertTotalPopulationConserved(planet, before, 'after month');
+        assertWorkforcePopulationConsistency(planet, [agent], 'after month tick');
+    });
+});
+
+// ============================================================================
+// Full tick cycle — year boundary
+// ============================================================================
+
+describe('full tick cycle — conservation across year boundary', () => {
+    it('conserves population through a full year of ticks + month ticks + year tick', () => {
+        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 3000;
+        agent.assets.p.allocatedWorkers.primary = 800;
+
+        const before = totalPopulation(planet);
+
+        for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+            for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                laborMarketTick([agent], [planet]);
+            }
+            laborMarketMonthTick([agent], [planet]);
+            assertWorkforcePopulationConsistency(planet, [agent], `month ${month}`);
+        }
+
+        laborMarketYearTick([agent]);
+
+        assertTotalPopulationConserved(planet, before, 'after full year');
+        assertWorkforcePopulationConsistency(planet, [agent], 'after year tick');
+    });
+});
+
+// ============================================================================
+// Full tick cycle — with retirement
+// ============================================================================
+
+describe('full tick cycle — conservation with retirement', () => {
+    it('conserves population through year + months with retirement happening', () => {
+        const planet = makePlanet({ none: 50000 });
+        const agent = makeAgent();
+
+        agent.assets.p.allocatedWorkers.none = 1000;
+        laborMarketTick([agent], [planet]);
+        const afterHire = totalPopulation(planet);
+
+        const wf = agent.assets.p.workforceDemography!;
+        wf[0].ageMoments.none = { mean: 65, variance: 9 };
+
+        laborMarketYearTick([agent]);
+
+        for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+            for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                laborMarketTick([agent], [planet]);
+            }
+            laborMarketMonthTick([agent], [planet]);
+            assertTotalPopulationConserved(planet, afterHire, `month ${month}`);
+            assertWorkforcePopulationConsistency(planet, [agent], `month ${month}`);
+        }
+
+        laborMarketYearTick([agent]);
+
+        for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+            for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                laborMarketTick([agent], [planet]);
+            }
+            laborMarketMonthTick([agent], [planet]);
+            assertTotalPopulationConserved(planet, afterHire, `year2 month ${month}`);
+            assertWorkforcePopulationConsistency(planet, [agent], `year2 month ${month}`);
+        }
+    });
+});
+
+// ============================================================================
+// Full tick cycle — hiring and firing
+// ============================================================================
+
+describe('full tick cycle — conservation with hiring and firing', () => {
+    it('conserves population through cycles of over-staffing and under-staffing', () => {
+        const planet = makePlanet({ none: 50000 });
+        const agent = makeAgent();
+        const before = totalPopulation(planet);
+
+        // Phase 1: hire 2000
+        agent.assets.p.allocatedWorkers.none = 2000;
+        for (let t = 0; t < TICKS_PER_MONTH; t++) {
+            laborMarketTick([agent], [planet]);
+        }
+        laborMarketMonthTick([agent], [planet]);
+        assertTotalPopulationConserved(planet, before, 'after hire phase');
+        assertWorkforcePopulationConsistency(planet, [agent], 'after hire phase');
+
+        // Phase 2: move workers to fireable tenure and reduce target
+        const wf = agent.assets.p.workforceDemography!;
+        const activeInY0 = wf[0].active.none;
+        wf[3].active.none += activeInY0;
+        wf[3].ageMoments.none = { ...wf[0].ageMoments.none };
+        wf[0].active.none = 0;
+
+        agent.assets.p.allocatedWorkers.none = 500;
+        for (let t = 0; t < TICKS_PER_MONTH; t++) {
+            laborMarketTick([agent], [planet]);
+        }
+        laborMarketMonthTick([agent], [planet]);
+        assertTotalPopulationConserved(planet, before, 'after fire phase');
+        assertWorkforcePopulationConsistency(planet, [agent], 'after fire phase');
+
+        // Phase 3: wait for departing pipeline to empty over 12 months
+        for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
+            for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                laborMarketTick([agent], [planet]);
+            }
+            laborMarketMonthTick([agent], [planet]);
+            assertTotalPopulationConserved(planet, before, `drain month ${month}`);
+            assertWorkforcePopulationConsistency(planet, [agent], `drain month ${month}`);
+        }
+    });
+});
+
+// ============================================================================
+// Full tick cycle — multi-agent
+// ============================================================================
+
+describe('full tick cycle — multi-agent conservation', () => {
+    it('conserves population with company + government agent through full year', () => {
+        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const agent = makeAgent();
+        const gov = planet.government;
+        gov.assets = {
+            p: {
+                resourceClaims: [],
+                resourceTenancies: [],
+                productionFacilities: [],
+                storageFacility: makeStorageFacility(),
+                allocatedWorkers: { none: 500, primary: 200, secondary: 0, tertiary: 0, quaternary: 0 },
+                workforceDemography: createWorkforceDemography(),
+            },
+        };
+        agent.assets.p.allocatedWorkers.none = 2000;
+        agent.assets.p.allocatedWorkers.primary = 800;
+
+        const before = totalPopulation(planet);
+
+        for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+            for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                laborMarketTick([agent, gov], [planet]);
+            }
+            laborMarketMonthTick([agent, gov], [planet]);
+            assertWorkforcePopulationConsistency(planet, [agent, gov], `month ${month}`);
+        }
+        laborMarketYearTick([agent, gov]);
+
+        assertTotalPopulationConserved(planet, before, 'multi-agent year');
+        assertWorkforcePopulationConsistency(planet, [agent, gov], 'after year tick');
+    });
+});
+
+// ============================================================================
+// Full tick cycle — 3 years
+// ============================================================================
+
+describe('full tick cycle — 3 years with all boundary types', () => {
+    it('conserves population across 3 full years', () => {
+        const planet = makePlanet({ none: 100000, primary: 50000, secondary: 20000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 5000;
+        agent.assets.p.allocatedWorkers.primary = 2000;
+        agent.assets.p.allocatedWorkers.secondary = 500;
+
+        const before = totalPopulation(planet);
+
+        for (let year = 0; year < 3; year++) {
+            for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+                for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                    laborMarketTick([agent], [planet]);
+                }
+                laborMarketMonthTick([agent], [planet]);
+            }
+            laborMarketYearTick([agent]);
+
+            assertTotalPopulationConserved(planet, before, `year ${year}`);
+            assertWorkforcePopulationConsistency(planet, [agent], `year ${year}`);
+        }
+    });
+});
+
+// ============================================================================
+// Population ↔ Workforce accounting invariant (multi-tick)
+// ============================================================================
+
+describe('population ↔ workforce accounting invariant', () => {
+    function sumPopulationOccupation(
+        planet: Parameters<typeof totalPopulation>[0],
+        edu: EducationLevelType,
+        occupation: string,
+    ): number {
+        let total = 0;
+        for (const cohort of planet.population.demography) {
+            total += (cohort as Record<string, Record<string, number>>)[edu]?.[occupation] ?? 0;
+        }
+        return total;
+    }
+
+    function assertAccountingInvariant(planet: Parameters<typeof totalPopulation>[0], agents: Agent[]): void {
+        const companyAgents = agents.filter((a) => a.id !== planet.government.id);
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as EducationLevelType[]) {
+            const popCompany = sumPopulationOccupation(planet, edu, 'company');
+            let workforceCompany = 0;
+            for (const agent of companyAgents) {
+                workforceCompany += sumWorkforceForEdu(agent, planet.id, edu);
+            }
+            expect(workforceCompany, `workforce ↔ population mismatch for edu=${edu}`).toBe(popCompany);
+        }
+    }
+
+    it('invariant holds after initial hire via laborMarketTick', () => {
+        const planet = makePlanet({ none: 5000, primary: 2000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 500;
+        agent.assets.p.allocatedWorkers.primary = 200;
+
+        laborMarketTick([agent], [planet]);
+
+        assertAccountingInvariant(planet, [agent]);
+    });
+
+    it('invariant holds after hire + voluntary quits', () => {
+        const planet = makePlanet({ none: 50000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 10000;
+
+        laborMarketTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+
+        laborMarketTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+    });
+
+    it('invariant holds after firing (overstaffed → departing pipeline)', () => {
+        const planet = makePlanet({ none: 50000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 1000;
+
+        laborMarketTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+
+        const wf = agent.assets.p.workforceDemography!;
+        wf[3].active.none = wf[0].active.none;
+        wf[3].ageMoments.none = { ...wf[0].ageMoments.none };
+        wf[0].active.none = 0;
+
+        agent.assets.p.allocatedWorkers.none = 500;
+        laborMarketTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+    });
+
+    it('invariant holds after departing pipeline completes (month tick)', () => {
+        const planet = makePlanet({ none: 50000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 1000;
+
+        laborMarketTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+
+        const wf = agent.assets.p.workforceDemography!;
+        const toDeparting = 50;
+        wf[0].active.none -= toDeparting;
+        wf[0].departing.none[0] = toDeparting;
+
+        assertAccountingInvariant(planet, [agent]);
+
+        laborMarketMonthTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+    });
+
+    it('invariant holds across a full multi-tick cycle (hire → quit → month → year)', () => {
+        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 2000;
+        agent.assets.p.allocatedWorkers.primary = 500;
+
+        laborMarketTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+
+        for (let t = 0; t < 29; t++) {
+            laborMarketTick([agent], [planet]);
+            assertAccountingInvariant(planet, [agent]);
+        }
+
+        laborMarketMonthTick([agent], [planet]);
+        assertAccountingInvariant(planet, [agent]);
+
+        for (let month = 1; month < 12; month++) {
+            for (let t = 0; t < 30; t++) {
+                laborMarketTick([agent], [planet]);
+            }
+            laborMarketMonthTick([agent], [planet]);
+            assertAccountingInvariant(planet, [agent]);
+        }
+
+        laborMarketYearTick([agent]);
+        assertAccountingInvariant(planet, [agent]);
+    });
+
+    it('invariant holds with multiple agents on the same planet', () => {
+        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const agent1 = makeAgent();
+        const agent2 = makeAgent('agent-2');
+
+        agent1.assets.p.allocatedWorkers.none = 1000;
+        agent2.assets.p.allocatedWorkers.none = 500;
+        agent2.assets.p.allocatedWorkers.primary = 300;
+
+        laborMarketTick([agent1, agent2], [planet]);
+
+        const companyAgents = [agent1, agent2];
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as EducationLevelType[]) {
+            const popCompany = sumPopulationOccupation(planet, edu, 'company');
+            let workforceCompany = 0;
+            for (const a of companyAgents) {
+                workforceCompany += sumWorkforceForEdu(a, planet.id, edu);
+            }
+            expect(workforceCompany, `multi-agent mismatch for edu=${edu}`).toBe(popCompany);
+        }
+    });
+});
+
+// ============================================================================
+// Low-number edge cases
+// ============================================================================
+
+describe('low-number edge cases', () => {
+    it('single worker retires deterministically when mean >= RETIREMENT_AGE (via monthTick)', () => {
+        const agent = makeAgent();
+        const planet = makePlanet();
+        const wf = agent.assets.p.workforceDemography!;
+        wf[40].active.none = 1;
+        wf[40].ageMoments.none = { mean: 66, variance: 4 };
+
+        laborMarketYearTick([agent]);
+        laborMarketMonthTick([agent], [planet]);
+
+        expect(wf[41].active.none).toBe(0);
+        expect(totalRetiringForEdu(wf, 'none')).toBe(1);
+    });
+
+    it('single worker does NOT retire when mean < RETIREMENT_AGE', () => {
+        const agent = makeAgent();
+        const planet = makePlanet();
+        const wf = agent.assets.p.workforceDemography!;
+        wf[10].active.primary = 1;
+        wf[10].ageMoments.primary = { mean: 39, variance: 100 };
+
+        laborMarketYearTick([agent]);
+        laborMarketMonthTick([agent], [planet]);
+
+        expect(wf[11].active.primary).toBe(1);
+        expect(totalRetiringForEdu(wf, 'primary')).toBe(0);
+    });
+
+    it('three workers near retirement: some may retire over multiple months', () => {
+        const agent = makeAgent();
+        const planet = makePlanet();
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].active.tertiary = 3;
+        wf[30].ageMoments.tertiary = { mean: 64, variance: 16 };
+
+        laborMarketYearTick([agent]);
+        for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+            laborMarketMonthTick([agent], [planet]);
+        }
+
+        const retired = totalRetiringForEdu(wf, 'tertiary');
+        const active = wf[31].active.tertiary;
+
+        expect(retired + active).toBeLessThanOrEqual(3);
+        expect(active).toBeGreaterThanOrEqual(0);
+        expect(active).toBeLessThanOrEqual(3);
+    });
+});
+
+// ============================================================================
+// Edge cases — structural
+// ============================================================================
+
+describe('edge cases', () => {
+    it('empty workforce demography does not cause crashes', () => {
+        const planet = makePlanet();
+        const agent = makeAgent();
+        agent.assets.p.workforceDemography = undefined;
+
+        expect(() => laborMarketTick([agent], [planet])).not.toThrow();
+        expect(() => laborMarketMonthTick([agent], [planet])).not.toThrow();
+        expect(() => laborMarketYearTick([agent])).not.toThrow();
+    });
+
+    it('zero allocated workers does not hire or fire', () => {
+        const planet = makePlanet({ none: 5000 });
+        const agent = makeAgent();
+
+        const before = totalPopulation(planet);
+        laborMarketTick([agent], [planet]);
+
+        assertTotalPopulationConserved(planet, before);
+        expect(totalActiveForEdu(agent.assets.p.workforceDemography!, 'none')).toBe(0);
+    });
+});
+
+// ============================================================================
+// Non-negative invariant — comprehensive
+// ============================================================================
+
+describe('non-negative invariant — all population slots', () => {
+    it('no population slot goes negative through a full cycle', () => {
+        const planet = makePlanet({ none: 10000, primary: 5000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 2000;
+        agent.assets.p.allocatedWorkers.primary = 500;
+
+        for (let year = 0; year < 2; year++) {
+            for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+                for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                    laborMarketTick([agent], [planet]);
+                }
+                laborMarketMonthTick([agent], [planet]);
+            }
+            laborMarketYearTick([agent]);
+        }
+
+        assertAllNonNegative(planet, [agent]);
+    });
+});
+
+// ============================================================================
+// Workforce ↔ Population consistency with mortality and disability
+// ============================================================================
+
+describe('workforce ↔ population consistency under mortality/disability', () => {
+    it('workforce active never exceeds population occupation count after sync', () => {
+        // This test simulates the original bug scenario:
+        // mortality removes people from population and then syncWorkforceWithPopulation
+        // must remove the *exact* same count from workforce. If the workforce
+        // age-weighted distribution overflows a cohort, the overflow must be
+        // redistributed — otherwise workforce drifts above population.
+        const planet = makePlanet({ none: 20000, primary: 10000 });
+        const agent = makeAgent();
+        const gov = planet.government;
+        gov.assets = {
+            p: {
+                resourceClaims: [],
+                resourceTenancies: [],
+                productionFacilities: [],
+                storageFacility: makeStorageFacility(),
+                allocatedWorkers: { none: 3000, primary: 1000, secondary: 0, tertiary: 0, quaternary: 0 },
+                workforceDemography: createWorkforceDemography(),
+            },
+        };
+        agent.assets.p.allocatedWorkers.none = 5000;
+        agent.assets.p.allocatedWorkers.primary = 2000;
+
+        // Initial hiring
+        laborMarketTick([agent, gov], [planet]);
+
+        // Create variety in age distributions across tenure cohorts
+        // to increase the chance of overflow during age-weighted removal
+        const agentWf = agent.assets.p.workforceDemography!;
+        if (agentWf[0].active.none > 100) {
+            const moveCount = 100;
+            agentWf[5].active.none += moveCount;
+            agentWf[5].ageMoments.none = { mean: 75, variance: 25 };
+            agentWf[0].active.none -= moveCount;
+        }
+
+        // Simulate many ticks of mortality + disability syncing
+        for (let tick = 0; tick < 100; tick++) {
+            const { totalInCohort } = calculateDemographicStats(planet.population);
+            applyMortality(planet.population, planet.environment, totalInCohort);
+            applyDisability(planet.population, planet.environment);
+            syncWorkforceWithPopulation([agent, gov], planet.id, planet.population, planet.environment, planet);
+
+            // After sync, active workforce for each edu×occ must NOT exceed population
+            for (const edu of ['none', 'primary'] as const) {
+                // Company (agent)
+                let wfCompanyActive = 0;
+                for (const cohort of agent.assets.p.workforceDemography!) {
+                    wfCompanyActive += cohort.active[edu];
+                }
+                let popCompany = 0;
+                for (const cohort of planet.population.demography) {
+                    popCompany += cohort[edu].company;
+                }
+                expect(
+                    wfCompanyActive,
+                    `tick ${tick}: company workforce active (${wfCompanyActive}) > population company (${popCompany}) for edu=${edu}`,
+                ).toBeLessThanOrEqual(popCompany);
+
+                // Government (gov)
+                let wfGovActive = 0;
+                for (const cohort of gov.assets.p.workforceDemography!) {
+                    wfGovActive += cohort.active[edu];
+                }
+                let popGov = 0;
+                for (const cohort of planet.population.demography) {
+                    popGov += cohort[edu].government;
+                }
+                expect(
+                    wfGovActive,
+                    `tick ${tick}: gov workforce active (${wfGovActive}) > population gov (${popGov}) for edu=${edu}`,
+                ).toBeLessThanOrEqual(popGov);
+            }
+        }
+    });
+});

@@ -9,7 +9,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL } from './nutrition';
+import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeFood } from './nutrition';
+import { agriculturalProductResourceType } from '../facilities';
+import { FOOD_PER_PERSON_PER_TICK } from '../constants';
+
+import { createStorageFacility, createPlanetWithStorage, createPopulation } from './testFixtures';
 
 describe('updateStarvationLevel', () => {
     it('returns 0 when fully fed and not starving', () => {
@@ -94,5 +98,63 @@ describe('updateStarvationLevel', () => {
         // S=0.2, food drops to 50% (equilibrium=0.5), S should rise
         const result = updateStarvationLevel(0.2, 0.5);
         expect(result).toBeGreaterThan(0.2);
+    });
+});
+
+describe('consumeFood', () => {
+    it('consumes up to demand and updates storage when enough food', () => {
+        // Use populationTotal = 360 so per-tick demand = 1 ton (1/360 * 360)
+        const populationTotal = 360;
+        const perTickDemand = populationTotal * FOOD_PER_PERSON_PER_TICK;
+
+        // Storage initially contains 5 tons
+        const storage = createStorageFacility(5);
+        const population = createPopulation(0.5);
+        const planet = createPlanetWithStorage(storage, population);
+
+        const res = consumeFood(planet, population, populationTotal);
+
+        // consumed should equal demand (1 ton)
+        expect(res.foodConsumed).toBeCloseTo(perTickDemand, 10);
+        // nutritionalFactor should be ≈ 1
+        expect(res.nutritionalFactor).toBeGreaterThanOrEqual(1);
+        // storage should be reduced by the consumed amount
+        expect(storage.currentInStorage[agriculturalProductResourceType.name].quantity).toBeCloseTo(
+            5 - perTickDemand,
+            10,
+        );
+        // population starvation level should have been updated (recovered)
+        expect(population.starvationLevel).toBeLessThan(0.5);
+    });
+
+    it('consumes what is available when storage insufficient and increases starvation', () => {
+        const populationTotal = 360;
+
+        const storage = createStorageFacility(0.2);
+        const population = createPopulation(0);
+        const planet = createPlanetWithStorage(storage, population);
+
+        const res = consumeFood(planet, population, populationTotal);
+
+        // consumed should equal available (0.2)
+        expect(res.foodConsumed).toBeCloseTo(0.2, 10);
+        // nutritionalFactor should be < 1
+        expect(res.nutritionalFactor).toBeLessThan(1);
+        // storage should be emptied for that resource
+        expect(storage.currentInStorage[agriculturalProductResourceType.name].quantity).toBeCloseTo(0, 10);
+        // starvation level should increase from 0
+        expect(population.starvationLevel).toBeGreaterThan(0);
+    });
+
+    it('handles missing storage gracefully (no consumption)', () => {
+        const populationTotal = 360;
+        const population = createPopulation(0);
+        const planet = createPlanetWithStorage(createStorageFacility(0), population);
+
+        const res = consumeFood(planet, population, populationTotal);
+        expect(res.foodConsumed).toBe(0);
+        expect(res.nutritionalFactor).toBe(0);
+        // starvation should increase since no food
+        expect(population.starvationLevel).toBeGreaterThan(0);
     });
 });

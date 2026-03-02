@@ -15,6 +15,10 @@ import {
     getLatestAgentSnapshots,
     getPlanetPopulationHistory,
     getAgentResourceHistory,
+    getAgentListSummaries as repoGetAgentListSummaries,
+    getLatestAgentSnapshot as repoGetLatestAgentSnapshot,
+    getAgentOverview as repoGetAgentOverview,
+    getAgentPlanetDetail as repoGetAgentPlanetDetail,
     reconstructPlanetFromRow,
 } from '../snapshotRepository';
 
@@ -149,4 +153,132 @@ export const getAgentHistory = () =>
                     consumption: (r.consumption as Record<string, number>) ?? {},
                 })),
             };
+        });
+
+/**
+ * Lightweight summaries for the agent list page.
+ * Returns only the data needed for AgentSummaryCard — no full Agent blob.
+ */
+export const getAgentListSummaries = () =>
+    procedure
+        .input(z.void())
+        .output(
+            z.object({
+                tick: z.number(),
+                agents: z.array(
+                    z.object({
+                        agentId: z.string(),
+                        name: z.string(),
+                        associatedPlanetId: z.string(),
+                        wealth: z.number(),
+                        facilityCount: z.number(),
+                        avgEfficiency: z.number().nullable(),
+                        totalWorkers: z.number(),
+                        unusedWorkerFraction: z.number(),
+                        topResources: z.array(z.object({ name: z.string(), quantity: z.number() })),
+                        shipCount: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async () => {
+            return repoGetAgentListSummaries(db);
+        });
+
+/**
+ * Full agent detail for a single agent (by ID).
+ * Used on the /agents/[agentId] detail page.
+ */
+export const getAgentDetail = () =>
+    procedure
+        .input(
+            z.object({
+                agentId: z.string(),
+            }),
+        )
+        .output(
+            z.object({
+                tick: z.number(),
+                agent: z
+                    .object({
+                        agentId: z.string(),
+                        wealth: z.number(),
+                        storage: z.record(z.string(), z.number()),
+                        production: z.record(z.string(), z.number()),
+                        consumption: z.record(z.string(), z.number()),
+                        agentSummary: z.any(),
+                    })
+                    .nullable(),
+            }),
+        )
+        .query(async ({ input }) => {
+            const row = await repoGetLatestAgentSnapshot(db, input.agentId);
+            if (!row) {
+                return { tick: 0, agent: null };
+            }
+            return {
+                tick: row.tick,
+                agent: {
+                    agentId: row.agent_id,
+                    wealth: Number(row.wealth),
+                    storage: (row.storage as Record<string, number>) ?? {},
+                    production: (row.production as Record<string, number>) ?? {},
+                    consumption: (row.consumption as Record<string, number>) ?? {},
+                    agentSummary: row.agent_summary,
+                },
+            };
+        });
+
+/**
+ * Agent overview: top-level stats + per-planet summaries.
+ * Used on the /agents/[agentId] page to show planet cards.
+ */
+export const getAgentOverview = () =>
+    procedure
+        .input(z.object({ agentId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                overview: z
+                    .object({
+                        agentId: z.string(),
+                        name: z.string(),
+                        associatedPlanetId: z.string(),
+                        wealth: z.number(),
+                        shipCount: z.number(),
+                        planets: z.array(
+                            z.object({
+                                planetId: z.string(),
+                                facilityCount: z.number(),
+                                avgEfficiency: z.number().nullable(),
+                                totalWorkers: z.number(),
+                                unusedWorkerFraction: z.number(),
+                                topResources: z.array(z.object({ name: z.string(), quantity: z.number() })),
+                            }),
+                        ),
+                    })
+                    .nullable(),
+            }),
+        )
+        .query(async ({ input }) => {
+            return repoGetAgentOverview(db, input.agentId);
+        });
+
+/**
+ * Full per-planet assets for one agent on one planet.
+ * Used on the /agents/[agentId]/[planetId] detail page.
+ */
+export const getAgentPlanetDetail = () =>
+    procedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                // z.any() because the assets object has deeply nested types
+                // (ProductionFacility, StorageFacility, WorkforceDemography etc.)
+                detail: z.any(),
+            }),
+        )
+        .query(async ({ input }) => {
+            return repoGetAgentPlanetDetail(db, input.agentId, input.planetId);
         });

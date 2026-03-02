@@ -130,6 +130,14 @@ function EducationCard({
                 {label}
             </Badge>
 
+            {typeof available === 'number' && (
+                <Stat
+                    label='Available'
+                    value={fmt(available)}
+                    valueClassName={available > 0 ? 'text-blue-600' : 'text-muted-foreground'}
+                />
+            )}
+
             {/* ── Headcount ── */}
             <Stat
                 label='Target'
@@ -167,17 +175,10 @@ function EducationCard({
                     </>
                 }
             />
-            {typeof available === 'number' && (
-                <Stat
-                    label='Available'
-                    value={fmt(available)}
-                    valueClassName={available > 0 ? 'text-blue-600' : 'text-muted-foreground'}
-                />
-            )}
-            <Stat label='Total' value={fmt(totalWorkforce)} valueClassName='text-foreground' bold />
+            <Stat label='Current total' value={fmt(totalWorkforce)} valueClassName='text-foreground' bold />
             <Stat
-                label='Worker '
-                value={`${unused >= 0 ? '+' : '−'}${fmt(Math.abs(unused))}`}
+                label={`${unused < 0 ? 'Worker shortage' : 'Unused Worker '}`}
+                value={`${fmt(Math.abs(unused))}`}
                 valueClassName={unused > 0 ? 'text-green-600' : unused < 0 ? 'text-red-500' : 'text-muted-foreground'}
             />
 

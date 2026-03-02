@@ -1,69 +1,62 @@
 import { isMonthBoundary, isYearBoundary } from './constants';
-import { laborMarketMonthTick, laborMarketTick, laborMarketYearTick, updateAllocatedWorkers } from './workforce';
 import type { GameState } from './planet';
 import { checkPopulationWorkforceConsistency } from './invariants';
 import { environmentTick } from './environment';
-import { populationTick, populationAdvanceYearTick, populationAdvanceYear } from './population';
+import { populationTick, populationAdvanceYear } from './population';
 import { productionTick } from './production';
+import { updateAllocatedWorkers } from './workforce/allocatedWorkers';
+import { laborMarketTick } from './workforce/laborMarketTick';
+import { laborMarketMonthTick } from './workforce/laborMarketMonthTick';
+import { laborMarketYearTick } from './workforce/laborMarketYearTick';
+import { populationAdvanceYearTick } from './population/populationTick';
+import { seedRng } from './utils/stochasticRound';
 
 export type { GameState };
-export { populationTick, populationAdvanceYearTick, populationAdvanceYear, environmentTick, productionTick };
+export { populationTick, populationAdvanceYear, environmentTick, productionTick };
+export { seedRng };
 
 process.env.SIM_DEBUG = '1';
+
+function debugCheck(stepName: string, gs: GameState): void {
+    if (process.env.SIM_DEBUG !== '1') {
+        return;
+    }
+    const d = checkPopulationWorkforceConsistency(gs.agents, gs.planets);
+    if (d.length) {
+        throw new Error(`tick ${gs.tick} after ${stepName}: ${d.join('; ')}`);
+    }
+}
 
 // internalTickCounter has been removed; gameState.tick (incremented by the
 // caller before advanceTick is called) is used for all boundary checks.
 export function advanceTick(gameState: GameState) {
     environmentTick(gameState);
-    if (process.env.SIM_DEBUG === '1') {
-        const d = checkPopulationWorkforceConsistency(gameState.agents, gameState.planets);
-        if (d.length) {
-            throw new Error(`after environmentTick: ${d.join('; ')}`);
-        }
-    }
+    debugCheck('environmentTick', gameState);
+
     updateAllocatedWorkers(gameState.agents, gameState.planets);
-    if (process.env.SIM_DEBUG === '1') {
-        const d = checkPopulationWorkforceConsistency(gameState.agents, gameState.planets);
-        if (d.length) {
-            throw new Error(`after updateAllocatedWorkers: ${d.join('; ')}`);
-        }
-    }
+    debugCheck('updateAllocatedWorkers', gameState);
+
     laborMarketTick(gameState.agents, gameState.planets);
-    if (process.env.SIM_DEBUG === '1') {
-        const d = checkPopulationWorkforceConsistency(gameState.agents, gameState.planets);
-        if (d.length) {
-            throw new Error(`after laborMarketTick: ${d.join('; ')}`);
-        }
-    }
+    debugCheck('laborMarketTick', gameState);
+
     populationTick(gameState);
-    if (process.env.SIM_DEBUG === '1') {
-        const d = checkPopulationWorkforceConsistency(gameState.agents, gameState.planets);
-        if (d.length) {
-            throw new Error(`after populationTick: ${d.join('; ')}`);
-        }
-    }
+    debugCheck('populationTick', gameState);
+
     productionTick(gameState);
-    if (process.env.SIM_DEBUG === '1') {
-        const d = checkPopulationWorkforceConsistency(gameState.agents, gameState.planets);
-        if (d.length) {
-            throw new Error(`after productionTick: ${d.join('; ')}`);
-        }
-    }
+    debugCheck('productionTick', gameState);
 
     if (isMonthBoundary(gameState.tick)) {
         laborMarketMonthTick(gameState.agents, gameState.planets);
+        debugCheck('laborMarketMonthTick', gameState);
     }
 
     if (isYearBoundary(gameState.tick)) {
         populationAdvanceYearTick(gameState);
+        debugCheck('populationBoundaryTick', gameState);
         laborMarketYearTick(gameState.agents);
+        debugCheck('laborMarketYearTick', gameState);
     }
 
     // Final check
-    if (process.env.SIM_DEBUG === '1') {
-        const d = checkPopulationWorkforceConsistency(gameState.agents, gameState.planets);
-        if (d.length) {
-            throw new Error(`after advanceTick: ${d.join('; ')}`);
-        }
-    }
+    debugCheck('final', gameState);
 }

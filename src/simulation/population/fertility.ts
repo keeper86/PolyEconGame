@@ -15,6 +15,7 @@
 
 import { TICKS_PER_YEAR } from '../constants';
 import type { Environment, Population } from '../planet';
+import { stochasticRound } from '../utils/stochasticRound';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -67,11 +68,12 @@ export function computeBirthsThisTick(
     const lifetimeFertilityAdjusted =
         LIFETIME_FERTILITY * (1 - Math.pow(starvationLevel, 1.5)) * (1 - 0.5 * fertReduction);
 
-    const birthsPerYear = Math.floor(
-        (lifetimeFertilityAdjusted * fertileWomen) / (END_FERTILE_AGE - START_FERTILE_AGE + 1),
-    );
+    const birthsPerYear = (lifetimeFertilityAdjusted * fertileWomen) / (END_FERTILE_AGE - START_FERTILE_AGE + 1);
 
-    return Math.floor(birthsPerYear / TICKS_PER_YEAR);
+    // Single stochastic round at the end — avoids the systematic downward
+    // bias of the previous double-floor which would permanently suppress
+    // births on small planets (e.g. expected 0.8 → always 0).
+    return stochasticRound(birthsPerYear / TICKS_PER_YEAR);
 }
 
 /**
@@ -82,4 +84,25 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
     if (birthsThisTick > 0) {
         population.demography[0].none.education += birthsThisTick;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Population-level fertility step
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute and apply births for a single tick.
+ *
+ * This is the top-level entry point called by the population orchestrator.
+ * It combines `computeBirthsThisTick` and `applyBirths` so that the
+ * orchestrator does not need to know about fertile-women counts or
+ * pollution details.
+ */
+export function populationBirthsTick(
+    population: Population,
+    fertileWomen: number,
+    pollution: Environment['pollution'],
+): void {
+    const births = computeBirthsThisTick(fertileWomen, population.starvationLevel, pollution);
+    applyBirths(population, births);
 }

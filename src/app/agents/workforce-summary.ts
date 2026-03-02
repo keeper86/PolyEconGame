@@ -3,14 +3,9 @@
  * Pure logic — no React, no UI.
  */
 
+import { ageProductivityMultiplier, DEFAULT_HIRE_AGE_MEAN, experienceMultiplier, MAX_TENURE_YEARS } from '@/simulation/workforce/index';
 import type { EducationLevelType, WorkforceDemography } from '../../simulation/planet';
 import { educationLevelKeys } from '../../simulation/planet';
-import {
-    experienceMultiplier,
-    ageProductivityMultiplier,
-    MAX_TENURE_YEARS,
-    DEFAULT_HIRE_AGE_MEAN,
-} from '../../simulation/workforce';
 
 // ---------------------------------------------------------------------------
 // Summary type

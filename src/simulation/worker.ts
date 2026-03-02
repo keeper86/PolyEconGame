@@ -13,8 +13,8 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { db } from '../server/db';
 import { saveGameStateSnapshot } from '../server/snapshotRepository';
-import { advanceTick, type GameState } from './engine';
-import { alphaCentauri, earth, earthGovernment, testCompany } from './entities';
+import { advanceTick, seedRng, type GameState } from './engine';
+import { earth, earthGovernment, testCompany } from './entities';
 import { agriculturalProductResourceType, putIntoStorageFacility, waterResourceType } from './facilities';
 import { type TransportShip } from './planet';
 
@@ -49,6 +49,12 @@ export default function simulationTask(): Promise<void> {
     // -----------------------------------------------------------------
 
     const TICK_INTERVAL_MS: number = typeof workerData?.tickIntervalMs === 'number' ? workerData.tickIntervalMs : 0;
+
+    // Seed the stochastic rounding PRNG for reproducibility.
+    // Using a fixed seed ensures identical simulation runs for the same
+    // starting conditions.  A future enhancement could persist and restore
+    // the seed for save/load support.
+    seedRng(42);
 
     const state: GameState = {
         tick: 0,

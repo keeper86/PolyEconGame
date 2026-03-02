@@ -1,5 +1,6 @@
 import type { Agent, Planet } from './planet';
 import { MIN_EMPLOYABLE_AGE } from './constants';
+import { exit } from 'process';
 
 type OccupationTotals = {
     company: number;
@@ -197,7 +198,8 @@ export function checkPopulationWorkforceConsistency(agents: Agent[], planets: Pl
     }
 
     if (discrepancies.length && process.env.SIM_DEBUG === '1') {
-        throw new Error('Population/workforce consistency check failed:\n' + discrepancies.join('\n'));
+        console.error('Population/workforce consistency check failed:\n' + discrepancies.join('\n'));
+        exit(1);
     }
     return discrepancies;
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import { environmentTick, productionTick, populationTick } from './engine';
 import { agriculturalProductResourceType, putIntoStorageFacility, queryStorageFacility } from './facilities';
-import { totalPopulation } from './populationHelpers';
+import { totalPopulation } from './population/populationHelpers';
 import type { StorageFacility, ProductionFacility, Resource } from './facilities';
 import type { Planet, Agent, EducationLevelType } from './planet';
 import type { GameState } from './engine';

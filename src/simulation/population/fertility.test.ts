@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emptyCohort } from '../populationHelpers';
+import { emptyCohort } from './populationHelpers';
 import type { Population } from '../planet';
 import { maxAge } from '../planet';
 import { fertReductionFromPollution, computeBirthsThisTick, applyBirths } from './fertility';

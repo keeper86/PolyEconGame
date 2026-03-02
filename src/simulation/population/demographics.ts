@@ -6,7 +6,7 @@
  */
 
 import type { Population } from '../planet';
-import { sumCohort } from '../populationHelpers';
+import { sumCohort } from './populationHelpers';
 import { START_FERTILE_AGE, END_FERTILE_AGE } from './fertility';
 
 // ---------------------------------------------------------------------------

@@ -29,11 +29,8 @@ export default function SimulationPage() {
                     <h3 className='text-xl font-semibold mt-6 mb-2'>1.1 Pollution Regeneration</h3>
                     <p>
                         Each planet tracks three pollution indices — air, water, and soil — each on a scale of{' '}
-                        <em>
-                            [0, &infin;)
-                        </em>{' '}
-                        (higher = more polluted). At every tick the natural environment removes a portion of each index
-                        via a <strong>combined constant + proportional decay</strong>:
+                        <em>[0, &infin;)</em> (higher = more polluted). At every tick the natural environment removes a
+                        portion of each index via a <strong>combined constant + proportional decay</strong>:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`P(t+1) = max(0, P(t) − c − r · P(t))
@@ -74,8 +71,7 @@ where
                     <p>
                         The labor market links each agent&apos;s workforce demand (captured in{' '}
                         <code>allocatedWorkers</code>) to the planet&apos;s available population. Workers are
-                        categorized by education level:{' '}
-                        <em>none, primary, secondary, tertiary, quaternary</em>.
+                        categorized by education level: <em>none, primary, secondary, tertiary, quaternary</em>.
                     </p>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>2.1 Voluntary Quits</h3>
@@ -125,9 +121,9 @@ if surplus > 0:
                     <h3 className='text-xl font-semibold mt-6 mb-2'>2.4 Worker Allocation Targets</h3>
                     <p>
                         Before the labor market tick, the system re-computes each agent&apos;s{' '}
-                        <code>allocatedWorkers</code> target by summing scaled worker requirements across all
-                        production facilities on a planet. To prevent runaway hiring, targets are reduced when the
-                        idle-worker fraction exceeds <code>ACCEPTABLE_IDLE_FRACTION = 5%</code>:
+                        <code>allocatedWorkers</code> target by summing scaled worker requirements across all production
+                        facilities on a planet. To prevent runaway hiring, targets are reduced when the idle-worker
+                        fraction exceeds <code>ACCEPTABLE_IDLE_FRACTION = 5%</code>:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`demand[edu] = Σ_f (workerRequirement_f[edu] · scale_f)   for all facilities f
@@ -201,8 +197,8 @@ deaths are distributed proportionally across education × occupation cells
 (Hamilton largest-remainder method)`}
                     </pre>
                     <p>
-                        Because S itself adjusts gradually (see §3.1), mortality also rises and falls gradually after
-                        a famine event — no instant demographic snap-back occurs.
+                        Because S itself adjusts gradually (see §3.1), mortality also rises and falls gradually after a
+                        famine event — no instant demographic snap-back occurs.
                     </p>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>3.3 Births (Fertility Model)</h3>
@@ -225,10 +221,9 @@ birthsPerTick = floor(birthsPerYear / TICKS_PER_YEAR)`}
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>3.4 Disability Transitions</h3>
                     <p>
-                        At each tick, a fraction of non-disabled workers transitions to{' '}
-                        <code>unableToWork</code> due to age-related disability, pollution, natural disasters, or
-                        starvation. Chronic famine thus produces long-term workforce degradation even after food
-                        supply recovers (via S inertia):
+                        At each tick, a fraction of non-disabled workers transitions to <code>unableToWork</code> due to
+                        age-related disability, pollution, natural disasters, or starvation. Chronic famine thus
+                        produces long-term workforce degradation even after food supply recovers (via S inertia):
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`d_pollution  = min(0.5, air · 0.0001 + water · 0.0001 + soil · 0.00002)
@@ -368,8 +363,8 @@ pollution added = pollutionPerTick · scale · overallEfficiency`}
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>6.1 Aging</h3>
                     <p>
-                        Every cohort at age <em>a</em> moves to <em>a + 1</em>. Cohort 0 (newborns) is reset to zero
-                        and will be refilled over the coming year by per-tick births.
+                        Every cohort at age <em>a</em> moves to <em>a + 1</em>. Cohort 0 (newborns) is reset to zero and
+                        will be refilled over the coming year by per-tick births.
                     </p>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>6.2 Education Graduation and Dropout</h3>
@@ -415,8 +410,8 @@ Education level parameters:
                     <h2 className='text-2xl font-bold mt-8 mb-3'>7. Labor Market Year Tick (every 360 ticks)</h2>
                     <p>
                         Once per year, tenure advances by one year for all active and departing workers. Additionally,
-                        workers whose mean age has reached or exceeded the retirement threshold
-                        (RETIREMENT_AGE = 67 years) are transitioned into the retiring pipeline.
+                        workers whose mean age has reached or exceeded the retirement threshold (RETIREMENT_AGE = 67
+                        years) are transitioned into the retiring pipeline.
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`Tenure advance:
@@ -468,12 +463,11 @@ Retirement (per tenure cohort c, education level edu):
                             <em>(month boundary only)</em> <code>laborMarketMonthTick</code> — notice pipeline advance
                         </li>
                         <li>
-                            <em>(year boundary only)</em> <code>populationAdvanceYearTick</code> — aging, education
+                            <em>(year boundary only)</em> <code>populationBoundaryTick</code> — aging, education
                             transitions
                         </li>
                         <li>
-                            <em>(year boundary only)</em> <code>laborMarketYearTick</code> — tenure advance,
-                            retirement
+                            <em>(year boundary only)</em> <code>laborMarketYearTick</code> — tenure advance, retirement
                         </li>
                     </ol>
                     <p className='mt-4'>

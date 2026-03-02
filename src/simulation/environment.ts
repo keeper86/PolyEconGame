@@ -1,4 +1,3 @@
-import { regenerateRenewableResources } from './entities';
 import type { GameState } from './planet';
 
 export function environmentTick(gameState: GameState) {
@@ -23,6 +22,13 @@ export function environmentTick(gameState: GameState) {
                 planet.environment.pollution.soil * planet.environment.regenerationRates.soil.percentage,
         );
 
-        regenerateRenewableResources(planet);
+        for (const resourceEntries of Object.values(planet.resources)) {
+            for (const entry of resourceEntries) {
+                if (entry.regenerationRate > 0) {
+                    const toRegenerate = Math.min(entry.regenerationRate, entry.maximumCapacity - entry.quantity);
+                    entry.quantity += toRegenerate;
+                }
+            }
+        }
     });
 }

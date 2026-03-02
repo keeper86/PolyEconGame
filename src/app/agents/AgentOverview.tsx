@@ -6,7 +6,7 @@ import { Page } from '../../components/client/Page';
 import type { LastTickResults, ProductionFacility } from '../../simulation/facilities';
 import type { Agent, EducationLevelType } from '../../simulation/planet';
 import { educationLevels } from '../../simulation/planet';
-import WorkforceDemographyPanel from './WorkforceDemographyPanelNew2';
+import WorkforceDemographyPanel from './WorkforceDemographyPanel';
 
 /** One snapshot per tick, keyed by resource name → quantity. */
 export type AgentResourceSnapshot = {

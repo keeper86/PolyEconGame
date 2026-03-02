@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 
 import { advanceTick } from './engine';
-import { createWorkforceDemography } from './workforce';
-import { emptyCohort, totalPopulation } from './populationHelpers';
+import { emptyCohort, totalPopulation } from './population/populationHelpers';
+import { createWorkforceDemography } from './workforce/workforceHelpers';
 
 // Minimal storage facility stub (not used but assets expect it)
 function makeStorageFacility() {

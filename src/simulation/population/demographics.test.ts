@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emptyCohort } from '../populationHelpers';
+import { emptyCohort } from './populationHelpers';
 import { maxAge } from '../planet';
 import { calculateDemographicStats } from './demographics';
 import { START_FERTILE_AGE, END_FERTILE_AGE } from './fertility';

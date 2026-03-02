@@ -1,19 +1,16 @@
 import { extractFromClaimedResource, queryClaimedResource } from './entities';
-import {
-    putIntoStorageFacility,
-    queryStorageFacility,
-    removeFromStorageFacility,
-} from './facilities';
-import {
-    totalActiveForEdu,
-    totalDepartingForEdu,
-    ageProductivityMultiplier,
-    experienceMultiplier,
-    DEFAULT_HIRE_AGE_MEAN,
-    DEPARTING_EFFICIENCY,
-} from './workforce';
+import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facilities';
 import type { EducationLevelType, GameState } from './planet';
 import { educationLevelKeys } from './planet';
+import {
+    ageProductivityMultiplier,
+    DEFAULT_HIRE_AGE_MEAN,
+    DEPARTING_EFFICIENCY,
+    experienceMultiplier,
+    totalActiveForEdu,
+    totalDepartingForEdu,
+} from './workforce/workforceHelpers';
+import { stochasticRound } from './utils/stochasticRound';
 
 export function productionTick(gameState: GameState) {
     gameState.agents.forEach((agent) => {
@@ -33,7 +30,7 @@ export function productionTick(gameState: GameState) {
             for (const edu of educationLevelKeys) {
                 const active = workforce ? totalActiveForEdu(workforce, edu) : 0;
                 const departing = workforce ? totalDepartingForEdu(workforce, edu) : 0;
-                remainingWorker[edu] = active + Math.floor(departing * DEPARTING_EFFICIENCY);
+                remainingWorker[edu] = active + stochasticRound(departing * DEPARTING_EFFICIENCY);
             }
 
             // Compute age-dependent productivity multiplier per education level,
@@ -122,6 +119,31 @@ export function productionTick(gameState: GameState) {
                     slotFilled.set(s.jobEdu, { effectiveFilled: 0, totalFilled: 0, overqualified: 0, takenByEdu: {} });
                 }
 
+                // --- Pre-compute resource availability so worker allocation can
+                // scale down when inputs are missing. This prevents allocating
+                // workers as if resources were available at 100% when they are
+                // actually scarce.
+                const resourceEfficiencyMap: Record<string, number> = {};
+                const resourceEfficiencies = facility.needs.map((need) => {
+                    const requiredAmount = need.quantity * facility.scale;
+
+                    if (need.resource.type === 'landBoundResource') {
+                        const total = queryClaimedResource(planet, agent, need.resource);
+                        const eff = Math.min(1, total / requiredAmount);
+                        resourceEfficiencyMap[need.resource.name] = eff;
+                        return eff;
+                    }
+
+                    const available = queryStorageFacility(assets.storageFacility, need.resource.name);
+                    const eff = Math.min(1, available / requiredAmount);
+                    resourceEfficiencyMap[need.resource.name] = eff;
+                    return eff;
+                });
+
+                // If there are no needs then resource efficiency is effectively 1.
+                const resourceEfficiencyScalar =
+                    resourceEfficiencies.length > 0 ? Math.min(...resourceEfficiencies) : 1;
+
                 // ── Pass 1: exact-match only ──────────────────────────────
                 for (const { jobEdu, effectiveTarget } of activeSlots) {
                     const acc = slotFilled.get(jobEdu)!;
@@ -129,8 +151,12 @@ export function productionTick(gameState: GameState) {
                     const tenureProd = workerTenureProductivity[jobEdu];
                     const combinedProd = ageProd * tenureProd;
                     const available = remainingWorker[jobEdu] || 0;
-                    const effectiveGap = effectiveTarget - acc.effectiveFilled;
-                    const bodiesNeeded = combinedProd > 0 ? Math.ceil(effectiveGap / combinedProd) : available;
+                    // Note: scale the effective target down according to resource availability
+                    // so we don't allocate workers for production that can't happen.
+                    const scaledEffectiveTarget = effectiveTarget * resourceEfficiencyScalar;
+                    const effectiveGapScaled = scaledEffectiveTarget - acc.effectiveFilled;
+                    const bodiesNeeded =
+                        combinedProd > 0 ? Math.ceil(Math.max(0, effectiveGapScaled) / combinedProd) : available;
                     const take = Math.min(bodiesNeeded, available);
                     if (take > 0) {
                         remainingWorker[jobEdu] -= bodiesNeeded;
@@ -143,13 +169,14 @@ export function productionTick(gameState: GameState) {
                 // ── Pass 2: cascade remaining shortfalls upward ───────────
                 for (const { jobEdu, jobEduIdx, effectiveTarget } of activeSlots) {
                     const acc = slotFilled.get(jobEdu)!;
-                    if (acc.effectiveFilled >= effectiveTarget) {
-                        continue; // already satisfied in pass 1
+                    const scaledEffectiveTarget = effectiveTarget * resourceEfficiencyScalar;
+                    if (acc.effectiveFilled >= scaledEffectiveTarget) {
+                        continue; // already satisfied in pass 1 (scaled by resource availability)
                     }
                     // Start one level above the exact match (already consumed in pass 1)
                     for (
                         let i = jobEduIdx + 1;
-                        i < educationLevelKeys.length && acc.effectiveFilled < effectiveTarget;
+                        i < educationLevelKeys.length && acc.effectiveFilled < scaledEffectiveTarget;
                         i++
                     ) {
                         const candidateEdu = educationLevelKeys[i];
@@ -157,8 +184,9 @@ export function productionTick(gameState: GameState) {
                         const tenureProd = workerTenureProductivity[candidateEdu];
                         const combinedProd = ageProd * tenureProd;
                         const available = remainingWorker[candidateEdu] || 0;
-                        const effectiveGap = effectiveTarget - acc.effectiveFilled;
-                        const bodiesNeeded = combinedProd > 0 ? Math.ceil(effectiveGap / combinedProd) : available;
+                        const effectiveGap = scaledEffectiveTarget - acc.effectiveFilled;
+                        const bodiesNeeded =
+                            combinedProd > 0 ? Math.ceil(Math.max(0, effectiveGap) / combinedProd) : available;
                         const take = Math.min(bodiesNeeded, available);
                         if (take > 0) {
                             remainingWorker[candidateEdu] -= bodiesNeeded;
@@ -184,26 +212,7 @@ export function productionTick(gameState: GameState) {
                     reducedEfficiencyDueToWorkers = Math.min(reducedEfficiencyDueToWorkers, levelEff);
                 }
 
-                const resourceEfficiencyMap: Record<string, number> = {};
-                const resourceEfficiencies = facility.needs.map((need) => {
-                    const requiredAmount = need.quantity * facility.scale;
-
-                    // land-bound resources (e.g. arable land, water sources) are not stored in storage
-                    // facilities. They live on the planet as resource claims and must be queried/extracted directly from there (and only if this agent is the tenant of the claim, i.e. currently using it).
-                    if (need.resource.type === 'landBoundResource') {
-                        const total = queryClaimedResource(planet, agent, need.resource);
-                        const eff = Math.min(1, total / requiredAmount);
-                        resourceEfficiencyMap[need.resource.name] = eff;
-                        return eff;
-                    }
-
-                    // default: query from storage facility
-                    const available = queryStorageFacility(assets.storageFacility, need.resource.name);
-                    const eff = Math.min(1, available / requiredAmount);
-                    resourceEfficiencyMap[need.resource.name] = eff;
-                    return eff;
-                });
-
+                // resourceEfficiencyMap and resourceEfficiencies were computed earlier
                 const overallEfficiency = Math.min(reducedEfficiencyDueToWorkers, ...resourceEfficiencies);
                 facility.lastTickEfficiencyInPercent = Math.round(overallEfficiency * 100);
 
@@ -267,7 +276,7 @@ export function productionTick(gameState: GameState) {
 
                 // Produce outputs scaled by overall efficiency
                 facility.produces.forEach((output) => {
-                    const producedAmount = Math.floor(output.quantity * facility.scale * overallEfficiency);
+                    const producedAmount = stochasticRound(output.quantity * facility.scale * overallEfficiency);
                     if (producedAmount <= 0) {
                         return; // nothing produced, skip
                     }
@@ -325,7 +334,7 @@ export function productionTick(gameState: GameState) {
             const totalHired = educationLevelKeys.reduce((sum, edu) => {
                 const active = workforce ? totalActiveForEdu(workforce, edu) : 0;
                 const departing = workforce ? totalDepartingForEdu(workforce, edu) : 0;
-                return sum + active + Math.floor(departing * DEPARTING_EFFICIENCY);
+                return sum + active + stochasticRound(departing * DEPARTING_EFFICIENCY);
             }, 0);
             const totalUnused = educationLevelKeys.reduce((sum, edu) => sum + (remainingWorker[edu] || 0), 0);
             assets.unusedWorkers = { ...remainingWorker } as Record<EducationLevelType, number>;

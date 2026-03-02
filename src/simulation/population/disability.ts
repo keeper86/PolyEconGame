@@ -6,9 +6,11 @@
  * disasters, and starvation.
  */
 
-import type { Cohort, Occupation, Environment } from '../planet';
-import { educationLevelKeys } from '../planet';
+import type { Cohort, Occupation, Environment, Population } from '../planet';
+import { educationLevelKeys, maxAge, OCCUPATIONS } from '../planet';
+import { emptyAccumulator, sumCohort } from './populationHelpers';
 import { convertAnnualToPerTick } from './mortality';
+import { stochasticRound } from '../utils/stochasticRound';
 
 // ---------------------------------------------------------------------------
 // Starvation disability coefficient
@@ -108,17 +110,74 @@ export function applyDisabilityTransitions(
     const { pollutionDisabilityProb, disasterDisabilityProb } = environmentalDisability;
     const starvationDisabilityProb = STARVATION_DISABILITY_COEFFICIENT * Math.pow(starvationLevel, 2);
     const totalDisabilityProb =
-        pollutionDisabilityProb + disasterDisabilityProb + ageDependentBaseDisabilityProb(age) + starvationDisabilityProb;
+        pollutionDisabilityProb +
+        disasterDisabilityProb +
+        ageDependentBaseDisabilityProb(age) +
+        starvationDisabilityProb;
     const perTickDisabilityProb = convertAnnualToPerTick(totalDisabilityProb);
 
     for (const edu of educationLevelKeys) {
         for (const occ of DISABILITY_SOURCE_OCCUPATIONS) {
             const occCount = cohort[edu][occ];
-            const moveFromOcc = Math.floor(occCount * perTickDisabilityProb);
+            const moveFromOcc = stochasticRound(occCount * perTickDisabilityProb);
             if (moveFromOcc > 0) {
                 cohort[edu][occ] -= moveFromOcc;
                 cohort[edu].unableToWork += moveFromOcc;
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Population-level disability step
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply disability transitions to every age cohort of a population.
+ *
+ * - Computes environmental + starvation disability per cohort.
+ * - Moves affected people from source occupations to 'unableToWork'.
+ * - Records new disability transitions per education × source-occupation
+ *   in `population.tickNewDisabilities` for downstream consumption (e.g.
+ *   workforce sync, snapshots).
+ *
+ * This is the **only** place where disability transitions happen — the
+ * orchestrator does not need any inline loop.
+ */
+export function applyDisability(population: Population, environment: Environment): void {
+    const environmentalDisability = computeEnvironmentalDisability(environment);
+    const tickNewDisabilities = emptyAccumulator();
+
+    for (let age = maxAge; age >= 0; age--) {
+        const cohort = population.demography[age];
+        if (!cohort) {
+            continue;
+        }
+        if (sumCohort(cohort) === 0) {
+            continue;
+        }
+
+        // Snapshot occupation counts before the transition
+        const before: Record<string, Record<string, number>> = {};
+        for (const edu of educationLevelKeys) {
+            before[edu] = {};
+            for (const occ of OCCUPATIONS) {
+                before[edu][occ] = cohort[edu][occ];
+            }
+        }
+
+        applyDisabilityTransitions(cohort, age, environmentalDisability, population.starvationLevel);
+
+        // Record net transitions into unableToWork per edu × source-occ
+        for (const edu of educationLevelKeys) {
+            for (const occ of DISABILITY_SOURCE_OCCUPATIONS) {
+                const moved = Math.max(0, before[edu][occ] - cohort[edu][occ]);
+                if (moved > 0) {
+                    tickNewDisabilities[edu][occ] += moved;
+                }
+            }
+        }
+    }
+
+    population.tickNewDisabilities = tickNewDisabilities;
 }

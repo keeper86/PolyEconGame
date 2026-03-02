@@ -155,12 +155,35 @@ export interface TenureCohort {
 /** Array of TenureCohort indexed by tenure year (0 = first year of employment). */
 export type WorkforceDemography = TenureCohort[];
 
+/**
+ * Accumulator keyed by education × occupation, used by the population
+ * pipeline to record per-tick events (deaths, new disabilities) so that
+ * downstream systems (e.g. workforce sync) can consume them without
+ * intermediate parameters being threaded through the orchestrator.
+ */
+export type PopulationTickAccumulator = Record<EducationLevelType, Record<Occupation, number>>;
+
 // Population = array of cohorts, index = age (0 = newborns)
 export type Population = {
     demography: Cohort[];
     // starvationLevel: 0 = no starvation, 1 = full starvation (very high immediate mortality)
     // This persists across ticks and is updated by the simulation engine.
     starvationLevel: number;
+
+    /**
+     * Deaths that occurred during the current tick, keyed by
+     * education × occupation.  Written by the mortality step, consumed by
+     * the workforce sync step, then reset at the start of the next tick.
+     * Available for snapshot / observability.
+     */
+    tickDeaths?: PopulationTickAccumulator;
+
+    /**
+     * New disability transitions that occurred during the current tick,
+     * keyed by education × source-occupation.  Written by the disability
+     * step.  Available for snapshot / observability.
+     */
+    tickNewDisabilities?: PopulationTickAccumulator;
 };
 
 export type Infrastructure = {

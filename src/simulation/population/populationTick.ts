@@ -4,20 +4,23 @@
  * Orchestrates the per-tick population update by composing the independent
  * sub-systems (nutrition → mortality → disability → fertility).
  *
+ * Each step operates on the shared `Population` state and writes its
+ * results (e.g. `tickDeaths`, `tickNewDisabilities`) into population
+ * fields so that downstream systems (workforce sync, snapshots) can
+ * consume them without requiring threaded accumulators.
+ *
  * Year-boundary aging is handled separately by `populationAdvanceYearTick`.
  */
 
-import type { EducationLevelType, GameState, Occupation } from '../planet';
-import { educationLevelKeys, maxAge, OCCUPATIONS } from '../planet';
-import { distributeLike, emptyCohort } from '../populationHelpers';
-import { applyPopulationDeathsToWorkforce } from '../workforce';
+import type { GameState } from '../planet';
+import { syncWorkforceWithPopulation } from '../workforce';
 
-import { calculateDemographicStats } from './demographics';
-import { consumeFood } from './nutrition';
-import { computeEnvironmentalMortality, computeExtraAnnualMortality, perTickMortality } from './mortality';
-import { applyDisabilityTransitions, computeEnvironmentalDisability } from './disability';
-import { applyBirths, computeBirthsThisTick } from './fertility';
 import { populationAdvanceYear } from './aging';
+import { calculateDemographicStats } from './demographics';
+import { applyDisability } from './disability';
+import { populationBirthsTick } from './fertility';
+import { applyMortality } from './mortality';
+import { consumeFood } from './nutrition';
 
 // ---------------------------------------------------------------------------
 // Per-tick population update
@@ -36,71 +39,17 @@ export function populationTick(gameState: GameState): void {
         // 1. Food consumption & starvation tracking
         consumeFood(planet, population, populationTotal);
 
-        // 2. Pre-compute environmental factors (used by mortality & disability)
-        const environmentalMortality = computeEnvironmentalMortality(planet.environment);
-        const extraAnnualMortality = computeExtraAnnualMortality(environmentalMortality);
-        const environmentalDisability = computeEnvironmentalDisability(planet.environment);
+        // 2. Mortality — writes population.tickDeaths
+        applyMortality(population, planet.environment, totalInCohort);
 
-        // Accumulator of deaths per education × occupation for workforce sync
-        const deathsByEduOcc: Record<EducationLevelType, Record<Occupation, number>> = {} as Record<
-            EducationLevelType,
-            Record<Occupation, number>
-        >;
-        for (const edu of educationLevelKeys) {
-            deathsByEduOcc[edu] = {} as Record<Occupation, number>;
-            for (const occ of OCCUPATIONS) {
-                deathsByEduOcc[edu][occ] = 0;
-            }
-        }
-
-        // 3. Apply mortality & disability per age cohort
-        for (let age = maxAge; age >= 0; age--) {
-            const cohort = population.demography[age];
-            if (!cohort) {
-                continue;
-            }
-            const total = totalInCohort[age];
-            if (total === 0) {
-                continue;
-            }
-
-            // --- Mortality ---
-            const totalPerTickMort = perTickMortality(age, population.starvationLevel, extraAnnualMortality);
-            const survivors = Math.floor(total * (1 - totalPerTickMort));
-
-            if (survivors === 0) {
-                population.demography[age] = emptyCohort();
-                continue;
-            }
-
-            const survivorsCohort = distributeLike(survivors, cohort);
-
-            // --- Disability ---
-            applyDisabilityTransitions(survivorsCohort, age, environmentalDisability, population.starvationLevel);
-
-            // --- Record deaths for workforce sync ---
-            for (const edu of educationLevelKeys) {
-                for (const occ of OCCUPATIONS) {
-                    const before = cohort[edu][occ] ?? 0;
-                    const after = survivorsCohort[edu][occ] ?? 0;
-                    const dead = Math.max(0, before - after);
-                    deathsByEduOcc[edu][occ] += dead;
-                }
-            }
-
-            population.demography[age] = survivorsCohort;
-        }
+        // 3. Disability — writes population.tickNewDisabilities
+        applyDisability(population, planet.environment);
 
         // 4. Births
-        const birthsThisTick = computeBirthsThisTick(
-            fertileWomen,
-            population.starvationLevel,
-            planet.environment.pollution,
-        );
-        applyBirths(population, birthsThisTick);
+        populationBirthsTick(population, fertileWomen, planet.environment.pollution);
 
-        // 5. Sync workforce with authoritative population deaths
-        applyPopulationDeathsToWorkforce(gameState.agents, planet.id, deathsByEduOcc);
+        // 5. Sync workforce with authoritative population deaths & disabilities
+        syncWorkforceWithPopulation(gameState.agents, planet.id, population, planet.environment, planet);
     });
 }
 
@@ -109,7 +58,7 @@ export function populationTick(gameState: GameState): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Called by `advanceTick` at every year boundary.
+ * Called at every year boundary.
  * Applies aging and education progression to every planet's population.
  */
 export function populationAdvanceYearTick(gameState: GameState): void {

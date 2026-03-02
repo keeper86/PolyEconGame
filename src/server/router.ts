@@ -1,7 +1,16 @@
 import { health } from './controller/health';
 import { logs } from './controller/logs';
 import { ship } from './controller/ship';
-import { getLatestPlanets, getLatestAgents, getPlanetHistory, getAgentHistory } from './controller/simulation';
+import {
+    getLatestPlanets,
+    getLatestAgents,
+    getPlanetHistory,
+    getAgentHistory,
+    getAgentListSummaries,
+    getAgentDetail,
+    getAgentOverview,
+    getAgentPlanetDetail,
+} from './controller/simulation';
 
 import { getUser, getUsers, updateUser } from './controller/user';
 import { trpcRoot } from './trpcRoot';
@@ -9,6 +18,10 @@ import { trpcRoot } from './trpcRoot';
 const simulationRouter = trpcRoot.router({
     getLatestPlanets: getLatestPlanets(),
     getLatestAgents: getLatestAgents(),
+    getAgentListSummaries: getAgentListSummaries(),
+    getAgentDetail: getAgentDetail(),
+    getAgentOverview: getAgentOverview(),
+    getAgentPlanetDetail: getAgentPlanetDetail(),
     getPlanetHistory: getPlanetHistory(),
     getAgentHistory: getAgentHistory(),
 });

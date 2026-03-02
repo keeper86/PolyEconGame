@@ -1,25 +1,23 @@
 'use client';
 
-import AgentOverview from '@/app/agents/AgentOverview';
+import { useQuery } from '@tanstack/react-query';
+import AgentSummaryCard from '@/app/agents/AgentSummaryCard';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
-import { useAgentData, useAgentHistory } from '@/hooks/useAgentData';
-import type { AgentTimeSeries } from '@/app/agents/AgentOverview';
-import type { Agent } from '@/simulation/planet';
+import { useTRPC } from '@/lib/trpc';
 
-/**
- * Renders a single agent card with its own history fetched via tRPC.
- * By isolating the hook call to a per-agent component we respect React's
- * rules of hooks while allowing each agent to independently load its data.
- */
-function AgentWithHistory({ agent, fallbackSeries }: { agent: Agent; fallbackSeries: AgentTimeSeries }) {
-    const { series } = useAgentHistory(agent.id);
-    const timeSeries = series.storage.length > 0 ? series : fallbackSeries;
-    return <AgentOverview agents={[agent]} timeSeries={{ [agent.id]: timeSeries }} />;
-}
+const REFETCH_INTERVAL_MS = 1000;
 
 export default function AgentsPage() {
-    const { agents, agentSeries, isLoading, tick } = useAgentData();
+    const trpc = useTRPC();
+
+    const { data, isLoading } = useQuery({
+        ...trpc.simulation.getAgentListSummaries.queryOptions(),
+        refetchInterval: REFETCH_INTERVAL_MS,
+    });
+
+    const tick = data?.tick ?? 0;
+    const agents = data?.agents ?? [];
 
     return (
         <Page title='Agents'>
@@ -28,13 +26,9 @@ export default function AgentsPage() {
             </div>
 
             {!isLoading && tick > 0 && agents.length > 0 ? (
-                <div className='space-y-4'>
+                <div className='grid grid-cols-1 gap-4'>
                     {agents.map((a) => (
-                        <AgentWithHistory
-                            key={a.agentId}
-                            agent={a.agent}
-                            fallbackSeries={agentSeries[a.agentId] ?? { storage: [], production: [], consumption: [] }}
-                        />
+                        <AgentSummaryCard key={a.agentId} summary={a} />
                     ))}
                 </div>
             ) : (
