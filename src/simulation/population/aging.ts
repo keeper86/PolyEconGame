@@ -87,7 +87,7 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
         }
 
         const nextAgeCohort = emptyCohort();
-        const targetAge = age + 1 === maxAge ? maxAge : age + 1;
+        const targetAge = Math.min(age + 1, maxAge);
 
         for (const edu of educationLevelKeys) {
             for (const occ of OCCUPATIONS) {

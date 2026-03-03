@@ -292,6 +292,13 @@ export function retireToPopulation(
  * cells of the wealth demography.  Workers are assumed to carry the same
  * `wealthMoments` regardless of which age cohort they end up in (since the
  * workforce pipeline doesn't track per-age wealth).
+ *
+ * Note: This function is called AFTER `transferInPopulation` has already moved
+ * workers from `srcOcc` to `dstOcc`.  We estimate the number of arrivals per
+ * age cohort using the post-transfer distribution (proportional to current
+ * `dstOcc` count).  The approximation is slightly biased because post-transfer
+ * counts include the arrivals, but the error is small relative to existing
+ * populations and is acceptable for the initial implementation.
  */
 function _distributeReturnedWealth(
     planet: Planet,

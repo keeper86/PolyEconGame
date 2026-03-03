@@ -188,19 +188,13 @@ export function postProductionFinancialTick(gameState: GameState): void {
         const demography = planet.population.demography;
 
         // 1. Compute total nominal consumption spending C_nom
-        //    C_nom = sum over cells of c_inc * wages_received (already in wealth) +
-        //                               c_wealth * wealth_mean * count
-        //    For the minimal version: c_wealth = 0, c_inc = 1 (all wages spent).
-        //    "disposable_income" per cell = wages received this tick (already credited to wealth_mean).
-        //    We approximate by consuming the entire newly-earned wage income.
-        //    Since we track wealth_mean (not wages separately), we use c_inc * wealth_mean
-        //    as a proxy — but that would consume ALL wealth, not just wages.
-        //    For the first implementation we use: consumption = min(wealth_mean * count, wealth_mean * count)
-        //    i.e., employed workers spend their full wage income (c_inc=1, c_wealth=0, consume = wages).
-        //    Wages this tick = wage_edu per worker. Total wages per cell = count * wage_edu.
-        //
-        //    NOTE: We use the actual wage paid this tick rather than total wealth, to avoid
-        //    consuming accumulated savings in this initial implementation.
+        //    Consumption per person = c_inc * wage_edu + c_wealth * wealth_mean,
+        //    capped at current wealth_mean (cannot consume more than you have).
+        //    With c_inc=1 and c_wealth=0 (initial values), each worker spends
+        //    exactly wage_edu this tick (their current-tick wage income),
+        //    leaving any previously accumulated wealth untouched.
+        //    NOTE: We use the actual wage paid this tick rather than total wealth
+        //    to avoid depleting accumulated savings in this first implementation.
 
         // Collect total nominal consumption and per-agent output share
         let cNom = 0;
