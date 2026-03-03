@@ -19,6 +19,7 @@ import {
     VOLUNTARY_QUIT_RATE_PER_TICK,
     totalActiveForEdu,
 } from './workforceHelpers';
+import { mergeWealthMoments } from '../population/populationHelpers';
 import { hireFromPopulation, totalUnoccupiedForEdu } from './populationBridge';
 import { stochasticRound } from '../utils/stochasticRound';
 
@@ -52,6 +53,22 @@ export function laborMarketTick(agents: Map<string, Agent>, planets: Map<string,
                     if (voluntaryQuitters > 0) {
                         cohort.active[edu] -= voluntaryQuitters;
                         cohort.departing[edu][NOTICE_PERIOD_MONTHS - 1] += voluntaryQuitters;
+                        // Wealth transfers: quitters carry the same mean wealth as active workers
+                        // (random sample assumption).  Merge into last departing slot.
+                        const remaining = cohort.active[edu];
+                        const slot = NOTICE_PERIOD_MONTHS - 1;
+                        const prevSlotCount = cohort.departing[edu][slot] - voluntaryQuitters;
+                        cohort.departingWealth[edu][slot] = mergeWealthMoments(
+                            prevSlotCount,
+                            cohort.departingWealth[edu][slot],
+                            voluntaryQuitters,
+                            cohort.wealthMoments[edu],
+                        );
+                        // Remaining active workers keep the same per-person wealth (random sample)
+                        if (remaining === 0) {
+                            cohort.wealthMoments[edu] = { mean: 0, variance: 0 };
+                        }
+                        // wealth_mean of active stays unchanged (random sample)
                     }
                 }
             }
@@ -99,6 +116,13 @@ export function laborMarketTick(agents: Map<string, Agent>, planets: Map<string,
                         } else {
                             workforce[0].ageMoments[edu] = { mean: result.meanAge, variance: result.varAge };
                         }
+                        // Merge wealth moments for newly hired workers into tenure year 0
+                        workforce[0].wealthMoments[edu] = mergeWealthMoments(
+                            existingCount,
+                            workforce[0].wealthMoments[edu],
+                            hired,
+                            { mean: result.meanWealth, variance: result.varWealth },
+                        );
                         workforce[0].active[edu] += hired;
                         hiredThisTick[edu] += hired;
                     }
@@ -115,6 +139,16 @@ export function laborMarketTick(agents: Map<string, Agent>, planets: Map<string,
                             cohort.departingFired[edu][NOTICE_PERIOD_MONTHS - 1] += fire;
                             firedThisTick[edu] += fire;
                             toFire -= fire;
+                            // Wealth: fired workers carry same wealth as active (random sample).
+                            const slot = NOTICE_PERIOD_MONTHS - 1;
+                            const prevSlotCount = cohort.departing[edu][slot] - fire;
+                            cohort.departingWealth[edu][slot] = mergeWealthMoments(
+                                prevSlotCount,
+                                cohort.departingWealth[edu][slot],
+                                fire,
+                                cohort.wealthMoments[edu],
+                            );
+                            // Active wealth moments unchanged (random sample)
                         }
                     }
                 }

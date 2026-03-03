@@ -1,5 +1,45 @@
 import type { ProductionFacility, Resource, ResourceType, StorageFacility } from './facilities';
 
+// ---------------------------------------------------------------------------
+// Wealth-tracking types
+// ---------------------------------------------------------------------------
+
+/**
+ * Mean and variance of wealth for a group of individuals.
+ * Combined across groups using the parallel-axis (pooled-variance) formula.
+ */
+export interface WealthMoments {
+    mean: number;
+    variance: number;
+}
+
+/** Wealth moments for every education × occupation cell in one age cohort. */
+export type WealthCohort = { [L in EducationLevelType]: { [O in Occupation]: WealthMoments } };
+
+/** One entry per age index — a parallel structure to `Population.demography`. */
+export type WealthDemography = WealthCohort[];
+
+// ---------------------------------------------------------------------------
+// Banking types
+// ---------------------------------------------------------------------------
+
+/**
+ * Single combined central + commercial bank per planet.
+ * Money is created when loans are issued and destroyed when repaid.
+ */
+export interface Bank {
+    /** Total outstanding loans to firms. */
+    loans: number;
+    /** Total deposits held by households and firms. */
+    deposits: number;
+    /** Bank's own equity = deposits − loans. */
+    equity: number;
+    /** Interest rate on loans per tick (0 = no interest for initial implementation). */
+    loanRate: number;
+    /** Interest rate on deposits per tick (0 = no interest for initial implementation). */
+    depositRate: number;
+}
+
 export type PlanetaryId = {
     planetId: string;
     id: string;
@@ -150,6 +190,12 @@ export interface TenureCohort {
     retiring: Record<EducationLevelType, number[]>;
     /** Age distribution moments (mean, variance) per education level for active workers. */
     ageMoments: Record<EducationLevelType, AgeMoments>;
+    /** Wealth moments (mean, variance) per education level for active workers. */
+    wealthMoments: Record<EducationLevelType, WealthMoments>;
+    /** Wealth moments per education level for each slot in the departing pipeline. */
+    departingWealth: Record<EducationLevelType, WealthMoments[]>;
+    /** Wealth moments per education level for each slot in the retiring pipeline. */
+    retiringWealth: Record<EducationLevelType, WealthMoments[]>;
 }
 
 /** Array of TenureCohort indexed by tenure year (0 = first year of employment). */
@@ -166,6 +212,11 @@ export type PopulationTickAccumulator = Record<EducationLevelType, Record<Occupa
 // Population = array of cohorts, index = age (0 = newborns)
 export type Population = {
     demography: Cohort[];
+    /**
+     * Wealth moments (mean, variance) for every age × edu × occupation cell.
+     * Parallel structure to `demography`.  Lazily initialised on first use.
+     */
+    wealthDemography?: WealthDemography;
     // starvationLevel: 0 = no starvation, 1 = full starvation (very high immediate mortality)
     // This persists across ticks and is updated by the simulation engine.
     starvationLevel: number;
@@ -260,6 +311,18 @@ export type Planet = {
     governmentId: string;
     infrastructure: Infrastructure;
     environment: Environment;
+    /** Combined central + commercial bank for this planet. */
+    bank?: Bank;
+    /**
+     * Wage per education level (currency units per worker per tick).
+     * Defaults to 1.0 for all levels when not set.
+     */
+    wagePerEdu?: Partial<Record<EducationLevelType, number>>;
+    /**
+     * Current price level P (nominal price per unit of physical output).
+     * Initialized to 1.0; updated each post-production financial tick.
+     */
+    priceLevel?: number;
 };
 
 export type Agent = {
@@ -267,6 +330,11 @@ export type Agent = {
     name: string;
     associatedPlanetId: string; // the planet where the company is based
     wealth: number;
+    /**
+     * Firm deposit balance (currency units).
+     * Used by the financial tick for working-capital loans and wage payments.
+     */
+    deposits?: number;
     transportShips: TransportShip[];
     assets: {
         [planetId in string]: {

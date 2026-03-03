@@ -18,6 +18,7 @@ import {
     normalCdf,
     totalActiveForEdu,
 } from './workforceHelpers';
+import { mergeWealthMoments } from '../population/populationHelpers';
 import { returnToPopulation, retireToPopulation } from './populationBridge';
 
 export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
@@ -79,7 +80,21 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
                     if (toRetire > 0) {
                         toRetire = Math.min(toRetire, active);
                         cohort.active[edu] -= toRetire;
-                        cohort.retiring[edu][NOTICE_PERIOD_MONTHS - 1] += toRetire;
+                        const slot = NOTICE_PERIOD_MONTHS - 1;
+                        const prevRetiringCount = cohort.retiring[edu][slot];
+                        cohort.retiring[edu][slot] += toRetire;
+
+                        // Wealth: retirees carry same per-person wealth as active (random sample).
+                        cohort.retiringWealth[edu][slot] = mergeWealthMoments(
+                            prevRetiringCount,
+                            cohort.retiringWealth[edu][slot],
+                            toRetire,
+                            cohort.wealthMoments[edu],
+                        );
+                        // Remaining active workers keep same wealth_mean (random sample).
+                        if (cohort.active[edu] === 0) {
+                            cohort.wealthMoments[edu] = { mean: 0, variance: 0 };
+                        }
 
                         // Update age moments: retirees are the upper tail of the
                         // distribution; the remaining workers form a truncated normal.
@@ -109,27 +124,31 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
                     // --- Departing pipeline: route to 'unoccupied' ---
                     const departing = cohort.departing[edu][0];
                     if (departing > 0 && planet) {
-                        returnToPopulation(planet, edu, departing, occupation);
+                        returnToPopulation(planet, edu, departing, occupation, cohort.departingWealth[edu][0]);
                     }
 
                     // Shift departing + departingFired pipelines down
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {
                         cohort.departing[edu][i] = cohort.departing[edu][i + 1];
                         cohort.departingFired[edu][i] = cohort.departingFired[edu][i + 1];
+                        cohort.departingWealth[edu][i] = cohort.departingWealth[edu][i + 1];
                     }
                     cohort.departing[edu][NOTICE_PERIOD_MONTHS - 1] = 0;
                     cohort.departingFired[edu][NOTICE_PERIOD_MONTHS - 1] = 0;
+                    cohort.departingWealth[edu][NOTICE_PERIOD_MONTHS - 1] = { mean: 0, variance: 0 };
 
                     // --- Retiring pipeline: route to 'unableToWork' ---
                     const retirees = cohort.retiring[edu][0];
                     if (retirees > 0 && planet) {
-                        retireToPopulation(planet, edu, retirees, occupation);
+                        retireToPopulation(planet, edu, retirees, occupation, cohort.retiringWealth[edu][0]);
                     }
 
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {
                         cohort.retiring[edu][i] = cohort.retiring[edu][i + 1];
+                        cohort.retiringWealth[edu][i] = cohort.retiringWealth[edu][i + 1];
                     }
                     cohort.retiring[edu][NOTICE_PERIOD_MONTHS - 1] = 0;
+                    cohort.retiringWealth[edu][NOTICE_PERIOD_MONTHS - 1] = { mean: 0, variance: 0 };
                 }
             }
         }

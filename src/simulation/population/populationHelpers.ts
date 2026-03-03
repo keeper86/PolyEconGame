@@ -1,5 +1,5 @@
-import type { EducationLevelType, Cohort, Occupation, Population, PopulationTickAccumulator } from '../planet';
-import { educationLevels, educationLevelKeys, OCCUPATIONS } from '../planet';
+import type { EducationLevelType, Cohort, Occupation, Population, PopulationTickAccumulator, WealthMoments, WealthCohort, WealthDemography } from '../planet';
+import { educationLevels, educationLevelKeys, OCCUPATIONS, maxAge } from '../planet';
 import { distributeProportionally } from '../utils/distributeProportionally';
 
 export const educationGraduationProbabilityForAge = (age: number, level: EducationLevelType): number => {
@@ -38,6 +38,58 @@ export function emptyCohort(): Cohort {
         }
     }
     return cohort;
+}
+
+// ---------------------------------------------------------------------------
+// Wealth-moment helpers
+// ---------------------------------------------------------------------------
+
+/** Zero wealth moments: mean=0, variance=0. */
+export const ZERO_WEALTH: WealthMoments = Object.freeze({ mean: 0, variance: 0 });
+
+/** Create a WealthCohort with all cells initialised to zero wealth. */
+export function emptyWealthCohort(): WealthCohort {
+    const wc = {} as WealthCohort;
+    for (const l of educationLevelKeys) {
+        wc[l] = {} as Record<Occupation, WealthMoments>;
+        for (const o of OCCUPATIONS) {
+            wc[l][o] = { mean: 0, variance: 0 };
+        }
+    }
+    return wc;
+}
+
+/**
+ * Merge two wealth-moment groups using the parallel-axis (pooled-variance) formula.
+ *
+ *   pooledMean = (nA * mA + nB * mB) / (nA + nB)
+ *   pooledVar  = (nA*(vA + (mA−pooledMean)²) + nB*(vB + (mB−pooledMean)²)) / (nA+nB)
+ */
+export function mergeWealthMoments(
+    nA: number,
+    wA: WealthMoments,
+    nB: number,
+    wB: WealthMoments,
+): WealthMoments {
+    if (nA <= 0) return { mean: wB.mean, variance: wB.variance };
+    if (nB <= 0) return { mean: wA.mean, variance: wA.variance };
+    const n = nA + nB;
+    const mean = (nA * wA.mean + nB * wB.mean) / n;
+    const variance =
+        (nA * (wA.variance + (wA.mean - mean) ** 2) + nB * (wB.variance + (wB.mean - mean) ** 2)) / n;
+    return { mean, variance };
+}
+
+/**
+ * Get (or lazily initialise) the WealthDemography for a population.
+ * Returns the existing `wealthDemography` or creates a fresh one aligned
+ * with the current `demography` length, then stores it back.
+ */
+export function getWealthDemography(population: Population): WealthDemography {
+    if (!population.wealthDemography || population.wealthDemography.length !== population.demography.length) {
+        population.wealthDemography = Array.from({ length: population.demography.length }, () => emptyWealthCohort());
+    }
+    return population.wealthDemography;
 }
 
 // Helper: sum a cohort

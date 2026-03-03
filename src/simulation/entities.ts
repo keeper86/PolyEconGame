@@ -199,6 +199,24 @@ export const earth: Planet = {
 
     governmentId: earthGovernment.id,
 
+    bank: {
+        loans: 0,
+        deposits: 0,
+        equity: 0,
+        loanRate: 0,
+        depositRate: 0,
+    },
+
+    wagePerEdu: {
+        none: 1.0,
+        primary: 1.0,
+        secondary: 1.0,
+        tertiary: 1.0,
+        quaternary: 1.0,
+    },
+
+    priceLevel: 1.0,
+
     resources: {
         [ironOreDepositResourceType.name]: [
             {
@@ -332,6 +350,25 @@ export const alphaCentauri: Planet = {
     position: { x: 4.37, y: 0, z: 0 }, // in light years
     population: createPopulation(100000), // 100k people
     governmentId: earthGovernment.id,
+
+    bank: {
+        loans: 0,
+        deposits: 0,
+        equity: 0,
+        loanRate: 0,
+        depositRate: 0,
+    },
+
+    wagePerEdu: {
+        none: 1.0,
+        primary: 1.0,
+        secondary: 1.0,
+        tertiary: 1.0,
+        quaternary: 1.0,
+    },
+
+    priceLevel: 1.0,
+
     resources: {
         [waterSourceResourceType.name]: [
             {

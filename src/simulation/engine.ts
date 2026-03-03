@@ -10,6 +10,7 @@ import { laborMarketMonthTick } from './workforce/laborMarketMonthTick';
 import { laborMarketYearTick } from './workforce/laborMarketYearTick';
 import { populationAdvanceYearTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
+import { preProductionFinancialTick, postProductionFinancialTick } from './financial/financialTick';
 
 export type { GameState };
 export { populationTick, populationAdvanceYear, environmentTick, productionTick };
@@ -39,11 +40,19 @@ export function advanceTick(gameState: GameState) {
     laborMarketTick(gameState.agents, gameState.planets);
     debugCheck('laborMarketTick', gameState);
 
+    // Pre-production financial tick: wages, working-capital loans.
+    preProductionFinancialTick(gameState);
+    debugCheck('preProductionFinancialTick', gameState);
+
     populationTick(gameState);
     debugCheck('populationTick', gameState);
 
     productionTick(gameState);
     debugCheck('productionTick', gameState);
+
+    // Post-production financial tick: consumption, revenue, loan repayment.
+    postProductionFinancialTick(gameState);
+    debugCheck('postProductionFinancialTick', gameState);
 
     if (isMonthBoundary(gameState.tick)) {
         laborMarketMonthTick(gameState.agents, gameState.planets);

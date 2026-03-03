@@ -41,4 +41,4 @@ export {
     END_FERTILE_AGE,
     LIFETIME_FERTILITY,
 } from './fertility';
-export { emptyAccumulator } from './populationHelpers';
+export { emptyAccumulator, emptyWealthCohort, mergeWealthMoments, getWealthDemography, ZERO_WEALTH } from './populationHelpers';
