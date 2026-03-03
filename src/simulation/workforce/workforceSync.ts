@@ -385,7 +385,7 @@ function distributeWorkforceRemovals(
  * @param environment The planet's environment (pollution, disasters).
  */
 export function syncWorkforceWithPopulation(
-    agents: Agent[],
+    agents: Map<string, Agent>,
     planetId: string,
     population: Population,
     environment: Environment,
@@ -396,17 +396,19 @@ export function syncWorkforceWithPopulation(
     // --- Build agent occupation lookup ---
     // If we have the planet reference, use it to correctly filter agents by
     // occupation.  Otherwise fall back to passing all agents (legacy path).
-    const governmentId = planet?.government?.id;
+    const governmentId = planet?.governmentId;
+    const allAgents = [...agents.values()];
 
     function agentsForOcc(occ: Occupation): Agent[] {
         if (!governmentId) {
-            return agents; // legacy fallback — no planet reference
+            return allAgents; // legacy fallback — no planet reference
         }
         if (occ === 'government') {
-            return agents.filter((a) => a.id === governmentId);
+            const gov = agents.get(governmentId);
+            return gov ? [gov] : [];
         }
         // 'company' — every agent that is NOT the government
-        return agents.filter((a) => a.id !== governmentId);
+        return allAgents.filter((a) => a.id !== governmentId);
     }
 
     // --- Build age-dependent rate functions for this tick's conditions ---
@@ -463,7 +465,7 @@ export function syncWorkforceWithPopulation(
  * Kept temporarily for backward compatibility.
  */
 export function applyPopulationDeathsToWorkforce(
-    agents: Agent[],
+    agents: Map<string, Agent>,
     planetId: string,
     deathsByEduOcc: Record<EducationLevelType, Record<Occupation, number>>,
     population: Population,

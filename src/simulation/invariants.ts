@@ -42,7 +42,7 @@ export function computePopulationOccupationTotals(planet: Planet, minAge = MIN_E
 /**
  * Compute active workforce across all agents for a planet (active workers only).
  */
-export function computeAgentWorkforceTotals(agents: Agent[], planetId: string) {
+export function computeAgentWorkforceTotals(agents: Map<string, Agent>, planetId: string) {
     const totals: Record<string, number> = {
         company: 0,
         government: 0,
@@ -50,7 +50,7 @@ export function computeAgentWorkforceTotals(agents: Agent[], planetId: string) {
         active: 0,
     };
 
-    for (const agent of agents) {
+    for (const agent of agents.values()) {
         const assets = agent.assets[planetId];
         if (!assets || !assets.workforceDemography) {
             continue;
@@ -85,9 +85,9 @@ export function computeAgentWorkforceTotals(agents: Agent[], planetId: string) {
  * When SIM_DEBUG=1 is set, this will throw an Error with details on the first
  * mismatch discovered. Otherwise it returns an array of discrepancy messages.
  */
-export function checkPopulationWorkforceConsistency(agents: Agent[], planets: Planet[]) {
+export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, planets: Map<string, Planet>) {
     const discrepancies: string[] = [];
-    for (const planet of planets) {
+    for (const planet of planets.values()) {
         const popTotals = computePopulationOccupationTotals(planet, MIN_EMPLOYABLE_AGE);
         const agentTotals = computeAgentWorkforceTotals(agents, planet.id);
 
@@ -106,7 +106,7 @@ export function checkPopulationWorkforceConsistency(agents: Agent[], planets: Pl
 
             // Build per-education breakdown from agent workforce (government agent only)
             const agentGovByEdu: Record<string, number> = {};
-            for (const agent of agents) {
+            for (const agent of agents.values()) {
                 if (!/gov|government/i.test(agent.id)) {
                     continue;
                 }
@@ -139,7 +139,7 @@ export function checkPopulationWorkforceConsistency(agents: Agent[], planets: Pl
             // which agent(s) are reporting more active company workers than
             // the authoritative population representation.
             const agentCompanyByAgent: Record<string, number> = {};
-            for (const agent of agents) {
+            for (const agent of agents.values()) {
                 let sum = 0;
                 const assets = agent.assets[planet.id];
                 if (!assets || !assets.workforceDemography) {
@@ -166,7 +166,7 @@ export function checkPopulationWorkforceConsistency(agents: Agent[], planets: Pl
 
             // And per-education breakdown from agents (company agents only)
             const agentByEdu: Record<string, number> = {};
-            for (const agent of agents) {
+            for (const agent of agents.values()) {
                 if (/gov|government/i.test(agent.id)) {
                     continue;
                 }

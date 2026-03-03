@@ -20,13 +20,8 @@ import {
 } from './workforceHelpers';
 import { returnToPopulation, retireToPopulation } from './populationBridge';
 
-export function laborMarketMonthTick(agents: Agent[], planets: Planet[]): void {
-    const planetMap = new Map<string, Planet>();
-    for (const planet of planets) {
-        planetMap.set(planet.id, planet);
-    }
-
-    for (const agent of agents) {
+export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+    for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             const workforce = assets.workforceDemography;
             if (!workforce) {
@@ -51,8 +46,8 @@ export function laborMarketMonthTick(agents: Agent[], planets: Planet[]): void {
             }
             assets.deathsThisMonth = freshDeaths;
 
-            const planet = planetMap.get(planetId);
-            const occupation: Occupation = planet && planet.government.id === agent.id ? 'government' : 'company';
+            const planet = planets.get(planetId);
+            const occupation: Occupation = planet && planet.governmentId === agent.id ? 'government' : 'company';
 
             // --- Monthly retirement trigger (proportional, spread over 12 months) ---
             for (const cohort of workforce) {

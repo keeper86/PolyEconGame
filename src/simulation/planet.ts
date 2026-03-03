@@ -238,8 +238,8 @@ export type ResourceQuantity = {
 
 export type ResourceClaim = {
     id: string;
-    claim: Agent | null; // who currently claims this resource (Company or Government), null if unclaimed
-    tenant: Agent | null; // who is currently using this resource (Company or Government), null if not currently used. For example, a farm could be claimed by a government but currently operated by a company as tenant.
+    claimAgentId: string | null; // who currently claims this resource (Company or Government), null if unclaimed
+    tenantAgentId: string | null; // who is currently using this resource (Company or Government), null if not currently used. For example, a farm could be claimed by a government but currently operated by a company as tenant.
     tenantCostInCoins: number; // how much the tenant pays per tick to the claim owner (e.g. rent for a farm), 0 if no tenant
     regenerationRate: number; // quantity regenerated per year (for renewable resources), 0 for non-renewable
     maximumCapacity: number; // maximum quantity that can be stored in this claim, e.g. for a farm or a mine with limited capacity. For non-renewable resources, this is the initial quantity.
@@ -257,7 +257,7 @@ export type Planet = {
     resources: {
         [resourceName in string]: (ResourceQuantity & ResourceClaim)[];
     };
-    government: Agent;
+    governmentId: string;
     infrastructure: Infrastructure;
     environment: Environment;
 };
@@ -363,6 +363,6 @@ export type Company = Agent;
 
 export interface GameState {
     tick: number;
-    planets: Planet[];
-    agents: Agent[]; // includes governments and companies, can be extended in the future for individuals, organizations, etc.
+    planets: Map<string, Planet>;
+    agents: Map<string, Agent>; // includes governments and companies, can be extended in the future for individuals, organizations, etc.
 }

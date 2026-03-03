@@ -60,7 +60,7 @@ function makePlanet(unoccupiedTotal = 10000) {
         position: { x: 0, y: 0, z: 0 },
         population: { demography, starvationLevel: 0 },
         resources: {},
-        government: gov,
+        governmentId: gov.id,
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -85,7 +85,7 @@ describe('advanceTick invariants', () => {
     it('total active workforce across agents never exceeds planet population', () => {
         const planet = makePlanet(10000);
         const company = makeAgent('company-1');
-        const gov = planet.government;
+        const gov = makeAgent('gov-1');
 
         // Attach assets for government
         gov.assets.p = {
@@ -100,7 +100,14 @@ describe('advanceTick invariants', () => {
         // Company requests more workers than exist to stress hiring
         company.assets.p.allocatedWorkers.none = 20000;
 
-        const gameState = { tick: 0, planets: [planet], agents: [company, gov] };
+        const gameState = {
+            tick: 0,
+            planets: new Map([[planet.id, planet]]),
+            agents: new Map([
+                [company.id, company],
+                [gov.id, gov],
+            ]),
+        };
 
         for (let t = 1; t <= 12; t++) {
             gameState.tick = t;
@@ -111,7 +118,7 @@ describe('advanceTick invariants', () => {
 
             // Sum active workforce across agents (active + departing + retiring considered as still part of workforce demography)
             let workforceTotal = 0;
-            for (const a of gameState.agents) {
+            for (const a of gameState.agents.values()) {
                 const wf = a.assets.p.workforceDemography;
                 if (!wf) {
                     continue;

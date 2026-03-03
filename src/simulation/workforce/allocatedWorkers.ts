@@ -82,14 +82,8 @@ import { totalUnoccupiedForEdu } from './populationBridge';
  * Call this once per tick **before** `laborMarketTick` so that the hiring
  * logic always chases up-to-date requirements.
  */
-export function updateAllocatedWorkers(agents: Agent[], planets: Planet[]): void {
-    // Index planets for fast lookup
-    const planetMap = new Map<string, Planet>();
-    for (const planet of planets) {
-        planetMap.set(planet.id, planet);
-    }
-
-    for (const agent of agents) {
+export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+    for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             // 1. Determine per-edu requirement: feedback-based or bootstrap.
             const requirement = {} as Record<EducationLevelType, number>;
@@ -181,7 +175,7 @@ export function updateAllocatedWorkers(agents: Agent[], planets: Planet[]): void
             }
 
             // 2. Cascade unmet demand upward through the education hierarchy.
-            const planet = planetMap.get(planetId);
+            const planet = planets.get(planetId);
             for (const edu of educationLevelKeys) {
                 assets.allocatedWorkers[edu] = 0;
             }

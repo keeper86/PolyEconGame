@@ -21,7 +21,7 @@ import { advanceTick } from './engine';
 import { createPopulation } from './entities';
 import { totalPopulation } from './population/populationHelpers';
 import { TICKS_PER_YEAR } from './constants';
-import type { Planet, Agent, Infrastructure, Environment } from './planet';
+import type { Planet, Infrastructure, Environment } from './planet';
 import { createWorkforceDemography } from './workforce/workforceHelpers';
 
 function makeStorageFacility() {
@@ -60,6 +60,20 @@ function makeAgent(id = 'agent-1') {
 }
 
 function makePlanet(totalPop = 10000) {
+    const gov = makeAgent('gov-1');
+
+    // attach workforce demography to government
+    gov.assets = {
+        p: {
+            resourceClaims: [],
+            resourceTenancies: [],
+            productionFacilities: [],
+            storageFacility: makeStorageFacility(),
+            allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
+            workforceDemography: createWorkforceDemography(),
+        },
+    };
+
     // reuse createPopulation from entities to mirror startup conditions
     const p: Planet = {
         id: 'p',
@@ -67,7 +81,7 @@ function makePlanet(totalPop = 10000) {
         position: { x: 0, y: 0, z: 0 },
         population: createPopulation(totalPop),
         resources: {},
-        government: makeAgent('gov-1') as unknown as Agent,
+        governmentId: gov.id,
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -87,30 +101,24 @@ function makePlanet(totalPop = 10000) {
         } as Environment,
     };
 
-    // attach workforce demography to government
-    (p.government as Agent).assets = {
-        p: {
-            resourceClaims: [],
-            resourceTenancies: [],
-            productionFacilities: [],
-            storageFacility: makeStorageFacility(),
-            allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
-            workforceDemography: createWorkforceDemography(),
-        },
-    };
-
-    return p;
+    return { planet: p, gov };
 }
 
 describe('fast-year integration', () => {
     it('runs a mocked short year and keeps workforce <= population', () => {
-        const planet = makePlanet(5000);
+        const { planet, gov } = makePlanet(5000);
         const company = makeAgent('company-1');
-        const gov = planet.government;
 
         company.assets.p.allocatedWorkers.none = 10000; // over-request to stress
 
-        const gameState = { tick: 0, planets: [planet], agents: [company, gov] };
+        const gameState = {
+            tick: 0,
+            planets: new Map([[planet.id, planet]]),
+            agents: new Map([
+                [company.id, company],
+                [gov.id, gov],
+            ]),
+        };
 
         for (let t = 1; t <= TICKS_PER_YEAR; t++) {
             gameState.tick = t;
@@ -120,7 +128,7 @@ describe('fast-year integration', () => {
 
             // Sum workforce active + departing + retiring
             let workforceTotal = 0;
-            for (const a of gameState.agents) {
+            for (const a of gameState.agents.values()) {
                 const wf = a.assets.p.workforceDemography as ReturnType<typeof createWorkforceDemography> | undefined;
                 if (!wf) {
                     continue;

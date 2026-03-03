@@ -22,14 +22,8 @@ import {
 import { hireFromPopulation, totalUnoccupiedForEdu } from './populationBridge';
 import { stochasticRound } from '../utils/stochasticRound';
 
-export function laborMarketTick(agents: Agent[], planets: Planet[]): void {
-    // Index planets by id for fast lookup
-    const planetMap = new Map<string, Planet>();
-    for (const planet of planets) {
-        planetMap.set(planet.id, planet);
-    }
-
-    for (const agent of agents) {
+export function laborMarketTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+    for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             const workforce = assets.workforceDemography;
             if (!workforce) {
@@ -63,7 +57,7 @@ export function laborMarketTick(agents: Agent[], planets: Planet[]): void {
             }
 
             // --- Hiring & Firing ---
-            const planet = planetMap.get(planetId);
+            const planet = planets.get(planetId);
             if (!planet) {
                 continue;
             }
@@ -76,7 +70,7 @@ export function laborMarketTick(agents: Agent[], planets: Planet[]): void {
             }
             assets.availableOnMarket = availableOnMarket;
 
-            const occupation: Occupation = planet.government.id === agent.id ? 'government' : 'company';
+            const occupation: Occupation = planet.governmentId === agent.id ? 'government' : 'company';
 
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;

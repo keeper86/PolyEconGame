@@ -21,6 +21,7 @@ export default defineConfig({
         },
         exclude: [
             'src/server/**',
+            'src/simulation/snapshotCompression.test.ts',
             '**/node_modules/**',
             '**/dist/**',
             '**/cypress/**',

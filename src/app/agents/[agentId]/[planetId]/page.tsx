@@ -142,10 +142,10 @@ function ResourceTimeSeriesChart({
 /* ------------------------------------------------------------------ */
 
 function AgentStorageHistoryCharts({ agentId }: { agentId: string }): React.ReactElement {
-    const { series } = useAgentHistory(agentId);
+    const { series } = useAgentHistory();
 
     if (series.storage.length === 0) {
-        return <div className='text-xs text-muted-foreground'>No history data yet</div>;
+        return <div className='text-xs text-muted-foreground'>No history data for agent {agentId} yet</div>;
     }
 
     return (

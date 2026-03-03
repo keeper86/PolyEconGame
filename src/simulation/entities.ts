@@ -197,7 +197,7 @@ export const earth: Planet = {
     position: { x: 0, y: 0, z: 0 },
     population: createPopulation(8000000000), // 8 billion people
 
-    government: earthGovernment,
+    governmentId: earthGovernment.id,
 
     resources: {
         [ironOreDepositResourceType.name]: [
@@ -207,8 +207,8 @@ export const earth: Planet = {
                 quantity: 5000000,
                 regenerationRate: 0,
                 maximumCapacity: 5000000,
-                claim: earthGovernment,
-                tenant: testCompany,
+                claimAgentId: earthGovernment.id,
+                tenantAgentId: testCompany.id,
                 tenantCostInCoins: 0,
             },
         ],
@@ -219,8 +219,8 @@ export const earth: Planet = {
                 quantity: 2000000,
                 regenerationRate: 20000000,
                 maximumCapacity: 20000000,
-                claim: earthGovernment,
-                tenant: earthGovernment,
+                claimAgentId: earthGovernment.id,
+                tenantAgentId: earthGovernment.id,
                 tenantCostInCoins: 0,
             },
         ],
@@ -231,8 +231,8 @@ export const earth: Planet = {
                 quantity: 20000000, // in tons, population needs 1 ton / person / year on average
                 regenerationRate: 20000000,
                 maximumCapacity: 20000000,
-                claim: earthGovernment,
-                tenant: earthGovernment,
+                claimAgentId: earthGovernment.id,
+                tenantAgentId: earthGovernment.id,
                 tenantCostInCoins: 0,
             },
         ],
@@ -288,7 +288,7 @@ export const queryClaimedResource = (planet: Planet, agent: Agent, resource: Res
         console.warn(`Resource ${resource.name} not found on planet ${planet.name}`);
         return 0;
     }
-    const tenantEntries = resourceEntries.filter((entry) => entry.tenant?.id === agent.id);
+    const tenantEntries = resourceEntries.filter((entry) => entry.tenantAgentId === agent.id);
     if (!tenantEntries.length) {
         console.warn(`Agent ${agent.name} is not tenant of resource ${resource.name} on planet ${planet.name}`);
         return 0;
@@ -307,7 +307,7 @@ export const extractFromClaimedResource = (
         console.warn(`Resource ${resource.name} not found on planet ${planet.name}`);
         return 0;
     }
-    const tenantEntries = resourceEntries.filter((entry) => entry.tenant?.id === agent.id);
+    const tenantEntries = resourceEntries.filter((entry) => entry.tenantAgentId === agent.id);
     if (!tenantEntries.length) {
         console.warn(`Agent ${agent.name} is not tenant of resource ${resource.name} on planet ${planet.name}`);
         return 0;
@@ -331,7 +331,7 @@ export const alphaCentauri: Planet = {
     name: 'Alpha Centauri',
     position: { x: 4.37, y: 0, z: 0 }, // in light years
     population: createPopulation(100000), // 100k people
-    government: earthGovernment,
+    governmentId: earthGovernment.id,
     resources: {
         [waterSourceResourceType.name]: [
             {
@@ -340,8 +340,8 @@ export const alphaCentauri: Planet = {
                 quantity: 5000,
                 regenerationRate: 0,
                 maximumCapacity: 5000,
-                claim: null,
-                tenant: null,
+                claimAgentId: null,
+                tenantAgentId: null,
                 tenantCostInCoins: 10,
             },
         ],
@@ -352,8 +352,8 @@ export const alphaCentauri: Planet = {
                 quantity: 50000, // in tons, population needs 1 ton / person / year on average
                 regenerationRate: 10000, // 10k tons of agricultural products can be produced per year
                 maximumCapacity: 50000,
-                claim: null,
-                tenant: null,
+                claimAgentId: null,
+                tenantAgentId: null,
                 tenantCostInCoins: 30,
             },
         ],

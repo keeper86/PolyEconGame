@@ -37,7 +37,7 @@ export function populationTick(gameState: GameState): void {
         }
 
         // 1. Food consumption & starvation tracking
-        consumeFood(planet, population, populationTotal);
+        consumeFood(planet, population, populationTotal, gameState.agents);
 
         // 2. Mortality — writes population.tickDeaths
         applyMortality(population, planet.environment, totalInCohort);

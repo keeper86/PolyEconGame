@@ -5,6 +5,7 @@
  */
 
 import path from 'node:path';
+import { MessageChannel, type MessagePort } from 'node:worker_threads';
 import { Piscina } from 'piscina';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -13,6 +14,7 @@ const TIMEOUT = 10_000;
 
 describe('Simulation Worker', () => {
     let pool: Piscina;
+    let port1: MessagePort;
 
     beforeEach(() => {
         pool = new Piscina({
@@ -24,9 +26,20 @@ describe('Simulation Worker', () => {
             workerData: { tickIntervalMs: 1000 }, // faster ticks for tests
             execArgv: ['--require', 'tsx/cjs'],
         });
+
+        // Create a dedicated MessageChannel for custom messages, just like
+        // workerManager does.  port2 goes to the worker, port1 stays here.
+        const channel = new MessageChannel();
+        port1 = channel.port1;
+
+        // Start the simulation task, transferring port2 to the worker.
+        pool.run({ command: 'start', port: channel.port2 }, { transferList: [channel.port2] }).catch(() => {
+            /* terminated */
+        });
     });
 
     afterEach(async () => {
+        port1.close();
         await pool.destroy();
     });
 
@@ -35,13 +48,8 @@ describe('Simulation Worker', () => {
         async () => {
             const ticks: number[] = [];
 
-            // Start the simulation task (never resolves normally).
-            pool.run({ command: 'start' }).catch(() => {
-                /* terminated */
-            });
-
             await new Promise<void>((resolve) => {
-                pool.on('message', (msg) => {
+                port1.on('message', (msg) => {
                     if (msg.type === 'tick') {
                         ticks.push(msg.tick);
                         if (ticks.length >= 3) {
@@ -62,26 +70,25 @@ describe('Simulation Worker', () => {
     it(
         'responds to ping with current tick',
         async () => {
-            pool.run({ command: 'start' }).catch(() => {
-                /* terminated */
-            });
-
             // Wait for at least one tick so tick > 0
             await new Promise<void>((resolve) => {
-                pool.on('message', (msg) => {
+                port1.on('message', (msg) => {
                     if (msg.type === 'tick' && msg.tick >= 1) {
                         resolve();
                     }
                 });
             });
 
+            // Remove previous listener so it doesn't interfere
+            port1.removeAllListeners('message');
+
             const pong = await new Promise<{ type: string; tick: number }>((resolve) => {
-                pool.on('message', (msg) => {
+                port1.on('message', (msg) => {
                     if (msg.type === 'pong') {
                         resolve(msg);
                     }
                 });
-                pool.threads[0].postMessage({ type: 'ping' });
+                port1.postMessage({ type: 'ping' });
             });
 
             expect(pong.type).toBe('pong');
@@ -93,12 +100,8 @@ describe('Simulation Worker', () => {
     it(
         'includes elapsedMs in tick messages',
         async () => {
-            pool.run({ command: 'start' }).catch(() => {
-                /* terminated */
-            });
-
             const tickMsg = await new Promise<{ type: string; tick: number; elapsedMs: number }>((resolve) => {
-                pool.on('message', (msg) => {
+                port1.on('message', (msg) => {
                     if (msg.type === 'tick') {
                         resolve(msg);
                     }

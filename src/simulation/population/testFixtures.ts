@@ -1,6 +1,6 @@
 import type { StorageFacility } from '../facilities';
 import { agriculturalProductResourceType } from '../facilities';
-import type { Planet, Population } from '../planet';
+import type { Agent, Planet, Population } from '../planet';
 
 export function createStorageFacility(initialQuantity: number): StorageFacility {
     return {
@@ -33,22 +33,7 @@ export function createPlanetWithStorage(storage: StorageFacility, population: Po
         position: { x: 0, y: 0, z: 0 },
         population,
         resources: {},
-        government: {
-            id: 'gov',
-            name: 'gov',
-            associatedPlanetId: 'p',
-            wealth: 0,
-            transportShips: [],
-            assets: {
-                p: {
-                    resourceClaims: [],
-                    resourceTenancies: [],
-                    productionFacilities: [],
-                    storageFacility: storage,
-                    allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
-                },
-            },
-        },
+        governmentId: 'gov',
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -67,4 +52,29 @@ export function createPlanetWithStorage(storage: StorageFacility, population: Po
             },
         },
     };
+}
+
+/** Create a government agent whose storage facility lives on planet 'p'. */
+export function createGovAgent(storage: StorageFacility): Agent {
+    return {
+        id: 'gov',
+        name: 'gov',
+        associatedPlanetId: 'p',
+        wealth: 0,
+        transportShips: [],
+        assets: {
+            p: {
+                resourceClaims: [],
+                resourceTenancies: [],
+                productionFacilities: [],
+                storageFacility: storage,
+                allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
+            },
+        },
+    } as Agent;
+}
+
+/** Wrap agents into a Map keyed by id. */
+export function agentsMap(...agents: Agent[]): Map<string, Agent> {
+    return new Map(agents.map((a) => [a.id, a]));
 }

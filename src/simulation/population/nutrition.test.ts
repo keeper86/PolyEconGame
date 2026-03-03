@@ -13,7 +13,13 @@ import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, c
 import { agriculturalProductResourceType } from '../facilities';
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
 
-import { createStorageFacility, createPlanetWithStorage, createPopulation } from './testFixtures';
+import {
+    createStorageFacility,
+    createPlanetWithStorage,
+    createPopulation,
+    createGovAgent,
+    agentsMap,
+} from './testFixtures';
 
 describe('updateStarvationLevel', () => {
     it('returns 0 when fully fed and not starving', () => {
@@ -111,8 +117,9 @@ describe('consumeFood', () => {
         const storage = createStorageFacility(5);
         const population = createPopulation(0.5);
         const planet = createPlanetWithStorage(storage, population);
+        const gov = createGovAgent(storage);
 
-        const res = consumeFood(planet, population, populationTotal);
+        const res = consumeFood(planet, population, populationTotal, agentsMap(gov));
 
         // consumed should equal demand (1 ton)
         expect(res.foodConsumed).toBeCloseTo(perTickDemand, 10);
@@ -133,8 +140,9 @@ describe('consumeFood', () => {
         const storage = createStorageFacility(0.2);
         const population = createPopulation(0);
         const planet = createPlanetWithStorage(storage, population);
+        const gov = createGovAgent(storage);
 
-        const res = consumeFood(planet, population, populationTotal);
+        const res = consumeFood(planet, population, populationTotal, agentsMap(gov));
 
         // consumed should equal available (0.2)
         expect(res.foodConsumed).toBeCloseTo(0.2, 10);
@@ -149,9 +157,11 @@ describe('consumeFood', () => {
     it('handles missing storage gracefully (no consumption)', () => {
         const populationTotal = 360;
         const population = createPopulation(0);
-        const planet = createPlanetWithStorage(createStorageFacility(0), population);
+        const storage = createStorageFacility(0);
+        const planet = createPlanetWithStorage(storage, population);
+        const gov = createGovAgent(storage);
 
-        const res = consumeFood(planet, population, populationTotal);
+        const res = consumeFood(planet, population, populationTotal, agentsMap(gov));
         expect(res.foodConsumed).toBe(0);
         expect(res.nutritionalFactor).toBe(0);
         // starvation should increase since no food

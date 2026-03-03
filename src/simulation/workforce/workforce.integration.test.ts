@@ -33,7 +33,7 @@ import {
 
 describe('full tick cycle — conservation across month boundary', () => {
     it('conserves population through 30 ticks + month tick', () => {
-        const planet = makePlanet({ none: 20000, primary: 10000 });
+        const { planet } = makePlanet({ none: 20000, primary: 10000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 2000;
         agent.assets.p.allocatedWorkers.primary = 500;
@@ -41,10 +41,10 @@ describe('full tick cycle — conservation across month boundary', () => {
         const before = totalPopulation(planet);
 
         for (let t = 0; t < TICKS_PER_MONTH; t++) {
-            laborMarketTick([agent], [planet]);
+            laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             assertWorkforcePopulationConsistency(planet, [agent], `tick ${t}`);
         }
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertTotalPopulationConserved(planet, before, 'after month');
         assertWorkforcePopulationConsistency(planet, [agent], 'after month tick');
     });
@@ -56,7 +56,7 @@ describe('full tick cycle — conservation across month boundary', () => {
 
 describe('full tick cycle — conservation across year boundary', () => {
     it('conserves population through a full year of ticks + month ticks + year tick', () => {
-        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const { planet } = makePlanet({ none: 50000, primary: 20000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 3000;
         agent.assets.p.allocatedWorkers.primary = 800;
@@ -65,13 +65,13 @@ describe('full tick cycle — conservation across year boundary', () => {
 
         for (let month = 0; month < MONTHS_PER_YEAR; month++) {
             for (let t = 0; t < TICKS_PER_MONTH; t++) {
-                laborMarketTick([agent], [planet]);
+                laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             }
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             assertWorkforcePopulationConsistency(planet, [agent], `month ${month}`);
         }
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         assertTotalPopulationConserved(planet, before, 'after full year');
         assertWorkforcePopulationConsistency(planet, [agent], 'after year tick');
@@ -84,34 +84,34 @@ describe('full tick cycle — conservation across year boundary', () => {
 
 describe('full tick cycle — conservation with retirement', () => {
     it('conserves population through year + months with retirement happening', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 1000;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
         wf[0].ageMoments.none = { mean: 65, variance: 9 };
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         for (let month = 0; month < MONTHS_PER_YEAR; month++) {
             for (let t = 0; t < TICKS_PER_MONTH; t++) {
-                laborMarketTick([agent], [planet]);
+                laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             }
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             assertTotalPopulationConserved(planet, afterHire, `month ${month}`);
             assertWorkforcePopulationConsistency(planet, [agent], `month ${month}`);
         }
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         for (let month = 0; month < MONTHS_PER_YEAR; month++) {
             for (let t = 0; t < TICKS_PER_MONTH; t++) {
-                laborMarketTick([agent], [planet]);
+                laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             }
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             assertTotalPopulationConserved(planet, afterHire, `year2 month ${month}`);
             assertWorkforcePopulationConsistency(planet, [agent], `year2 month ${month}`);
         }
@@ -124,16 +124,16 @@ describe('full tick cycle — conservation with retirement', () => {
 
 describe('full tick cycle — conservation with hiring and firing', () => {
     it('conserves population through cycles of over-staffing and under-staffing', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
         const before = totalPopulation(planet);
 
         // Phase 1: hire 2000
         agent.assets.p.allocatedWorkers.none = 2000;
         for (let t = 0; t < TICKS_PER_MONTH; t++) {
-            laborMarketTick([agent], [planet]);
+            laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         }
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertTotalPopulationConserved(planet, before, 'after hire phase');
         assertWorkforcePopulationConsistency(planet, [agent], 'after hire phase');
 
@@ -146,18 +146,18 @@ describe('full tick cycle — conservation with hiring and firing', () => {
 
         agent.assets.p.allocatedWorkers.none = 500;
         for (let t = 0; t < TICKS_PER_MONTH; t++) {
-            laborMarketTick([agent], [planet]);
+            laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         }
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertTotalPopulationConserved(planet, before, 'after fire phase');
         assertWorkforcePopulationConsistency(planet, [agent], 'after fire phase');
 
         // Phase 3: wait for departing pipeline to empty over 12 months
         for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
             for (let t = 0; t < TICKS_PER_MONTH; t++) {
-                laborMarketTick([agent], [planet]);
+                laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             }
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             assertTotalPopulationConserved(planet, before, `drain month ${month}`);
             assertWorkforcePopulationConsistency(planet, [agent], `drain month ${month}`);
         }
@@ -170,9 +170,8 @@ describe('full tick cycle — conservation with hiring and firing', () => {
 
 describe('full tick cycle — multi-agent conservation', () => {
     it('conserves population with company + government agent through full year', () => {
-        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const { planet, gov } = makePlanet({ none: 50000, primary: 20000 });
         const agent = makeAgent();
-        const gov = planet.government;
         gov.assets = {
             p: {
                 resourceClaims: [],
@@ -187,15 +186,20 @@ describe('full tick cycle — multi-agent conservation', () => {
         agent.assets.p.allocatedWorkers.primary = 800;
 
         const before = totalPopulation(planet);
+        const agentsMap = new Map([
+            [agent.id, agent],
+            [gov.id, gov],
+        ]);
+        const planetsMap = new Map([[planet.id, planet]]);
 
         for (let month = 0; month < MONTHS_PER_YEAR; month++) {
             for (let t = 0; t < TICKS_PER_MONTH; t++) {
-                laborMarketTick([agent, gov], [planet]);
+                laborMarketTick(agentsMap, planetsMap);
             }
-            laborMarketMonthTick([agent, gov], [planet]);
+            laborMarketMonthTick(agentsMap, planetsMap);
             assertWorkforcePopulationConsistency(planet, [agent, gov], `month ${month}`);
         }
-        laborMarketYearTick([agent, gov]);
+        laborMarketYearTick(agentsMap);
 
         assertTotalPopulationConserved(planet, before, 'multi-agent year');
         assertWorkforcePopulationConsistency(planet, [agent, gov], 'after year tick');
@@ -208,7 +212,7 @@ describe('full tick cycle — multi-agent conservation', () => {
 
 describe('full tick cycle — 3 years with all boundary types', () => {
     it('conserves population across 3 full years', () => {
-        const planet = makePlanet({ none: 100000, primary: 50000, secondary: 20000 });
+        const { planet } = makePlanet({ none: 100000, primary: 50000, secondary: 20000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 5000;
         agent.assets.p.allocatedWorkers.primary = 2000;
@@ -219,11 +223,11 @@ describe('full tick cycle — 3 years with all boundary types', () => {
         for (let year = 0; year < 3; year++) {
             for (let month = 0; month < MONTHS_PER_YEAR; month++) {
                 for (let t = 0; t < TICKS_PER_MONTH; t++) {
-                    laborMarketTick([agent], [planet]);
+                    laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
                 }
-                laborMarketMonthTick([agent], [planet]);
+                laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             }
-            laborMarketYearTick([agent]);
+            laborMarketYearTick(new Map([[agent.id, agent]]));
 
             assertTotalPopulationConserved(planet, before, `year ${year}`);
             assertWorkforcePopulationConsistency(planet, [agent], `year ${year}`);
@@ -249,7 +253,7 @@ describe('population ↔ workforce accounting invariant', () => {
     }
 
     function assertAccountingInvariant(planet: Parameters<typeof totalPopulation>[0], agents: Agent[]): void {
-        const companyAgents = agents.filter((a) => a.id !== planet.government.id);
+        const companyAgents = agents.filter((a) => a.id !== planet.governmentId);
         for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as EducationLevelType[]) {
             const popCompany = sumPopulationOccupation(planet, edu, 'company');
             let workforceCompany = 0;
@@ -261,34 +265,34 @@ describe('population ↔ workforce accounting invariant', () => {
     }
 
     it('invariant holds after initial hire via laborMarketTick', () => {
-        const planet = makePlanet({ none: 5000, primary: 2000 });
+        const { planet } = makePlanet({ none: 5000, primary: 2000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 500;
         agent.assets.p.allocatedWorkers.primary = 200;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         assertAccountingInvariant(planet, [agent]);
     });
 
     it('invariant holds after hire + voluntary quits', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 10000;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
     });
 
     it('invariant holds after firing (overstaffed → departing pipeline)', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 1000;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
 
         const wf = agent.assets.p.workforceDemography!;
@@ -297,16 +301,16 @@ describe('population ↔ workforce accounting invariant', () => {
         wf[0].active.none = 0;
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
     });
 
     it('invariant holds after departing pipeline completes (month tick)', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 1000;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
 
         const wf = agent.assets.p.workforceDemography!;
@@ -316,41 +320,41 @@ describe('population ↔ workforce accounting invariant', () => {
 
         assertAccountingInvariant(planet, [agent]);
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
     });
 
     it('invariant holds across a full multi-tick cycle (hire → quit → month → year)', () => {
-        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const { planet } = makePlanet({ none: 50000, primary: 20000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 2000;
         agent.assets.p.allocatedWorkers.primary = 500;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
 
         for (let t = 0; t < 29; t++) {
-            laborMarketTick([agent], [planet]);
+            laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             assertAccountingInvariant(planet, [agent]);
         }
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         assertAccountingInvariant(planet, [agent]);
 
         for (let month = 1; month < 12; month++) {
             for (let t = 0; t < 30; t++) {
-                laborMarketTick([agent], [planet]);
+                laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             }
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             assertAccountingInvariant(planet, [agent]);
         }
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
         assertAccountingInvariant(planet, [agent]);
     });
 
     it('invariant holds with multiple agents on the same planet', () => {
-        const planet = makePlanet({ none: 50000, primary: 20000 });
+        const { planet } = makePlanet({ none: 50000, primary: 20000 });
         const agent1 = makeAgent();
         const agent2 = makeAgent('agent-2');
 
@@ -358,7 +362,13 @@ describe('population ↔ workforce accounting invariant', () => {
         agent2.assets.p.allocatedWorkers.none = 500;
         agent2.assets.p.allocatedWorkers.primary = 300;
 
-        laborMarketTick([agent1, agent2], [planet]);
+        laborMarketTick(
+            new Map([
+                [agent1.id, agent1],
+                [agent2.id, agent2],
+            ]),
+            new Map([[planet.id, planet]]),
+        );
 
         const companyAgents = [agent1, agent2];
         for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as EducationLevelType[]) {
@@ -379,13 +389,13 @@ describe('population ↔ workforce accounting invariant', () => {
 describe('low-number edge cases', () => {
     it('single worker retires deterministically when mean >= RETIREMENT_AGE (via monthTick)', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[40].active.none = 1;
         wf[40].ageMoments.none = { mean: 66, variance: 4 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
+        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         expect(wf[41].active.none).toBe(0);
         expect(totalRetiringForEdu(wf, 'none')).toBe(1);
@@ -393,13 +403,13 @@ describe('low-number edge cases', () => {
 
     it('single worker does NOT retire when mean < RETIREMENT_AGE', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[10].active.primary = 1;
         wf[10].ageMoments.primary = { mean: 39, variance: 100 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
+        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         expect(wf[11].active.primary).toBe(1);
         expect(totalRetiringForEdu(wf, 'primary')).toBe(0);
@@ -407,14 +417,14 @@ describe('low-number edge cases', () => {
 
     it('three workers near retirement: some may retire over multiple months', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[30].active.tertiary = 3;
         wf[30].ageMoments.tertiary = { mean: 64, variance: 16 };
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
         for (let month = 0; month < MONTHS_PER_YEAR; month++) {
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         }
 
         const retired = totalRetiringForEdu(wf, 'tertiary');
@@ -432,21 +442,21 @@ describe('low-number edge cases', () => {
 
 describe('edge cases', () => {
     it('empty workforce demography does not cause crashes', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const agent = makeAgent();
         agent.assets.p.workforceDemography = undefined;
 
-        expect(() => laborMarketTick([agent], [planet])).not.toThrow();
-        expect(() => laborMarketMonthTick([agent], [planet])).not.toThrow();
-        expect(() => laborMarketYearTick([agent])).not.toThrow();
+        expect(() => laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]))).not.toThrow();
+        expect(() => laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]))).not.toThrow();
+        expect(() => laborMarketYearTick(new Map([[agent.id, agent]]))).not.toThrow();
     });
 
     it('zero allocated workers does not hire or fire', () => {
-        const planet = makePlanet({ none: 5000 });
+        const { planet } = makePlanet({ none: 5000 });
         const agent = makeAgent();
 
         const before = totalPopulation(planet);
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         assertTotalPopulationConserved(planet, before);
         expect(totalActiveForEdu(agent.assets.p.workforceDemography!, 'none')).toBe(0);
@@ -459,7 +469,7 @@ describe('edge cases', () => {
 
 describe('non-negative invariant — all population slots', () => {
     it('no population slot goes negative through a full cycle', () => {
-        const planet = makePlanet({ none: 10000, primary: 5000 });
+        const { planet } = makePlanet({ none: 10000, primary: 5000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 2000;
         agent.assets.p.allocatedWorkers.primary = 500;
@@ -467,11 +477,11 @@ describe('non-negative invariant — all population slots', () => {
         for (let year = 0; year < 2; year++) {
             for (let month = 0; month < MONTHS_PER_YEAR; month++) {
                 for (let t = 0; t < TICKS_PER_MONTH; t++) {
-                    laborMarketTick([agent], [planet]);
+                    laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
                 }
-                laborMarketMonthTick([agent], [planet]);
+                laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
             }
-            laborMarketYearTick([agent]);
+            laborMarketYearTick(new Map([[agent.id, agent]]));
         }
 
         assertAllNonNegative(planet, [agent]);
@@ -489,9 +499,8 @@ describe('workforce ↔ population consistency under mortality/disability', () =
         // must remove the *exact* same count from workforce. If the workforce
         // age-weighted distribution overflows a cohort, the overflow must be
         // redistributed — otherwise workforce drifts above population.
-        const planet = makePlanet({ none: 20000, primary: 10000 });
+        const { planet, gov } = makePlanet({ none: 20000, primary: 10000 });
         const agent = makeAgent();
-        const gov = planet.government;
         gov.assets = {
             p: {
                 resourceClaims: [],
@@ -506,7 +515,11 @@ describe('workforce ↔ population consistency under mortality/disability', () =
         agent.assets.p.allocatedWorkers.primary = 2000;
 
         // Initial hiring
-        laborMarketTick([agent, gov], [planet]);
+        const agentsMap = new Map([
+            [agent.id, agent],
+            [gov.id, gov],
+        ]);
+        laborMarketTick(agentsMap, new Map([[planet.id, planet]]));
 
         // Create variety in age distributions across tenure cohorts
         // to increase the chance of overflow during age-weighted removal
@@ -523,7 +536,7 @@ describe('workforce ↔ population consistency under mortality/disability', () =
             const { totalInCohort } = calculateDemographicStats(planet.population);
             applyMortality(planet.population, planet.environment, totalInCohort);
             applyDisability(planet.population, planet.environment);
-            syncWorkforceWithPopulation([agent, gov], planet.id, planet.population, planet.environment, planet);
+            syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
 
             // After sync, active workforce for each edu×occ must NOT exceed population
             for (const edu of ['none', 'primary'] as const) {

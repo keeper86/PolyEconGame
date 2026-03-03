@@ -21,7 +21,7 @@ import { createWorkforceDemography } from './workforceHelpers';
 
 describe('populationBridge — hireFromPopulation', () => {
     it('conserves total population when hiring', () => {
-        const planet = makePlanet({ none: 1000, primary: 500 });
+        const { planet } = makePlanet({ none: 1000, primary: 500 });
         const before = totalPopulation(planet);
 
         hireFromPopulation(planet, 'none', 300, 'company');
@@ -31,7 +31,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('moves workers from unoccupied to the specified occupation', () => {
-        const planet = makePlanet({ none: 1000 });
+        const { planet } = makePlanet({ none: 1000 });
         const unoccBefore = sumPopOcc(planet, 'none', 'unoccupied');
         const compBefore = sumPopOcc(planet, 'none', 'company');
 
@@ -43,7 +43,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('caps hiring at available unoccupied workers', () => {
-        const planet = makePlanet({ none: 50 });
+        const { planet } = makePlanet({ none: 50 });
         const result = hireFromPopulation(planet, 'none', 1000, 'company');
 
         expect(result.count).toBe(50);
@@ -52,7 +52,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('does not touch cohorts below MIN_EMPLOYABLE_AGE', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         // Place children
         for (let age = 0; age < MIN_EMPLOYABLE_AGE; age++) {
             planet.population.demography[age].none.unoccupied = 100;
@@ -70,13 +70,13 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('returns zero when no unoccupied workers exist', () => {
-        const planet = makePlanet(); // no unoccupied
+        const { planet } = makePlanet(); // no unoccupied
         const result = hireFromPopulation(planet, 'none', 100, 'company');
         expect(result.count).toBe(0);
     });
 
     it('handles hiring zero workers gracefully', () => {
-        const planet = makePlanet({ none: 100 });
+        const { planet } = makePlanet({ none: 100 });
         const before = totalPopulation(planet);
         const result = hireFromPopulation(planet, 'none', 0, 'company');
         expect(result.count).toBe(0);
@@ -84,7 +84,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('handles negative count gracefully', () => {
-        const planet = makePlanet({ none: 100 });
+        const { planet } = makePlanet({ none: 100 });
         const before = totalPopulation(planet);
         const result = hireFromPopulation(planet, 'none', -5, 'company');
         expect(result.count).toBe(0);
@@ -92,7 +92,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('returns correct mean age and variance for single-age-cohort hire', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.primary.unoccupied = 0;
         }
@@ -105,7 +105,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('returns correct mean and positive variance for multi-age hire', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.unoccupied = 0;
         }
@@ -119,7 +119,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('conserves population when hiring exactly all available workers', () => {
-        const planet = makePlanet({ secondary: 777 });
+        const { planet } = makePlanet({ secondary: 777 });
         const before = totalPopulation(planet);
 
         const result = hireFromPopulation(planet, 'secondary', 777, 'government');
@@ -130,7 +130,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('moves hired workers from unoccupied to company in population', () => {
-        const planet = makePlanet({ secondary: 10000 });
+        const { planet } = makePlanet({ secondary: 10000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.secondary = 3000;
 
@@ -139,7 +139,7 @@ describe('populationBridge — hireFromPopulation', () => {
             unoccupiedBefore += cohort.secondary.unoccupied;
         }
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         let unoccupiedAfter = 0;
         let companyAfter = 0;
@@ -155,8 +155,7 @@ describe('populationBridge — hireFromPopulation', () => {
     });
 
     it('marks hired workers as government when agent is the planet government', () => {
-        const planet = makePlanet({ primary: 10000 });
-        const gov = planet.government;
+        const { planet, gov } = makePlanet({ primary: 10000 });
         gov.assets.p = {
             resourceClaims: [],
             resourceTenancies: [],
@@ -166,7 +165,7 @@ describe('populationBridge — hireFromPopulation', () => {
             workforceDemography: createWorkforceDemography(),
         };
 
-        laborMarketTick([gov], [planet]);
+        laborMarketTick(new Map([[gov.id, gov]]), new Map([[planet.id, planet]]));
 
         const hired = gov.assets.p.workforceDemography![0].active.primary;
         expect(hired).toBeGreaterThan(0);
@@ -188,7 +187,7 @@ describe('populationBridge — hireFromPopulation', () => {
 
 describe('populationBridge — returnToPopulation', () => {
     it('conserves total population', () => {
-        const planet = makePlanet({ none: 1000 });
+        const { planet } = makePlanet({ none: 1000 });
         hireFromPopulation(planet, 'none', 200, 'company');
         const after = totalPopulation(planet);
 
@@ -198,7 +197,7 @@ describe('populationBridge — returnToPopulation', () => {
     });
 
     it('moves workers from company to unoccupied', () => {
-        const planet = makePlanet({ none: 1000 });
+        const { planet } = makePlanet({ none: 1000 });
         hireFromPopulation(planet, 'none', 200, 'company');
 
         returnToPopulation(planet, 'none', 50, 'company');
@@ -208,7 +207,7 @@ describe('populationBridge — returnToPopulation', () => {
     });
 
     it('handles returning more workers than are in the occupation (edge case)', () => {
-        const planet = makePlanet({ none: 100 });
+        const { planet } = makePlanet({ none: 100 });
         hireFromPopulation(planet, 'none', 50, 'company');
         const before = totalPopulation(planet);
 
@@ -220,14 +219,14 @@ describe('populationBridge — returnToPopulation', () => {
     });
 
     it('handles zero count', () => {
-        const planet = makePlanet({ none: 100 });
+        const { planet } = makePlanet({ none: 100 });
         const before = totalPopulation(planet);
         returnToPopulation(planet, 'none', 0, 'company');
         assertTotalPopulationConserved(planet, before);
     });
 
     it('distributes returns proportionally across age cohorts', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         // Place 100 company workers at age 25 and 300 at age 45
         for (const c of planet.population.demography) {
             c.none.company = 0;
@@ -247,7 +246,7 @@ describe('populationBridge — returnToPopulation', () => {
     });
 
     it('handles overflow when some cohorts have fewer workers than assigned', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.company = 0;
             c.none.unoccupied = 0;
@@ -270,7 +269,7 @@ describe('populationBridge — returnToPopulation', () => {
 
 describe('populationBridge — retireToPopulation', () => {
     it('conserves total population', () => {
-        const planet = makePlanet({ primary: 500 });
+        const { planet } = makePlanet({ primary: 500 });
         hireFromPopulation(planet, 'primary', 200, 'company');
         const after = totalPopulation(planet);
 
@@ -280,7 +279,7 @@ describe('populationBridge — retireToPopulation', () => {
     });
 
     it('moves workers from company to unableToWork (not unoccupied)', () => {
-        const planet = makePlanet({ primary: 500 });
+        const { planet } = makePlanet({ primary: 500 });
         hireFromPopulation(planet, 'primary', 200, 'company');
 
         retireToPopulation(planet, 'primary', 80, 'company');
@@ -291,14 +290,14 @@ describe('populationBridge — retireToPopulation', () => {
     });
 
     it('handles zero count', () => {
-        const planet = makePlanet({ primary: 100 });
+        const { planet } = makePlanet({ primary: 100 });
         const before = totalPopulation(planet);
         retireToPopulation(planet, 'primary', 0, 'company');
         assertTotalPopulationConserved(planet, before);
     });
 
     it('distributes retirements proportionally across age cohorts', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         // Place 100 company workers at age 50 and 200 at age 60
         for (const c of planet.population.demography) {
             c.none.company = 0;
@@ -317,7 +316,7 @@ describe('populationBridge — retireToPopulation', () => {
     });
 
     it('biases rounding remainder towards older workers', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.company = 0;
         }
@@ -333,7 +332,7 @@ describe('populationBridge — retireToPopulation', () => {
     });
 
     it('handles overflow when some cohorts have fewer workers than assigned', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.primary.company = 0;
         }
@@ -359,7 +358,7 @@ describe('populationBridge — retireToPopulation', () => {
 
 describe('populationBridge — totalUnoccupiedForEdu', () => {
     it('correctly counts unoccupied workers at and above MIN_EMPLOYABLE_AGE', () => {
-        const planet = makePlanet({ none: 1000 });
+        const { planet } = makePlanet({ none: 1000 });
         // Also add children who should NOT be counted
         for (let age = 0; age < MIN_EMPLOYABLE_AGE; age++) {
             planet.population.demography[age].none.unoccupied = 50;
@@ -370,7 +369,7 @@ describe('populationBridge — totalUnoccupiedForEdu', () => {
     });
 
     it('returns zero for education level with no unoccupied workers', () => {
-        const planet = makePlanet({ none: 1000 });
+        const { planet } = makePlanet({ none: 1000 });
         expect(totalUnoccupiedForEdu(planet, 'tertiary')).toBe(0);
     });
 });
@@ -381,7 +380,7 @@ describe('populationBridge — totalUnoccupiedForEdu', () => {
 
 describe('age moments — hiring', () => {
     it('sets ageMoments.mean to the weighted mean age of hired workers', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.unoccupied = 0;
         }
@@ -390,7 +389,7 @@ describe('age moments — hiring', () => {
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 50;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const wf = agent.assets.p.workforceDemography!;
         const hired = wf[0].active.none;
@@ -399,7 +398,7 @@ describe('age moments — hiring', () => {
     });
 
     it('hired workers get correct ageMoments reflecting actual population ages', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.unoccupied = 0;
         }
@@ -409,7 +408,7 @@ describe('age moments — hiring', () => {
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 100;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const wf = agent.assets.p.workforceDemography!;
         const moments = wf[0].ageMoments.none;
@@ -419,7 +418,7 @@ describe('age moments — hiring', () => {
     });
 
     it('merges ageMoments correctly when hiring across multiple ticks', () => {
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.unoccupied = 0;
         }
@@ -430,7 +429,7 @@ describe('age moments — hiring', () => {
         agent.assets.p.allocatedWorkers.none = 200;
 
         for (let i = 0; i < 60; i++) {
-            laborMarketTick([agent], [planet]);
+            laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
         }
 
         const wf = agent.assets.p.workforceDemography!;
@@ -439,11 +438,11 @@ describe('age moments — hiring', () => {
     });
 
     it('variance is non-negative after all operations', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 1000;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const wf = agent.assets.p.workforceDemography!;
         for (const cohort of wf) {

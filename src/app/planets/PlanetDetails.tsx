@@ -72,16 +72,11 @@ export default function PlanetDetails({ planet, history, latestPopulation }: Pro
                                                                 className='text-xs'
                                                             >
                                                                 id: {e.id ?? '—'} — qty: {e.quantity}{' '}
-                                                                {e.tenant ? (
-                                                                    <span>
-                                                                        (tenant: {e.tenant.name ?? e.tenant.id})
-                                                                    </span>
+                                                                {e.tenantAgentId ? (
+                                                                    <span>(tenant: {e.tenantAgentId})</span>
                                                                 ) : null}
-                                                                {e.claim ? (
-                                                                    <span>
-                                                                        {' '}
-                                                                        (claimed by {e.claim.name ?? e.claim.id})
-                                                                    </span>
+                                                                {e.claimAgentId ? (
+                                                                    <span> (claimed by {e.claimAgentId})</span>
                                                                 ) : null}
                                                             </li>
                                                         ))}

@@ -58,7 +58,7 @@ export function makeGovernmentAgent(): Agent {
     return makeAgent('gov-1');
 }
 
-export function makePlanet(unoccupiedByEdu?: Partial<Record<string, number>>): Planet {
+export function makePlanet(unoccupiedByEdu?: Partial<Record<string, number>>): { planet: Planet; gov: Agent } {
     const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
 
     if (unoccupiedByEdu) {
@@ -75,13 +75,13 @@ export function makePlanet(unoccupiedByEdu?: Partial<Record<string, number>>): P
 
     const gov = makeGovernmentAgent();
 
-    return {
+    const planet: Planet = {
         id: 'p',
         name: 'Test Planet',
         position: { x: 0, y: 0, z: 0 },
         population: { demography, starvationLevel: 0 },
         resources: {},
-        government: gov,
+        governmentId: gov.id,
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -100,6 +100,8 @@ export function makePlanet(unoccupiedByEdu?: Partial<Record<string, number>>): P
             },
         },
     };
+
+    return { planet, gov };
 }
 
 /** Creates a production facility with given worker requirements. */
@@ -174,7 +176,7 @@ export function sumWorkforceForEdu(agent: Agent, planetId: string, edu: Educatio
 export function assertWorkforcePopulationConsistency(planet: Planet, agents: Agent[], label = ''): void {
     for (const edu of educationLevelKeys) {
         // Company agents
-        const companyAgents = agents.filter((a) => a.id !== planet.government.id);
+        const companyAgents = agents.filter((a) => a.id !== planet.governmentId);
         const popCompany = sumPopOcc(planet, edu, 'company');
         let wfCompany = 0;
         for (const agent of companyAgents) {
@@ -186,7 +188,8 @@ export function assertWorkforcePopulationConsistency(planet: Planet, agents: Age
         ).toBe(popCompany);
 
         // Government agent
-        const govWf = sumWorkforceForEdu(planet.government, planet.id, edu);
+        const govAgent = agents.find((a) => a.id === planet.governmentId);
+        const govWf = govAgent ? sumWorkforceForEdu(govAgent, planet.id, edu) : 0;
         const popGov = sumPopOcc(planet, edu, 'government');
         expect(govWf, `${label} gov workforce ↔ population mismatch for edu=${edu}: wf=${govWf}, pop=${popGov}`).toBe(
             popGov,
@@ -236,4 +239,18 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
             }
         }
     }
+}
+
+// ============================================================================
+// Map conversion helpers
+// ============================================================================
+
+/** Wrap one or more agents into a Map keyed by their id. */
+export function agentMap(...agents: Agent[]): Map<string, Agent> {
+    return new Map(agents.map((a) => [a.id, a]));
+}
+
+/** Wrap zero or more planets into a Map keyed by their id. */
+export function planetMap(...planets: Planet[]): Map<string, Planet> {
+    return new Map(planets.map((p) => [p.id, p]));
 }

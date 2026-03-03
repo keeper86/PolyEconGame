@@ -26,7 +26,7 @@ function makePlanetWithResources(): Planet {
         name: 'P',
         position: { x: 0, y: 0, z: 0 },
         population: { demography: [] },
-        government: gov,
+        governmentId: gov.id,
         resources: {
             [arableLandResourceType.name]: [
                 {
@@ -35,8 +35,8 @@ function makePlanetWithResources(): Planet {
                     quantity: 100,
                     regenerationRate: 0,
                     maximumCapacity: 100,
-                    claim: gov,
-                    tenant: tenantA,
+                    claimAgentId: gov.id,
+                    tenantAgentId: tenantA.id,
                     tenantCostInCoins: 0,
                 },
                 {
@@ -45,8 +45,8 @@ function makePlanetWithResources(): Planet {
                     quantity: 50,
                     regenerationRate: 0,
                     maximumCapacity: 50,
-                    claim: gov,
-                    tenant: tenantA,
+                    claimAgentId: gov.id,
+                    tenantAgentId: tenantA.id,
                     tenantCostInCoins: 0,
                 },
                 {
@@ -55,8 +55,8 @@ function makePlanetWithResources(): Planet {
                     quantity: 200,
                     regenerationRate: 0,
                     maximumCapacity: 200,
-                    claim: gov,
-                    tenant: tenantB,
+                    claimAgentId: gov.id,
+                    tenantAgentId: tenantB.id,
                     tenantCostInCoins: 0,
                 },
             ],
@@ -67,8 +67,8 @@ function makePlanetWithResources(): Planet {
                     quantity: 10,
                     regenerationRate: 0,
                     maximumCapacity: 10,
-                    claim: gov,
-                    tenant: null,
+                    claimAgentId: gov.id,
+                    tenantAgentId: null,
                     tenantCostInCoins: 0,
                 },
             ],

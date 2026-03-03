@@ -16,6 +16,8 @@ import {
     sumWorkforceForEdu,
     assertTotalPopulationConserved,
     assertWorkforcePopulationConsistency,
+    agentMap,
+    planetMap,
 } from './testHelpers';
 import {
     createWorkforceDemography,
@@ -36,7 +38,7 @@ describe('laborMarketMonthTick', () => {
 
     beforeEach(() => {
         agent = makeAgent();
-        planet = makePlanet();
+        ({ planet } = makePlanet());
     });
 
     it('shifts the departing pipeline, discarding slot-0 workers', () => {
@@ -47,7 +49,7 @@ describe('laborMarketMonthTick', () => {
         pipeline[11] = 1;
         workforce[0].departing.none = pipeline;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(workforce[0].departing.none[0]).toBe(3);
         expect(workforce[0].departing.none[10]).toBe(1);
@@ -60,14 +62,14 @@ describe('laborMarketMonthTick', () => {
         pipeline[NOTICE_PERIOD_MONTHS - 1] = 7;
         workforce[0].departing.none = pipeline;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 2]).toBe(7);
         expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
     });
 
     it('returns departing workers to the unoccupied population pool', () => {
-        planet = makePlanet();
+        ({ planet } = makePlanet());
         planet.population.demography[25].primary.company = 100;
         planet.population.demography[25].primary.unoccupied = 50;
 
@@ -76,7 +78,7 @@ describe('laborMarketMonthTick', () => {
         pipeline[0] = 10;
         workforce[0].departing.primary = pipeline;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(planet.population.demography[25].primary.company).toBe(90);
         expect(planet.population.demography[25].primary.unoccupied).toBe(60);
@@ -90,15 +92,15 @@ describe('laborMarketMonthTick', () => {
 describe('retirement — monthly via laborMarketMonthTick', () => {
     it('moves all deterministic retirement-eligible workers into the retiring pipeline', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[40].active.primary = 200;
         wf[40].ageMoments.primary = { mean: 66, variance: 0 };
 
-        laborMarketYearTick([agent]); // tenure shift: 40→41, age 66→67
+        laborMarketYearTick(agentMap(agent)); // tenure shift: 40→41, age 66→67
         expect(wf[41].active.primary).toBe(200);
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(wf[41].active.primary).toBe(0);
         expect(totalRetiringForEdu(wf, 'primary')).toBe(200);
@@ -106,13 +108,13 @@ describe('retirement — monthly via laborMarketMonthTick', () => {
 
     it('does NOT retire workers whose mean age is below RETIREMENT_AGE', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[5].active.secondary = 100;
         wf[5].ageMoments.secondary = { mean: 34, variance: 4 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(agentMap(agent));
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(wf[6].active.secondary).toBe(100);
         expect(totalRetiringForEdu(wf, 'secondary')).toBe(0);
@@ -120,15 +122,15 @@ describe('retirement — monthly via laborMarketMonthTick', () => {
 
     it('retires only the education levels that reach RETIREMENT_AGE', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[30].active.none = 50;
         wf[30].ageMoments.none = { mean: 66, variance: 0 };
         wf[30].active.tertiary = 80;
         wf[30].ageMoments.tertiary = { mean: 50, variance: 4 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(agentMap(agent));
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(wf[31].active.none).toBe(0);
         expect(totalRetiringForEdu(wf, 'none')).toBe(50);
@@ -139,13 +141,13 @@ describe('retirement — monthly via laborMarketMonthTick', () => {
 
     it('retires all deterministic workers in the first month (variance = 0)', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[40].active.primary = 120;
         wf[40].ageMoments.primary = { mean: 66, variance: 0 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(agentMap(agent));
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(wf[41].active.primary).toBe(0);
         expect(totalRetiringForEdu(wf, 'primary')).toBe(120);
@@ -159,7 +161,7 @@ describe('retirement — monthly via laborMarketMonthTick', () => {
 describe('retirement — laborMarketMonthTick routes to unableToWork', () => {
     it('advances the retiring pipeline and routes slot-0 workers to unableToWork', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         planet.population.demography[67].primary.company = 100;
 
         const wf = agent.assets.p.workforceDemography!;
@@ -168,7 +170,7 @@ describe('retirement — laborMarketMonthTick routes to unableToWork', () => {
         pipeline[1] = 10;
         wf[40].retiring.primary = pipeline;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(wf[40].retiring.primary[0]).toBe(10);
         expect(wf[40].retiring.primary[1]).toBe(0);
@@ -180,7 +182,7 @@ describe('retirement — laborMarketMonthTick routes to unableToWork', () => {
 
     it('does not mix retiring and departing pipelines', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         planet.population.demography[40].none.company = 200;
 
         const wf = agent.assets.p.workforceDemography!;
@@ -191,7 +193,7 @@ describe('retirement — laborMarketMonthTick routes to unableToWork', () => {
         retPipeline[0] = 5;
         wf[20].retiring.none = retPipeline;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(planet.population.demography[40].none.company).toBe(185);
         expect(planet.population.demography[40].none.unoccupied).toBe(10);
@@ -206,13 +208,13 @@ describe('retirement — laborMarketMonthTick routes to unableToWork', () => {
 describe('retirement — proportional with variance (monthly)', () => {
     it('retires a fraction when mean is below RETIREMENT_AGE but variance is large', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[30].active.primary = 1000;
         wf[30].ageMoments.primary = { mean: 59, variance: 100 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(agentMap(agent));
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         const retired = totalRetiringForEdu(wf, 'primary');
         const stillActive = wf[31].active.primary;
@@ -224,13 +226,13 @@ describe('retirement — proportional with variance (monthly)', () => {
 
     it('retires a large monthly chunk when mean is well above RETIREMENT_AGE', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[40].active.secondary = 500;
         wf[40].ageMoments.secondary = { mean: 72, variance: 9 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(agentMap(agent));
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         const retired = totalRetiringForEdu(wf, 'secondary');
         expect(retired).toBeGreaterThan(100);
@@ -239,13 +241,13 @@ describe('retirement — proportional with variance (monthly)', () => {
 
     it('retires none when mean is far below RETIREMENT_AGE even with large variance', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[10].active.none = 500;
         wf[10].ageMoments.none = { mean: 39, variance: 25 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(agentMap(agent));
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(totalRetiringForEdu(wf, 'none')).toBe(0);
         expect(wf[11].active.none).toBe(500);
@@ -253,13 +255,13 @@ describe('retirement — proportional with variance (monthly)', () => {
 
     it('updates ageMoments for remaining workers after partial retirement', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[35].active.none = 1000;
         wf[35].ageMoments.none = { mean: 64, variance: 25 };
 
-        laborMarketYearTick([agent]);
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketYearTick(agentMap(agent));
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(wf[36].ageMoments.none.mean).toBeLessThan(65);
         expect(wf[36].ageMoments.none.mean).toBeGreaterThan(55);
@@ -269,15 +271,15 @@ describe('retirement — proportional with variance (monthly)', () => {
 
     it('retires a significant portion over 12 months with variance', () => {
         const agent = makeAgent();
-        const planet = makePlanet();
+        const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
         wf[40].active.secondary = 500;
         wf[40].ageMoments.secondary = { mean: 72, variance: 9 };
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(agentMap(agent));
 
         for (let month = 0; month < MONTHS_PER_YEAR; month++) {
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(agentMap(agent), planetMap(planet));
         }
 
         const remaining = wf[41].active.secondary;
@@ -292,11 +294,11 @@ describe('retirement — proportional with variance (monthly)', () => {
 
 describe('laborMarketMonthTick — population conservation', () => {
     it('conserves total population when departing pipeline completes', () => {
-        const planet = makePlanet({ none: 10000 });
+        const { planet } = makePlanet({ none: 10000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 1000;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(agentMap(agent), planetMap(planet));
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
@@ -304,18 +306,18 @@ describe('laborMarketMonthTick — population conservation', () => {
         wf[0].active.none -= toDep;
         wf[0].departing.none[0] = toDep;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         assertTotalPopulationConserved(planet, afterHire);
         assertWorkforcePopulationConsistency(planet, [agent], 'after month tick');
     });
 
     it('conserves total population when retiring pipeline completes', () => {
-        const planet = makePlanet({ primary: 10000 });
+        const { planet } = makePlanet({ primary: 10000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.primary = 500;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(agentMap(agent), planetMap(planet));
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
@@ -323,15 +325,14 @@ describe('laborMarketMonthTick — population conservation', () => {
         wf[0].active.primary -= toRetire;
         wf[0].retiring.primary[0] = toRetire;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         assertTotalPopulationConserved(planet, afterHire);
         expect(sumPopOcc(planet, 'primary', 'unableToWork')).toBe(toRetire);
     });
 
     it('departure and retirement happen to correct occupations for government', () => {
-        const planet = makePlanet({ none: 5000 });
-        const gov = planet.government;
+        const { planet, gov } = makePlanet({ none: 5000 });
         gov.assets = {
             p: {
                 resourceClaims: [],
@@ -343,7 +344,7 @@ describe('laborMarketMonthTick — population conservation', () => {
             },
         };
 
-        laborMarketTick([gov], [planet]);
+        laborMarketTick(agentMap(gov), planetMap(planet));
         const afterHire = totalPopulation(planet);
 
         const wf = gov.assets.p.workforceDemography!;
@@ -353,7 +354,7 @@ describe('laborMarketMonthTick — population conservation', () => {
         wf[0].departing.none[0] = dep;
         wf[0].retiring.none[0] = ret;
 
-        laborMarketMonthTick([gov], [planet]);
+        laborMarketMonthTick(agentMap(gov), planetMap(planet));
 
         assertTotalPopulationConserved(planet, afterHire);
 
@@ -363,17 +364,17 @@ describe('laborMarketMonthTick — population conservation', () => {
     });
 
     it('monthly retirement trigger conserves people (deterministic case)', () => {
-        const planet = makePlanet({ none: 5000 });
+        const { planet } = makePlanet({ none: 5000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 200;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(agentMap(agent), planetMap(planet));
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
         wf[0].ageMoments.none = { mean: RETIREMENT_AGE, variance: 0 };
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         assertTotalPopulationConserved(planet, afterHire);
         const active = totalActiveForEdu(wf, 'none');
@@ -382,17 +383,17 @@ describe('laborMarketMonthTick — population conservation', () => {
     });
 
     it('monthly retirement trigger conserves people (variance case)', () => {
-        const planet = makePlanet({ primary: 20000 });
+        const { planet } = makePlanet({ primary: 20000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.primary = 1000;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(agentMap(agent), planetMap(planet));
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
         wf[0].ageMoments.primary = { mean: 64, variance: 25 };
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         assertTotalPopulationConserved(planet, afterHire);
         assertWorkforcePopulationConsistency(planet, [agent], 'after variance retirement');
@@ -406,7 +407,7 @@ describe('laborMarketMonthTick — population conservation', () => {
 
     it('pipeline shift preserves total departing/retiring counts (no drop/gain)', () => {
         const agent = makeAgent();
-        const planet = makePlanet({ none: 5000 });
+        const { planet } = makePlanet({ none: 5000 });
 
         const wf = agent.assets.p.workforceDemography!;
         wf[0].active.none = 100;
@@ -421,7 +422,7 @@ describe('laborMarketMonthTick — population conservation', () => {
 
         const popBefore = totalPopulation(planet);
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         assertTotalPopulationConserved(planet, popBefore);
 
@@ -439,14 +440,14 @@ describe('laborMarketMonthTick — population conservation', () => {
 
 describe('departingFired pipeline — consistency', () => {
     it('departingFired never exceeds departing at any pipeline slot', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
 
         const wf = agent.assets.p.workforceDemography!;
         wf[5].active.none = 1000;
         agent.assets.p.allocatedWorkers.none = 500;
 
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
         for (const cohort of wf) {
             for (const edu of educationLevelKeys) {
@@ -461,7 +462,7 @@ describe('departingFired pipeline — consistency', () => {
     });
 
     it('departingFired pipeline shifts in sync with departing pipeline during month tick', () => {
-        const planet = makePlanet({ none: 50000 });
+        const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
 
         const wf = agent.assets.p.workforceDemography!;
@@ -470,7 +471,7 @@ describe('departingFired pipeline — consistency', () => {
         wf[3].active.none = 100;
         planet.population.demography[30].none.company = 200;
 
-        laborMarketMonthTick([agent], [planet]);
+        laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
         expect(wf[3].departing.none[4]).toBe(50);
         expect(wf[3].departingFired.none[4]).toBe(30);
@@ -485,11 +486,11 @@ describe('departingFired pipeline — consistency', () => {
 
 describe('pipeline drain edge cases', () => {
     it('departing pipeline fully drains after NOTICE_PERIOD_MONTHS month ticks', () => {
-        const planet = makePlanet({ none: 10000 });
+        const { planet } = makePlanet({ none: 10000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
         const before = totalPopulation(planet);
 
@@ -499,7 +500,7 @@ describe('pipeline drain edge cases', () => {
         wf[0].departing.none[NOTICE_PERIOD_MONTHS - 1] = active;
 
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(agentMap(agent), planetMap(planet));
         }
 
         expect(totalDepartingForEdu(wf, 'none')).toBe(0);
@@ -508,11 +509,11 @@ describe('pipeline drain edge cases', () => {
     });
 
     it('retiring pipeline fully drains after NOTICE_PERIOD_MONTHS month ticks', () => {
-        const planet = makePlanet({ primary: 10000 });
+        const { planet } = makePlanet({ primary: 10000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.primary = 300;
-        laborMarketTick([agent], [planet]);
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
         const before = totalPopulation(planet);
 
@@ -522,7 +523,7 @@ describe('pipeline drain edge cases', () => {
         wf[0].retiring.primary[NOTICE_PERIOD_MONTHS - 1] = active;
 
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            laborMarketMonthTick([agent], [planet]);
+            laborMarketMonthTick(agentMap(agent), planetMap(planet));
         }
 
         expect(totalRetiringForEdu(wf, 'primary')).toBe(0);

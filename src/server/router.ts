@@ -4,8 +4,6 @@ import { ship } from './controller/ship';
 import {
     getLatestPlanets,
     getLatestAgents,
-    getPlanetHistory,
-    getAgentHistory,
     getAgentListSummaries,
     getAgentDetail,
     getAgentOverview,
@@ -22,8 +20,7 @@ const simulationRouter = trpcRoot.router({
     getAgentDetail: getAgentDetail(),
     getAgentOverview: getAgentOverview(),
     getAgentPlanetDetail: getAgentPlanetDetail(),
-    getPlanetHistory: getPlanetHistory(),
-    getAgentHistory: getAgentHistory(),
+    // historical endpoints removed
 });
 
 const protectedAppRouter = trpcRoot.router({

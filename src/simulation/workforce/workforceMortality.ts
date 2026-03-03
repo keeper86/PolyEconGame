@@ -69,12 +69,12 @@ function momentBasedAnnualMortality(
  * @param starvationLevel   Current starvation level for the planet (0..1).
  */
 export function workforceMortalityTick(
-    agents: Agent[],
+    agents: Map<string, Agent>,
     planetId: string,
     extraMortalityPerYear: number,
     starvationLevel: number,
 ): void {
-    for (const agent of agents) {
+    for (const agent of agents.values()) {
         const workforce = agent.assets[planetId]?.workforceDemography;
         if (!workforce) {
             continue;

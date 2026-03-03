@@ -55,7 +55,7 @@ function makeAgent(id = 'agent-1'): Agent {
     } as Agent;
 }
 
-function makePlanet(totalPop: number): Planet {
+function makePlanet(totalPop: number): { planet: Planet; gov: Agent } {
     const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
 
     // Distribute population across working ages with various edu levels
@@ -84,13 +84,13 @@ function makePlanet(totalPop: number): Planet {
 
     const gov = makeAgent('gov-1');
 
-    return {
+    const planet = {
         id: 'p',
         name: 'Test Planet',
         position: { x: 0, y: 0, z: 0 },
         population: { demography, starvationLevel: 0 },
         resources: {},
-        government: gov,
+        governmentId: gov.id,
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -109,6 +109,8 @@ function makePlanet(totalPop: number): Planet {
             },
         },
     } as Planet;
+
+    return { planet, gov };
 }
 
 function sumPopOccPerEdu(planet: Planet, occ: Occupation): Record<EducationLevelType, number> {
@@ -225,8 +227,7 @@ function checkFullConsistency(planet: Planet, agents: Agent[], label: string): s
 
 describe('starvation integration — population ↔ workforce consistency', () => {
     it('maintains consistency through starvation mortality for 3 months', () => {
-        const planet = makePlanet(500_000);
-        const gov = planet.government;
+        const { planet, gov } = makePlanet(500_000);
         const company = makeAgent('company-1');
 
         // Give the gov agent a workforce demography on the planet
@@ -249,7 +250,11 @@ describe('starvation integration — population ↔ workforce consistency', () =
         };
 
         const agents = [company, gov];
-        const gameState: GameState = { tick: 0, planets: [planet], agents };
+        const gameState: GameState = {
+            tick: 0,
+            planets: new Map([[planet.id, planet]]),
+            agents: new Map(agents.map((a) => [a.id, a])),
+        };
 
         // Phase 1: hire workers (run a few ticks to fill up)
         for (let t = 1; t <= 5; t++) {
@@ -278,8 +283,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
     });
 
     it('maintains consistency across a full year with starvation', () => {
-        const planet = makePlanet(200_000);
-        const gov = planet.government;
+        const { planet, gov } = makePlanet(200_000);
         const company = makeAgent('company-1');
 
         gov.assets = {
@@ -295,7 +299,11 @@ describe('starvation integration — population ↔ workforce consistency', () =
         company.assets.p.allocatedWorkers = { none: 100, primary: 800, secondary: 800, tertiary: 400, quaternary: 0 };
 
         const agents = [company, gov];
-        const gameState: GameState = { tick: 0, planets: [planet], agents };
+        const gameState: GameState = {
+            tick: 0,
+            planets: new Map([[planet.id, planet]]),
+            agents: new Map(agents.map((a) => [a.id, a])),
+        };
 
         // Hire workers
         for (let t = 1; t <= 5; t++) {
@@ -319,8 +327,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
     });
 
     it('maintains consistency through extreme starvation (S=1) for 1 month', () => {
-        const planet = makePlanet(100_000);
-        const gov = planet.government;
+        const { planet, gov } = makePlanet(100_000);
         const company = makeAgent('company-1');
 
         gov.assets = {
@@ -336,7 +343,11 @@ describe('starvation integration — population ↔ workforce consistency', () =
         company.assets.p.allocatedWorkers = { none: 50, primary: 200, secondary: 200, tertiary: 100, quaternary: 0 };
 
         const agents = [company, gov];
-        const gameState: GameState = { tick: 0, planets: [planet], agents };
+        const gameState: GameState = {
+            tick: 0,
+            planets: new Map([[planet.id, planet]]),
+            agents: new Map(agents.map((a) => [a.id, a])),
+        };
 
         // Phase 1: hire
         for (let t = 1; t <= 3; t++) {
@@ -359,8 +370,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
     });
 
     it('maintains consistency across 4 years with starvation and large population', () => {
-        const planet = makePlanet(2_000_000);
-        const gov = planet.government;
+        const { planet, gov } = makePlanet(2_000_000);
         const company = makeAgent('company-1');
 
         gov.assets = {
@@ -382,7 +392,11 @@ describe('starvation integration — population ↔ workforce consistency', () =
         };
 
         const agents = [company, gov];
-        const gameState: GameState = { tick: 0, planets: [planet], agents };
+        const gameState: GameState = {
+            tick: 0,
+            planets: new Map([[planet.id, planet]]),
+            agents: new Map(agents.map((a) => [a.id, a])),
+        };
 
         // Hire workers (several ticks)
         for (let t = 1; t <= 10; t++) {

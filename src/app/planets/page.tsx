@@ -3,12 +3,13 @@
 import PlanetDetails from '@/app/planets/PlanetDetails';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
-import { usePlanetData, usePlanetHistory } from '@/hooks/usePlanetData';
+import { usePlanetData } from '@/hooks/usePlanetData';
 import type { Planet } from '@/simulation/planet';
 
 function PlanetDetailsWithHistory({ planet }: { planet: Planet }) {
-    const { history } = usePlanetHistory(planet.id);
-
+    // Historical data removed; pass an empty series so the UI renders the
+    // latest population and placeholder chart.
+    const history: { tick: number; value: number }[] = [];
     return <PlanetDetails planet={planet} history={history} latestPopulation={planet.population} />;
 }
 

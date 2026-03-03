@@ -14,8 +14,8 @@ import type { Agent } from '../planet';
 import { educationLevelKeys } from '../planet';
 import { DEFAULT_HIRE_AGE_MEAN, MAX_TENURE_YEARS, NOTICE_PERIOD_MONTHS } from './workforceHelpers';
 
-export function laborMarketYearTick(agents: Agent[]): void {
-    for (const agent of agents) {
+export function laborMarketYearTick(agents: Map<string, Agent>): void {
+    for (const agent of agents.values()) {
         for (const assets of Object.values(agent.assets)) {
             const workforce = assets.workforceDemography;
             if (!workforce) {

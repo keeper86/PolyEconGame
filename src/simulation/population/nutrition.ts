@@ -31,7 +31,7 @@
 
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
 import { agriculturalProductResourceType, removeFromStorageFacility } from '../facilities';
-import type { Planet, Population } from '../planet';
+import type { Agent, Planet, Population } from '../planet';
 
 // ---------------------------------------------------------------------------
 // Starvation constants
@@ -67,13 +67,21 @@ export interface NutritionResult {
  * The function *mutates* the planet's storage facility (removes consumed
  * food) and the population's `starvationLevel`.
  */
-export function consumeFood(planet: Planet, population: Population, populationTotal: number): NutritionResult {
+export function consumeFood(
+    planet: Planet,
+    population: Population,
+    populationTotal: number,
+    agents: Map<string, Agent>,
+): NutritionResult {
     // FOOD_PER_PERSON_PER_TICK is already per-tick; compute per-tick demand
     const perTickFoodDemand = populationTotal * FOOD_PER_PERSON_PER_TICK;
 
+    // Look up the government agent by ID for canonical storage access
+    const gov = agents.get(planet.governmentId);
+
     // Food intake equals available supply — no guaranteed over-consumption.
     const foodConsumed = removeFromStorageFacility(
-        planet.government.assets[planet.id]?.storageFacility,
+        gov?.assets[planet.id]?.storageFacility,
         agriculturalProductResourceType.name,
         perTickFoodDemand,
     );

@@ -17,7 +17,7 @@ describe('workforceMortalityTick', () => {
         wf[0].active.none = 100000;
         wf[0].ageMoments.none = { mean: 60, variance: 0 };
 
-        workforceMortalityTick([agent], 'p', 0.1, 0);
+        workforceMortalityTick(new Map([[agent.id, agent]]), 'p', 0.1, 0);
 
         expect(wf[0].active.none).toBeLessThan(100000);
     });
@@ -33,7 +33,15 @@ describe('workforceMortalityTick', () => {
         const youngAgent = makeAgentWithAge(25);
         const oldAgent = makeAgentWithAge(70);
 
-        workforceMortalityTick([youngAgent, oldAgent], 'p', 0, 0);
+        workforceMortalityTick(
+            new Map([
+                [youngAgent.id, youngAgent],
+                [oldAgent.id, oldAgent],
+            ]),
+            'p',
+            0,
+            0,
+        );
 
         const youngSurvivors = youngAgent.assets.p.workforceDemography![0].active.none;
         const oldSurvivors = oldAgent.assets.p.workforceDemography![0].active.none;
@@ -44,12 +52,12 @@ describe('workforceMortalityTick', () => {
     it('does nothing when workforceDemography is absent', () => {
         const agent = makeAgent();
         agent.assets.p.workforceDemography = undefined;
-        expect(() => workforceMortalityTick([agent], 'p', 0, 0)).not.toThrow();
+        expect(() => workforceMortalityTick(new Map([[agent.id, agent]]), 'p', 0, 0)).not.toThrow();
     });
 
     it('does nothing for cohorts with zero active workers', () => {
         const agent = makeAgent();
-        expect(() => workforceMortalityTick([agent], 'p', 0, 0)).not.toThrow();
+        expect(() => workforceMortalityTick(new Map([[agent.id, agent]]), 'p', 0, 0)).not.toThrow();
         const wf = agent.assets.p.workforceDemography!;
         for (const cohort of wf) {
             for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as const) {
@@ -67,8 +75,8 @@ describe('workforceMortalityTick', () => {
         agentStarve.assets.p.workforceDemography![0].active.none = 100000;
         agentStarve.assets.p.workforceDemography![0].ageMoments.none = { mean: 60, variance: 0 };
 
-        workforceMortalityTick([agentNoStarve], 'p', 0, 0);
-        workforceMortalityTick([agentStarve], 'p', 0, 0.8);
+        workforceMortalityTick(new Map([[agentNoStarve.id, agentNoStarve]]), 'p', 0, 0);
+        workforceMortalityTick(new Map([[agentStarve.id, agentStarve]]), 'p', 0, 0.8);
 
         const survivorsNoStarve = agentNoStarve.assets.p.workforceDemography![0].active.none;
         const survivorsStarve = agentStarve.assets.p.workforceDemography![0].active.none;
@@ -88,7 +96,7 @@ describe('workforceMortalityTick — consistency', () => {
         wf[0].active.none = 10;
         wf[0].ageMoments.none = { mean: 90, variance: 0 };
 
-        workforceMortalityTick([agent], 'p', 0.5, 0.9);
+        workforceMortalityTick(new Map([[agent.id, agent]]), 'p', 0.5, 0.9);
 
         expect(wf[0].active.none).toBeGreaterThanOrEqual(0);
     });
@@ -104,7 +112,7 @@ describe('workforceMortalityTick — consistency', () => {
             }
         }
 
-        workforceMortalityTick([agent], 'p', 1.0, 1.0);
+        workforceMortalityTick(new Map([[agent.id, agent]]), 'p', 1.0, 1.0);
 
         for (const cohort of wf) {
             for (const edu of educationLevelKeys) {
@@ -119,7 +127,7 @@ describe('workforceMortalityTick — consistency', () => {
         wf[0].active.none = 1;
         wf[0].ageMoments.none = { mean: 40, variance: 0 };
 
-        workforceMortalityTick([agent], 'p', 0.01, 0);
+        workforceMortalityTick(new Map([[agent.id, agent]]), 'p', 0.01, 0);
 
         expect(wf[0].active.none).toBe(1);
     });

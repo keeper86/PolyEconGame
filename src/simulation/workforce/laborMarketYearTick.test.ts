@@ -28,7 +28,7 @@ describe('laborMarketYearTick', () => {
         const workforce = agent.assets.p.workforceDemography!;
         workforce[0].active.primary = 100;
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(workforce[0].active.primary).toBe(0);
         expect(workforce[1].active.primary).toBe(100);
@@ -38,7 +38,7 @@ describe('laborMarketYearTick', () => {
         const workforce = agent.assets.p.workforceDemography!;
         workforce[MAX_TENURE_YEARS].active.secondary = 50;
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(workforce[MAX_TENURE_YEARS].active.secondary).toBe(50);
     });
@@ -47,7 +47,7 @@ describe('laborMarketYearTick', () => {
         const workforce = agent.assets.p.workforceDemography!;
         workforce[0].departing.tertiary[1] = 8;
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(workforce[0].departing.tertiary[1]).toBe(0);
         expect(workforce[1].departing.tertiary[1]).toBe(8);
@@ -57,7 +57,7 @@ describe('laborMarketYearTick', () => {
         const workforce = agent.assets.p.workforceDemography!;
         workforce[0].retiring.none[1] = 5;
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(workforce[0].retiring.none[1]).toBe(0);
         expect(workforce[1].retiring.none[1]).toBe(5);
@@ -75,7 +75,7 @@ describe('age moments — year tick', () => {
         wf[0].active.primary = 100;
         wf[0].ageMoments.primary = { mean: 25, variance: 4 };
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(wf[1].active.primary).toBe(100);
         expect(wf[1].ageMoments.primary.mean).toBe(26);
@@ -90,7 +90,7 @@ describe('age moments — year tick', () => {
         wf[MAX_TENURE_YEARS - 1].active.secondary = 100;
         wf[MAX_TENURE_YEARS - 1].ageMoments.secondary = { mean: 48, variance: 0 };
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(wf[MAX_TENURE_YEARS].active.secondary).toBe(200);
         expect(wf[MAX_TENURE_YEARS].ageMoments.secondary.mean).toBeCloseTo(50, 5);
@@ -104,7 +104,7 @@ describe('age moments — year tick', () => {
         wf[1].active.secondary = 100;
         wf[1].ageMoments.secondary = { mean: 26, variance: 0 };
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(wf[1].active.secondary).toBe(100);
         expect(wf[1].ageMoments.secondary.mean).toBeCloseTo(26, 5);
@@ -118,7 +118,7 @@ describe('age moments — year tick', () => {
         wf[0].active.none = 50;
         wf[0].ageMoments.none = { mean: 22, variance: 2 };
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(wf[0].active.none).toBe(0);
         expect(wf[0].ageMoments.none.mean).toBe(DEFAULT_HIRE_AGE_MEAN);
@@ -142,7 +142,7 @@ describe('laborMarketYearTick — conservation', () => {
 
         const totalBefore = totalActiveForEdu(wf, 'none') + totalActiveForEdu(wf, 'primary');
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         const totalAfter = totalActiveForEdu(wf, 'none') + totalActiveForEdu(wf, 'primary');
         expect(totalAfter).toBe(totalBefore);
@@ -159,7 +159,7 @@ describe('laborMarketYearTick — conservation', () => {
         const depNoneBefore = totalDepartingForEdu(wf, 'none');
         const depPrimBefore = totalDepartingForEdu(wf, 'primary');
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(totalDepartingForEdu(wf, 'none')).toBe(depNoneBefore);
         expect(totalDepartingForEdu(wf, 'primary')).toBe(depPrimBefore);
@@ -174,7 +174,7 @@ describe('laborMarketYearTick — conservation', () => {
 
         const retBefore = totalRetiringForEdu(wf, 'secondary');
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(totalRetiringForEdu(wf, 'secondary')).toBe(retBefore);
     });
@@ -186,7 +186,7 @@ describe('laborMarketYearTick — conservation', () => {
         wf[MAX_TENURE_YEARS].active.none = 30;
         wf[MAX_TENURE_YEARS - 1].active.none = 20;
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(wf[MAX_TENURE_YEARS].active.none).toBe(50);
         expect(wf[MAX_TENURE_YEARS - 1].active.none).toBe(0);
@@ -200,7 +200,7 @@ describe('laborMarketYearTick — conservation', () => {
         wf[0].departing.primary[5] = 10;
         wf[0].retiring.secondary[3] = 7;
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         expect(wf[0].active.none).toBe(0);
         expect(wf[0].departing.primary[5]).toBe(0);
@@ -217,7 +217,7 @@ describe('laborMarketYearTick — conservation', () => {
             wf[MAX_TENURE_YEARS].retiring[edu][5] = 5;
         }
 
-        laborMarketYearTick([agent]);
+        laborMarketYearTick(new Map([[agent.id, agent]]));
 
         for (const edu of educationLevelKeys) {
             expect(wf[MAX_TENURE_YEARS].active[edu]).toBe(100);

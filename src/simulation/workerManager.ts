@@ -12,6 +12,7 @@
 
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { MessageChannel, type MessagePort } from 'node:worker_threads';
 import { Piscina } from 'piscina';
 
 import type { InboundMessage, OutboundMessage } from './worker';
@@ -24,10 +25,45 @@ export type MessageHandler = (msg: OutboundMessage) => void;
 
 // ---------------------------------------------------------------------------
 // Module-level state
+//
+// In development, Turbopack / Next.js may re-evaluate this module in
+// isolated compilation contexts.  Using `globalThis` ensures the Piscina
+// pool and message-handler set are true singletons across all module
+// instances — preventing duplicate worker threads.
 // ---------------------------------------------------------------------------
 
-let pool: Piscina | null = null;
-const messageHandlers = new Set<MessageHandler>();
+const GLOBAL_KEY_POOL = Symbol.for('__polyecon_worker_pool__');
+const GLOBAL_KEY_PORT = Symbol.for('__polyecon_worker_port__');
+const GLOBAL_KEY_HANDLERS = Symbol.for('__polyecon_message_handlers__');
+
+const g = globalThis as unknown as {
+    [GLOBAL_KEY_POOL]?: Piscina | null;
+    [GLOBAL_KEY_PORT]?: MessagePort | null;
+    [GLOBAL_KEY_HANDLERS]?: Set<MessageHandler>;
+};
+
+function getPool(): Piscina | null {
+    return g[GLOBAL_KEY_POOL] ?? null;
+}
+
+function setPool(p: Piscina | null): void {
+    g[GLOBAL_KEY_POOL] = p;
+}
+
+function getPort(): MessagePort | null {
+    return g[GLOBAL_KEY_PORT] ?? null;
+}
+
+function setPort(p: MessagePort | null): void {
+    g[GLOBAL_KEY_PORT] = p;
+}
+
+function getMessageHandlers(): Set<MessageHandler> {
+    if (!g[GLOBAL_KEY_HANDLERS]) {
+        g[GLOBAL_KEY_HANDLERS] = new Set<MessageHandler>();
+    }
+    return g[GLOBAL_KEY_HANDLERS];
+}
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -49,7 +85,7 @@ function resolveTsxExecArgv(): string[] | undefined {
     return undefined;
 }
 
-function createPool(): Piscina {
+function createPool(): { pool: Piscina; port: MessagePort } {
     // __dirname is unreliable inside Next.js bundles (resolves to /ROOT/…).
     // Use process.cwd() which always points to the real project root.
     const workerPath = path.resolve(process.cwd(), 'src', 'simulation', 'worker.ts');
@@ -57,6 +93,14 @@ function createPool(): Piscina {
 
     console.log(`[workerManager] Creating Piscina pool with worker: ${workerPath}`);
     console.log('[workerManager] Pool options:', { execArgv, workerData: { tickIntervalMs: 0 } });
+
+    // Create a dedicated MessageChannel for custom messages between the main
+    // thread and the worker.  Piscina owns `parentPort` for its internal task
+    // protocol — sending arbitrary messages via `threads[0].postMessage()`
+    // would corrupt that protocol and crash the pool.  Instead we pass one
+    // end of the channel (`port2`) to the worker through the task payload and
+    // keep the other end (`port1`) here for `sendToWorker` / `onWorkerMessage`.
+    const { port1, port2 } = new MessageChannel();
 
     const p = new Piscina({
         filename: workerPath,
@@ -72,27 +116,27 @@ function createPool(): Piscina {
         ...(execArgv ? { execArgv } : {}),
     });
 
-    // Forward worker messages to registered handlers.
-    p.on('message', (msg: OutboundMessage) => {
-        messageHandlers.forEach((h) => h(msg));
+    // Listen for custom messages from the worker on our side of the channel.
+    port1.on('message', (msg: OutboundMessage) => {
+        getMessageHandlers().forEach((h) => h(msg));
     });
 
     p.on('error', (err) => {
         console.error('[workerManager] Pool error:', err);
     });
 
-    // Submit the long-running simulation task. The returned promise only
-    // settles when the worker exits (resolve on graceful stop, reject on
-    // crash). We intentionally do not await it here.
-    p.run({ command: 'start' }).catch((err) => {
+    // Submit the long-running simulation task, passing the worker's end of
+    // the MessageChannel.  The `transferList` ensures the port is moved to
+    // the worker thread (not copied).
+    p.run({ command: 'start', port: port2 }, { transferList: [port2] }).catch((err) => {
         // If the pool was intentionally destroyed the rejection is expected.
-        if (pool === p) {
+        if (getPool() === p) {
             console.error('[workerManager] Simulation task rejected unexpectedly:', err);
         }
     });
 
     console.log('[workerManager] Simulation worker spawned via Piscina.');
-    return p;
+    return { pool: p, port: port1 };
 }
 
 // ---------------------------------------------------------------------------
@@ -104,25 +148,27 @@ function createPool(): Piscina {
  * Safe to call multiple times – only one worker is kept alive.
  */
 export function startWorker(): void {
-    if (pool) {
+    if (getPool()) {
         return;
     }
-    pool = createPool();
+    const { pool, port } = createPool();
+    setPool(pool);
+    setPort(port);
 }
 
 /**
- * Send a typed message to the worker.
+ * Send a typed message to the worker via the dedicated MessageChannel.
+ * Automatically starts the worker if it is not yet running.
  */
 export function sendToWorker(msg: InboundMessage): void {
-    if (!pool) {
-        throw new Error('Worker is not running');
+    if (!getPool()) {
+        startWorker();
     }
-    // Piscina exposes the underlying Worker instances via `threads`.
-    const threads = pool.threads;
-    if (threads.length === 0) {
-        throw new Error('No worker threads available');
+    const port = getPort();
+    if (!port) {
+        throw new Error('Worker message port is not available');
     }
-    threads[0].postMessage(msg);
+    port.postMessage(msg);
 }
 
 /**
@@ -130,19 +176,25 @@ export function sendToWorker(msg: InboundMessage): void {
  * Returns an unsubscribe function.
  */
 export function onWorkerMessage(handler: MessageHandler): () => void {
-    messageHandlers.add(handler);
-    return () => messageHandlers.delete(handler);
+    const handlers = getMessageHandlers();
+    handlers.add(handler);
+    return () => handlers.delete(handler);
 }
 
 /**
  * Terminate the worker gracefully.
  */
 export async function stopWorker(): Promise<void> {
-    if (!pool) {
+    const p = getPool();
+    const port = getPort();
+    if (!p) {
         return;
     }
-    const p = pool;
-    pool = null;
+    setPool(null);
+    if (port) {
+        port.close();
+        setPort(null);
+    }
     await p.destroy();
     console.log('[workerManager] Worker shut down gracefully.');
 }
@@ -153,11 +205,16 @@ export async function stopWorker(): Promise<void> {
  */
 export async function restartWorker(): Promise<void> {
     // Tear down existing pool.
-    if (pool) {
-        const p = pool;
-        pool = null;
+    const existing = getPool();
+    const existingPort = getPort();
+    if (existing) {
+        setPool(null);
+        if (existingPort) {
+            existingPort.close();
+            setPort(null);
+        }
         try {
-            await p.destroy();
+            await existing.destroy();
         } catch (err) {
             console.error('[workerManager] Error destroying pool during restart:', err);
         }
@@ -166,11 +223,13 @@ export async function restartWorker(): Promise<void> {
     // Notify connected listeners that a restart is happening so clients can
     // reset any derived UI state before the fresh worker sends new state.
     try {
-        messageHandlers.forEach((h) => h({ type: 'workerRestarted', reason: 'manual' } as OutboundMessage));
+        getMessageHandlers().forEach((h) => h({ type: 'workerRestarted', reason: 'manual' } as OutboundMessage));
     } catch (err) {
         console.error('[workerManager] Error broadcasting restart message:', err);
     }
 
     // Spawn a fresh pool.
-    pool = createPool();
+    const { pool, port } = createPool();
+    setPool(pool);
+    setPort(port);
 }

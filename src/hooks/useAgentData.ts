@@ -73,23 +73,15 @@ export function useAgentData(): UseAgentDataResult {
  * Hook that fetches resource history for a single agent.
  * Call this inside a component that needs the full time-series chart data.
  */
-export function useAgentHistory(agentId: string, limit = 100): { series: AgentTimeSeries; isLoading: boolean } {
-    const trpc = useTRPC();
-
-    const historyQuery = useQuery({
-        ...trpc.simulation.getAgentHistory.queryOptions({ agentId, limit }),
-        refetchInterval: REFETCH_INTERVAL_MS,
-    });
-
-    const rows = historyQuery.data?.history ?? [];
+export function useAgentHistory(): { series: AgentTimeSeries; isLoading: boolean } {
     const series: AgentTimeSeries = {
-        storage: rows.map((r) => ({ tick: r.tick, resources: r.storage })),
-        production: rows.map((r) => ({ tick: r.tick, resources: r.production })),
-        consumption: rows.map((r) => ({ tick: r.tick, resources: r.consumption })),
+        storage: [],
+        production: [],
+        consumption: [],
     };
 
     return {
         series,
-        isLoading: historyQuery.isLoading,
+        isLoading: false,
     };
 }

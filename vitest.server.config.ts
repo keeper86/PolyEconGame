@@ -5,7 +5,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig({
     plugins: [react(), tsconfigPaths()],
     test: {
-        include: ['src/server/**/*.test.ts'],
+        include: ['src/server/**/*.test.ts', 'src/simulation/snapshotCompression.test.ts'],
         environment: 'node',
         env: {
             NODE_ENV: 'test',
