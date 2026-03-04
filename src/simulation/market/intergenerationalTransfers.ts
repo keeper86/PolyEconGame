@@ -60,14 +60,15 @@
  *     left.  Allocates remaining surplus proportionally toward the full
  *     food buffer target.
  *
- *   Phase 4 — Write balances.
+ *   Phase 4 — Write transfer matrix.
  *     Ensure exact wealth conservation.
  *
  * ## Tracking
  *
- * Per-age net transfer balances (positive = receiver, negative = giver)
- * are written to `planet.foodMarket.lastTransferBalances` so the frontend
- * can visualise them without re-running the simulation on the client.
+ * Full-resolution per-cell (age × education × occupation) net transfer
+ * amounts are written to `planet.foodMarket.lastTransferMatrix` so the
+ * frontend can visualise them without re-running the simulation on the
+ * client.  Positive = received, negative = given.  Global sum = 0.
  *
  * ## Invariants
  *
@@ -79,7 +80,15 @@
  * - Complexity linear in demographic state size.
  */
 
-import type { EducationLevelType, GameState, Occupation, Planet, WealthDemography } from '../planet';
+import type {
+    EducationLevelType,
+    GameState,
+    Occupation,
+    Planet,
+    TransferCohort,
+    TransferMatrix,
+    WealthDemography,
+} from '../planet';
 import { educationLevelKeys, OCCUPATIONS } from '../planet';
 import {
     CHILD_MAX_AGE,
@@ -100,8 +109,12 @@ import { getFoodBufferDemography, ensureFoodMarket } from './foodMarketHelpers';
 // Internal types
 // ---------------------------------------------------------------------------
 
-/** Supporter occupations — only working/available people can give. */
-const SUPPORTER_OCCS: ReadonlySet<Occupation> = new Set(['company', 'government', 'unoccupied']);
+/** Supporter occupations — anyone with wealth above the survival floor can give.
+ *  Includes 'unableToWork' so that wealthy retired / disabled elderly transfer
+ *  surplus to dependents.  The continuous `supportCapacity` curve and the
+ *  age-appropriate survival floor naturally limit how much they actually give;
+ *  once their wealth drops to the floor they become net receivers instead.  */
+const SUPPORTER_OCCS: ReadonlySet<Occupation> = new Set(['company', 'government', 'unoccupied', 'unableToWork']);
 
 /** Dependent occupations for intra-cohort pooling (same-age dependents). */
 const INTRA_COHORT_DEPENDENT_OCCS: ReadonlySet<Occupation> = new Set(['unoccupied', 'unableToWork']);
@@ -242,6 +255,39 @@ export function effectiveSurplus(mean: number, variance: number, floor: number, 
 }
 
 // ---------------------------------------------------------------------------
+// Transfer matrix helpers
+// ---------------------------------------------------------------------------
+
+/** Create a zero-initialised transfer matrix for `numAges` age slots. */
+export function createZeroTransferMatrix(numAges: number): TransferMatrix {
+    const matrix: TransferMatrix = new Array(numAges);
+    for (let age = 0; age < numAges; age++) {
+        const cohort = {} as TransferCohort;
+        for (const edu of educationLevelKeys) {
+            cohort[edu] = {} as { [O in Occupation]: number };
+            for (const occ of OCCUPATIONS) {
+                cohort[edu][occ] = 0;
+            }
+        }
+        matrix[age] = cohort;
+    }
+    return matrix;
+}
+
+/** Sum all cells of a transfer matrix (should be ~0 for a balanced system). */
+export function sumTransferMatrix(matrix: TransferMatrix): number {
+    let total = 0;
+    for (let age = 0; age < matrix.length; age++) {
+        for (const edu of educationLevelKeys) {
+            for (const occ of OCCUPATIONS) {
+                total += matrix[age][edu][occ];
+            }
+        }
+    }
+    return total;
+}
+
+// ---------------------------------------------------------------------------
 // Main tick
 // ---------------------------------------------------------------------------
 
@@ -271,8 +317,8 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
     const precautionaryReserve = PRECAUTIONARY_RESERVE_TICKS * FOOD_PER_PERSON_PER_TICK * foodPrice;
     const oneTickFood = FOOD_PER_PERSON_PER_TICK;
 
-    // Per-age balance tracker (positive = received, negative = given)
-    const balances = new Array<number>(numAges).fill(0);
+    // Per-cell transfer matrix (age × edu × occ): positive = received, negative = given
+    const transferMatrix: TransferMatrix = createZeroTransferMatrix(numAges);
 
     // Pre-compute per-age support capacity and survival floor
     const capacities = new Array<number>(numAges);
@@ -421,12 +467,14 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
                 mean: depWealth.mean + perCapita,
                 variance: depWealth.variance,
             };
+            // Track credit in transfer matrix
+            transferMatrix[age][cell.edu][cell.occ] += cellTransfer;
         }
 
         // Debit supporters proportionally across all edu × supporter-occ cells
-        debitSupporters(demography, wealthDemography, age, transfer, floors[age]);
+        debitSupporters(demography, wealthDemography, age, transfer, floors[age], transferMatrix);
         phase1Used[age] = transfer;
-        // Intra-cohort: giver and receiver are same age → no inter-age balance change
+        // Intra-cohort: giver and receiver are same age → per-cell balances still tracked
     }
 
     // ===================================================================
@@ -445,7 +493,7 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
         foodBuffers,
         remainingSurvivalSurplus,
         survivalNeeds,
-        balances,
+        transferMatrix,
         numAges,
         floors,
         capacities,
@@ -539,7 +587,7 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
         foodBuffers,
         remainingBufferSurplus,
         remainingBufferNeeds,
-        balances,
+        transferMatrix,
         numAges,
         bufferFloors,
         capacities,
@@ -548,9 +596,15 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
     );
 
     // ===================================================================
-    // Phase 4 — Write balances
+    // Phase 4 — Write transfer matrix + dev assertion
     // ===================================================================
-    foodMarket.lastTransferBalances = balances;
+    if (process.env.NODE_ENV !== 'production') {
+        const matrixSum = sumTransferMatrix(transferMatrix);
+        if (Math.abs(matrixSum) > 1e-4) {
+            console.warn(`[intergenerationalTransfers] transfer matrix not zero-sum: Δ=${matrixSum.toExponential(4)}`);
+        }
+    }
+    foodMarket.lastTransferMatrix = transferMatrix;
 }
 
 // ---------------------------------------------------------------------------
@@ -574,7 +628,7 @@ function executeVerticalTransfers(
     foodBuffers: { [L in EducationLevelType]: { [O in Occupation]: { foodStock: number } } }[],
     surplusPool: SurplusSnapshot[],
     needPool: DependentNeed[],
-    balances: number[],
+    transferMatrix: TransferMatrix,
     numAges: number,
     floors: number[],
     capacities: number[],
@@ -647,9 +701,8 @@ function executeVerticalTransfers(
 
         // Debit each supporter age (uses effective surplus for proportional allocation)
         for (const { supAge, amount } of transfers) {
-            debitSupporters(demography, wealthDemography, supAge, amount, floors[supAge]);
+            debitSupporters(demography, wealthDemography, supAge, amount, floors[supAge], transferMatrix);
             remaining[supAge] -= amount;
-            balances[supAge] -= amount;
         }
 
         // Credit dependent age: distribute by remaining need, not population
@@ -661,8 +714,8 @@ function executeVerticalTransfers(
             totalTransfer,
             _targetPerPerson,
             _foodPrice,
+            transferMatrix,
         );
-        balances[depAge] += totalTransfer;
     }
 }
 
@@ -684,6 +737,7 @@ function debitSupporters(
     age: number,
     amount: number,
     floor: number,
+    transferMatrix?: TransferMatrix,
 ): void {
     if (amount <= 0) {
         return;
@@ -732,6 +786,10 @@ function debitSupporters(
             mean: Math.max(floor, w.mean - perCapita),
             variance: w.variance,
         };
+        // Track total wealth removed from this cell
+        if (transferMatrix) {
+            transferMatrix[age][cell.edu][cell.occ] -= share;
+        }
     }
 }
 
@@ -752,6 +810,7 @@ function creditDependents(
     amount: number,
     targetPerPerson: number,
     foodPrice: number,
+    transferMatrix?: TransferMatrix,
 ): void {
     if (amount <= 0) {
         return;
@@ -803,6 +862,10 @@ function creditDependents(
                 mean: w.mean + perCapita,
                 variance: w.variance,
             };
+            // Track total wealth credited to this cell
+            if (transferMatrix) {
+                transferMatrix[age][cell.edu][cell.occ] += share;
+            }
         }
     } else {
         // Fallback: population-proportional
@@ -814,6 +877,10 @@ function creditDependents(
                 mean: w.mean + perCapita,
                 variance: w.variance,
             };
+            // Track total wealth credited to this cell
+            if (transferMatrix) {
+                transferMatrix[age][cell.edu][cell.occ] += share;
+            }
         }
     }
 }

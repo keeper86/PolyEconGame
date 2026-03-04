@@ -59,14 +59,26 @@ export interface FoodMarket {
      */
     householdFoodBuffers?: FoodBufferDemography;
     /**
-     * Per-age net intergenerational transfer balance (currency units).
-     * Positive = net receiver, negative = net giver.
+     * Full-resolution transfer tensor: age × education × occupation.
+     *
+     * Values are net transfers (currency units):
+     *   Positive = received, Negative = given.
+     *
+     * Global zero-sum invariant: the sum of all cells equals zero.
+     *
      * Written each tick by `intergenerationalTransfersTick`.
      * Consumed by the frontend for the transfer chart — no re-simulation
-     * on the client.  Index = age.
+     * on the client.  Outer array index = age.
      */
-    lastTransferBalances?: number[];
+    lastTransferMatrix?: TransferMatrix;
 }
+
+/**
+ * Per-age × education × occupation transfer tensor.
+ * Outer array indexed by age.  Each entry maps edu → occ → net transfer amount.
+ */
+export type TransferCohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
+export type TransferMatrix = TransferCohort[];
 
 // ---------------------------------------------------------------------------
 // Banking types

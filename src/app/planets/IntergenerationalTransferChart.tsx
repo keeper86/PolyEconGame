@@ -3,22 +3,20 @@
 import React, { useState, useMemo } from 'react';
 import {
     ResponsiveContainer,
-    ComposedChart,
+    BarChart,
     Bar,
-    Line,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     Legend,
     ReferenceLine,
-    Cell,
 } from 'recharts';
-import type { Population, Cohort, FoodMarket } from '@/simulation/planet';
+import type { Population, FoodMarket, TransferMatrix } from '@/simulation/planet';
 import { educationLevelKeys, OCCUPATIONS } from '@/simulation/planet';
-import type { EducationLevelType, Occupation } from '@/simulation/planet';
 import { CHILD_MAX_AGE, ELDERLY_MIN_AGE } from '@/simulation/constants';
-import CohortFilter, { type CohortFilterState } from './CohortFilter';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -35,26 +33,10 @@ const fmt = (n: number): string => {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Data row                                                           */
+/*  View modes                                                         */
 /* ------------------------------------------------------------------ */
 
-interface TransferRow {
-    age: number;
-    /** Population in the filtered slice at this age. */
-    pop: number;
-    /**
-     * Net transfer per person at this age.
-     * Positive = net receiver (children, elderly, disabled).
-     * Negative = net giver (working-age supporter).
-     */
-    netTransferPerPerson: number;
-    /** Total net transfer (netTransferPerPerson × pop). */
-    netTransferTotal: number;
-    /** Role label: 'child', 'elderly', 'disabled', 'supporter', 'neutral' */
-    role: string;
-    /** Mean wealth per person in this age slice. */
-    meanWealth: number;
-}
+type ViewMode = 'occupation' | 'education';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -70,120 +52,83 @@ type Props = {
 /* ------------------------------------------------------------------ */
 
 /**
- * IntergenerationalTransferChart — balance chart around zero showing
- * which age cohorts are net givers vs. net receivers of wealth.
+ * IntergenerationalTransferChart — stacked diverging bar chart showing
+ * which age cohorts are net givers vs. net receivers of wealth,
+ * broken down by occupation or education level.
  *
- * Reads pre-computed transfer balances from `foodMarket.lastTransferBalances`
- * (written by the backend each tick) so no client-side simulation is needed.
+ * Reads the full-resolution transfer matrix from
+ * `foodMarket.lastTransferMatrix` (age × edu × occ) written by the
+ * backend each tick.  No client-side simulation or reconstruction needed.
  *
- * Transfer priority (backend — 4 phases):
- * 1. Supporter survival food (~55% of target)
- * 2. Dependent daily consumption (1 tick)
- * 3. Supporter buffer filling (precautionary reserve)
- * 4. Dependent buffer filling (full food target)
- *
- * Dependent categories: children (0–25), elderly (67+), disabled (26–66).
- * Received and Given totals always balance (zero-sum system).
+ * View modes:
+ * - **occupation**: bars stacked by occupation (summed over education)
+ * - **education**: bars stacked by education level (summed over occupation)
  */
-export default function IntergenerationalTransferChart({ population, foodMarket }: Props): React.ReactElement {
-    const [filter, setFilter] = useState<CohortFilterState>({ edu: null, occ: null });
+export default function IntergenerationalTransferChart({ foodMarket }: Props): React.ReactElement {
+    const [viewMode, setViewMode] = useState<ViewMode>('occupation');
 
-    const demography = population.demography;
-    const wealthDem = population.wealthDemography;
+    const matrix: TransferMatrix | undefined = foodMarket?.lastTransferMatrix;
 
-    const chartData = useMemo<TransferRow[]>(() => {
-        if (!wealthDem || wealthDem.length === 0) {
-            return [];
+    const { occData, eduData, totalReceived, totalGiven } = useMemo(() => {
+        if (!matrix || matrix.length === 0) {
+            return { occData: [], eduData: [], totalReceived: 0, totalGiven: 0 };
         }
 
-        // Read pre-computed per-age net transfer balances from backend state.
-        // Falls back to an empty (all-zero) array if not yet available.
-        const balances: number[] = foodMarket?.lastTransferBalances ?? new Array<number>(demography.length).fill(0);
+        const occRows: Record<string, number | string>[] = [];
+        const eduRows: Record<string, number | string>[] = [];
+        let received = 0;
+        let given = 0;
 
-        const edus: readonly EducationLevelType[] = filter.edu ? [filter.edu] : educationLevelKeys;
-        const occs: readonly Occupation[] = filter.occ ? [filter.occ] : ([...OCCUPATIONS] as Occupation[]);
-
-        const rows: TransferRow[] = [];
-        for (let age = 0; age < demography.length; age++) {
-            const cohort: Cohort | undefined = demography[age];
-            if (!cohort) {
-                continue;
+        for (let age = 0; age < matrix.length; age++) {
+            // Occupation view: row[occ] = Σ_edu transferMatrix[age][edu][occ]
+            const occRow: Record<string, number | string> = { age };
+            let ageTotal = 0;
+            for (const occ of OCCUPATIONS) {
+                let sum = 0;
+                for (const edu of educationLevelKeys) {
+                    sum += matrix[age][edu][occ];
+                }
+                occRow[OCC_LABELS[occ]] = sum;
+                ageTotal += sum;
             }
+            occRow._total = ageTotal;
+            occRows.push(occRow);
 
-            // Filtered population & wealth
-            let totalPop = 0;
-            let totalWealth = 0;
-            let filteredPop = 0;
-            let fullPop = 0;
+            // Education view: row[edu] = Σ_occ transferMatrix[age][edu][occ]
+            const eduRow: Record<string, number | string> = { age };
+            let eduAgeTotal = 0;
             for (const edu of educationLevelKeys) {
+                let sum = 0;
                 for (const occ of OCCUPATIONS) {
-                    const pop = Number(cohort[edu]?.[occ] ?? 0);
-                    fullPop += pop;
+                    sum += matrix[age][edu][occ];
                 }
+                eduRow[EDU_LABELS[edu]] = sum;
+                eduAgeTotal += sum;
             }
-            for (const edu of edus) {
-                for (const occ of occs) {
-                    const pop = Number(cohort[edu]?.[occ] ?? 0);
-                    if (pop <= 0) {
-                        continue;
-                    }
-                    filteredPop += pop;
-                    totalPop += pop;
-                    const wm = wealthDem[age]?.[edu]?.[occ];
-                    totalWealth += (wm ? wm.mean : 0) * pop;
-                }
-            }
+            eduRow._total = eduAgeTotal;
+            eduRows.push(eduRow);
 
-            // Scale the balance proportionally to the filtered population share
-            const scale = fullPop > 0 ? filteredPop / fullPop : 0;
-            const netTotal = balances[age] * scale;
-            const netPerPerson = totalPop > 0 ? netTotal / totalPop : 0;
-
-            let role: string;
-            if (age <= CHILD_MAX_AGE) {
-                role = netTotal > 0 ? 'child' : netTotal < 0 ? 'supporter' : 'neutral';
-            } else if (age >= ELDERLY_MIN_AGE) {
-                role = netTotal > 0 ? 'elderly' : netTotal < 0 ? 'supporter' : 'neutral';
-            } else if (netTotal > 0) {
-                role = 'disabled';
-            } else if (netTotal < 0) {
-                role = 'supporter';
+            // Summary stats
+            if (ageTotal > 0) {
+                received += ageTotal;
             } else {
-                role = 'neutral';
+                given += -ageTotal;
             }
-
-            rows.push({
-                age,
-                pop: totalPop,
-                netTransferPerPerson: netPerPerson,
-                netTransferTotal: netTotal,
-                role,
-                meanWealth: totalPop > 0 ? totalWealth / totalPop : 0,
-            });
         }
-        return rows;
-    }, [demography, wealthDem, foodMarket?.lastTransferBalances, filter.edu, filter.occ]);
 
-    if (chartData.length === 0 || !wealthDem) {
+        return { occData: occRows, eduData: eduRows, totalReceived: received, totalGiven: given };
+    }, [matrix]);
+
+    if (!matrix || matrix.length === 0) {
         return <div className='text-xs text-muted-foreground'>No transfer data available</div>;
     }
 
-    const hasData = chartData.some((d) => d.netTransferTotal !== 0);
+    const hasData = totalReceived > 0 || totalGiven > 0;
     if (!hasData) {
         return <div className='text-xs text-muted-foreground'>No intergenerational transfers active</div>;
     }
 
-    // Summary stats — actual transfers (should balance to ~0)
-    const totalReceived = chartData.reduce((s, d) => s + Math.max(0, d.netTransferTotal), 0);
-    const totalGiven = chartData.reduce((s, d) => s + Math.max(0, -d.netTransferTotal), 0);
-
-    const roleColors: Record<string, string> = {
-        child: '#60a5fa', // blue
-        elderly: '#f59e0b', // amber
-        disabled: '#ef4444', // red
-        supporter: '#16a34a', // green
-        neutral: '#94a3b8', // gray
-    };
+    const chartData = viewMode === 'occupation' ? occData : eduData;
 
     return (
         <div>
@@ -200,57 +145,37 @@ export default function IntergenerationalTransferChart({ population, foodMarket 
                         <span className='text-muted-foreground/60'>(Δ = {fmt(totalReceived - totalGiven)})</span>
                     </div>
                 </div>
-                {/* Role legend */}
+                {/* Age boundary legend */}
                 <div className='flex items-center gap-2 text-[10px] text-muted-foreground shrink-0 flex-wrap'>
-                    {(
-                        [
-                            ['child', `Children (0–${CHILD_MAX_AGE})`],
-                            ['elderly', `Elderly (${ELDERLY_MIN_AGE}+)`],
-                            ['disabled', 'Disabled'],
-                            ['supporter', 'Supporters'],
-                        ] as const
-                    ).map(([key, label]) => (
-                        <span key={key} className='flex items-center gap-0.5'>
-                            <span
-                                className='inline-block h-2 w-2 rounded-full'
-                                style={{ backgroundColor: roleColors[key] }}
-                            />
-                            {label}
-                        </span>
-                    ))}
+                    <span>Children: 0–{CHILD_MAX_AGE}</span>
+                    <span>Elderly: {ELDERLY_MIN_AGE}+</span>
                 </div>
             </div>
 
-            {/* Filter badges */}
-            <div className='mb-2'>
-                <CohortFilter value={filter} onChange={setFilter} compact />
-            </div>
+            {/* View mode toggle */}
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+                <TabsList className='h-7 mb-2'>
+                    <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
+                        By occupation
+                    </TabsTrigger>
+                    <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
+                        By education
+                    </TabsTrigger>
+                </TabsList>
+            </Tabs>
 
             <div style={{ width: '100%', height: 240 }}>
                 <ResponsiveContainer width='100%' height='100%'>
-                    <ComposedChart data={chartData} margin={{ top: 6, right: 12, left: 12, bottom: 6 }}>
+                    <BarChart data={chartData} margin={{ top: 6, right: 12, left: 12, bottom: 6 }} stackOffset='sign'>
                         <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                         <XAxis dataKey='age' tick={{ fontSize: 10 }} />
                         <YAxis
-                            yAxisId='transfer'
                             tick={{ fontSize: 10 }}
                             tickFormatter={(v) => fmt(v)}
                             label={{
-                                value: 'Net transfer (per person)',
+                                value: 'Net transfer (currency)',
                                 angle: -90,
                                 position: 'insideLeft',
-                                style: { fontSize: 9 },
-                            }}
-                        />
-                        <YAxis
-                            yAxisId='wealth'
-                            orientation='right'
-                            tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => fmt(v)}
-                            label={{
-                                value: 'Mean wealth',
-                                angle: 90,
-                                position: 'insideRight',
                                 style: { fontSize: 9 },
                             }}
                         />
@@ -260,69 +185,60 @@ export default function IntergenerationalTransferChart({ population, foodMarket 
                                 if (!active || !payload || payload.length === 0) {
                                     return null;
                                 }
-                                const row = payload[0]?.payload as TransferRow | undefined;
+                                const row = payload[0]?.payload as Record<string, number | string> | undefined;
                                 if (!row) {
                                     return null;
                                 }
+                                const ageTotal = Number(row._total ?? 0);
                                 return (
                                     <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[180px]'>
-                                        <div className='font-medium mb-1'>
-                                            Age {label}{' '}
-                                            <span className='ml-1' style={{ color: roleColors[row.role] }}>
-                                                ({row.role})
-                                            </span>
+                                        <div className='font-medium mb-1'>Age {label}</div>
+                                        {payload.map((entry) => {
+                                            const val = Number(entry.value ?? 0);
+                                            if (Math.abs(val) < 1e-6) {
+                                                return null;
+                                            }
+                                            return (
+                                                <div key={entry.dataKey as string} style={{ color: entry.color }}>
+                                                    {entry.name}: {val > 0 ? '+' : ''}
+                                                    {fmt(val)}
+                                                </div>
+                                            );
+                                        })}
+                                        <div className='mt-1 pt-1 border-t text-muted-foreground'>
+                                            Total: {ageTotal > 0 ? '+' : ''}
+                                            {fmt(ageTotal)}
                                         </div>
-                                        <div>Population: {fmt(row.pop)}</div>
-                                        <div>
-                                            Net transfer/person:{' '}
-                                            <span
-                                                className={
-                                                    row.netTransferPerPerson > 0
-                                                        ? 'text-blue-500'
-                                                        : row.netTransferPerPerson < 0
-                                                          ? 'text-green-600'
-                                                          : ''
-                                                }
-                                            >
-                                                {row.netTransferPerPerson > 0 ? '+' : ''}
-                                                {fmt(row.netTransferPerPerson)}
-                                            </span>
-                                        </div>
-                                        <div>Net total: {fmt(row.netTransferTotal)}</div>
-                                        <div>Mean wealth: {fmt(row.meanWealth)}</div>
                                     </div>
                                 );
                             }}
                         />
-                        <Legend verticalAlign='top' height={20} />
+                        <Legend verticalAlign='top' height={20} wrapperStyle={{ fontSize: 10 }} />
 
                         {/* Zero reference line */}
-                        <ReferenceLine yAxisId='transfer' y={0} stroke='#64748b' strokeWidth={1} />
+                        <ReferenceLine y={0} stroke='#64748b' strokeWidth={1} />
 
-                        {/* Transfer balance bars — diverging around 0 */}
-                        <Bar
-                            yAxisId='transfer'
-                            dataKey='netTransferPerPerson'
-                            name='Net transfer/person'
-                            isAnimationActive={false}
-                        >
-                            {chartData.map((row, idx) => (
-                                <Cell key={idx} fill={roleColors[row.role] ?? '#94a3b8'} fillOpacity={0.8} />
-                            ))}
-                        </Bar>
-
-                        {/* Mean wealth line overlay */}
-                        <Line
-                            yAxisId='wealth'
-                            type='monotone'
-                            dataKey='meanWealth'
-                            stroke='#8b5cf6'
-                            strokeWidth={1.5}
-                            dot={false}
-                            name='Mean wealth'
-                            isAnimationActive={false}
-                        />
-                    </ComposedChart>
+                        {/* Stacked diverging bars */}
+                        {viewMode === 'occupation'
+                            ? OCCUPATIONS.map((occ) => (
+                                  <Bar
+                                      key={occ}
+                                      dataKey={OCC_LABELS[occ]}
+                                      stackId='a'
+                                      fill={OCC_COLORS[occ]}
+                                      isAnimationActive={false}
+                                  />
+                              ))
+                            : educationLevelKeys.map((edu) => (
+                                  <Bar
+                                      key={edu}
+                                      dataKey={EDU_LABELS[edu]}
+                                      stackId='a'
+                                      fill={EDU_COLORS[edu]}
+                                      isAnimationActive={false}
+                                  />
+                              ))}
+                    </BarChart>
                 </ResponsiveContainer>
             </div>
         </div>

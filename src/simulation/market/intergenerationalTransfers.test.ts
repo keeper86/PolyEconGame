@@ -41,6 +41,8 @@ import {
     effectiveSurplus,
     supportCapacity,
     survivalFloorForAge,
+    createZeroTransferMatrix,
+    sumTransferMatrix,
 } from './intergenerationalTransfers';
 import { ensureFoodMarket, getFoodBufferDemography } from './foodMarketHelpers';
 
@@ -358,7 +360,7 @@ describe('intergenerationalTransfersTick', () => {
     // Balances and conservation
     // -----------------------------------------------------------------------
 
-    it('writes lastTransferBalances to foodMarket', () => {
+    it('writes lastTransferMatrix to foodMarket', () => {
         const wealthDemography = getWealthDemography(planet.population);
         const demography = planet.population.demography;
 
@@ -376,13 +378,28 @@ describe('intergenerationalTransfersTick', () => {
 
         intergenerationalTransfersTick(gs);
 
-        const balances = planet.foodMarket!.lastTransferBalances;
-        expect(balances).toBeDefined();
-        expect(balances!.length).toBe(demography.length);
-        expect(balances![childAge]).toBeGreaterThan(0);
+        const matrix = planet.foodMarket!.lastTransferMatrix;
+        expect(matrix).toBeDefined();
+        expect(matrix!.length).toBe(demography.length);
 
-        // Zero-sum
-        const total = balances!.reduce((s, v) => s + v, 0);
+        // Child age should have received (positive)
+        let childAgeTotal = 0;
+        for (const edu of educationLevelKeys) {
+            for (const occ of OCCUPATIONS) {
+                childAgeTotal += matrix![childAge][edu][occ];
+            }
+        }
+        expect(childAgeTotal).toBeGreaterThan(0);
+
+        // Zero-sum across entire matrix
+        let total = 0;
+        for (let age = 0; age < matrix!.length; age++) {
+            for (const edu of educationLevelKeys) {
+                for (const occ of OCCUPATIONS) {
+                    total += matrix![age][edu][occ];
+                }
+            }
+        }
         expect(Math.abs(total)).toBeLessThan(1e-6);
     });
 
@@ -941,9 +958,16 @@ describe('intergenerationalTransfersTick', () => {
 
         intergenerationalTransfersTick(gs);
 
-        const balances = planet.foodMarket!.lastTransferBalances;
-        expect(balances).toBeDefined();
-        const total = balances!.reduce((s, v) => s + v, 0);
+        const matrix = planet.foodMarket!.lastTransferMatrix;
+        expect(matrix).toBeDefined();
+        let total = 0;
+        for (let age = 0; age < matrix!.length; age++) {
+            for (const edu of educationLevelKeys) {
+                for (const occ of OCCUPATIONS) {
+                    total += matrix![age][edu][occ];
+                }
+            }
+        }
         expect(total).toBe(0);
     });
 
@@ -1111,5 +1135,266 @@ describe('intergenerationalTransfersTick', () => {
 
         const wealthAfter = totalWealth(planet);
         expect(Math.abs(wealthAfter - wealthBefore)).toBeLessThan(1e-4);
+    });
+});
+
+// ===========================================================================
+// Transfer matrix helper tests
+// ===========================================================================
+
+describe('createZeroTransferMatrix', () => {
+    it('creates a matrix of correct length', () => {
+        const matrix = createZeroTransferMatrix(50);
+        expect(matrix.length).toBe(50);
+    });
+
+    it('initialises all cells to zero', () => {
+        const matrix = createZeroTransferMatrix(10);
+        for (let age = 0; age < 10; age++) {
+            for (const edu of educationLevelKeys) {
+                for (const occ of OCCUPATIONS) {
+                    expect(matrix[age][edu][occ]).toBe(0);
+                }
+            }
+        }
+    });
+});
+
+describe('sumTransferMatrix', () => {
+    it('returns 0 for a zero matrix', () => {
+        const matrix = createZeroTransferMatrix(10);
+        expect(sumTransferMatrix(matrix)).toBe(0);
+    });
+
+    it('sums all cells correctly', () => {
+        const matrix = createZeroTransferMatrix(5);
+        matrix[0].none.unoccupied = 100;
+        matrix[2].primary.company = -60;
+        matrix[4].secondary.government = -40;
+        expect(sumTransferMatrix(matrix)).toBeCloseTo(0, 10);
+    });
+});
+
+// ===========================================================================
+// Transfer matrix zero-sum & cell-level validation
+// ===========================================================================
+
+describe('transfer matrix invariants', () => {
+    let planet: Planet;
+    let gov: Agent;
+    let gs: GameState;
+
+    beforeEach(() => {
+        ({ planet, gov } = makePlanet({}));
+        planet.bank = { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0, depositRate: 0 };
+        gs = makeGameState(planet, gov);
+    });
+
+    function makeGameState(p: Planet, ...agents: Agent[]): GameState {
+        return {
+            tick: 1,
+            planets: new Map([[p.id, p]]),
+            agents: new Map(agents.map((a) => [a.id, a])),
+        };
+    }
+
+    it('matrix is globally zero-sum after basic transfer', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        demography[5].none.unoccupied = 200;
+        demography[30].none.company = 300;
+        wealthDemography[30].none.company = { mean: 500, variance: 0 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+        const buffers = getFoodBufferDemography(foodMarket, planet.population);
+        buffers[5].none.unoccupied.foodStock = 0;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-6);
+    });
+
+    it('sum of negative cells equals sum of positive cells', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        demography[5].none.unoccupied = 100;
+        demography[10].primary.unoccupied = 100;
+        demography[35].none.company = 200;
+        demography[40].primary.government = 150;
+        demography[70].none.unoccupied = 80;
+
+        wealthDemography[35].none.company = { mean: 1000, variance: 0 };
+        wealthDemography[40].primary.government = { mean: 800, variance: 0 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        let sumPositive = 0;
+        let sumNegative = 0;
+        for (let age = 0; age < matrix.length; age++) {
+            for (const edu of educationLevelKeys) {
+                for (const occ of OCCUPATIONS) {
+                    const val = matrix[age][edu][occ];
+                    if (val > 0) {
+                        sumPositive += val;
+                    } else {
+                        sumNegative += val;
+                    }
+                }
+            }
+        }
+        expect(Math.abs(sumPositive + sumNegative)).toBeLessThan(1e-6);
+    });
+
+    it('matrix records per-cell detail (not just per-age)', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        demography[5].none.unoccupied = 50;
+        demography[5].primary.unoccupied = 50;
+        demography[30].none.company = 200;
+        wealthDemography[30].none.company = { mean: 2000, variance: 0 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+        const buffers = getFoodBufferDemography(foodMarket, planet.population);
+        buffers[5].none.unoccupied.foodStock = 0;
+        buffers[5].primary.unoccupied.foodStock = 0;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        // Both edu levels at child age should receive
+        expect(matrix[5].none.unoccupied).toBeGreaterThan(0);
+        expect(matrix[5].primary.unoccupied).toBeGreaterThan(0);
+        // Supporter cell should give
+        expect(matrix[30].none.company).toBeLessThan(0);
+    });
+
+    it('no dependents → matrix is all zeros', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        // Only working-age supporters, no dependents
+        demography[30].none.company = 200;
+        demography[40].primary.company = 100;
+        wealthDemography[30].none.company = { mean: 500, variance: 0 };
+        wealthDemography[40].primary.company = { mean: 800, variance: 0 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        expect(sumTransferMatrix(matrix)).toBe(0);
+        // All cells should be exactly 0
+        for (let age = 0; age < matrix.length; age++) {
+            for (const edu of educationLevelKeys) {
+                for (const occ of OCCUPATIONS) {
+                    expect(matrix[age][edu][occ]).toBe(0);
+                }
+            }
+        }
+    });
+
+    it('no supporters → matrix is all zeros', () => {
+        const demography = planet.population.demography;
+
+        // Only children, no supporters
+        demography[5].none.unoccupied = 500;
+        demography[10].none.unoccupied = 500;
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        expect(sumTransferMatrix(matrix)).toBe(0);
+    });
+
+    it('single-age population → matrix is all zeros', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        demography[30].none.company = 1;
+        wealthDemography[30].none.company = { mean: 100, variance: 0 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        expect(sumTransferMatrix(matrix)).toBe(0);
+    });
+
+    it('elderly-only planet with rich/poor still balances', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        demography[70].none.unoccupied = 100;
+        demography[80].none.unoccupied = 100;
+        wealthDemography[80].none.unoccupied = { mean: 5000, variance: 0 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+        const buffers = getFoodBufferDemography(foodMarket, planet.population);
+        buffers[70].none.unoccupied.foodStock = 0;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-6);
+    });
+
+    it('extreme inequality still produces zero-sum matrix', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        demography[5].none.unoccupied = 10000;
+        demography[30].none.company = 10;
+        wealthDemography[30].none.company = { mean: 0.001, variance: 0 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+        const buffers = getFoodBufferDemography(foodMarket, planet.population);
+        buffers[5].none.unoccupied.foodStock = 0;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-6);
+    });
+
+    it('complex multi-age scenario conserves matrix sum', () => {
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+
+        for (let age = 0; age <= 100; age++) {
+            demography[age].none.unoccupied = 10;
+            if (age >= 18 && age <= 65) {
+                demography[age].none.company = 20;
+                wealthDemography[age].none.company = { mean: 100 + age * 10, variance: age * 5 };
+            }
+        }
+        wealthDemography[75].none.unoccupied = { mean: 5000, variance: 100 };
+        wealthDemography[85].none.unoccupied = { mean: 3000, variance: 200 };
+
+        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
+        planet.foodMarket = foodMarket;
+
+        intergenerationalTransfersTick(gs);
+
+        const matrix = planet.foodMarket!.lastTransferMatrix!;
+        expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-4);
     });
 });
