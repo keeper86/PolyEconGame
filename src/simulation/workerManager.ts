@@ -112,7 +112,7 @@ function createPool(): { pool: Piscina; port: MessagePort } {
         // Piscina pauses the event-loop between tasks by default via Atomics.
         // Our worker runs a perpetual setTimeout loop, so we need async mode.
         atomics: 'disabled',
-        workerData: { tickIntervalMs: 1000 },
+        workerData: { tickIntervalMs: 10 },
         ...(execArgv ? { execArgv } : {}),
     });
 

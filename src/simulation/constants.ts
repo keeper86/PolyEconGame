@@ -136,6 +136,44 @@ export const PRECAUTIONARY_RESERVE_TICKS = 60;
  */
 export const SUPPORTER_SURVIVAL_FRACTION = 0.55;
 
+/**
+ * Standard deviation (in years) for the Gaussian support weight kernel.
+ * The kernel peaks at n × GENERATION_GAP and has non-trivial weight within
+ * approximately ±2σ of each peak.  A value of 8 means meaningful support
+ * reaches relatives ≈ 9–41 years from each generational peak.
+ */
+export const SUPPORT_WEIGHT_SIGMA = 8;
+
+/**
+ * Number of generational harmonics in the multi-modal support kernel.
+ * The kernel has peaks at 1×GENERATION_GAP, 2×GENERATION_GAP, …, N×GENERATION_GAP.
+ *
+ *   N=1 → parent ↔ child only
+ *   N=2 → parent ↔ child + grandparent ↔ grandchild
+ *   N=3 → up to great-grandparent (covers 75-year gap with GENERATION_GAP=25)
+ *
+ * With maxAge=100 and GENERATION_GAP=25, N=3 covers the full age range.
+ */
+export const GENERATION_KERNEL_N = 3;
+
+/**
+ * Minimum age for a person to be considered a potential supporter
+ * in intergenerational transfers.  Must be at least MIN_EMPLOYABLE_AGE.
+ * Below this age, supportCapacity() returns 0.
+ */
+export const SUPPORTER_MIN_AGE = 18;
+
+/**
+ * Fraction of the food buffer target that an *elderly* supporter must
+ * retain for their own survival.  Lower than SUPPORTER_SURVIVAL_FRACTION
+ * for working-age supporters, reflecting that elderly are less productive
+ * and under starvation should deplete faster — producing emergent
+ * age-selective mortality without explicit parameters.
+ *
+ * Set to 30 % of food target (vs 55 % for working age).
+ */
+export const ELDERLY_FLOOR_FRACTION = 0.3;
+
 // ---------------------------------------------------------------------------
 // Wealth diffusion constants
 // ---------------------------------------------------------------------------

@@ -124,7 +124,30 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
                     // --- Departing pipeline: route to 'unoccupied' ---
                     const departing = cohort.departing[edu][0];
                     if (departing > 0 && planet) {
-                        returnToPopulation(planet, edu, departing, occupation, cohort.departingWealth[edu][0]);
+                        // Attempt to return departing workers to the population.
+                        // Use the actual moved count to keep the workforce pipeline
+                        // consistent if the population couldn't absorb the full
+                        // requested amount (should be rare).  Log mismatches so
+                        // we can diagnose any upstream inconsistencies.
+                        const moved = returnToPopulation(
+                            planet,
+                            edu,
+                            departing,
+                            occupation,
+                            cohort.departingWealth[edu][0],
+                        );
+                        if (moved !== departing) {
+                            // Informational: this shouldn't normally happen. If it
+                            // does, it indicates a mismatch between workforce and
+                            // population accounting earlier in the tick.
+                            console.warn(
+                                `[laborMarketMonthTick] departing mismatch for edu=${edu} on agent=${agent.id}: requested=${departing}, moved=${moved}`,
+                            );
+                        }
+                        // Subtract the actually moved workers from the slot so the
+                        // in-memory workforce state accurately reflects reality
+                        // before we rotate the pipeline.
+                        cohort.departing[edu][0] = Math.max(0, cohort.departing[edu][0] - moved);
                     }
 
                     // Shift departing + departingFired pipelines down
@@ -140,7 +163,19 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
                     // --- Retiring pipeline: route to 'unableToWork' ---
                     const retirees = cohort.retiring[edu][0];
                     if (retirees > 0 && planet) {
-                        retireToPopulation(planet, edu, retirees, occupation, cohort.retiringWealth[edu][0]);
+                        const movedRet = retireToPopulation(
+                            planet,
+                            edu,
+                            retirees,
+                            occupation,
+                            cohort.retiringWealth[edu][0],
+                        );
+                        if (movedRet !== retirees) {
+                            console.warn(
+                                `[laborMarketMonthTick] retiring mismatch for edu=${edu} on agent=${agent.id}: requested=${retirees}, moved=${movedRet}`,
+                            );
+                        }
+                        cohort.retiring[edu][0] = Math.max(0, cohort.retiring[edu][0] - movedRet);
                     }
 
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {

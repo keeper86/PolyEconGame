@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { updateAllocatedWorkers } from './allocatedWorkers';
+import { updateAllocatedWorkers } from '../aiAgent/allocatedWorkers';
 import { makeAgent, makePlanet, makeFacility, agentMap, planetMap } from './testHelpers';
 import { NOTICE_PERIOD_MONTHS } from './workforceHelpers';
 

@@ -94,13 +94,20 @@ function ensureBank(planet: Planet): NonNullable<Planet['bank']> {
  * Only counts agents that have assets on the planet.
  */
 function sumFirmDeposits(gameState: GameState, planetId: string): number {
-    let total = 0;
+    // Use Kahan summation to reduce floating-point error when summing many
+    // potentially large and small deposit values. This avoids tiny
+    // balance-sheet mismatches due to summation order/rounding.
+    let sum = 0;
+    let c = 0; // compensation
     gameState.agents.forEach((agent) => {
         if (agent.assets[planetId]) {
-            total += getAgentDepositsForPlanet(agent, planetId);
+            const y = getAgentDepositsForPlanet(agent, planetId) - c;
+            const t = sum + y;
+            c = t - sum - y;
+            sum = t;
         }
     });
-    return total;
+    return sum;
 }
 
 /**
