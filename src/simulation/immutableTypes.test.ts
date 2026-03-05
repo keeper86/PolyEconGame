@@ -66,7 +66,7 @@ function makePlanet(id = 'planet-1'): Planet {
         population: { demography: [], starvationLevel: 0 },
         resources: {},
         governmentId: government.id,
-        bank: { depositRate: 0, loanRate: 0, reserves: 0, deposits: 0, loans: 0, equity: 0, householdDeposits: 0 },
+        bank: { depositRate: 0, loanRate: 0, deposits: 0, loans: 0, equity: 0, householdDeposits: 0 },
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,

@@ -9,6 +9,7 @@ import { laborMarketYearTick } from './laborMarketYearTick';
 import { syncWorkforceWithPopulation } from './workforceSync';
 import { applyMortality } from '../population/mortality';
 import { applyDisability } from '../population/disability';
+import { applyRetirement } from '../population/retirement';
 import { calculateDemographicStats } from '../population/demographics';
 import {
     makeAgent,
@@ -20,12 +21,7 @@ import {
     assertWorkforcePopulationConsistency,
     assertAllNonNegative,
 } from './testHelpers';
-import {
-    createWorkforceDemography,
-    NOTICE_PERIOD_MONTHS,
-    totalActiveForEdu,
-    totalRetiringForEdu,
-} from './workforceHelpers';
+import { createWorkforceDemography, NOTICE_PERIOD_MONTHS, totalActiveForEdu } from './workforceHelpers';
 
 // ============================================================================
 // Full tick cycle — month boundary
@@ -388,52 +384,71 @@ describe('population ↔ workforce accounting invariant', () => {
 // ============================================================================
 
 describe('low-number edge cases', () => {
-    it('single worker retires deterministically when mean >= RETIREMENT_AGE (via monthTick)', () => {
+    it('single worker retires via population-driven retirement (applyRetirement + sync)', () => {
         const agent = makeAgent();
         const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
-        wf[40].active.none = 1;
-        wf[40].ageMoments.none = { mean: 66, variance: 4 };
 
-        laborMarketYearTick(new Map([[agent.id, agent]]));
-        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        // Place 1 worker at age 72 (well above RETIREMENT_AGE) in population.
+        // At age 72 the annual retirement probability is 1.0, so the per-tick
+        // rate equals 1.0 and the worker retires on the very first tick.
+        planet.population.demography[72].none.company = 1;
+        wf[1].active.none = 1;
+        wf[1].ageMoments.none = { mean: 72, variance: 0 };
 
-        expect(wf[41].active.none).toBe(0);
-        expect(totalRetiringForEdu(wf, 'none')).toBe(1);
+        const agentsMap = new Map([[agent.id, agent]]);
+        applyRetirement(planet.population);
+        syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
+
+        // Worker should be retired after a single tick at age 72
+        expect(planet.population.demography[72].none.unableToWork).toBe(1);
+        expect(planet.population.demography[72].none.company).toBe(0);
+        expect(wf[1].active.none).toBe(0);
     });
 
-    it('single worker does NOT retire when mean < RETIREMENT_AGE', () => {
+    it('single worker does NOT retire when below RETIREMENT_AGE', () => {
         const agent = makeAgent();
         const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
+
+        // Place 1 worker at age 39 — well below retirement age
+        planet.population.demography[39].primary.company = 1;
         wf[10].active.primary = 1;
-        wf[10].ageMoments.primary = { mean: 39, variance: 100 };
+        wf[10].ageMoments.primary = { mean: 39, variance: 0 };
 
-        laborMarketYearTick(new Map([[agent.id, agent]]));
-        laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
-
-        expect(wf[11].active.primary).toBe(1);
-        expect(totalRetiringForEdu(wf, 'primary')).toBe(0);
-    });
-
-    it('three workers near retirement: some may retire over multiple months', () => {
-        const agent = makeAgent();
-        const { planet } = makePlanet();
-        const wf = agent.assets.p.workforceDemography!;
-        wf[30].active.tertiary = 3;
-        wf[30].ageMoments.tertiary = { mean: 64, variance: 16 };
-
-        laborMarketYearTick(new Map([[agent.id, agent]]));
-        for (let month = 0; month < MONTHS_PER_YEAR; month++) {
-            laborMarketMonthTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        const agentsMap = new Map([[agent.id, agent]]);
+        for (let tick = 0; tick < 360; tick++) {
+            applyRetirement(planet.population);
+            syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
         }
 
-        const retired = totalRetiringForEdu(wf, 'tertiary');
-        const active = wf[31].active.tertiary;
+        // No retirement should have occurred
+        expect(planet.population.demography[39].primary.company).toBe(1);
+        expect(wf[10].active.primary).toBe(1);
+    });
 
-        expect(retired + active).toBeLessThanOrEqual(3);
-        expect(active).toBeGreaterThanOrEqual(0);
-        expect(active).toBeLessThanOrEqual(3);
+    it('three workers near retirement: some retire over multiple ticks', () => {
+        const agent = makeAgent();
+        const { planet } = makePlanet();
+        const wf = agent.assets.p.workforceDemography!;
+
+        // Place 3 workers at age 67 (right at RETIREMENT_AGE)
+        planet.population.demography[67].tertiary.company = 3;
+        wf[30].active.tertiary = 3;
+        wf[30].ageMoments.tertiary = { mean: 67, variance: 0 };
+
+        const agentsMap = new Map([[agent.id, agent]]);
+        for (let tick = 0; tick < 360; tick++) {
+            applyRetirement(planet.population);
+            syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
+        }
+
+        const remaining = wf[30].active.tertiary;
+        const retired = planet.population.demography[67].tertiary.unableToWork;
+
+        expect(remaining + retired).toBe(3);
+        expect(remaining).toBeGreaterThanOrEqual(0);
+        expect(remaining).toBeLessThanOrEqual(3);
     });
 });
 

@@ -281,13 +281,18 @@ describe('populationBridge — retireToPopulation', () => {
 
     it('moves workers from company to unableToWork (not unoccupied)', () => {
         const { planet } = makePlanet({ primary: 500 });
-        hireFromPopulation(planet, 'primary', 200, 'company');
+        // Place 200 workers at retirement-eligible ages (retireToPopulation
+        // now only touches ages ≥ RETIREMENT_AGE = 67)
+        planet.population.demography[70].primary.company = 120;
+        planet.population.demography[75].primary.company = 80;
 
         retireToPopulation(planet, 'primary', 80, 'company');
 
-        expect(sumPopOcc(planet, 'primary', 'company')).toBe(120);
+        // 80 retirees split proportionally across ages 70 (120) and 75 (80) → 48 + 32
         expect(sumPopOcc(planet, 'primary', 'unableToWork')).toBe(80);
-        expect(sumPopOcc(planet, 'primary', 'unoccupied')).toBe(300);
+        expect(
+            planet.population.demography[70].primary.company + planet.population.demography[75].primary.company,
+        ).toBe(120);
     });
 
     it('handles zero count', () => {
@@ -299,57 +304,80 @@ describe('populationBridge — retireToPopulation', () => {
 
     it('distributes retirements proportionally across age cohorts', () => {
         const { planet } = makePlanet();
-        // Place 100 company workers at age 50 and 200 at age 60
-        for (const c of planet.population.demography) {
-            c.none.company = 0;
-        }
-        planet.population.demography[50].none.company = 100;
-        planet.population.demography[60].none.company = 200;
+        // Place workers at retirement-eligible ages (≥ 67)
+        planet.population.demography[70].none.company = 100;
+        planet.population.demography[80].none.company = 200;
 
         retireToPopulation(planet, 'none', 60, 'company');
 
-        // Should distribute ~20 from age 50 and ~40 from age 60 (proportional to 100:200)
-        const retired50 = planet.population.demography[50].none.unableToWork;
-        const retired60 = planet.population.demography[60].none.unableToWork;
-        expect(retired50 + retired60).toBe(60);
-        expect(retired50).toBe(20);
-        expect(retired60).toBe(40);
+        // Should distribute ~20 from age 70 and ~40 from age 80 (proportional to 100:200)
+        const retired70 = planet.population.demography[70].none.unableToWork;
+        const retired80 = planet.population.demography[80].none.unableToWork;
+        expect(retired70 + retired80).toBe(60);
+        expect(retired70).toBe(20);
+        expect(retired80).toBe(40);
     });
 
     it('biases rounding remainder towards older workers', () => {
         const { planet } = makePlanet();
-        for (const c of planet.population.demography) {
-            c.none.company = 0;
-        }
-        // Equal workers at two ages; with 1 remainder, older should get it
-        planet.population.demography[30].none.company = 10;
-        planet.population.demography[60].none.company = 10;
+        // Equal workers at two retirement-eligible ages; with 1 remainder, older should get it
+        planet.population.demography[70].none.company = 10;
+        planet.population.demography[80].none.company = 10;
 
         retireToPopulation(planet, 'none', 1, 'company');
 
-        // The single retiree should come from age 60
-        expect(planet.population.demography[60].none.unableToWork).toBe(1);
-        expect(planet.population.demography[30].none.unableToWork).toBe(0);
+        // The single retiree should come from age 80 (older bias)
+        expect(planet.population.demography[80].none.unableToWork).toBe(1);
+        expect(planet.population.demography[70].none.unableToWork).toBe(0);
     });
 
     it('handles overflow when some cohorts have fewer workers than assigned', () => {
         const { planet } = makePlanet();
-        for (const c of planet.population.demography) {
-            c.primary.company = 0;
-        }
-        // 1 worker at age 30, 100 workers at age 50
-        planet.population.demography[30].primary.company = 1;
-        planet.population.demography[50].primary.company = 100;
+        // 1 worker at age 68, 100 workers at age 75 (both ≥ RETIREMENT_AGE)
+        planet.population.demography[68].primary.company = 1;
+        planet.population.demography[75].primary.company = 100;
 
         retireToPopulation(planet, 'primary', 90, 'company');
 
         // All 90 should be accounted for
         const totalRetired =
-            planet.population.demography[30].primary.unableToWork +
-            planet.population.demography[50].primary.unableToWork;
+            planet.population.demography[68].primary.unableToWork +
+            planet.population.demography[75].primary.unableToWork;
         expect(totalRetired).toBe(90);
-        expect(planet.population.demography[30].primary.company).toBe(0);
-        expect(planet.population.demography[50].primary.company).toBe(11);
+        expect(planet.population.demography[68].primary.company).toBe(0);
+        expect(planet.population.demography[75].primary.company).toBe(11);
+    });
+
+    it('does not retire workers below RETIREMENT_AGE', () => {
+        const { planet } = makePlanet();
+        // Only workers below retirement age
+        planet.population.demography[40].none.company = 100;
+        planet.population.demography[55].none.company = 200;
+
+        const moved = retireToPopulation(planet, 'none', 50, 'company');
+
+        // Should move 0 — no retirement-eligible workers exist
+        expect(moved).toBe(0);
+        expect(planet.population.demography[40].none.company).toBe(100);
+        expect(planet.population.demography[55].none.company).toBe(200);
+        expect(planet.population.demography[40].none.unableToWork).toBe(0);
+        expect(planet.population.demography[55].none.unableToWork).toBe(0);
+    });
+
+    it('caps retirements at available retirement-eligible workers', () => {
+        const { planet } = makePlanet();
+        // 50 workers at age 70, 200 workers at age 40 (below retirement age)
+        planet.population.demography[40].none.company = 200;
+        planet.population.demography[70].none.company = 50;
+
+        const moved = retireToPopulation(planet, 'none', 100, 'company');
+
+        // Can only retire 50 (those at age 70)
+        expect(moved).toBe(50);
+        expect(planet.population.demography[70].none.company).toBe(0);
+        expect(planet.population.demography[70].none.unableToWork).toBe(50);
+        // Workers at age 40 are untouched
+        expect(planet.population.demography[40].none.company).toBe(200);
     });
 });
 

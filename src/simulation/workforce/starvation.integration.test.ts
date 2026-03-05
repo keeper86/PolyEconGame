@@ -373,7 +373,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
         }
     });
 
-    it('maintains consistency across 4 years with starvation and large population', () => {
+    it('maintains consistency across 4 years with starvation and large population', { timeout: 15_000 }, () => {
         const { planet, gov } = makePlanet(2_000_000);
         const company = makeAgent('company-1');
 

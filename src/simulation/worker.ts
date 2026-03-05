@@ -149,10 +149,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         state = {
             tick: 0,
             planets: new Map([[earth.id, earth]]),
-            agents: new Map([
-                [earthGovernment.id, earthGovernment],
-                [testCompany.id, testCompany],
-            ]),
+            agents: new Map([[earthGovernment.id, earthGovernment]]),
         };
         currentSnapshot = toImmutableGameState(state);
 

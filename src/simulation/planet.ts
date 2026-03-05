@@ -307,6 +307,14 @@ export type Population = {
      * step.  Available for snapshot / observability.
      */
     tickNewDisabilities?: PopulationTickAccumulator;
+
+    /**
+     * New retirement transitions that occurred during the current tick,
+     * keyed by education × source-occupation.  Written by the retirement
+     * step, consumed by the workforce sync step.
+     * Available for snapshot / observability.
+     */
+    tickNewRetirements?: PopulationTickAccumulator;
 };
 
 export type Infrastructure = {

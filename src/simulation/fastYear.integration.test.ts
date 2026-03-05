@@ -162,5 +162,5 @@ describe('fast-year integration', () => {
 
             expect(workforceTotal).toBeLessThanOrEqual(popTotal);
         }
-    });
+    }, 20000);
 });

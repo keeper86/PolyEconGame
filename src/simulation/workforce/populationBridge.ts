@@ -12,7 +12,7 @@
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
 import type { EducationLevelType, Occupation, Planet, WealthMoments } from '../planet';
-import { DEFAULT_HIRE_AGE_MEAN } from './workforceHelpers';
+import { DEFAULT_HIRE_AGE_MEAN, RETIREMENT_AGE } from './workforceHelpers';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { getWealthDemography, mergeWealthMoments } from '../population/populationHelpers';
 
@@ -31,6 +31,35 @@ export function totalUnoccupiedForEdu(planet: Planet, edu: EducationLevelType): 
         total += demography[age][edu]?.unoccupied ?? 0;
     }
     return total;
+}
+
+/**
+ * Compute the fraction of currently employed workers (company + government)
+ * for a given education level that are at or above RETIREMENT_AGE in the
+ * population demography.
+ *
+ * This uses the exact, authoritative age distribution — not the Gaussian
+ * approximation stored in the workforce ageMoments — and therefore serves
+ * as the ground-truth retirement-eligible fraction.
+ *
+ * Returns `{ totalEmployed, retirementEligible, fraction }`.
+ */
+export function employedRetirementFraction(
+    planet: Planet,
+    edu: EducationLevelType,
+): { totalEmployed: number; retirementEligible: number; fraction: number } {
+    const demography = planet.population.demography;
+    let totalEmployed = 0;
+    let retirementEligible = 0;
+    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
+        const employed = (demography[age][edu]?.company ?? 0) + (demography[age][edu]?.government ?? 0);
+        totalEmployed += employed;
+        if (age >= RETIREMENT_AGE) {
+            retirementEligible += employed;
+        }
+    }
+    const fraction = totalEmployed > 0 ? retirementEligible / totalEmployed : 0;
+    return { totalEmployed, retirementEligible, fraction };
 }
 
 // ---------------------------------------------------------------------------
@@ -279,9 +308,13 @@ export function returnToPopulation(
  * population as 'unableToWork', moving them from the specified occupation.
  * Their `wealthMoments` (if provided) are merged into the destination cells.
  *
- * Workers are distributed proportionally across age cohorts with a bias
- * towards older cohorts for rounding remainders, reflecting the
- * biological reality that retirees are typically older.
+ * Only workers at or above RETIREMENT_AGE are removed from the employed
+ * population.  If there are fewer retirement-eligible workers than
+ * `count`, we take as many as are available (never touching younger
+ * workers).  This ensures the population age × occupation distribution
+ * stays consistent with the workforce's statistical moments, which
+ * model retirement as removing only the upper tail of the age
+ * distribution.
  */
 export function retireToPopulation(
     planet: Planet,
@@ -290,7 +323,73 @@ export function retireToPopulation(
     occupation: Occupation,
     wealthMoments?: WealthMoments,
 ): number {
-    const moved = transferInPopulation(planet, edu, count, occupation, 'unableToWork', /* preferOlder */ true);
+    if (count <= 0) {
+        return 0;
+    }
+
+    const demography = planet.population.demography;
+
+    // Count available workers at retirement-eligible ages
+    let availableAtRetirement = 0;
+    for (let age = RETIREMENT_AGE; age < demography.length; age++) {
+        availableAtRetirement += demography[age][edu]?.[occupation] ?? 0;
+    }
+
+    const toMove = Math.min(count, availableAtRetirement);
+    if (toMove <= 0) {
+        return 0;
+    }
+
+    // Build per-age weights restricted to ages ≥ RETIREMENT_AGE
+    const weights: number[] = new Array(demography.length).fill(0);
+    for (let age = RETIREMENT_AGE; age < demography.length; age++) {
+        weights[age] = demography[age][edu]?.[occupation] ?? 0;
+    }
+
+    // Use distributeProportionally (preferOlder: reverse trick for tie-breaking)
+    let allocated = distributeProportionally(toMove, weights.slice().reverse());
+    allocated = allocated.slice().reverse();
+
+    // Apply moves
+    let moved = 0;
+    let overflow = 0;
+    for (let age = RETIREMENT_AGE; age < demography.length; age++) {
+        const wanted = allocated[age];
+        if (wanted <= 0) {
+            continue;
+        }
+        const cohort = demography[age];
+        const avail = cohort[edu]?.[occupation] ?? 0;
+        const actual = Math.min(wanted, avail);
+        if (actual > 0) {
+            cohort[edu][occupation] -= actual;
+            cohort[edu].unableToWork += actual;
+            moved += actual;
+        }
+        overflow += wanted - actual;
+    }
+
+    // Redistribute overflow (from cohorts that couldn't absorb their share)
+    // Scan oldest → youngest within retirement-age range
+    while (overflow > 0) {
+        let movedThisPass = 0;
+        for (let age = demography.length - 1; age >= RETIREMENT_AGE && overflow > 0; age--) {
+            const cohort = demography[age];
+            const avail = cohort[edu]?.[occupation] ?? 0;
+            const take = Math.min(overflow, avail);
+            if (take > 0) {
+                cohort[edu][occupation] -= take;
+                cohort[edu].unableToWork += take;
+                moved += take;
+                overflow -= take;
+                movedThisPass += take;
+            }
+        }
+        if (movedThisPass === 0) {
+            break;
+        }
+    }
+
     if (moved > 0 && wealthMoments) {
         _distributeReturnedWealth(planet, edu, 'unableToWork', occupation, moved, wealthMoments);
     }

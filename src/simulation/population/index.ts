@@ -32,6 +32,7 @@ export {
     STARVATION_DISABILITY_COEFFICIENT,
 } from './disability';
 export type { EnvironmentalDisability } from './disability';
+export { retirementProbByAge, perTickRetirement, applyRetirementTransitions, applyRetirement } from './retirement';
 export {
     computeBirthsThisTick,
     applyBirths,

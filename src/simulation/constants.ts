@@ -142,7 +142,7 @@ export const SUPPORTER_SURVIVAL_FRACTION = 0.55;
  * approximately ±2σ of each peak.  A value of 8 means meaningful support
  * reaches relatives ≈ 9–41 years from each generational peak.
  */
-export const SUPPORT_WEIGHT_SIGMA = 8;
+export const SUPPORT_WEIGHT_SIGMA = 3;
 
 /**
  * Number of generational harmonics in the multi-modal support kernel.

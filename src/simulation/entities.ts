@@ -17,7 +17,7 @@ export const agriculturalProductionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-agricultural',
     name: 'Agricultural Facility',
-    scale: 2000,
+    scale: 20000,
     lastTickEfficiencyInPercent: 0,
     powerConsumptionPerTick: 1,
     workerRequirement: {
@@ -43,7 +43,7 @@ export const waterExtractionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-water-extraction',
     name: 'Water Extraction Facility',
-    scale: 2000,
+    scale: 20000,
     lastTickEfficiencyInPercent: 0,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {

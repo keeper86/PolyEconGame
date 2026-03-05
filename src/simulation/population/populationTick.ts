@@ -21,6 +21,7 @@ import { applyDisability } from './disability';
 import { populationBirthsTick } from './fertility';
 import { applyMortality } from './mortality';
 import { consumeFood } from './nutrition';
+import { applyRetirement } from './retirement';
 
 // ---------------------------------------------------------------------------
 // Per-tick population update
@@ -45,10 +46,13 @@ export function populationTick(gameState: GameState): void {
         // 3. Disability — writes population.tickNewDisabilities
         applyDisability(population, planet.environment);
 
-        // 4. Births
+        // 4. Retirement — writes population.tickNewRetirements
+        applyRetirement(population);
+
+        // 5. Births
         populationBirthsTick(population, fertileWomen, planet.environment.pollution);
 
-        // 5. Sync workforce with authoritative population deaths & disabilities
+        // 6. Sync workforce with authoritative population deaths, disabilities & retirements
         syncWorkforceWithPopulation(gameState.agents, planet.id, population, planet.environment, planet);
     });
 }

@@ -23,6 +23,7 @@ import {
     computeEnvironmentalDisability,
     STARVATION_DISABILITY_COEFFICIENT,
 } from '../population/disability';
+import { perTickRetirement } from '../population/retirement';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -358,9 +359,9 @@ function distributeWorkforceRemovals(
 // ---------------------------------------------------------------------------
 
 /**
- * syncWorkforceWithPopulation — apply deaths and new disabilities computed by
- * the population pipeline to agents' WorkforceDemography so both
- * representations remain consistent.
+ * syncWorkforceWithPopulation — apply deaths, new disabilities, and
+ * retirements computed by the population pipeline to agents'
+ * WorkforceDemography so both representations remain consistent.
  *
  * For **deaths**: workers in `company` / `government` occupations that died
  * this tick are removed from the corresponding workforce active slots.
@@ -391,7 +392,7 @@ export function syncWorkforceWithPopulation(
     environment: Environment,
     planet?: Planet,
 ): void {
-    const { tickDeaths, tickNewDisabilities, starvationLevel } = population;
+    const { tickDeaths, tickNewDisabilities, tickNewRetirements, starvationLevel } = population;
 
     // --- Build agent occupation lookup ---
     // If we have the planet reference, use it to correctly filter agents by
@@ -454,6 +455,20 @@ export function syncWorkforceWithPopulation(
                     disabilities,
                     /* trackDeaths */ false,
                     disabilityRateFn,
+                );
+            }
+
+            // Retirements — remove from workforce (already moved to unableToWork in demography)
+            const retirements = tickNewRetirements?.[edu]?.[occ] ?? 0;
+
+            if (retirements > 0) {
+                distributeWorkforceRemovals(
+                    relevantAgents,
+                    planetId,
+                    edu,
+                    retirements,
+                    /* trackDeaths */ false,
+                    perTickRetirement,
                 );
             }
         }
