@@ -32,6 +32,8 @@ export {
     ageMomentsForAge,
     mergeAgeMoments,
     removeFromAgeMoments,
+    removeRandomSample,
+    extractRandomSample,
     ageAgeMomentsByOneYear,
     // Data-structure factories
     emptyTenureCohort,

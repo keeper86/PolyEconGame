@@ -178,6 +178,60 @@ export function removeFromAgeMoments(m: AgeMoments, age: number, k: number): Age
 }
 
 /**
+ * Remove a **random sample** of `k` workers from the given raw moments.
+ *
+ * Unlike `removeFromAgeMoments` (which removes workers of a known exact
+ * age), this function is used when the removed workers are a representative
+ * random cross-section of the cohort — e.g. voluntary quits or firings
+ * that are not age-selective.
+ *
+ * Mathematically: scaling all moments by (N-k)/N preserves both the mean
+ * and the variance of the remaining population.  This avoids the variance-
+ * inflation bug that occurs when removing at the mean age (which preserves
+ * the mean but artificially increases variance by count/(count-k)).
+ */
+export function removeRandomSample(m: AgeMoments, k: number): AgeMoments {
+    if (k <= 0) {
+        return m;
+    }
+    const newCount = m.count - k;
+    if (newCount <= 0) {
+        return emptyAgeMoments();
+    }
+    const scale = newCount / m.count;
+    return {
+        count: newCount,
+        sumAge: m.sumAge * scale,
+        sumAgeSq: m.sumAgeSq * scale,
+    };
+}
+
+/**
+ * Extract a **random sample** of `k` workers from the given raw moments,
+ * returning {remaining, sample} — the moments after extraction and the
+ * moments of the extracted sample.
+ *
+ * Both pieces together sum back to the original moments (conservation).
+ */
+export function extractRandomSample(m: AgeMoments, k: number): { remaining: AgeMoments; sample: AgeMoments } {
+    if (k <= 0) {
+        return { remaining: m, sample: emptyAgeMoments() };
+    }
+    if (k >= m.count) {
+        return { remaining: emptyAgeMoments(), sample: { ...m } };
+    }
+    const remaining = removeRandomSample(m, k);
+    return {
+        remaining,
+        sample: {
+            count: k,
+            sumAge: m.sumAge - remaining.sumAge,
+            sumAgeSq: m.sumAgeSq - remaining.sumAgeSq,
+        },
+    };
+}
+
+/**
  * Age all workers by one year: each worker's age increases by 1.
  *   Σage'  = Σage + N
  *   Σage²' = Σage² + 2·Σage + N

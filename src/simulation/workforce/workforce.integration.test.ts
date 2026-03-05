@@ -11,6 +11,7 @@ import { applyMortality } from '../population/mortality';
 import { applyDisability } from '../population/disability';
 import { applyRetirement } from '../population/retirement';
 import { calculateDemographicStats } from '../population/demographics';
+import { populationAdvanceYear } from '../population/aging';
 import {
     makeAgent,
     makeStorageFacility,
@@ -597,4 +598,93 @@ describe('workforce ↔ population consistency under mortality/disability', () =
             }
         }
     });
+});
+
+// ============================================================================
+// Age drift — workforce mean age must track population employed mean age
+// ============================================================================
+
+describe('age drift — long-run consistency', () => {
+    it('workforce mean age tracks population employed mean age over 20 simulated years', () => {
+        // Use a broad age distribution so the population is realistic and
+        // self-sustaining: workers across ages 18-64 with children & elderly.
+        const { planet, gov } = makePlanet({ none: 50000, primary: 20000 });
+
+        // Also seed some children (ages 0-17) and elderly to make fertility realistic
+        for (let age = 0; age < 18; age++) {
+            planet.population.demography[age].none.education = Math.floor(600 * (1 - age / 100));
+        }
+        for (let age = 65; age < 80; age++) {
+            planet.population.demography[age].none.unableToWork = Math.floor(400 * (1 - (age - 65) / 30));
+        }
+
+        const agent = makeAgent();
+        gov.assets = {
+            p: {
+                resourceClaims: [],
+                resourceTenancies: [],
+                productionFacilities: [],
+                deposits: 0,
+                storageFacility: makeStorageFacility(),
+                allocatedWorkers: { none: 1000, primary: 400, secondary: 0, tertiary: 0, quaternary: 0 },
+                workforceDemography: createWorkforceDemography(),
+            },
+        };
+        agent.assets.p.allocatedWorkers.none = 5000;
+        agent.assets.p.allocatedWorkers.primary = 2000;
+
+        const agentsMap = new Map([
+            [agent.id, agent],
+            [gov.id, gov],
+        ]);
+        const planetsMap = new Map([[planet.id, planet]]);
+
+        // Initial hiring
+        laborMarketTick(agentsMap, planetsMap);
+
+        const YEARS = 20;
+
+        for (let year = 0; year < YEARS; year++) {
+            for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+                for (let t = 0; t < TICKS_PER_MONTH; t++) {
+                    laborMarketTick(agentsMap, planetsMap);
+
+                    // Apply population demographics
+                    const { totalInCohort } = calculateDemographicStats(planet.population);
+                    applyMortality(planet.population, planet.environment, totalInCohort);
+                    applyDisability(planet.population, planet.environment);
+                    applyRetirement(planet.population);
+                    syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
+                }
+                laborMarketMonthTick(agentsMap, planetsMap);
+            }
+
+            // Age population
+            const { totalInCohort } = calculateDemographicStats(planet.population);
+            populationAdvanceYear(planet.population, totalInCohort);
+
+            laborMarketYearTick(agentsMap);
+
+            // PRIMARY INVARIANT: no active cohort should have mean age 80+
+            // (retirement clears workers by age 72 and the age distribution
+            // should never accumulate workers that old in the workforce).
+            for (const a of [agent, gov]) {
+                const wf = a.assets.p?.workforceDemography;
+                if (!wf) {
+                    continue;
+                }
+                for (const cohort of wf) {
+                    for (const edu of ['none', 'primary'] as const) {
+                        if (cohort.active[edu].count > 0) {
+                            const activeMean = cohort.active[edu].sumAge / cohort.active[edu].count;
+                            expect(
+                                activeMean,
+                                `year ${year}: ${a.id} active cohort mean age ${activeMean.toFixed(1)} exceeds 80`,
+                            ).toBeLessThan(80);
+                        }
+                    }
+                }
+            }
+        }
+    }, 60_000);
 });

@@ -19,9 +19,7 @@ import {
     VOLUNTARY_QUIT_RATE_PER_TICK,
     totalActiveForEdu,
     mergeAgeMoments,
-    removeFromAgeMoments,
-    ageMean,
-    ageMomentsForAge,
+    extractRandomSample,
 } from './workforceHelpers';
 import { hireFromPopulation, totalUnoccupiedForEdu } from './populationBridge';
 import { stochasticRound } from '../utils/stochasticRound';
@@ -54,14 +52,14 @@ export function laborMarketTick(agents: Map<string, Agent>, planets: Map<string,
                     }
                     const voluntaryQuitters = stochasticRound(activeCount * VOLUNTARY_QUIT_RATE_PER_TICK);
                     if (voluntaryQuitters > 0) {
-                        // Quitters are a random sample — same per-person
-                        // age distribution as active, so split proportionally.
-                        const mean = ageMean(cohort.active[edu]);
-                        const quitMoments = ageMomentsForAge(mean, voluntaryQuitters);
-                        cohort.active[edu] = removeFromAgeMoments(cohort.active[edu], mean, voluntaryQuitters);
+                        // Quitters are a random sample — extract proportionally
+                        // from the cohort so that both mean and variance are
+                        // preserved in the remaining active pool.
+                        const { remaining, sample } = extractRandomSample(cohort.active[edu], voluntaryQuitters);
+                        cohort.active[edu] = remaining;
                         cohort.departing[edu][NOTICE_PERIOD_MONTHS - 1] = mergeAgeMoments(
                             cohort.departing[edu][NOTICE_PERIOD_MONTHS - 1],
-                            quitMoments,
+                            sample,
                         );
                     }
                 }
@@ -107,13 +105,13 @@ export function laborMarketTick(agents: Map<string, Agent>, planets: Map<string,
                         const available = cohort.active[edu].count;
                         const fire = Math.min(toFire, available);
                         if (fire > 0) {
-                            // Fired workers are a random sample — use mean age.
-                            const mean = ageMean(cohort.active[edu]);
-                            const fireMoments = ageMomentsForAge(mean, fire);
-                            cohort.active[edu] = removeFromAgeMoments(cohort.active[edu], mean, fire);
+                            // Fired workers are a random sample — extract
+                            // proportionally to preserve mean and variance.
+                            const { remaining, sample } = extractRandomSample(cohort.active[edu], fire);
+                            cohort.active[edu] = remaining;
                             cohort.departing[edu][NOTICE_PERIOD_MONTHS - 1] = mergeAgeMoments(
                                 cohort.departing[edu][NOTICE_PERIOD_MONTHS - 1],
-                                fireMoments,
+                                sample,
                             );
                             cohort.departingFired[edu][NOTICE_PERIOD_MONTHS - 1] += fire;
                             firedThisTick[edu] += fire;

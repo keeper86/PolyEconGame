@@ -51,12 +51,22 @@ export function laborMarketYearTick(agents: Map<string, Agent>): void {
                     src.active[edu] = emptyAgeMoments();
 
                     // Shift departing + departingFired pipelines
+                    // Departing workers must also be aged +1 year to stay in
+                    // sync with the population model (which ages everyone).
                     for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
                         const srcDep = src.departing[edu][m];
-                        if (srcDep.count > 0) {
-                            dst.departing[edu][m] = mergeAgeMoments(dst.departing[edu][m], srcDep);
-                            src.departing[edu][m] = emptyAgeMoments();
+                        const dstDep = dst.departing[edu][m];
+                        if (srcDep.count > 0 && dstDep.count > 0) {
+                            dst.departing[edu][m] = mergeAgeMoments(
+                                ageAgeMomentsByOneYear(dstDep),
+                                ageAgeMomentsByOneYear(srcDep),
+                            );
+                        } else if (srcDep.count > 0) {
+                            dst.departing[edu][m] = ageAgeMomentsByOneYear(srcDep);
+                        } else if (dstDep.count > 0) {
+                            dst.departing[edu][m] = ageAgeMomentsByOneYear(dstDep);
                         }
+                        src.departing[edu][m] = emptyAgeMoments();
                         dst.departingFired[edu][m] += src.departingFired[edu][m];
                         src.departingFired[edu][m] = 0;
                     }
