@@ -24,7 +24,7 @@ import type {
     TenureCohort,
 } from '../planet';
 import { educationLevelKeys } from '../planet';
-import { removeFromAgeMoments, ageMean, ageVariance } from './workforceHelpers';
+import { removeFromAgeMoments, ageMean, ageVariance, RETIREMENT_AGE } from './workforceHelpers';
 import { distributeProportionally } from '../utils/distributeProportionally';
 
 // ---------------------------------------------------------------------------
@@ -97,12 +97,33 @@ function estimatedWorkersAtAge(m: AgeMoments, age: number): number {
  * Compute the age-weighted likelihood for each tenure cohort×pool(active/departing)
  * slot to contain workers at a specific age.  Returns a flat array of weights
  * corresponding to all pools across all cohorts.
+ *
+ * For **retirement** events, an additional exponential mean-age bias is applied
+ * so that cohorts whose mean age is near or above RETIREMENT_AGE are
+ * overwhelmingly preferred over younger cohorts that merely have a wide
+ * Gaussian tail reaching into retirement ages.  Without this bias, a
+ * 10 000-worker cohort with mean 45 ± 15 would absorb almost all retirement
+ * removals at age 67 despite having no actual 67-year-olds — purely because
+ * its Gaussian tail is large in absolute terms.
+ *
+ * The bias is: `exp(BIAS_STRENGTH × (mean − RETIREMENT_AGE))`, clamped so
+ * cohorts below retirement age are heavily penalised while cohorts at or
+ * above it are boosted.  The moment arithmetic is unaffected because
+ * `removeFromAgeMoments(pool, age, k)` subtracts the exact age regardless
+ * of which pool is chosen.
  */
 function computeAgeWeightsForCohorts(
     wf: TenureCohort[],
     edu: EducationLevelType,
     age: number,
+    eventType: DemographicEventType,
 ): { activeWeights: number[]; departingWeights: number[][] } {
+    // For retirement events, exponentially prefer pools whose mean is
+    // close to (or above) RETIREMENT_AGE.  A strength of 0.5 means each
+    // year of mean age above retirement roughly doubles the weight,
+    // while each year below halves it.
+    const RETIREMENT_BIAS_STRENGTH = 0.5;
+
     const activeWeights: number[] = new Array(wf.length);
     const departingWeights: number[][] = new Array(wf.length);
 
@@ -110,10 +131,20 @@ function computeAgeWeightsForCohorts(
         const cohort = wf[ci];
         activeWeights[ci] = estimatedWorkersAtAge(cohort.active[edu], age);
 
+        if (eventType === 'retirement' && activeWeights[ci] > 0 && cohort.active[edu].count > 0) {
+            const poolMean = ageMean(cohort.active[edu]);
+            activeWeights[ci] *= Math.exp(RETIREMENT_BIAS_STRENGTH * (poolMean - RETIREMENT_AGE));
+        }
+
         const dep = cohort.departing[edu];
         departingWeights[ci] = new Array(dep.length);
         for (let m = 0; m < dep.length; m++) {
             departingWeights[ci][m] = estimatedWorkersAtAge(dep[m], age);
+
+            if (eventType === 'retirement' && departingWeights[ci][m] > 0 && dep[m].count > 0) {
+                const poolMean = ageMean(dep[m]);
+                departingWeights[ci][m] *= Math.exp(RETIREMENT_BIAS_STRENGTH * (poolMean - RETIREMENT_AGE));
+            }
         }
     }
     return { activeWeights, departingWeights };
@@ -240,7 +271,7 @@ function distributeAgeCellRemovals(
 
         // Distribute across ALL pools (active + departing slots) weighted by
         // estimated worker count at the target age.
-        const { activeWeights, departingWeights } = computeAgeWeightsForCohorts(wf, edu, age);
+        const { activeWeights, departingWeights } = computeAgeWeightsForCohorts(wf, edu, age, eventType);
 
         // Build a flat list of pools with their weights and refs
         type PoolRef =
