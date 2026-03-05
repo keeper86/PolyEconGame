@@ -199,24 +199,8 @@ export function preProductionFinancialTick(gameState: GameState): void {
                 }
                 const wage = getWage(planet, edu);
 
-                // Credit workforce wealth moments
-                for (const cohort of workforce) {
-                    const activeCount = cohort.active[edu];
-                    if (activeCount > 0) {
-                        cohort.wealthMoments[edu] = {
-                            mean: cohort.wealthMoments[edu].mean + wage,
-                            variance: cohort.wealthMoments[edu].variance,
-                        };
-                    }
-                    for (let m = 0; m < cohort.departing[edu].length; m++) {
-                        if (cohort.departing[edu][m] > 0) {
-                            cohort.departingWealth[edu][m] = {
-                                mean: cohort.departingWealth[edu][m].mean + wage,
-                                variance: cohort.departingWealth[edu][m].variance,
-                            };
-                        }
-                    }
-                }
+                // Wealth moments are no longer tracked in the workforce pipeline.
+                // Population wealth demography is updated below.
 
                 // Credit population wealth demography
                 let totalPopOccCount = 0;

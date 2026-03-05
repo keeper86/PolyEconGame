@@ -18,10 +18,12 @@ import {
     planetMap,
 } from './testHelpers';
 import {
+    ageMomentsForAge,
     createWorkforceDemography,
+    emptyAgeMoments,
     NOTICE_PERIOD_MONTHS,
+    removeFromAgeMoments,
     totalDepartingForEdu,
-    totalRetiringForEdu,
 } from './workforceHelpers';
 
 // ---------------------------------------------------------------------------
@@ -39,29 +41,25 @@ describe('laborMarketMonthTick', () => {
 
     it('shifts the departing pipeline, discarding slot-0 workers', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        const pipeline = new Array(NOTICE_PERIOD_MONTHS).fill(0);
-        pipeline[0] = 5;
-        pipeline[1] = 3;
-        pipeline[11] = 1;
-        workforce[0].departing.none = pipeline;
+        workforce[0].departing.none[0] = ageMomentsForAge(30, 5);
+        workforce[0].departing.none[1] = ageMomentsForAge(30, 3);
+        workforce[0].departing.none[11] = ageMomentsForAge(30, 1);
 
         laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
-        expect(workforce[0].departing.none[0]).toBe(3);
-        expect(workforce[0].departing.none[10]).toBe(1);
-        expect(workforce[0].departing.none[11]).toBe(0);
+        expect(workforce[0].departing.none[0].count).toBe(3);
+        expect(workforce[0].departing.none[10].count).toBe(1);
+        expect(workforce[0].departing.none[11].count).toBe(0);
     });
 
     it('clears the last pipeline slot after advancing', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        const pipeline = new Array(NOTICE_PERIOD_MONTHS).fill(0);
-        pipeline[NOTICE_PERIOD_MONTHS - 1] = 7;
-        workforce[0].departing.none = pipeline;
+        workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1] = ageMomentsForAge(30, 7);
 
         laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
-        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 2]).toBe(7);
-        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
+        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 2].count).toBe(7);
+        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1].count).toBe(0);
     });
 
     it('returns departing workers to the unoccupied population pool', () => {
@@ -70,9 +68,7 @@ describe('laborMarketMonthTick', () => {
         planet.population.demography[25].primary.unoccupied = 50;
 
         const workforce = agent.assets.p.workforceDemography!;
-        const pipeline = new Array(NOTICE_PERIOD_MONTHS).fill(0);
-        pipeline[0] = 10;
-        workforce[0].departing.primary = pipeline;
+        workforce[0].departing.primary[0] = ageMomentsForAge(25, 10);
 
         laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
@@ -83,59 +79,8 @@ describe('laborMarketMonthTick', () => {
 
 // ---------------------------------------------------------------------------
 // Retirement is now handled population-side (applyRetirement + workforceSync).
-// laborMarketMonthTick only drains the legacy retiring pipeline back to active.
+// The retiring pipeline has been removed from TenureCohort.
 // ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Retiring pipeline — drains back to active (legacy compatibility)
-// ---------------------------------------------------------------------------
-
-describe('retiring pipeline — drains back to active (legacy)', () => {
-    it('returns slot-0 retirees to active and shifts the pipeline', () => {
-        const agent = makeAgent();
-        const { planet } = makePlanet();
-
-        const wf = agent.assets.p.workforceDemography!;
-        const pipeline = new Array(NOTICE_PERIOD_MONTHS).fill(0);
-        pipeline[0] = 20;
-        pipeline[1] = 10;
-        wf[40].retiring.primary = pipeline;
-        wf[40].active.primary = 50;
-
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
-
-        // slot-0 retirees drained to active
-        expect(wf[40].active.primary).toBe(70); // 50 + 20
-        // pipeline shifted: slot[1]→slot[0]
-        expect(wf[40].retiring.primary[0]).toBe(10);
-        expect(wf[40].retiring.primary[1]).toBe(0);
-    });
-
-    it('does not mix retiring and departing pipelines', () => {
-        const agent = makeAgent();
-        const { planet } = makePlanet();
-        planet.population.demography[30].none.company = 200;
-
-        const wf = agent.assets.p.workforceDemography!;
-        const depPipeline = new Array(NOTICE_PERIOD_MONTHS).fill(0);
-        depPipeline[0] = 10;
-        wf[20].departing.none = depPipeline;
-        const retPipeline = new Array(NOTICE_PERIOD_MONTHS).fill(0);
-        retPipeline[0] = 5;
-        wf[20].retiring.none = retPipeline;
-        wf[20].active.none = 100;
-
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
-
-        // Departing goes to unoccupied (via returnToPopulation)
-        // Retiring drains to active (legacy compatibility)
-        expect(wf[20].active.none).toBe(105); // 100 + 5 from retiring
-        // Departing pipeline advanced
-        expect(wf[20].departing.none[0]).toBe(0);
-    });
-});
-
-// (Gaussian variance-based retirement tests removed — retirement is now population-driven)
 
 // ---------------------------------------------------------------------------
 // Population conservation — month tick
@@ -151,9 +96,13 @@ describe('laborMarketMonthTick — population conservation', () => {
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        const toDep = Math.min(50, wf[0].active.none);
-        wf[0].active.none -= toDep;
-        wf[0].departing.none[0] = toDep;
+        const activeCount = wf[0].active.none.count;
+        const toDep = Math.min(50, activeCount);
+        if (toDep > 0) {
+            const depMoments = ageMomentsForAge(30, toDep);
+            wf[0].active.none = removeFromAgeMoments(wf[0].active.none, 30, toDep);
+            wf[0].departing.none[0] = depMoments;
+        }
 
         laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
@@ -161,28 +110,7 @@ describe('laborMarketMonthTick — population conservation', () => {
         assertWorkforcePopulationConsistency(planet, [agent], 'after month tick');
     });
 
-    it('conserves total population when retiring pipeline drains to active', () => {
-        const { planet } = makePlanet({ primary: 10000 });
-        const agent = makeAgent();
-
-        agent.assets.p.allocatedWorkers.primary = 500;
-        laborMarketTick(agentMap(agent), planetMap(planet));
-        const afterHire = totalPopulation(planet);
-
-        const wf = agent.assets.p.workforceDemography!;
-        const toRetire = Math.min(30, wf[0].active.primary);
-        wf[0].active.primary -= toRetire;
-        wf[0].retiring.primary[0] = toRetire;
-
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
-
-        // Retiring pipeline drains to active (legacy compatibility)
-        // so total population and workforce↔population consistency hold
-        assertTotalPopulationConserved(planet, afterHire);
-        assertWorkforcePopulationConsistency(planet, [agent], 'after retiring drain');
-    });
-
-    it('departure and retirement drain preserve workforce↔population consistency for government', () => {
+    it('departure drain preserves workforce↔population consistency for government', () => {
         const { planet, gov } = makePlanet({ none: 5000 });
         gov.assets = {
             p: {
@@ -200,10 +128,12 @@ describe('laborMarketMonthTick — population conservation', () => {
         const afterHire = totalPopulation(planet);
 
         const wf = gov.assets.p.workforceDemography!;
-        const dep = Math.min(20, wf[0].active.none);
-        // Retiring pipeline drains to active, so just test departing
-        wf[0].active.none -= dep;
-        wf[0].departing.none[0] = dep;
+        const activeCount = wf[0].active.none.count;
+        const dep = Math.min(20, activeCount);
+        if (dep > 0) {
+            wf[0].active.none = removeFromAgeMoments(wf[0].active.none, 30, dep);
+            wf[0].departing.none[0] = ageMomentsForAge(30, dep);
+        }
 
         laborMarketMonthTick(agentMap(gov), planetMap(planet));
 
@@ -214,19 +144,19 @@ describe('laborMarketMonthTick — population conservation', () => {
         expect(govWf).toBe(govPop);
     });
 
-    // (Gaussian retirement trigger conservation tests removed — retirement is now population-driven)
-
-    it('pipeline shift preserves total departing/retiring counts (no drop/gain)', () => {
+    it('pipeline shift preserves total departing counts (no drop/gain)', () => {
         const agent = makeAgent();
         const { planet } = makePlanet({ none: 5000 });
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.none = 100;
+        wf[0].active.none = ageMomentsForAge(30, 100);
 
+        let totalInPipeline = 0;
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            wf[0].departing.none[m] = m + 1;
+            const count = m + 1;
+            wf[0].departing.none[m] = ageMomentsForAge(30, count);
+            totalInPipeline += count;
         }
-        const totalInPipeline = (NOTICE_PERIOD_MONTHS * (NOTICE_PERIOD_MONTHS + 1)) / 2;
 
         planet.population.demography[30].none.company = 100 + totalInPipeline;
         planet.population.demography[30].none.unoccupied = 5000;
@@ -239,8 +169,9 @@ describe('laborMarketMonthTick — population conservation', () => {
 
         let pipelineAfter = 0;
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            pipelineAfter += wf[0].departing.none[m];
+            pipelineAfter += wf[0].departing.none[m].count;
         }
+        // slot-0 (count=1) was drained, so total drops by 1
         expect(pipelineAfter).toBe(totalInPipeline - 1);
     });
 });
@@ -255,7 +186,7 @@ describe('departingFired pipeline — consistency', () => {
         const agent = makeAgent();
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[5].active.none = 1000;
+        wf[5].active.none = ageMomentsForAge(30, 1000);
         agent.assets.p.allocatedWorkers.none = 500;
 
         laborMarketTick(agentMap(agent), planetMap(planet));
@@ -266,7 +197,7 @@ describe('departingFired pipeline — consistency', () => {
                     expect(
                         cohort.departingFired[edu][m],
                         `departingFired > departing at slot ${m} for ${edu}`,
-                    ).toBeLessThanOrEqual(cohort.departing[edu][m]);
+                    ).toBeLessThanOrEqual(cohort.departing[edu][m].count);
                 }
             }
         }
@@ -277,16 +208,16 @@ describe('departingFired pipeline — consistency', () => {
         const agent = makeAgent();
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[3].departing.none[5] = 50;
+        wf[3].departing.none[5] = ageMomentsForAge(30, 50);
         wf[3].departingFired.none[5] = 30;
-        wf[3].active.none = 100;
+        wf[3].active.none = ageMomentsForAge(30, 100);
         planet.population.demography[30].none.company = 200;
 
         laborMarketMonthTick(agentMap(agent), planetMap(planet));
 
-        expect(wf[3].departing.none[4]).toBe(50);
+        expect(wf[3].departing.none[4].count).toBe(50);
         expect(wf[3].departingFired.none[4]).toBe(30);
-        expect(wf[3].departing.none[5]).toBe(0);
+        expect(wf[3].departing.none[5].count).toBe(0);
         expect(wf[3].departingFired.none[5]).toBe(0);
     });
 });
@@ -306,9 +237,9 @@ describe('pipeline drain edge cases', () => {
         const before = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        const active = wf[0].active.none;
-        wf[0].active.none = 0;
-        wf[0].departing.none[NOTICE_PERIOD_MONTHS - 1] = active;
+        const activeMoments = wf[0].active.none;
+        wf[0].active.none = emptyAgeMoments();
+        wf[0].departing.none[NOTICE_PERIOD_MONTHS - 1] = activeMoments;
 
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
             laborMarketMonthTick(agentMap(agent), planetMap(planet));
@@ -317,30 +248,5 @@ describe('pipeline drain edge cases', () => {
         expect(totalDepartingForEdu(wf, 'none')).toBe(0);
         assertTotalPopulationConserved(planet, before);
         expect(sumPopOcc(planet, 'none', 'company')).toBe(0);
-    });
-
-    it('retiring pipeline fully drains back to active after NOTICE_PERIOD_MONTHS month ticks', () => {
-        const { planet } = makePlanet({ primary: 10000 });
-        const agent = makeAgent();
-
-        agent.assets.p.allocatedWorkers.primary = 300;
-        laborMarketTick(agentMap(agent), planetMap(planet));
-
-        const wf = agent.assets.p.workforceDemography!;
-        const active = wf[0].active.primary;
-        wf[0].active.primary = 0;
-        wf[0].retiring.primary[NOTICE_PERIOD_MONTHS - 1] = active;
-
-        const before = totalPopulation(planet);
-
-        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            laborMarketMonthTick(agentMap(agent), planetMap(planet));
-        }
-
-        // Legacy retiring pipeline drains back to active (not to unableToWork)
-        expect(totalRetiringForEdu(wf, 'primary')).toBe(0);
-        expect(wf[0].active.primary).toBe(active);
-        assertTotalPopulationConserved(planet, before);
-        assertWorkforcePopulationConsistency(planet, [agent], 'after retiring drain');
     });
 });

@@ -6,7 +6,7 @@ import { totalPopulation } from './population/populationHelpers';
 import type { StorageFacility, ProductionFacility, Resource } from './facilities';
 import type { Planet, Agent, EducationLevelType } from './planet';
 import type { GameState } from './engine';
-import { createWorkforceDemography } from './workforce';
+import { createWorkforceDemography, ageMomentsForAge } from './workforce';
 
 function makeEmptyStorage(): StorageFacility {
     return {
@@ -100,7 +100,7 @@ function setActualWorkers(agent: Agent, planetId: string, workers: Partial<Recor
         assets.workforceDemography = createWorkforceDemography();
     }
     for (const [edu, count] of Object.entries(workers)) {
-        assets.workforceDemography[0].active[edu as EducationLevelType] = count ?? 0;
+        assets.workforceDemography[0].active[edu as EducationLevelType] = ageMomentsForAge(30, count ?? 0);
     }
 }
 
@@ -865,12 +865,12 @@ describe('productionTick tenure (experience) multiplier', () => {
 
         // Agent A: 10 workers at tenure year 0
         agentA.assets[planet.id].workforceDemography = createWorkforceDemography();
-        agentA.assets[planet.id].workforceDemography![0].active.none = 10;
+        agentA.assets[planet.id].workforceDemography![0].active.none = ageMomentsForAge(30, 10);
         agentA.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
 
         // Agent B: 10 workers at tenure year 10
         agentB.assets[planet.id].workforceDemography = createWorkforceDemography();
-        agentB.assets[planet.id].workforceDemography![10].active.none = 10;
+        agentB.assets[planet.id].workforceDemography![10].active.none = ageMomentsForAge(30, 10);
         agentB.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
 
         const gsA: GameState = {
@@ -902,7 +902,7 @@ describe('productionTick tenure (experience) multiplier', () => {
         // effectiveFilled = 7 × 1.5 = 10.5 ≥ 10 target → 100% efficiency
         const agent = makeAgentForPlanet(planet.id);
         agent.assets[planet.id].workforceDemography = createWorkforceDemography();
-        agent.assets[planet.id].workforceDemography![10].active.none = 7;
+        agent.assets[planet.id].workforceDemography![10].active.none = ageMomentsForAge(30, 7);
         agent.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
 
         const gs: GameState = {
@@ -921,7 +921,7 @@ describe('productionTick tenure (experience) multiplier', () => {
         // effectiveFilled = 3 × 1.5 = 4.5 < 10 → efficiency = 4.5 / 10 = 0.45
         const agent = makeAgentForPlanet(planet.id);
         agent.assets[planet.id].workforceDemography = createWorkforceDemography();
-        agent.assets[planet.id].workforceDemography![10].active.none = 3;
+        agent.assets[planet.id].workforceDemography![10].active.none = ageMomentsForAge(30, 3);
         agent.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
 
         const gs: GameState = {
@@ -945,8 +945,8 @@ describe('productionTick tenure (experience) multiplier', () => {
         // We have 10 workers → take 8, 2 unused
         const agent = makeAgentForPlanet(planet.id);
         agent.assets[planet.id].workforceDemography = createWorkforceDemography();
-        agent.assets[planet.id].workforceDemography![0].active.none = 5;
-        agent.assets[planet.id].workforceDemography![10].active.none = 5;
+        agent.assets[planet.id].workforceDemography![0].active.none = ageMomentsForAge(30, 5);
+        agent.assets[planet.id].workforceDemography![10].active.none = ageMomentsForAge(30, 5);
         agent.assets[planet.id].productionFacilities.push(makeFacility(planet.id, { none: 10 }));
 
         const gs: GameState = {

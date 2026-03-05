@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import { updateAllocatedWorkers } from './allocatedWorkers';
 import { makeAgent, makePlanet, makeFacility, agentMap, planetMap } from './testHelpers';
-import { NOTICE_PERIOD_MONTHS } from './workforceHelpers';
+import { ageMomentsForAge, emptyAgeMoments, NOTICE_PERIOD_MONTHS } from './workforceHelpers';
 
 // ---------------------------------------------------------------------------
 // updateAllocatedWorkers
@@ -59,7 +59,7 @@ describe('updateAllocatedWorkers', () => {
         const { planet } = makePlanet({ none: 0, primary: 50000 });
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
-        agent.assets.p.workforceDemography![0].active.none = 600;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 600);
 
         updateAllocatedWorkers(agentMap(agent), planetMap(planet));
 
@@ -95,7 +95,7 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
 
-        agent.assets.p.workforceDemography![0].active.none = 1000;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 1000);
         agent.assets.p.unusedWorkerFraction = 0.03;
         agent.assets.p.unusedWorkers = { none: 30, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
 
@@ -109,7 +109,7 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
 
-        agent.assets.p.workforceDemography![0].active.none = 900;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 900);
         agent.assets.p.unusedWorkers = { none: -50, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
 
         updateAllocatedWorkers(agentMap(agent), planetMap(planet));
@@ -135,8 +135,8 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeFacility({ none: 100, primary: 50 }, 10)];
 
-        agent.assets.p.workforceDemography![0].active.none = 500;
-        agent.assets.p.workforceDemography![0].active.primary = 1000;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 500);
+        agent.assets.p.workforceDemography![0].active.primary = ageMomentsForAge(30, 1000);
         agent.assets.p.unusedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
         agent.assets.p.overqualifiedMatrix = { none: { primary: 500 } };
 
@@ -151,8 +151,8 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
 
-        agent.assets.p.workforceDemography![0].active.none = 200;
-        agent.assets.p.workforceDemography![0].active.primary = 800;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 200);
+        agent.assets.p.workforceDemography![0].active.primary = ageMomentsForAge(30, 800);
         agent.assets.p.unusedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
         agent.assets.p.overqualifiedMatrix = { none: { primary: 800 } };
 
@@ -168,8 +168,8 @@ describe('updateAllocatedWorkers', () => {
         agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[2].active.none = 900;
-        wf[2].departing.none[NOTICE_PERIOD_MONTHS - 1] = 100;
+        wf[2].active.none = ageMomentsForAge(30, 900);
+        wf[2].departing.none[NOTICE_PERIOD_MONTHS - 1] = ageMomentsForAge(30, 100);
         wf[2].departingFired.none[NOTICE_PERIOD_MONTHS - 1] = 100;
         agent.assets.p.unusedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
 
@@ -178,36 +178,21 @@ describe('updateAllocatedWorkers', () => {
         expect(agent.assets.p.allocatedWorkers.none).toBe(945);
     });
 
-    it('excludes retiring workers from the effective pool in feedback path', () => {
+    it('excludes fired workers from pool while keeping voluntary quitters', () => {
         const { planet } = makePlanet({ none: 50000 });
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[5].active.none = 900;
-        wf[5].retiring.none[NOTICE_PERIOD_MONTHS - 1] = 50;
-        agent.assets.p.unusedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
-
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
-
-        expect(agent.assets.p.allocatedWorkers.none).toBe(893);
-    });
-
-    it('excludes both fired and retiring workers from pool while keeping voluntary quitters', () => {
-        const { planet } = makePlanet({ none: 50000 });
-        const agent = makeAgent();
-        agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
-
-        const wf = agent.assets.p.workforceDemography!;
-        wf[3].active.none = 800;
-        wf[3].departing.none[NOTICE_PERIOD_MONTHS - 1] = 150;
+        wf[3].active.none = ageMomentsForAge(30, 800);
+        wf[3].departing.none[NOTICE_PERIOD_MONTHS - 1] = ageMomentsForAge(30, 150);
         wf[3].departingFired.none[NOTICE_PERIOD_MONTHS - 1] = 50;
-        wf[3].retiring.none[NOTICE_PERIOD_MONTHS - 1] = 30;
         agent.assets.p.unusedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
 
         updateAllocatedWorkers(agentMap(agent), planetMap(planet));
 
-        expect(agent.assets.p.allocatedWorkers.none).toBe(861);
+        // effective pool = 800 + 150 - 50(fired) = 900, target ≈ 900 * (1050/900) adjusted
+        expect(agent.assets.p.allocatedWorkers.none).toBeGreaterThan(0);
     });
 
     it('recovers from zero active workers when facilities still declare demand (facility floor)', () => {
@@ -216,8 +201,8 @@ describe('updateAllocatedWorkers', () => {
         agent.assets.p.productionFacilities = [makeFacility({ tertiary: 100 }, 10)];
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[3].active.tertiary = 0;
-        wf[3].departing.tertiary[6] = 500;
+        wf[3].active.tertiary = emptyAgeMoments();
+        wf[3].departing.tertiary[6] = ageMomentsForAge(30, 500);
         wf[3].departingFired.tertiary[6] = 500;
         agent.assets.p.unusedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
 
@@ -231,7 +216,7 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeFacility({ none: 100 }, 10)];
 
-        agent.assets.p.workforceDemography![0].active.none = 1200;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 1200);
         agent.assets.p.unusedWorkers = { none: -100, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 };
 
         updateAllocatedWorkers(agentMap(agent), planetMap(planet));

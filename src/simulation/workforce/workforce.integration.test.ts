@@ -21,7 +21,14 @@ import {
     assertWorkforcePopulationConsistency,
     assertAllNonNegative,
 } from './testHelpers';
-import { createWorkforceDemography, NOTICE_PERIOD_MONTHS, totalActiveForEdu } from './workforceHelpers';
+import {
+    createWorkforceDemography,
+    NOTICE_PERIOD_MONTHS,
+    totalActiveForEdu,
+    ageMomentsForAge,
+    emptyAgeMoments,
+    mergeAgeMoments,
+} from './workforceHelpers';
 
 // ============================================================================
 // Full tick cycle — month boundary
@@ -88,7 +95,9 @@ describe('full tick cycle — conservation with retirement', () => {
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].ageMoments.none = { mean: 65, variance: 9 };
+        // Set workers' age to 65 (retirement-eligible) by replacing the moments
+        const count = wf[0].active.none.count;
+        wf[0].active.none = ageMomentsForAge(65, count);
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
@@ -135,10 +144,9 @@ describe('full tick cycle — conservation with hiring and firing', () => {
 
         // Phase 2: move workers to fireable tenure and reduce target
         const wf = agent.assets.p.workforceDemography!;
-        const activeInY0 = wf[0].active.none;
-        wf[3].active.none += activeInY0;
-        wf[3].ageMoments.none = { ...wf[0].ageMoments.none };
-        wf[0].active.none = 0;
+        const activeInY0 = { ...wf[0].active.none };
+        wf[3].active.none = mergeAgeMoments(wf[3].active.none, activeInY0);
+        wf[0].active.none = emptyAgeMoments();
 
         agent.assets.p.allocatedWorkers.none = 500;
         for (let t = 0; t < TICKS_PER_MONTH; t++) {
@@ -293,9 +301,8 @@ describe('population ↔ workforce accounting invariant', () => {
         assertAccountingInvariant(planet, [agent]);
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[3].active.none = wf[0].active.none;
-        wf[3].ageMoments.none = { ...wf[0].ageMoments.none };
-        wf[0].active.none = 0;
+        wf[3].active.none = { ...wf[0].active.none };
+        wf[0].active.none = emptyAgeMoments();
 
         agent.assets.p.allocatedWorkers.none = 500;
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
@@ -312,8 +319,16 @@ describe('population ↔ workforce accounting invariant', () => {
 
         const wf = agent.assets.p.workforceDemography!;
         const toDeparting = 50;
-        wf[0].active.none -= toDeparting;
-        wf[0].departing.none[0] = toDeparting;
+        const { count, sumAge, sumAgeSq } = wf[0].active.none;
+        // Remove toDeparting workers from active and put them in departing[0]
+        const meanAge = count > 0 ? sumAge / count : 30;
+        const depMoments = ageMomentsForAge(meanAge, toDeparting);
+        wf[0].active.none = {
+            count: count - toDeparting,
+            sumAge: sumAge - depMoments.sumAge,
+            sumAgeSq: sumAgeSq - depMoments.sumAgeSq,
+        };
+        wf[0].departing.none[0] = depMoments;
 
         assertAccountingInvariant(planet, [agent]);
 
@@ -390,20 +405,16 @@ describe('low-number edge cases', () => {
         const wf = agent.assets.p.workforceDemography!;
 
         // Place 1 worker at age 72 (well above RETIREMENT_AGE) in population.
-        // At age 72 the annual retirement probability is 1.0, so the per-tick
-        // rate equals 1.0 and the worker retires on the very first tick.
         planet.population.demography[72].none.company = 1;
-        wf[1].active.none = 1;
-        wf[1].ageMoments.none = { mean: 72, variance: 0 };
+        wf[1].active.none = ageMomentsForAge(72, 1);
 
         const agentsMap = new Map([[agent.id, agent]]);
         applyRetirement(planet.population);
         syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
 
-        // Worker should be retired after a single tick at age 72
         expect(planet.population.demography[72].none.unableToWork).toBe(1);
         expect(planet.population.demography[72].none.company).toBe(0);
-        expect(wf[1].active.none).toBe(0);
+        expect(wf[1].active.none.count).toBe(0);
     });
 
     it('single worker does NOT retire when below RETIREMENT_AGE', () => {
@@ -411,10 +422,8 @@ describe('low-number edge cases', () => {
         const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
 
-        // Place 1 worker at age 39 — well below retirement age
         planet.population.demography[39].primary.company = 1;
-        wf[10].active.primary = 1;
-        wf[10].ageMoments.primary = { mean: 39, variance: 0 };
+        wf[10].active.primary = ageMomentsForAge(39, 1);
 
         const agentsMap = new Map([[agent.id, agent]]);
         for (let tick = 0; tick < 360; tick++) {
@@ -422,9 +431,8 @@ describe('low-number edge cases', () => {
             syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
         }
 
-        // No retirement should have occurred
         expect(planet.population.demography[39].primary.company).toBe(1);
-        expect(wf[10].active.primary).toBe(1);
+        expect(wf[10].active.primary.count).toBe(1);
     });
 
     it('three workers near retirement: some retire over multiple ticks', () => {
@@ -432,10 +440,8 @@ describe('low-number edge cases', () => {
         const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
 
-        // Place 3 workers at age 67 (right at RETIREMENT_AGE)
         planet.population.demography[67].tertiary.company = 3;
-        wf[30].active.tertiary = 3;
-        wf[30].ageMoments.tertiary = { mean: 67, variance: 0 };
+        wf[30].active.tertiary = ageMomentsForAge(67, 3);
 
         const agentsMap = new Map([[agent.id, agent]]);
         for (let tick = 0; tick < 360; tick++) {
@@ -443,7 +449,7 @@ describe('low-number edge cases', () => {
             syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
         }
 
-        const remaining = wf[30].active.tertiary;
+        const remaining = wf[30].active.tertiary.count;
         const retired = planet.population.demography[67].tertiary.unableToWork;
 
         expect(remaining + retired).toBe(3);
@@ -541,11 +547,15 @@ describe('workforce ↔ population consistency under mortality/disability', () =
         // Create variety in age distributions across tenure cohorts
         // to increase the chance of overflow during age-weighted removal
         const agentWf = agent.assets.p.workforceDemography!;
-        if (agentWf[0].active.none > 100) {
+        if (agentWf[0].active.none.count > 100) {
             const moveCount = 100;
-            agentWf[5].active.none += moveCount;
-            agentWf[5].ageMoments.none = { mean: 75, variance: 25 };
-            agentWf[0].active.none -= moveCount;
+            const moved = ageMomentsForAge(75, moveCount);
+            agentWf[5].active.none = mergeAgeMoments(agentWf[5].active.none, moved);
+            agentWf[0].active.none = {
+                count: agentWf[0].active.none.count - moveCount,
+                sumAge: agentWf[0].active.none.sumAge - moved.sumAge,
+                sumAgeSq: agentWf[0].active.none.sumAgeSq - moved.sumAgeSq,
+            };
         }
 
         // Simulate many ticks of mortality + disability syncing
@@ -560,7 +570,7 @@ describe('workforce ↔ population consistency under mortality/disability', () =
                 // Company (agent)
                 let wfCompanyActive = 0;
                 for (const cohort of agent.assets.p.workforceDemography!) {
-                    wfCompanyActive += cohort.active[edu];
+                    wfCompanyActive += cohort.active[edu].count;
                 }
                 let popCompany = 0;
                 for (const cohort of planet.population.demography) {
@@ -574,7 +584,7 @@ describe('workforce ↔ population consistency under mortality/disability', () =
                 // Government (gov)
                 let wfGovActive = 0;
                 for (const cohort of gov.assets.p.workforceDemography!) {
-                    wfGovActive += cohort.active[edu];
+                    wfGovActive += cohort.active[edu].count;
                 }
                 let popGov = 0;
                 for (const cohort of planet.population.demography) {

@@ -59,8 +59,8 @@ export function computeAgentWorkforceTotals(agents: Map<string, Agent>, planetId
             continue;
         }
         for (const cohort of assets.workforceDemography) {
-            for (const [, count] of Object.entries(cohort.active)) {
-                totals.active += count as number;
+            for (const [, m] of Object.entries(cohort.active)) {
+                totals.active += m.count;
             }
         }
 
@@ -70,7 +70,7 @@ export function computeAgentWorkforceTotals(agents: Map<string, Agent>, planetId
             let sum = 0;
             for (const cohort of assets.workforceDemography) {
                 for (const v of Object.values(cohort.active)) {
-                    sum += v;
+                    sum += v.count;
                 }
             }
             if (isGov) {
@@ -119,7 +119,7 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
                 }
                 for (const cohort of assets.workforceDemography) {
                     for (const [edu, v] of Object.entries(cohort.active)) {
-                        agentGovByEdu[edu] = (agentGovByEdu[edu] ?? 0) + (v as number);
+                        agentGovByEdu[edu] = (agentGovByEdu[edu] ?? 0) + v.count;
                     }
                 }
             }
@@ -151,7 +151,7 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
                 }
                 for (const cohort of assets.workforceDemography) {
                     for (const [, v] of Object.entries(cohort.active)) {
-                        sum += v as number;
+                        sum += v.count;
                     }
                 }
                 // Only include non-government agents here (company totals)
@@ -179,7 +179,7 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
                 }
                 for (const cohort of assets.workforceDemography) {
                     for (const [edu, v] of Object.entries(cohort.active)) {
-                        agentByEdu[edu] = (agentByEdu[edu] ?? 0) + (v as number);
+                        agentByEdu[edu] = (agentByEdu[edu] ?? 0) + v.count;
                     }
                 }
             }

@@ -92,12 +92,10 @@ export default function WorkforceDemographyPanel({
                             <EducationLevelCards
                                 allocatedWorkers={allocatedWorkers}
                                 activeByEdu={summary.activeByEdu}
-                                retiringByEdu={summary.retiringByEdu}
                                 firedByEdu={summary.firedByEdu}
                                 voluntaryByEdu={summary.voluntaryByEdu}
                                 nextMonthVoluntaryByEdu={summary.nextMonthVoluntaryByEdu}
                                 nextMonthFiredByEdu={summary.nextMonthFiredByEdu}
-                                nextMonthRetiringByEdu={summary.nextMonthRetiringByEdu}
                                 meanAgeByEdu={summary.meanAgeByEdu}
                                 ageProductivityByEdu={summary.ageProductivityByEdu}
                                 meanTenureByEdu={summary.meanTenureByEdu}

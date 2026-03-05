@@ -113,6 +113,8 @@ export function applyRetirementTransitions(cohort: Cohort, age: number): void {
  */
 export function applyRetirement(population: Population): void {
     const tickNewRetirements = emptyAccumulator();
+    // Age-resolved retirement accumulator for exact workforce moment updates
+    const tickRetirementsByAge: Record<number, Record<string, Record<string, number>>> = {};
 
     for (let age = maxAge; age >= 0; age--) {
         const cohort = population.demography[age];
@@ -135,15 +137,27 @@ export function applyRetirement(population: Population): void {
         applyRetirementTransitions(cohort, age);
 
         // Record net transitions per edu × source-occ
+        let anyMoved = false;
         for (const edu of educationLevelKeys) {
             for (const occ of RETIREMENT_SOURCE_OCCUPATIONS) {
                 const moved = Math.max(0, before[edu][occ] - cohort[edu][occ]);
                 if (moved > 0) {
                     tickNewRetirements[edu][occ] += moved;
+                    anyMoved = true;
+                }
+            }
+        }
+        if (anyMoved) {
+            tickRetirementsByAge[age] = {} as Record<string, Record<string, number>>;
+            for (const edu of educationLevelKeys) {
+                tickRetirementsByAge[age][edu] = {} as Record<string, number>;
+                for (const occ of RETIREMENT_SOURCE_OCCUPATIONS) {
+                    tickRetirementsByAge[age][edu][occ] = Math.max(0, before[edu][occ] - cohort[edu][occ]);
                 }
             }
         }
     }
 
     population.tickNewRetirements = tickNewRetirements;
+    population.tickRetirementsByAge = tickRetirementsByAge;
 }

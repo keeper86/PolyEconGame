@@ -42,9 +42,12 @@ function estimateWageBill(
     }
     for (const cohort of wfd) {
         for (const edu of educationLevelKeys) {
-            const activeCount = cohort.active[edu] ?? 0;
+            const activeCount = cohort.active[edu]?.count ?? 0;
             // Also count departing workers — they still receive wages until they leave.
-            const departingCount = (cohort.departing[edu] ?? []).reduce((s: number, n: number) => s + n, 0);
+            const departingCount = (cohort.departing[edu] ?? []).reduce(
+                (s: number, m: { count: number }) => s + m.count,
+                0,
+            );
             const wage = wagePerEdu[edu] ?? DEFAULT_WAGE_PER_EDU;
             const bill = (activeCount + departingCount) * wage;
             byEdu[edu] += bill;
@@ -54,7 +57,7 @@ function estimateWageBill(
     return { total, byEdu };
 }
 
-/** Aggregate wealth moments from the workforce demography. */
+/** Aggregate worker counts from the workforce demography (wealth no longer tracked here). */
 function aggregateWealthStats(wfd: WorkforceDemography): {
     byEdu: Record<EducationLevelType, { mean: number; workers: number }>;
     totalWorkers: number;
@@ -67,15 +70,9 @@ function aggregateWealthStats(wfd: WorkforceDemography): {
 
     for (const cohort of wfd) {
         for (const edu of educationLevelKeys) {
-            const activeCount = cohort.active[edu] ?? 0;
+            const activeCount = cohort.active[edu]?.count ?? 0;
             if (activeCount > 0) {
-                // Running weighted average of mean wealth.
-                const prev = byEdu[edu];
-                const newTotal = prev.workers + activeCount;
-                byEdu[edu] = {
-                    mean: (prev.mean * prev.workers + cohort.wealthMoments[edu].mean * activeCount) / newTotal,
-                    workers: newTotal,
-                };
+                byEdu[edu].workers += activeCount;
                 totalWorkers += activeCount;
             }
         }

@@ -13,7 +13,7 @@ import {
     sumPopOcc,
     assertTotalPopulationConserved,
 } from './testHelpers';
-import { createWorkforceDemography } from './workforceHelpers';
+import { createWorkforceDemography, ageMean, ageVariance } from './workforceHelpers';
 
 // ============================================================================
 // hireFromPopulation
@@ -148,7 +148,7 @@ describe('populationBridge — hireFromPopulation', () => {
             companyAfter += cohort.secondary.company;
         }
 
-        const hired = agent.assets.p.workforceDemography![0].active.secondary;
+        const hired = agent.assets.p.workforceDemography![0].active.secondary.count;
         expect(hired).toBeGreaterThan(0);
         expect(unoccupiedBefore - unoccupiedAfter).toBe(hired);
         expect(companyAfter).toBe(hired);
@@ -168,7 +168,7 @@ describe('populationBridge — hireFromPopulation', () => {
 
         laborMarketTick(new Map([[gov.id, gov]]), new Map([[planet.id, planet]]));
 
-        const hired = gov.assets.p.workforceDemography![0].active.primary;
+        const hired = gov.assets.p.workforceDemography![0].active.primary.count;
         expect(hired).toBeGreaterThan(0);
 
         let govAfter = 0;
@@ -408,7 +408,7 @@ describe('populationBridge — totalUnoccupiedForEdu', () => {
 // ============================================================================
 
 describe('age moments — hiring', () => {
-    it('sets ageMoments.mean to the weighted mean age of hired workers', () => {
+    it('sets active mean age to the weighted mean age of hired workers', () => {
         const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.unoccupied = 0;
@@ -421,12 +421,12 @@ describe('age moments — hiring', () => {
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const wf = agent.assets.p.workforceDemography!;
-        const hired = wf[0].active.none;
+        const hired = wf[0].active.none.count;
         expect(hired).toBeGreaterThan(0);
-        expect(wf[0].ageMoments.none.mean).toBe(25);
+        expect(ageMean(wf[0].active.none)).toBe(25);
     });
 
-    it('hired workers get correct ageMoments reflecting actual population ages', () => {
+    it('hired workers get correct age moments reflecting actual population ages', () => {
         const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.unoccupied = 0;
@@ -440,13 +440,13 @@ describe('age moments — hiring', () => {
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const wf = agent.assets.p.workforceDemography!;
-        const moments = wf[0].ageMoments.none;
+        const moments = wf[0].active.none;
 
-        expect(moments.mean).toBe(30);
-        expect(moments.variance).toBeCloseTo(25, 5);
+        expect(ageMean(moments)).toBe(30);
+        expect(ageVariance(moments)).toBeCloseTo(25, 5);
     });
 
-    it('merges ageMoments correctly when hiring across multiple ticks', () => {
+    it('merges age moments correctly when hiring across multiple ticks', () => {
         const { planet } = makePlanet();
         for (const c of planet.population.demography) {
             c.none.unoccupied = 0;
@@ -462,8 +462,8 @@ describe('age moments — hiring', () => {
         }
 
         const wf = agent.assets.p.workforceDemography!;
-        expect(wf[0].ageMoments.none.mean).toBeGreaterThanOrEqual(20);
-        expect(wf[0].ageMoments.none.mean).toBeLessThanOrEqual(40);
+        expect(ageMean(wf[0].active.none)).toBeGreaterThanOrEqual(20);
+        expect(ageMean(wf[0].active.none)).toBeLessThanOrEqual(40);
     });
 
     it('variance is non-negative after all operations', () => {
@@ -476,8 +476,8 @@ describe('age moments — hiring', () => {
         const wf = agent.assets.p.workforceDemography!;
         for (const cohort of wf) {
             for (const edu of educationLevelKeys) {
-                if (cohort.active[edu] > 0) {
-                    expect(cohort.ageMoments[edu].variance, `negative variance for ${edu}`).toBeGreaterThanOrEqual(0);
+                if (cohort.active[edu].count > 0) {
+                    expect(ageVariance(cohort.active[edu]), `negative variance for ${edu}`).toBeGreaterThanOrEqual(0);
                 }
             }
         }

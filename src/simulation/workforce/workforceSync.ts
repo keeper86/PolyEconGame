@@ -2,28 +2,29 @@
  * workforce/workforceSync.ts
  *
  * Synchronisation between the authoritative population demography and
- * agents' WorkforceDemography after mortality and disability transitions.
+ * agents' WorkforceDemography after mortality, disability, and retirement
+ * transitions.
  *
- * Uses age-weighted distribution (Hamilton method) so that tenure cohorts
- * with older workers attract proportionally more removals.
+ * The population pipeline now records **age-resolved** events
+ * (tickDeathsByAge, tickDisabilitiesByAge, tickRetirementsByAge).  This
+ * module consumes those exact per-age counts and uses
+ * `removeFromAgeMoments(moments, age, k)` to keep the compact workforce
+ * representation perfectly in sync — no Gaussian approximation needed.
  */
 
-import type { Agent, EducationLevelType, Environment, Occupation, Planet, Population } from '../planet';
+import type {
+    Agent,
+    AgeResolvedAccumulator,
+    EducationLevelType,
+    Environment,
+    Occupation,
+    Planet,
+    Population,
+    TenureCohort,
+} from '../planet';
 import { educationLevelKeys } from '../planet';
-import { DEFAULT_HIRE_AGE_MEAN, expectedRateForMoments } from './workforceHelpers';
+import { removeFromAgeMoments } from './workforceHelpers';
 import { distributeProportionally } from '../utils/distributeProportionally';
-import {
-    convertAnnualToPerTick,
-    perTickMortality,
-    computeEnvironmentalMortality,
-    computeExtraAnnualMortality,
-} from '../population/mortality';
-import {
-    ageDependentBaseDisabilityProb,
-    computeEnvironmentalDisability,
-    STARVATION_DISABILITY_COEFFICIENT,
-} from '../population/disability';
-import { perTickRetirement } from '../population/retirement';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -33,136 +34,81 @@ import { perTickRetirement } from '../population/retirement';
 const WORKFORCE_OCCUPATIONS: Occupation[] = ['company', 'government'];
 
 /**
- * Count total workers (active + departing pipeline + retiring pipeline)
- * for a single tenure cohort and education level.
+ * Count total workers (active + departing pipeline) for a single tenure
+ * cohort and education level.
  */
-function totalWorkersInCohort(
-    cohort: { active: Record<string, number>; departing: Record<string, number[]>; retiring: Record<string, number[]> },
-    edu: EducationLevelType,
-): number {
-    let total = cohort.active[edu] ?? 0;
+function totalWorkersInCohort(cohort: TenureCohort, edu: EducationLevelType): number {
+    let total = cohort.active[edu].count;
     const dep = cohort.departing[edu];
-    if (dep) {
-        for (let m = 0; m < dep.length; m++) {
-            total += dep[m];
-        }
-    }
-    const ret = cohort.retiring[edu];
-    if (ret) {
-        for (let m = 0; m < ret.length; m++) {
-            total += ret[m];
-        }
+    for (let m = 0; m < dep.length; m++) {
+        total += dep[m].count;
     }
     return total;
 }
 
 /**
- * Distribute `count` removals for a single (edu, occ) pair across agents
- * and their tenure cohorts using the largest-remainder (Hamilton) method,
- * **weighted by age-dependent expected rate**.
+ * Distribute `count` removals for a single (age, edu, occ) cell across
+ * agents and their tenure cohorts using the largest-remainder (Hamilton)
+ * method weighted by headcount.
  *
- * Each tenure cohort tracks `ageMoments` (mean, variance) per education
- * level.  Instead of distributing removals proportionally to headcount
- * alone — which under-counts old-age deaths and over-counts young-age
- * deaths — we weight each cohort by `headcount × expectedRate(ageMoments)`.
+ * Because we know the exact age of the removed workers, we can call
+ * `removeFromAgeMoments(m, age, k)` for drift-free updates.
  *
- * This means a cohort of 10 workers with mean age 75 will attract far
- * more mortality removals than a cohort of 10 workers with mean age 25,
- * matching the biological reality even though we only know the age
- * distribution statistically.
- *
- * **IMPORTANT**: Removals are distributed across active workers AND
- * pipeline workers (departing + retiring).  The population model does not
- * distinguish between active and pipeline workers — they are all counted
- * under the same occupation.  When mortality/disability kills a worker,
- * that worker may have been in any of these pools.  Distributing only
- * from `active` would create ghost pipeline workers that later attempt to
- * transfer back into the population, causing population < workforce drift.
- *
- * @param agents      All agents to consider.
- * @param planetId    Planet whose workforce is updated.
- * @param edu         Education level being processed.
- * @param count       Total integer removals to distribute.
- * @param trackDeaths If true, accumulate into `assets.deathsThisMonth`.
- * @param ageRateFn   Age-dependent rate function (e.g. mortality or
- *                    disability per-tick probability).  Used to weight
- *                    distribution across cohorts.  If omitted, falls
- *                    back to headcount-proportional distribution.
+ * Removals are distributed across active workers AND departing pipeline
+ * workers because the population model counts all of them under the same
+ * occupation.
  */
-function distributeWorkforceRemovals(
+function distributeAgeCellRemovals(
     agents: Agent[],
     planetId: string,
     edu: EducationLevelType,
+    age: number,
     count: number,
     trackDeaths: boolean,
-    ageRateFn?: (age: number) => number,
 ): void {
     if (count <= 0) {
         return;
     }
 
-    // Gather per-agent weighted totals for this edu on the planet.
-    // Weight = sum over cohorts of (totalWorkers × expectedRate).
-    // totalWorkers includes active + departing + retiring because the
-    // population model counts all of them under the same occupation.
-    const agentEntries: {
-        agent: Agent;
-        weight: number;
-        cohortWeights: number[]; // per tenure cohort
-    }[] = [];
-    let totalWeight = 0;
+    // Gather per-agent headcounts for this edu on the planet.
+    const agentEntries: { agent: Agent; headcount: number }[] = [];
+    let totalHeadcount = 0;
 
     for (const agent of agents) {
         const wf = agent.assets[planetId]?.workforceDemography;
         if (!wf) {
             continue;
         }
-
-        const cohortWeights: number[] = new Array(wf.length);
-        let agentWeight = 0;
+        let agentHead = 0;
         for (let ci = 0; ci < wf.length; ci++) {
-            const headcount = totalWorkersInCohort(wf[ci], edu);
-            if (headcount <= 0) {
-                cohortWeights[ci] = 0;
-                continue;
-            }
-            if (ageRateFn) {
-                const rate = expectedRateForMoments(wf[ci].ageMoments[edu], ageRateFn);
-                cohortWeights[ci] = headcount * Math.max(rate, 1e-12);
-            } else {
-                cohortWeights[ci] = headcount;
-            }
-            agentWeight += cohortWeights[ci];
+            agentHead += totalWorkersInCohort(wf[ci], edu);
         }
-
-        if (agentWeight > 0) {
-            agentEntries.push({ agent, weight: agentWeight, cohortWeights });
-            totalWeight += agentWeight;
+        if (agentHead > 0) {
+            agentEntries.push({ agent, headcount: agentHead });
+            totalHeadcount += agentHead;
         }
     }
-
-    if (totalWeight === 0) {
-        return; // No workforce to remove from (rare).
+    if (totalHeadcount === 0) {
+        return;
     }
 
-    // Allocate integer removals to agents using largest-remainder method
-    const agentWeights = agentEntries.map((a) => a.weight);
+    // Allocate integer removals to agents using largest-remainder
+    const agentWeights = agentEntries.map((a) => a.headcount);
     const agentRemovals = distributeProportionally(count, agentWeights);
 
-    // Apply removals within each agent, distributing across tenure cohorts
     for (let i = 0; i < agentEntries.length; i++) {
-        const { agent, cohortWeights } = agentEntries[i];
-        const toRemoveForAgent = agentRemovals[i] ?? 0;
-        if (!toRemoveForAgent) {
+        const { agent } = agentEntries[i];
+        const toRemove = agentRemovals[i] ?? 0;
+        if (toRemove <= 0) {
             continue;
         }
 
         const assets = agent.assets[planetId];
-        if (!assets) {
+        if (!assets?.workforceDemography) {
             continue;
         }
 
-        // Optionally accumulate into the per-agent monthly death counter
+        // Track deaths
         if (trackDeaths) {
             if (!assets.deathsThisMonth) {
                 assets.deathsThisMonth = {} as Record<EducationLevelType, number>;
@@ -170,32 +116,23 @@ function distributeWorkforceRemovals(
                     assets.deathsThisMonth[e] = 0;
                 }
             }
-            assets.deathsThisMonth[edu] += toRemoveForAgent;
+            assets.deathsThisMonth[edu] += toRemove;
         }
 
         const wf = assets.workforceDemography;
-        if (!wf) {
+
+        // Distribute across tenure cohorts proportionally to headcount
+        const cohortWeights = wf.map((c) => totalWorkersInCohort(c, edu));
+        const cohortTotal = cohortWeights.reduce((s, v) => s + v, 0);
+        if (cohortTotal <= 0) {
             continue;
         }
 
-        // Within-agent distribution uses cohort-level weights
-        const agentCohortTotal = cohortWeights.reduce((s, v) => s + v, 0);
-        if (agentCohortTotal === 0) {
-            continue;
-        }
+        const cohortRemovals = distributeProportionally(toRemove, cohortWeights);
 
-        // Allocate removals across cohorts (largest-remainder, weighted)
-        const cohortRemovals = distributeProportionally(toRemoveForAgent, cohortWeights);
-
-        // Apply removals to each cohort, splitting between active, departing,
-        // and retiring proportionally.  This prevents ghost pipeline workers
-        // from accumulating when mortality hits workers in the pipeline.
-        //
-        // An overflow redistribution loop ensures that if a cohort can't absorb
-        // all its assigned removals (poolTotal < wanted), the excess is
-        // redistributed to remaining cohorts.  Without this, removals would be
-        // silently dropped and the workforce would drift above the population.
-        let totalPending = toRemoveForAgent;
+        // Apply removals within each cohort, splitting between active and
+        // departing proportionally, using exact age for moment subtraction.
+        let totalPending = toRemove;
         const pendingRemovals = cohortRemovals.slice();
 
         while (totalPending > 0) {
@@ -207,84 +144,53 @@ function distributeWorkforceRemovals(
                 if (wanted <= 0) {
                     continue;
                 }
-                pendingRemovals[ci] = 0; // consumed
+                pendingRemovals[ci] = 0;
 
                 const cohort = wf[ci];
-                const activeCount = cohort.active[edu];
+                const activeCount = cohort.active[edu].count;
 
-                // Sum departing pipeline
                 let departingTotal = 0;
                 const dep = cohort.departing[edu];
                 for (let m = 0; m < dep.length; m++) {
-                    departingTotal += dep[m];
+                    departingTotal += dep[m].count;
                 }
 
-                // Sum retiring pipeline
-                let retiringTotal = 0;
-                const ret = cohort.retiring[edu];
-                for (let m = 0; m < ret.length; m++) {
-                    retiringTotal += ret[m];
-                }
-
-                const poolTotal = activeCount + departingTotal + retiringTotal;
+                const poolTotal = activeCount + departingTotal;
                 if (poolTotal <= 0) {
                     overflow += wanted;
                     continue;
                 }
 
-                // Cap at what's available; excess becomes overflow
                 if (wanted > poolTotal) {
                     overflow += wanted - poolTotal;
                     wanted = poolTotal;
                 }
 
-                // Split removals proportionally between pools using Hamilton method
-                const poolWeights = [activeCount, departingTotal, retiringTotal];
+                // Split proportionally between active and departing
+                const poolWeights = [activeCount, departingTotal];
                 const poolAlloc = distributeProportionally(wanted, poolWeights);
-                let fromActive = poolAlloc[0];
-                let fromDeparting = poolAlloc[1];
-                let fromRetiring = poolAlloc[2];
+                let fromActive = Math.min(poolAlloc[0], activeCount);
+                let fromDeparting = Math.min(poolAlloc[1], departingTotal);
 
-                // Clamp to available and shift excess between pools within this cohort
-                fromActive = Math.min(fromActive, activeCount);
-                fromDeparting = Math.min(fromDeparting, departingTotal);
-                fromRetiring = Math.min(fromRetiring, retiringTotal);
-
-                let poolExcess = wanted - fromActive - fromDeparting - fromRetiring;
-                while (poolExcess > 0) {
-                    let movedExcess = 0;
-                    if (fromActive < activeCount) {
-                        const take = Math.min(poolExcess, activeCount - fromActive);
-                        fromActive += take;
-                        poolExcess -= take;
-                        movedExcess += take;
-                    }
-                    if (poolExcess > 0 && fromDeparting < departingTotal) {
-                        const take = Math.min(poolExcess, departingTotal - fromDeparting);
-                        fromDeparting += take;
-                        poolExcess -= take;
-                        movedExcess += take;
-                    }
-                    if (poolExcess > 0 && fromRetiring < retiringTotal) {
-                        const take = Math.min(poolExcess, retiringTotal - fromRetiring);
-                        fromRetiring += take;
-                        poolExcess -= take;
-                        movedExcess += take;
-                    }
-                    if (movedExcess === 0) {
-                        break;
-                    }
+                // Ensure we don't under-remove
+                let poolExcess = wanted - fromActive - fromDeparting;
+                if (poolExcess > 0 && fromActive < activeCount) {
+                    const take = Math.min(poolExcess, activeCount - fromActive);
+                    fromActive += take;
+                    poolExcess -= take;
+                }
+                if (poolExcess > 0 && fromDeparting < departingTotal) {
+                    const take = Math.min(poolExcess, departingTotal - fromDeparting);
+                    fromDeparting += take;
+                    poolExcess -= take;
                 }
 
-                const actuallyRemoved = fromActive + fromDeparting + fromRetiring;
+                const actuallyRemoved = fromActive + fromDeparting;
                 removedThisPass += actuallyRemoved;
 
-                // --- Remove from active ---
+                // --- Remove from active using exact age ---
                 if (fromActive > 0) {
-                    cohort.active[edu] -= fromActive;
-                    if (cohort.active[edu] === 0) {
-                        cohort.ageMoments[edu] = { mean: DEFAULT_HIRE_AGE_MEAN, variance: 0 };
-                    }
+                    cohort.active[edu] = removeFromAgeMoments(cohort.active[edu], age, fromActive);
                 }
 
                 // --- Remove from departing pipeline (proportional across slots) ---
@@ -292,40 +198,31 @@ function distributeWorkforceRemovals(
                     let toRemoveFromDep = fromDeparting;
                     // Distribute across departing slots proportionally
                     for (let m = 0; m < dep.length && toRemoveFromDep > 0; m++) {
-                        const slotShare = Math.round((dep[m] / departingTotal) * fromDeparting);
-                        const take = Math.min(slotShare, dep[m], toRemoveFromDep);
-                        dep[m] -= take;
-                        toRemoveFromDep -= take;
+                        const slotCount = dep[m].count;
+                        if (slotCount <= 0) {
+                            continue;
+                        }
+                        const slotShare = Math.round((slotCount / departingTotal) * fromDeparting);
+                        const take = Math.min(slotShare, slotCount, toRemoveFromDep);
+                        if (take > 0) {
+                            dep[m] = removeFromAgeMoments(dep[m], age, take);
+                            toRemoveFromDep -= take;
+                        }
                     }
                     // Sweep any remaining from slots with workers
                     for (let m = 0; m < dep.length && toRemoveFromDep > 0; m++) {
-                        const take = Math.min(toRemoveFromDep, dep[m]);
-                        dep[m] -= take;
-                        toRemoveFromDep -= take;
+                        const take = Math.min(toRemoveFromDep, dep[m].count);
+                        if (take > 0) {
+                            dep[m] = removeFromAgeMoments(dep[m], age, take);
+                            toRemoveFromDep -= take;
+                        }
                     }
                     // Clamp departingFired so it never exceeds departing per slot
                     const fired = cohort.departingFired[edu];
                     for (let m = 0; m < fired.length; m++) {
-                        if (fired[m] > dep[m]) {
-                            fired[m] = dep[m];
+                        if (fired[m] > dep[m].count) {
+                            fired[m] = dep[m].count;
                         }
-                    }
-                }
-
-                // --- Remove from retiring pipeline (proportional across slots) ---
-                if (fromRetiring > 0 && retiringTotal > 0) {
-                    let toRemoveFromRet = fromRetiring;
-                    for (let m = 0; m < ret.length && toRemoveFromRet > 0; m++) {
-                        const slotShare = Math.round((ret[m] / retiringTotal) * fromRetiring);
-                        const take = Math.min(slotShare, ret[m], toRemoveFromRet);
-                        ret[m] -= take;
-                        toRemoveFromRet -= take;
-                    }
-                    // Sweep remaining
-                    for (let m = 0; m < ret.length && toRemoveFromRet > 0; m++) {
-                        const take = Math.min(toRemoveFromRet, ret[m]);
-                        ret[m] -= take;
-                        toRemoveFromRet -= take;
                     }
                 }
             }
@@ -333,18 +230,10 @@ function distributeWorkforceRemovals(
             totalPending -= removedThisPass;
 
             if (overflow <= 0 || removedThisPass === 0) {
-                break; // no overflow or no capacity left anywhere
+                break;
             }
 
             // Redistribute overflow proportionally across remaining cohorts
-            let remainingTotal = 0;
-            for (let ci = 0; ci < wf.length; ci++) {
-                remainingTotal += totalWorkersInCohort(wf[ci], edu);
-            }
-            if (remainingTotal <= 0) {
-                break;
-            }
-            // Use Hamilton method for overflow redistribution
             const overflowWeights = wf.map((c) => totalWorkersInCohort(c, edu));
             const overflowAlloc = distributeProportionally(overflow, overflowWeights);
             for (let ci = 0; ci < wf.length; ci++) {
@@ -363,116 +252,73 @@ function distributeWorkforceRemovals(
  * retirements computed by the population pipeline to agents'
  * WorkforceDemography so both representations remain consistent.
  *
- * For **deaths**: workers in `company` / `government` occupations that died
- * this tick are removed from the corresponding workforce active slots.
+ * Uses the **age-resolved** event accumulators
+ * (`tickDeathsByAge`, `tickDisabilitiesByAge`, `tickRetirementsByAge`)
+ * produced by the population pipeline, so that `removeFromAgeMoments`
+ * can be called with the exact age of each removed worker — eliminating
+ * the drift inherent in the old Gaussian-weighted distribution approach.
  *
- * For **disabilities**: workers in `company` / `government` occupations that
- * transitioned to `unableToWork` this tick are likewise removed from the
- * workforce active slots.  (The population demography already moved them to
- * `unableToWork`; this step keeps the workforce side in sync.)
- *
- * **IMPORTANT**: Deaths/disabilities for a given occupation are distributed
- * only to agents of that same occupation.  Company-occupation deaths go to
- * company agents; government-occupation deaths go to the government agent.
- * Mixing them would cause cross-contamination where one agent absorbs
- * removals meant for the other, leading to workforce > population drift.
- *
- * Distribution is **age-weighted**: each tenure cohort's share of removals
- * is proportional to `headcount × expectedRate(ageMoments)` rather than
- * headcount alone.
- *
- * @param planet      The planet (used to determine which agent is government).
- * @param population  The authoritative population (for starvation level).
- * @param environment The planet's environment (pollution, disasters).
+ * Deaths/disabilities for a given occupation are distributed only to
+ * agents of that same occupation (company vs government).
  */
 export function syncWorkforceWithPopulation(
     agents: Map<string, Agent>,
     planetId: string,
     population: Population,
-    environment: Environment,
+    _environment: Environment,
     planet?: Planet,
 ): void {
-    const { tickDeaths, tickNewDisabilities, tickNewRetirements, starvationLevel } = population;
+    const { tickDeathsByAge, tickDisabilitiesByAge, tickRetirementsByAge } = population;
 
     // --- Build agent occupation lookup ---
-    // If we have the planet reference, use it to correctly filter agents by
-    // occupation.  Otherwise fall back to passing all agents (legacy path).
     const governmentId = planet?.governmentId;
     const allAgents = [...agents.values()];
 
     function agentsForOcc(occ: Occupation): Agent[] {
         if (!governmentId) {
-            return allAgents; // legacy fallback — no planet reference
+            return allAgents;
         }
         if (occ === 'government') {
             const gov = agents.get(governmentId);
             return gov ? [gov] : [];
         }
-        // 'company' — every agent that is NOT the government
         return allAgents.filter((a) => a.id !== governmentId);
     }
 
-    // --- Build age-dependent rate functions for this tick's conditions ---
-
-    // Mortality rate function: same formula as applyMortality uses
-    const envMort = computeEnvironmentalMortality(environment);
-    const extraAnnualMort = computeExtraAnnualMortality(envMort);
-    const mortalityRateFn = (age: number): number => perTickMortality(age, starvationLevel, extraAnnualMort);
-
-    // Disability rate function: same formula as applyDisability uses
-    const envDisab = computeEnvironmentalDisability(environment);
-    const starvDisabProb = STARVATION_DISABILITY_COEFFICIENT * Math.pow(starvationLevel, 2);
-    const totalDisabBase = envDisab.pollutionDisabilityProb + envDisab.disasterDisabilityProb + starvDisabProb;
-    const disabilityRateFn = (age: number): number =>
-        convertAnnualToPerTick(totalDisabBase + ageDependentBaseDisabilityProb(age));
-
-    for (const edu of educationLevelKeys) {
-        for (const occ of WORKFORCE_OCCUPATIONS) {
-            const relevantAgents = agentsForOcc(occ);
-
-            // Deaths — remove from workforce, track in deathsThisMonth
-            const deaths = tickDeaths?.[edu]?.[occ] ?? 0;
-
-            // Disabilities — remove from workforce (already moved to unableToWork in demography)
-            const disabilities = tickNewDisabilities?.[edu]?.[occ] ?? 0;
-
-            if (deaths > 0) {
-                distributeWorkforceRemovals(
-                    relevantAgents,
-                    planetId,
-                    edu,
-                    deaths,
-                    /* trackDeaths */ true,
-                    mortalityRateFn,
-                );
+    // Helper: iterate an AgeResolvedAccumulator and dispatch removals
+    function processAccumulator(acc: AgeResolvedAccumulator | undefined, trackDeaths: boolean): void {
+        if (!acc) {
+            return;
+        }
+        for (const ageStr of Object.keys(acc)) {
+            const age = Number(ageStr);
+            const eduRecord = acc[age];
+            if (!eduRecord) {
+                continue;
             }
-
-            if (disabilities > 0) {
-                distributeWorkforceRemovals(
-                    relevantAgents,
-                    planetId,
-                    edu,
-                    disabilities,
-                    /* trackDeaths */ false,
-                    disabilityRateFn,
-                );
-            }
-
-            // Retirements — remove from workforce (already moved to unableToWork in demography)
-            const retirements = tickNewRetirements?.[edu]?.[occ] ?? 0;
-
-            if (retirements > 0) {
-                distributeWorkforceRemovals(
-                    relevantAgents,
-                    planetId,
-                    edu,
-                    retirements,
-                    /* trackDeaths */ false,
-                    perTickRetirement,
-                );
+            for (const edu of educationLevelKeys) {
+                const occRecord = eduRecord[edu];
+                if (!occRecord) {
+                    continue;
+                }
+                for (const occ of WORKFORCE_OCCUPATIONS) {
+                    const count = occRecord[occ] ?? 0;
+                    if (count <= 0) {
+                        continue;
+                    }
+                    const relevantAgents = agentsForOcc(occ);
+                    distributeAgeCellRemovals(relevantAgents, planetId, edu, age, count, trackDeaths);
+                }
             }
         }
     }
+
+    // Deaths
+    processAccumulator(tickDeathsByAge, /* trackDeaths */ true);
+    // Disabilities
+    processAccumulator(tickDisabilitiesByAge, /* trackDeaths */ false);
+    // Retirements
+    processAccumulator(tickRetirementsByAge, /* trackDeaths */ false);
 }
 
 /**

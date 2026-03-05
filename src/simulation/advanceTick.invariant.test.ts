@@ -128,7 +128,7 @@ describe('advanceTick invariants', () => {
             // Sum population
             const popTotal = totalPopulation(planet.population);
 
-            // Sum active workforce across agents (active + departing + retiring considered as still part of workforce demography)
+            // Sum active workforce across agents (active + departing considered as still part of workforce demography)
             let workforceTotal = 0;
             for (const a of gameState.agents.values()) {
                 const wf = a.assets.p.workforceDemography;
@@ -136,20 +136,15 @@ describe('advanceTick invariants', () => {
                     continue;
                 }
                 for (const cohort of wf) {
-                    const activeValues = Object.values(cohort.active) as number[];
-                    workforceTotal += activeValues.reduce((s: number, v: number) => s + v, 0);
-
-                    if (cohort.departing) {
-                        const depArrays = Object.values(cohort.departing) as number[][];
-                        for (const arr of depArrays) {
-                            workforceTotal += arr.reduce((s: number, v: number) => s + v, 0);
-                        }
+                    for (const m of Object.values(cohort.active)) {
+                        workforceTotal += m.count;
                     }
 
-                    if (cohort.retiring) {
-                        const retArrays = Object.values(cohort.retiring) as number[][];
-                        for (const arr of retArrays) {
-                            workforceTotal += arr.reduce((s: number, v: number) => s + v, 0);
+                    if (cohort.departing) {
+                        for (const depArr of Object.values(cohort.departing)) {
+                            for (const m of depArr) {
+                                workforceTotal += m.count;
+                            }
                         }
                     }
                 }

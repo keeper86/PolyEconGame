@@ -14,7 +14,6 @@ import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 const DEPARTURE_COLORS = {
     quitting: '#facc15', // yellow-400
     fired: '#ef4444', // red-500
-    retiring: '#a78bfa', // violet-400
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -44,7 +43,7 @@ export function TenureDistributionChart({
         );
     }
 
-    // ---- Status view data (active / quitting / fired / retiring) ----
+    // ---- Status view data (active / quitting / fired) ----
     const statusData = tenureChart.map((d) => {
         const quitting = Math.max(0, d.departing - d.fired);
         return {
@@ -52,7 +51,6 @@ export function TenureDistributionChart({
             Active: d.active,
             Quitting: quitting,
             Fired: d.fired,
-            Retiring: d.retiring,
             meanAge: d.meanAge,
             variance: d.variance,
         };
@@ -94,8 +92,7 @@ export function TenureDistributionChart({
                                         return null;
                                     }
                                     const data = payload[0]?.payload as (typeof statusData)[number] | undefined;
-                                    const totalLeaving =
-                                        (data?.Quitting ?? 0) + (data?.Fired ?? 0) + (data?.Retiring ?? 0);
+                                    const totalLeaving = (data?.Quitting ?? 0) + (data?.Fired ?? 0);
                                     return (
                                         <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
                                             <div className='font-medium mb-1'>Tenure {label}</div>
@@ -132,13 +129,7 @@ export function TenureDistributionChart({
                                 fill={DEPARTURE_COLORS.quitting}
                                 radius={[0, 0, 0, 0]}
                             />
-                            <Bar dataKey='Fired' stackId='a' fill={DEPARTURE_COLORS.fired} radius={[0, 0, 0, 0]} />
-                            <Bar
-                                dataKey='Retiring'
-                                stackId='a'
-                                fill={DEPARTURE_COLORS.retiring}
-                                radius={[2, 2, 0, 0]}
-                            />
+                            <Bar dataKey='Fired' stackId='a' fill={DEPARTURE_COLORS.fired} radius={[2, 2, 0, 0]} />
                         </BarChart>
                     ) : (
                         <BarChart data={eduData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>

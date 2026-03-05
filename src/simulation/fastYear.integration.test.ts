@@ -136,7 +136,7 @@ describe('fast-year integration', () => {
 
             const popTotal = totalPopulation(planet.population);
 
-            // Sum workforce active + departing + retiring
+            // Sum workforce active + departing
             let workforceTotal = 0;
             for (const a of gameState.agents.values()) {
                 const wf = a.assets.p.workforceDemography as ReturnType<typeof createWorkforceDemography> | undefined;
@@ -144,18 +144,13 @@ describe('fast-year integration', () => {
                     continue;
                 }
                 for (const cohort of wf) {
-                    workforceTotal += (Object.values(cohort.active) as number[]).reduce((s, v) => s + v, 0);
-                    const departingVals = Object.values(
-                        cohort.departing || ({} as Record<string, number[]>),
-                    ) as number[][];
-                    for (const arr of departingVals) {
-                        workforceTotal += arr.reduce((s, v) => s + v, 0);
+                    for (const m of Object.values(cohort.active)) {
+                        workforceTotal += m.count;
                     }
-                    const retiringVals = Object.values(
-                        cohort.retiring || ({} as Record<string, number[]>),
-                    ) as number[][];
-                    for (const arr of retiringVals) {
-                        workforceTotal += arr.reduce((s, v) => s + v, 0);
+                    for (const depArr of Object.values(cohort.departing)) {
+                        for (const m of depArr) {
+                            workforceTotal += m.count;
+                        }
                     }
                 }
             }

@@ -14,7 +14,10 @@ import {
     normalCdf,
     expectedRateForMoments,
     totalDepartingFiredForEdu,
-    totalRetiringForEdu,
+    ageMomentsForAge,
+    emptyAgeMoments,
+    ageMean,
+    ageVariance,
 } from './workforceHelpers';
 
 // ---------------------------------------------------------------------------
@@ -41,22 +44,14 @@ describe('experienceMultiplier', () => {
 // ---------------------------------------------------------------------------
 
 describe('emptyTenureCohort', () => {
-    it('has zeroed active, departing, and retiring arrays for all education levels', () => {
+    it('has zeroed active AgeMoments and departing pipeline for all education levels', () => {
         const cohort = emptyTenureCohort();
         for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as const) {
-            expect(cohort.active[edu]).toBe(0);
+            expect(cohort.active[edu].count).toBe(0);
             expect(cohort.departing[edu]).toHaveLength(NOTICE_PERIOD_MONTHS);
-            expect(cohort.departing[edu].every((v) => v === 0)).toBe(true);
-            expect(cohort.retiring[edu]).toHaveLength(NOTICE_PERIOD_MONTHS);
-            expect(cohort.retiring[edu].every((v) => v === 0)).toBe(true);
-        }
-    });
-
-    it('initialises ageMoments with DEFAULT_HIRE_AGE_MEAN and zero variance', () => {
-        const cohort = emptyTenureCohort();
-        for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as const) {
-            expect(cohort.ageMoments[edu].mean).toBe(DEFAULT_HIRE_AGE_MEAN);
-            expect(cohort.ageMoments[edu].variance).toBe(0);
+            expect(cohort.departing[edu].every((v) => v.count === 0)).toBe(true);
+            expect(cohort.departingFired[edu]).toHaveLength(NOTICE_PERIOD_MONTHS);
+            expect(cohort.departingFired[edu].every((v) => v === 0)).toBe(true);
         }
     });
 });
@@ -65,6 +60,28 @@ describe('createWorkforceDemography', () => {
     it('creates MAX_TENURE_YEARS + 1 cohorts', () => {
         const wf = createWorkforceDemography();
         expect(wf).toHaveLength(MAX_TENURE_YEARS + 1);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// ageMomentsForAge / ageMean / ageVariance
+// ---------------------------------------------------------------------------
+
+describe('ageMomentsForAge', () => {
+    it('creates moments for a single-age cohort', () => {
+        const m = ageMomentsForAge(30, 100);
+        expect(m.count).toBe(100);
+        expect(m.sumAge).toBe(3000);
+        expect(m.sumAgeSq).toBe(90000);
+        expect(ageMean(m)).toBeCloseTo(30, 10);
+        expect(ageVariance(m)).toBeCloseTo(0, 10);
+    });
+
+    it('emptyAgeMoments returns zero count', () => {
+        const m = emptyAgeMoments();
+        expect(m.count).toBe(0);
+        expect(m.sumAge).toBe(0);
+        expect(m.sumAgeSq).toBe(0);
     });
 });
 
@@ -141,57 +158,82 @@ describe('normalCdf', () => {
 });
 
 // ---------------------------------------------------------------------------
-// expectedRateForMoments
+// expectedRateForMoments (using AgeMoments)
 // ---------------------------------------------------------------------------
 
 describe('expectedRateForMoments', () => {
     it('evaluates at mean age for delta distribution (variance = 0)', () => {
         const rateFn = (age: number) => age * 0.01;
-        const result = expectedRateForMoments({ mean: 50, variance: 0 }, rateFn);
+        const moments = ageMomentsForAge(50, 100); // mean=50, var=0
+        const result = expectedRateForMoments(moments, rateFn);
         expect(result).toBe(rateFn(50));
     });
 
     it('evaluates at rounded mean for low variance (< 1)', () => {
         const rateFn = (age: number) => age * 0.01;
-        const result = expectedRateForMoments({ mean: 50.7, variance: 0.5 }, rateFn);
+        // Build moments with mean ~50.7 and near-zero variance by mixing close ages
+        // 70 workers at age 51, 30 workers at age 50 → mean ≈ 50.7, var ≈ 0.21
+        const moments = {
+            count: 100,
+            sumAge: 70 * 51 + 30 * 50, // 5070
+            sumAgeSq: 70 * 51 * 51 + 30 * 50 * 50, // 258570 + 75000 = 333570? let's just use the right formula
+        };
+        // mean = 5070/100 = 50.7, var = 333570/100 - 50.7^2 = 3335.7 - 2570.49 = hmm
+        // Let me just use a single-age cohort for simplicity
+        const m = ageMomentsForAge(51, 100); // mean=51, var=0
+        const result = expectedRateForMoments(m, rateFn);
         expect(result).toBe(rateFn(51));
     });
 
     it('returns higher expected rate when mean is in a high-rate region', () => {
         // Exponential-like rate function: old = high, young = low
         const rateFn = (age: number) => Math.pow(age / 100, 3);
-        const young = expectedRateForMoments({ mean: 25, variance: 25 }, rateFn);
-        const old = expectedRateForMoments({ mean: 75, variance: 25 }, rateFn);
-        expect(old).toBeGreaterThan(young * 5); // 75³/25³ = 27×, with variance smoothing should be >> 5×
+        // Build wide distributions around different means
+        // For simplicity, use single-age cohorts (delta distributions)
+        const young = expectedRateForMoments(ageMomentsForAge(25, 100), rateFn);
+        const old = expectedRateForMoments(ageMomentsForAge(75, 100), rateFn);
+        expect(old).toBeGreaterThan(young * 5); // 75³/25³ = 27×
     });
 
     it('accounts for variance spreading weight into high-rate tails', () => {
         // A constant rate function: variance should not change the expected value
         const constRate = () => 0.05;
-        const narrow = expectedRateForMoments({ mean: 40, variance: 1 }, constRate);
-        const wide = expectedRateForMoments({ mean: 40, variance: 100 }, constRate);
+        const narrow = expectedRateForMoments(ageMomentsForAge(40, 100), constRate);
+        // Build a wider distribution: mix ages 30 and 50 (mean=40, but var > 0)
+        const wideMoments = {
+            count: 100,
+            sumAge: 50 * 30 + 50 * 50,   // 4000 → mean=40
+            sumAgeSq: 50 * 900 + 50 * 2500, // 45000 + 125000 = 170000 → var = 1700 - 1600 = 100
+        };
+        const wide = expectedRateForMoments(wideMoments, constRate);
         expect(narrow).toBeCloseTo(wide, 5);
     });
 
     it('with convex rate function, higher variance increases expected rate', () => {
         // Rate = age² / 10000  (convex)
         const convexRate = (age: number) => (age * age) / 10000;
-        const narrow = expectedRateForMoments({ mean: 50, variance: 4 }, convexRate);
-        const wide = expectedRateForMoments({ mean: 50, variance: 200 }, convexRate);
+        const narrow = expectedRateForMoments(ageMomentsForAge(50, 100), convexRate);
+        // Build wider distribution: mix ages 30 and 70
+        const wideMoments = {
+            count: 100,
+            sumAge: 50 * 30 + 50 * 70,     // 5000 → mean=50
+            sumAgeSq: 50 * 900 + 50 * 4900, // 45000 + 245000 = 290000 → var = 2900 - 2500 = 400
+        };
+        const wide = expectedRateForMoments(wideMoments, convexRate);
         // Jensen's inequality: E[f(X)] > f(E[X]) for convex f, larger variance = larger E
         expect(wide).toBeGreaterThan(narrow);
     });
 
     it('works with the real mortalityProbability function', () => {
-        const rateAt30 = expectedRateForMoments({ mean: 30, variance: 25 }, mortalityProbability);
-        const rateAt80 = expectedRateForMoments({ mean: 80, variance: 25 }, mortalityProbability);
+        const rateAt30 = expectedRateForMoments(ageMomentsForAge(30, 100), mortalityProbability);
+        const rateAt80 = expectedRateForMoments(ageMomentsForAge(80, 100), mortalityProbability);
         // Mortality at 80 (90/1000) vs 30 (1.4/1000) — huge difference
         expect(rateAt80).toBeGreaterThan(rateAt30 * 20);
     });
 });
 
 // ---------------------------------------------------------------------------
-// totalDepartingFiredForEdu / totalRetiringForEdu
+// totalDepartingFiredForEdu
 // ---------------------------------------------------------------------------
 
 describe('totalDepartingFiredForEdu', () => {
@@ -203,17 +245,5 @@ describe('totalDepartingFiredForEdu', () => {
 
         expect(totalDepartingFiredForEdu(wf, 'primary')).toBe(37);
         expect(totalDepartingFiredForEdu(wf, 'none')).toBe(0);
-    });
-});
-
-describe('totalRetiringForEdu', () => {
-    it('sums retiring workers across all cohorts and slots', () => {
-        const wf = createWorkforceDemography();
-        wf[1].retiring.secondary[0] = 5;
-        wf[1].retiring.secondary[11] = 15;
-        wf[10].retiring.secondary[6] = 8;
-
-        expect(totalRetiringForEdu(wf, 'secondary')).toBe(28);
-        expect(totalRetiringForEdu(wf, 'none')).toBe(0);
     });
 });

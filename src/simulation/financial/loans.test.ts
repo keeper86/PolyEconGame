@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { Agent, Planet, GameState } from '../planet';
 import { preProductionFinancialTick, postProductionFinancialTick } from './financialTick';
 import { makeAgent, makePlanet } from '../workforce/testHelpers';
+import { ageMomentsForAge } from '../workforce/workforceHelpers';
 import { getAgentLoansForPlanet, setAgentDepositsForPlanet, setAgentLoansForPlanet } from './depositHelpers';
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
@@ -27,7 +28,7 @@ describe('per-agent loan bookkeeping', () => {
 
     it('records per-agent loan on issuance', () => {
         // hire 10 workers -> wage bill = 10 * default wage (1.0)
-        agent.assets.p.workforceDemography![0].active.none = 10;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 10);
 
         preProductionFinancialTick(gs);
 

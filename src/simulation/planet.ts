@@ -237,37 +237,45 @@ export type Occupation = (typeof OCCUPATIONS)[number];
 // A single age cohort: mapping education -> occupation -> count
 export type Cohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
 
-/** Age distribution moments for a single (tenure × education) cohort. */
+/**
+ * Raw age moments for a single (tenure × education) cohort.
+ *
+ * Stored as raw sums so that additions / removals of workers at known ages
+ * can be applied with exact arithmetic (no Gaussian approximations).
+ *
+ *   mean     = sumAge / count
+ *   variance = sumAgeSq / count − mean²
+ */
 export interface AgeMoments {
-    mean: number;
-    variance: number; // population variance
+    /** Number of workers represented by these moments. */
+    count: number;
+    /** Sum of ages: Σ age_i */
+    sumAge: number;
+    /** Sum of squared ages: Σ age_i² */
+    sumAgeSq: number;
 }
 
 /**
  * A single tenure-year bucket in the workforce demography.
- * Tracks workers actively working at this tenure level plus a departing pipeline
- * (notice-period slots indexed 0 = soonest to depart) and a retiring pipeline
- * (workers transitioning to retirement / unableToWork).
+ *
+ * `active` and `departing` embed {@link AgeMoments} directly so that the
+ * worker count and age statistics are never out of sync — the count *is*
+ * `moments.count`.
+ *
+ * The former `retiring` pipeline has been removed: retirement is handled
+ * entirely on the population side (applyRetirement + workforceSync).
  */
 export interface TenureCohort {
-    active: Record<EducationLevelType, number>;
+    /** Active workers per education level — count lives inside AgeMoments. */
+    active: Record<EducationLevelType, AgeMoments>;
     /** Departing pipeline (voluntary quit + fired combined): each slot is one
-     *  month of notice remaining.  Slot 0 = workers whose notice expires this month. */
-    departing: Record<EducationLevelType, number[]>;
-    /** Subset of `departing` that tracks only **fired** workers.  The voluntary-quit
-     *  count for any slot is `departing[edu][m] − departingFired[edu][m]`. */
+     *  month of notice remaining.  Slot 0 = workers whose notice expires this
+     *  month.  Each slot carries its own AgeMoments. */
+    departing: Record<EducationLevelType, AgeMoments[]>;
+    /** Subset count of `departing` that tracks only **fired** workers.
+     *  The voluntary-quit count for any slot is
+     *  `departing[edu][m].count − departingFired[edu][m]`. */
     departingFired: Record<EducationLevelType, number[]>;
-    /** Retiring pipeline: same structure as departing but workers are routed to
-     *  'unableToWork' in the population demography instead of 'unoccupied'. */
-    retiring: Record<EducationLevelType, number[]>;
-    /** Age distribution moments (mean, variance) per education level for active workers. */
-    ageMoments: Record<EducationLevelType, AgeMoments>;
-    /** Wealth moments (mean, variance) per education level for active workers. */
-    wealthMoments: Record<EducationLevelType, WealthMoments>;
-    /** Wealth moments per education level for each slot in the departing pipeline. */
-    departingWealth: Record<EducationLevelType, WealthMoments[]>;
-    /** Wealth moments per education level for each slot in the retiring pipeline. */
-    retiringWealth: Record<EducationLevelType, WealthMoments[]>;
 }
 
 /** Array of TenureCohort indexed by tenure year (0 = first year of employment). */
@@ -280,6 +288,16 @@ export type WorkforceDemography = TenureCohort[];
  * intermediate parameters being threaded through the orchestrator.
  */
 export type PopulationTickAccumulator = Record<EducationLevelType, Record<Occupation, number>>;
+
+/**
+ * Age-resolved accumulator: `byAge[age][edu][occ]` = count of events at
+ * that exact age.  Parallel structure to `Cohort[]` but sparse — only ages
+ * with non-zero events are populated.
+ *
+ * Used by the workforce sync layer to apply exact raw-moment updates when
+ * removing workers who died / became disabled / retired.
+ */
+export type AgeResolvedAccumulator = Record<number, Record<EducationLevelType, Record<Occupation, number>>>;
 
 // Population = array of cohorts, index = age (0 = newborns)
 export type Population = {
@@ -315,6 +333,25 @@ export type Population = {
      * Available for snapshot / observability.
      */
     tickNewRetirements?: PopulationTickAccumulator;
+
+    /**
+     * Age-resolved deaths: `tickDeathsByAge[age][edu][occ]`.
+     * Written by the mortality step alongside `tickDeaths`.
+     * Consumed by the workforce sync to apply exact moment updates.
+     */
+    tickDeathsByAge?: AgeResolvedAccumulator;
+
+    /**
+     * Age-resolved new disabilities: `tickDisabilitiesByAge[age][edu][occ]`.
+     * Written by the disability step alongside `tickNewDisabilities`.
+     */
+    tickDisabilitiesByAge?: AgeResolvedAccumulator;
+
+    /**
+     * Age-resolved new retirements: `tickRetirementsByAge[age][edu][occ]`.
+     * Written by the retirement step alongside `tickNewRetirements`.
+     */
+    tickRetirementsByAge?: AgeResolvedAccumulator;
 };
 
 export type Infrastructure = {

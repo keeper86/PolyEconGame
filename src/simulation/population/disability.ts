@@ -147,6 +147,8 @@ export function applyDisabilityTransitions(
 export function applyDisability(population: Population, environment: Environment): void {
     const environmentalDisability = computeEnvironmentalDisability(environment);
     const tickNewDisabilities = emptyAccumulator();
+    // Age-resolved disability accumulator for exact workforce moment updates
+    const tickDisabilitiesByAge: Record<number, Record<string, Record<string, number>>> = {};
 
     for (let age = maxAge; age >= 0; age--) {
         const cohort = population.demography[age];
@@ -169,15 +171,27 @@ export function applyDisability(population: Population, environment: Environment
         applyDisabilityTransitions(cohort, age, environmentalDisability, population.starvationLevel);
 
         // Record net transitions into unableToWork per edu × source-occ
+        let anyMoved = false;
         for (const edu of educationLevelKeys) {
             for (const occ of DISABILITY_SOURCE_OCCUPATIONS) {
                 const moved = Math.max(0, before[edu][occ] - cohort[edu][occ]);
                 if (moved > 0) {
                     tickNewDisabilities[edu][occ] += moved;
+                    anyMoved = true;
+                }
+            }
+        }
+        if (anyMoved) {
+            tickDisabilitiesByAge[age] = {} as Record<string, Record<string, number>>;
+            for (const edu of educationLevelKeys) {
+                tickDisabilitiesByAge[age][edu] = {} as Record<string, number>;
+                for (const occ of DISABILITY_SOURCE_OCCUPATIONS) {
+                    tickDisabilitiesByAge[age][edu][occ] = Math.max(0, before[edu][occ] - cohort[edu][occ]);
                 }
             }
         }
     }
 
     population.tickNewDisabilities = tickNewDisabilities;
+    population.tickDisabilitiesByAge = tickDisabilitiesByAge;
 }

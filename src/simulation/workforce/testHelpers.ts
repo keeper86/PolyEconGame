@@ -152,7 +152,7 @@ export function sumPopOcc(planet: Planet, edu: EducationLevelType, occ: Occupati
 }
 
 /**
- * Sum active + departing + retiring across all tenure cohorts for a given
+ * Sum active + departing across all tenure cohorts for a given
  * education level in an agent's workforce on a specific planet.
  */
 export function sumWorkforceForEdu(agent: Agent, planetId: string, edu: EducationLevelType): number {
@@ -162,10 +162,9 @@ export function sumWorkforceForEdu(agent: Agent, planetId: string, edu: Educatio
     }
     let total = 0;
     for (const cohort of wf) {
-        total += cohort.active[edu];
+        total += cohort.active[edu].count;
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            total += cohort.departing[edu][m];
-            total += cohort.retiring[edu][m];
+            total += cohort.departing[edu][m].count;
         }
     }
     return total;
@@ -233,11 +232,15 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
         }
         for (let t = 0; t < wf.length; t++) {
             for (const edu of educationLevelKeys) {
-                expect(wf[t].active[edu]).toBeGreaterThanOrEqual(0);
+                expect(wf[t].active[edu].count, `negative active count at t=${t}, edu=${edu}`).toBeGreaterThanOrEqual(
+                    0,
+                );
                 for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                    expect(wf[t].departing[edu][m]).toBeGreaterThanOrEqual(0);
+                    expect(
+                        wf[t].departing[edu][m].count,
+                        `negative departing count at t=${t}, edu=${edu}, m=${m}`,
+                    ).toBeGreaterThanOrEqual(0);
                     expect(wf[t].departingFired[edu][m]).toBeGreaterThanOrEqual(0);
-                    expect(wf[t].retiring[edu][m]).toBeGreaterThanOrEqual(0);
                 }
             }
         }

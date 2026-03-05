@@ -1,4 +1,4 @@
-import { updateAllocatedWorkers, laborMarketTick } from '../src/simulation/workforce';
+import { updateAllocatedWorkers, laborMarketTick, emptyAgeMoments } from '../src/simulation/workforce';
 import { earth, earthGovernment, testCompany } from '../src/simulation/entities';
 import type { GameState } from '../src/simulation/engine';
 import { computePopulationOccupationTotals, computeAgentWorkforceTotals } from '../src/simulation/invariants';
@@ -35,13 +35,13 @@ function makeTinyPlanet(total = 10) {
             // zero all actives
             const wf = a.assets[assetsKey].workforceDemography;
             for (const cohort of wf) {
-                for (const edu of Object.keys(cohort.active)) cohort.active[edu] = 0;
+                for (const edu of Object.keys(cohort.active)) cohort.active[edu] = emptyAgeMoments();
             }
         }
     }
 
     console.log('POP pre', computePopulationOccupationTotals(tiny, 14));
-    console.log('AGENTS pre', computeAgentWorkforceTotals(agents, tiny.id));
+    console.log('AGENTS pre', computeAgentWorkforceTotals(new Map(agents.map((a: any) => [a.id, a])), tiny.id));
 
     // Force allocatedWorkers to some demand to trigger hires. We'll set productionFacilities scaled small so demand fits tiny pop.
     // Use existing assets.productionFacilities configs; updateAllocatedWorkers will compute requirements.
@@ -52,12 +52,12 @@ function makeTinyPlanet(total = 10) {
     laborMarketTick(agents as any, [tiny] as any);
 
     console.log('POP post', computePopulationOccupationTotals(tiny, 14));
-    console.log('AGENTS post', computeAgentWorkforceTotals(agents, tiny.id));
+    console.log('AGENTS post', computeAgentWorkforceTotals(new Map(agents.map((a: any) => [a.id, a])), tiny.id));
     // print per-agent workforce breakdown
     for (const a of agents) {
         const wf = a.assets[tiny.id].workforceDemography;
         let totals = 0;
-        if (wf) totals = wf.reduce((s:any,c:any)=>s+Object.values(c.active).reduce((ss:number,v:number)=>ss+v,0),0);
+        if (wf) totals = wf.reduce((s:any,c:any)=>s+Object.values(c.active).reduce((ss:number,v:any)=>ss+(v.count ?? 0),0),0);
         console.log('agent', a.id, 'totalActive', totals);
     }
 })();

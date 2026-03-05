@@ -155,6 +155,8 @@ export function applyMortality(population: Population, environment: Environment,
 
     // Reset / create the tick-level death accumulator
     const tickDeaths = emptyAccumulator();
+    // Age-resolved death accumulator for exact workforce moment updates
+    const tickDeathsByAge: Record<number, Record<string, Record<string, number>>> = {};
 
     for (let age = maxAge; age >= 0; age--) {
         const cohort = population.demography[age];
@@ -171,9 +173,23 @@ export function applyMortality(population: Population, environment: Environment,
 
         if (survivors === 0) {
             // Everyone in this cohort died — record all as deaths
+            let anyDead = false;
             for (const edu of educationLevelKeys) {
                 for (const occ of OCCUPATIONS) {
-                    tickDeaths[edu][occ] += cohort[edu][occ] ?? 0;
+                    const dead = cohort[edu][occ] ?? 0;
+                    tickDeaths[edu][occ] += dead;
+                    if (dead > 0) {
+                        anyDead = true;
+                    }
+                }
+            }
+            if (anyDead) {
+                tickDeathsByAge[age] = {} as Record<string, Record<string, number>>;
+                for (const edu of educationLevelKeys) {
+                    tickDeathsByAge[age][edu] = {} as Record<string, number>;
+                    for (const occ of OCCUPATIONS) {
+                        tickDeathsByAge[age][edu][occ] = cohort[edu][occ] ?? 0;
+                    }
                 }
             }
             population.demography[age] = emptyCohort();
@@ -183,10 +199,26 @@ export function applyMortality(population: Population, environment: Environment,
         const survivorsCohort = distributeLike(survivors, cohort);
 
         // Record deaths (before − after) per edu × occ
+        let anyDead = false;
         for (const edu of educationLevelKeys) {
             for (const occ of OCCUPATIONS) {
                 const dead = Math.max(0, (cohort[edu][occ] ?? 0) - (survivorsCohort[edu][occ] ?? 0));
                 tickDeaths[edu][occ] += dead;
+                if (dead > 0) {
+                    anyDead = true;
+                }
+            }
+        }
+        if (anyDead) {
+            tickDeathsByAge[age] = {} as Record<string, Record<string, number>>;
+            for (const edu of educationLevelKeys) {
+                tickDeathsByAge[age][edu] = {} as Record<string, number>;
+                for (const occ of OCCUPATIONS) {
+                    tickDeathsByAge[age][edu][occ] = Math.max(
+                        0,
+                        (cohort[edu][occ] ?? 0) - (survivorsCohort[edu][occ] ?? 0),
+                    );
+                }
             }
         }
 
@@ -194,4 +226,5 @@ export function applyMortality(population: Population, environment: Environment,
     }
 
     population.tickDeaths = tickDeaths;
+    population.tickDeathsByAge = tickDeathsByAge;
 }

@@ -12,6 +12,7 @@ import { makeAgent, makePlanet } from '../workforce/testHelpers';
 import { getWealthDemography } from '../population/populationHelpers';
 import { hireFromPopulation } from '../workforce/populationBridge';
 import { setAgentDepositsForPlanet, setAgentLoansForPlanet } from './depositHelpers';
+import { ageMomentsForAge, mergeAgeMoments } from '../workforce/workforceHelpers';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,7 +39,8 @@ function hireWorkers(
     count: number,
 ): void {
     const result = hireFromPopulation(planet, edu, count, planet.governmentId === agent.id ? 'government' : 'company');
-    agent.assets.p.workforceDemography![0].active[edu] += result.count;
+    const current = agent.assets.p.workforceDemography![0].active[edu];
+    agent.assets.p.workforceDemography![0].active[edu] = mergeAgeMoments(current, ageMomentsForAge(30, result.count));
 }
 
 // ---------------------------------------------------------------------------
@@ -102,17 +104,6 @@ describe('preProductionFinancialTick', () => {
         }
         // 100 workers each received wage 1.0
         expect(totalWealthReceived).toBeCloseTo(100 * DEFAULT_WAGE_PER_EDU, 5);
-    });
-
-    it('increases workforce wealthMoments by the wage', () => {
-        hireWorkers(planet, agent, 'none', 50);
-        setDeposits(agent, 200);
-        planet.bank!.deposits = 200; // keep balance sheet consistent
-
-        preProductionFinancialTick(gs);
-
-        const w0 = agent.assets.p.workforceDemography![0].wealthMoments.none;
-        expect(w0.mean).toBe(DEFAULT_WAGE_PER_EDU); // started at 0, received 1.0
     });
 });
 
@@ -220,7 +211,7 @@ describe('money conservation', () => {
         planet.wagePerEdu = { none: 1.0 };
         setAgentDepositsForPlanet(agent, planet.id, 0);
         hireFromPopulation(planet, 'none', 100, 'company');
-        agent.assets.p.workforceDemography![0].active.none = 100;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 100);
         const gs = makeGameState(planet, agent);
 
         preProductionFinancialTick(gs);

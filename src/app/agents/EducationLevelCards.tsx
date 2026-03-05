@@ -80,8 +80,6 @@ function EducationCard({
     voluntaryTotal,
     firedNext,
     firedTotal,
-    retiringNext,
-    retiringTotal,
     // Demographics & productivity
     meanAge,
     ageProd,
@@ -104,8 +102,6 @@ function EducationCard({
     voluntaryTotal: number;
     firedNext: number;
     firedTotal: number;
-    retiringNext: number;
-    retiringTotal: number;
     meanAge: number;
     ageProd: number;
     meanTenure: number;
@@ -113,11 +109,11 @@ function EducationCard({
     hasWorkers: boolean;
     isTotal?: boolean;
 }): React.ReactElement {
-    const totalOnNotice = voluntaryTotal + firedTotal + retiringTotal;
+    const totalOnNotice = voluntaryTotal + firedTotal;
     const totalWorkforce = active + totalOnNotice;
     const combinedProd = ageProd * tenureProd;
     // On-notice next-month total and collapsed state
-    const totalNextOnNotice = voluntaryNext + firedNext + retiringNext;
+    const totalNextOnNotice = voluntaryNext + firedNext;
     const [onNoticeOpen, setOnNoticeOpen] = React.useState(true);
     const onNoticeId = React.useId();
 
@@ -246,12 +242,6 @@ function EducationCard({
                         valueClassName={firedTotal > 0 ? 'text-red-500' : 'text-muted-foreground'}
                         indent
                     />
-                    <Stat
-                        label='Retiring'
-                        value={fmtNextTotal(retiringNext, retiringTotal)}
-                        valueClassName={retiringTotal > 0 ? 'text-violet-600' : 'text-muted-foreground'}
-                        indent
-                    />
                 </>
             )}
 
@@ -300,12 +290,10 @@ function EducationCard({
 export function EducationLevelCards({
     allocatedWorkers,
     activeByEdu,
-    retiringByEdu,
     firedByEdu,
     voluntaryByEdu,
     nextMonthVoluntaryByEdu,
     nextMonthFiredByEdu,
-    nextMonthRetiringByEdu,
     unusedWorkers,
     overqualifiedByEdu,
     overqualifiedBreakdown,
@@ -323,12 +311,10 @@ export function EducationLevelCards({
 }: {
     allocatedWorkers: Record<EducationLevelType, number>;
     activeByEdu: Record<EducationLevelType, number>;
-    retiringByEdu: Record<EducationLevelType, number>;
     firedByEdu: Record<EducationLevelType, number>;
     voluntaryByEdu: Record<EducationLevelType, number>;
     nextMonthVoluntaryByEdu: Record<EducationLevelType, number>;
     nextMonthFiredByEdu: Record<EducationLevelType, number>;
-    nextMonthRetiringByEdu: Record<EducationLevelType, number>;
     unusedWorkers?: Record<EducationLevelType, number>;
     meanAgeByEdu: Record<EducationLevelType, number>;
     ageProductivityByEdu: Record<EducationLevelType, number>;
@@ -345,7 +331,6 @@ export function EducationLevelCards({
     deathsPrevByEdu?: Record<EducationLevelType, number>;
 }): React.ReactElement {
     const totalActive = sumByEdu(activeByEdu);
-    const totalRet = sumByEdu(retiringByEdu);
     const totalFired = sumByEdu(firedByEdu);
     const totalVol = sumByEdu(voluntaryByEdu);
     const totalUnused = unusedWorkers ? sumByEdu(unusedWorkers) : 0;
@@ -370,8 +355,6 @@ export function EducationLevelCards({
                     voluntaryTotal={voluntaryByEdu[edu]}
                     firedNext={nextMonthFiredByEdu[edu]}
                     firedTotal={firedByEdu[edu]}
-                    retiringNext={nextMonthRetiringByEdu[edu]}
-                    retiringTotal={retiringByEdu[edu]}
                     meanAge={meanAgeByEdu[edu]}
                     ageProd={ageProductivityByEdu[edu]}
                     meanTenure={meanTenureByEdu[edu]}
@@ -394,8 +377,6 @@ export function EducationLevelCards({
                 voluntaryTotal={totalVol}
                 firedNext={sumByEdu(nextMonthFiredByEdu)}
                 firedTotal={totalFired}
-                retiringNext={sumByEdu(nextMonthRetiringByEdu)}
-                retiringTotal={totalRet}
                 meanAge={overallMeanAge}
                 ageProd={overallAgeProductivity}
                 meanTenure={overallMeanTenure}

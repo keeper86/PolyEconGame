@@ -18,7 +18,6 @@ import {
     totalActiveForEdu,
     totalDepartingForEdu,
     totalDepartingFiredForEdu,
-    totalRetiringForEdu,
 } from './workforceHelpers';
 import { totalUnoccupiedForEdu } from './populationBridge';
 
@@ -37,10 +36,9 @@ import { totalUnoccupiedForEdu } from './populationBridge';
  *
  *   currentPool = active
  *               + floor(voluntaryDeparting × DEPARTING_EFFICIENCY)
- *               − retiring
  *
  * Only voluntary quitters (departing minus departingFired) contribute at
- * reduced efficiency.  Fired workers and retiring workers are excluded
+ * reduced efficiency.  Fired workers are excluded
  * entirely because they are already committed to leaving the workforce.
  * Without this correction the pool would be inflated by soon-to-leave
  * workers, causing the hiring target to overshoot the intended 5 % buffer.
@@ -98,11 +96,11 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<
                     const active = workforce ? totalActiveForEdu(workforce, edu) : 0;
                     const departing = workforce ? totalDepartingForEdu(workforce, edu) : 0;
                     const departingFired = workforce ? totalDepartingFiredForEdu(workforce, edu) : 0;
-                    const retiringTotal = workforce ? totalRetiringForEdu(workforce, edu) : 0;
                     // Only voluntary quitters contribute at reduced efficiency;
-                    // fired and retiring workers are excluded from the pool.
+                    // fired workers are excluded from the pool.
+                    // (Retiring pipeline removed — retirements handled via population sync.)
                     const voluntaryDeparting = departing - departingFired;
-                    const currentPool = active + Math.floor(voluntaryDeparting * DEPARTING_EFFICIENCY) - retiringTotal;
+                    const currentPool = active + Math.floor(voluntaryDeparting * DEPARTING_EFFICIENCY);
                     const unused = assets.unusedWorkers![edu] ?? 0;
                     consumed[edu] = currentPool - unused;
                 }

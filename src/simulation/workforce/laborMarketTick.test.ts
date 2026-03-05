@@ -19,6 +19,8 @@ import {
     NOTICE_PERIOD_MONTHS,
     totalActiveForEdu,
     totalDepartingForEdu,
+    ageMomentsForAge,
+    emptyAgeMoments,
 } from './workforceHelpers';
 
 // ---------------------------------------------------------------------------
@@ -41,23 +43,23 @@ describe('laborMarketTick', () => {
 
     it('moves a fraction of active workers into the departing pipeline', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[0].active.none = 10000;
+        workforce[0].active.none = ageMomentsForAge(30, 10000);
 
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const expectedQuitters = Math.floor(10000 * VOLUNTARY_QUIT_RATE_PER_TICK);
-        expect(workforce[0].active.none).toBe(10000 - expectedQuitters);
-        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1]).toBe(expectedQuitters);
+        expect(workforce[0].active.none.count).toBe(10000 - expectedQuitters);
+        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1].count).toBe(expectedQuitters);
     });
 
     it('does not move workers when count is too small to yield floor > 0', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[0].active.none = 1; // floor(1 * 0.0001) = 0
+        workforce[0].active.none = ageMomentsForAge(30, 1); // floor(1 * 0.0001) = 0
 
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
-        expect(workforce[0].active.none).toBe(1);
-        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
+        expect(workforce[0].active.none.count).toBe(1);
+        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1].count).toBe(0);
     });
 
     it('hires workers from unoccupied pool when under target', () => {
@@ -67,19 +69,19 @@ describe('laborMarketTick', () => {
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const workforce = agent.assets.p.workforceDemography!;
-        const hired = workforce[0].active.primary;
+        const hired = workforce[0].active.primary.count;
         expect(hired).toBe(500);
     });
 
     it('does not hire when already at target', () => {
         ({ planet } = makePlanet({ none: 5000 }));
         agent.assets.p.allocatedWorkers.none = 100;
-        agent.assets.p.workforceDemography![0].active.none = 100;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 100);
 
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const workforce = agent.assets.p.workforceDemography!;
-        const totalActive = workforce.reduce((sum, c) => sum + c.active.none, 0);
+        const totalActive = workforce.reduce((sum, c) => sum + c.active.none.count, 0);
         expect(totalActive).toBe(100);
     });
 
@@ -90,7 +92,7 @@ describe('laborMarketTick', () => {
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const workforce = agent.assets.p.workforceDemography!;
-        const hired = workforce[0].active.none;
+        const hired = workforce[0].active.none.count;
         expect(hired).toBeLessThanOrEqual(5);
     });
 
@@ -104,7 +106,7 @@ describe('laborMarketTick', () => {
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const workforce = agent.assets.p.workforceDemography!;
-        const hired = workforce[0].active.none;
+        const hired = workforce[0].active.none.count;
         expect(hired).toBe(0);
 
         for (let age = 0; age < MIN_EMPLOYABLE_AGE; age++) {
@@ -119,7 +121,7 @@ describe('laborMarketTick', () => {
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const workforce = agent.assets.p.workforceDemography!;
-        const totalActive = workforce.reduce((sum, c) => sum + c.active.primary, 0);
+        const totalActive = workforce.reduce((sum, c) => sum + c.active.primary.count, 0);
         expect(totalActive).toBe(3000);
     });
 
@@ -140,8 +142,8 @@ describe('laborMarketTick', () => {
             new Map([[planet.id, planet]]),
         );
 
-        const hiredA = agentA.assets.p.workforceDemography!.reduce((s, c) => s + c.active.none, 0);
-        const hiredB = agentB.assets.p.workforceDemography!.reduce((s, c) => s + c.active.none, 0);
+        const hiredA = agentA.assets.p.workforceDemography!.reduce((s, c) => s + c.active.none.count, 0);
+        const hiredB = agentB.assets.p.workforceDemography!.reduce((s, c) => s + c.active.none.count, 0);
         const totalHired = hiredA + hiredB;
 
         expect(totalHired).toBeLessThanOrEqual(1000);
@@ -175,7 +177,7 @@ describe('hiredThisTick / firedThisTick counters', () => {
         const { planet } = makePlanet({ none: 10000 });
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
-        wf[5].active.none = 1000;
+        wf[5].active.none = ageMomentsForAge(30, 1000);
         agent.assets.p.allocatedWorkers.none = 800;
 
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
@@ -254,9 +256,8 @@ describe('laborMarketTick — population conservation', () => {
         const afterHire = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[3].active.none = wf[0].active.none;
-        wf[3].ageMoments.none = { ...wf[0].ageMoments.none };
-        wf[0].active.none = 0;
+        wf[3].active.none = { ...wf[0].active.none };
+        wf[0].active.none = emptyAgeMoments();
 
         agent.assets.p.allocatedWorkers.none = 500;
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
@@ -346,10 +347,10 @@ describe('per-education level isolation', () => {
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[3].active.none = wf[0].active.none;
-        wf[0].active.none = 0;
-        wf[3].active.primary = wf[0].active.primary;
-        wf[0].active.primary = 0;
+        wf[3].active.none = { ...wf[0].active.none };
+        wf[0].active.none = emptyAgeMoments();
+        wf[3].active.primary = { ...wf[0].active.primary };
+        wf[0].active.primary = emptyAgeMoments();
 
         agent.assets.p.allocatedWorkers.none = 200;
         agent.assets.p.allocatedWorkers.primary = 500;
@@ -370,16 +371,16 @@ describe('firing tenure protection', () => {
         const agent = makeAgent();
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.none = 100; // tenure 0 — protected
-        wf[1].active.none = 100; // tenure 1 — fireable
-        wf[5].active.none = 100; // tenure 5 — fireable
+        wf[0].active.none = ageMomentsForAge(30, 100); // tenure 0 — protected
+        wf[1].active.none = ageMomentsForAge(30, 100); // tenure 1 — fireable
+        wf[5].active.none = ageMomentsForAge(30, 100); // tenure 5 — fireable
 
         agent.assets.p.allocatedWorkers.none = 100;
 
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
         // Year-0 workers protected from firing (voluntary quits: floor(100 * 0.0001) = 0)
-        expect(wf[0].active.none).toBe(100);
+        expect(wf[0].active.none.count).toBe(100);
     });
 });
 
@@ -411,11 +412,11 @@ describe('voluntary quit rate', () => {
         const agent = makeAgent();
         const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
-        wf[5].active.none = 1;
+        wf[5].active.none = ageMomentsForAge(30, 1);
         agent.assets.p.allocatedWorkers.none = 1;
 
         laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
 
-        expect(wf[5].active.none).toBe(1);
+        expect(wf[5].active.none.count).toBe(1);
     });
 });

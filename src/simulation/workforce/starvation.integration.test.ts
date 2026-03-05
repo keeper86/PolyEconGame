@@ -147,7 +147,7 @@ function sumWorkforceActivePerEdu(
         }
         for (const cohort of wf) {
             for (const edu of educationLevelKeys) {
-                result[edu] += cohort.active[edu];
+                result[edu] += cohort.active[edu].count;
             }
         }
     }
@@ -174,8 +174,7 @@ function sumWorkforcePipelinePerEdu(
         for (const cohort of wf) {
             for (const edu of educationLevelKeys) {
                 for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                    result[edu] += cohort.departing[edu][m];
-                    result[edu] += cohort.retiring[edu][m];
+                    result[edu] += cohort.departing[edu][m].count;
                 }
             }
         }

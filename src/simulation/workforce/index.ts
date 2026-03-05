@@ -22,9 +22,17 @@ export {
     // Productivity multipliers
     ageProductivityMultiplier,
     experienceMultiplier,
-    // Math
+    // Math (legacy, kept for visualization)
     normalCdf,
     expectedRateForMoments,
+    // Raw moment helpers
+    ageMean,
+    ageVariance,
+    emptyAgeMoments,
+    ageMomentsForAge,
+    mergeAgeMoments,
+    removeFromAgeMoments,
+    ageAgeMomentsByOneYear,
     // Data-structure factories
     emptyTenureCohort,
     createWorkforceDemography,
@@ -32,7 +40,6 @@ export {
     totalActiveForEdu,
     totalDepartingForEdu,
     totalDepartingFiredForEdu,
-    totalRetiringForEdu,
 } from './workforceHelpers';
 
 // ---------------------------------------------------------------------------
@@ -59,11 +66,6 @@ export { laborMarketMonthTick } from './laborMarketMonthTick';
 // Per-year labor-market logic
 // ---------------------------------------------------------------------------
 export { laborMarketYearTick } from './laborMarketYearTick';
-
-// ---------------------------------------------------------------------------
-// Workforce mortality
-// ---------------------------------------------------------------------------
-export { workforceMortalityTick } from './workforceMortality';
 
 // ---------------------------------------------------------------------------
 // Workforce ↔ Population sync

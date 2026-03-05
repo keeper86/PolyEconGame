@@ -4,6 +4,7 @@ import { productionTick } from './production';
 import { makeAgent, makePlanet, makeFacility, agentMap, planetMap } from './workforce/testHelpers';
 import { ironOreDepositResourceType, ironOreResourceType } from './facilities';
 import type { GameState } from './planet';
+import { ageMomentsForAge } from './workforce/workforceHelpers';
 // test helpers create fresh objects; no deep clone needed
 
 describe('productionTick (basic)', () => {
@@ -26,7 +27,7 @@ describe('productionTick (basic)', () => {
         // attach facility to agent and ensure workforce has one secondary worker
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = 1;
+        wf[0].active.secondary = ageMomentsForAge(30, 1);
 
         // create a resource deposit on the planet claimed/tenanted by agent
         planet.resources[ironOreDepositResourceType.name] = [
@@ -70,7 +71,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = 1;
+        wf[0].active.secondary = ageMomentsForAge(30, 1);
 
         // create a depleted deposit (quantity 0) but tenanted by agent
         planet.resources[ironOreDepositResourceType.name] = [
@@ -115,7 +116,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.primary = 1; // overqualified
+        wf[0].active.primary = ageMomentsForAge(30, 1); // overqualified
 
         // deposit available
         planet.resources[ironOreDepositResourceType.name] = [
@@ -162,7 +163,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = 1;
+        wf[0].active.secondary = ageMomentsForAge(30, 1);
 
         // resA abundant, resB scarce (only 100 available)
         planet.resources[resA.name] = [
@@ -214,7 +215,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = 2; // one extra worker
+        wf[0].active.secondary = ageMomentsForAge(30, 2); // one extra worker
 
         planet.resources[ironOreDepositResourceType.name] = [
             {

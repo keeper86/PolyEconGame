@@ -14,6 +14,7 @@ import { preProductionFinancialTick, postProductionFinancialTick, DEFAULT_WAGE_P
 import { makeAgent, makePlanet } from '../workforce/testHelpers';
 import { hireFromPopulation } from '../workforce/populationBridge';
 import { getAgentDepositsForPlanet, setAgentDepositsForPlanet, setAgentLoansForPlanet } from './depositHelpers';
+import { ageMomentsForAge } from '../workforce/workforceHelpers';
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
     return {
@@ -43,7 +44,7 @@ describe('financial invariants', () => {
 
         // hire workers into the agent via population helper
         hireFromPopulation(planet, 'none', 10, 'company');
-        agent.assets.p.workforceDemography![0].active.none = 10;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 10);
 
         const gs = makeGameState(planet, agent);
 
@@ -68,7 +69,7 @@ describe('financial invariants', () => {
         planet.wagePerEdu = { none: DEFAULT_WAGE_PER_EDU };
 
         hireFromPopulation(planet, 'none', 5, 'company');
-        agent.assets.p.workforceDemography![0].active.none = 5;
+        agent.assets.p.workforceDemography![0].active.none = ageMomentsForAge(30, 5);
 
         const gs = makeGameState(planet, agent);
 

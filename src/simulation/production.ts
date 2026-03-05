@@ -4,6 +4,7 @@ import type { EducationLevelType, GameState } from './planet';
 import { educationLevelKeys } from './planet';
 import {
     ageProductivityMultiplier,
+    ageMean,
     DEFAULT_HIRE_AGE_MEAN,
     DEPARTING_EFFICIENCY,
     experienceMultiplier,
@@ -46,9 +47,10 @@ export function productionTick(gameState: GameState) {
                 if (workforce) {
                     for (let year = 0; year < workforce.length; year++) {
                         const cohort = workforce[year];
-                        const count = cohort.active[edu];
+                        const moments = cohort.active[edu];
+                        const count = moments.count;
                         if (count > 0) {
-                            weightedAgeMean += count * cohort.ageMoments[edu].mean;
+                            weightedAgeMean += count * ageMean(moments);
                             weightedTenureExp += count * experienceMultiplier(year);
                             totalCount += count;
                         }

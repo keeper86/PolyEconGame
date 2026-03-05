@@ -2,12 +2,16 @@
  * workforce/workforceHelpers.ts
  *
  * Foundational constants, data-structure factories, aggregation helpers,
- * math utilities (normalCdf, expectedRateForMoments), and productivity
- * multipliers used across all workforce modules.
+ * math utilities, and productivity multipliers used across all workforce
+ * modules.
+ *
+ * Age tracking uses **raw moments** (count, sumAge, sumAgeSq) so that
+ * hiring, removal, and aging updates are exact arithmetic operations
+ * with no Gaussian approximation drift.
  */
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
-import type { AgeMoments, EducationLevelType, TenureCohort, WorkforceDemography, WealthMoments } from '../planet';
+import type { AgeMoments, EducationLevelType, TenureCohort, WorkforceDemography } from '../planet';
 import { educationLevelKeys, maxAge } from '../planet';
 
 // ---------------------------------------------------------------------------
@@ -115,13 +119,87 @@ export const experienceMultiplier = (tenureYears: number): number => {
 };
 
 // ---------------------------------------------------------------------------
+// Raw-moment helper functions
+// ---------------------------------------------------------------------------
+
+/** Compute the mean age from raw moments. Returns DEFAULT_HIRE_AGE_MEAN when count is 0. */
+export function ageMean(m: AgeMoments): number {
+    return m.count > 0 ? m.sumAge / m.count : DEFAULT_HIRE_AGE_MEAN;
+}
+
+/** Compute the population variance from raw moments. Returns 0 when count ≤ 1. */
+export function ageVariance(m: AgeMoments): number {
+    if (m.count <= 1) {
+        return 0;
+    }
+    const mean = m.sumAge / m.count;
+    return Math.max(0, m.sumAgeSq / m.count - mean * mean);
+}
+
+/** Create empty (zero) AgeMoments. */
+export function emptyAgeMoments(): AgeMoments {
+    return { count: 0, sumAge: 0, sumAgeSq: 0 };
+}
+
+/**
+ * Create AgeMoments for `count` workers all at a single age.
+ * Used when placing workers directly without going through the hiring pipeline.
+ */
+export function ageMomentsForAge(age: number, count: number): AgeMoments {
+    return { count, sumAge: count * age, sumAgeSq: count * age * age };
+}
+
+/**
+ * Merge two sets of raw age moments (e.g. when combining cohorts or adding hired workers).
+ * Simply sums the raw components.
+ */
+export function mergeAgeMoments(a: AgeMoments, b: AgeMoments): AgeMoments {
+    return {
+        count: a.count + b.count,
+        sumAge: a.sumAge + b.sumAge,
+        sumAgeSq: a.sumAgeSq + b.sumAgeSq,
+    };
+}
+
+/**
+ * Remove `k` workers at exact `age` from the given raw moments.
+ * The caller must ensure k ≤ m.count.
+ */
+export function removeFromAgeMoments(m: AgeMoments, age: number, k: number): AgeMoments {
+    const newCount = m.count - k;
+    if (newCount <= 0) {
+        return emptyAgeMoments();
+    }
+    return {
+        count: newCount,
+        sumAge: m.sumAge - k * age,
+        sumAgeSq: m.sumAgeSq - k * age * age,
+    };
+}
+
+/**
+ * Age all workers by one year: each worker's age increases by 1.
+ *   Σage'  = Σage + N
+ *   Σage²' = Σage² + 2·Σage + N
+ */
+export function ageAgeMomentsByOneYear(m: AgeMoments): AgeMoments {
+    if (m.count === 0) {
+        return m;
+    }
+    return {
+        count: m.count,
+        sumAge: m.sumAge + m.count,
+        sumAgeSq: m.sumAgeSq + 2 * m.sumAge + m.count,
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Gaussian CDF approximation (Abramowitz & Stegun 26.2.17, max error ~1.5e-7)
 // ---------------------------------------------------------------------------
 
 /**
  * Approximate the standard normal CDF Φ(x).
- * Used to estimate the fraction of a workforce cohort above RETIREMENT_AGE
- * given the cohort's (mean, variance) moments.
+ * Kept for use in age-distribution visualization (workforce-summary).
  */
 export function normalCdf(x: number): number {
     if (x < -8) {
@@ -151,7 +229,7 @@ export function normalCdf(x: number): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Given the age distribution N(mean, variance) of a workforce cohort,
+ * Given the age distribution of a workforce cohort (as raw moments),
  * compute the expected value of an age-dependent `rateFn` over that
  * distribution.
  *
@@ -160,12 +238,13 @@ export function normalCdf(x: number): number {
  * integer ages weighted by the Gaussian PDF, scanning ±3σ around the mean
  * (clamped to [MIN_EMPLOYABLE_AGE, maxAge]).
  *
- * This is used to weight workforce removal distribution so that cohorts
- * whose age distribution overlaps with high-rate regions (e.g. elderly
- * mortality) attract proportionally more removals.
+ * @deprecated  Workforce removals should now use exact age-resolved events
+ *              from the population pipeline instead of this Gaussian
+ *              approximation.  Kept only for backward compatibility.
  */
 export function expectedRateForMoments(moments: AgeMoments, rateFn: (age: number) => number): number {
-    const { mean, variance } = moments;
+    const mean = ageMean(moments);
+    const variance = ageVariance(moments);
 
     // Delta distribution or single worker — evaluate at mean
     if (variance < 1) {
@@ -193,27 +272,17 @@ export function expectedRateForMoments(moments: AgeMoments, rateFn: (age: number
 // Data-structure factories
 // ---------------------------------------------------------------------------
 
-/** Create an empty TenureCohort with zeroed active, departing, retiring arrays, and zero wealth. */
+/** Create an empty TenureCohort with zeroed active moments and empty departing pipeline. */
 export function emptyTenureCohort(): TenureCohort {
-    const active = {} as Record<EducationLevelType, number>;
-    const departing = {} as Record<EducationLevelType, number[]>;
+    const active = {} as Record<EducationLevelType, AgeMoments>;
+    const departing = {} as Record<EducationLevelType, AgeMoments[]>;
     const departingFired = {} as Record<EducationLevelType, number[]>;
-    const retiring = {} as Record<EducationLevelType, number[]>;
-    const ageMoments = {} as Record<EducationLevelType, AgeMoments>;
-    const wealthMoments = {} as Record<EducationLevelType, WealthMoments>;
-    const departingWealth = {} as Record<EducationLevelType, WealthMoments[]>;
-    const retiringWealth = {} as Record<EducationLevelType, WealthMoments[]>;
     for (const edu of educationLevelKeys) {
-        active[edu] = 0;
-        departing[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0);
+        active[edu] = emptyAgeMoments();
+        departing[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => emptyAgeMoments());
         departingFired[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0);
-        retiring[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0);
-        ageMoments[edu] = { mean: DEFAULT_HIRE_AGE_MEAN, variance: 0 };
-        wealthMoments[edu] = { mean: 0, variance: 0 };
-        departingWealth[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => ({ mean: 0, variance: 0 }));
-        retiringWealth[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => ({ mean: 0, variance: 0 }));
     }
-    return { active, departing, departingFired, retiring, ageMoments, wealthMoments, departingWealth, retiringWealth };
+    return { active, departing, departingFired };
 }
 
 /** Create a fresh WorkforceDemography with MAX_TENURE_YEARS + 1 empty cohorts. */
@@ -229,7 +298,7 @@ export function createWorkforceDemography(): WorkforceDemography {
 export function totalActiveForEdu(workforce: WorkforceDemography, edu: EducationLevelType): number {
     let total = 0;
     for (const cohort of workforce) {
-        total += cohort.active[edu];
+        total += cohort.active[edu].count;
     }
     return total;
 }
@@ -239,7 +308,7 @@ export function totalDepartingForEdu(workforce: WorkforceDemography, edu: Educat
     let total = 0;
     for (const cohort of workforce) {
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            total += cohort.departing[edu][m];
+            total += cohort.departing[edu][m].count;
         }
     }
     return total;
@@ -251,17 +320,6 @@ export function totalDepartingFiredForEdu(workforce: WorkforceDemography, edu: E
     for (const cohort of workforce) {
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
             total += cohort.departingFired[edu][m];
-        }
-    }
-    return total;
-}
-
-/** Sum retiring (notice-period) workers for a given education level across all tenure cohorts and pipeline slots. */
-export function totalRetiringForEdu(workforce: WorkforceDemography, edu: EducationLevelType): number {
-    let total = 0;
-    for (const cohort of workforce) {
-        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            total += cohort.retiring[edu][m];
         }
     }
     return total;

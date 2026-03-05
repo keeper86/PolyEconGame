@@ -5,6 +5,8 @@
 
 import {
     ageProductivityMultiplier,
+    ageMean,
+    ageVariance,
     DEFAULT_HIRE_AGE_MEAN,
     experienceMultiplier,
     MAX_TENURE_YEARS,
@@ -19,7 +21,6 @@ import { educationLevelKeys } from '../../simulation/planet';
 export type WorkforceSummary = {
     activeByEdu: Record<EducationLevelType, number>;
     departingByEdu: Record<EducationLevelType, number>;
-    retiringByEdu: Record<EducationLevelType, number>;
     /** Fired workers currently in the departing pipeline, per education level. */
     firedByEdu: Record<EducationLevelType, number>;
     /** Voluntary quitters in the departing pipeline (departing − fired), per education level. */
@@ -28,11 +29,8 @@ export type WorkforceSummary = {
     nextMonthVoluntaryByEdu: Record<EducationLevelType, number>;
     /** Workers leaving next month (pipeline slot 0) per edu — fired. */
     nextMonthFiredByEdu: Record<EducationLevelType, number>;
-    /** Workers leaving next month (pipeline slot 0) per edu — retiring. */
-    nextMonthRetiringByEdu: Record<EducationLevelType, number>;
     totalActive: number;
     totalDeparting: number;
-    totalRetiring: number;
     totalFired: number;
     totalVoluntary: number;
     avgExperienceMultiplier: number;
@@ -41,7 +39,6 @@ export type WorkforceSummary = {
         year: number;
         active: number;
         departing: number;
-        retiring: number;
         fired: number;
         expMult: number;
         meanAge: number | null;
@@ -95,25 +92,20 @@ const TENURE_BANDS: { label: string; min: number; max: number }[] = [
 export function computeSummary(workforce: WorkforceDemography): WorkforceSummary {
     const activeByEdu = {} as Record<EducationLevelType, number>;
     const departingByEdu = {} as Record<EducationLevelType, number>;
-    const retiringByEdu = {} as Record<EducationLevelType, number>;
     const firedByEdu = {} as Record<EducationLevelType, number>;
     // Slot-0 (next-month exit) accumulators
     const nextMonthDepartingByEdu = {} as Record<EducationLevelType, number>;
     const nextMonthFiredByEdu = {} as Record<EducationLevelType, number>;
-    const nextMonthRetiringByEdu = {} as Record<EducationLevelType, number>;
     for (const edu of educationLevelKeys) {
         activeByEdu[edu] = 0;
         departingByEdu[edu] = 0;
-        retiringByEdu[edu] = 0;
         firedByEdu[edu] = 0;
         nextMonthDepartingByEdu[edu] = 0;
         nextMonthFiredByEdu[edu] = 0;
-        nextMonthRetiringByEdu[edu] = 0;
     }
 
     let totalActive = 0;
     let totalDeparting = 0;
-    let totalRetiring = 0;
     let weightedExp = 0;
 
     const ageSumByEdu = {} as Record<EducationLevelType, { count: number; weightedMean: number; weightedVar: number }>;
@@ -132,58 +124,53 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
 
         let yearActive = 0;
         let yearDeparting = 0;
-        let yearRetiring = 0;
         let yearFired = 0;
         const yearActiveByEdu = {} as Record<EducationLevelType, number>;
         const yearDepartingByEdu = {} as Record<EducationLevelType, number>;
 
         for (const edu of educationLevelKeys) {
-            const act = cohort.active[edu] ?? 0;
+            const act = cohort.active[edu].count;
             activeByEdu[edu] += act;
             yearActive += act;
             yearActiveByEdu[edu] = act;
 
-            const dep = (cohort.departing[edu] ?? []).reduce((s, v) => s + v, 0);
+            const dep = cohort.departing[edu].reduce((s, m) => s + m.count, 0);
             departingByEdu[edu] += dep;
             yearDeparting += dep;
             yearDepartingByEdu[edu] = dep;
-
-            const ret = (cohort.retiring?.[edu] ?? []).reduce((s: number, v: number) => s + v, 0);
-            retiringByEdu[edu] += ret;
-            yearRetiring += ret;
 
             const fired = (cohort.departingFired?.[edu] ?? []).reduce((s: number, v: number) => s + v, 0);
             firedByEdu[edu] += fired;
             yearFired += fired;
 
             // Slot 0 = workers whose notice expires next month
-            nextMonthDepartingByEdu[edu] += cohort.departing[edu]?.[0] ?? 0;
+            nextMonthDepartingByEdu[edu] += cohort.departing[edu]?.[0]?.count ?? 0;
             nextMonthFiredByEdu[edu] += cohort.departingFired?.[edu]?.[0] ?? 0;
-            nextMonthRetiringByEdu[edu] += cohort.retiring?.[edu]?.[0] ?? 0;
 
-            if (act > 0 && cohort.ageMoments?.[edu]) {
-                const m = cohort.ageMoments[edu];
-                ageSumByEdu[edu].weightedMean += act * m.mean;
-                ageSumByEdu[edu].weightedVar += act * m.variance;
+            if (act > 0) {
+                const mean = ageMean(cohort.active[edu]);
+                const variance = ageVariance(cohort.active[edu]);
+                ageSumByEdu[edu].weightedMean += act * mean;
+                ageSumByEdu[edu].weightedVar += act * variance;
                 ageSumByEdu[edu].count += act;
             }
         }
 
         totalActive += yearActive;
         totalDeparting += yearDeparting;
-        totalRetiring += yearRetiring;
         weightedExp += yearActive * experienceMultiplier(year);
 
-        if (yearActive > 0 || yearDeparting > 0 || yearRetiring > 0) {
+        if (yearActive > 0 || yearDeparting > 0) {
             let yearWeightedAge = 0;
             let yearWeightedVar = 0;
             let yearAgeCount = 0;
             for (const edu of educationLevelKeys) {
-                const act = cohort.active[edu] ?? 0;
-                if (act > 0 && cohort.ageMoments?.[edu]) {
-                    const m = cohort.ageMoments[edu];
-                    yearWeightedAge += act * m.mean;
-                    yearWeightedVar += act * m.variance;
+                const act = cohort.active[edu].count;
+                if (act > 0) {
+                    const mean = ageMean(cohort.active[edu]);
+                    const variance = ageVariance(cohort.active[edu]);
+                    yearWeightedAge += act * mean;
+                    yearWeightedVar += act * variance;
                     yearAgeCount += act;
                 }
             }
@@ -192,7 +179,6 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
                 year,
                 active: yearActive,
                 departing: yearDeparting,
-                retiring: yearRetiring,
                 fired: yearFired,
                 expMult: experienceMultiplier(year),
                 meanAge: yearAgeCount > 0 ? yearWeightedAge / yearAgeCount : null,
@@ -253,7 +239,7 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
             continue;
         }
         for (const edu of educationLevelKeys) {
-            const act = cohort.active[edu] ?? 0;
+            const act = cohort.active[edu].count;
             if (act > 0) {
                 tenureSumByEdu[edu].weightedTenure += act * year;
                 tenureSumByEdu[edu].count += act;
@@ -290,11 +276,10 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
                 continue;
             }
             for (const edu of educationLevelKeys) {
-                const act = cohort.active[edu] ?? 0;
-                if (act > 0 && cohort.ageMoments?.[edu]) {
-                    const m = cohort.ageMoments[edu];
-                    weightedMean += act * m.mean;
-                    weightedVar += act * m.variance;
+                const act = cohort.active[edu].count;
+                if (act > 0) {
+                    weightedMean += act * ageMean(cohort.active[edu]);
+                    weightedVar += act * ageVariance(cohort.active[edu]);
                     count += act;
                 }
             }
@@ -335,11 +320,10 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         let weightedMean = 0;
         let weightedVar = 0;
         for (const edu of educationLevelKeys) {
-            const act = cohort.active[edu] ?? 0;
-            if (act > 0 && cohort.ageMoments?.[edu]) {
-                const m = cohort.ageMoments[edu];
-                weightedMean += act * m.mean;
-                weightedVar += act * m.variance;
+            const act = cohort.active[edu].count;
+            if (act > 0) {
+                weightedMean += act * ageMean(cohort.active[edu]);
+                weightedVar += act * ageVariance(cohort.active[edu]);
                 count += act;
             }
         }
@@ -372,15 +356,12 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     return {
         activeByEdu,
         departingByEdu,
-        retiringByEdu,
         firedByEdu,
         voluntaryByEdu,
         nextMonthVoluntaryByEdu,
         nextMonthFiredByEdu,
-        nextMonthRetiringByEdu,
         totalActive,
         totalDeparting,
-        totalRetiring,
         totalFired,
         totalVoluntary,
         avgExperienceMultiplier,
