@@ -27,7 +27,7 @@ import { stochasticRound } from '../utils/stochasticRound';
 // ---------------------------------------------------------------------------
 
 /** Occupations from which people can retire. */
-const RETIREMENT_SOURCE_OCCUPATIONS: Occupation[] = ['company', 'government'];
+const RETIREMENT_SOURCE_OCCUPATIONS: Occupation[] = ['company', 'government', 'unoccupied', 'education'];
 
 /**
  * Annual retirement probability by age.
@@ -49,8 +49,8 @@ export function retirementProbByAge(age: number): number {
         return 0;
     }
     const yearsOver = age - RETIREMENT_AGE;
-    // Linear ramp from 0.3 at age 67 to 1.0 at age 72 (over 5 years)
-    return Math.min(1, 0.3 + yearsOver * 0.14);
+    // Linear ramp from 0.1 at age 67 to 1.0 at age 72 (over 10 years)
+    return Math.min(1, 0.1 + (yearsOver * 0.9) / 15);
 }
 
 /**

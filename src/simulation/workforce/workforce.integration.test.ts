@@ -400,21 +400,25 @@ describe('population ↔ workforce accounting invariant', () => {
 // ============================================================================
 
 describe('low-number edge cases', () => {
-    it('single worker retires via population-driven retirement (applyRetirement + sync)', () => {
+    it('workers well above retirement age retire completely via applyRetirement + sync', () => {
         const agent = makeAgent();
         const { planet } = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
 
-        // Place 1 worker at age 72 (well above RETIREMENT_AGE) in population.
-        planet.population.demography[72].none.company = 1;
-        wf[1].active.none = ageMomentsForAge(72, 1);
+        // Place 10 workers at age 85 — well above the 100% annual retirement
+        // threshold (age 82).  Running multiple ticks guarantees that the
+        // per-tick stochastic rounding retires them all.
+        planet.population.demography[85].none.company = 10;
+        wf[1].active.none = ageMomentsForAge(85, 10);
 
         const agentsMap = new Map([[agent.id, agent]]);
-        applyRetirement(planet.population);
-        syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
+        for (let tick = 0; tick < 360; tick++) {
+            applyRetirement(planet.population);
+            syncWorkforceWithPopulation(agentsMap, planet.id, planet.population, planet.environment, planet);
+        }
 
-        expect(planet.population.demography[72].none.unableToWork).toBe(1);
-        expect(planet.population.demography[72].none.company).toBe(0);
+        expect(planet.population.demography[85].none.company).toBe(0);
+        expect(planet.population.demography[85].none.unableToWork).toBe(10);
         expect(wf[1].active.none.count).toBe(0);
     });
 

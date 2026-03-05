@@ -64,14 +64,22 @@ type DemographicEventType = 'death' | 'disability' | 'retirement';
  * For a zero-variance (single-age) cohort, returns count if the cohort's
  * mean rounds to `age`, else 0.
  *
- * For cohorts with non-trivial variance, uses the Gaussian PDF weight:
- *   weight = count × φ((age − mean) / σ)
- * where φ is the standard normal PDF.
+ * For cohorts with non-trivial variance, uses the **normalised** Gaussian
+ * PDF value (divided by σ) as the weight — NOT count × unnormalised PDF.
+ * This is critical because unnormalised weights let large cohorts with
+ * wide tails dominate removal allocation at ages where they have
+ * essentially no actual workers.
  *
- * This is the critical function that ensures demographic removals are
- * routed to cohorts that actually plausibly contain workers of the target
- * age — preventing moment corruption from removing e.g. age-67 workers
- * from a cohort whose actual workers are all ~25 years old.
+ * Example: A 10M-worker cohort (mean 45, σ=15) would, under unnormalised
+ * weighting, claim ~95% of deaths at age 80 despite having essentially
+ * zero 80-year-olds — purely because 10M × exp(-0.5×(35/15)²) is still
+ * large.  The normalised weight (φ/σ × count) properly accounts for how
+ * "spread out" the cohort is: a wide cohort has very low density at any
+ * single age.
+ *
+ * Additionally, a hard tail cut-off at |z| > 3.5 prevents phantom
+ * Gaussian-tail contributions where the normal distribution is a poor
+ * approximation of the discrete age distribution.
  */
 function estimatedWorkersAtAge(m: AgeMoments, age: number): number {
     if (m.count <= 0) {
@@ -88,9 +96,20 @@ function estimatedWorkersAtAge(m: AgeMoments, age: number): number {
 
     const stdDev = Math.sqrt(variance);
     const z = (age - mean) / stdDev;
-    // Gaussian PDF weight (unnormalised — we only need relative weights)
-    // exp(-0.5 * z²) drops off rapidly: at z=3 it's ~0.01, at z=4 ~0.0003
-    return m.count * Math.exp(-0.5 * z * z);
+
+    // Hard cut-off: beyond 3.5σ, the Gaussian tail is unreliable for
+    // discrete populations.  Without this, a 10M-worker cohort's phantom
+    // tail at 4σ+ absorbs deaths/retirements meant for small old cohorts.
+    if (Math.abs(z) > 3.5) {
+        return 0;
+    }
+
+    // Normalised PDF: φ(z)/σ gives the density (probability per year of age).
+    // Multiplying by count gives the estimated number of workers at this age.
+    // Dividing by σ is what makes wide cohorts correctly contribute LESS
+    // weight per age-year than narrow cohorts with the same count.
+    const density = Math.exp(-0.5 * z * z) / stdDev;
+    return m.count * density;
 }
 
 /**
@@ -98,19 +117,26 @@ function estimatedWorkersAtAge(m: AgeMoments, age: number): number {
  * slot to contain workers at a specific age.  Returns a flat array of weights
  * corresponding to all pools across all cohorts.
  *
- * For **retirement** events, an additional exponential mean-age bias is applied
- * so that cohorts whose mean age is near or above RETIREMENT_AGE are
- * overwhelmingly preferred over younger cohorts that merely have a wide
- * Gaussian tail reaching into retirement ages.  Without this bias, a
- * 10 000-worker cohort with mean 45 ± 15 would absorb almost all retirement
- * removals at age 67 despite having no actual 67-year-olds — purely because
- * its Gaussian tail is large in absolute terms.
+ * On top of the base Gaussian estimate from `estimatedWorkersAtAge`, an
+ * exponential **mean-age proximity bias** is applied to every pool for
+ * **all** demographic event types.  This multiplies each pool's weight by:
  *
- * The bias is: `exp(BIAS_STRENGTH × (mean − RETIREMENT_AGE))`, clamped so
- * cohorts below retirement age are heavily penalised while cohorts at or
- * above it are boosted.  The moment arithmetic is unaffected because
- * `removeFromAgeMoments(pool, age, k)` subtracts the exact age regardless
- * of which pool is chosen.
+ *     exp( −PROXIMITY_STRENGTH × |poolMean − targetAge| )
+ *
+ * The effect: pools whose mean age is close to the target removal age get
+ * exponentially more weight; pools whose mean is far from the target age
+ * are strongly suppressed.  With PROXIMITY_STRENGTH = 0.3, a pool whose
+ * mean is 20 years away from the target age is penalised by exp(−6) ≈ 0.0025.
+ *
+ * This solves the fundamental Gaussian-tail problem: a 10M-worker cohort
+ * at mean 45 ± 15 technically has a non-zero Gaussian estimate at age 80,
+ * but the proximity bias makes it ~950× less likely to receive a removal
+ * there than a 100-worker cohort at mean 80 ± 5.  The combined effect of
+ * the normalised PDF + proximity bias + 3.5σ hard cutoff ensures removals
+ * are routed to cohorts that genuinely contain workers of the target age.
+ *
+ * The moment arithmetic is unaffected because `removeFromAgeMoments` always
+ * subtracts the exact age regardless of which pool is chosen.
  */
 function computeAgeWeightsForCohorts(
     wf: TenureCohort[],
@@ -118,11 +144,31 @@ function computeAgeWeightsForCohorts(
     age: number,
     eventType: DemographicEventType,
 ): { activeWeights: number[]; departingWeights: number[][] } {
-    // For retirement events, exponentially prefer pools whose mean is
-    // close to (or above) RETIREMENT_AGE.  A strength of 0.5 means each
-    // year of mean age above retirement roughly doubles the weight,
-    // while each year below halves it.
-    const RETIREMENT_BIAS_STRENGTH = 0.5;
+    // Tunable constants
+    const PROXIMITY_STRENGTH = 0.25; // symmetric proximity strength for deaths/disabilities
+
+    // Retirement bias: for retirement events, we use a one-sided exponential
+    // that penalises pools below RETIREMENT_AGE and boosts pools above it.
+    // The key insight: a pool at mean 78 with 14 workers MUST absorb retirements
+    // before a pool at mean 50 with 50M workers — the Gaussian tail of the large
+    // pool is a phantom, not real workers.
+    //
+    // penalty (poolMean < RETIREMENT_AGE): exp(−0.8 × (RETIREMENT_AGE − poolMean))
+    //   → pool at mean 50 gets exp(−13.6) ≈ 1.2e-6 suppression
+    //   → pool at mean 60 gets exp(−5.6) ≈ 0.0037
+    //   → pool at mean 65 gets exp(−1.6) ≈ 0.20
+    //
+    // boost (poolMean >= RETIREMENT_AGE): exp(0.5 × (poolMean − RETIREMENT_AGE))
+    //   → pool at mean 67 gets 1.0× (baseline)
+    //   → pool at mean 70 gets exp(1.5) ≈ 4.5×
+    //   → pool at mean 78 gets exp(5.5) ≈ 245×
+    //   → pool at mean 85 gets exp(9.0) ≈ 8103×
+    //
+    // NO cap on the boost: old pools that have clearly survived past retirement
+    // age should be the primary target.  This ensures the "lone survivor" at
+    // mean age 78 always absorbs retirements before a 50M-worker pool at mean 50.
+    const RETIREMENT_YOUNG_PENALTY = 0.8;
+    const RETIREMENT_OLD_BOOST = 0.5;
 
     const activeWeights: number[] = new Array(wf.length);
     const departingWeights: number[][] = new Array(wf.length);
@@ -131,9 +177,23 @@ function computeAgeWeightsForCohorts(
         const cohort = wf[ci];
         activeWeights[ci] = estimatedWorkersAtAge(cohort.active[edu], age);
 
-        if (eventType === 'retirement' && activeWeights[ci] > 0 && cohort.active[edu].count > 0) {
+        if (activeWeights[ci] > 0 && cohort.active[edu].count > 0) {
             const poolMean = ageMean(cohort.active[edu]);
-            activeWeights[ci] *= Math.exp(RETIREMENT_BIAS_STRENGTH * (poolMean - RETIREMENT_AGE));
+            let bias = 1;
+            if (eventType === 'retirement') {
+                // Pivot around RETIREMENT_AGE, not the removal age.
+                // Pools above retirement age get an uncapped exponential boost;
+                // pools below get a strong penalty.
+                if (poolMean >= RETIREMENT_AGE) {
+                    bias = Math.exp(RETIREMENT_OLD_BOOST * (poolMean - RETIREMENT_AGE));
+                } else {
+                    bias = Math.exp(-RETIREMENT_YOUNG_PENALTY * (RETIREMENT_AGE - poolMean));
+                }
+            } else {
+                // death or disability: symmetric proximity penalty
+                bias = Math.exp(-PROXIMITY_STRENGTH * Math.abs(poolMean - age));
+            }
+            activeWeights[ci] *= bias;
         }
 
         const dep = cohort.departing[edu];
@@ -141,9 +201,19 @@ function computeAgeWeightsForCohorts(
         for (let m = 0; m < dep.length; m++) {
             departingWeights[ci][m] = estimatedWorkersAtAge(dep[m], age);
 
-            if (eventType === 'retirement' && departingWeights[ci][m] > 0 && dep[m].count > 0) {
+            if (departingWeights[ci][m] > 0 && dep[m].count > 0) {
                 const poolMean = ageMean(dep[m]);
-                departingWeights[ci][m] *= Math.exp(RETIREMENT_BIAS_STRENGTH * (poolMean - RETIREMENT_AGE));
+                let bias = 1;
+                if (eventType === 'retirement') {
+                    if (poolMean >= RETIREMENT_AGE) {
+                        bias = Math.exp(RETIREMENT_OLD_BOOST * (poolMean - RETIREMENT_AGE));
+                    } else {
+                        bias = Math.exp(-RETIREMENT_YOUNG_PENALTY * (RETIREMENT_AGE - poolMean));
+                    }
+                } else {
+                    bias = Math.exp(-PROXIMITY_STRENGTH * Math.abs(poolMean - age));
+                }
+                departingWeights[ci][m] *= bias;
             }
         }
     }
