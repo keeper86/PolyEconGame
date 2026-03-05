@@ -71,6 +71,10 @@ function EducationCard({
     unused,
     deaths,
     deathsPrev,
+    disabilities,
+    disabilitiesPrev,
+    retirements,
+    retirementsPrev,
     // number of overqualified workers filling slots for this job edu
     overqualified,
     // breakdown: workerEdu -> count for this job edu
@@ -96,6 +100,10 @@ function EducationCard({
     unused: number;
     deaths?: number;
     deathsPrev?: number;
+    disabilities?: number;
+    disabilitiesPrev?: number;
+    retirements?: number;
+    retirementsPrev?: number;
     overqualified?: number;
     overqualifiedBreakdown?: { [workerEdu in EducationLevelType]?: number };
     voluntaryNext: number;
@@ -189,6 +197,32 @@ function EducationCard({
                     label='Deaths'
                     value={typeof deathsPrev === 'number' ? `${fmt(deaths)} (${fmt(deathsPrev)})` : fmt(deaths)}
                     valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
+                />
+            )}
+
+            {/* Disabilities this month (and last month) */}
+            {typeof disabilities === 'number' && (
+                <Stat
+                    label='Disabilities'
+                    value={
+                        typeof disabilitiesPrev === 'number'
+                            ? `${fmt(disabilities)} (${fmt(disabilitiesPrev)})`
+                            : fmt(disabilities)
+                    }
+                    valueClassName={disabilities > 0 ? 'text-orange-700' : 'text-muted-foreground'}
+                />
+            )}
+
+            {/* Retirements this month (and last month) */}
+            {typeof retirements === 'number' && (
+                <Stat
+                    label='Retirements'
+                    value={
+                        typeof retirementsPrev === 'number'
+                            ? `${fmt(retirements)} (${fmt(retirementsPrev)})`
+                            : fmt(retirements)
+                    }
+                    valueClassName={retirements > 0 ? 'text-blue-700' : 'text-muted-foreground'}
                 />
             )}
 
@@ -308,6 +342,10 @@ export function EducationLevelCards({
     availableByEdu,
     deathsByEdu,
     deathsPrevByEdu,
+    disabilitiesByEdu,
+    disabilitiesPrevByEdu,
+    retirementsByEdu,
+    retirementsPrevByEdu,
 }: {
     allocatedWorkers: Record<EducationLevelType, number>;
     activeByEdu: Record<EducationLevelType, number>;
@@ -329,6 +367,10 @@ export function EducationLevelCards({
     availableByEdu?: Record<EducationLevelType, number>;
     deathsByEdu?: Record<EducationLevelType, number>;
     deathsPrevByEdu?: Record<EducationLevelType, number>;
+    disabilitiesByEdu?: Record<EducationLevelType, number>;
+    disabilitiesPrevByEdu?: Record<EducationLevelType, number>;
+    retirementsByEdu?: Record<EducationLevelType, number>;
+    retirementsPrevByEdu?: Record<EducationLevelType, number>;
 }): React.ReactElement {
     const totalActive = sumByEdu(activeByEdu);
     const totalFired = sumByEdu(firedByEdu);
@@ -349,6 +391,10 @@ export function EducationLevelCards({
                     unused={unusedWorkers?.[edu] ?? 0}
                     deaths={deathsByEdu?.[edu]}
                     deathsPrev={deathsPrevByEdu?.[edu]}
+                    disabilities={disabilitiesByEdu?.[edu]}
+                    disabilitiesPrev={disabilitiesPrevByEdu?.[edu]}
+                    retirements={retirementsByEdu?.[edu]}
+                    retirementsPrev={retirementsPrevByEdu?.[edu]}
                     overqualified={overqualifiedByEdu?.[edu] ?? 0}
                     overqualifiedBreakdown={overqualifiedBreakdown?.[edu]}
                     voluntaryNext={nextMonthVoluntaryByEdu[edu]}
@@ -372,6 +418,10 @@ export function EducationLevelCards({
                 unused={totalUnused}
                 deaths={deathsByEdu ? sumByEdu(deathsByEdu) : undefined}
                 deathsPrev={deathsPrevByEdu ? sumByEdu(deathsPrevByEdu) : undefined}
+                disabilities={disabilitiesByEdu ? sumByEdu(disabilitiesByEdu) : undefined}
+                disabilitiesPrev={disabilitiesPrevByEdu ? sumByEdu(disabilitiesPrevByEdu) : undefined}
+                retirements={retirementsByEdu ? sumByEdu(retirementsByEdu) : undefined}
+                retirementsPrev={retirementsPrevByEdu ? sumByEdu(retirementsPrevByEdu) : undefined}
                 overqualified={totalOverqualified}
                 voluntaryNext={sumByEdu(nextMonthVoluntaryByEdu)}
                 voluntaryTotal={totalVol}

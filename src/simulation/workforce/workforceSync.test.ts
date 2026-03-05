@@ -191,3 +191,66 @@ describe('syncWorkforceWithPopulation — conservation', () => {
         expect(totalBefore - totalAfter).toBe(10);
     });
 });
+
+// ---------------------------------------------------------------------------
+// syncWorkforceWithPopulation — demographic event tracking
+// ---------------------------------------------------------------------------
+
+describe('syncWorkforceWithPopulation — event tracking', () => {
+    it('tracks deathsThisMonth on agent assets', () => {
+        const { planet } = makePlanet({ none: 5000 });
+        const agent = makeAgent();
+
+        agent.assets.p.allocatedWorkers.none = 500;
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+
+        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 7 }]);
+        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+
+        expect(agent.assets.p.deathsThisMonth?.none).toBe(7);
+    });
+
+    it('tracks disabilitiesThisMonth on agent assets', () => {
+        const { planet } = makePlanet({ primary: 5000 });
+        const agent = makeAgent();
+
+        agent.assets.p.allocatedWorkers.primary = 300;
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+
+        planet.population.tickDisabilitiesByAge = ageResolved([{ age: 45, edu: 'primary', occ: 'company', count: 3 }]);
+        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+
+        expect(agent.assets.p.disabilitiesThisMonth?.primary).toBe(3);
+    });
+
+    it('tracks retirementsThisMonth on agent assets', () => {
+        const { planet } = makePlanet({ none: 5000 });
+        const agent = makeAgent();
+
+        agent.assets.p.allocatedWorkers.none = 400;
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+
+        planet.population.tickRetirementsByAge = ageResolved([{ age: 67, edu: 'none', occ: 'company', count: 12 }]);
+        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+
+        expect(agent.assets.p.retirementsThisMonth?.none).toBe(12);
+    });
+
+    it('accumulates across multiple calls within same month', () => {
+        const { planet } = makePlanet({ none: 5000 });
+        const agent = makeAgent();
+
+        agent.assets.p.allocatedWorkers.none = 500;
+        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+
+        // First tick: 5 deaths
+        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 5 }]);
+        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+
+        // Second tick: 3 more deaths
+        planet.population.tickDeathsByAge = ageResolved([{ age: 40, edu: 'none', occ: 'company', count: 3 }]);
+        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+
+        expect(agent.assets.p.deathsThisMonth?.none).toBe(8);
+    });
+});

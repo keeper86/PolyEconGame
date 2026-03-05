@@ -173,6 +173,10 @@ type PlanetAssets = {
     firedThisTick?: Record<EducationLevelType, number>;
     deathsThisMonth?: Record<EducationLevelType, number>;
     deathsPrevMonth?: Record<EducationLevelType, number>;
+    disabilitiesThisMonth?: Record<EducationLevelType, number>;
+    disabilitiesPrevMonth?: Record<EducationLevelType, number>;
+    retirementsThisMonth?: Record<EducationLevelType, number>;
+    retirementsPrevMonth?: Record<EducationLevelType, number>;
     availableOnMarket?: Record<EducationLevelType, number>;
     workforceDemography?: import('@/simulation/planet').WorkforceDemography;
 };
@@ -229,6 +233,10 @@ export default function AgentPlanetDetailPage() {
                         overqualifiedMatrix={assets.overqualifiedMatrix}
                         deathsThisMonth={assets.deathsThisMonth}
                         deathsPrevMonth={assets.deathsPrevMonth}
+                        disabilitiesThisMonth={assets.disabilitiesThisMonth}
+                        disabilitiesPrevMonth={assets.disabilitiesPrevMonth}
+                        retirementsThisMonth={assets.retirementsThisMonth}
+                        retirementsPrevMonth={assets.retirementsPrevMonth}
                         availableOnMarket={assets.availableOnMarket}
                     />
 

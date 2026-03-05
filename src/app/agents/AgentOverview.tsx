@@ -221,6 +221,10 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
         const overqualifiedMatrix: OQMatrix = {};
         const deathsThisMonth: Record<string, number> = {} as Record<string, number>;
         const deathsPrevMonth: Record<string, number> = {} as Record<string, number>;
+        const disabilitiesThisMonth: Record<string, number> = {} as Record<string, number>;
+        const disabilitiesPrevMonth: Record<string, number> = {} as Record<string, number>;
+        const retirementsThisMonth: Record<string, number> = {} as Record<string, number>;
+        const retirementsPrevMonth: Record<string, number> = {} as Record<string, number>;
         const availableOnMarket: Record<string, number> = {} as Record<string, number>;
         let mergedWorkforceDemography = undefined as Agent['assets'][string]['workforceDemography'];
 
@@ -297,6 +301,28 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                     deathsPrevMonth[k] = (deathsPrevMonth[k] || 0) + (v || 0);
                 }
             }
+            // Accumulate disability counters
+            if (assetsEntry.disabilitiesThisMonth) {
+                for (const [k, v] of Object.entries(assetsEntry.disabilitiesThisMonth)) {
+                    disabilitiesThisMonth[k] = (disabilitiesThisMonth[k] || 0) + (v || 0);
+                }
+            }
+            if (assetsEntry.disabilitiesPrevMonth) {
+                for (const [k, v] of Object.entries(assetsEntry.disabilitiesPrevMonth)) {
+                    disabilitiesPrevMonth[k] = (disabilitiesPrevMonth[k] || 0) + (v || 0);
+                }
+            }
+            // Accumulate retirement counters
+            if (assetsEntry.retirementsThisMonth) {
+                for (const [k, v] of Object.entries(assetsEntry.retirementsThisMonth)) {
+                    retirementsThisMonth[k] = (retirementsThisMonth[k] || 0) + (v || 0);
+                }
+            }
+            if (assetsEntry.retirementsPrevMonth) {
+                for (const [k, v] of Object.entries(assetsEntry.retirementsPrevMonth)) {
+                    retirementsPrevMonth[k] = (retirementsPrevMonth[k] || 0) + (v || 0);
+                }
+            }
             // Accumulate available (unoccupied) workers on the labor market
             if (assetsEntry.availableOnMarket) {
                 for (const [k, v] of Object.entries(assetsEntry.availableOnMarket)) {
@@ -319,6 +345,10 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
             mergedWorkforceDemography,
             deathsThisMonth,
             deathsPrevMonth,
+            disabilitiesThisMonth,
+            disabilitiesPrevMonth,
+            retirementsThisMonth,
+            retirementsPrevMonth,
             availableOnMarket,
         };
     };
@@ -441,6 +471,30 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                                 }
                                 deathsPrevMonth={
                                     s.deathsPrevMonth as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
+                                disabilitiesThisMonth={
+                                    s.disabilitiesThisMonth as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
+                                disabilitiesPrevMonth={
+                                    s.disabilitiesPrevMonth as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
+                                retirementsThisMonth={
+                                    s.retirementsThisMonth as Record<
+                                        import('../../simulation/planet').EducationLevelType,
+                                        number
+                                    >
+                                }
+                                retirementsPrevMonth={
+                                    s.retirementsPrevMonth as Record<
                                         import('../../simulation/planet').EducationLevelType,
                                         number
                                     >

@@ -48,6 +48,28 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
                 freshDeaths[edu] = 0;
             }
             assets.deathsThisMonth = freshDeaths;
+
+            // --- Rotate disability counters: this month → prev month, reset this month ---
+            assets.disabilitiesPrevMonth = assets.disabilitiesThisMonth ?? ({} as Record<EducationLevelType, number>);
+            const freshDisabilities = {} as Record<EducationLevelType, number>;
+            for (const edu of educationLevelKeys) {
+                if (!assets.disabilitiesPrevMonth[edu]) {
+                    assets.disabilitiesPrevMonth[edu] = 0;
+                }
+                freshDisabilities[edu] = 0;
+            }
+            assets.disabilitiesThisMonth = freshDisabilities;
+
+            // --- Rotate retirement counters: this month → prev month, reset this month ---
+            assets.retirementsPrevMonth = assets.retirementsThisMonth ?? ({} as Record<EducationLevelType, number>);
+            const freshRetirements = {} as Record<EducationLevelType, number>;
+            for (const edu of educationLevelKeys) {
+                if (!assets.retirementsPrevMonth[edu]) {
+                    assets.retirementsPrevMonth[edu] = 0;
+                }
+                freshRetirements[edu] = 0;
+            }
+            assets.retirementsThisMonth = freshRetirements;
         }
     }
 

@@ -34,8 +34,14 @@ import { distributeProportionally } from '../utils/distributeProportionally';
 const WORKFORCE_OCCUPATIONS: Occupation[] = ['company', 'government'];
 
 /**
- * Count total workers (active + departing pipeline) for a single tenure
- * cohort and education level.
+ * Count total workers (active + entire departing pipeline) for a single
+ * tenure cohort and education level.
+ *
+ * Note: `departing[edu][m].count` already includes **fired** workers —
+ * `departingFired` is merely a subset counter of `departing`, not a
+ * separate pipeline.  Therefore active + departing = the full headcount
+ * that the population model still considers employed (and thus subject
+ * to deaths, disabilities, and retirements).
  */
 function totalWorkersInCohort(cohort: TenureCohort, edu: EducationLevelType): number {
     let total = cohort.active[edu].count;
@@ -45,6 +51,9 @@ function totalWorkersInCohort(cohort: TenureCohort, edu: EducationLevelType): nu
     }
     return total;
 }
+
+/** Type of demographic event being applied by workforceSync. */
+type DemographicEventType = 'death' | 'disability' | 'retirement';
 
 /**
  * Distribute `count` removals for a single (age, edu, occ) cell across
@@ -64,7 +73,7 @@ function distributeAgeCellRemovals(
     edu: EducationLevelType,
     age: number,
     count: number,
-    trackDeaths: boolean,
+    eventType: DemographicEventType,
 ): void {
     if (count <= 0) {
         return;
@@ -108,15 +117,31 @@ function distributeAgeCellRemovals(
             continue;
         }
 
-        // Track deaths
-        if (trackDeaths) {
-            if (!assets.deathsThisMonth) {
-                assets.deathsThisMonth = {} as Record<EducationLevelType, number>;
+        // Track demographic event on agent assets
+        {
+            const initRecord = (): Record<EducationLevelType, number> => {
+                const rec = {} as Record<EducationLevelType, number>;
                 for (const e of educationLevelKeys) {
-                    assets.deathsThisMonth[e] = 0;
+                    rec[e] = 0;
                 }
+                return rec;
+            };
+            if (eventType === 'death') {
+                if (!assets.deathsThisMonth) {
+                    assets.deathsThisMonth = initRecord();
+                }
+                assets.deathsThisMonth[edu] += toRemove;
+            } else if (eventType === 'disability') {
+                if (!assets.disabilitiesThisMonth) {
+                    assets.disabilitiesThisMonth = initRecord();
+                }
+                assets.disabilitiesThisMonth[edu] += toRemove;
+            } else if (eventType === 'retirement') {
+                if (!assets.retirementsThisMonth) {
+                    assets.retirementsThisMonth = initRecord();
+                }
+                assets.retirementsThisMonth[edu] += toRemove;
             }
-            assets.deathsThisMonth[edu] += toRemove;
         }
 
         const wf = assets.workforceDemography;
@@ -286,7 +311,7 @@ export function syncWorkforceWithPopulation(
     }
 
     // Helper: iterate an AgeResolvedAccumulator and dispatch removals
-    function processAccumulator(acc: AgeResolvedAccumulator | undefined, trackDeaths: boolean): void {
+    function processAccumulator(acc: AgeResolvedAccumulator | undefined, eventType: DemographicEventType): void {
         if (!acc) {
             return;
         }
@@ -307,18 +332,18 @@ export function syncWorkforceWithPopulation(
                         continue;
                     }
                     const relevantAgents = agentsForOcc(occ);
-                    distributeAgeCellRemovals(relevantAgents, planetId, edu, age, count, trackDeaths);
+                    distributeAgeCellRemovals(relevantAgents, planetId, edu, age, count, eventType);
                 }
             }
         }
     }
 
     // Deaths
-    processAccumulator(tickDeathsByAge, /* trackDeaths */ true);
+    processAccumulator(tickDeathsByAge, 'death');
     // Disabilities
-    processAccumulator(tickDisabilitiesByAge, /* trackDeaths */ false);
+    processAccumulator(tickDisabilitiesByAge, 'disability');
     // Retirements
-    processAccumulator(tickRetirementsByAge, /* trackDeaths */ false);
+    processAccumulator(tickRetirementsByAge, 'retirement');
 }
 
 /**

@@ -564,6 +564,38 @@ export type Agent = {
                 [L in EducationLevelType]: number;
             };
             /**
+             * Disabilities that occurred since the start of the current
+             * month, per education level.  Accumulated in
+             * `syncWorkforceWithPopulation` and reset at month boundaries
+             * in `laborMarketMonthTick`.
+             */
+            disabilitiesThisMonth?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Disabilities from the previous month, per education level.
+             * Rotated from `disabilitiesThisMonth` at each month boundary.
+             */
+            disabilitiesPrevMonth?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Retirements that occurred since the start of the current
+             * month, per education level.  Accumulated in
+             * `syncWorkforceWithPopulation` and reset at month boundaries
+             * in `laborMarketMonthTick`.
+             */
+            retirementsThisMonth?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
+             * Retirements from the previous month, per education level.
+             * Rotated from `retirementsThisMonth` at each month boundary.
+             */
+            retirementsPrevMonth?: {
+                [L in EducationLevelType]: number;
+            };
+            /**
              * Number of unoccupied (available for hiring) people per
              * education level on the associated planet's labor market.
              * Updated at the start of each `laborMarketTick` call so the
