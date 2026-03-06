@@ -6,41 +6,13 @@
  * retirement orchestration.
  */
 
-import { describe, it, expect } from 'vitest';
-import { emptyCohort } from './populationHelpers';
-import { educationLevelKeys, maxAge } from '../planet';
+import { describe, expect, it } from 'vitest';
 import type { Population } from '../planet';
+import { educationLevelKeys, maxAge } from '../planet';
 import { RETIREMENT_AGE } from '../workforce/workforceHelpers';
+import { emptyCohort } from './populationHelpers';
 
-import { retirementProbByAge, perTickRetirement, applyRetirementTransitions, applyRetirement } from './retirement';
-
-// ---------------------------------------------------------------------------
-// retirementProbByAge
-// ---------------------------------------------------------------------------
-
-describe('retirementProbByAge', () => {
-    it('returns 0 for ages below RETIREMENT_AGE', () => {
-        expect(retirementProbByAge(0)).toBe(0);
-        expect(retirementProbByAge(30)).toBe(0);
-        expect(retirementProbByAge(66)).toBe(0);
-    });
-
-    it('returns ~0.3 at RETIREMENT_AGE (67)', () => {
-        expect(retirementProbByAge(RETIREMENT_AGE)).toBeCloseTo(0.3, 5);
-    });
-
-    it('ramps linearly above RETIREMENT_AGE', () => {
-        expect(retirementProbByAge(68)).toBeCloseTo(0.44, 2);
-        expect(retirementProbByAge(69)).toBeCloseTo(0.58, 2);
-        expect(retirementProbByAge(70)).toBeCloseTo(0.72, 2);
-    });
-
-    it('caps at 1.0 for ages 72+', () => {
-        expect(retirementProbByAge(72)).toBe(1.0);
-        expect(retirementProbByAge(80)).toBe(1.0);
-        expect(retirementProbByAge(100)).toBe(1.0);
-    });
-});
+import { applyRetirement, applyRetirementTransitions, perTickRetirement } from './retirement';
 
 // ---------------------------------------------------------------------------
 // perTickRetirement
@@ -122,12 +94,12 @@ describe('applyRetirementTransitions', () => {
         expect(cohort.none.unableToWork).toBe(50);
     });
 
-    it('retires everyone at age 72+ (annual prob = 1.0) over enough ticks', () => {
+    it('retires everyone at age 82+ (annual prob = 1.0) over enough ticks', () => {
         const cohort = emptyCohort();
         cohort.tertiary.company = 100;
 
         for (let tick = 0; tick < 720; tick++) {
-            applyRetirementTransitions(cohort, 75);
+            applyRetirementTransitions(cohort, 82);
         }
 
         // At 100% annual rate, 2 years of ticks should retire everyone

@@ -11,7 +11,7 @@
  */
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
-import type { EducationLevelType, Occupation, Planet } from '../planet';
+import type { AgeMoments, EducationLevelType, Occupation, Planet } from '../planet';
 import { DEFAULT_HIRE_AGE_MEAN, RETIREMENT_AGE } from './workforceHelpers';
 import { distributeProportionally } from '../utils/distributeProportionally';
 
@@ -148,6 +148,13 @@ export function hireFromPopulation(
  * how many workers of `edu × srcOcc` each cohort has, using the
  * Hamilton (largest-remainder) method for integer rounding.
  *
+ * When optional `moments` are supplied (the compact AgeMoments of the
+ * workers being returned), the per-age weights are multiplied by a
+ * Gaussian kernel centred on the moments' mean age.  This steers the
+ * proportional removal towards ages that match the departing profile,
+ * reducing the systematic mean-age drift between the discrete population
+ * and the compact-moments workforce model.
+ *
  * When `preferOlder` is true the initial distribution favours older
  * cohorts for the rounding remainder (used for retirement).  When false,
  * rounding ties are broken by age ascending (used for departures back to
@@ -169,6 +176,7 @@ function transferInPopulation(
     srcOcc: Occupation,
     dstOcc: Occupation,
     preferOlder: boolean,
+    moments?: AgeMoments,
 ): number {
     if (count <= 0) {
         return 0;
@@ -197,9 +205,26 @@ function transferInPopulation(
         weights[age] = demography[age][edu]?.[srcOcc] ?? 0;
     }
 
-    // Use distributeProportionally. When preferOlder is true we reverse the
-    // weight array before calling so that the deterministic index-based
-    // tie-breaker favours older ages; then reverse the result back.
+    // When departing moments are provided, apply Gaussian weighting so the
+    // removal targets ages near the departing workers' mean age.  This
+    // reduces systematic drift between the compact moments and the discrete
+    // population without touching agent-side moments at all.
+    if (moments && moments.count > 1) {
+        const mean = moments.sumAge / moments.count;
+        const variance = Math.max(1, moments.sumAgeSq / moments.count - mean * mean);
+        const invTwoVar = 1 / (2 * variance);
+        for (let age = 0; age < demography.length; age++) {
+            if (weights[age] > 0) {
+                const d = age - mean;
+                weights[age] *= Math.exp(-d * d * invTwoVar);
+            }
+        }
+    }
+
+    // Use distributeProportionally (Hamilton's largest-remainder method).
+    // When preferOlder is true we reverse the weight array before calling
+    // so that the deterministic index-based tie-breaker favours older ages;
+    // then reverse the result back.
     let allocated = distributeProportionally(toMove, preferOlder ? weights.slice().reverse() : weights);
     if (preferOlder) {
         allocated = allocated.slice().reverse();
@@ -252,18 +277,22 @@ function transferInPopulation(
 /**
  * Return `count` workers of the given education level back to the planet's
  * unoccupied population pool, moving them from the specified occupation.
- * Their `wealthMoments` (if provided) are merged into the destination cells.
  *
- * Workers are distributed proportionally across age cohorts so that cohorts
- * with more employed workers contribute proportionally more returners.
+ * When optional `moments` are supplied (the compact AgeMoments of the
+ * departing workers), the removal is Gaussian-weighted towards their mean
+ * age, reducing mean-age drift.
+ *
+ * Returns the number of workers actually moved (may be less than `count`
+ * only if the population has fewer workers in that occupation).
  */
 export function returnToPopulation(
     planet: Planet,
     edu: EducationLevelType,
     count: number,
     occupation: Occupation,
+    moments?: AgeMoments,
 ): number {
-    return transferInPopulation(planet, edu, count, occupation, 'unoccupied', /* preferOlder */ false);
+    return transferInPopulation(planet, edu, count, occupation, 'unoccupied', /* preferOlder */ false, moments);
 }
 
 /**

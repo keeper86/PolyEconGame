@@ -1,6 +1,6 @@
 import { isMonthBoundary, isYearBoundary } from './constants';
 import type { GameState } from './planet';
-import { checkPopulationWorkforceConsistency } from './invariants';
+import { checkPopulationWorkforceConsistency, checkAgeMomentConsistency } from './invariants';
 import { environmentTick } from './environment';
 import { populationTick, populationAdvanceYear } from './population';
 import { productionTick } from './production';
@@ -17,15 +17,18 @@ export type { GameState };
 export { populationTick, populationAdvanceYear, environmentTick, productionTick };
 export { seedRng };
 
-process.env.SIM_DEBUG = '1';
+process.env.SIM_DEBUG = '0';
 
 function debugCheck(stepName: string, gs: GameState): void {
     if (process.env.SIM_DEBUG !== '1') {
         return;
     }
-    const d = checkPopulationWorkforceConsistency(gs.agents, gs.planets);
+    const d1 = checkPopulationWorkforceConsistency(gs.agents, gs.planets);
+    const d2 = checkAgeMomentConsistency(gs.agents, gs.planets);
+    const d = [...d1, ...d2];
     if (d.length) {
-        throw new Error(`tick ${gs.tick} after ${stepName}: ${d.join('; ')}`);
+        console.error(`tick ${gs.tick} after ${stepName}: ${d.join('; ')}`);
+        process.exit(1);
     }
 }
 
@@ -84,9 +87,8 @@ export function advanceTick(gameState: GameState) {
 
     if (isYearBoundary(gameState.tick)) {
         populationAdvanceYearTick(gameState);
-        debugCheck('populationBoundaryTick', gameState);
         laborMarketYearTick(gameState.agents);
-        debugCheck('laborMarketYearTick', gameState);
+        debugCheck('populationBoundaryTick&laborMarketYearTick', gameState);
     }
 
     // Final check

@@ -75,6 +75,9 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
 
     // -----------------------------------------------------------------------
     // Phase 1: Pipeline advancement (per-agent)
+    //
+    // For each cohort × edu, drain departing[0] back into the population
+    // (unoccupied pool) and then shift the pipeline down by one slot.
     // -----------------------------------------------------------------------
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
@@ -86,25 +89,38 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
             const planet = planets.get(planetId);
             const occupation: Occupation = planet && planet.governmentId === agent.id ? 'government' : 'company';
 
+            for (const edu of educationLevelKeys) {
+                // Sum departing[0] across all tenure cohorts for this edu,
+                // merging their compact AgeMoments so returnToPopulation can
+                // Gaussian-weight the removal towards the correct age profile.
+                let departingCount = 0;
+                let departingSumAge = 0;
+                let departingSumAgeSq = 0;
+                for (const cohort of workforce) {
+                    const slot = cohort.departing[edu][0];
+                    departingCount += slot.count;
+                    departingSumAge += slot.sumAge;
+                    departingSumAgeSq += slot.sumAgeSq;
+                }
+
+                // Transfer workers from the employed occupation back to unoccupied
+                if (departingCount > 0 && planet) {
+                    const moved = returnToPopulation(planet, edu, departingCount, occupation, {
+                        count: departingCount,
+                        sumAge: departingSumAge,
+                        sumAgeSq: departingSumAgeSq,
+                    });
+                    if (moved !== departingCount) {
+                        console.warn(
+                            `[laborMarketMonthTick] departing mismatch for edu=${edu} on agent=${agent.id}: requested=${departingCount}, moved=${moved}`,
+                        );
+                    }
+                }
+            }
+
+            // --- Shift all departing pipelines down by one slot ---
             for (const cohort of workforce) {
                 for (const edu of educationLevelKeys) {
-                    // --- Departing pipeline: route slot 0 to 'unoccupied' ---
-                    const departingCount = cohort.departing[edu][0].count;
-                    if (departingCount > 0 && planet) {
-                        const moved = returnToPopulation(planet, edu, departingCount, occupation);
-                        if (moved !== departingCount) {
-                            console.warn(
-                                `[laborMarketMonthTick] departing mismatch for edu=${edu} on agent=${agent.id}: requested=${departingCount}, moved=${moved}`,
-                            );
-                        }
-                        // If not all were moved, keep the remainder in slot 0
-                        // (should be rare / impossible in practice)
-                        if (moved < departingCount) {
-                            // partially drained — leave residual (not expected)
-                        }
-                    }
-
-                    // Shift departing + departingFired pipelines down by one slot
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {
                         cohort.departing[edu][i] = cohort.departing[edu][i + 1];
                         cohort.departingFired[edu][i] = cohort.departingFired[edu][i + 1];

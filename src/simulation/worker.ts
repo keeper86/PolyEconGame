@@ -12,15 +12,15 @@
  */
 
 import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
+import { getLatestGameSnapshot, insertGameSnapshot, pruneGameSnapshots } from '../server/gameSnapshotRepository';
 import { advanceTick, seedRng, type GameState } from './engine';
 import { earth, earthGovernment, testCompany } from './entities';
 import { agriculturalProductResourceType, putIntoStorageFacility, waterResourceType } from './facilities';
-import { toImmutableGameState, fromImmutableGameState, type GameStateRecord } from './immutableTypes';
+import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import { type TransportShip } from './planet';
-import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from './queries';
-import { serializeGameState, deserializeSnapshot } from './snapshotCompression';
+import type { WorkerErrorResponse, WorkerQueryMessage, WorkerSuccessResponse } from './queries';
+import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
-import { insertGameSnapshot, pruneGameSnapshots, getLatestGameSnapshot } from '../server/gameSnapshotRepository';
 
 export type InboundMessage =
     | { type: 'ping' }

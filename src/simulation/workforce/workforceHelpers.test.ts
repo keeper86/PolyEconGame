@@ -5,7 +5,6 @@ import { mortalityProbability } from '../population/populationHelpers';
 import {
     MAX_TENURE_YEARS,
     NOTICE_PERIOD_MONTHS,
-    DEFAULT_HIRE_AGE_MEAN,
     RETIREMENT_AGE,
     createWorkforceDemography,
     emptyTenureCohort,
@@ -173,13 +172,7 @@ describe('expectedRateForMoments', () => {
         const rateFn = (age: number) => age * 0.01;
         // Build moments with mean ~50.7 and near-zero variance by mixing close ages
         // 70 workers at age 51, 30 workers at age 50 → mean ≈ 50.7, var ≈ 0.21
-        const moments = {
-            count: 100,
-            sumAge: 70 * 51 + 30 * 50, // 5070
-            sumAgeSq: 70 * 51 * 51 + 30 * 50 * 50, // 258570 + 75000 = 333570? let's just use the right formula
-        };
-        // mean = 5070/100 = 50.7, var = 333570/100 - 50.7^2 = 3335.7 - 2570.49 = hmm
-        // Let me just use a single-age cohort for simplicity
+        // For simplicity use a single-age cohort below
         const m = ageMomentsForAge(51, 100); // mean=51, var=0
         const result = expectedRateForMoments(m, rateFn);
         expect(result).toBe(rateFn(51));
@@ -202,7 +195,7 @@ describe('expectedRateForMoments', () => {
         // Build a wider distribution: mix ages 30 and 50 (mean=40, but var > 0)
         const wideMoments = {
             count: 100,
-            sumAge: 50 * 30 + 50 * 50,   // 4000 → mean=40
+            sumAge: 50 * 30 + 50 * 50, // 4000 → mean=40
             sumAgeSq: 50 * 900 + 50 * 2500, // 45000 + 125000 = 170000 → var = 1700 - 1600 = 100
         };
         const wide = expectedRateForMoments(wideMoments, constRate);
@@ -216,7 +209,7 @@ describe('expectedRateForMoments', () => {
         // Build wider distribution: mix ages 30 and 70
         const wideMoments = {
             count: 100,
-            sumAge: 50 * 30 + 50 * 70,     // 5000 → mean=50
+            sumAge: 50 * 30 + 50 * 70, // 5000 → mean=50
             sumAgeSq: 50 * 900 + 50 * 4900, // 45000 + 245000 = 290000 → var = 2900 - 2500 = 400
         };
         const wide = expectedRateForMoments(wideMoments, convexRate);

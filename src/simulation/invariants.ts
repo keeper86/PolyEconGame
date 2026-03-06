@@ -1,4 +1,4 @@
-import type { Agent, Planet } from './planet';
+import type { Agent, Planet, AgeMoments } from './planet';
 import { educationLevelKeys, OCCUPATIONS } from './planet';
 import { MIN_EMPLOYABLE_AGE } from './constants';
 import { getWealthDemography } from './population/populationHelpers';
@@ -45,7 +45,7 @@ export function computePopulationOccupationTotals(planet: Planet, minAge = MIN_E
 /**
  * Compute active workforce across all agents for a planet (active workers only).
  */
-export function computeAgentWorkforceTotals(agents: Map<string, Agent>, planetId: string) {
+export function computeAgentWorkforceTotals(agents: Map<string, Agent>, planet: Planet) {
     const totals: Record<string, number> = {
         company: 0,
         government: 0,
@@ -54,7 +54,7 @@ export function computeAgentWorkforceTotals(agents: Map<string, Agent>, planetId
     };
 
     for (const agent of agents.values()) {
-        const assets = agent.assets[planetId];
+        const assets = agent.assets[planet.id];
         if (!assets || !assets.workforceDemography) {
             continue;
         }
@@ -64,13 +64,21 @@ export function computeAgentWorkforceTotals(agents: Map<string, Agent>, planetId
             }
         }
 
-        // Simple heuristic: if agent.id contains 'gov' or 'government' treat all actives as government
-        const isGov = /gov|government/i.test(agent.id);
+        // Classify government agents by explicit planet.governmentId match.
+        // Include both active AND departing workers because departing workers
+        // are still employed (in their notice period) and still counted under
+        // their occupation in the population demography.
+        const isGov = agent.id === planet.governmentId;
         if (assets && assets.workforceDemography) {
             let sum = 0;
             for (const cohort of assets.workforceDemography) {
                 for (const v of Object.values(cohort.active)) {
                     sum += v.count;
+                }
+                for (const depArr of Object.values(cohort.departing)) {
+                    for (const d of depArr) {
+                        sum += d.count;
+                    }
                 }
             }
             if (isGov) {
@@ -92,7 +100,7 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
     const discrepancies: string[] = [];
     for (const planet of planets.values()) {
         const popTotals = computePopulationOccupationTotals(planet, MIN_EMPLOYABLE_AGE);
-        const agentTotals = computeAgentWorkforceTotals(agents, planet.id);
+        const agentTotals = computeAgentWorkforceTotals(agents, planet);
 
         // Provide a detailed breakdown when discrepancies occur
         const popGov = popTotals.government;
@@ -120,6 +128,11 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
                 for (const cohort of assets.workforceDemography) {
                     for (const [edu, v] of Object.entries(cohort.active)) {
                         agentGovByEdu[edu] = (agentGovByEdu[edu] ?? 0) + v.count;
+                    }
+                    for (const [edu, depArr] of Object.entries(cohort.departing)) {
+                        for (const d of depArr) {
+                            agentGovByEdu[edu] = (agentGovByEdu[edu] ?? 0) + d.count;
+                        }
                     }
                 }
             }
@@ -153,6 +166,11 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
                     for (const [, v] of Object.entries(cohort.active)) {
                         sum += v.count;
                     }
+                    for (const depArr of Object.values(cohort.departing)) {
+                        for (const d of depArr) {
+                            sum += d.count;
+                        }
+                    }
                 }
                 // Only include non-government agents here (company totals)
                 agentCompanyByAgent[agent.id] = /gov|government/i.test(agent.id) ? 0 : sum;
@@ -181,6 +199,11 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
                     for (const [edu, v] of Object.entries(cohort.active)) {
                         agentByEdu[edu] = (agentByEdu[edu] ?? 0) + v.count;
                     }
+                    for (const [edu, depArr] of Object.entries(cohort.departing)) {
+                        for (const d of depArr) {
+                            agentByEdu[edu] = (agentByEdu[edu] ?? 0) + d.count;
+                        }
+                    }
                 }
             }
 
@@ -204,6 +227,143 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
         console.error('Population/workforce consistency check failed:\n' + discrepancies.join('\n'));
         exit(1);
     }
+    return discrepancies;
+}
+
+/**
+ * Compute population age-moments (count, sumAge, sumAgeSq) for company and
+ * government occupations on a planet. Ages below `minAge` are ignored.
+ */
+export function computePopulationAgeMoments(planet: Planet, minAge = MIN_EMPLOYABLE_AGE) {
+    const make = (): AgeMoments => ({ count: 0, sumAge: 0, sumAgeSq: 0 });
+    const totals: { company: AgeMoments; government: AgeMoments } = {
+        company: make(),
+        government: make(),
+    };
+
+    for (let age = minAge; age < planet.population.demography.length; age++) {
+        const cohort = planet.population.demography[age];
+        for (const edu of Object.keys(cohort) as Array<keyof typeof cohort>) {
+            const c = cohort[edu];
+            const comp = c.company ?? 0;
+            const gov = c.government ?? 0;
+            if (comp > 0) {
+                totals.company.count += comp;
+                totals.company.sumAge += comp * age;
+                totals.company.sumAgeSq += comp * age * age;
+            }
+            if (gov > 0) {
+                totals.government.count += gov;
+                totals.government.sumAge += gov * age;
+                totals.government.sumAgeSq += gov * age * age;
+            }
+        }
+    }
+    return totals;
+}
+
+/**
+ * Aggregate AgeMoments from agents' TenureCohorts for a given planet.
+ * Agents whose id matches /gov|government/i are treated as government.
+ */
+export function computeAgentAgeMomentsFromTenure(agents: Map<string, Agent>, planet: Planet) {
+    const make = (): AgeMoments => ({ count: 0, sumAge: 0, sumAgeSq: 0 });
+    const totals: { company: AgeMoments; government: AgeMoments } = {
+        company: make(),
+        government: make(),
+    };
+
+    for (const agent of agents.values()) {
+        const assets = agent.assets[planet.id];
+        if (!assets || !assets.workforceDemography) {
+            continue;
+        }
+        const isGov = agent.id === planet.governmentId;
+        for (const tenureCohort of assets.workforceDemography) {
+            // Include active workers
+            for (const [, moments] of Object.entries(tenureCohort.active) as Array<[string, AgeMoments]>) {
+                if (!moments || moments.count === 0) {
+                    continue;
+                }
+                const target = isGov ? totals.government : totals.company;
+                target.count += moments.count;
+                target.sumAge += moments.sumAge;
+                target.sumAgeSq += moments.sumAgeSq;
+            }
+            // Include departing workers — they are still employed (notice
+            // period) and still counted under their occupation in the
+            // population demography.
+            for (const [, depArr] of Object.entries(tenureCohort.departing) as Array<[string, AgeMoments[]]>) {
+                for (const moments of depArr) {
+                    if (!moments || moments.count === 0) {
+                        continue;
+                    }
+                    const target = isGov ? totals.government : totals.company;
+                    target.count += moments.count;
+                    target.sumAge += moments.sumAge;
+                    target.sumAgeSq += moments.sumAgeSq;
+                }
+            }
+        }
+    }
+
+    return totals;
+}
+
+/**
+ * Check consistency between population age moments and the summed tenure
+ * cohort age moments for company and government. Returns discrepancy
+ * messages when differences exceed tolerances.
+ */
+export function checkAgeMomentConsistency(agents: Map<string, Agent>, planets: Map<string, Planet>) {
+    const discrepancies: string[] = [];
+    for (const planet of planets.values()) {
+        const popMoments = computePopulationAgeMoments(planet, MIN_EMPLOYABLE_AGE);
+        const agentMoments = computeAgentAgeMomentsFromTenure(agents, planet);
+
+        for (const occ of ['company', 'government'] as const) {
+            const p = popMoments[occ];
+            const a = agentMoments[occ];
+
+            // Compare counts first (absolute tolerance 1)
+            const countDiff = Math.abs(p.count - a.count);
+            if (countDiff > 1) {
+                discrepancies.push(
+                    `Planet ${planet.id}: ${occ} headcount mismatch: population=${p.count} vs agents=${a.count} (diff=${countDiff})`,
+                );
+            }
+
+            // Compare means if counts are non-zero on either side
+            const popMean = p.count > 0 ? p.sumAge / p.count : 0;
+            const agMean = a.count > 0 ? a.sumAge / a.count : 0;
+            const meanDiff = Math.abs(popMean - agMean);
+            // The agent workforce uses compact (count, sumAge, sumAgeSq) moments
+            // while the population tracks exact integer ages.  The Gaussian
+            // approximation in workforceSync introduces a systematic drift of
+            // ~0.03 years/simulation-year.  A tolerance of 1 year allows ~30
+            // years of simulation before tripping the invariant.
+            const meanTol = Math.max(1.0, Math.abs(popMean) * 0.02);
+            if (meanDiff > meanTol) {
+                discrepancies.push(
+                    `Planet ${planet.id}: ${occ} mean age mismatch: population=${popMean.toFixed(7)} vs agents=${agMean.toFixed(7)} (diff=${meanDiff.toFixed(7)})`,
+                );
+            }
+
+            // Compare variances if possible
+            if (p.count > 0 && a.count > 0) {
+                const popVar = p.sumAgeSq / p.count - (p.sumAge / p.count) ** 2;
+                const agVar = a.sumAgeSq / a.count - (a.sumAge / a.count) ** 2;
+                const varDiff = Math.abs(popVar - agVar);
+                const varTol = Math.max(0.5, Math.abs(popVar) * 0.05);
+                if (varDiff > varTol) {
+                    discrepancies.push(
+                        `Planet ${planet.id}: ${occ} age-variance mismatch: population=${popVar.toFixed(3)} vs agents=${agVar.toFixed(3)} (diff=${varDiff.toFixed(3)})`,
+                    );
+                }
+            }
+        }
+    }
+
     return discrepancies;
 }
 

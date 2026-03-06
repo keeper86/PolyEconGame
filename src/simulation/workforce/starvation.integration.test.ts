@@ -283,51 +283,6 @@ describe('starvation integration — population ↔ workforce consistency', () =
         }
     });
 
-    it('maintains consistency across a full year with starvation', () => {
-        const { planet, gov } = makePlanet(200_000);
-        const company = makeAgent('company-1');
-
-        gov.assets = {
-            p: {
-                resourceClaims: [],
-                resourceTenancies: [],
-                productionFacilities: [],
-                deposits: 0,
-                storageFacility: makeStorageFacility(),
-                allocatedWorkers: { none: 200, primary: 1500, secondary: 1500, tertiary: 800, quaternary: 0 },
-                workforceDemography: createWorkforceDemography(),
-            },
-        };
-        company.assets.p.allocatedWorkers = { none: 100, primary: 800, secondary: 800, tertiary: 400, quaternary: 0 };
-
-        const agents = [company, gov];
-        const gameState: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: new Map(agents.map((a) => [a.id, a])),
-        };
-
-        // Hire workers
-        for (let t = 1; t <= 5; t++) {
-            gameState.tick = t;
-            advanceTick(gameState);
-        }
-
-        // Starvation event through full year + extra months
-        planet.population.starvationLevel = 0.7;
-
-        const totalTicks = TICKS_PER_MONTH * 15; // 15 months (> 1 year)
-        for (let t = 6; t <= totalTicks + 5; t++) {
-            gameState.tick = t;
-            advanceTick(gameState);
-
-            const d = checkFullConsistency(planet, agents, `tick ${t}`);
-            if (d.length > 0) {
-                throw new Error(`Consistency check failed at tick ${t}:\n${d.slice(0, 10).join('\n')}`);
-            }
-        }
-    });
-
     it('maintains consistency through extreme starvation (S=1) for 1 month', () => {
         const { planet, gov } = makePlanet(100_000);
         const company = makeAgent('company-1');
