@@ -3,7 +3,6 @@ import { educationLevelKeys, OCCUPATIONS } from './planet';
 import { MIN_EMPLOYABLE_AGE } from './constants';
 import { getWealthDemography } from './population/populationHelpers';
 import { getAgentDepositsForPlanet } from './financial/depositHelpers';
-import { exit } from 'process';
 
 type OccupationTotals = {
     company: number;
@@ -223,10 +222,6 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
         }
     }
 
-    if (discrepancies.length && process.env.SIM_DEBUG === '1') {
-        console.error('Population/workforce consistency check failed:\n' + discrepancies.join('\n'));
-        exit(1);
-    }
     return discrepancies;
 }
 

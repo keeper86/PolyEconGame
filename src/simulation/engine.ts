@@ -17,18 +17,31 @@ export type { GameState };
 export { populationTick, populationAdvanceYear, environmentTick, productionTick };
 export { seedRng };
 
-process.env.SIM_DEBUG = '0';
+/**
+ * Run all invariant checks for the current game state.
+ * Returns an array of discrepancy messages (empty = healthy).
+ *
+ * Exposed for use in test-only or debug-mode validation.
+ */
+export function runInvariantChecks(gs: GameState): string[] {
+    return [
+        ...checkPopulationWorkforceConsistency(gs.agents, gs.planets),
+        ...checkAgeMomentConsistency(gs.agents, gs.planets),
+    ];
+}
 
-function debugCheck(stepName: string, gs: GameState): void {
+/**
+ * End-of-tick debug check: when SIM_DEBUG=1 is set, runs all invariant
+ * checks once at the end of the tick and logs any discrepancies.
+ * Does NOT call process.exit — callers decide how to handle failures.
+ */
+function debugCheckEndOfTick(gs: GameState): void {
     if (process.env.SIM_DEBUG !== '1') {
         return;
     }
-    const d1 = checkPopulationWorkforceConsistency(gs.agents, gs.planets);
-    const d2 = checkAgeMomentConsistency(gs.agents, gs.planets);
-    const d = [...d1, ...d2];
+    const d = runInvariantChecks(gs);
     if (d.length) {
-        console.error(`tick ${gs.tick} after ${stepName}: ${d.join('; ')}`);
-        process.exit(1);
+        console.error(`[SIM_DEBUG] tick ${gs.tick} invariant failures:\n  ${d.join('\n  ')}`);
     }
 }
 
@@ -37,60 +50,47 @@ function debugCheck(stepName: string, gs: GameState): void {
 export function advanceTick(gameState: GameState) {
     // 1. Environment tick
     environmentTick(gameState);
-    debugCheck('environmentTick', gameState);
 
     // 2. Workforce allocation update
     updateAllocatedWorkers(gameState.agents, gameState.planets);
-    debugCheck('updateAllocatedWorkers', gameState);
 
     // 3. Labor market tick
     laborMarketTick(gameState.agents, gameState.planets);
-    debugCheck('laborMarketTick', gameState);
 
     // 4. Pre-production financial tick: wages, working-capital loans
     preProductionFinancialTick(gameState);
-    debugCheck('preProductionFinancialTick', gameState);
 
     // 5. Population tick: nutrition, mortality, disability, fertility
     populationTick(gameState);
-    debugCheck('populationTick', gameState);
 
     // 6. Production tick: facility output
     productionTick(gameState);
-    debugCheck('productionTick', gameState);
 
     // 7. Agent pricing: each food producer sets its offer price & quantity
     updateAgentPricing(gameState);
-    debugCheck('updateAgentPricing', gameState);
 
     // 8. Food market clearing: demand, per-agent merit-order dispatch, settlement
     foodMarketTick(gameState);
-    debugCheck('foodMarketTick', gameState);
 
     // 9. Intergenerational transfers: family support flows
     intergenerationalTransfersTick(gameState);
-    debugCheck('intergenerationalTransfersTick', gameState);
 
     // 10. Wealth diffusion: low-temperature variance smoothing
     wealthDiffusionTick(gameState);
-    debugCheck('wealthDiffusionTick', gameState);
 
     // 11. Post-production financial tick: loan repayment, reconciliation
     postProductionFinancialTick(gameState);
-    debugCheck('postProductionFinancialTick', gameState);
 
     // Month/year boundary updates
     if (isMonthBoundary(gameState.tick)) {
         laborMarketMonthTick(gameState.agents, gameState.planets);
-        debugCheck('laborMarketMonthTick', gameState);
     }
 
     if (isYearBoundary(gameState.tick)) {
         populationAdvanceYearTick(gameState);
         laborMarketYearTick(gameState.agents);
-        debugCheck('populationBoundaryTick&laborMarketYearTick', gameState);
     }
 
-    // Final check
-    debugCheck('final', gameState);
+    // Single end-of-tick invariant check (SIM_DEBUG=1 only)
+    debugCheckEndOfTick(gameState);
 }
