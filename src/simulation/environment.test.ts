@@ -2,58 +2,32 @@ import { describe, it, expect } from 'vitest';
 import { environmentTick } from './environment';
 import type { GameState, Planet } from './planet';
 import type { Resource } from './facilities';
+import { WorldBuilder } from './testUtils';
 
 describe('environmentTick', () => {
     it('reduces pollution by constant and percentage and not below zero', () => {
-        const p1: Planet = {
-            id: 'p1',
-            name: 'P1',
-            position: { x: 0, y: 0, z: 0 },
-            population: { demography: [], starvationLevel: 0 },
-            resources: {},
-            governmentId: 'g1',
-            bank: {
-                depositRate: 0,
-                deposits: 0,
-                equity: 0,
-                householdDeposits: 0,
-                loanRate: 0,
-                loans: 0,
-            },
-            infrastructure: {
-                primarySchools: 0,
-                secondarySchools: 0,
-                universities: 0,
-                hospitals: 0,
-                mobility: { roads: 0, railways: 0, airports: 0, seaports: 0, spaceports: 0 },
-                energy: { production: 0 },
-            },
-            environment: {
-                naturalDisasters: { earthquakes: 0, floods: 0, storms: 0 },
+        const { gameState, planet } = new WorldBuilder()
+            .withPlanet({
+                id: 'p1',
                 pollution: { air: 50, water: 10, soil: 2 },
                 regenerationRates: {
                     air: { constant: 5, percentage: 0.1 },
                     water: { constant: 2, percentage: 0.5 },
                     soil: { constant: 1, percentage: 0.5 },
                 },
-            },
-        };
-        const state: GameState = {
-            tick: 0,
-            agents: new Map(),
-            planets: new Map([['p1', p1]]),
-        };
+            })
+            .build();
 
-        environmentTick(state);
+        environmentTick(gameState);
 
         // air: 50 - 5 - 50 * 0.1 = 40
-        expect(state.planets.get('p1')!.environment.pollution.air).toBeCloseTo(40);
+        expect(planet.environment.pollution.air).toBeCloseTo(40);
 
         // water: 10 - 2 - 10 * 0.5 = 3
-        expect(state.planets.get('p1')!.environment.pollution.water).toBeCloseTo(3);
+        expect(planet.environment.pollution.water).toBeCloseTo(3);
 
         // soil: 2 - 1 - 2 * 0.5 = 0 -> clamp to 0
-        expect(state.planets.get('p1')!.environment.pollution.soil).toBe(0);
+        expect(planet.environment.pollution.soil).toBe(0);
     });
 
     it('regenerates resources up to maximumCapacity and does not exceed it', () => {
