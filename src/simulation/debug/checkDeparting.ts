@@ -1,5 +1,14 @@
-import { agentMap, planetMap, makeAgent, makePlanet } from '../src/simulation/workforce/testHelpers';
-import { laborMarketMonthTick } from '../src/simulation/workforce/laborMarketMonthTick';
+/**
+ * simulation/debug/checkDeparting.ts
+ *
+ * Debug/experiment script that exercises the departing pipeline in the labor
+ * market month tick.  Originally lived in scripts/checkDeparting.ts.
+ *
+ * Run with: npx tsx src/simulation/debug/checkDeparting.ts
+ */
+
+import { agentMap, planetMap, makeAgent, makePlanet } from '../workforce/testHelpers';
+import { laborMarketMonthTick } from '../workforce/laborMarketMonthTick';
 
 function printPipeline(wf: any) {
     for (let t = 0; t < 1; t++) {
