@@ -49,6 +49,7 @@ function makeAgent(id: string): Agent {
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [] as ProductionFacility[],
+                deposits: 0,
                 storageFacility: makeStorage(),
                 allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
             },
@@ -64,7 +65,8 @@ function makePlanet(id = 'planet-1'): Planet {
         position: { x: 0, y: 0, z: 0 },
         population: { demography: [], starvationLevel: 0 },
         resources: {},
-        government,
+        governmentId: government.id,
+        bank: { depositRate: 0, loanRate: 0, reserves: 0, deposits: 0, loans: 0, equity: 0, householdDeposits: 0 },
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -90,8 +92,8 @@ function makeGameState(): GameState {
     const agent = makeAgent('agent-1');
     return {
         tick: 5,
-        planets: new Map([[planet.id, planet]]),
-        agents: new Map([[agent.id, agent]]),
+        planets: Map([[planet.id, planet]]),
+        agents: Map([[agent.id, agent]]),
     };
 }
 
@@ -172,8 +174,8 @@ describe('GameStateRecord', () => {
 
         const gs = new GameStateRecord({
             tick: 10,
-            planets: Map({ [planet.id]: planetRecord }),
-            agents: Map({ [agent.id]: agentRecord }),
+            planets: Map([[planet.id, planetRecord]]),
+            agents: Map([[agent.id, agentRecord]]),
         });
 
         expect(gs.tick).toBe(10);
@@ -239,11 +241,11 @@ describe('toImmutableGameState', () => {
         const p2 = makePlanet('beta');
         const state: GameState = {
             tick: 3,
-            planets: new Map([
+            planets: Map([
                 [p1.id, p1],
                 [p2.id, p2],
             ]),
-            agents: new Map(),
+            agents: Map(),
         };
 
         const record = toImmutableGameState(state);

@@ -1,6 +1,7 @@
 'use client';
 
 import type { AgentResourceSnapshot } from '@/app/agents/AgentOverview';
+import AgentFinancialPanel from '@/app/agents/AgentFinancialPanel';
 import ProductionFacilitiesPanel from '@/app/agents/ProductionFacilitiesPanel';
 import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
 import { Page } from '@/components/client/Page';
@@ -192,6 +193,7 @@ export default function AgentPlanetDetailPage() {
         agentId: string;
         agentName: string;
         planetId: string;
+        deposits: number;
         assets: PlanetAssets;
     } | null;
     const assets = detail?.assets;
@@ -233,6 +235,12 @@ export default function AgentPlanetDetailPage() {
                     {/* Storage */}
                     {assets.storageFacility && <StorageOverview storage={assets.storageFacility} />}
                     <AgentStorageHistoryCharts agentId={agentId} />
+
+                    {/* Financial position */}
+                    <AgentFinancialPanel
+                        deposits={detail?.deposits ?? 0}
+                        workforceDemography={assets.workforceDemography}
+                    />
                 </div>
             ) : isLoading ? (
                 <div className='text-sm text-muted-foreground'>Loading planet assets…</div>

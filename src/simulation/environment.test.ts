@@ -5,13 +5,21 @@ import type { Resource } from './facilities';
 
 describe('environmentTick', () => {
     it('reduces pollution by constant and percentage and not below zero', () => {
-        const p1 = {
+        const p1: Planet = {
             id: 'p1',
             name: 'P1',
             position: { x: 0, y: 0, z: 0 },
             population: { demography: [], starvationLevel: 0 },
             resources: {},
             governmentId: 'g1',
+            bank: {
+                depositRate: 0,
+                deposits: 0,
+                equity: 0,
+                householdDeposits: 0,
+                loanRate: 0,
+                loans: 0,
+            },
             infrastructure: {
                 primarySchools: 0,
                 secondarySchools: 0,
@@ -29,7 +37,7 @@ describe('environmentTick', () => {
                     soil: { constant: 1, percentage: 0.5 },
                 },
             },
-        } as Planet;
+        };
         const state: GameState = {
             tick: 0,
             agents: new Map(),

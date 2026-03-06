@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
+import type { GameState } from './engine';
 import { advanceTick } from './engine';
 import { emptyCohort, totalPopulation } from './population/populationHelpers';
 import { createWorkforceDemography } from './workforce/workforceHelpers';
+import type { Agent, Planet } from './planet';
 
 // Minimal storage facility stub (not used but assets expect it)
 function makeStorageFacility() {
@@ -20,7 +22,7 @@ function makeStorageFacility() {
     };
 }
 
-function makeAgent(id = 'agent-1') {
+function makeAgent(id = 'agent-1'): Agent {
     return {
         id,
         name: id,
@@ -32,6 +34,7 @@ function makeAgent(id = 'agent-1') {
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),
@@ -40,7 +43,7 @@ function makeAgent(id = 'agent-1') {
     };
 }
 
-function makePlanet(unoccupiedTotal = 10000) {
+function makePlanet(unoccupiedTotal = 10000): Planet {
     // 101 cohorts
     const demography = Array.from({ length: 101 }, () => emptyCohort());
 
@@ -61,6 +64,14 @@ function makePlanet(unoccupiedTotal = 10000) {
         population: { demography, starvationLevel: 0 },
         resources: {},
         governmentId: gov.id,
+        bank: {
+            loans: 0,
+            deposits: 0,
+            householdDeposits: 0,
+            equity: 0,
+            loanRate: 0,
+            depositRate: 0,
+        },
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -92,6 +103,7 @@ describe('advanceTick invariants', () => {
             resourceClaims: [],
             resourceTenancies: [],
             productionFacilities: [],
+            deposits: 0,
             storageFacility: makeStorageFacility(),
             allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
             workforceDemography: createWorkforceDemography(),
@@ -100,7 +112,7 @@ describe('advanceTick invariants', () => {
         // Company requests more workers than exist to stress hiring
         company.assets.p.allocatedWorkers.none = 20000;
 
-        const gameState = {
+        const gameState: GameState = {
             tick: 0,
             planets: new Map([[planet.id, planet]]),
             agents: new Map([

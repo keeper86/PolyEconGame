@@ -5,12 +5,15 @@
  * education-progression / dropout transitions.
  */
 
-import type { Population, Cohort } from '../planet';
+import type { Population, Cohort, EducationLevelType, Occupation } from '../planet';
 import { educationLevelKeys, educationLevels, maxAge, OCCUPATIONS } from '../planet';
 import {
     ageDropoutProbabilityForEducation,
     educationGraduationProbabilityForAge,
     emptyCohort,
+    emptyWealthCohort,
+    getWealthDemography,
+    mergeWealthMoments,
 } from './populationHelpers';
 import { stochasticRound } from '../utils/stochasticRound';
 
@@ -31,14 +34,49 @@ import { stochasticRound } from '../utils/stochasticRound';
 export const populationAdvanceYear = (population: Population, totalInCohort: number[]): void => {
     const newdemography: Cohort[] = Array.from({ length: maxAge + 1 }, () => emptyCohort());
 
+    // Build a new wealth demography parallel to the new demography.
+    const oldWealth = getWealthDemography(population);
+    const newWealth = Array.from({ length: maxAge + 1 }, () => emptyWealthCohort());
+    // Counts accumulated in newdemography, used for wealth merging
+    const newCounts: Array<Record<EducationLevelType, Record<Occupation, number>>> = Array.from(
+        { length: maxAge + 1 },
+        () => {
+            const c = {} as Record<EducationLevelType, Record<Occupation, number>>;
+            for (const l of educationLevelKeys) {
+                c[l] = {} as Record<Occupation, number>;
+                for (const o of OCCUPATIONS) {
+                    c[l][o] = 0;
+                }
+            }
+            return c;
+        },
+    );
+
+    // Helper: add `addCount` people with wealth `srcW` into slot (targetAge, edu, occ)
+    // in the new structures, using parallel-axis merge.
+    function addToNew(
+        targetAge: number,
+        edu: EducationLevelType,
+        occ: Occupation,
+        addCount: number,
+        srcW: { mean: number; variance: number },
+    ): void {
+        if (targetAge < 0 || targetAge > maxAge || addCount <= 0) {
+            return;
+        }
+        const existing = newCounts[targetAge][edu][occ];
+        newWealth[targetAge][edu][occ] = mergeWealthMoments(existing, newWealth[targetAge][edu][occ], addCount, srcW);
+        newCounts[targetAge][edu][occ] += addCount;
+    }
+
     // --- Carry over existing maxAge survivors first ---
-    // People already at maxAge stay at maxAge (they can't age further).
-    // They will be merged with new arrivals from age maxAge-1 below.
     const existingMaxAge = population.demography[maxAge];
     if (existingMaxAge) {
         for (const edu of educationLevelKeys) {
             for (const occ of OCCUPATIONS) {
-                newdemography[maxAge][edu][occ] += existingMaxAge[edu][occ];
+                const n = existingMaxAge[edu][occ];
+                newdemography[maxAge][edu][occ] += n;
+                addToNew(maxAge, edu, occ, n, oldWealth[maxAge][edu][occ]);
             }
         }
     }
@@ -51,6 +89,7 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
         }
 
         const nextAgeCohort = emptyCohort();
+        const targetAge = Math.min(age + 1, maxAge);
 
         for (const edu of educationLevelKeys) {
             for (const occ of OCCUPATIONS) {
@@ -58,6 +97,7 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
                 if (count === 0) {
                     continue;
                 }
+                const srcW = oldWealth[age][edu][occ];
 
                 if (occ === 'education') {
                     const gradProb = educationGraduationProbabilityForAge(age, edu);
@@ -73,7 +113,9 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
                         const voluntaryDropouts = graduates - transitioners;
 
                         nextAgeCohort[nextEducation.type][occ] += transitioners;
+                        addToNew(targetAge, nextEducation.type, occ, transitioners, srcW);
                         nextAgeCohort[nextEducation.type].unoccupied += voluntaryDropouts;
+                        addToNew(targetAge, nextEducation.type, 'unoccupied', voluntaryDropouts, srcW);
                     }
 
                     if (stay > 0) {
@@ -82,21 +124,22 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
                         const remainers = stay - dropouts;
 
                         if (age < 6) {
-                            // Before age 6, children cannot drop out of education
                             nextAgeCohort[edu][occ] += dropouts;
+                            addToNew(targetAge, edu, occ, dropouts, srcW);
                         } else {
                             nextAgeCohort[edu].unoccupied += dropouts;
+                            addToNew(targetAge, edu, 'unoccupied', dropouts, srcW);
                         }
                         nextAgeCohort[edu][occ] += remainers;
+                        addToNew(targetAge, edu, occ, remainers, srcW);
                     }
                 } else {
                     nextAgeCohort[edu][occ] += count;
+                    addToNew(targetAge, edu, occ, count, srcW);
                 }
             }
         }
 
-        // Age maxAge-1 → maxAge: merge with existing maxAge survivors
-        // All other ages just shift up by 1
         if (age + 1 === maxAge) {
             for (const edu of educationLevelKeys) {
                 for (const occ of OCCUPATIONS) {
@@ -109,4 +152,5 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
     }
 
     population.demography = newdemography;
+    population.wealthDemography = newWealth;
 };

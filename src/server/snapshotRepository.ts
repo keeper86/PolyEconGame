@@ -178,6 +178,7 @@ export const summariseAgentBlob = (agentId: string, wealth: number, blob: unknow
 /** Per-planet summary returned by getAgentOverview. */
 export type AgentPlanetSummary = {
     planetId: string;
+    deposits: number;
     facilityCount: number;
     avgEfficiency: number | null;
     totalWorkers: number;
@@ -191,6 +192,8 @@ export type AgentOverviewData = {
     name: string;
     associatedPlanetId: string;
     wealth: number;
+    /** Firm deposit balance (currency units). 0 when not yet set by the financial tick. */
+    deposits: number;
     shipCount: number;
     planets: AgentPlanetSummary[];
 };
@@ -236,6 +239,7 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
     return {
         planetId,
         facilityCount,
+        deposits: assets.deposits,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,
         unusedWorkerFraction: assets.unusedWorkerFraction ?? 0,

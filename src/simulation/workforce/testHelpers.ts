@@ -49,6 +49,8 @@ export function makeAgent(id = 'agent-1'): Agent {
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),
+                deposits: 0,
+                loans: 0,
             },
         },
     };
@@ -82,6 +84,7 @@ export function makePlanet(unoccupiedByEdu?: Partial<Record<string, number>>): {
         population: { demography, starvationLevel: 0 },
         resources: {},
         governmentId: gov.id,
+        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0, depositRate: 0 },
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,

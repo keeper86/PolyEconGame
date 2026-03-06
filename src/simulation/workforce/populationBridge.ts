@@ -11,9 +11,10 @@
  */
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
-import type { EducationLevelType, Occupation, Planet } from '../planet';
+import type { EducationLevelType, Occupation, Planet, WealthMoments } from '../planet';
 import { DEFAULT_HIRE_AGE_MEAN } from './workforceHelpers';
 import { distributeProportionally } from '../utils/distributeProportionally';
+import { getWealthDemography, mergeWealthMoments } from '../population/populationHelpers';
 
 // ---------------------------------------------------------------------------
 // Query helpers
@@ -41,29 +42,37 @@ export function totalUnoccupiedForEdu(planet: Planet, edu: EducationLevelType): 
  * planet's population, spreading removals proportionally across age cohorts.
  * Workers are moved from 'unoccupied' to the specified occupation.
  * Returns the number actually hired (may be less than `count` if supply is short)
- * together with the mean age and age variance of the hired workers.
+ * together with the mean age and age variance of the hired workers,
+ * and the mean wealth and wealth variance of the hired workers.
  */
 export function hireFromPopulation(
     planet: Planet,
     edu: EducationLevelType,
     count: number,
     occupation: Occupation,
-): { count: number; meanAge: number; varAge: number } {
+): { count: number; meanAge: number; varAge: number; meanWealth: number; varWealth: number } {
     if (count <= 0) {
-        return { count: 0, meanAge: DEFAULT_HIRE_AGE_MEAN, varAge: 0 };
+        return { count: 0, meanAge: DEFAULT_HIRE_AGE_MEAN, varAge: 0, meanWealth: 0, varWealth: 0 };
     }
 
     const demography = planet.population.demography;
     const available = totalUnoccupiedForEdu(planet, edu);
     const toHire = Math.min(count, available);
     if (toHire <= 0) {
-        return { count: 0, meanAge: DEFAULT_HIRE_AGE_MEAN, varAge: 0 };
+        return { count: 0, meanAge: DEFAULT_HIRE_AGE_MEAN, varAge: 0, meanWealth: 0, varWealth: 0 };
     }
+
+    const wealthDemography = getWealthDemography(planet.population);
 
     // Distribute hires proportionally across employable age cohorts
     let hired = 0;
     let sumAges = 0;
     let sumAgesSq = 0;
+    // Accumulate hired wealth moments using online parallel-axis merge
+    let hiredWealthMean = 0;
+    let hiredWealthVar = 0;
+    let hiredAccum = 0;
+
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
         const cohort = demography[age];
         const cohortUnoccupied = cohort[edu]?.unoccupied ?? 0;
@@ -77,6 +86,19 @@ export function hireFromPopulation(
         hired += actual;
         sumAges += actual * age;
         sumAgesSq += actual * age * age;
+
+        if (actual > 0) {
+            const srcW = wealthDemography[age][edu].unoccupied;
+            const merged = mergeWealthMoments(
+                hiredAccum,
+                { mean: hiredWealthMean, variance: hiredWealthVar },
+                actual,
+                srcW,
+            );
+            hiredWealthMean = merged.mean;
+            hiredWealthVar = merged.variance;
+            hiredAccum += actual;
+        }
     }
 
     // Handle rounding remainder: pick from youngest employable available
@@ -96,6 +118,17 @@ export function hireFromPopulation(
                 remainder -= take;
                 sumAges += take * age;
                 sumAgesSq += take * age * age;
+
+                const srcW = wealthDemography[age][edu].unoccupied;
+                const merged = mergeWealthMoments(
+                    hiredAccum,
+                    { mean: hiredWealthMean, variance: hiredWealthVar },
+                    take,
+                    srcW,
+                );
+                hiredWealthMean = merged.mean;
+                hiredWealthVar = merged.variance;
+                hiredAccum += take;
             }
         }
     }
@@ -103,7 +136,7 @@ export function hireFromPopulation(
     const meanAge = hired > 0 ? sumAges / hired : DEFAULT_HIRE_AGE_MEAN;
     // Population variance: E[age²] - E[age]²
     const varAge = hired > 0 ? Math.max(0, sumAgesSq / hired - meanAge * meanAge) : 0;
-    return { count: hired, meanAge, varAge };
+    return { count: hired, meanAge, varAge, meanWealth: hiredWealthMean, varWealth: hiredWealthVar };
 }
 
 // ---------------------------------------------------------------------------
@@ -222,6 +255,7 @@ function transferInPopulation(
 /**
  * Return `count` workers of the given education level back to the planet's
  * unoccupied population pool, moving them from the specified occupation.
+ * Their `wealthMoments` (if provided) are merged into the destination cells.
  *
  * Workers are distributed proportionally across age cohorts so that cohorts
  * with more employed workers contribute proportionally more returners.
@@ -231,13 +265,19 @@ export function returnToPopulation(
     edu: EducationLevelType,
     count: number,
     occupation: Occupation,
+    wealthMoments?: WealthMoments,
 ): number {
-    return transferInPopulation(planet, edu, count, occupation, 'unoccupied', /* preferOlder */ false);
+    const moved = transferInPopulation(planet, edu, count, occupation, 'unoccupied', /* preferOlder */ false);
+    if (moved > 0 && wealthMoments) {
+        _distributeReturnedWealth(planet, edu, 'unoccupied', occupation, moved, wealthMoments);
+    }
+    return moved;
 }
 
 /**
  * Retire `count` workers of the given education level into the planet's
  * population as 'unableToWork', moving them from the specified occupation.
+ * Their `wealthMoments` (if provided) are merged into the destination cells.
  *
  * Workers are distributed proportionally across age cohorts with a bias
  * towards older cohorts for rounding remainders, reflecting the
@@ -248,6 +288,67 @@ export function retireToPopulation(
     edu: EducationLevelType,
     count: number,
     occupation: Occupation,
+    wealthMoments?: WealthMoments,
 ): number {
-    return transferInPopulation(planet, edu, count, occupation, 'unableToWork', /* preferOlder */ true);
+    const moved = transferInPopulation(planet, edu, count, occupation, 'unableToWork', /* preferOlder */ true);
+    if (moved > 0 && wealthMoments) {
+        _distributeReturnedWealth(planet, edu, 'unableToWork', occupation, moved, wealthMoments);
+    }
+    return moved;
+}
+
+/**
+ * Merge wealth moments from `moved` returned workers into the destination
+ * cells of the wealth demography.  Workers are assumed to carry the same
+ * `wealthMoments` regardless of which age cohort they end up in (since the
+ * workforce pipeline doesn't track per-age wealth).
+ *
+ * Note: This function is called AFTER `transferInPopulation` has already moved
+ * workers from `srcOcc` to `dstOcc`.  We estimate the number of arrivals per
+ * age cohort using the post-transfer distribution (proportional to current
+ * `dstOcc` count).  The approximation is slightly biased because post-transfer
+ * counts include the arrivals, but the error is small relative to existing
+ * populations and is acceptable for the initial implementation.
+ */
+function _distributeReturnedWealth(
+    planet: Planet,
+    edu: EducationLevelType,
+    dstOcc: Occupation,
+    _srcOcc: Occupation,
+    moved: number,
+    wealthMoments: WealthMoments,
+): void {
+    if (moved <= 0) {
+        return;
+    }
+    const wealthDemography = getWealthDemography(planet.population);
+    const demography = planet.population.demography;
+
+    // Count how many ended up in each age cohort (their dstOcc count increased)
+    // We can't easily recover per-age counts here, so distribute moved workers
+    // proportionally across age cohorts that have the dstOcc occupation for edu.
+    let totalDst = 0;
+    for (let age = 0; age < demography.length; age++) {
+        totalDst += demography[age][edu]?.[dstOcc] ?? 0;
+    }
+    if (totalDst <= 0) {
+        return;
+    }
+
+    // Approximate: spread `moved` proportionally to existing dstOcc counts.
+    // Each returned worker carries the same wealthMoments (pipeline-level average).
+    for (let age = 0; age < demography.length; age++) {
+        const ageDst = demography[age][edu]?.[dstOcc] ?? 0;
+        if (ageDst <= 0) {
+            continue;
+        }
+        // Estimate how many of `moved` went to this age cohort
+        const ageShare = Math.round((ageDst / totalDst) * moved);
+        if (ageShare <= 0) {
+            continue;
+        }
+        const existingCount = ageDst - ageShare; // count before the return
+        const w = wealthDemography[age][edu][dstOcc];
+        wealthDemography[age][edu][dstOcc] = mergeWealthMoments(existingCount, w, ageShare, wealthMoments);
+    }
 }

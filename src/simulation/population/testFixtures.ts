@@ -34,6 +34,7 @@ export function createPlanetWithStorage(storage: StorageFacility, population: Po
         population,
         resources: {},
         governmentId: 'gov',
+        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0, depositRate: 0 },
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -64,6 +65,7 @@ export function createGovAgent(storage: StorageFacility): Agent {
         transportShips: [],
         assets: {
             p: {
+                deposits: 0,
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
@@ -71,7 +73,7 @@ export function createGovAgent(storage: StorageFacility): Agent {
                 allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
             },
         },
-    } as Agent;
+    };
 }
 
 /** Wrap agents into a Map keyed by id. */

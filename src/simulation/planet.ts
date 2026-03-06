@@ -1,5 +1,105 @@
 import type { ProductionFacility, Resource, ResourceType, StorageFacility } from './facilities';
 
+// ---------------------------------------------------------------------------
+// Wealth-tracking types
+// ---------------------------------------------------------------------------
+
+/**
+ * Mean and variance of wealth for a group of individuals.
+ * Combined across groups using the parallel-axis (pooled-variance) formula.
+ */
+export interface WealthMoments {
+    mean: number;
+    variance: number;
+}
+
+/** Wealth moments for every education × occupation cell in one age cohort. */
+export type WealthCohort = { [L in EducationLevelType]: { [O in Occupation]: WealthMoments } };
+
+/** One entry per age index — a parallel structure to `Population.demography`. */
+export type WealthDemography = WealthCohort[];
+
+// ---------------------------------------------------------------------------
+// Food market types
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-cohort-class (age × education × occupation) household food buffer.
+ * Parallel structure to WealthDemography.
+ */
+export interface FoodBuffer {
+    /** Current food stock (tons per person in this cell). */
+    foodStock: number;
+}
+
+/** Food buffer for every edu × occupation cell in one age cohort. */
+export type FoodBufferCohort = { [L in EducationLevelType]: { [O in Occupation]: FoodBuffer } };
+
+/** One entry per age index — parallel to Population.demography. */
+export type FoodBufferDemography = FoodBufferCohort[];
+
+/**
+ * Planet-level food market state.
+ *
+ * Per-agent pricing: each food-producing agent sets its own price and
+ * offer quantity.  The planet-level FoodMarket only tracks household
+ * food buffers and the volume-weighted average price (for the price
+ * level used elsewhere in the economy).
+ */
+export interface FoodMarket {
+    /**
+     * Volume-weighted average clearing price from the most recent tick.
+     * Used as the economy-wide price level reference.
+     * Updated each market tick from per-agent offers.
+     */
+    foodPrice: number;
+    /**
+     * Per-cohort household food buffers.
+     * Lazily initialised, parallel to Population.demography.
+     */
+    householdFoodBuffers?: FoodBufferDemography;
+    /**
+     * Per-age net intergenerational transfer balance (currency units).
+     * Positive = net receiver, negative = net giver.
+     * Written each tick by `intergenerationalTransfersTick`.
+     * Consumed by the frontend for the transfer chart — no re-simulation
+     * on the client.  Index = age.
+     */
+    lastTransferBalances?: number[];
+}
+
+// ---------------------------------------------------------------------------
+// Banking types
+// ---------------------------------------------------------------------------
+
+/**
+ * Single combined central + commercial bank per planet.
+ * Money is created when loans are issued and destroyed when repaid.
+ */
+export interface Bank {
+    /** Total outstanding loans to firms (asset side of the bank's balance sheet). */
+    loans: number;
+    /**
+     * Total deposits held at the bank (liability side).
+     * Invariant: deposits === firmDeposits + householdDeposits,
+     * where firmDeposits = Σ agent.deposits for all agents on this planet.
+     */
+    deposits: number;
+    /**
+     * Aggregate household deposit balance (currency units).
+     * Wages flow into this account; consumption flows out.
+     * Tracks the monetary component of household wealth that is held
+     * as bank deposits (as opposed to non-monetary wealth in wealthDemography).
+     */
+    householdDeposits: number;
+    /** Bank's own equity = deposits − loans. */
+    equity: number;
+    /** Interest rate on loans per tick (0 = no interest for initial implementation). */
+    loanRate: number;
+    /** Interest rate on deposits per tick (0 = no interest for initial implementation). */
+    depositRate: number;
+}
+
 export type PlanetaryId = {
     planetId: string;
     id: string;
@@ -150,6 +250,12 @@ export interface TenureCohort {
     retiring: Record<EducationLevelType, number[]>;
     /** Age distribution moments (mean, variance) per education level for active workers. */
     ageMoments: Record<EducationLevelType, AgeMoments>;
+    /** Wealth moments (mean, variance) per education level for active workers. */
+    wealthMoments: Record<EducationLevelType, WealthMoments>;
+    /** Wealth moments per education level for each slot in the departing pipeline. */
+    departingWealth: Record<EducationLevelType, WealthMoments[]>;
+    /** Wealth moments per education level for each slot in the retiring pipeline. */
+    retiringWealth: Record<EducationLevelType, WealthMoments[]>;
 }
 
 /** Array of TenureCohort indexed by tenure year (0 = first year of employment). */
@@ -166,6 +272,11 @@ export type PopulationTickAccumulator = Record<EducationLevelType, Record<Occupa
 // Population = array of cohorts, index = age (0 = newborns)
 export type Population = {
     demography: Cohort[];
+    /**
+     * Wealth moments (mean, variance) for every age × edu × occupation cell.
+     * Parallel structure to `demography`.  Lazily initialised on first use.
+     */
+    wealthDemography?: WealthDemography;
     // starvationLevel: 0 = no starvation, 1 = full starvation (very high immediate mortality)
     // This persists across ticks and is updated by the simulation engine.
     starvationLevel: number;
@@ -260,6 +371,20 @@ export type Planet = {
     governmentId: string;
     infrastructure: Infrastructure;
     environment: Environment;
+    /** Combined central + commercial bank for this planet. */
+    bank: Bank;
+    /** Food market state: pricing, inventory, household food buffers. */
+    foodMarket?: FoodMarket;
+    /**
+     * Wage per education level (currency units per worker per tick).
+     * Defaults to 1.0 for all levels when not set.
+     */
+    wagePerEdu?: Partial<Record<EducationLevelType, number>>;
+    /**
+     * Current price level P (nominal price per unit of physical output).
+     * Initialized to 1.0; updated each post-production financial tick.
+     */
+    priceLevel?: number;
 };
 
 export type Agent = {
@@ -274,6 +399,42 @@ export type Agent = {
             resourceTenancies: string[]; // resource claims where this agent is the tenant
             productionFacilities: ProductionFacility[];
             storageFacility: StorageFacility;
+            /** Firm deposit balance for this agent on this planet (currency units). */
+            deposits: number;
+            /** Outstanding loan principal for this agent on this planet (currency units). */
+            loans?: number;
+            /**
+             * Last tick's wage bill (currency units).
+             * Used by the retained-earnings threshold for partial loan repayment.
+             */
+            lastWageBill?: number;
+
+            // ----- Per-agent food market pricing fields -----
+
+            /**
+             * Current food offer price set by this agent (currency/ton).
+             * Set by `updateAgentPricing` each tick before market clearing.
+             * Human-controllable: players can override this value.
+             */
+            foodOfferPrice?: number;
+            /**
+             * Quantity of food offered for sale this tick (tons).
+             * Drawn from the agent's storage facility.  Defaults to the
+             * full amount of agricultural product in storage.
+             */
+            foodOfferQuantity?: number;
+            /**
+             * Food produced during the last production tick (tons).
+             * Recorded by the production transfer step; used by the
+             * pricing AI to form its adjustment metric.
+             */
+            lastFoodProduced?: number;
+            /**
+             * Food actually sold during the last market clearing tick (tons).
+             * Written by the market clearing step; consumed by the pricing
+             * AI on the next tick.
+             */
+            lastFoodSold?: number;
 
             allocatedWorkers: {
                 [L in EducationLevelType]: number;

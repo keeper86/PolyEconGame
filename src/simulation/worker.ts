@@ -363,6 +363,26 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     throw new Error(`Unknown query type: ${(_exhaustive as { type: string }).type}`);
                 }
             }
+            // Optional debug logging: print the data payload for queries when
+            // SIM_DEBUG=1 so we can trace where numeric fields may be lost.
+            if (process.env.SIM_DEBUG === '1') {
+                try {
+                    // Only log for the heavier queries we care about.
+                    if (
+                        msg.type === 'getAllPlanets' ||
+                        msg.type === 'getAllAgents' ||
+                        msg.type === 'getPlanet' ||
+                        msg.type === 'getAgent'
+                    ) {
+                        console.debug(
+                            `[worker] queryResponse payload for ${msg.type}:`,
+                            JSON.parse(JSON.stringify(data)),
+                        );
+                    }
+                } catch (_e) {
+                    // ignore logging failures
+                }
+            }
 
             const response: OutboundMessage = {
                 type: 'queryResponse',

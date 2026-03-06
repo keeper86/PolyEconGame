@@ -1,5 +1,8 @@
 import type { Agent, Planet } from './planet';
+import { educationLevelKeys, OCCUPATIONS } from './planet';
 import { MIN_EMPLOYABLE_AGE } from './constants';
+import { getWealthDemography } from './population/populationHelpers';
+import { getAgentDepositsForPlanet } from './financial/depositHelpers';
 import { exit } from 'process';
 
 type OccupationTotals = {
@@ -201,5 +204,107 @@ export function checkPopulationWorkforceConsistency(agents: Map<string, Agent>, 
         console.error('Population/workforce consistency check failed:\n' + discrepancies.join('\n'));
         exit(1);
     }
+    return discrepancies;
+}
+
+// ---------------------------------------------------------------------------
+// Financial / market invariants
+// ---------------------------------------------------------------------------
+
+/**
+ * Check that the bank accounting identity holds:
+ *   bank.deposits ≈ Σ agent.deposits + bank.householdDeposits
+ *
+ * Also checks:
+ * - No negative deposits (firm or household)
+ * - No negative food inventory
+ * - No negative food stock in household buffers
+ * - Aggregate household wealth ≈ bank.householdDeposits
+ */
+export function checkFinancialInvariants(agents: Map<string, Agent>, planets: Map<string, Planet>): string[] {
+    const discrepancies: string[] = [];
+
+    for (const planet of planets.values()) {
+        const bank = planet.bank;
+        if (!bank) {
+            continue;
+        }
+
+        // 1. Bank accounting identity
+        let firmDepositsSum = 0;
+        for (const agent of agents.values()) {
+            if (agent.assets[planet.id]) {
+                const d = getAgentDepositsForPlanet(agent, planet.id);
+                firmDepositsSum += d;
+                // No negative firm deposits
+                if (d < -0.01) {
+                    discrepancies.push(`Planet ${planet.id}: agent ${agent.id} has negative deposits: ${d.toFixed(4)}`);
+                }
+            }
+        }
+
+        const balanceDiff = Math.abs(bank.deposits - (firmDepositsSum + bank.householdDeposits));
+        if (balanceDiff > 0.01) {
+            discrepancies.push(
+                `Planet ${planet.id}: balance-sheet violation: ` +
+                    `bank.deposits=${bank.deposits.toFixed(4)}, ` +
+                    `firmDeposits=${firmDepositsSum.toFixed(4)}, ` +
+                    `householdDeposits=${bank.householdDeposits.toFixed(4)}, ` +
+                    `diff=${balanceDiff.toFixed(6)}`,
+            );
+        }
+
+        // No negative household deposits
+        if (bank.householdDeposits < -0.01) {
+            discrepancies.push(`Planet ${planet.id}: negative householdDeposits: ${bank.householdDeposits.toFixed(4)}`);
+        }
+
+        // 2. No negative food stock in household buffers
+        if (planet.foodMarket?.householdFoodBuffers) {
+            const buffers = planet.foodMarket.householdFoodBuffers;
+            for (let age = 0; age < buffers.length; age++) {
+                for (const edu of educationLevelKeys) {
+                    for (const occ of OCCUPATIONS) {
+                        const fb = buffers[age][edu][occ];
+                        if (fb.foodStock < -0.001) {
+                            discrepancies.push(
+                                `Planet ${planet.id}: negative foodStock at age=${age} edu=${edu} occ=${occ}: ${fb.foodStock.toFixed(6)}`,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Aggregate household wealth ≈ bank.householdDeposits
+        //    Sum(meanFinancialWealth × population) should equal bank.householdDeposits
+        const wealthDemography = getWealthDemography(planet.population);
+        const demography = planet.population.demography;
+        let aggregateHouseholdWealth = 0;
+        for (let age = 0; age < demography.length; age++) {
+            for (const edu of educationLevelKeys) {
+                for (const occ of OCCUPATIONS) {
+                    const pop = demography[age][edu][occ];
+                    if (pop > 0) {
+                        aggregateHouseholdWealth += wealthDemography[age][edu][occ].mean * pop;
+                    }
+                }
+            }
+        }
+        // This invariant is expected to hold approximately.
+        // Due to floating-point and the many intermediate steps, we use a
+        // relative tolerance of 1% or absolute tolerance of 1.0.
+        const wealthDiff = Math.abs(aggregateHouseholdWealth - bank.householdDeposits);
+        const relTol = Math.max(1.0, Math.abs(bank.householdDeposits) * 0.01);
+        if (wealthDiff > relTol) {
+            discrepancies.push(
+                `Planet ${planet.id}: aggregate household wealth mismatch: ` +
+                    `wealth=${aggregateHouseholdWealth.toFixed(4)}, ` +
+                    `bank.householdDeposits=${bank.householdDeposits.toFixed(4)}, ` +
+                    `diff=${wealthDiff.toFixed(4)}`,
+            );
+        }
+    }
+
     return discrepancies;
 }

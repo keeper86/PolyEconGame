@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Building2, ChevronRight, Globe, Package, Ship, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { route } from 'nextjs-routes';
-import { Building2, ChevronRight, Globe, Package, Ship, Users, Wallet } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import React from 'react';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -123,14 +123,16 @@ export default function AgentSummaryCard({ summary: s }: Props): React.ReactElem
                                 )}
                             </div>
                         </div>
+                    </div>
 
-                        {/* Ships */}
-                        <div className='space-y-1'>
+                    {/* Secondary metrics row: Ships */}
+                    <div className='mt-3 flex items-center gap-6'>
+                        <div className='space-y-0.5'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
                                 <Ship className='h-3.5 w-3.5' />
                                 Ships
                             </div>
-                            <div className='text-lg font-semibold tabular-nums'>{s.shipCount}</div>
+                            <div className='text-sm font-semibold tabular-nums'>{s.shipCount}</div>
                         </div>
                     </div>
 

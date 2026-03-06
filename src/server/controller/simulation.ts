@@ -40,6 +40,18 @@ export const getLatestPlanets = () =>
         )
         .query(async () => {
             const { tick, planets } = await workerQueries.getAllPlanets();
+            if (process.env.SIM_DEBUG === '1') {
+                try {
+                    // Log bank slices for each planet so we can trace server-side values
+                    // before tRPC serialization.
+                    console.debug(
+                        '[controller] getLatestPlanets banks:',
+                        planets.map((p) => ({ id: p.id, bank: p.bank })),
+                    );
+                } catch (_e) {
+                    // ignore logging issues
+                }
+            }
             return {
                 tick,
                 planets: planets.map((p) => ({
@@ -201,6 +213,7 @@ export const getAgentOverview = () =>
                         planets: z.array(
                             z.object({
                                 planetId: z.string(),
+                                deposits: z.number(),
                                 facilityCount: z.number(),
                                 avgEfficiency: z.number().nullable(),
                                 totalWorkers: z.number(),
@@ -235,6 +248,42 @@ export const getAgentOverview = () =>
                     shipCount: agent.transportShips?.length ?? 0,
                     planets,
                 },
+            };
+        });
+
+/**
+ * Full planet detail for a single planet (by ID).
+ * Used on the /planets/[planetId] detail page.
+ * Returns the full planet snapshot plus pre-computed aggregates for
+ * wealth distribution, food buffers, and demographics.
+ */
+export const getPlanetDetail = () =>
+    procedure
+        .input(
+            z.object({
+                planetId: z.string(),
+            }),
+        )
+        .output(
+            z.object({
+                tick: z.number(),
+                planet: z.any(),
+                populationTotal: z.number(),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ tick }, { planets }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getAllPlanets(),
+            ]);
+            const planet = planets.find((p) => p.id === input.planetId) ?? null;
+            if (!planet) {
+                return { tick, planet: null, populationTotal: 0 };
+            }
+            return {
+                tick,
+                planet,
+                populationTotal: computePopulationTotal(planet),
             };
         });
 

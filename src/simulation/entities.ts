@@ -1,4 +1,4 @@
-import { TICKS_PER_YEAR } from './constants';
+import { TICKS_PER_YEAR, INITIAL_FOOD_PRICE } from './constants';
 import type { ProductionFacility, Resource, StorageFacility } from './facilities';
 import {
     agriculturalProductResourceType,
@@ -154,6 +154,7 @@ export const earthGovernment: Agent = {
             resourceTenancies: ['earth-agricultural', 'earth-water'],
             productionFacilities: [waterExtractionFacility, agriculturalProductionFacility],
             storageFacility: earthStorage,
+            deposits: 0,
             allocatedWorkers: {
                 none: 0,
                 primary: 0,
@@ -178,6 +179,7 @@ export const testCompany: Agent = {
             resourceTenancies: ['earth-iron'],
             productionFacilities: [ironExtractionFacility],
             storageFacility: testCompanyStorage,
+            deposits: 0,
             allocatedWorkers: {
                 none: 0,
                 primary: 0,
@@ -198,6 +200,29 @@ export const earth: Planet = {
     population: createPopulation(8000000000), // 8 billion people
 
     governmentId: earthGovernment.id,
+
+    bank: {
+        loans: 0,
+        deposits: 0,
+        householdDeposits: 0,
+        equity: 0,
+        loanRate: 0,
+        depositRate: 0,
+    },
+
+    foodMarket: {
+        foodPrice: INITIAL_FOOD_PRICE,
+    },
+
+    wagePerEdu: {
+        none: 1.0,
+        primary: 1.0,
+        secondary: 1.0,
+        tertiary: 1.0,
+        quaternary: 1.0,
+    },
+
+    priceLevel: 1.0,
 
     resources: {
         [ironOreDepositResourceType.name]: [
@@ -332,6 +357,30 @@ export const alphaCentauri: Planet = {
     position: { x: 4.37, y: 0, z: 0 }, // in light years
     population: createPopulation(100000), // 100k people
     governmentId: earthGovernment.id,
+
+    bank: {
+        loans: 0,
+        deposits: 0,
+        householdDeposits: 0,
+        equity: 0,
+        loanRate: 0,
+        depositRate: 0,
+    },
+
+    foodMarket: {
+        foodPrice: INITIAL_FOOD_PRICE,
+    },
+
+    wagePerEdu: {
+        none: 1.0,
+        primary: 1.0,
+        secondary: 1.0,
+        tertiary: 1.0,
+        quaternary: 1.0,
+    },
+
+    priceLevel: 1.0,
+
     resources: {
         [waterSourceResourceType.name]: [
             {

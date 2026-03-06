@@ -29,6 +29,7 @@ function makeAgentForPlanet(planetId: string): Agent {
         resourceClaims: [] as string[],
         resourceTenancies: [] as string[],
         productionFacilities: [] as ProductionFacility[],
+        deposits: 0,
         storageFacility: storage,
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
     };

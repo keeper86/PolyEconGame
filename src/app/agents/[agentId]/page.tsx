@@ -1,13 +1,13 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import PlanetAssetCard from '@/app/agents/PlanetAssetCard';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
-import PlanetAssetCard from '@/app/agents/PlanetAssetCard';
 import { useTRPC } from '@/lib/trpc';
-import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Globe, Ship, Wallet } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 const REFETCH_INTERVAL_MS = 1000;
 
@@ -51,7 +51,7 @@ export default function AgentDetailPage() {
             {!isLoading && tick > 0 && overview ? (
                 <div className='space-y-6'>
                     {/* Top-level agent stats */}
-                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-4'>
+                    <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
                                 <Wallet className='h-3.5 w-3.5' />

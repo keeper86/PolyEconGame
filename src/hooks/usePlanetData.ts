@@ -51,6 +51,16 @@ export function usePlanetData(): UsePlanetDataResult {
         popSeries[p.planetId] = [{ tick, value: p.populationTotal }];
     }
 
+    // Dev-only: log the raw tRPC response so we can inspect server payloads
+    // in the browser when running `next dev`.
+    if (process.env.NODE_ENV === 'development') {
+        try {
+            console.debug('[client] planetsQuery.data', planetsQuery.data);
+        } catch (_e) {
+            // ignore logging issues
+        }
+    }
+
     return {
         tick,
         planets,

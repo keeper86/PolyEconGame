@@ -160,6 +160,7 @@ describe('populationBridge — hireFromPopulation', () => {
             resourceClaims: [],
             resourceTenancies: [],
             productionFacilities: [],
+            deposits: 0,
             storageFacility: makeStorageFacility(),
             allocatedWorkers: { none: 0, primary: 500, secondary: 0, tertiary: 0, quaternary: 0 },
             workforceDemography: createWorkforceDemography(),

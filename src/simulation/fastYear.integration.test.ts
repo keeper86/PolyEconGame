@@ -21,7 +21,7 @@ import { advanceTick } from './engine';
 import { createPopulation } from './entities';
 import { totalPopulation } from './population/populationHelpers';
 import { TICKS_PER_YEAR } from './constants';
-import type { Planet, Infrastructure, Environment } from './planet';
+import type { Planet, Infrastructure, Environment, GameState, Agent } from './planet';
 import { createWorkforceDemography } from './workforce/workforceHelpers';
 
 function makeStorageFacility() {
@@ -39,7 +39,7 @@ function makeStorageFacility() {
     };
 }
 
-function makeAgent(id = 'agent-1') {
+function makeAgent(id = 'agent-1'): Agent {
     return {
         id,
         name: id,
@@ -51,6 +51,7 @@ function makeAgent(id = 'agent-1') {
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),
@@ -68,6 +69,7 @@ function makePlanet(totalPop = 10000) {
             resourceClaims: [],
             resourceTenancies: [],
             productionFacilities: [],
+            deposits: 0,
             storageFacility: makeStorageFacility(),
             allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
             workforceDemography: createWorkforceDemography(),
@@ -82,6 +84,14 @@ function makePlanet(totalPop = 10000) {
         population: createPopulation(totalPop),
         resources: {},
         governmentId: gov.id,
+        bank: {
+            depositRate: 0,
+            deposits: 0,
+            equity: 0,
+            householdDeposits: 0,
+            loanRate: 0,
+            loans: 0,
+        },
         infrastructure: {
             primarySchools: 0,
             secondarySchools: 0,
@@ -111,7 +121,7 @@ describe('fast-year integration', () => {
 
         company.assets.p.allocatedWorkers.none = 10000; // over-request to stress
 
-        const gameState = {
+        const gameState: GameState = {
             tick: 0,
             planets: new Map([[planet.id, planet]]),
             agents: new Map([

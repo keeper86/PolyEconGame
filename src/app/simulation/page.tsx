@@ -325,10 +325,113 @@ pollution added = pollutionPerTick · scale · overallEfficiency`}
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 5. LABOR MARKET MONTH TICK                                        */}
+                {/* 5. FINANCIAL TICK                                                 */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='financial'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>5. Financial Tick (every tick, two phases)</h2>
+                    <p>
+                        The financial subsystem implements a minimal <strong>double-entry monetary system</strong> built
+                        around a single planetary bank. Money is created exclusively via loan issuance and destroyed
+                        exclusively via loan repayment — there is no exogenous money supply. The tick is split into two
+                        phases that bracket the production tick.
+                    </p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.1 Balance Sheet</h3>
+                    <p>
+                        Each planet carries a <code>Bank</code> that tracks the aggregate monetary position. The
+                        fundamental invariant maintained after every sub-step is:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`bank.deposits = Σ agent.deposits + bank.householdDeposits
+
+where
+  bank.loans             total outstanding working-capital loans (bank asset)
+  bank.deposits          total money supply (bank liability)
+  bank.householdDeposits money held by households (subset of deposits)
+  Σ agent.deposits       money held by firms (subset of deposits)
+  bank.equity            = bank.deposits − bank.loans (always 0 in the current model)`}
+                    </pre>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.2 Phase A — Pre-Production (wages & loans)</h3>
+                    <p>
+                        Runs after the labor market tick and before the production tick. For each agent on each planet:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`1. Wage bill calculation:
+     wageBill = Σ_edu (activeWorkers[edu] + departingWorkers[edu]) × wage[edu]
+
+     wage[edu] = planet.wagePerEdu[edu] ?? DEFAULT_WAGE_PER_EDU (= 1.0)
+
+2. Working-capital loan (MONEY CREATION):
+     if agent.deposits < wageBill:
+         shortfall = wageBill − agent.deposits
+         bank.loans    += shortfall   (bank asset ↑)
+         bank.deposits += shortfall   (money supply ↑)
+         agent.deposits += shortfall  (firm account ↑)
+
+3. Wage payment (INTERNAL TRANSFER: firm → household):
+     agent.deposits         −= wageBill
+     bank.householdDeposits += wageBill
+     bank.deposits unchanged — money moves between sub-accounts
+
+4. Wealth moment update:
+     For each tenure cohort and each age-education-occupation cell,
+     mean wealth is increased by the per-worker wage.`}
+                    </pre>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>
+                        5.3 Phase B — Post-Production (consumption & repayment)
+                    </h3>
+                    <p>Runs after the production tick. For each planet:</p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`1. Household consumption:
+     For each employed person (age × edu × occupation):
+         c = min(C_INC × wage[edu] + C_WEALTH × wealth, wealth)
+
+     Parameters:
+         C_INC    = 1.0  (marginal propensity to consume from income)
+         C_WEALTH = 0.0  (marginal propensity to consume from wealth)
+     → With these defaults, workers spend exactly their wage each tick.
+
+     C_nom = Σ c × count   (aggregate nominal consumption)
+     bank.householdDeposits −= C_nom
+
+2. Revenue distribution (INTERNAL TRANSFER: household → firm):
+     Each firm receives revenue proportional to its share of active workers:
+         revenue_i = C_nom × (workers_i / Σ workers)
+         agent_i.deposits += revenue_i
+     bank.deposits unchanged — money moves between sub-accounts.
+
+3. Loan repayment (MONEY DESTRUCTION):
+     Each firm repays up to its full deposit balance:
+         repayment = min(bank.loans, agent.deposits)
+         agent.deposits −= repayment
+         bank.loans     −= repayment  (bank asset ↓)
+         bank.deposits  −= repayment  (money supply ↓)`}
+                    </pre>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.4 The Perfect Circle</h3>
+                    <p>
+                        With the current parameters (C_INC&nbsp;=&nbsp;1, C_WEALTH&nbsp;=&nbsp;0), money flows in a
+                        closed circle each tick: the bank creates a loan equal to the wage bill, wages flow to
+                        households, households consume everything, revenue returns to firms, and firms immediately repay
+                        the loan. After each tick the net bank position returns to approximately zero. Non-zero
+                        end-of-tick balances appear only during transient phases (e.g.&nbsp;when the workforce is still
+                        growing after initialization) and decay to zero once the labor market stabilizes.
+                    </p>
+                    <p className='mt-2'>
+                        This behaviour is intentional for the minimal first implementation. Setting C_WEALTH&nbsp;&gt;
+                        &nbsp;0 or introducing interest rates (loanRate, depositRate) in future iterations will break
+                        the circle and produce meaningful intra-tick bank balances, wealth accumulation, and price-level
+                        dynamics.
+                    </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 6. LABOR MARKET MONTH TICK                                        */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='labor-market-month'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>5. Labor Market Month Tick (every 30 ticks)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>6. Labor Market Month Tick (every 30 ticks)</h2>
                     <p>
                         At every month boundary the departing and retiring pipelines are advanced by one slot. Workers
                         in slot 0 (soonest to leave) are released from the workforce entirely:
@@ -354,7 +457,7 @@ pollution added = pollutionPerTick · scale · overallEfficiency`}
                 {/* 6. POPULATION YEAR TICK                                           */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='population-year'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>6. Population Year Tick (every 360 ticks)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>7. Population Year Tick (every 360 ticks)</h2>
                     <p>
                         Once per year the entire population ages by one year and education transitions are applied. The
                         per-tick mortality has already removed deaths; this step only handles cohort shifting and
@@ -407,7 +510,7 @@ Education level parameters:
                 {/* 7. LABOR MARKET YEAR TICK                                         */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='labor-market-year'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>7. Labor Market Year Tick (every 360 ticks)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>8. Labor Market Year Tick (every 360 ticks)</h2>
                     <p>
                         Once per year, tenure advances by one year for all active and departing workers. Additionally,
                         workers whose mean age has reached or exceeded the retirement threshold (RETIREMENT_AGE = 67
@@ -441,7 +544,7 @@ Retirement (per tenure cohort c, education level edu):
                 {/* 8. TICK ORDERING SUMMARY                                          */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='tick-order'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>8. Tick Ordering Summary</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>9. Tick Ordering Summary</h2>
                     <p>Within each tick the subsystems execute in the following order:</p>
                     <ol className='list-decimal list-inside space-y-1'>
                         <li>
@@ -454,10 +557,17 @@ Retirement (per tenure cohort c, education level edu):
                             <code>laborMarketTick</code> — voluntary quits, hiring, firing
                         </li>
                         <li>
+                            <code>preProductionFinancialTick</code> — wage-bill loans (money creation), wage payment
+                        </li>
+                        <li>
                             <code>populationTick</code> — mortality, births, starvation, disability
                         </li>
                         <li>
                             <code>productionTick</code> — facility output, resource consumption, pollution generation
+                        </li>
+                        <li>
+                            <code>postProductionFinancialTick</code> — household consumption, firm revenue, loan
+                            repayment (money destruction)
                         </li>
                         <li>
                             <em>(month boundary only)</em> <code>laborMarketMonthTick</code> — notice pipeline advance
@@ -472,8 +582,9 @@ Retirement (per tenure cohort c, education level edu):
                     </ol>
                     <p className='mt-4'>
                         This ordering ensures that environmental regeneration is visible to production within the same
-                        tick, and that population deaths computed in <code>populationTick</code> are reflected
-                        deterministically in workforce counts before the next tick begins.
+                        tick, that wages are paid before production runs, that consumption follows production, and that
+                        population deaths computed in <code>populationTick</code> are reflected deterministically in
+                        workforce counts before the next tick begins.
                     </p>
                 </section>
 

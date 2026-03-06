@@ -47,12 +47,13 @@ function makeAgent(id = 'agent-1'): Agent {
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),
             },
         },
-    } as Agent;
+    };
 }
 
 function makePlanet(totalPop: number): { planet: Planet; gov: Agent } {
@@ -236,6 +237,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 500, primary: 3000, secondary: 3000, tertiary: 1500, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),
@@ -291,6 +293,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 200, primary: 1500, secondary: 1500, tertiary: 800, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),
@@ -335,6 +338,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 100, primary: 500, secondary: 500, tertiary: 200, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),
@@ -378,6 +382,7 @@ describe('starvation integration — population ↔ workforce consistency', () =
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 1000, primary: 8000, secondary: 8000, tertiary: 4000, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),

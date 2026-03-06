@@ -2,6 +2,7 @@
 
 import PlanetDemography from '@/app/planets/PlanetDemography';
 import PlanetPopulationChartRecharts from '@/app/planets/PlanetPopulationChartRecharts';
+import BankPanel from '@/app/planets/BankPanel';
 import React from 'react';
 import type { Planet, Population, ResourceClaim, ResourceQuantity } from '../../simulation/planet';
 
@@ -120,6 +121,9 @@ export default function PlanetDetails({ planet, history, latestPopulation }: Pro
                     </div>
                 </div>
             </div>
+
+            {/* Bank / Financial panel */}
+            <BankPanel bank={p.bank} wagePerEdu={p.wagePerEdu} priceLevel={p.priceLevel} />
         </div>
     );
 }

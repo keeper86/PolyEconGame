@@ -49,6 +49,7 @@ function makeAgent(id: string): Agent {
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [] as ProductionFacility[],
+                deposits: 0,
                 storageFacility: makeStorage(),
                 allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
             },
@@ -65,6 +66,14 @@ function makePlanet(id = 'planet-1'): Planet {
         population: { demography: [], starvationLevel: 0.5 },
         resources: {},
         governmentId: government.id,
+        bank: {
+            depositRate: 0,
+            loans: 0,
+            deposits: 0,
+            equity: 0,
+            householdDeposits: 0,
+            loanRate: 0,
+        },
         infrastructure: {
             primarySchools: 10,
             secondarySchools: 5,

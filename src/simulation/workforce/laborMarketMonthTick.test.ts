@@ -338,6 +338,7 @@ describe('laborMarketMonthTick — population conservation', () => {
                 resourceClaims: [],
                 resourceTenancies: [],
                 productionFacilities: [],
+                deposits: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: { none: 500, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
                 workforceDemography: createWorkforceDemography(),

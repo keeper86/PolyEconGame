@@ -7,7 +7,7 @@
  */
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
-import type { AgeMoments, EducationLevelType, TenureCohort, WorkforceDemography } from '../planet';
+import type { AgeMoments, EducationLevelType, TenureCohort, WorkforceDemography, WealthMoments } from '../planet';
 import { educationLevelKeys, maxAge } from '../planet';
 
 // ---------------------------------------------------------------------------
@@ -193,21 +193,27 @@ export function expectedRateForMoments(moments: AgeMoments, rateFn: (age: number
 // Data-structure factories
 // ---------------------------------------------------------------------------
 
-/** Create an empty TenureCohort with zeroed active, departing, and retiring arrays. */
+/** Create an empty TenureCohort with zeroed active, departing, retiring arrays, and zero wealth. */
 export function emptyTenureCohort(): TenureCohort {
     const active = {} as Record<EducationLevelType, number>;
     const departing = {} as Record<EducationLevelType, number[]>;
     const departingFired = {} as Record<EducationLevelType, number[]>;
     const retiring = {} as Record<EducationLevelType, number[]>;
     const ageMoments = {} as Record<EducationLevelType, AgeMoments>;
+    const wealthMoments = {} as Record<EducationLevelType, WealthMoments>;
+    const departingWealth = {} as Record<EducationLevelType, WealthMoments[]>;
+    const retiringWealth = {} as Record<EducationLevelType, WealthMoments[]>;
     for (const edu of educationLevelKeys) {
         active[edu] = 0;
         departing[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0);
         departingFired[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0);
         retiring[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0);
         ageMoments[edu] = { mean: DEFAULT_HIRE_AGE_MEAN, variance: 0 };
+        wealthMoments[edu] = { mean: 0, variance: 0 };
+        departingWealth[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => ({ mean: 0, variance: 0 }));
+        retiringWealth[edu] = Array.from({ length: NOTICE_PERIOD_MONTHS }, () => ({ mean: 0, variance: 0 }));
     }
-    return { active, departing, departingFired, retiring, ageMoments };
+    return { active, departing, departingFired, retiring, ageMoments, wealthMoments, departingWealth, retiringWealth };
 }
 
 /** Create a fresh WorkforceDemography with MAX_TENURE_YEARS + 1 empty cohorts. */

@@ -11,3 +11,146 @@ export const isMonthBoundary = (tick: number): boolean => tick > 0 && tick % TIC
 
 /** True only on clean year boundaries (every TICKS_PER_YEAR ticks). */
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
+
+// ---------------------------------------------------------------------------
+// Food market constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Household food buffer target expressed as days of consumption.
+ * Each cohort-class will try to maintain this many days of food stock.
+ */
+export const FOOD_BUFFER_TARGET_DAYS = 30;
+
+/**
+ * Household food buffer target expressed in ticks of consumption.
+ * foodTarget per person = FOOD_BUFFER_TARGET_TICKS × FOOD_PER_PERSON_PER_TICK
+ */
+export const FOOD_BUFFER_TARGET_TICKS = FOOD_BUFFER_TARGET_DAYS;
+
+/**
+ * Price adjustment rate when inventory is *below* target (scarcity → price rises).
+ */
+export const FOOD_PRICE_ALPHA = 0.002;
+
+/**
+ * Price adjustment rate when inventory is *above* target (surplus → price falls).
+ */
+export const FOOD_PRICE_BETA = 0.001;
+
+/**
+ * Minimum food price (prevents zero or negative prices).
+ */
+export const FOOD_PRICE_FLOOR = 0.01;
+
+/**
+ * Initial food price per unit (currency units per ton of agricultural product).
+ */
+export const INITIAL_FOOD_PRICE = 1.0;
+
+/**
+ * Firm inventory target expressed as a multiple of one tick's production output.
+ * E.g. 60 means the firm wants to hold 60 ticks (~2 months) worth of production.
+ */
+export const FIRM_INVENTORY_TARGET_TICKS = 60;
+
+// ---------------------------------------------------------------------------
+// Per-agent food pricing constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Weight of the inventory-penalty term in the pricing AI metric.
+ *
+ * The agent minimises:  M = (produced − sold)² − INVENTORY_PENALTY_WEIGHT × inventory
+ *
+ * A higher value makes agents prefer keeping inventory low (sell more aggressively).
+ */
+export const INVENTORY_PENALTY_WEIGHT = 0.5;
+
+/**
+ * Maximum multiplicative price adjustment per tick (upward).
+ * e.g. 1.05 means price can increase at most 5 % per tick.
+ */
+export const PRICE_ADJUST_MAX_UP = 1.05;
+
+/**
+ * Maximum multiplicative price adjustment per tick (downward).
+ * e.g. 0.95 means price can decrease at most 5 % per tick.
+ */
+export const PRICE_ADJUST_MAX_DOWN = 0.95;
+
+/**
+ * Sensitivity of the multiplicative price factor to the gradient of M.
+ * Larger values make agents change prices faster in response to the metric.
+ */
+export const PRICE_ADJUST_SENSITIVITY = 0.01;
+
+// ---------------------------------------------------------------------------
+// Persistent money / loan repayment constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Retained earnings threshold as a fraction of the last wage bill.
+ * Firms only repay loans when deposits exceed this multiple of their wage bill.
+ * E.g. 1.5 means firms keep 1.5× wage-bill as buffer before repaying.
+ */
+export const RETAINED_EARNINGS_THRESHOLD = 1.5;
+
+// ---------------------------------------------------------------------------
+// Intergenerational transfer constants
+// ---------------------------------------------------------------------------
+
+/**
+ * The generational gap (in years) between parents and children.
+ */
+export const GENERATION_GAP = 25;
+
+/**
+ * Maximum age for "child" dependents (inclusive).
+ * Ages 0–CHILD_MAX_AGE are considered children who may receive support.
+ */
+export const CHILD_MAX_AGE = 25;
+
+/**
+ * Minimum age for "elderly" dependents.
+ * Ages >= ELDERLY_MIN_AGE are considered elderly who may receive support.
+ */
+export const ELDERLY_MIN_AGE = 67;
+
+/**
+ * Precautionary reserve as a multiple of per-tick consumption cost.
+ * Supporters keep at least this much before transferring to dependents.
+ * E.g. 60 × FOOD_PER_PERSON_PER_TICK × price ≈ 2 months food budget.
+ */
+export const PRECAUTIONARY_RESERVE_TICKS = 60;
+
+/**
+ * Fraction of the food buffer target that a supporter must retain for
+ * their own survival before transferring anything.  A supporter with
+ * foodStock below this fraction × foodTarget cannot afford to give away
+ * food money without risking starvation / disability.
+ *
+ * Set to ~55 %: physiologically sustainable, but clearly under-fed.
+ * Low starvation levels (< 0.4) are sustainable in the mortality model,
+ * higher values lead to death or disability.
+ */
+export const SUPPORTER_SURVIVAL_FRACTION = 0.55;
+
+// ---------------------------------------------------------------------------
+// Wealth diffusion constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Diffusion half-life in years.  After this many years of zero economic
+ * driving forces, wealth variance will have decayed to 50% of its initial
+ * value.  Set to ~100 years for a very slow, "low-temperature" process.
+ */
+export const DIFFUSION_HALF_LIFE_YEARS = 100;
+
+/**
+ * Per-tick diffusion parameter epsilon, derived from the half-life.
+ *
+ *   (1 − ε)^(halfLife × TICKS_PER_YEAR) = 0.5
+ *   ε = 1 − 0.5^(1 / (halfLife × TICKS_PER_YEAR))
+ */
+export const DIFFUSION_EPSILON = 1 - Math.pow(0.5, 1 / (DIFFUSION_HALF_LIFE_YEARS * TICKS_PER_YEAR));
