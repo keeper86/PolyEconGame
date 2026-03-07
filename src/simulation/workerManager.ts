@@ -11,6 +11,7 @@
  */
 
 import path from 'node:path';
+import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { MessageChannel, type MessagePort } from 'node:worker_threads';
 import { Piscina } from 'piscina';
@@ -85,6 +86,22 @@ function resolveTsxExecArgv(): string[] | undefined {
     return undefined;
 }
 
+/** Try resolving all tsx candidates and return a debug array. */
+function debugResolveTsxCandidates(): Array<{ name: string; resolved?: string; error?: string }> {
+    const requireFn = createRequire(process.cwd() + '/');
+    const tsxCandidates = ['tsx/cjs', 'tsx', 'tsx/register'];
+    const out: Array<{ name: string; resolved?: string; error?: string }> = [];
+    for (const name of tsxCandidates) {
+        try {
+            const resolved = requireFn.resolve(name);
+            out.push({ name, resolved });
+        } catch (e: unknown) {
+            out.push({ name, error: e instanceof Error ? e.message : String(e) });
+        }
+    }
+    return out;
+}
+
 function createPool(): { pool: Piscina; port: MessagePort } {
     // __dirname is unreliable inside Next.js bundles (resolves to /ROOT/…).
     // Use process.cwd() which always points to the real project root.
@@ -93,6 +110,28 @@ function createPool(): { pool: Piscina; port: MessagePort } {
 
     console.log(`[workerManager] Creating Piscina pool with worker: ${workerPath}`);
     console.log('[workerManager] Pool options:', { execArgv, workerData: { tickIntervalMs: 0 } });
+    // Extra debug: log whether the worker file exists and perms.
+    try {
+        const exists = fs.existsSync(workerPath);
+        let stat: fs.Stats | null = null;
+        if (exists) {
+            stat = fs.statSync(workerPath);
+        }
+        console.log('[workerManager] Worker file exists:', exists, stat ? { size: stat.size, mode: stat.mode } : null);
+    } catch (e) {
+        console.warn('[workerManager] Could not stat worker file:', e instanceof Error ? e.message : String(e));
+    }
+
+    // Debug resolve of tsx candidates to help track resolvers / loader selection
+    try {
+        const debugCandidates = debugResolveTsxCandidates();
+        console.log('[workerManager] tsx resolve candidates:', debugCandidates);
+    } catch (e) {
+        console.warn(
+            '[workerManager] Failed to debug-resolve tsx candidates:',
+            e instanceof Error ? e.message : String(e),
+        );
+    }
 
     // Create a dedicated MessageChannel for custom messages between the main
     // thread and the worker.  Piscina owns `parentPort` for its internal task
@@ -131,7 +170,18 @@ function createPool(): { pool: Piscina; port: MessagePort } {
     p.run({ command: 'start', port: port2 }, { transferList: [port2] }).catch((err) => {
         // If the pool was intentionally destroyed the rejection is expected.
         if (getPool() === p) {
-            console.error('[workerManager] Simulation task rejected unexpectedly:', err);
+            // Provide richer diagnostics to help with module/loader failures.
+            try {
+                console.error('[workerManager] Simulation task rejected unexpectedly:', err);
+                console.error('[workerManager] rejection details:', {
+                    message: err instanceof Error ? err.message : String(err),
+                    code: (err as any)?.code,
+                    url: (err as any)?.url,
+                    stack: err instanceof Error ? err.stack : undefined,
+                });
+            } catch (_e) {
+                // swallow logging failures
+            }
         }
     });
 
