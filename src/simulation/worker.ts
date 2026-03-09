@@ -233,12 +233,15 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 });
 
                 // Record per-planet population alongside the cold snapshot.
+                // Clamp tiny values to 0 — values below ~1e-300 are
+                // meaningless and can overflow PostgreSQL's float range.
+                const clampTiny = (v: number): number => (Math.abs(v) < 1e-300 ? 0 : v);
                 const populationRows = [...gs.planets.values()].map((planet) => ({
                     tick,
                     planet_id: planet.id,
                     population: computePopulationTotal(planet),
-                    starvation_level: computeGlobalStarvation(planet),
-                    food_price: planet.priceLevel ?? 0,
+                    starvation_level: clampTiny(computeGlobalStarvation(planet)),
+                    food_price: clampTiny(planet.priceLevel ?? 0),
                 }));
                 await insertPlanetPopulationHistory(db, populationRows);
 

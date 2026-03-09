@@ -20,8 +20,8 @@ exports.up = async function (knex) {
         table.bigInteger('tick').notNullable();
         table.string('planet_id').notNullable();
         table.bigInteger('population').notNullable();
-        table.float('starvation_level').notNullable().defaultTo(0);
-        table.float('food_price').notNullable().defaultTo(0);
+        table.double('starvation_level').notNullable().defaultTo(0);
+        table.double('food_price').notNullable().defaultTo(0);
         table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
     });
 
