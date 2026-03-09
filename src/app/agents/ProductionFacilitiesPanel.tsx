@@ -152,7 +152,7 @@ export default function ProductionFacilitiesPanel({
                                         <span
                                             className={`font-medium ${f.lastTickResults ? efficiencyColor(f.lastTickResults.overallEfficiency) : ''}`}
                                         >
-                                            {f.lastTickResults.overallEfficiency}
+                                            {Math.round(f.lastTickResults.overallEfficiency * 100)}%
                                         </span>
                                     </div>
                                     {f.lastTickResults && <FacilityEfficiencyDetails results={f.lastTickResults} />}

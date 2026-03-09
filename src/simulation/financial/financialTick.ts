@@ -31,7 +31,6 @@
 import type { GameState, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import type { CohortByOccupation, WorkforceCategory } from '../population/population';
 import { SKILL } from '../population/population';
 import {
     getAgentDepositsForPlanet,
@@ -42,34 +41,7 @@ import {
     addAgentLoansForPlanet,
 } from './depositHelpers';
 import { RETAINED_EARNINGS_THRESHOLD } from '../constants';
-
-// ---------------------------------------------------------------------------
-// Workforce query helpers (local to avoid circular imports)
-// ---------------------------------------------------------------------------
-
-/** Sum active workers across all ages and skill levels for a given edu. */
-function totalActiveForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
-    let total = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            total += workforce[age][edu][skill].active;
-        }
-    }
-    return total;
-}
-
-/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
-function totalDepartingForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
-    let total = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            for (const d of workforce[age][edu][skill].departing) {
-                total += d;
-            }
-        }
-    }
-    return total;
-}
+import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 
 // ---------------------------------------------------------------------------
 // Constants (propensities & defaults)
@@ -127,7 +99,13 @@ function sumFirmDeposits(gameState: GameState, planetId: string): number {
  * In debug mode throws on mismatch; in production silently warns.
  */
 function assertBalanceSheet(bank: NonNullable<Planet['bank']>, firmDepositsSum: number, label: string): void {
-    const diff = Math.abs(1 - (firmDepositsSum + bank.householdDeposits) / bank.deposits);
+    const totalDeposits = firmDepositsSum + bank.householdDeposits;
+    const diff =
+        bank.deposits === 0 && totalDeposits === 0
+            ? 0
+            : bank.deposits === 0
+              ? 1
+              : Math.abs(1 - totalDeposits / bank.deposits);
     if (diff > 0.01) {
         const msg =
             `[financialTick] balance-sheet violation after ${label}: ` +

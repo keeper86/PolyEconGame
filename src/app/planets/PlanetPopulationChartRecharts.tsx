@@ -99,7 +99,6 @@ export default function PlanetPopulationChartRecharts({
                     <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                     <XAxis
                         dataKey='tick'
-                        reversed
                         tick={{ fontSize: 11 }}
                         tickFormatter={(v) => (typeof v === 'number' ? String(Math.floor(v / 365)) : String(v))}
                     />

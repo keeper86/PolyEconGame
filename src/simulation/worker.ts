@@ -280,7 +280,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             currentSnapshot = toImmutableGameState(state);
 
             // Periodically persist a cold snapshot for crash recovery.
-            if (state.tick >= 0 && state.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
+            if (state.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
                 spawnSnapshotTask(currentSnapshot, state.tick);
             }
 

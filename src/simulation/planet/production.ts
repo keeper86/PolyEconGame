@@ -7,34 +7,11 @@ import type { CohortByOccupation, WorkforceCategory } from '../population/popula
 import { SKILL } from '../population/population';
 import { ageProductivityMultiplier, DEPARTING_EFFICIENCY } from '../workforce/laborMarketTick';
 import { stochasticRound } from '../utils/stochasticRound';
+import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 
 // ---------------------------------------------------------------------------
 // Local workforce aggregation helpers (new age × skill model)
 // ---------------------------------------------------------------------------
-
-/** Sum active workers across all ages and skill levels for a given edu. */
-function totalActiveForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
-    let total = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            total += workforce[age][edu][skill].active;
-        }
-    }
-    return total;
-}
-
-/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
-function totalDepartingForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
-    let total = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            for (const d of workforce[age][edu][skill].departing) {
-                total += d;
-            }
-        }
-    }
-    return total;
-}
 
 /**
  * Compute a worker-count-weighted mean age for a given education level
@@ -181,7 +158,7 @@ export function productionTick(gameState: GameState) {
                     const bodiesNeeded = ageProd > 0 ? Math.ceil(Math.max(0, effectiveGapScaled) / ageProd) : available;
                     const take = Math.min(bodiesNeeded, available);
                     if (take > 0) {
-                        remainingWorker[jobEdu] -= bodiesNeeded;
+                        remainingWorker[jobEdu] -= take;
                         acc.totalFilled += take;
                         acc.effectiveFilled += take * ageProd;
                         acc.takenByEdu[jobEdu] = (acc.takenByEdu[jobEdu] ?? 0) + take;
@@ -208,7 +185,7 @@ export function productionTick(gameState: GameState) {
                         const bodiesNeeded = ageProd > 0 ? Math.ceil(Math.max(0, effectiveGap) / ageProd) : available;
                         const take = Math.min(bodiesNeeded, available);
                         if (take > 0) {
-                            remainingWorker[candidateEdu] -= bodiesNeeded;
+                            remainingWorker[candidateEdu] -= take;
                             acc.totalFilled += take;
                             acc.effectiveFilled += take * ageProd;
                             acc.overqualified += take;

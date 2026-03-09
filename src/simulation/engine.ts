@@ -3,8 +3,8 @@ import type { GameState } from './planet/planet';
 import { environmentTick } from './planet/environment';
 import { productionTick } from './planet/production';
 import { updateAllocatedWorkers } from './workforce/allocatedWorkers';
-import { laborMarketTick } from './workforce/laborMarketTick';
-import { laborMarketMonthTick } from './workforce/laborMarketMonthTick';
+import { preProductionLaborMarketTick } from './workforce/laborMarketTick';
+import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { laborMarketYearTick } from './workforce/laborMarketYearTick';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
@@ -24,9 +24,9 @@ export function advanceTick(gameState: GameState) {
     // 2. Workforce allocation update
     updateAllocatedWorkers(gameState.agents, gameState.planets);
 
-    // 3. Labor market tick
+    // 3. Labor market tick (monthly: hiring, firing, voluntary quits)
     if (isMonthBoundary(gameState.tick)) {
-        laborMarketTick(gameState.agents, gameState.planets);
+        preProductionLaborMarketTick(gameState.agents, gameState.planets);
     }
 
     // 4. Pre-production financial tick: wages, working-capital loans
@@ -54,7 +54,7 @@ export function advanceTick(gameState: GameState) {
 
     // Month/year boundary updates
     if (isMonthBoundary(gameState.tick)) {
-        laborMarketMonthTick(gameState.agents, gameState.planets);
+        postProductionLaborMarketTick(gameState.agents, gameState.planets);
     }
 
     if (isYearBoundary(gameState.tick)) {
