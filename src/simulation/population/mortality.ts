@@ -1,33 +1,38 @@
-/**
- * population/mortality.ts
- *
- * Per-tick mortality calculations: combines base age-dependent mortality with
- * environmental factors (pollution, natural disasters) and starvation to
- * produce a per-tick death rate for each age cohort.
- *
- * ## Starvation → mortality mapping
- *
- * Starvation (S) affects mortality ONLY via base amplification:
- *
- *     baseAnnualMort(age) = lifetableRate(age) × (1 + S² × k)
- *
- * where k = 9.  This keeps mortality effects in a single place and avoids
- * double counting.  The S² (convex) scaling means:
- *
- *   - S = 0   → no amplification      (fully fed)
- *   - S = 0.5 → 3.25× base mortality  (moderate famine)
- *   - S = 0.9 → 9.29× base mortality  (severe famine)
- *   - S = 1   → 10×  base mortality   (total famine)
- *
- * Extra annual mortality (pollution + disasters) is additive on top of the
- * amplified base rate.  Starvation does NOT appear again here.
- */
+import type { Environment } from '../planet/planet';
 
-import { TICKS_PER_YEAR } from '../constants';
-import type { Environment, Population } from '../planet';
-import { maxAge, educationLevelKeys, OCCUPATIONS } from '../planet';
-import { distributeLike, emptyCohort, emptyAccumulator, mortalityProbability } from './populationHelpers';
 import { stochasticRound } from '../utils/stochasticRound';
+import type { Population } from './population';
+import { convertAnnualToPerTick, forEachPopulationCohort, transferPopulation } from './population';
+
+export const mortalityProbability = (age: number) => {
+    const mortalityByThousands: number[] = [
+        5.5, 0.4, 0.3, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1, 0.2, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.3, 3.6, 4.0,
+        4.4, 4.8, 5.2, 5.7, 6.2, 6.8, 7.5, 8.2, 9.0, 9.9, 10.9, 12.0, 13.2, 14.5, 15.9, 17.4, 19.0, 20.8, 22.7, 24.7,
+        26.8, 29.0, 31.5, 34.0, 36.8, 39.8, 43.0, 46.5, 50.2, 54.2, 58.5, 63.0, 67.8, 72.9, 78.3, 84.0, 90.0, 96.5,
+        103.5, 111.0, 119.0, 127.5, 136.5, 146.0, 156.0, 166.5, 177.5, 189.0, 201.0, 213.5, 226.5, 240.0, 254.0, 268.5,
+        283.5, 299.0, 315.0,
+    ];
+    if (age < 0) {
+        return 1.0;
+    }
+    if (age >= mortalityByThousands.length) {
+        return 1.0; // cap at 100% for ages beyond the table
+    }
+    return mortalityByThousands[age] / 1000.0;
+};
+
+const expectedLifeExpectancy = () => {
+    let remaining = 1.0; // start with 100% alive at birth
+    let expectancy = 0;
+    for (let age = 0; age < 100; age++) {
+        expectancy += remaining;
+        remaining *= 1 - mortalityProbability(age);
+    }
+    return expectancy;
+};
+
+console.log('Current life expectancy', expectedLifeExpectancy()); //72 years
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -49,24 +54,10 @@ export const MAX_MORTALITY_PER_TICK = 0.95;
  * annual death rates.
  */
 export const STARVATION_ACUTE_POWER = 3;
-export const STARVATION_ACUTE_MAX_ANNUAL = 0.9; // up to 90% annual
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Convert an annual probability to its per-tick equivalent so that
- * compounding over `TICKS_PER_YEAR` ticks yields the same annual rate.
- *
- *   1 - (1 - annualRate)^(1 / TICKS_PER_YEAR)
- */
-export const convertAnnualToPerTick = (annualRate: number): number => {
-    if (annualRate >= 1) {
-        return 1;
-    }
-    return 1 - Math.pow(1 - annualRate, 1 / TICKS_PER_YEAR);
-};
 
 // ---------------------------------------------------------------------------
 // Environmental mortality contributions (annual rates)
@@ -76,7 +67,6 @@ export interface EnvironmentalMortality {
     pollutionMortalityRate: number;
     disasterDeathProbability: number;
 }
-
 /**
  * Compute the annual mortality contributions from pollution and natural
  * disasters.  These are additive on top of the base age-dependent rate.
@@ -115,116 +105,39 @@ export function computeExtraAnnualMortality(environmentalMortality: Environmenta
  *
  * Returns a value in [0, MAX_MORTALITY_PER_TICK].
  */
-export function perTickMortality(age: number, starvationLevel: number, extraAnnualMortality: number): number {
+export function perTickMortality(age: number, extraAnnualMortality: number): number {
     // Chronic amplification of age-dependent baseline mortality
-    const baseAnnualMort = mortalityProbability(age) * (1 + Math.pow(starvationLevel, 2) * 9);
-
-    // Acute, age-independent starvation mortality (direct deaths from
-    // malnutrition).  This is additive to the amplified base rate and to
-    // environmental extra mortality.  Using a convex exponent ensures
-    // moderate shortages remain survivable while severe famine causes
-    // much higher annual death probabilities.
-    const starvationAcuteAnnual = Math.min(
-        STARVATION_ACUTE_MAX_ANNUAL,
-        Math.pow(starvationLevel, STARVATION_ACUTE_POWER) * STARVATION_ACUTE_MAX_ANNUAL,
-    );
-
-    const combinedAnnualMort = Math.min(1, baseAnnualMort + starvationAcuteAnnual + extraAnnualMortality);
-    return Math.min(MAX_MORTALITY_PER_TICK, convertAnnualToPerTick(combinedAnnualMort));
+    return Math.min(MAX_MORTALITY_PER_TICK, convertAnnualToPerTick(mortalityProbability(age) + extraAnnualMortality));
 }
-
-// ---------------------------------------------------------------------------
-// Population-level mortality step
-// ---------------------------------------------------------------------------
 
 /**
  * Apply mortality to every age cohort of a population.
  *
- * - Computes environmental + starvation mortality per cohort.
- * - Removes the dead from each cohort (proportional redistribution via
- *   `distributeLike`).
- * - Records deaths per education × occupation in `population.tickDeaths`
- *   so that downstream steps (workforce sync) can consume them.
- *
- * This is the **only** place where demography shrinks due to death — the
- * orchestrator does not need to carry any accumulator.
+ * Now follows the same direct‑per‑cell pattern as disability:
+ * for each education×occupation cell, a fraction dies according to the
+ * per‑tick mortality probability.  Deaths are recorded in
+ * `population.tickDeaths` and `population.tickDeathsByAge`.
  */
-export function applyMortality(population: Population, environment: Environment, totalInCohort: number[]): void {
+export function applyMortality(population: Population, environment: Environment): void {
     const environmentalMortality = computeEnvironmentalMortality(environment);
     const extraAnnualMortality = computeExtraAnnualMortality(environmentalMortality);
 
-    // Reset / create the tick-level death accumulator
-    const tickDeaths = emptyAccumulator();
-    // Age-resolved death accumulator for exact workforce moment updates
-    const tickDeathsByAge: Record<number, Record<string, Record<string, number>>> = {};
-
-    for (let age = maxAge; age >= 0; age--) {
-        const cohort = population.demography[age];
-        if (!cohort) {
-            continue;
-        }
-        const total = totalInCohort[age];
-        if (total === 0) {
-            continue;
-        }
-
-        const totalPerTickMort = perTickMortality(age, population.starvationLevel, extraAnnualMortality);
-        const survivors = stochasticRound(total * (1 - totalPerTickMort));
-
-        if (survivors === 0) {
-            // Everyone in this cohort died — record all as deaths
-            let anyDead = false;
-            for (const edu of educationLevelKeys) {
-                for (const occ of OCCUPATIONS) {
-                    const dead = cohort[edu][occ] ?? 0;
-                    tickDeaths[edu][occ] += dead;
-                    if (dead > 0) {
-                        anyDead = true;
-                    }
-                }
+    population.demography.forEach((cohort, age) => {
+        return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+            if (category.total === 0) {
+                category.deaths.countThisTick = 0;
+                return; // skip empty cells
             }
-            if (anyDead) {
-                tickDeathsByAge[age] = {} as Record<string, Record<string, number>>;
-                for (const edu of educationLevelKeys) {
-                    tickDeathsByAge[age][edu] = {} as Record<string, number>;
-                    for (const occ of OCCUPATIONS) {
-                        tickDeathsByAge[age][edu][occ] = cohort[edu][occ] ?? 0;
-                    }
-                }
-            }
-            population.demography[age] = emptyCohort();
-            continue;
-        }
 
-        const survivorsCohort = distributeLike(survivors, cohort);
+            const starvationAcuteMortality =
+                category.starvationLevel === 0 ? 0 : Math.pow(category.starvationLevel, STARVATION_ACUTE_POWER);
 
-        // Record deaths (before − after) per edu × occ
-        let anyDead = false;
-        for (const edu of educationLevelKeys) {
-            for (const occ of OCCUPATIONS) {
-                const dead = Math.max(0, (cohort[edu][occ] ?? 0) - (survivorsCohort[edu][occ] ?? 0));
-                tickDeaths[edu][occ] += dead;
-                if (dead > 0) {
-                    anyDead = true;
-                }
-            }
-        }
-        if (anyDead) {
-            tickDeathsByAge[age] = {} as Record<string, Record<string, number>>;
-            for (const edu of educationLevelKeys) {
-                tickDeathsByAge[age][edu] = {} as Record<string, number>;
-                for (const occ of OCCUPATIONS) {
-                    tickDeathsByAge[age][edu][occ] = Math.max(
-                        0,
-                        (cohort[edu][occ] ?? 0) - (survivorsCohort[edu][occ] ?? 0),
-                    );
-                }
-            }
-        }
+            const perTickMort = perTickMortality(age, extraAnnualMortality + starvationAcuteMortality);
 
-        population.demography[age] = survivorsCohort;
-    }
-
-    population.tickDeaths = tickDeaths;
-    population.tickDeathsByAge = tickDeathsByAge;
+            const dead = stochasticRound(category.total * perTickMort);
+            const reallyDead = transferPopulation(population.demography, { age, occ, edu, skill }, undefined, dead);
+            category.deaths.countThisMonth += reallyDead;
+            category.deaths.countThisTick = reallyDead;
+        });
+    });
 }

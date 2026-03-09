@@ -5,17 +5,48 @@
  * education-progression / dropout transitions.
  */
 
-import type { Population, Cohort, EducationLevelType, Occupation } from '../planet';
-import { educationLevelKeys, educationLevels, maxAge, OCCUPATIONS } from '../planet';
-import {
-    ageDropoutProbabilityForEducation,
-    educationGraduationProbabilityForAge,
-    emptyCohort,
-    emptyWealthCohort,
-    getWealthDemography,
-    mergeWealthMoments,
-} from './populationHelpers';
 import { stochasticRound } from '../utils/stochasticRound';
+import type { EducationLevelType } from './education';
+import { educationGraduationProbabilityForAge, educationLevels, ageDropoutProbabilityForEducation } from './education';
+import type { Population, Cohort, PopulationCategory, Skill } from './population';
+import {
+    MAX_AGE,
+    createEmptyCohort,
+    nullPopulationCategory,
+    forEachPopulationCohort,
+    mergeGaussianMoments,
+} from './population';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Merge a source PopulationCategory into a destination, pooling
+ * total, wealth (Gaussian moments), foodStock and starvation.
+ *
+ * Demographic-event counters (deaths, disabilities, retirements) are
+ * intentionally reset in the new demography (they are per-tick accumulators).
+ */
+function mergeCategory(dst: PopulationCategory, src: PopulationCategory, count: number): void {
+    if (count <= 0) {
+        return;
+    }
+    const srcWealth = src.wealth;
+    dst.wealth = mergeGaussianMoments(dst.total, dst.wealth, count, srcWealth);
+    const srcFoodPer = src.total > 0 ? src.foodStock / src.total : 0;
+    dst.foodStock += srcFoodPer * count;
+    // Weighted average starvation
+    const totalAfter = dst.total + count;
+    if (totalAfter > 0) {
+        dst.starvationLevel = (dst.total * dst.starvationLevel + count * src.starvationLevel) / totalAfter;
+    }
+    dst.total += count;
+}
+
+// ---------------------------------------------------------------------------
+// Public
+// ---------------------------------------------------------------------------
 
 /**
  * Advance the population by one year: shift every cohort to age + 1 and
@@ -32,125 +63,111 @@ import { stochasticRound } from '../utils/stochasticRound';
  * @param totalInCohort  pre-computed totals per age (used to skip empty cohorts)
  */
 export const populationAdvanceYear = (population: Population, totalInCohort: number[]): void => {
-    const newdemography: Cohort[] = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-
-    // Build a new wealth demography parallel to the new demography.
-    const oldWealth = getWealthDemography(population);
-    const newWealth = Array.from({ length: maxAge + 1 }, () => emptyWealthCohort());
-    // Counts accumulated in newdemography, used for wealth merging
-    const newCounts: Array<Record<EducationLevelType, Record<Occupation, number>>> = Array.from(
-        { length: maxAge + 1 },
-        () => {
-            const c = {} as Record<EducationLevelType, Record<Occupation, number>>;
-            for (const l of educationLevelKeys) {
-                c[l] = {} as Record<Occupation, number>;
-                for (const o of OCCUPATIONS) {
-                    c[l][o] = 0;
-                }
-            }
-            return c;
-        },
+    const newDemography: Cohort<PopulationCategory>[] = Array.from({ length: MAX_AGE + 1 }, () =>
+        createEmptyCohort(nullPopulationCategory),
     );
 
-    // Helper: add `addCount` people with wealth `srcW` into slot (targetAge, edu, occ)
-    // in the new structures, using parallel-axis merge.
-    function addToNew(
-        targetAge: number,
-        edu: EducationLevelType,
-        occ: Occupation,
-        addCount: number,
-        srcW: { mean: number; variance: number },
-    ): void {
-        if (targetAge < 0 || targetAge > maxAge || addCount <= 0) {
-            return;
-        }
-        const existing = newCounts[targetAge][edu][occ];
-        newWealth[targetAge][edu][occ] = mergeWealthMoments(existing, newWealth[targetAge][edu][occ], addCount, srcW);
-        newCounts[targetAge][edu][occ] += addCount;
-    }
-
     // --- Carry over existing maxAge survivors first ---
-    const existingMaxAge = population.demography[maxAge];
+    const existingMaxAge = population.demography[MAX_AGE];
     if (existingMaxAge) {
-        for (const edu of educationLevelKeys) {
-            for (const occ of OCCUPATIONS) {
-                const n = existingMaxAge[edu][occ];
-                newdemography[maxAge][edu][occ] += n;
-                addToNew(maxAge, edu, occ, n, oldWealth[maxAge][edu][occ]);
+        forEachPopulationCohort(existingMaxAge, (category, occ, edu, skill) => {
+            if (category.total <= 0) {
+                return;
             }
-        }
+            mergeCategory(newDemography[MAX_AGE][occ][edu][skill], category, category.total);
+        });
     }
 
-    for (let age = 0; age < maxAge; age++) {
+    // --- Shift each age cohort up by one year ---
+    for (let age = 0; age < MAX_AGE; age++) {
         const cohort = population.demography[age];
         const total = totalInCohort[age];
         if (!total || total === 0) {
             continue;
         }
 
-        const nextAgeCohort = emptyCohort();
-        const targetAge = Math.min(age + 1, maxAge);
+        const targetAge = Math.min(age + 1, MAX_AGE);
 
-        for (const edu of educationLevelKeys) {
-            for (const occ of OCCUPATIONS) {
-                const count = cohort[edu][occ];
-                if (count === 0) {
-                    continue;
-                }
-                const srcW = oldWealth[age][edu][occ];
-
-                if (occ === 'education') {
-                    const gradProb = educationGraduationProbabilityForAge(age, edu);
-                    const graduates = stochasticRound(count * gradProb);
-                    const stay = count - graduates;
-
-                    const educationLevel = educationLevels[edu];
-                    const nextEducation = educationLevel.nextEducation();
-
-                    if (graduates > 0 && nextEducation) {
-                        const transitionProbability = educationLevel.transitionProbability;
-                        const transitioners = stochasticRound(graduates * transitionProbability);
-                        const voluntaryDropouts = graduates - transitioners;
-
-                        nextAgeCohort[nextEducation.type][occ] += transitioners;
-                        addToNew(targetAge, nextEducation.type, occ, transitioners, srcW);
-                        nextAgeCohort[nextEducation.type].unoccupied += voluntaryDropouts;
-                        addToNew(targetAge, nextEducation.type, 'unoccupied', voluntaryDropouts, srcW);
-                    }
-
-                    if (stay > 0) {
-                        const dropOutProb = ageDropoutProbabilityForEducation(age, edu);
-                        const dropouts = Math.ceil(stay * dropOutProb);
-                        const remainers = stay - dropouts;
-
-                        if (age < 6) {
-                            nextAgeCohort[edu][occ] += dropouts;
-                            addToNew(targetAge, edu, occ, dropouts, srcW);
-                        } else {
-                            nextAgeCohort[edu].unoccupied += dropouts;
-                            addToNew(targetAge, edu, 'unoccupied', dropouts, srcW);
-                        }
-                        nextAgeCohort[edu][occ] += remainers;
-                        addToNew(targetAge, edu, occ, remainers, srcW);
-                    }
-                } else {
-                    nextAgeCohort[edu][occ] += count;
-                    addToNew(targetAge, edu, occ, count, srcW);
-                }
+        forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+            if (category.total <= 0) {
+                return;
             }
+
+            if (occ === 'education') {
+                processEducationAging(newDemography, targetAge, age, category, edu, skill);
+            } else {
+                // Non-education occupations simply move to the next age
+                mergeCategory(newDemography[targetAge][occ][edu][skill], category, category.total);
+            }
+        });
+    }
+
+    population.demography = newDemography;
+};
+
+// ---------------------------------------------------------------------------
+// Education graduation / dropout transitions
+// ---------------------------------------------------------------------------
+
+/**
+ * Handle education-related transitions during the yearly age shift.
+ *
+ * People in the 'education' occupation may:
+ * 1. Graduate and transition to the next education level (still in education),
+ * 2. Graduate but voluntarily drop out (become unoccupied),
+ * 3. Remain at the current education level, or
+ * 4. Drop out due to age (become unoccupied, or stay in education if < 6).
+ */
+function processEducationAging(
+    newDemography: Cohort<PopulationCategory>[],
+    targetAge: number,
+    sourceAge: number,
+    category: PopulationCategory,
+    edu: EducationLevelType,
+    skill: Skill,
+): void {
+    const count = category.total;
+    const gradProb = educationGraduationProbabilityForAge(sourceAge, edu);
+    const graduates = stochasticRound(count * gradProb);
+    const stay = count - graduates;
+
+    const educationLevel = educationLevels[edu];
+    const nextEducation = educationLevel.nextEducation();
+
+    // --- Graduates ---
+    if (graduates > 0 && nextEducation) {
+        const nextEdu = nextEducation.type;
+        const transitionProbability = educationLevel.transitionProbability;
+        const transitioners = stochasticRound(graduates * transitionProbability);
+        const voluntaryDropouts = graduates - transitioners;
+
+        // Transitioners continue education at the next level
+        if (transitioners > 0) {
+            mergeCategory(newDemography[targetAge].education[nextEdu][skill], category, transitioners);
         }
-
-        if (age + 1 === maxAge) {
-            for (const edu of educationLevelKeys) {
-                for (const occ of OCCUPATIONS) {
-                    newdemography[maxAge][edu][occ] += nextAgeCohort[edu][occ];
-                }
-            }
-        } else {
-            newdemography[age + 1] = nextAgeCohort;
+        // Voluntary dropouts become unoccupied at the graduated level
+        if (voluntaryDropouts > 0) {
+            mergeCategory(newDemography[targetAge].unoccupied[nextEdu][skill], category, voluntaryDropouts);
         }
     }
 
-    population.demography = newdemography;
-    population.wealthDemography = newWealth;
-};
+    // --- Non-graduates (stayers) ---
+    if (stay > 0) {
+        const dropOutProb = ageDropoutProbabilityForEducation(sourceAge, edu);
+        const dropouts = Math.ceil(stay * dropOutProb);
+        const remainers = stay - dropouts;
+
+        if (dropouts > 0) {
+            if (sourceAge < 6) {
+                // Very young children who "drop out" stay in education at same level
+                mergeCategory(newDemography[targetAge].education[edu][skill], category, dropouts);
+            } else {
+                // Older dropouts become unoccupied
+                mergeCategory(newDemography[targetAge].unoccupied[edu][skill], category, dropouts);
+            }
+        }
+        if (remainers > 0) {
+            mergeCategory(newDemography[targetAge].education[edu][skill], category, remainers);
+        }
+    }
+}

@@ -1,9 +1,10 @@
 'use client';
 
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Population } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL, mergeGaussianMoments } from '@/simulation/population/population';
 import React from 'react';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import type { Population, Cohort } from '@/simulation/planet';
-import { educationLevelKeys, OCCUPATIONS } from '@/simulation/planet';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -19,15 +20,14 @@ type Props = {
 /**
  * WealthByAgeChart — shows mean financial wealth and ±1σ band per age cohort.
  *
- * Uses the `wealthDemography` parallel array on `population` to aggregate
- * mean and variance across all education × occupation cells at each age,
- * using the population-weighted pooled mean/variance formula.
+ * Wealth data is now embedded in each PopulationCategory as `.wealth`
+ * (GaussianMoments: {mean, variance}).  We pool across all
+ * occupation × education × skill cells at each age.
  */
 export default function WealthByAgeChart({ population }: Props): React.ReactElement {
     const demography = population.demography;
-    const wealthDem = population.wealthDemography;
 
-    if (!wealthDem || wealthDem.length === 0) {
+    if (!demography || demography.length === 0) {
         return <div className='text-xs text-muted-foreground'>No wealth data available</div>;
     }
 
@@ -39,49 +39,41 @@ export default function WealthByAgeChart({ population }: Props): React.ReactElem
         band: [number, number];
     }[] = [];
 
-    for (let age = 0; age < Math.min(demography.length, wealthDem.length); age++) {
-        const cohort: Cohort | undefined = demography[age];
-        const wCohort = wealthDem[age];
-        if (!cohort || !wCohort) {
+    for (let age = 0; age < demography.length; age++) {
+        const cohort = demography[age];
+        if (!cohort) {
             continue;
         }
 
-        // Population-weighted pooled mean and variance across edu × occ
+        // Population-weighted pooled mean and variance across occ × edu × skill
         let totalPop = 0;
-        let weightedMean = 0;
+        let pooledMean = 0;
+        let pooledVariance = 0;
+        // Use two-pass: first compute pooled mean, then pooled variance
+        // Or use mergeGaussianMoments incrementally
+        let accN = 0;
+        let accMoments = { mean: 0, variance: 0 };
 
-        // First pass: compute pooled mean
-        for (const edu of educationLevelKeys) {
-            for (const occ of OCCUPATIONS) {
-                const pop = Number(cohort[edu]?.[occ] ?? 0);
-                const wm = wCohort[edu]?.[occ];
-                if (pop > 0 && wm) {
-                    weightedMean += pop * wm.mean;
-                    totalPop += pop;
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    const cat = cohort[occ][edu][skill];
+                    if (cat.total > 0) {
+                        accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                        accN += cat.total;
+                    }
                 }
             }
         }
+
+        totalPop = accN;
+        pooledMean = accMoments.mean;
+        pooledVariance = accMoments.variance;
 
         if (totalPop === 0) {
             chartData.push({ age, mean: 0, upper: 0, lower: 0, band: [0, 0] });
             continue;
         }
-
-        const pooledMean = weightedMean / totalPop;
-
-        // Second pass: pooled variance using parallel-axis theorem
-        let pooledVariance = 0;
-        for (const edu of educationLevelKeys) {
-            for (const occ of OCCUPATIONS) {
-                const pop = Number(cohort[edu]?.[occ] ?? 0);
-                const wm = wCohort[edu]?.[occ];
-                if (pop > 0 && wm) {
-                    const diff = wm.mean - pooledMean;
-                    pooledVariance += pop * (wm.variance + diff * diff);
-                }
-            }
-        }
-        pooledVariance /= totalPop;
 
         const sigma = Math.sqrt(Math.max(0, pooledVariance));
         const upper = pooledMean + sigma;

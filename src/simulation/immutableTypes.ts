@@ -18,8 +18,7 @@
 
 import { Record, Map } from 'immutable';
 
-import type { Agent, Planet } from './planet';
-import type { GameState } from './engine';
+import type { Agent, GameState, Planet } from './planet/planet';
 
 // ---------------------------------------------------------------------------
 // PlanetRecord

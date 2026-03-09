@@ -10,16 +10,16 @@
  * cascading unmet demand upward through the education hierarchy.
  */
 
-import type { Agent, EducationLevelType, Planet } from '../planet';
-import { educationLevelKeys } from '../planet';
-import {
-    ACCEPTABLE_IDLE_FRACTION,
-    DEPARTING_EFFICIENCY,
-    totalActiveForEdu,
-    totalDepartingForEdu,
-    totalDepartingFiredForEdu,
-} from './workforceHelpers';
+import type { Agent, Planet } from '../planet/planet';
+import type { EducationLevelType } from '../population/education';
+import { educationLevelKeys } from '../population/education';
+import { ACCEPTABLE_IDLE_FRACTION, DEPARTING_EFFICIENCY } from './laborMarketTick';
 import { totalUnoccupiedForEdu } from './populationBridge';
+import { totalActiveForEdu, totalDepartingForEdu, totalDepartingFiredForEdu } from './workforceAggregates';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 /**
  * updateAllocatedWorkers — recomputes the hiring targets for every agent
@@ -77,7 +77,7 @@ import { totalUnoccupiedForEdu } from './populationBridge';
  * After computing raw targets, unmet demand is cascaded upward through higher
  * education levels (mirroring the cascade in `productionTick`).
  *
- * Call this once per tick **before** `laborMarketTick` so that the hiring
+ * Call this once per tick **before** `preProductionLaborMarketTick` so that the hiring
  * logic always chases up-to-date requirements.
  */
 export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
@@ -86,7 +86,7 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<
             // 1. Determine per-edu requirement: feedback-based or bootstrap.
             const requirement = {} as Record<EducationLevelType, number>;
 
-            const hasUsageData = assets.unusedWorkers !== undefined;
+            const hasUsageData = assets.workerFeedback !== undefined;
 
             if (hasUsageData) {
                 // Feedback path: derive consumed workers from last production tick.
@@ -101,13 +101,13 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<
                     // (Retiring pipeline removed — retirements handled via population sync.)
                     const voluntaryDeparting = departing - departingFired;
                     const currentPool = active + Math.floor(voluntaryDeparting * DEPARTING_EFFICIENCY);
-                    const unused = assets.unusedWorkers![edu] ?? 0;
+                    const unused = assets.workerFeedback!.unusedWorkers[edu] ?? 0;
                     consumed[edu] = currentPool - unused;
                 }
 
                 // Redistribute overqualified consumption back to the job slot
                 // level that actually needed those workers.
-                const oq = assets.overqualifiedMatrix;
+                const oq = assets.workerFeedback!.overqualifiedMatrix;
                 if (oq) {
                     for (const [jobEdu, breakdown] of Object.entries(oq)) {
                         if (!breakdown) {

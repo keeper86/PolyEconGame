@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { Coins, Landmark, Percent, Scale, TrendingDown, TrendingUp, Wallet, Users } from 'lucide-react';
-import type { Bank, EducationLevelType } from '@/simulation/planet';
-import { educationLevelKeys } from '@/simulation/planet';
+import type { Bank } from '@/simulation/planet/planet';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */

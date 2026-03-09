@@ -2,18 +2,109 @@
  * workforce/populationBridge.ts
  *
  * Functions that transfer workers between the population demography
- * (Cohort[]) and the workforce system (WorkforceDemography).
+ * (Cohort<PopulationCategory>[]) and the age-resolved workforce system
+ * (CohortByOccupation<WorkforceCategory>[]).
  *
- * - hireFromPopulation:   unoccupied → company/government
- * - returnToPopulation:   company/government → unoccupied
- * - retireToPopulation:   company/government → unableToWork
- * - totalUnoccupiedForEdu: count available labour supply
+ * Population demography shape (new model):
+ *   demography[age][occupation][education][skill] → PopulationCategory
+ *
+ * Workforce demography shape:
+ *   workforceDemography[age][education][skill] → WorkforceCategory
+ *
+ * With both structures indexed by age, transfers are trivially exact:
+ * add/subtract at the same age index in both structures.
+ *
+ * Skills are summed across when computing totals (emulating the pre-skill
+ * world) and distributed proportionally when moving population.
+ *
+ * - hireFromPopulation:     unoccupied → employed (in population)
+ * - returnToPopulation:     employed → unoccupied (in population)
+ * - returnToPopulationAtAge: same, at a specific age
+ * - retireToPopulation:     employed → unableToWork (in population)
+ * - totalUnoccupiedForEdu:  count available labour supply
  */
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
-import type { AgeMoments, EducationLevelType, Occupation, Planet } from '../planet';
-import { DEFAULT_HIRE_AGE_MEAN, RETIREMENT_AGE } from './workforceHelpers';
+import type { Agent, Planet } from '../planet/planet';
+
+import type { Cohort, EducationLevelType, Occupation, PopulationCategory, Skill } from '../population/population';
+import { SKILL, transferPopulation } from '../population/population';
+import { educationLevelKeys } from '../population/education';
 import { distributeProportionally } from '../utils/distributeProportionally';
+import { RETIREMENT_AGE } from './laborMarketTick';
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Sum `.total` across all skill levels for a given age × occupation × education.
+ */
+function sumSkills(
+    demography: Cohort<PopulationCategory>[],
+    age: number,
+    occ: Occupation,
+    edu: EducationLevelType,
+): number {
+    let total = 0;
+    for (const skill of SKILL) {
+        total += demography[age][occ][edu][skill].total;
+    }
+    return total;
+}
+
+// ---------------------------------------------------------------------------
+// Consistency assertion (SIM_DEBUG only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert that the total 'employed' population for each education level
+ * matches the sum of workforce (active + departing) across all agents on
+ * that planet.
+ *
+ * This is the population↔workforce balance-sheet check, analogous to the
+ * balance-sheet assertion in financialTick.ts.  In debug mode (SIM_DEBUG=1)
+ * it throws on mismatch; in production it silently warns.
+ */
+export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>, planet: Planet, label: string): void {
+    for (const edu of educationLevelKeys) {
+        // Sum employed in population across all ages and skills
+        let popEmployed = 0;
+        for (const cohort of planet.population.demography) {
+            for (const skill of SKILL) {
+                popEmployed += cohort.employed[edu][skill].total;
+            }
+        }
+
+        // Sum workforce across all agents on this planet.
+        // NOTE: departingFired is a *subset tag* on departing — not an
+        // additional pool.  Only active + departing are counted.
+        let wfTotal = 0;
+        for (const agent of agents.values()) {
+            const wf = agent.assets[planet.id]?.workforceDemography;
+            if (!wf) {
+                continue;
+            }
+            for (let age = 0; age < wf.length; age++) {
+                for (const skill of SKILL) {
+                    const cell = wf[age][edu][skill];
+                    wfTotal += cell.active;
+                    wfTotal += cell.departing.reduce((s: number, d: number) => s + d, 0);
+                }
+            }
+        }
+
+        if (popEmployed !== wfTotal) {
+            const msg =
+                `[populationBridge] workforce consistency violation after ${label}: ` +
+                `planet=${planet.id} edu=${edu}: population(employed)=${popEmployed} ≠ workforce=${wfTotal}`;
+            if (process.env.SIM_DEBUG === '1') {
+                throw new Error(msg);
+            }
+            console.warn(msg);
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Query helpers
@@ -22,26 +113,21 @@ import { distributeProportionally } from '../utils/distributeProportionally';
 /**
  * Count total unoccupied people for a given education level across all
  * employable ages (≥ MIN_EMPLOYABLE_AGE) in a planet's population.
+ * Sums across all skill levels.
  */
 export function totalUnoccupiedForEdu(planet: Planet, edu: EducationLevelType): number {
     let total = 0;
     const demography = planet.population.demography;
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        total += demography[age][edu]?.unoccupied ?? 0;
+        total += sumSkills(demography, age, 'unoccupied', edu);
     }
     return total;
 }
 
 /**
- * Compute the fraction of currently employed workers (company + government)
- * for a given education level that are at or above RETIREMENT_AGE in the
- * population demography.
- *
- * This uses the exact, authoritative age distribution — not the Gaussian
- * approximation stored in the workforce ageMoments — and therefore serves
- * as the ground-truth retirement-eligible fraction.
- *
- * Returns `{ totalEmployed, retirementEligible, fraction }`.
+ * Compute the fraction of currently employed workers for a given education
+ * level that are at or above RETIREMENT_AGE in the population demography.
+ * Sums across all skill levels.
  */
 export function employedRetirementFraction(
     planet: Planet,
@@ -51,7 +137,7 @@ export function employedRetirementFraction(
     let totalEmployed = 0;
     let retirementEligible = 0;
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        const employed = (demography[age][edu]?.company ?? 0) + (demography[age][edu]?.government ?? 0);
+        const employed = sumSkills(demography, age, 'employed', edu);
         totalEmployed += employed;
         if (age >= RETIREMENT_AGE) {
             retirementEligible += employed;
@@ -66,74 +152,89 @@ export function employedRetirementFraction(
 // ---------------------------------------------------------------------------
 
 /**
- * Remove `count` unoccupied workers of the given education level from the
- * planet's population, spreading removals proportionally across age cohorts.
- * Workers are moved from 'unoccupied' to the specified occupation.
- * Returns the number actually hired (may be less than `count` if supply is short)
- * together with raw age moments (sumAge, sumAgeSq) of the hired workers.
+ * Remove `count` unoccupied workers of the given education level and skill
+ * from the planet's population, spreading removals proportionally across
+ * age cohorts.  Workers are moved from 'unoccupied' to 'employed'.
+ *
+ * Returns the number actually hired (may be less than `count` if supply is
+ * short) together with per-age hire counts so the caller can update the
+ * age-resolved workforce demography.
  */
 export function hireFromPopulation(
     planet: Planet,
     edu: EducationLevelType,
+    skill: Skill,
     count: number,
-    occupation: Occupation,
-): { count: number; meanAge: number; varAge: number; sumAge: number; sumAgeSq: number } {
+): { count: number; hiredByAge: number[] } {
     if (count <= 0) {
-        return { count: 0, meanAge: DEFAULT_HIRE_AGE_MEAN, varAge: 0, sumAge: 0, sumAgeSq: 0 };
+        return { count: 0, hiredByAge: [] };
     }
 
     const demography = planet.population.demography;
-    const available = totalUnoccupiedForEdu(planet, edu);
+
+    // Count available unoccupied workers for this edu × skill
+    let available = 0;
+    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
+        available += demography[age].unoccupied[edu][skill].total;
+    }
+
     const toHire = Math.min(count, available);
     if (toHire <= 0) {
-        return { count: 0, meanAge: DEFAULT_HIRE_AGE_MEAN, varAge: 0, sumAge: 0, sumAgeSq: 0 };
+        return { count: 0, hiredByAge: [] };
     }
 
-    // Distribute hires proportionally across employable age cohorts
+    // Build per-age weights for proportional distribution
+    const weights: number[] = new Array(demography.length).fill(0);
+    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
+        weights[age] = demography[age].unoccupied[edu][skill].total;
+    }
+
+    const allocated = distributeProportionally(toHire, weights);
+
+    // Apply moves and collect per-age hire counts
+    const hiredByAge: number[] = new Array(demography.length).fill(0);
     let hired = 0;
-    let sumAges = 0;
-    let sumAgesSq = 0;
 
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        const cohort = demography[age];
-        const cohortUnoccupied = cohort[edu]?.unoccupied ?? 0;
-        if (cohortUnoccupied <= 0) {
+        const wanted = allocated[age];
+        if (wanted <= 0) {
             continue;
         }
-        const share = Math.floor((cohortUnoccupied / available) * toHire);
-        const actual = Math.min(share, cohortUnoccupied);
-        cohort[edu].unoccupied -= actual;
-        cohort[edu][occupation] += actual;
-        hired += actual;
-        sumAges += actual * age;
-        sumAgesSq += actual * age * age;
+        const avail = demography[age].unoccupied[edu][skill].total;
+        const actual = Math.min(wanted, avail);
+        if (actual > 0) {
+            transferPopulation(
+                demography,
+                { age, occ: 'unoccupied', edu, skill },
+                { age, occ: 'employed', edu, skill },
+                actual,
+            );
+            hiredByAge[age] = actual;
+            hired += actual;
+        }
     }
 
-    // Handle rounding remainder: pick from youngest employable available
+    // Handle rounding remainder
     let remainder = toHire - hired;
     if (remainder > 0) {
-        for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-            if (remainder <= 0) {
-                break;
-            }
-            const cohort = demography[age];
-            const cohortUnoccupied = cohort[edu]?.unoccupied ?? 0;
-            const take = Math.min(remainder, cohortUnoccupied);
+        for (let age = MIN_EMPLOYABLE_AGE; age < demography.length && remainder > 0; age++) {
+            const avail = demography[age].unoccupied[edu][skill].total;
+            const take = Math.min(remainder, avail);
             if (take > 0) {
-                cohort[edu].unoccupied -= take;
-                cohort[edu][occupation] += take;
+                transferPopulation(
+                    demography,
+                    { age, occ: 'unoccupied', edu, skill },
+                    { age, occ: 'employed', edu, skill },
+                    take,
+                );
+                hiredByAge[age] += take;
                 hired += take;
                 remainder -= take;
-                sumAges += take * age;
-                sumAgesSq += take * age * age;
             }
         }
     }
 
-    const meanAge = hired > 0 ? sumAges / hired : DEFAULT_HIRE_AGE_MEAN;
-    // Population variance: E[age²] - E[age]²
-    const varAge = hired > 0 ? Math.max(0, sumAgesSq / hired - meanAge * meanAge) : 0;
-    return { count: hired, meanAge, varAge, sumAge: sumAges, sumAgeSq: sumAgesSq };
+    return { count: hired, hiredByAge };
 }
 
 // ---------------------------------------------------------------------------
@@ -141,188 +242,105 @@ export function hireFromPopulation(
 // ---------------------------------------------------------------------------
 
 /**
- * Internal helper: move `count` workers of the given education level from
- * `srcOcc` to `dstOcc` in the planet's population demography.
+ * Return `count` workers of the given education level back to the planet's
+ * unoccupied population pool, moving them from 'employed'.
  *
- * Workers are distributed proportionally across age cohorts based on
- * how many workers of `edu × srcOcc` each cohort has, using the
- * Hamilton (largest-remainder) method for integer rounding.
+ * Workers are distributed proportionally across age cohorts and skill
+ * levels based on existing employed population counts.
  *
- * When optional `moments` are supplied (the compact AgeMoments of the
- * workers being returned), the per-age weights are multiplied by a
- * Gaussian kernel centred on the moments' mean age.  This steers the
- * proportional removal towards ages that match the departing profile,
- * reducing the systematic mean-age drift between the discrete population
- * and the compact-moments workforce model.
- *
- * When `preferOlder` is true the initial distribution favours older
- * cohorts for the rounding remainder (used for retirement).  When false,
- * rounding ties are broken by age ascending (used for departures back to
- * the unoccupied pool).
- *
- * If after the initial proportional pass some cohorts couldn't absorb
- * their share (because the population shifted between scheduling and
- * execution), overflow is redistributed in a second pass.  This
- * guarantees that every worker the workforce releases is accounted for
- * in the population, preventing drift between the two models.
- *
- * @returns the number of workers actually moved (may be less than `count`
- *          only if the population truly has fewer workers in `srcOcc`).
+ * Returns the number of workers actually moved.
  */
-function transferInPopulation(
+export function returnToPopulation(planet: Planet, edu: EducationLevelType, count: number): number {
+    return transferInPopulation(planet, edu, count, 'employed', 'unoccupied', false);
+}
+
+/**
+ * Return `count` workers of the given education level at a **specific age**
+ * back to the planet's unoccupied population pool, moving them from
+ * 'employed'.
+ *
+ * This is the age-exact variant of `returnToPopulation`.  With age-resolved
+ * workforce cohorts, the caller knows exactly which age each departing
+ * worker is at, so we can avoid the proportional-distribution approximation
+ * and instead do a direct per-age subtraction — zero drift.
+ *
+ * Workers are distributed proportionally across skill levels at that age.
+ *
+ * Returns the number of workers actually moved (may be less than `count`
+ * if the population at that age has fewer workers than expected).
+ */
+export function returnToPopulationAtAge(
     planet: Planet,
     edu: EducationLevelType,
     count: number,
-    srcOcc: Occupation,
-    dstOcc: Occupation,
-    preferOlder: boolean,
-    moments?: AgeMoments,
+    _occupation: Occupation,
+    age: number,
 ): number {
-    if (count <= 0) {
+    if (count <= 0 || age < 0 || age >= planet.population.demography.length) {
         return 0;
     }
 
     const demography = planet.population.demography;
+    const srcOcc: Occupation = 'employed';
+    const dstOcc: Occupation = 'unoccupied';
 
-    // Compute total available in srcOcc for this edu across all ages
-    let totalAvailable = 0;
-    for (let age = 0; age < demography.length; age++) {
-        totalAvailable += demography[age][edu]?.[srcOcc] ?? 0;
-    }
-
-    const toMove = Math.min(count, totalAvailable);
+    // Distribute across skills proportionally
+    const skillWeights: number[] = SKILL.map((s) => demography[age][srcOcc][edu][s].total);
+    const skillTotal = skillWeights.reduce((a, b) => a + b, 0);
+    const toMove = Math.min(count, skillTotal);
     if (toMove <= 0) {
+        if (count > 0) {
+            console.warn(
+                `[returnToPopulationAtAge] age=${age} edu=${edu}: ` +
+                    `requested=${count}, available=${skillTotal}, moved=0`,
+            );
+        }
         return 0;
     }
 
-    // Proportional distribution using Hamilton method
+    const perSkill = distributeProportionally(toMove, skillWeights);
     let moved = 0;
-    let overflow = 0;
 
-    // Build per-age weights (available in srcOcc per age)
-    const weights: number[] = new Array(demography.length);
-    for (let age = 0; age < demography.length; age++) {
-        weights[age] = demography[age][edu]?.[srcOcc] ?? 0;
-    }
-
-    // When departing moments are provided, apply Gaussian weighting so the
-    // removal targets ages near the departing workers' mean age.  This
-    // reduces systematic drift between the compact moments and the discrete
-    // population without touching agent-side moments at all.
-    if (moments && moments.count > 1) {
-        const mean = moments.sumAge / moments.count;
-        const variance = Math.max(1, moments.sumAgeSq / moments.count - mean * mean);
-        const invTwoVar = 1 / (2 * variance);
-        for (let age = 0; age < demography.length; age++) {
-            if (weights[age] > 0) {
-                const d = age - mean;
-                weights[age] *= Math.exp(-d * d * invTwoVar);
-            }
-        }
-    }
-
-    // Use distributeProportionally (Hamilton's largest-remainder method).
-    // When preferOlder is true we reverse the weight array before calling
-    // so that the deterministic index-based tie-breaker favours older ages;
-    // then reverse the result back.
-    let allocated = distributeProportionally(toMove, preferOlder ? weights.slice().reverse() : weights);
-    if (preferOlder) {
-        allocated = allocated.slice().reverse();
-    }
-
-    // Apply moves, collecting overflow
-    for (let age = 0; age < demography.length; age++) {
-        const wanted = allocated[age];
-        if (wanted <= 0) {
-            continue;
-        }
-        const cohort = demography[age];
-        const avail = cohort[edu]?.[srcOcc] ?? 0;
-        const actual = Math.min(wanted, avail);
-        if (actual > 0) {
-            cohort[edu][srcOcc] -= actual;
-            cohort[edu][dstOcc] += actual;
+    for (let si = 0; si < SKILL.length; si++) {
+        const skill = SKILL[si];
+        const amount = perSkill[si];
+        if (amount > 0) {
+            const actual = transferPopulation(
+                demography,
+                { age, occ: srcOcc, edu, skill },
+                { age, occ: dstOcc, edu, skill },
+                amount,
+            );
             moved += actual;
         }
-        overflow += wanted - actual;
     }
 
-    // Redistribute any overflow (from cohorts that couldn't absorb their share)
-    while (overflow > 0) {
-        let movedThisPass = 0;
-        // Scan ages — preferOlder → descending, otherwise ascending
-        const start = preferOlder ? demography.length - 1 : 0;
-        const end = preferOlder ? -1 : demography.length;
-        const step = preferOlder ? -1 : 1;
-        for (let age = start; age !== end && overflow > 0; age += step) {
-            const cohort = demography[age];
-            const avail = cohort[edu]?.[srcOcc] ?? 0;
-            const take = Math.min(overflow, avail);
-            if (take > 0) {
-                cohort[edu][srcOcc] -= take;
-                cohort[edu][dstOcc] += take;
-                moved += take;
-                overflow -= take;
-                movedThisPass += take;
-            }
-        }
-        if (movedThisPass === 0) {
-            break; // no more capacity
-        }
+    if (moved < count) {
+        console.warn(`[returnToPopulationAtAge] age=${age} edu=${edu}: ` + `requested=${count}, moved=${moved}`);
     }
-
     return moved;
 }
 
 /**
- * Return `count` workers of the given education level back to the planet's
- * unoccupied population pool, moving them from the specified occupation.
- *
- * When optional `moments` are supplied (the compact AgeMoments of the
- * departing workers), the removal is Gaussian-weighted towards their mean
- * age, reducing mean-age drift.
- *
- * Returns the number of workers actually moved (may be less than `count`
- * only if the population has fewer workers in that occupation).
- */
-export function returnToPopulation(
-    planet: Planet,
-    edu: EducationLevelType,
-    count: number,
-    occupation: Occupation,
-    moments?: AgeMoments,
-): number {
-    return transferInPopulation(planet, edu, count, occupation, 'unoccupied', /* preferOlder */ false, moments);
-}
-
-/**
  * Retire `count` workers of the given education level into the planet's
- * population as 'unableToWork', moving them from the specified occupation.
+ * population as 'unableToWork', moving them from 'employed'.
  *
  * Only workers at or above RETIREMENT_AGE are removed from the employed
- * population.  If there are fewer retirement-eligible workers than
- * `count`, we take as many as are available (never touching younger
- * workers).  This ensures the population age × occupation distribution
- * stays consistent with the workforce's statistical moments, which
- * model retirement as removing only the upper tail of the age
- * distribution.
+ * population.  Workers are distributed across skill levels proportionally.
  */
-export function retireToPopulation(
-    planet: Planet,
-    edu: EducationLevelType,
-    count: number,
-    occupation: Occupation,
-): number {
+export function retireToPopulation(planet: Planet, edu: EducationLevelType, count: number): number {
     if (count <= 0) {
         return 0;
     }
 
     const demography = planet.population.demography;
+    const srcOcc: Occupation = 'employed';
+    const dstOcc: Occupation = 'unableToWork';
 
-    // Count available workers at retirement-eligible ages
+    // Count available workers at retirement-eligible ages (all skills)
     let availableAtRetirement = 0;
     for (let age = RETIREMENT_AGE; age < demography.length; age++) {
-        availableAtRetirement += demography[age][edu]?.[occupation] ?? 0;
+        availableAtRetirement += sumSkills(demography, age, srcOcc, edu);
     }
 
     const toMove = Math.min(count, availableAtRetirement);
@@ -333,46 +351,40 @@ export function retireToPopulation(
     // Build per-age weights restricted to ages ≥ RETIREMENT_AGE
     const weights: number[] = new Array(demography.length).fill(0);
     for (let age = RETIREMENT_AGE; age < demography.length; age++) {
-        weights[age] = demography[age][edu]?.[occupation] ?? 0;
+        weights[age] = sumSkills(demography, age, srcOcc, edu);
     }
 
-    // Use distributeProportionally (preferOlder: reverse trick for tie-breaking)
+    // Reverse trick for preferring older ages in tie-breaking
     let allocated = distributeProportionally(toMove, weights.slice().reverse());
     allocated = allocated.slice().reverse();
 
-    // Apply moves
     let moved = 0;
     let overflow = 0;
+
     for (let age = RETIREMENT_AGE; age < demography.length; age++) {
         const wanted = allocated[age];
         if (wanted <= 0) {
             continue;
         }
-        const cohort = demography[age];
-        const avail = cohort[edu]?.[occupation] ?? 0;
-        const actual = Math.min(wanted, avail);
+        const ageTotal = sumSkills(demography, age, srcOcc, edu);
+        const actual = Math.min(wanted, ageTotal);
         if (actual > 0) {
-            cohort[edu][occupation] -= actual;
-            cohort[edu].unableToWork += actual;
-            moved += actual;
+            moved += moveAcrossSkills(demography, age, edu, srcOcc, dstOcc, actual);
         }
         overflow += wanted - actual;
     }
 
-    // Redistribute overflow (from cohorts that couldn't absorb their share)
-    // Scan oldest → youngest within retirement-age range
+    // Redistribute overflow (oldest → youngest within retirement range)
     while (overflow > 0) {
         let movedThisPass = 0;
         for (let age = demography.length - 1; age >= RETIREMENT_AGE && overflow > 0; age--) {
-            const cohort = demography[age];
-            const avail = cohort[edu]?.[occupation] ?? 0;
+            const avail = sumSkills(demography, age, srcOcc, edu);
             const take = Math.min(overflow, avail);
             if (take > 0) {
-                cohort[edu][occupation] -= take;
-                cohort[edu].unableToWork += take;
-                moved += take;
-                overflow -= take;
-                movedThisPass += take;
+                const m = moveAcrossSkills(demography, age, edu, srcOcc, dstOcc, take);
+                moved += m;
+                overflow -= m;
+                movedThisPass += m;
             }
         }
         if (movedThisPass === 0) {
@@ -380,8 +392,117 @@ export function retireToPopulation(
         }
     }
 
-    if (moved > 0) {
-        // Wealth no longer tracked in the workforce pipeline.
+    return moved;
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Move `count` people at a given age × edu from srcOcc to dstOcc,
+ * distributing proportionally across skill levels.
+ * Returns the number actually moved.
+ */
+function moveAcrossSkills(
+    demography: Cohort<PopulationCategory>[],
+    age: number,
+    edu: EducationLevelType,
+    srcOcc: Occupation,
+    dstOcc: Occupation,
+    count: number,
+): number {
+    const skillWeights = SKILL.map((s) => demography[age][srcOcc][edu][s].total);
+    const perSkill = distributeProportionally(count, skillWeights);
+    let moved = 0;
+    for (let si = 0; si < SKILL.length; si++) {
+        const skill = SKILL[si];
+        if (perSkill[si] > 0) {
+            moved += transferPopulation(
+                demography,
+                { age, occ: srcOcc, edu, skill },
+                { age, occ: dstOcc, edu, skill },
+                perSkill[si],
+            );
+        }
     }
+    return moved;
+}
+
+/**
+ * General-purpose transfer of `count` workers of a given education level
+ * from srcOcc to dstOcc across all ages, distributing proportionally.
+ * When `preferOlder` is true, tie-breaking favours older ages.
+ */
+function transferInPopulation(
+    planet: Planet,
+    edu: EducationLevelType,
+    count: number,
+    srcOcc: Occupation,
+    dstOcc: Occupation,
+    preferOlder: boolean,
+): number {
+    if (count <= 0) {
+        return 0;
+    }
+
+    const demography = planet.population.demography;
+
+    let totalAvailable = 0;
+    for (let age = 0; age < demography.length; age++) {
+        totalAvailable += sumSkills(demography, age, srcOcc, edu);
+    }
+
+    const toMove = Math.min(count, totalAvailable);
+    if (toMove <= 0) {
+        return 0;
+    }
+
+    const weights: number[] = new Array(demography.length).fill(0);
+    for (let age = 0; age < demography.length; age++) {
+        weights[age] = sumSkills(demography, age, srcOcc, edu);
+    }
+
+    let allocated = distributeProportionally(toMove, preferOlder ? weights.slice().reverse() : weights);
+    if (preferOlder) {
+        allocated = allocated.slice().reverse();
+    }
+
+    let moved = 0;
+    let overflow = 0;
+
+    for (let age = 0; age < demography.length; age++) {
+        const wanted = allocated[age];
+        if (wanted <= 0) {
+            continue;
+        }
+        const avail = sumSkills(demography, age, srcOcc, edu);
+        const actual = Math.min(wanted, avail);
+        if (actual > 0) {
+            moved += moveAcrossSkills(demography, age, edu, srcOcc, dstOcc, actual);
+        }
+        overflow += wanted - actual;
+    }
+
+    while (overflow > 0) {
+        let movedThisPass = 0;
+        const start = preferOlder ? demography.length - 1 : 0;
+        const end = preferOlder ? -1 : demography.length;
+        const step = preferOlder ? -1 : 1;
+        for (let age = start; age !== end && overflow > 0; age += step) {
+            const avail = sumSkills(demography, age, srcOcc, edu);
+            const take = Math.min(overflow, avail);
+            if (take > 0) {
+                const m = moveAcrossSkills(demography, age, edu, srcOcc, dstOcc, take);
+                moved += m;
+                overflow -= m;
+                movedThisPass += m;
+            }
+        }
+        if (movedThisPass === 0) {
+            break;
+        }
+    }
+
     return moved;
 }

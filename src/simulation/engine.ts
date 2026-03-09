@@ -1,96 +1,64 @@
 import { isMonthBoundary, isYearBoundary } from './constants';
-import type { GameState } from './planet';
-import { checkPopulationWorkforceConsistency, checkAgeMomentConsistency } from './invariants';
-import { environmentTick } from './environment';
-import { populationTick, populationAdvanceYear } from './population';
-import { productionTick } from './production';
+import type { GameState } from './planet/planet';
+import { environmentTick } from './planet/environment';
+import { productionTick } from './planet/production';
 import { updateAllocatedWorkers } from './workforce/allocatedWorkers';
-import { laborMarketTick } from './workforce/laborMarketTick';
-import { laborMarketMonthTick } from './workforce/laborMarketMonthTick';
+import { preProductionLaborMarketTick } from './workforce/laborMarketTick';
+import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { laborMarketYearTick } from './workforce/laborMarketYearTick';
-import { populationAdvanceYearTick } from './population/populationTick';
+import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
 import { preProductionFinancialTick, postProductionFinancialTick } from './financial/financialTick';
-import { updateAgentPricing, foodMarketTick, intergenerationalTransfersTick, wealthDiffusionTick } from './market';
+import { updateAgentPricing } from './market/agentPricing';
+import { foodMarketTick } from './market/foodMarket';
+import { intergenerationalTransfersTick } from './market/intergenerationalTransfers';
 
-export type { GameState };
-export { populationTick, populationAdvanceYear, environmentTick, productionTick };
 export { seedRng };
-
-process.env.SIM_DEBUG = '0';
-
-function debugCheck(stepName: string, gs: GameState): void {
-    if (process.env.SIM_DEBUG !== '1') {
-        return;
-    }
-    const d1 = checkPopulationWorkforceConsistency(gs.agents, gs.planets);
-    const d2 = checkAgeMomentConsistency(gs.agents, gs.planets);
-    const d = [...d1, ...d2];
-    if (d.length) {
-        console.error(`tick ${gs.tick} after ${stepName}: ${d.join('; ')}`);
-        process.exit(1);
-    }
-}
 
 // internalTickCounter has been removed; gameState.tick (incremented by the
 // caller before advanceTick is called) is used for all boundary checks.
 export function advanceTick(gameState: GameState) {
     // 1. Environment tick
     environmentTick(gameState);
-    debugCheck('environmentTick', gameState);
 
     // 2. Workforce allocation update
     updateAllocatedWorkers(gameState.agents, gameState.planets);
-    debugCheck('updateAllocatedWorkers', gameState);
 
-    // 3. Labor market tick
-    laborMarketTick(gameState.agents, gameState.planets);
-    debugCheck('laborMarketTick', gameState);
+    // 3. Labor market tick (monthly: hiring, firing, voluntary quits)
+    if (isMonthBoundary(gameState.tick)) {
+        preProductionLaborMarketTick(gameState.agents, gameState.planets);
+    }
 
     // 4. Pre-production financial tick: wages, working-capital loans
     preProductionFinancialTick(gameState);
-    debugCheck('preProductionFinancialTick', gameState);
 
     // 5. Population tick: nutrition, mortality, disability, fertility
     populationTick(gameState);
-    debugCheck('populationTick', gameState);
 
     // 6. Production tick: facility output
     productionTick(gameState);
-    debugCheck('productionTick', gameState);
 
     // 7. Agent pricing: each food producer sets its offer price & quantity
     updateAgentPricing(gameState);
-    debugCheck('updateAgentPricing', gameState);
 
-    // 8. Food market clearing: demand, per-agent merit-order dispatch, settlement
-    foodMarketTick(gameState);
-    debugCheck('foodMarketTick', gameState);
-
-    // 9. Intergenerational transfers: family support flows
+    // 8. Intergenerational transfers: family support flows
+    //    Runs BEFORE the food market so that dependent cohorts (children,
+    //    elderly) receive wealth they can spend on food in the same tick.
     intergenerationalTransfersTick(gameState);
-    debugCheck('intergenerationalTransfersTick', gameState);
 
-    // 10. Wealth diffusion: low-temperature variance smoothing
-    wealthDiffusionTick(gameState);
-    debugCheck('wealthDiffusionTick', gameState);
+    // 9. Food market clearing: demand, per-agent merit-order dispatch, settlement
+    foodMarketTick(gameState);
 
     // 11. Post-production financial tick: loan repayment, reconciliation
     postProductionFinancialTick(gameState);
-    debugCheck('postProductionFinancialTick', gameState);
 
     // Month/year boundary updates
     if (isMonthBoundary(gameState.tick)) {
-        laborMarketMonthTick(gameState.agents, gameState.planets);
-        debugCheck('laborMarketMonthTick', gameState);
+        postProductionLaborMarketTick(gameState.agents, gameState.planets);
     }
 
     if (isYearBoundary(gameState.tick)) {
         populationAdvanceYearTick(gameState);
         laborMarketYearTick(gameState.agents);
-        debugCheck('populationBoundaryTick&laborMarketYearTick', gameState);
     }
-
-    // Final check
-    debugCheck('final', gameState);
 }

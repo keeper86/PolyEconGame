@@ -19,8 +19,7 @@ import { encode, decode } from '@msgpack/msgpack';
 
 import { toImmutableGameState, fromImmutableGameState } from './immutableTypes';
 import type { GameStateRecord } from './immutableTypes';
-import type { GameState } from './engine';
-import type { Planet, Agent } from './planet';
+import type { Planet, Agent, GameState } from './planet/planet';
 
 // ---------------------------------------------------------------------------
 // Wire format (MessagePack-safe — uses arrays instead of Maps)

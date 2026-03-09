@@ -1,178 +1,201 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import type { Agent, Planet } from '../planet';
-import { educationLevelKeys } from '../planet';
+import type { Agent, Planet } from '../planet/planet';
+import { educationLevelKeys } from '../population/education';
+import type { EducationLevelType } from '../population/education';
+import { SKILL } from '../population/population';
 
-import { laborMarketMonthTick } from './laborMarketMonthTick';
-import { laborMarketTick } from './laborMarketTick';
+import { postProductionLaborMarketTick } from './laborMarketMonthTick';
+import { preProductionLaborMarketTick, NOTICE_PERIOD_MONTHS } from './laborMarketTick';
 import {
     makeAgent,
-    makeStorageFacility,
-    makePlanet,
+    makePlanetWithPopulation,
     totalPopulation,
     sumPopOcc,
-    sumWorkforceForEdu,
-    assertTotalPopulationConserved,
-    assertWorkforcePopulationConsistency,
     agentMap,
     planetMap,
-} from './testHelpers';
-import {
-    ageMomentsForAge,
-    createWorkforceDemography,
-    emptyAgeMoments,
-    NOTICE_PERIOD_MONTHS,
-    removeFromAgeMoments,
-    totalDepartingForEdu,
-} from './workforceHelpers';
+} from '../utils/testHelper';
+import { assertTotalPopulationConserved } from '../utils/testAssertions';
+import type { makeWorkforceDemography } from '../utils/testHelper';
 
 // ---------------------------------------------------------------------------
-// laborMarketMonthTick — basic pipeline behaviour
+// Helpers
 // ---------------------------------------------------------------------------
 
-describe('laborMarketMonthTick', () => {
+/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
+function totalDepartingForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            for (const dep of workforce[age][edu][skill].departing) {
+                total += dep;
+            }
+        }
+    }
+    return total;
+}
+
+// ---------------------------------------------------------------------------
+// postProductionLaborMarketTick — basic pipeline behaviour
+// ---------------------------------------------------------------------------
+
+describe('postProductionLaborMarketTick', () => {
     let agent: Agent;
     let planet: Planet;
 
     beforeEach(() => {
         agent = makeAgent();
-        ({ planet } = makePlanet());
+        ({ planet } = makePlanetWithPopulation({}));
     });
 
-    it('shifts the departing pipeline, discarding slot-0 workers', () => {
+    it('shifts the departing pipeline down by one slot', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[0].departing.none[0] = ageMomentsForAge(30, 5);
-        workforce[0].departing.none[1] = ageMomentsForAge(30, 3);
-        workforce[0].departing.none[11] = ageMomentsForAge(30, 1);
+        // Place departing workers at different pipeline slots for age=30, none/novice
+        workforce[30].none.novice.departing[1] = 5;
+        workforce[30].none.novice.departing[2] = 3;
 
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
+        // Need employed population at age 30 so returnToPopulationAtAge can move them
+        planet.population.demography[30].employed.none.novice.total = 100;
 
-        expect(workforce[0].departing.none[0].count).toBe(3);
-        expect(workforce[0].departing.none[10].count).toBe(1);
-        expect(workforce[0].departing.none[11].count).toBe(0);
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+
+        // Pipeline shifted: slot[1]->slot[0], slot[2]->slot[1], last slot cleared
+        expect(workforce[30].none.novice.departing[0]).toBe(5);
+        expect(workforce[30].none.novice.departing[1]).toBe(3);
+        expect(workforce[30].none.novice.departing[2]).toBe(0);
+    });
+
+    it('drains slot-0 workers back to the unoccupied population', () => {
+        const workforce = agent.assets.p.workforceDemography!;
+        // Place 10 departing workers at slot 0 for age=25, primary/novice
+        workforce[25].primary.novice.departing[0] = 10;
+
+        // Ensure employed population at age 25 has at least 10 workers
+        planet.population.demography[25].employed.primary.novice.total = 20;
+        planet.population.demography[25].unoccupied.primary.novice.total = 50;
+
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+
+        // Workers moved from employed to unoccupied at age 25
+        expect(planet.population.demography[25].employed.primary.novice.total).toBe(10);
+        expect(planet.population.demography[25].unoccupied.primary.novice.total).toBe(60);
     });
 
     it('clears the last pipeline slot after advancing', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1] = ageMomentsForAge(30, 7);
+        workforce[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 1] = 7;
 
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
-        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 2].count).toBe(7);
-        expect(workforce[0].departing.none[NOTICE_PERIOD_MONTHS - 1].count).toBe(0);
+        expect(workforce[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 2]).toBe(7);
+        expect(workforce[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
     });
 
-    it('returns departing workers to the unoccupied population pool', () => {
-        ({ planet } = makePlanet());
-        planet.population.demography[25].primary.company = 100;
-        planet.population.demography[25].primary.unoccupied = 50;
+    it('does nothing when workforceDemography is absent', () => {
+        agent.assets.p.workforceDemography = undefined as never;
+        expect(() => postProductionLaborMarketTick(agentMap(agent), planetMap(planet))).not.toThrow();
+    });
 
-        const workforce = agent.assets.p.workforceDemography!;
-        workforce[0].departing.primary[0] = ageMomentsForAge(25, 10);
+    it('resets death, disability, and retirement counters', () => {
+        const zero = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        // Set "this month" counters via new sub-objects
+        agent.assets.p.deaths = {
+            thisMonth: { none: 5, primary: 0, secondary: 0, tertiary: 0 },
+            prevMonth: { ...zero },
+        };
+        agent.assets.p.disabilities = {
+            thisMonth: { none: 3, primary: 0, secondary: 0, tertiary: 0 },
+            prevMonth: { ...zero },
+        };
+        agent.assets.p.retirements = {
+            thisMonth: { none: 2, primary: 0, secondary: 0, tertiary: 0 },
+            prevMonth: { ...zero },
+        };
 
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
-        expect(planet.population.demography[25].primary.company).toBe(90);
-        expect(planet.population.demography[25].primary.unoccupied).toBe(60);
+        // "this month" rotated into "prev month"
+        expect(agent.assets.p.deaths!.prevMonth.none).toBe(5);
+        expect(agent.assets.p.disabilities!.prevMonth.none).toBe(3);
+        expect(agent.assets.p.retirements!.prevMonth.none).toBe(2);
+
+        // "this month" reset to 0
+        expect(agent.assets.p.deaths!.thisMonth.none).toBe(0);
+        expect(agent.assets.p.disabilities!.thisMonth.none).toBe(0);
+        expect(agent.assets.p.retirements!.thisMonth.none).toBe(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Retirement is now handled population-side (applyRetirement + workforceSync).
-// The retiring pipeline has been removed from TenureCohort.
-// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Population conservation — month tick
 // ---------------------------------------------------------------------------
 
-describe('laborMarketMonthTick — population conservation', () => {
+describe('postProductionLaborMarketTick — population conservation', () => {
     it('conserves total population when departing pipeline completes', () => {
-        const { planet } = makePlanet({ none: 10000 });
+        const { planet } = makePlanetWithPopulation({ none: 10000 });
         const agent = makeAgent();
-
         agent.assets.p.allocatedWorkers.none = 1000;
-        laborMarketTick(agentMap(agent), planetMap(planet));
+
+        // Hire workers via preProductionLaborMarketTick
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
         const afterHire = totalPopulation(planet);
 
+        // Manually move some active workers into the departing pipeline
         const wf = agent.assets.p.workforceDemography!;
-        const activeCount = wf[0].active.none.count;
-        const toDep = Math.min(50, activeCount);
-        if (toDep > 0) {
-            const depMoments = ageMomentsForAge(30, toDep);
-            wf[0].active.none = removeFromAgeMoments(wf[0].active.none, 30, toDep);
-            wf[0].departing.none[0] = depMoments;
+        let movedToDeparting = 0;
+        for (let age = 0; age < wf.length && movedToDeparting < 50; age++) {
+            for (const skill of SKILL) {
+                const cat = wf[age].none[skill];
+                const take = Math.min(cat.active, 50 - movedToDeparting);
+                if (take > 0) {
+                    cat.active -= take;
+                    cat.departing[0] = take;
+                    movedToDeparting += take;
+                }
+                if (movedToDeparting >= 50) {
+                    break;
+                }
+            }
         }
 
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         assertTotalPopulationConserved(planet, afterHire);
-        assertWorkforcePopulationConsistency(planet, [agent], 'after month tick');
     });
 
-    it('departure drain preserves workforce↔population consistency for government', () => {
-        const { planet, gov } = makePlanet({ none: 5000 });
-        gov.assets = {
-            p: {
-                resourceClaims: [],
-                resourceTenancies: [],
-                productionFacilities: [],
-                deposits: 0,
-                storageFacility: makeStorageFacility(),
-                allocatedWorkers: { none: 500, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
-                workforceDemography: createWorkforceDemography(),
-            },
-        };
-
-        laborMarketTick(agentMap(gov), planetMap(planet));
-        const afterHire = totalPopulation(planet);
-
-        const wf = gov.assets.p.workforceDemography!;
-        const activeCount = wf[0].active.none.count;
-        const dep = Math.min(20, activeCount);
-        if (dep > 0) {
-            wf[0].active.none = removeFromAgeMoments(wf[0].active.none, 30, dep);
-            wf[0].departing.none[0] = ageMomentsForAge(30, dep);
-        }
-
-        laborMarketMonthTick(agentMap(gov), planetMap(planet));
-
-        assertTotalPopulationConserved(planet, afterHire);
-
-        const govPop = sumPopOcc(planet, 'none', 'government');
-        const govWf = sumWorkforceForEdu(gov, 'p', 'none');
-        expect(govWf).toBe(govPop);
-    });
-
-    it('pipeline shift preserves total departing counts (no drop/gain)', () => {
+    it('pipeline shift preserves total departing counts minus drained slot', () => {
+        const { planet } = makePlanetWithPopulation({ none: 5000 });
         const agent = makeAgent();
-        const { planet } = makePlanet({ none: 5000 });
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.none = ageMomentsForAge(30, 100);
+        // Place 100 active workers at age 30, none/novice
+        wf[30].none.novice.active = 100;
+        agent.assets.p.allocatedWorkers.none = 100;
 
+        // Fill the departing pipeline
         let totalInPipeline = 0;
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            const count = m + 1;
-            wf[0].departing.none[m] = ageMomentsForAge(30, count);
+            const count = (m + 1) * 10;
+            wf[30].none.novice.departing[m] = count;
             totalInPipeline += count;
         }
 
-        planet.population.demography[30].none.company = 100 + totalInPipeline;
-        planet.population.demography[30].none.unoccupied = 5000;
+        // Ensure enough employed population at age 30 for the drain
+        planet.population.demography[30].employed.none.novice.total = 100 + totalInPipeline;
 
         const popBefore = totalPopulation(planet);
 
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
-        assertTotalPopulationConserved(planet, popBefore);
-
+        // After month tick: slot[0] was drained, rest shifted down
         let pipelineAfter = 0;
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            pipelineAfter += wf[0].departing.none[m].count;
+            pipelineAfter += wf[30].none.novice.departing[m];
         }
-        // slot-0 (count=1) was drained, so total drops by 1
-        expect(pipelineAfter).toBe(totalInPipeline - 1);
+        // slot-0 had (0+1)*10=10, so total drops by 10
+        expect(pipelineAfter).toBe(totalInPipeline - 10);
+
+        assertTotalPopulationConserved(planet, popBefore);
     });
 });
 
@@ -182,43 +205,53 @@ describe('laborMarketMonthTick — population conservation', () => {
 
 describe('departingFired pipeline — consistency', () => {
     it('departingFired never exceeds departing at any pipeline slot', () => {
-        const { planet } = makePlanet({ none: 50000 });
+        const { planet } = makePlanetWithPopulation({ none: 50000 });
         const agent = makeAgent();
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[5].active.none = ageMomentsForAge(30, 1000);
+        // Place 1000 workers, but only allocate 500 -> 500 will be fired
+        wf[30].none.novice.active = 1000;
         agent.assets.p.allocatedWorkers.none = 500;
 
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
-        for (const cohort of wf) {
+        for (let age = 0; age < wf.length; age++) {
             for (const edu of educationLevelKeys) {
-                for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                    expect(
-                        cohort.departingFired[edu][m],
-                        `departingFired > departing at slot ${m} for ${edu}`,
-                    ).toBeLessThanOrEqual(cohort.departing[edu][m].count);
+                for (const skill of SKILL) {
+                    const cat = wf[age][edu][skill];
+                    for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                        expect(
+                            cat.departingFired[m],
+                            `departingFired > departing at slot ${m} for ${edu}.${skill} age=${age}`,
+                        ).toBeLessThanOrEqual(cat.departing[m]);
+                    }
                 }
             }
         }
     });
 
     it('departingFired pipeline shifts in sync with departing pipeline during month tick', () => {
-        const { planet } = makePlanet({ none: 50000 });
+        const { planet } = makePlanetWithPopulation({ none: 50000 });
         const agent = makeAgent();
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[3].departing.none[5] = ageMomentsForAge(30, 50);
-        wf[3].departingFired.none[5] = 30;
-        wf[3].active.none = ageMomentsForAge(30, 100);
-        planet.population.demography[30].none.company = 200;
+        // Place values directly in the departing + departingFired pipelines
+        wf[30].none.novice.departing[2] = 50;
+        wf[30].none.novice.departingFired[2] = 30;
+        wf[30].none.novice.active = 100;
+        agent.assets.p.allocatedWorkers.none = 100;
 
-        laborMarketMonthTick(agentMap(agent), planetMap(planet));
+        // Ensure employed population at age 30 for drain
+        planet.population.demography[30].employed.none.novice.total = 200;
 
-        expect(wf[3].departing.none[4].count).toBe(50);
-        expect(wf[3].departingFired.none[4]).toBe(30);
-        expect(wf[3].departing.none[5].count).toBe(0);
-        expect(wf[3].departingFired.none[5]).toBe(0);
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+
+        // Slot 2 -> slot 1 after shift
+        expect(wf[30].none.novice.departing[1]).toBe(50);
+        expect(wf[30].none.novice.departingFired[1]).toBe(30);
+        // Last slot cleared
+        expect(wf[30].none.novice.departing[2]).toBe(0);
+        expect(wf[30].none.novice.departingFired[2]).toBe(0);
     });
 });
 
@@ -228,25 +261,70 @@ describe('departingFired pipeline — consistency', () => {
 
 describe('pipeline drain edge cases', () => {
     it('departing pipeline fully drains after NOTICE_PERIOD_MONTHS month ticks', () => {
-        const { planet } = makePlanet({ none: 10000 });
+        const { planet } = makePlanetWithPopulation({ none: 10000 });
         const agent = makeAgent();
-
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(agentMap(agent), planetMap(planet));
 
+        // Hire, then move all active into the departing pipeline
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
         const before = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        const activeMoments = wf[0].active.none;
-        wf[0].active.none = emptyAgeMoments();
-        wf[0].departing.none[NOTICE_PERIOD_MONTHS - 1] = activeMoments;
+        for (let age = 0; age < wf.length; age++) {
+            for (const skill of SKILL) {
+                const cat = wf[age].none[skill];
+                if (cat.active > 0) {
+                    cat.departing[NOTICE_PERIOD_MONTHS - 1] += cat.active;
+                    cat.active = 0;
+                }
+            }
+        }
+        // Set allocatedWorkers to 0 so no re-hiring occurs
+        agent.assets.p.allocatedWorkers.none = 0;
 
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            laborMarketMonthTick(agentMap(agent), planetMap(planet));
+            postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
         }
 
         expect(totalDepartingForEdu(wf, 'none')).toBe(0);
         assertTotalPopulationConserved(planet, before);
-        expect(sumPopOcc(planet, 'none', 'company')).toBe(0);
+        expect(sumPopOcc(planet, 'none', 'employed')).toBe(0);
+    });
+
+    it('handles multiple education levels independently', () => {
+        const { planet } = makePlanetWithPopulation({ none: 5000, primary: 3000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 100;
+        agent.assets.p.allocatedWorkers.primary = 50;
+
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+
+        const wf = agent.assets.p.workforceDemography!;
+        const primaryBefore = totalDepartingForEdu(wf, 'primary');
+
+        // Place some departing workers in slot 0 for none only
+        let placed = 0;
+        for (let age = 0; age < wf.length && placed < 10; age++) {
+            for (const skill of SKILL) {
+                const cat = wf[age].none[skill];
+                if (cat.active > 0) {
+                    const take = Math.min(cat.active, 10 - placed);
+                    cat.active -= take;
+                    cat.departing[0] += take;
+                    placed += take;
+                }
+                if (placed >= 10) {
+                    break;
+                }
+            }
+        }
+
+        const before = totalPopulation(planet);
+        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+
+        // Primary departing should be unchanged (still whatever voluntary quits placed)
+        expect(totalDepartingForEdu(wf, 'primary')).toBe(primaryBefore);
+
+        assertTotalPopulationConserved(planet, before);
     });
 });

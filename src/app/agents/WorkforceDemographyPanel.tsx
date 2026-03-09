@@ -2,14 +2,14 @@
 
 import React, { useMemo } from 'react';
 import { Users } from 'lucide-react';
-import type { EducationLevelType, WorkforceDemography } from '../../simulation/planet';
-import { educationLevelKeys } from '../../simulation/planet';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { computeSummary } from './workforce-summary';
+import type { WorkforceDemography } from './workforce-summary';
 import { WorkforceSkeleton } from './WorkforceSkeleton';
 import { EducationLevelCards } from './EducationLevelCards';
-import { TenureDistributionChart } from './TenureDistributionChart';
 import { AgeDistributionChart } from './AgeDistributionChart';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -36,8 +36,6 @@ export type WorkforceDemographyPanelProps = {
     retirementsThisMonth?: Record<EducationLevelType, number>;
     /** Retirements previous month per education level. */
     retirementsPrevMonth?: Record<EducationLevelType, number>;
-    /** Available (unoccupied) workers on the labor market per education level. */
-    availableOnMarket?: Record<EducationLevelType, number>;
 };
 
 // ---------------------------------------------------------------------------
@@ -55,7 +53,6 @@ export default function WorkforceDemographyPanel({
     disabilitiesPrevMonth,
     retirementsThisMonth,
     retirementsPrevMonth,
-    availableOnMarket,
 }: WorkforceDemographyPanelProps): React.ReactElement {
     const summary = useMemo(
         () => (workforceDemography && workforceDemography.length > 0 ? computeSummary(workforceDemography) : null),
@@ -125,27 +122,17 @@ export default function WorkforceDemographyPanel({
                                 disabilitiesPrevByEdu={disabilitiesPrevMonth}
                                 retirementsByEdu={retirementsThisMonth}
                                 retirementsPrevByEdu={retirementsPrevMonth}
-                                availableByEdu={availableOnMarket}
                             />
                         </div>
 
-                        {/* Charts — each in its own full-width row */}
+                        {/* Age distribution chart */}
                         <div>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
-                                Age distribution by tenure
+                                Age distribution
                             </h5>
                             <AgeDistributionChart
-                                ageDistribution={summary.ageDistributionByYear}
-                                tenureBandLabels={summary.tenureYearLabels}
-                            />
-                        </div>
-                        <div>
-                            <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
-                                Tenure distribution
-                            </h5>
-                            <TenureDistributionChart
-                                tenureChart={summary.tenureChart}
-                                tenureChartByEdu={summary.tenureChartByEdu}
+                                ageChartByStatus={summary.ageChartByStatus}
+                                ageChartByEdu={summary.ageChartByEdu}
                             />
                         </div>
                     </>

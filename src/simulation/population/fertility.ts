@@ -14,8 +14,32 @@
  */
 
 import { TICKS_PER_YEAR } from '../constants';
-import type { Environment, Population } from '../planet';
+import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
+import type { Population } from './population';
+import { forEachPopulationCohort } from './population';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the population-weighted average starvation level across all
+ * cohorts.  Each category's starvationLevel is weighted by its total.
+ */
+function averageStarvationLevel(population: Population): number {
+    let totalPop = 0;
+    let weightedStarvation = 0;
+    for (const cohort of population.demography) {
+        forEachPopulationCohort(cohort, (cat) => {
+            if (cat.total > 0) {
+                weightedStarvation += cat.starvationLevel * cat.total;
+                totalPop += cat.total;
+            }
+        });
+    }
+    return totalPop > 0 ? weightedStarvation / totalPop : 0;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -32,7 +56,7 @@ export const END_FERTILE_AGE = 45;
  * child mortality.  The simulation applies additional reductions from
  * pollution and starvation on top of this.
  */
-export const LIFETIME_FERTILITY = 2.66;
+export const LIFETIME_FERTILITY = 3.0;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -78,11 +102,12 @@ export function computeBirthsThisTick(
 
 /**
  * Apply births to the population's demography (mutates in place).
- * New-borns are placed into cohort 0 with education='none', occupation='education'.
+ * New-borns are placed into cohort 0 with occupation='education',
+ * education='none', skill='novice'.
  */
 export function applyBirths(population: Population, birthsThisTick: number): void {
     if (birthsThisTick > 0) {
-        population.demography[0].none.education += birthsThisTick;
+        population.demography[0].education.none.novice.total += birthsThisTick;
     }
 }
 
@@ -103,6 +128,6 @@ export function populationBirthsTick(
     fertileWomen: number,
     pollution: Environment['pollution'],
 ): void {
-    const births = computeBirthsThisTick(fertileWomen, population.starvationLevel, pollution);
+    const births = computeBirthsThisTick(fertileWomen, averageStarvationLevel(population), pollution);
     applyBirths(population, births);
 }

@@ -5,6 +5,7 @@ export enum Table {
     GameSnapshots = 'game_snapshots',
     KnexMigrations = 'knex_migrations',
     KnexMigrationsLock = 'knex_migrations_lock',
+    PlanetPopulationHistory = 'planet_population_history',
     UserData = 'user_data',
 }
 
@@ -12,6 +13,7 @@ export type Tables = {
     game_snapshots: GameSnapshots;
     knex_migrations: KnexMigrations;
     knex_migrations_lock: KnexMigrationsLock;
+    planet_population_history: PlanetPopulationHistory;
     user_data: UserData;
 };
 
@@ -33,6 +35,16 @@ export type KnexMigrations = {
 export type KnexMigrationsLock = {
     index: number;
     is_locked: number | null;
+};
+
+export type PlanetPopulationHistory = {
+    id: string;
+    tick: string;
+    planet_id: string;
+    population: string;
+    starvation_level: number;
+    food_price: number;
+    created_at: Date;
 };
 
 export type UserData = {

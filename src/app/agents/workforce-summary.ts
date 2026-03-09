@@ -1,18 +1,21 @@
 /**
- * Computes an aggregate summary of a WorkforceDemography array.
+ * Computes an aggregate summary of an agent's workforce demography.
  * Pure logic — no React, no UI.
+ *
+ * The workforce is stored as `CohortByOccupation<WorkforceCategory>[]`
+ * (age-indexed).  Each slot is `{ [edu]: { [skill]: WorkforceCategory } }`
+ * where `WorkforceCategory = { active: number, departing: number[],
+ * departingFired: number[] }`.
  */
 
-import {
-    ageProductivityMultiplier,
-    ageMean,
-    ageVariance,
-    DEFAULT_HIRE_AGE_MEAN,
-    experienceMultiplier,
-    MAX_TENURE_YEARS,
-} from '@/simulation/workforce/index';
-import type { EducationLevelType, WorkforceDemography } from '../../simulation/planet';
-import { educationLevelKeys } from '../../simulation/planet';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { CohortByOccupation, WorkforceCategory } from '@/simulation/population/population';
+import { MAX_AGE, SKILL } from '@/simulation/population/population';
+import { ageProductivityMultiplier } from '@/simulation/workforce/laborMarketTick';
+
+/** Alias for the workforce demography structure used by agents. */
+export type WorkforceDemography = CohortByOccupation<WorkforceCategory>[];
 
 // ---------------------------------------------------------------------------
 // Summary type
@@ -35,28 +38,13 @@ export type WorkforceSummary = {
     totalVoluntary: number;
     avgExperienceMultiplier: number;
 
-    tenureChart: {
-        year: number;
-        active: number;
-        departing: number;
-        fired: number;
-        expMult: number;
-        meanAge: number | null;
-        variance: number | null;
-    }[];
-
-    /** Tenure distribution stacked by education level (active + departing per edu). */
-    tenureChartByEdu: {
-        year: number;
-        /** Active workers per education level. */
-        activeByEdu: Record<EducationLevelType, number>;
-        /** Departing (on-notice) workers per education level. */
-        departingByEdu: Record<EducationLevelType, number>;
-    }[];
-
+    /** Per-education mean age (weighted by headcount). */
     meanAgeByEdu: Record<EducationLevelType, number>;
+    /** Per-education age productivity multiplier. */
     ageProductivityByEdu: Record<EducationLevelType, number>;
+    /** Overall weighted mean age. */
     overallMeanAge: number;
+    /** Overall age-based productivity multiplier. */
     overallAgeProductivity: number;
 
     /** Weighted mean tenure (years) per education level. */
@@ -68,32 +56,31 @@ export type WorkforceSummary = {
     /** Overall tenure-based productivity multiplier. */
     overallTenureProductivity: number;
 
-    ageDistribution: { age: number; [tenureBand: string]: number }[];
-    tenureBandLabels: string[];
+    // ---- Age distribution (direct from array index) ----
 
-    /** Per-individual-tenure-year age distribution (for smooth gradient chart). */
-    ageDistributionByYear: { age: number; [tenureYear: string]: number }[];
-    /** Labels for each tenure year that has data, e.g. ["0y", "1y", …]. */
-    tenureYearLabels: string[];
+    /** Per-age chart data with status breakdown (active / quitting / fired). */
+    ageChartByStatus: {
+        age: number;
+        active: number;
+        quitting: number;
+        fired: number;
+    }[];
+
+    /** Per-age chart data with education-level breakdown (active + departing per edu). */
+    ageChartByEdu: {
+        age: number;
+        byEdu: Record<EducationLevelType, number>;
+    }[];
 };
 
 // ---------------------------------------------------------------------------
 // Computation
 // ---------------------------------------------------------------------------
 
-const TENURE_BANDS: { label: string; min: number; max: number }[] = [
-    { label: '0–1y', min: 0, max: 1 },
-    { label: '2–4y', min: 2, max: 4 },
-    { label: '5–9y', min: 5, max: 9 },
-    { label: '10–19y', min: 10, max: 19 },
-    { label: '20+y', min: 20, max: MAX_TENURE_YEARS },
-];
-
 export function computeSummary(workforce: WorkforceDemography): WorkforceSummary {
     const activeByEdu = {} as Record<EducationLevelType, number>;
     const departingByEdu = {} as Record<EducationLevelType, number>;
     const firedByEdu = {} as Record<EducationLevelType, number>;
-    // Slot-0 (next-month exit) accumulators
     const nextMonthDepartingByEdu = {} as Record<EducationLevelType, number>;
     const nextMonthFiredByEdu = {} as Record<EducationLevelType, number>;
     for (const edu of educationLevelKeys) {
@@ -106,93 +93,74 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
 
     let totalActive = 0;
     let totalDeparting = 0;
-    let weightedExp = 0;
 
-    const ageSumByEdu = {} as Record<EducationLevelType, { count: number; weightedMean: number; weightedVar: number }>;
+    // ---- Accumulators for mean age ----
+    const ageSumByEdu = {} as Record<EducationLevelType, { count: number; weightedAge: number }>;
     for (const edu of educationLevelKeys) {
-        ageSumByEdu[edu] = { count: 0, weightedMean: 0, weightedVar: 0 };
+        ageSumByEdu[edu] = { count: 0, weightedAge: 0 };
     }
 
-    const tenureChart: WorkforceSummary['tenureChart'] = [];
-    const tenureChartByEdu: WorkforceSummary['tenureChartByEdu'] = [];
+    // ---- Per-age accumulators for chart data ----
+    const ageChartByStatus: WorkforceSummary['ageChartByStatus'] = [];
+    const ageChartByEdu: WorkforceSummary['ageChartByEdu'] = [];
 
-    for (let year = 0; year <= MAX_TENURE_YEARS; year++) {
-        const cohort = workforce[year];
+    // ---- Walk age cohorts ----
+    for (let age = 0; age <= Math.min(MAX_AGE, workforce.length - 1); age++) {
+        const cohort = workforce[age];
         if (!cohort) {
             continue;
         }
 
-        let yearActive = 0;
-        let yearDeparting = 0;
-        let yearFired = 0;
-        const yearActiveByEdu = {} as Record<EducationLevelType, number>;
-        const yearDepartingByEdu = {} as Record<EducationLevelType, number>;
+        let ageActive = 0;
+        let ageDeparting = 0;
+        let ageFired = 0;
+        const ageByEdu = {} as Record<EducationLevelType, number>;
+        for (const edu of educationLevelKeys) {
+            ageByEdu[edu] = 0;
+        }
 
         for (const edu of educationLevelKeys) {
-            const act = cohort.active[edu].count;
-            activeByEdu[edu] += act;
-            yearActive += act;
-            yearActiveByEdu[edu] = act;
+            // Sum across all skill levels for this edu
+            for (const skill of SKILL) {
+                const cat = cohort[edu][skill];
+                const act = cat.active;
 
-            const dep = cohort.departing[edu].reduce((s, m) => s + m.count, 0);
-            departingByEdu[edu] += dep;
-            yearDeparting += dep;
-            yearDepartingByEdu[edu] = dep;
+                activeByEdu[edu] += act;
+                totalActive += act;
+                ageActive += act;
+                ageByEdu[edu] += act;
 
-            const fired = (cohort.departingFired?.[edu] ?? []).reduce((s: number, v: number) => s + v, 0);
-            firedByEdu[edu] += fired;
-            yearFired += fired;
-
-            // Slot 0 = workers whose notice expires next month
-            nextMonthDepartingByEdu[edu] += cohort.departing[edu]?.[0]?.count ?? 0;
-            nextMonthFiredByEdu[edu] += cohort.departingFired?.[edu]?.[0] ?? 0;
-
-            if (act > 0) {
-                const mean = ageMean(cohort.active[edu]);
-                const variance = ageVariance(cohort.active[edu]);
-                ageSumByEdu[edu].weightedMean += act * mean;
-                ageSumByEdu[edu].weightedVar += act * variance;
-                ageSumByEdu[edu].count += act;
-            }
-        }
-
-        totalActive += yearActive;
-        totalDeparting += yearDeparting;
-        weightedExp += yearActive * experienceMultiplier(year);
-
-        if (yearActive > 0 || yearDeparting > 0) {
-            let yearWeightedAge = 0;
-            let yearWeightedVar = 0;
-            let yearAgeCount = 0;
-            for (const edu of educationLevelKeys) {
-                const act = cohort.active[edu].count;
                 if (act > 0) {
-                    const mean = ageMean(cohort.active[edu]);
-                    const variance = ageVariance(cohort.active[edu]);
-                    yearWeightedAge += act * mean;
-                    yearWeightedVar += act * variance;
-                    yearAgeCount += act;
+                    ageSumByEdu[edu].weightedAge += act * age;
+                    ageSumByEdu[edu].count += act;
+                }
+
+                // Departing pipeline
+                for (let m = 0; m < cat.departing.length; m++) {
+                    const depCount = cat.departing[m] ?? 0;
+                    const firedCount = cat.departingFired[m] ?? 0;
+                    departingByEdu[edu] += depCount;
+                    totalDeparting += depCount;
+                    firedByEdu[edu] += firedCount;
+                    ageDeparting += depCount;
+                    ageFired += firedCount;
+                    ageByEdu[edu] += depCount;
+
+                    if (m === 0) {
+                        nextMonthDepartingByEdu[edu] += depCount;
+                        nextMonthFiredByEdu[edu] += firedCount;
+                    }
                 }
             }
+        }
 
-            tenureChart.push({
-                year,
-                active: yearActive,
-                departing: yearDeparting,
-                fired: yearFired,
-                expMult: experienceMultiplier(year),
-                meanAge: yearAgeCount > 0 ? yearWeightedAge / yearAgeCount : null,
-                variance: yearAgeCount > 0 ? yearWeightedVar / yearAgeCount : null,
-            });
-            tenureChartByEdu.push({
-                year,
-                activeByEdu: yearActiveByEdu,
-                departingByEdu: yearDepartingByEdu,
-            });
+        // Only include ages that have at least one worker
+        if (ageActive + ageDeparting > 0) {
+            const quitting = Math.max(0, ageDeparting - ageFired);
+            ageChartByStatus.push({ age, active: ageActive, quitting, fired: ageFired });
+            ageChartByEdu.push({ age, byEdu: { ...ageByEdu } });
         }
     }
-
-    const avgExperienceMultiplier = totalActive > 0 ? weightedExp / totalActive : 1.0;
 
     // ---- Per-education age stats ----
     const meanAgeByEdu = {} as Record<EducationLevelType, number>;
@@ -203,17 +171,17 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     for (const edu of educationLevelKeys) {
         const s = ageSumByEdu[edu];
         if (s.count > 0) {
-            meanAgeByEdu[edu] = s.weightedMean / s.count;
+            meanAgeByEdu[edu] = s.weightedAge / s.count;
             ageProductivityByEdu[edu] = ageProductivityMultiplier(meanAgeByEdu[edu]);
-            overallWeightedAge += s.weightedMean;
+            overallWeightedAge += s.weightedAge;
             overallCount += s.count;
         } else {
-            meanAgeByEdu[edu] = DEFAULT_HIRE_AGE_MEAN;
-            ageProductivityByEdu[edu] = ageProductivityMultiplier(DEFAULT_HIRE_AGE_MEAN);
+            meanAgeByEdu[edu] = 30;
+            ageProductivityByEdu[edu] = ageProductivityMultiplier(30);
         }
     }
 
-    const overallMeanAge = overallCount > 0 ? overallWeightedAge / overallCount : DEFAULT_HIRE_AGE_MEAN;
+    const overallMeanAge = overallCount > 0 ? overallWeightedAge / overallCount : 30;
     const overallAgeProductivity = ageProductivityMultiplier(overallMeanAge);
 
     // ---- Fired & voluntary totals ----
@@ -226,131 +194,13 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     }
     const totalVoluntary = educationLevelKeys.reduce((sum, edu) => sum + voluntaryByEdu[edu], 0);
 
-    // ---- Per-education tenure stats ----
+    // ---- Age-based productivity serves as the overall productivity metric ----
+    // Tenure-based productivity is no longer tracked per-worker; we use age productivity instead.
     const meanTenureByEdu = {} as Record<EducationLevelType, number>;
     const tenureProductivityByEdu = {} as Record<EducationLevelType, number>;
-    const tenureSumByEdu = {} as Record<EducationLevelType, { count: number; weightedTenure: number }>;
     for (const edu of educationLevelKeys) {
-        tenureSumByEdu[edu] = { count: 0, weightedTenure: 0 };
-    }
-    for (let year = 0; year <= MAX_TENURE_YEARS; year++) {
-        const cohort = workforce[year];
-        if (!cohort) {
-            continue;
-        }
-        for (const edu of educationLevelKeys) {
-            const act = cohort.active[edu].count;
-            if (act > 0) {
-                tenureSumByEdu[edu].weightedTenure += act * year;
-                tenureSumByEdu[edu].count += act;
-            }
-        }
-    }
-    let overallTenureWeighted = 0;
-    let overallTenureCount = 0;
-    for (const edu of educationLevelKeys) {
-        const s = tenureSumByEdu[edu];
-        if (s.count > 0) {
-            meanTenureByEdu[edu] = s.weightedTenure / s.count;
-            tenureProductivityByEdu[edu] = experienceMultiplier(meanTenureByEdu[edu]);
-            overallTenureWeighted += s.weightedTenure;
-            overallTenureCount += s.count;
-        } else {
-            meanTenureByEdu[edu] = 0;
-            tenureProductivityByEdu[edu] = experienceMultiplier(0);
-        }
-    }
-    const overallMeanTenure = overallTenureCount > 0 ? overallTenureWeighted / overallTenureCount : 0;
-    const overallTenureProductivity = experienceMultiplier(overallMeanTenure);
-
-    // ---- Age distribution (Gaussian approximation from moments) ----
-    const tenureBandLabels = TENURE_BANDS.map((b) => b.label);
-
-    const bandStats = TENURE_BANDS.map((band) => {
-        let count = 0;
-        let weightedMean = 0;
-        let weightedVar = 0;
-        for (let year = band.min; year <= Math.min(band.max, MAX_TENURE_YEARS); year++) {
-            const cohort = workforce[year];
-            if (!cohort) {
-                continue;
-            }
-            for (const edu of educationLevelKeys) {
-                const act = cohort.active[edu].count;
-                if (act > 0) {
-                    weightedMean += act * ageMean(cohort.active[edu]);
-                    weightedVar += act * ageVariance(cohort.active[edu]);
-                    count += act;
-                }
-            }
-        }
-        return { count, mean: count > 0 ? weightedMean / count : 0, variance: count > 0 ? weightedVar / count : 0 };
-    });
-
-    const ageDistribution: WorkforceSummary['ageDistribution'] = [];
-    const MIN_AGE_PLOT = 14;
-    const MAX_AGE_PLOT = 80;
-
-    for (let age = MIN_AGE_PLOT; age <= MAX_AGE_PLOT; age++) {
-        const row: { age: number; [band: string]: number } = { age };
-        for (let b = 0; b < TENURE_BANDS.length; b++) {
-            const label = tenureBandLabels[b];
-            const s = bandStats[b];
-            if (s.count === 0) {
-                row[label] = 0;
-                continue;
-            }
-            const variance = Math.max(1, s.variance);
-            const stdDev = Math.sqrt(variance);
-            const density =
-                (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((age - s.mean) / stdDev, 2));
-            row[label] = Math.round(density * s.count);
-        }
-        ageDistribution.push(row);
-    }
-
-    // ---- Per-tenure-year age distribution (smooth gradient chart) ----
-    const perYearStats: { year: number; count: number; mean: number; variance: number }[] = [];
-    for (let year = 0; year <= MAX_TENURE_YEARS; year++) {
-        const cohort = workforce[year];
-        if (!cohort) {
-            continue;
-        }
-        let count = 0;
-        let weightedMean = 0;
-        let weightedVar = 0;
-        for (const edu of educationLevelKeys) {
-            const act = cohort.active[edu].count;
-            if (act > 0) {
-                weightedMean += act * ageMean(cohort.active[edu]);
-                weightedVar += act * ageVariance(cohort.active[edu]);
-                count += act;
-            }
-        }
-        if (count > 0) {
-            perYearStats.push({
-                year,
-                count,
-                mean: weightedMean / count,
-                variance: weightedVar / count,
-            });
-        }
-    }
-
-    const tenureYearLabels = perYearStats.map((s) => `${s.year}y`);
-
-    const ageDistributionByYear: WorkforceSummary['ageDistributionByYear'] = [];
-    for (let age = MIN_AGE_PLOT; age <= MAX_AGE_PLOT; age++) {
-        const row: { age: number; [key: string]: number } = { age };
-        for (const s of perYearStats) {
-            const label = `${s.year}y`;
-            const variance = Math.max(1, s.variance);
-            const stdDev = Math.sqrt(variance);
-            const density =
-                (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((age - s.mean) / stdDev, 2));
-            row[label] = Math.round(density * s.count);
-        }
-        ageDistributionByYear.push(row);
+        meanTenureByEdu[edu] = 0;
+        tenureProductivityByEdu[edu] = 1.0;
     }
 
     return {
@@ -364,20 +214,16 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         totalDeparting,
         totalFired,
         totalVoluntary,
-        avgExperienceMultiplier,
-        tenureChart,
-        tenureChartByEdu,
+        avgExperienceMultiplier: overallAgeProductivity,
         meanAgeByEdu,
         ageProductivityByEdu,
         overallMeanAge,
         overallAgeProductivity,
         meanTenureByEdu,
         tenureProductivityByEdu,
-        overallMeanTenure,
-        overallTenureProductivity,
-        ageDistribution,
-        tenureBandLabels,
-        ageDistributionByYear,
-        tenureYearLabels,
+        overallMeanTenure: 0,
+        overallTenureProductivity: 1.0,
+        ageChartByStatus,
+        ageChartByEdu,
     };
 }

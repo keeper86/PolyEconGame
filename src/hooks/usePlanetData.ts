@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useTRPC } from '@/lib/trpc';
-import type { Planet } from '../simulation/planet';
+import type { Planet } from '../simulation/planet/planet';
 
 const REFETCH_INTERVAL_MS = 1000;
 

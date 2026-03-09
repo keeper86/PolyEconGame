@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { queryClaimedResource, extractFromClaimedResource } from './entities';
-import type { Planet, Agent } from './planet';
-import type { Resource } from './facilities';
-import { arableLandResourceType, waterSourceResourceType } from './facilities';
+import type { Planet, Agent } from '../planet/planet';
+import type { Resource } from '../planet/facilities';
+import { arableLandResourceType, waterSourceResourceType } from '../planet/facilities';
 
 function makeAgent(id: string): Agent {
     return {

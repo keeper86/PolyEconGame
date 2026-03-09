@@ -1,0 +1,567 @@
+/**
+ * simulation/utils/testHelper.ts
+ *
+ * Centralized test fixture factories for the simulation module.
+ *
+ * Provides simple functions to create correctly-shaped game objects
+ * (PopulationCategory, WorkforceCategory, Cohort, Planet, Agent, GameState, etc.)
+ * conforming to the current data model.
+ *
+ * Design:
+ * - Small functions for leaf objects, composed by larger functions.
+ * - No builder pattern — just create the object and mutate as needed in tests.
+ * - Every function returns a complete, valid, zero/default object.
+ * - Optional `Partial` overrides are applied via spread where useful.
+ */
+
+import { MIN_EMPLOYABLE_AGE } from '../constants';
+import type { ProductionFacility, StorageFacility } from '../planet/facilities';
+import { agriculturalProductResourceType } from '../planet/facilities';
+import type { Agent, AgentPlanetAssets, Bank, Environment, GameState, Infrastructure, Planet } from '../planet/planet';
+import type { EducationLevelType } from '../population/education';
+import { educationLevelKeys } from '../population/education';
+import type {
+    Cohort,
+    CohortByOccupation,
+    DeathStats,
+    DisabilityStats,
+    GaussianMoments,
+    Occupation,
+    PopulationCategory,
+    Population,
+    RetirementStats,
+    Skill,
+    WorkforceCategory,
+} from '../population/population';
+import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS, SKILL } from '../population/population';
+import { NOTICE_PERIOD_MONTHS } from '../workforce/laborMarketTick';
+
+// ============================================================================
+// Leaf value factories
+// ============================================================================
+
+/** Zero Gaussian moments. */
+export function makeGaussianMoments(overrides?: Partial<GaussianMoments>): GaussianMoments {
+    return { mean: 0, variance: 0, ...overrides };
+}
+
+/** Zero death stats. */
+export function makeDeathStats(overrides?: Partial<DeathStats>): DeathStats {
+    return { type: 'death', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
+}
+
+/** Zero disability stats. */
+export function makeDisabilityStats(overrides?: Partial<DisabilityStats>): DisabilityStats {
+    return { type: 'disability', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
+}
+
+/** Zero retirement stats. */
+export function makeRetirementStats(overrides?: Partial<RetirementStats>): RetirementStats {
+    return { type: 'retirement', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
+}
+
+// ============================================================================
+// Population category factories
+// ============================================================================
+
+/**
+ * Create a single PopulationCategory cell (the leaf of the demography tree).
+ * All fields default to zero.
+ */
+export function makePopulationCategory(overrides?: Partial<PopulationCategory>): PopulationCategory {
+    return {
+        ...nullPopulationCategory(),
+        ...overrides,
+    };
+}
+
+/**
+ * Create a single WorkforceCategory cell (the leaf of workforce demography).
+ * `departing` and `departingFired` arrays are sized to NOTICE_PERIOD_MONTHS.
+ */
+export function makeWorkforceCategory(overrides?: Partial<WorkforceCategory>): WorkforceCategory {
+    return {
+        active: 0,
+        departing: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+        departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+        ...overrides,
+    };
+}
+
+// ============================================================================
+// Cohort factories
+// ============================================================================
+
+/**
+ * Create a single empty population cohort for one age bucket.
+ * Shape: { [Occupation]: { [EducationLevelType]: { [Skill]: PopulationCategory } } }
+ *
+ * Each cell gets its own fresh PopulationCategory to avoid shared-reference issues.
+ */
+export function makePopulationCohort(): Cohort<PopulationCategory> {
+    const cohort = {} as Cohort<PopulationCategory>;
+    for (const occ of OCCUPATIONS) {
+        cohort[occ] = {} as CohortByOccupation<PopulationCategory>;
+        for (const edu of educationLevelKeys) {
+            cohort[occ][edu] = {} as Record<Skill, PopulationCategory>;
+            for (const skill of SKILL) {
+                cohort[occ][edu][skill] = nullPopulationCategory();
+            }
+        }
+    }
+    return cohort;
+}
+
+/**
+ * Create a single empty workforce cohort for one age bucket.
+ * Shape: { [EducationLevelType]: { [Skill]: WorkforceCategory } }
+ */
+export function makeWorkforceCohort(): CohortByOccupation<WorkforceCategory> {
+    const cohort = {} as CohortByOccupation<WorkforceCategory>;
+    for (const edu of educationLevelKeys) {
+        cohort[edu] = {} as Record<Skill, WorkforceCategory>;
+        for (const skill of SKILL) {
+            cohort[edu][skill] = makeWorkforceCategory();
+        }
+    }
+    return cohort;
+}
+
+// ============================================================================
+// Full demography arrays
+// ============================================================================
+
+/**
+ * Create a full population demography: Cohort<PopulationCategory>[]
+ * of length MAX_AGE + 1 (ages 0 … MAX_AGE), all zeroed.
+ */
+export function makePopulationDemography(): Cohort<PopulationCategory>[] {
+    return Array.from({ length: MAX_AGE + 1 }, () => makePopulationCohort());
+}
+
+/**
+ * Create a full workforce demography: CohortByOccupation<WorkforceCategory>[]
+ * of length MAX_AGE + 1 (ages 0 … MAX_AGE), all zeroed.
+ */
+export function makeWorkforceDemography(): CohortByOccupation<WorkforceCategory>[] {
+    return Array.from({ length: MAX_AGE + 1 }, () => makeWorkforceCohort());
+}
+
+// ============================================================================
+// Population
+// ============================================================================
+
+/**
+ * Create an empty Population object.
+ */
+export function makePopulation(): Population {
+    return {
+        demography: makePopulationDemography(),
+    };
+}
+
+/**
+ * Create a Population with `total` people distributed across working ages
+ * (MIN_EMPLOYABLE_AGE … 64), all placed in occupation='unoccupied',
+ * education='none', skill='novice'.
+ *
+ * Useful for labor market / workforce tests that need a hireable pool.
+ */
+export function makePopulationWithWorkers(
+    total: number,
+    opts?: {
+        edu?: EducationLevelType;
+        skill?: Skill;
+        occ?: Occupation;
+        minAge?: number;
+        maxAge?: number;
+    },
+): Population {
+    const edu = opts?.edu ?? 'none';
+    const skill = opts?.skill ?? 'novice';
+    const occ = opts?.occ ?? 'unoccupied';
+    const minAge = opts?.minAge ?? MIN_EMPLOYABLE_AGE;
+    const maxAge = opts?.maxAge ?? 64;
+    const workingAges = maxAge - minAge + 1;
+
+    const pop = makePopulation();
+    const perAge = Math.floor(total / workingAges);
+    let remainder = total - perAge * workingAges;
+
+    for (let age = minAge; age <= maxAge; age++) {
+        const extra = remainder > 0 ? 1 : 0;
+        pop.demography[age][occ][edu][skill].total = perAge + extra;
+        if (remainder > 0) {
+            remainder--;
+        }
+    }
+    return pop;
+}
+
+/**
+ * Convenience: distribute people across multiple education levels.
+ * `distribution` maps education → count. All placed as unoccupied/novice
+ * in working ages.
+ */
+export function makePopulationByEducation(distribution: Partial<Record<EducationLevelType, number>>): Population {
+    const pop = makePopulation();
+    for (const [edu, total] of Object.entries(distribution) as [EducationLevelType, number][]) {
+        if (!total || total <= 0) {
+            continue;
+        }
+        const minAge = MIN_EMPLOYABLE_AGE;
+        const maxAge = 64;
+        const workingAges = maxAge - minAge + 1;
+        const perAge = Math.floor(total / workingAges);
+        let remainder = total - perAge * workingAges;
+        for (let age = minAge; age <= maxAge; age++) {
+            const extra = remainder > 0 ? 1 : 0;
+            pop.demography[age].unoccupied[edu].novice.total = perAge + extra;
+            if (remainder > 0) {
+                remainder--;
+            }
+        }
+    }
+    return pop;
+}
+
+// ============================================================================
+// Infrastructure, Environment, Bank
+// ============================================================================
+
+export function makeBank(overrides?: Partial<Bank>): Bank {
+    return {
+        loans: 0,
+        deposits: 0,
+        householdDeposits: 0,
+        equity: 0,
+        loanRate: 0,
+        depositRate: 0,
+        ...overrides,
+    };
+}
+
+export function makeInfrastructure(overrides?: Partial<Infrastructure>): Infrastructure {
+    return {
+        primarySchools: 0,
+        secondarySchools: 0,
+        universities: 0,
+        hospitals: 0,
+        mobility: { roads: 0, railways: 0, airports: 0, seaports: 0, spaceports: 0 },
+        energy: { production: 0 },
+        ...overrides,
+    };
+}
+
+export function makeEnvironment(overrides?: Partial<Environment>): Environment {
+    return {
+        naturalDisasters: { earthquakes: 0, floods: 0, storms: 0 },
+        pollution: { air: 0, water: 0, soil: 0 },
+        regenerationRates: {
+            air: { constant: 0, percentage: 0 },
+            water: { constant: 0, percentage: 0 },
+            soil: { constant: 0, percentage: 0 },
+        },
+        ...overrides,
+    };
+}
+
+// ============================================================================
+// Facilities
+// ============================================================================
+
+/**
+ * Create a minimal StorageFacility with near-infinite capacity.
+ */
+export function makeStorageFacility(overrides?: Partial<StorageFacility>): StorageFacility {
+    return {
+        planetId: 'p',
+        id: 'storage-p',
+        name: 'test-storage',
+        scale: 1,
+        powerConsumptionPerTick: 0,
+        workerRequirement: {},
+        pollutionPerTick: { air: 0, water: 0, soil: 0 },
+        capacity: { volume: 1e9, mass: 1e9 },
+        current: { volume: 0, mass: 0 },
+        currentInStorage: {},
+        ...overrides,
+    } as StorageFacility;
+}
+
+/**
+ * Create a StorageFacility pre-loaded with a given quantity of
+ * agricultural product (food).
+ */
+export function makeStorageFacilityWithFood(quantity: number, planetId = 'p'): StorageFacility {
+    return makeStorageFacility({
+        planetId,
+        id: `storage-${planetId}`,
+        currentInStorage: {
+            [agriculturalProductResourceType.name]: {
+                resource: agriculturalProductResourceType,
+                quantity,
+            },
+        },
+    });
+}
+
+/**
+ * Create a ProductionFacility with given worker requirements.
+ */
+export function makeProductionFacility(
+    workerReq?: Partial<Record<EducationLevelType, number>>,
+    overrides?: Partial<ProductionFacility>,
+): ProductionFacility {
+    return {
+        planetId: 'p',
+        id: 'facility-1',
+        name: 'Test Facility',
+        scale: 1,
+        lastTickResults: {
+            overallEfficiency: 0,
+            overqualifiedWorkers: {},
+            resourceEfficiency: {},
+            workerEfficiency: {},
+            workerEfficiencyOverall: 0,
+        },
+        powerConsumptionPerTick: 0,
+        workerRequirement: (workerReq ?? {}) as Record<string, number>,
+        pollutionPerTick: { air: 0, water: 0, soil: 0 },
+        needs: [],
+        produces: [],
+        ...overrides,
+    };
+}
+
+// ============================================================================
+// AgentPlanetAssets
+// ============================================================================
+
+/**
+ * Zeroed-out allocatedWorkers record (all four education levels = 0).
+ */
+export function makeAllocatedWorkers(
+    overrides?: Partial<Record<EducationLevelType, number>>,
+): Record<EducationLevelType, number> {
+    return { none: 0, primary: 0, secondary: 0, tertiary: 0, ...overrides };
+}
+
+/**
+ * Create AgentPlanetAssets with sensible defaults.
+ */
+export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentPlanetAssets>): AgentPlanetAssets {
+    return {
+        resourceClaims: [],
+        resourceTenancies: [],
+        productionFacilities: [],
+        deposits: 0,
+        storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
+        allocatedWorkers: makeAllocatedWorkers(),
+        workforceDemography: makeWorkforceDemography(),
+        ...overrides,
+    };
+}
+
+// ============================================================================
+// Agent
+// ============================================================================
+
+/**
+ * Create an Agent with assets on one planet (default 'p').
+ */
+export function makeAgent(id = 'agent-1', planetId = 'p', overrides?: Partial<Agent>): Agent {
+    return {
+        id,
+        name: id,
+        associatedPlanetId: planetId,
+        wealth: 0,
+        transportShips: [],
+        assets: {
+            [planetId]: makeAgentPlanetAssets(planetId),
+        },
+        ...overrides,
+    };
+}
+
+/**
+ * Create a government agent. By convention the id is `gov-1` and it
+ * lives on planet `p`.
+ */
+export function makeGovernmentAgent(id = 'gov-1', planetId = 'p'): Agent {
+    return makeAgent(id, planetId);
+}
+
+// ============================================================================
+// Planet
+// ============================================================================
+
+/**
+ * Create a Planet with sensible zero defaults.
+ * By default creates an empty population. Pass `population` in overrides
+ * or use the convenience helpers below for pre-populated planets.
+ */
+export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string }): Planet {
+    return {
+        id: 'p',
+        name: 'Test Planet',
+        position: { x: 0, y: 0, z: 0 },
+        population: makePopulation(),
+        resources: {},
+        governmentId: overrides?.governmentId ?? 'gov-1',
+        bank: makeBank(),
+        infrastructure: makeInfrastructure(),
+        environment: makeEnvironment(),
+        ...overrides,
+    };
+}
+
+/**
+ * Create a planet with workers pre-distributed by education level.
+ * Returns { planet, gov } where gov is the government agent on that planet.
+ */
+export function makePlanetWithPopulation(
+    unoccupiedByEdu: Partial<Record<EducationLevelType, number>>,
+    overrides?: Partial<Planet>,
+): { planet: Planet; gov: Agent } {
+    const gov = makeGovernmentAgent();
+    const planet = makePlanet({
+        population: makePopulationByEducation(unoccupiedByEdu),
+        governmentId: gov.id,
+        ...overrides,
+    });
+    return { planet, gov };
+}
+
+// ============================================================================
+// GameState
+// ============================================================================
+
+/**
+ * Create a GameState from a planet and agents. The planet's government
+ * agent must be included in `agents`.
+ */
+export function makeGameState(planet: Planet, agents: Agent[], tick = 0): GameState {
+    return {
+        tick,
+        planets: new Map([[planet.id, planet]]),
+        agents: new Map(agents.map((a) => [a.id, a])),
+    };
+}
+
+/**
+ * Convenience: build a minimal game world with one planet, a government,
+ * and zero or more company agents.
+ *
+ * Returns { gameState, planet, gov, agents } where `agents` includes
+ * the government plus all companies.
+ */
+export function makeWorld(opts?: {
+    populationByEdu?: Partial<Record<EducationLevelType, number>>;
+    companyIds?: string[];
+    tick?: number;
+    planetOverrides?: Partial<Planet>;
+}): { gameState: GameState; planet: Planet; gov: Agent; agents: Agent[] } {
+    const gov = makeGovernmentAgent();
+    const population = opts?.populationByEdu ? makePopulationByEducation(opts.populationByEdu) : makePopulation();
+    const planet = makePlanet({
+        population,
+        governmentId: gov.id,
+        ...opts?.planetOverrides,
+    });
+
+    const companies = (opts?.companyIds ?? []).map((id) => makeAgent(id, planet.id));
+    const agents = [gov, ...companies];
+
+    return {
+        gameState: makeGameState(planet, agents, opts?.tick),
+        planet,
+        gov,
+        agents,
+    };
+}
+
+// ============================================================================
+// Map conversion helpers (useful for functions that take Map arguments)
+// ============================================================================
+
+/** Wrap agents into a Map keyed by their id. */
+export function agentMap(...agents: Agent[]): Map<string, Agent> {
+    return new Map(agents.map((a) => [a.id, a]));
+}
+
+/** Wrap planets into a Map keyed by their id. */
+export function planetMap(...planets: Planet[]): Map<string, Planet> {
+    return new Map(planets.map((p) => [p.id, p]));
+}
+
+// ============================================================================
+// Population counting / query helpers
+// ============================================================================
+
+/**
+ * Sum total population across all ages, occupations, education levels,
+ * and skills.
+ */
+export function totalPopulation(planet: Planet): number {
+    let total = 0;
+    for (const cohort of planet.population.demography) {
+        forEachPopulationCohort(cohort, (cat) => {
+            total += cat.total;
+        });
+    }
+    return total;
+}
+
+/**
+ * Sum population for a specific education and occupation across all ages
+ * and all skill levels.
+ */
+export function sumPopOcc(planet: Planet, edu: EducationLevelType, occ: Occupation): number {
+    let total = 0;
+    for (const cohort of planet.population.demography) {
+        for (const skill of SKILL) {
+            total += cohort[occ][edu][skill].total;
+        }
+    }
+    return total;
+}
+
+/**
+ * Sum active + departing workers across all ages and skill levels
+ * for a given education level in an agent's workforce on a planet.
+ */
+export function sumWorkforceForEdu(agent: Agent, planetId: string, edu: EducationLevelType): number {
+    const wf = agent.assets[planetId]?.workforceDemography;
+    if (!wf) {
+        return 0;
+    }
+    let total = 0;
+    for (const cohort of wf) {
+        for (const skill of SKILL) {
+            total += cohort[edu][skill].active;
+            for (const dep of cohort[edu][skill].departing) {
+                total += dep;
+            }
+        }
+    }
+    return total;
+}
+
+/**
+ * Sum only active workers (excluding departing) across all ages and
+ * skill levels for a given education level.
+ */
+export function sumActiveForEdu(agent: Agent, planetId: string, edu: EducationLevelType): number {
+    const wf = agent.assets[planetId]?.workforceDemography;
+    if (!wf) {
+        return 0;
+    }
+    let total = 0;
+    for (const cohort of wf) {
+        for (const skill of SKILL) {
+            total += cohort[edu][skill].active;
+        }
+    }
+    return total;
+}

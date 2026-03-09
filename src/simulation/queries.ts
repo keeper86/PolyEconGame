@@ -14,7 +14,7 @@
  *   3. Add a typed client method in `lib/workerQueries.ts`.
  */
 
-import type { Planet, Agent } from './planet';
+import type { Planet, Agent } from './planet/planet';
 
 // ---------------------------------------------------------------------------
 // Query shapes (main → worker)

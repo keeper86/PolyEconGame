@@ -1,27 +1,27 @@
 /**
  * workforce/laborMarketMonthTick.ts
  *
- * Monthly labor-market processing:
- * 1. Snapshot active workers at month start (for UI Δ-month display).
- * 2. Rotate death counters (this month → prev month, reset this month).
- * 3. Pipeline advancement: departing → unoccupied.
+ * Monthly post-production labor-market processing:
+ * 1. Rotate death/disability/retirement counters (this month → prev month, reset this month).
+ * 2. Pipeline advancement: departing → unoccupied.
  *
- * Retirement is handled entirely population-side (applyRetirement +
- * workforceSync), so there is no retiring pipeline to drain.
+ * With age-resolved workforce cohorts, departing workers are returned to
+ * the population at their exact age — no Gaussian weighting needed.
  */
 
-import type { Agent, EducationLevelType, Occupation, Planet } from '../planet';
-import { educationLevelKeys } from '../planet';
-import { emptyAgeMoments, NOTICE_PERIOD_MONTHS, totalActiveForEdu } from './workforceHelpers';
-import { returnToPopulation } from './populationBridge';
+import type { Agent, Planet, PerEducation } from '../planet/planet';
+import { educationLevelKeys } from '../population/education';
+import { forEachWorkforceCohort } from '../population/population';
+import { NOTICE_PERIOD_MONTHS } from './laborMarketTick';
+import { returnToPopulationAtAge, assertPopulationWorkforceConsistency } from './populationBridge';
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+export function postProductionLaborMarketTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
     // -----------------------------------------------------------------------
-    // Phase 0: snapshots & death counter rotation (per-agent)
+    // Phase 0: snapshots & counter rotation (per-agent)
     // -----------------------------------------------------------------------
 
     for (const agent of agents.values()) {
@@ -31,53 +31,45 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
                 continue;
             }
 
-            // --- Snapshot active workers at month start ---
-            const snapshot = {} as Record<EducationLevelType, number>;
-            for (const edu of educationLevelKeys) {
-                snapshot[edu] = totalActiveForEdu(workforce, edu);
-            }
-            assets.activeAtMonthStart = snapshot;
-
-            // --- Rotate death counters: this month → prev month, reset this month ---
-            assets.deathsPrevMonth = assets.deathsThisMonth ?? ({} as Record<EducationLevelType, number>);
-            const freshDeaths = {} as Record<EducationLevelType, number>;
-            for (const edu of educationLevelKeys) {
-                if (!assets.deathsPrevMonth[edu]) {
-                    assets.deathsPrevMonth[edu] = 0;
+            // --- Rotate demographic event counters ---
+            // Helper: create zero-filled per-edu record.
+            const fresh = (): PerEducation => {
+                const r = {} as PerEducation;
+                for (const e of educationLevelKeys) {
+                    r[e] = 0;
                 }
-                freshDeaths[edu] = 0;
-            }
-            assets.deathsThisMonth = freshDeaths;
+                return r;
+            };
 
-            // --- Rotate disability counters: this month → prev month, reset this month ---
-            assets.disabilitiesPrevMonth = assets.disabilitiesThisMonth ?? ({} as Record<EducationLevelType, number>);
-            const freshDisabilities = {} as Record<EducationLevelType, number>;
-            for (const edu of educationLevelKeys) {
-                if (!assets.disabilitiesPrevMonth[edu]) {
-                    assets.disabilitiesPrevMonth[edu] = 0;
-                }
-                freshDisabilities[edu] = 0;
+            // Deaths
+            if (!assets.deaths) {
+                assets.deaths = { thisMonth: fresh(), prevMonth: fresh() };
             }
-            assets.disabilitiesThisMonth = freshDisabilities;
+            assets.deaths.prevMonth = assets.deaths.thisMonth;
+            assets.deaths.thisMonth = fresh();
 
-            // --- Rotate retirement counters: this month → prev month, reset this month ---
-            assets.retirementsPrevMonth = assets.retirementsThisMonth ?? ({} as Record<EducationLevelType, number>);
-            const freshRetirements = {} as Record<EducationLevelType, number>;
-            for (const edu of educationLevelKeys) {
-                if (!assets.retirementsPrevMonth[edu]) {
-                    assets.retirementsPrevMonth[edu] = 0;
-                }
-                freshRetirements[edu] = 0;
+            // Disabilities
+            if (!assets.disabilities) {
+                assets.disabilities = { thisMonth: fresh(), prevMonth: fresh() };
             }
-            assets.retirementsThisMonth = freshRetirements;
+            assets.disabilities.prevMonth = assets.disabilities.thisMonth;
+            assets.disabilities.thisMonth = fresh();
+
+            // Retirements
+            if (!assets.retirements) {
+                assets.retirements = { thisMonth: fresh(), prevMonth: fresh() };
+            }
+            assets.retirements.prevMonth = assets.retirements.thisMonth;
+            assets.retirements.thisMonth = fresh();
         }
     }
 
     // -----------------------------------------------------------------------
     // Phase 1: Pipeline advancement (per-agent)
     //
-    // For each cohort × edu, drain departing[0] back into the population
-    // (unoccupied pool) and then shift the pipeline down by one slot.
+    // For each age × edu × skill, drain departing[0] back into the
+    // population (unoccupied pool) and then shift the pipeline down by
+    // one slot.
     // -----------------------------------------------------------------------
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
@@ -87,48 +79,42 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
             }
 
             const planet = planets.get(planetId);
-            const occupation: Occupation = planet && planet.governmentId === agent.id ? 'government' : 'company';
 
-            for (const edu of educationLevelKeys) {
-                // Sum departing[0] across all tenure cohorts for this edu,
-                // merging their compact AgeMoments so returnToPopulation can
-                // Gaussian-weight the removal towards the correct age profile.
-                let departingCount = 0;
-                let departingSumAge = 0;
-                let departingSumAgeSq = 0;
-                for (const cohort of workforce) {
-                    const slot = cohort.departing[edu][0];
-                    departingCount += slot.count;
-                    departingSumAge += slot.sumAge;
-                    departingSumAgeSq += slot.sumAgeSq;
-                }
-
-                // Transfer workers from the employed occupation back to unoccupied
-                if (departingCount > 0 && planet) {
-                    const moved = returnToPopulation(planet, edu, departingCount, occupation, {
-                        count: departingCount,
-                        sumAge: departingSumAge,
-                        sumAgeSq: departingSumAgeSq,
+            // Return departing[0] workers to the population at their exact age.
+            if (planet) {
+                for (let age = 0; age < workforce.length; age++) {
+                    forEachWorkforceCohort(workforce[age], (category, edu) => {
+                        const departingAtAge = category.departing[0] ?? 0;
+                        if (departingAtAge > 0) {
+                            const moved = returnToPopulationAtAge(planet, edu, departingAtAge, 'employed', age);
+                            if (moved !== departingAtAge) {
+                                console.warn(
+                                    `[postProductionLaborMarketTick] departing mismatch for edu=${edu} age=${age} on agent=${agent.id}: requested=${departingAtAge}, moved=${moved}`,
+                                );
+                            }
+                        }
                     });
-                    if (moved !== departingCount) {
-                        console.warn(
-                            `[laborMarketMonthTick] departing mismatch for edu=${edu} on agent=${agent.id}: requested=${departingCount}, moved=${moved}`,
-                        );
-                    }
                 }
             }
 
             // --- Shift all departing pipelines down by one slot ---
-            for (const cohort of workforce) {
-                for (const edu of educationLevelKeys) {
+            for (let age = 0; age < workforce.length; age++) {
+                forEachWorkforceCohort(workforce[age], (category) => {
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {
-                        cohort.departing[edu][i] = cohort.departing[edu][i + 1];
-                        cohort.departingFired[edu][i] = cohort.departingFired[edu][i + 1];
+                        category.departing[i] = category.departing[i + 1] ?? 0;
+                        category.departingFired[i] = category.departingFired[i + 1] ?? 0;
                     }
-                    cohort.departing[edu][NOTICE_PERIOD_MONTHS - 1] = emptyAgeMoments();
-                    cohort.departingFired[edu][NOTICE_PERIOD_MONTHS - 1] = 0;
-                }
+                    category.departing[NOTICE_PERIOD_MONTHS - 1] = 0;
+                    category.departingFired[NOTICE_PERIOD_MONTHS - 1] = 0;
+                });
             }
+        }
+    }
+
+    // Verify population↔workforce consistency after pipeline advancement
+    if (process.env.SIM_DEBUG === '1') {
+        for (const planet of planets.values()) {
+            assertPopulationWorkforceConsistency(agents, planet, 'postProductionLaborMarketTick');
         }
     }
 }

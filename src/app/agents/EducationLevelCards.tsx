@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import type { EducationLevelType } from '../../simulation/planet';
-import { educationLevelKeys } from '../../simulation/planet';
 import { Badge } from '../../components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip';
 import { eduLabel, fmt, EDU_COLORS, sumByEdu } from './workforce-theme';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -66,7 +66,6 @@ function EducationCard({
     label,
     badgeClassName,
     target,
-    available,
     active,
     unused,
     deaths,
@@ -95,7 +94,6 @@ function EducationCard({
     label: string;
     badgeClassName: string;
     target: number;
-    available?: number;
     active: number;
     unused: number;
     deaths?: number;
@@ -133,14 +131,6 @@ function EducationCard({
             <Badge variant='outline' className={`text-xs px-1.5 py-0.5 mb-1 ${badgeClassName}`}>
                 {label}
             </Badge>
-
-            {typeof available === 'number' && (
-                <Stat
-                    label='Available'
-                    value={fmt(available)}
-                    valueClassName={available > 0 ? 'text-blue-600' : 'text-muted-foreground'}
-                />
-            )}
 
             {/* ── Headcount ── */}
             <Stat
@@ -339,7 +329,6 @@ export function EducationLevelCards({
     overallAgeProductivity,
     overallMeanTenure,
     overallTenureProductivity,
-    availableByEdu,
     deathsByEdu,
     deathsPrevByEdu,
     disabilitiesByEdu,
@@ -364,7 +353,6 @@ export function EducationLevelCards({
     overallTenureProductivity: number;
     overqualifiedByEdu?: Record<EducationLevelType, number>;
     overqualifiedBreakdown?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
-    availableByEdu?: Record<EducationLevelType, number>;
     deathsByEdu?: Record<EducationLevelType, number>;
     deathsPrevByEdu?: Record<EducationLevelType, number>;
     disabilitiesByEdu?: Record<EducationLevelType, number>;
@@ -386,7 +374,6 @@ export function EducationLevelCards({
                     label={eduLabel(edu)}
                     badgeClassName={EDU_COLORS[edu].badge}
                     target={allocatedWorkers[edu] ?? 0}
-                    available={availableByEdu?.[edu]}
                     active={activeByEdu[edu]}
                     unused={unusedWorkers?.[edu] ?? 0}
                     deaths={deathsByEdu?.[edu]}
@@ -413,7 +400,6 @@ export function EducationLevelCards({
                 label='Total'
                 badgeClassName='border-foreground/30 bg-muted text-foreground font-semibold'
                 target={sumByEdu(allocatedWorkers)}
-                available={availableByEdu ? sumByEdu(availableByEdu) : undefined}
                 active={totalActive}
                 unused={totalUnused}
                 deaths={deathsByEdu ? sumByEdu(deathsByEdu) : undefined}

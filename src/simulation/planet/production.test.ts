@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { seedRng } from './utils/stochasticRound';
+import { seedRng } from '../utils/stochasticRound';
 import { productionTick } from './production';
-import { makeAgent, makePlanet, makeFacility, agentMap, planetMap } from './workforce/testHelpers';
+
 import { ironOreDepositResourceType, ironOreResourceType } from './facilities';
 import type { GameState } from './planet';
-import { ageMomentsForAge } from './workforce/workforceHelpers';
+import { makePlanetWithPopulation, makeAgent, makeProductionFacility, planetMap, agentMap } from '../utils/testHelper';
+
 // test helpers create fresh objects; no deep clone needed
 
 describe('productionTick (basic)', () => {
@@ -15,21 +16,20 @@ describe('productionTick (basic)', () => {
 
     it('produces iron into storage when a matching worker is available', () => {
         // create minimal planet and agent via helpers
-        const { planet, gov } = makePlanet();
+        const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
         // create an iron extraction facility that needs an iron ore deposit and produces iron ore
-        const facility = makeFacility({ secondary: 1 }, 1);
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
         facility.id = 'iron-extract';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         // attach facility to agent and ensure workforce has one secondary worker
         agent.assets.p.productionFacilities = [facility];
-        const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = ageMomentsForAge(30, 1);
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
 
-        // create a resource deposit on the planet claimed/tenanted by agent
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'iron-deposit-1',
@@ -61,17 +61,17 @@ describe('productionTick (basic)', () => {
     });
 
     it('does not operate facility when required land-bound resource is unavailable', () => {
-        const { planet, gov } = makePlanet();
+        const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const facility = makeFacility({ secondary: 1 }, 1);
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
         facility.id = 'iron-extract';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = ageMomentsForAge(30, 1);
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
 
         // create a depleted deposit (quantity 0) but tenanted by agent
         planet.resources[ironOreDepositResourceType.name] = [
@@ -101,22 +101,22 @@ describe('productionTick (basic)', () => {
         // The facility should have recorded 0% efficiency
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'iron-extract');
         expect(recorded).toBeDefined();
-        expect(recorded!.lastTickEfficiencyInPercent).toBe(0);
+        expect(recorded!.lastTickResults?.overallEfficiency).toBe(0);
     });
 
     it('uses overqualified workers when lower-edu slots are empty', () => {
-        const { planet, gov } = makePlanet();
+        const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
         // facility needs 1 'none' worker but agent only has a primary worker
-        const facility = makeFacility({ none: 1 }, 1);
+        const facility = makeProductionFacility({ none: 1 }, { scale: 1 });
         facility.id = 'oq-fac';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1 }];
         facility.produces = [{ resource: ironOreResourceType, quantity: 1 }];
 
         agent.assets.p.productionFacilities = [facility];
-        const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.primary = ageMomentsForAge(30, 1); // overqualified
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].primary.novice.active = 1; // overqualified
 
         // deposit available
         planet.resources[ironOreDepositResourceType.name] = [
@@ -142,15 +142,15 @@ describe('productionTick (basic)', () => {
         expect(oq).toBeDefined();
         expect(oq!.none && oq!.none!.primary).toBeGreaterThanOrEqual(1);
         // aggregated at agent level too
-        expect(agent.assets.p.overqualifiedMatrix).toBeDefined();
-        expect(agent.assets.p.overqualifiedMatrix!.none!.primary).toBeGreaterThanOrEqual(1);
+        expect(agent.assets.p.workerFeedback?.overqualifiedMatrix).toBeDefined();
+        expect(agent.assets.p.workerFeedback!.overqualifiedMatrix!.none!.primary).toBeGreaterThanOrEqual(1);
     });
 
     it('scales production down when one input resource is scarce', () => {
-        const { planet, gov } = makePlanet();
+        const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const facility = makeFacility({ secondary: 1 }, 1);
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
         facility.id = 'scale-fac';
         // two needs: one abundant, one scarce
         const resA = ironOreDepositResourceType;
@@ -162,8 +162,8 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = ageMomentsForAge(30, 1);
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
 
         // resA abundant, resB scarce (only 100 available)
         planet.resources[resA.name] = [
@@ -205,17 +205,17 @@ describe('productionTick (basic)', () => {
     });
 
     it('records unused workers and unusedWorkerFraction', () => {
-        const { planet, gov } = makePlanet();
+        const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const facility = makeFacility({ secondary: 1 }, 1);
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
         facility.id = 'u-fac';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1 }];
         facility.produces = [{ resource: ironOreResourceType, quantity: 1 }];
 
         agent.assets.p.productionFacilities = [facility];
-        const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = ageMomentsForAge(30, 2); // one extra worker
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 2; // one extra worker
 
         planet.resources[ironOreDepositResourceType.name] = [
             {
@@ -234,9 +234,9 @@ describe('productionTick (basic)', () => {
         productionTick(gs);
 
         // one worker should remain unused
-        const unused = agent.assets.p.unusedWorkers;
-        expect(unused).toBeDefined();
-        expect(unused!.secondary).toBeGreaterThanOrEqual(1);
-        expect(agent.assets.p.unusedWorkerFraction).toBeGreaterThanOrEqual(0);
+        const feedback = agent.assets.p.workerFeedback;
+        expect(feedback).toBeDefined();
+        expect(feedback!.unusedWorkers.secondary).toBeGreaterThanOrEqual(1);
+        expect(feedback!.unusedWorkerFraction).toBeGreaterThanOrEqual(0);
     });
 });

@@ -6,7 +6,9 @@
  * only the data it needs rather than receiving the full GameState over SSE.
  */
 
-import type { Planet, Agent } from '../simulation/planet';
+import type { Planet, Agent } from '../simulation/planet/planet';
+import { OCCUPATIONS, SKILL } from '../simulation/population/population';
+import { educationLevelKeys } from '../simulation/population/education';
 
 // ---------------------------------------------------------------------------
 // Serialisation helpers
@@ -14,17 +16,46 @@ import type { Planet, Agent } from '../simulation/planet';
 
 /**
  * Compute the total population for a planet (sum of all cohort occupant counts).
+ * New model: demography[age][occ][edu][skill] → PopulationCategory with `.total`.
  */
 export const computePopulationTotal = (planet: Planet): number => {
     let total = 0;
     for (const cohort of planet.population.demography) {
-        for (const eduObj of Object.values(cohort)) {
-            for (const occVal of Object.values(eduObj)) {
-                total += Number(occVal) || 0;
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    total += cohort[occ][edu][skill].total;
+                }
             }
         }
     }
     return total;
+};
+
+/**
+ * Compute a weighted-average starvation level across all population categories.
+ * Returns 0 when population is empty.
+ */
+export const computeGlobalStarvation = (planet: Planet): number => {
+    let totalStarvation = 0;
+    let totalPop = 0;
+    for (const cohort of planet.population.demography) {
+        if (!cohort) {
+            continue;
+        }
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    const cat = cohort[occ][edu][skill];
+                    if (cat.total > 0) {
+                        totalStarvation += cat.starvationLevel * cat.total;
+                        totalPop += cat.total;
+                    }
+                }
+            }
+        }
+    }
+    return totalPop > 0 ? totalStarvation / totalPop : 0;
 };
 
 /**
@@ -50,7 +81,7 @@ export const computeAgentProduction = (agent: Agent): Record<string, number> => 
     const production: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
         for (const fac of planetAssets.productionFacilities ?? []) {
-            const eff = (fac.lastTickEfficiencyInPercent ?? 0) / 100;
+            const eff = fac.lastTickResults?.overallEfficiency ?? 0;
             for (const p of fac.produces ?? []) {
                 const qty = (p.quantity ?? 0) * fac.scale * eff;
                 production[p.resource.name] = (production[p.resource.name] || 0) + qty;
@@ -67,7 +98,7 @@ export const computeAgentConsumption = (agent: Agent): Record<string, number> =>
     const consumption: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
         for (const fac of planetAssets.productionFacilities ?? []) {
-            const eff = (fac.lastTickEfficiencyInPercent ?? 0) / 100;
+            const eff = fac.lastTickResults?.overallEfficiency ?? 0;
             for (const n of fac.needs ?? []) {
                 const qty = (n.quantity ?? 0) * fac.scale * eff;
                 consumption[n.resource.name] = (consumption[n.resource.name] || 0) + qty;
@@ -136,7 +167,7 @@ export const summariseAgentBlob = (agentId: string, wealth: number, blob: unknow
                 totalWorkers += (v as number) ?? 0;
             }
         }
-        unusedWorkerFraction = Math.max(unusedWorkerFraction, assets.unusedWorkerFraction ?? 0);
+        unusedWorkerFraction = Math.max(unusedWorkerFraction, assets.workerFeedback?.unusedWorkerFraction ?? 0);
     }
 
     const topResources = Object.entries(storageTotals)
@@ -242,7 +273,7 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         deposits: assets.deposits,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,
-        unusedWorkerFraction: assets.unusedWorkerFraction ?? 0,
+        unusedWorkerFraction: assets.workerFeedback?.unusedWorkerFraction ?? 0,
         topResources,
     };
 };

@@ -2,9 +2,11 @@
 
 import React from 'react';
 import { Coins, Landmark, TrendingDown, TrendingUp } from 'lucide-react';
-import type { EducationLevelType, WorkforceDemography } from '@/simulation/planet';
-import { educationLevelKeys } from '@/simulation/planet';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
+import { SKILL } from '@/simulation/population/population';
+import type { WorkforceDemography } from './workforce-summary';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -40,24 +42,28 @@ function estimateWageBill(
     for (const edu of educationLevelKeys) {
         byEdu[edu] = 0;
     }
-    for (const cohort of wfd) {
+    for (let age = 0; age < wfd.length; age++) {
+        const cohort = wfd[age];
+        if (!cohort) {
+            continue;
+        }
         for (const edu of educationLevelKeys) {
-            const activeCount = cohort.active[edu]?.count ?? 0;
-            // Also count departing workers — they still receive wages until they leave.
-            const departingCount = (cohort.departing[edu] ?? []).reduce(
-                (s: number, m: { count: number }) => s + m.count,
-                0,
-            );
-            const wage = wagePerEdu[edu] ?? DEFAULT_WAGE_PER_EDU;
-            const bill = (activeCount + departingCount) * wage;
-            byEdu[edu] += bill;
-            total += bill;
+            for (const skill of SKILL) {
+                const cat = cohort[edu][skill];
+                const activeCount = cat.active;
+                // Also count departing workers — they still receive wages until they leave.
+                const departingCount = cat.departing.reduce((s: number, d: number) => s + d, 0);
+                const wage = wagePerEdu[edu] ?? DEFAULT_WAGE_PER_EDU;
+                const bill = (activeCount + departingCount) * wage;
+                byEdu[edu] += bill;
+                total += bill;
+            }
         }
     }
     return { total, byEdu };
 }
 
-/** Aggregate worker counts from the workforce demography (wealth no longer tracked here). */
+/** Aggregate worker counts from the workforce demography. */
 function aggregateWealthStats(wfd: WorkforceDemography): {
     byEdu: Record<EducationLevelType, { mean: number; workers: number }>;
     totalWorkers: number;
@@ -68,12 +74,18 @@ function aggregateWealthStats(wfd: WorkforceDemography): {
     }
     let totalWorkers = 0;
 
-    for (const cohort of wfd) {
+    for (let age = 0; age < wfd.length; age++) {
+        const cohort = wfd[age];
+        if (!cohort) {
+            continue;
+        }
         for (const edu of educationLevelKeys) {
-            const activeCount = cohort.active[edu]?.count ?? 0;
-            if (activeCount > 0) {
-                byEdu[edu].workers += activeCount;
-                totalWorkers += activeCount;
+            for (const skill of SKILL) {
+                const activeCount = cohort[edu][skill].active;
+                if (activeCount > 0) {
+                    byEdu[edu].workers += activeCount;
+                    totalWorkers += activeCount;
+                }
             }
         }
     }

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import type { Planet, ResourceQuantity, ResourceClaim } from '@/simulation/planet';
+import type { Planet, ResourceQuantity, ResourceClaim } from '@/simulation/planet/planet';
+import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -14,19 +15,17 @@ type Props = {
     populationTotal: number;
 };
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-/**
- * PlanetOverviewPanel — compact summary of position, resources, infrastructure
- * and environment for the Overview tab.
- */
 export default function PlanetOverviewPanel({ planet, populationTotal: _populationTotal }: Props): React.ReactElement {
     const p = planet;
 
     return (
         <div className='space-y-4'>
+            {/* Population history chart */}
+            <div className='border rounded-md p-3'>
+                <h4 className='text-sm font-semibold mb-2'>Population History</h4>
+                <PlanetPopulationHistoryChart planetId={p.id} />
+            </div>
+
             {/* Position */}
             <div className='border rounded-md p-3'>
                 <h4 className='text-sm font-semibold mb-2'>Position</h4>

@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import type { EducationLevelType } from '../../simulation/planet';
-import { educationLevelKeys } from '../../simulation/planet';
 import { Badge } from '../../components/ui/badge';
 import { eduLabel, fmt, sumByEdu, pct, EDU_COLORS } from './workforce-theme';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
 
 // ---------------------------------------------------------------------------
 // Headcount table — one row per education level
