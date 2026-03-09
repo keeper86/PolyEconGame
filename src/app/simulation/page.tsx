@@ -685,7 +685,7 @@ Retirement (per tenure cohort c, education level edu):
                             <code>updateAllocatedWorkers</code> — recompute workforce demand targets
                         </li>
                         <li>
-                            <code>laborMarketTick</code> — voluntary quits, hiring, firing
+                            <code>preProductionLaborMarketTick</code> — voluntary quits, hiring, firing (monthly)
                         </li>
                         <li>
                             <code>preProductionFinancialTick</code> — wage-bill loans (money creation), wage payment
@@ -713,7 +713,8 @@ Retirement (per tenure cohort c, education level edu):
                             destruction)
                         </li>
                         <li>
-                            <em>(month boundary only)</em> <code>laborMarketMonthTick</code> — notice pipeline advance
+                            <em>(month boundary only)</em> <code>postProductionLaborMarketTick</code> — notice pipeline
+                            advance
                         </li>
                         <li>
                             <em>(year boundary only)</em> <code>populationAdvanceYearTick</code> — aging, education

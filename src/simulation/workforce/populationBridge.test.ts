@@ -5,7 +5,7 @@ import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 
 import { hireFromPopulation, returnToPopulation, retireToPopulation, totalUnoccupiedForEdu } from './populationBridge';
-import { laborMarketTick } from './laborMarketTick';
+import { preProductionLaborMarketTick } from './laborMarketTick';
 import {
     makeAgent,
     makePlanetWithPopulation,
@@ -129,14 +129,14 @@ describe('populationBridge — hireFromPopulation', () => {
         expect(sumPopOcc(planet, 'secondary', 'employed')).toBe(777);
     });
 
-    it('moves hired workers from unoccupied to employed via laborMarketTick', () => {
+    it('moves hired workers from unoccupied to employed via preProductionLaborMarketTick', () => {
         const { planet } = makePlanetWithPopulation({ secondary: 10000 });
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.secondary = 3000;
 
         const unoccupiedBefore = sumPopOcc(planet, 'secondary', 'unoccupied');
 
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         const unoccupiedAfter = sumPopOcc(planet, 'secondary', 'unoccupied');
         const employedAfter = sumPopOcc(planet, 'secondary', 'employed');
@@ -352,7 +352,7 @@ describe('populationBridge — totalUnoccupiedForEdu', () => {
 });
 
 // ============================================================================
-// Age-indexed placement in hireFromPopulation (via laborMarketTick)
+// Age-indexed placement in hireFromPopulation (via preProductionLaborMarketTick)
 // ============================================================================
 
 describe('age-indexed hiring', () => {
@@ -363,7 +363,7 @@ describe('age-indexed hiring', () => {
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 50;
 
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         const wf = agent.assets.p.workforceDemography!;
         // Workers should be at age index 25
@@ -380,7 +380,7 @@ describe('age-indexed hiring', () => {
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 100;
 
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         const wf = agent.assets.p.workforceDemography!;
         const at25 = wf[25].none.novice.active;
@@ -395,7 +395,7 @@ describe('age-indexed hiring', () => {
         const agent = makeAgent();
         agent.assets.p.allocatedWorkers.none = 1000;
 
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         const wf = agent.assets.p.workforceDemography!;
         for (const cohort of wf) {

@@ -203,7 +203,7 @@ export type PerEducation = { [L in EducationLevelType]: number };
  * Demographic events (deaths, disabilities, retirements) tracked per
  * education level for this month and the previous month.
  * Written by `workforceSync` (thisTick accumulators) and rotated at
- * month boundaries by `laborMarketMonthTick`.
+ * month boundaries by `postProductionLaborMarketTick`.
  */
 export type DemographicEventCounters = {
     thisMonth: PerEducation;

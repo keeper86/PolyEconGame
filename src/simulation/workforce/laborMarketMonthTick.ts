@@ -1,7 +1,7 @@
 /**
  * workforce/laborMarketMonthTick.ts
  *
- * Monthly labor-market processing:
+ * Monthly post-production labor-market processing:
  * 1. Rotate death/disability/retirement counters (this month → prev month, reset this month).
  * 2. Pipeline advancement: departing → unoccupied.
  *
@@ -19,7 +19,7 @@ import { returnToPopulationAtAge, assertPopulationWorkforceConsistency } from '.
 // Public API
 // ---------------------------------------------------------------------------
 
-export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+export function postProductionLaborMarketTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
     // -----------------------------------------------------------------------
     // Phase 0: snapshots & counter rotation (per-agent)
     // -----------------------------------------------------------------------
@@ -89,7 +89,7 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
                             const moved = returnToPopulationAtAge(planet, edu, departingAtAge, 'employed', age);
                             if (moved !== departingAtAge) {
                                 console.warn(
-                                    `[laborMarketMonthTick] departing mismatch for edu=${edu} age=${age} on agent=${agent.id}: requested=${departingAtAge}, moved=${moved}`,
+                                    `[postProductionLaborMarketTick] departing mismatch for edu=${edu} age=${age} on agent=${agent.id}: requested=${departingAtAge}, moved=${moved}`,
                                 );
                             }
                         }
@@ -114,7 +114,7 @@ export function laborMarketMonthTick(agents: Map<string, Agent>, planets: Map<st
     // Verify population↔workforce consistency after pipeline advancement
     if (process.env.SIM_DEBUG === '1') {
         for (const planet of planets.values()) {
-            assertPopulationWorkforceConsistency(agents, planet, 'laborMarketMonthTick');
+            assertPopulationWorkforceConsistency(agents, planet, 'postProductionLaborMarketTick');
         }
     }
 }

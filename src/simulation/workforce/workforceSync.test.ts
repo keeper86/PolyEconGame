@@ -4,7 +4,7 @@ import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 
 import { syncWorkforceWithPopulation } from './workforceSync';
-import { laborMarketTick } from './laborMarketTick';
+import { preProductionLaborMarketTick } from './laborMarketTick';
 import { makeAgent, makePlanetWithPopulation, sumActiveForEdu, agentMap, planetMap } from '../utils/testHelper';
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ describe('syncWorkforceWithPopulation -- conservation', () => {
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         const wfBefore = sumActiveForEdu(agent, 'p', 'none');
 
@@ -103,7 +103,7 @@ describe('syncWorkforceWithPopulation -- conservation', () => {
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.primary = 300;
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         const wfBefore = sumActiveForEdu(agent, 'p', 'primary');
 
@@ -154,7 +154,7 @@ describe('syncWorkforceWithPopulation -- conservation', () => {
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 10;
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         // Set more deaths than workers exist at age 30
         setDeathsAtAge(planet, 30, 'none', 100);
@@ -277,7 +277,7 @@ describe('syncWorkforceWithPopulation -- event tracking', () => {
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         setDeathsAtAge(planet, 30, 'none', 7);
         syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
@@ -290,7 +290,7 @@ describe('syncWorkforceWithPopulation -- event tracking', () => {
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.primary = 300;
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         setDisabilitiesAtAge(planet, 30, 'primary', 3);
         syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
@@ -318,7 +318,7 @@ describe('syncWorkforceWithPopulation -- event tracking', () => {
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
 
         // First tick: 5 deaths at age 30
         setDeathsAtAge(planet, 30, 'none', 5);

@@ -5,7 +5,7 @@
  * consistency invariants (population↔workforce, balance-sheet, etc.).
  *
  * Invariant checks are now inline assertions at their respective tick
- * lifecycle points (e.g. laborMarketTick, populationTick, financialTick).
+ * lifecycle points (e.g. preProductionLaborMarketTick, populationTick, financialTick).
  * When SIM_DEBUG=1, violations throw immediately — so any error here
  * pinpoints the exact lifecycle step that broke the invariant.
  *
