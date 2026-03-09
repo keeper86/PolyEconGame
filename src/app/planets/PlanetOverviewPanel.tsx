@@ -13,17 +13,36 @@ type ResourceEntry = ResourceQuantity & ResourceClaim;
 type Props = {
     planet: Planet;
     populationTotal: number;
+    /** Current simulation tick (for the live chart data point). */
+    tick?: number;
+    /** Current global starvation level (for the live chart data point). */
+    starvationLevel?: number;
 };
 
-export default function PlanetOverviewPanel({ planet, populationTotal: _populationTotal }: Props): React.ReactElement {
+export default function PlanetOverviewPanel({
+    planet,
+    populationTotal,
+    tick,
+    starvationLevel,
+}: Props): React.ReactElement {
     const p = planet;
+
+    // Build a live data point from the already-fetched planet detail state.
+    const live =
+        tick !== undefined
+            ? {
+                  tick,
+                  population: populationTotal,
+                  starvationLevel: starvationLevel ?? 0,
+              }
+            : undefined;
 
     return (
         <div className='space-y-4'>
             {/* Population history chart */}
             <div className='border rounded-md p-3'>
                 <h4 className='text-sm font-semibold mb-2'>Population History</h4>
-                <PlanetPopulationHistoryChart planetId={p.id} />
+                <PlanetPopulationHistoryChart planetId={p.id} live={live} />
             </div>
 
             {/* Position */}

@@ -6,7 +6,7 @@ export default function PlanetPopulationChartRecharts({
     data,
     height = 120,
 }: {
-    data: { tick: number; value: number; starvation?: number }[];
+    data: { year: number; value: number; starvation?: number }[];
     height?: number;
 }): React.ReactElement {
     if (!data || data.length === 0) {
@@ -15,15 +15,12 @@ export default function PlanetPopulationChartRecharts({
 
     const hasStarvation = data.some((d) => d.starvation !== undefined && d.starvation !== null);
 
-    // Recharts expects data ordered from left->right. We store newest first in the UI state,
-    // so reverse for plotting (older -> newer left->right).
-    // Prefer using Recharts' built-in logarithmic scale instead of pre-taking Math.log.
-    // Only enable log scale when all values are finite and > 0 (log undefined for <= 0).
+    // Recharts positions points by their numeric `year` value on the X axis,
+    // so we just need data sorted ascending (oldest → newest, left → right).
     const useLogScale = false;
-    // data.every((d) => Number.isFinite(d.value) && d.value > 0);
     const plotData = data
         .slice()
-        .reverse()
+        .sort((a, b) => a.year - b.year)
         .map((d) => ({
             ...d,
             // Convert starvation from 0-1 fraction to percentage for display
@@ -100,7 +97,7 @@ export default function PlanetPopulationChartRecharts({
                     <XAxis
                         dataKey='tick'
                         tick={{ fontSize: 11 }}
-                        tickFormatter={(v) => (typeof v === 'number' ? String(Math.floor(v / 365)) : String(v))}
+                        tickFormatter={(v) => (typeof v === 'number' ? String(Math.round(v)) : String(v))}
                     />
                     <YAxis
                         yAxisId='left'

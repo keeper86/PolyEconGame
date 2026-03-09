@@ -155,7 +155,12 @@ export default function PlanetDetailPage() {
 
                         {/* Overview tab */}
                         <TabsContent value='overview' className='space-y-4'>
-                            <PlanetOverviewPanel planet={planet} populationTotal={populationTotal} />
+                            <PlanetOverviewPanel
+                                planet={planet}
+                                populationTotal={populationTotal}
+                                tick={tick}
+                                starvationLevel={starvationLevel}
+                            />
                         </TabsContent>
 
                         {/* Demographics tab */}
@@ -185,7 +190,14 @@ export default function PlanetDetailPage() {
                                     <Wheat className='h-4 w-4 text-muted-foreground' />
                                     Price History
                                 </h4>
-                                <FoodPriceHistoryChart planetId={planetId} />
+                                <FoodPriceHistoryChart
+                                    planetId={planetId}
+                                    live={{
+                                        tick,
+                                        foodPrice: planet.priceLevel ?? 0,
+                                        starvationLevel,
+                                    }}
+                                />
                             </div>
                         </TabsContent>
                     </Tabs>

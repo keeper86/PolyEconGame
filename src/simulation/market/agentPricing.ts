@@ -11,7 +11,13 @@
  */
 
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { INITIAL_FOOD_PRICE, FOOD_PRICE_FLOOR, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN } from '../constants';
+import {
+    INITIAL_FOOD_PRICE,
+    FOOD_PRICE_FLOOR,
+    PRICE_ADJUST_MAX_UP,
+    PRICE_ADJUST_MAX_DOWN,
+    FOOD_PRICE_CEIL,
+} from '../constants';
 
 import { agriculturalProductResourceType, queryStorageFacility } from '../planet/facilities';
 
@@ -58,7 +64,7 @@ function updatePricingForAgent(agent: Agent, planet: Planet): void {
 
     factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(PRICE_ADJUST_MAX_DOWN, factor));
 
-    const newPrice = Math.max(FOOD_PRICE_FLOOR, price * factor);
+    const newPrice = Math.min(FOOD_PRICE_CEIL, Math.max(FOOD_PRICE_FLOOR, price * factor));
 
     assets.foodMarket.offerPrice = newPrice;
 }

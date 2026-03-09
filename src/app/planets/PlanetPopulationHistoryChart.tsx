@@ -4,6 +4,7 @@ import React from 'react';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
 import PlanetPopulationChartRecharts from './PlanetPopulationChartRecharts';
+import { TICKS_PER_YEAR } from '@/simulation/constants';
 
 /** Refetch interval — matches the snapshot interval so data updates whenever
  *  a new cold snapshot (and population history row) is written. */
@@ -11,13 +12,20 @@ const REFETCH_INTERVAL_MS = 1000;
 
 type Props = {
     planetId: string;
+    /** Live values from the already-fetched planet detail (current tick). */
+    live?: {
+        tick: number;
+        population: number;
+        starvationLevel: number;
+    };
 };
 
 /**
  * Fetches the planet_population_history rows for a single planet via tRPC
  * and renders them as an area chart with population + starvation level.
+ * When `live` is provided the chart extends to the current tick.
  */
-export default function PlanetPopulationHistoryChart({ planetId }: Props): React.ReactElement {
+export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
 
     const { data, isLoading } = useQuery({
@@ -30,10 +38,20 @@ export default function PlanetPopulationHistoryChart({ planetId }: Props): React
     }
 
     const chartData = (data?.history ?? []).map((r) => ({
-        tick: r.tick,
+        year: r.tick / TICKS_PER_YEAR,
         value: r.population,
         starvation: r.starvationLevel,
     }));
+
+    // Append a live data point at the current tick so the chart extends
+    // to "now" instead of stopping at the last yearly snapshot.
+    if (live && (chartData.length === 0 || live.tick / TICKS_PER_YEAR > chartData[chartData.length - 1].year)) {
+        chartData.push({
+            year: live.tick / TICKS_PER_YEAR,
+            value: live.population,
+            starvation: live.starvationLevel,
+        });
+    }
 
     if (chartData.length === 0) {
         return (

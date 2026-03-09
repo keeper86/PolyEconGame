@@ -42,6 +42,7 @@ export const FOOD_PRICE_BETA = 0.001;
  * Minimum food price (prevents zero or negative prices).
  */
 export const FOOD_PRICE_FLOOR = 0.01;
+export const FOOD_PRICE_CEIL = 10000.0;
 
 /**
  * Initial food price per unit (currency units per ton of agricultural product).
@@ -134,7 +135,7 @@ export const PRECAUTIONARY_RESERVE_TICKS = 60;
  * Low starvation levels (< 0.4) are sustainable in the mortality model,
  * higher values lead to death or disability.
  */
-export const SUPPORTER_SURVIVAL_FRACTION = 0.01;
+export const SUPPORTER_SURVIVAL_FRACTION = 0.1;
 
 /**
  * Standard deviation (in years) for the Gaussian support weight kernel.
@@ -154,13 +155,6 @@ export const SUPPORT_WEIGHT_SIGMA = 4;
  * With maxAge=100 and GENERATION_GAP=25, N=3 covers the full age range.
  */
 export const GENERATION_KERNEL_N = 2;
-
-/**
- * Minimum age for a person to be considered a potential supporter
- * in intergenerational transfers.  Must be at least MIN_EMPLOYABLE_AGE.
- * Below this age, supportCapacity() returns 0.
- */
-export const SUPPORTER_MIN_AGE = MIN_EMPLOYABLE_AGE;
 
 /**
  * Fraction of the food buffer target that an *elderly* supporter must

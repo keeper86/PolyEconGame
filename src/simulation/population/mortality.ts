@@ -42,7 +42,7 @@ console.log('Current life expectancy', expectedLifeExpectancy()); //72 years
  * Cap total per-tick mortality to 95 % to avoid complete population
  * wipe-outs in a single tick.
  */
-export const MAX_MORTALITY_PER_TICK = 0.95;
+export const MAX_MORTALITY_PER_TICK = 0.8;
 
 /**
  * Acute starvation mapping — an age-independent annual mortality component
@@ -53,25 +53,13 @@ export const MAX_MORTALITY_PER_TICK = 0.95;
  * limited acute lethality while severe, sustained famine causes large
  * annual death rates.
  */
-export const STARVATION_ACUTE_POWER = 3;
+export const STARVATION_ACUTE_POWER = 4;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Environmental mortality contributions (annual rates)
-// ---------------------------------------------------------------------------
-
-export interface EnvironmentalMortality {
-    pollutionMortalityRate: number;
-    disasterDeathProbability: number;
-}
 /**
  * Compute the annual mortality contributions from pollution and natural
  * disasters.  These are additive on top of the base age-dependent rate.
  */
-export function computeEnvironmentalMortality(environment: Environment): EnvironmentalMortality {
+export function computeEnvironmentalMortality(environment: Environment): number {
     const { pollution, naturalDisasters } = environment;
 
     const pollutionMortalityRate = pollution.air * 0.006 + pollution.water * 0.00002 + pollution.soil * 0.00001;
@@ -79,35 +67,7 @@ export function computeEnvironmentalMortality(environment: Environment): Environ
     const disasterDeathProbability =
         naturalDisasters.earthquakes * 0.0005 + naturalDisasters.floods * 0.00005 + naturalDisasters.storms * 0.000015;
 
-    return { pollutionMortalityRate, disasterDeathProbability };
-}
-
-/**
- * Compute the total extra annual mortality from pollution and disasters.
- * Starvation is NOT included here — it affects mortality only via base
- * amplification in `perTickMortality`, preventing double counting.
- */
-export function computeExtraAnnualMortality(environmentalMortality: EnvironmentalMortality): number {
-    return environmentalMortality.pollutionMortalityRate + environmentalMortality.disasterDeathProbability;
-}
-
-/**
- * Compute the per-tick mortality probability for a given age cohort.
- *
- * Combines:
- * - base age-dependent mortality (from life-table), amplified by starvation:
- *       baseMort × (1 + S² × 9)
- *   At S = 1 base mortality is 10× normal; at S = 0.5 it is ~3.25×.
- *   Using S² (convex curve) gives a biologically realistic damage response:
- *   mild shortage → moderate increase; severe famine → extreme mortality.
- * - extra annual mortality from pollution + disasters (additive)
- *   Starvation does NOT appear in extraAnnualMortality to avoid double counting.
- *
- * Returns a value in [0, MAX_MORTALITY_PER_TICK].
- */
-export function perTickMortality(age: number, extraAnnualMortality: number): number {
-    // Chronic amplification of age-dependent baseline mortality
-    return Math.min(MAX_MORTALITY_PER_TICK, convertAnnualToPerTick(mortalityProbability(age) + extraAnnualMortality));
+    return pollutionMortalityRate + disasterDeathProbability;
 }
 
 /**
@@ -120,7 +80,6 @@ export function perTickMortality(age: number, extraAnnualMortality: number): num
  */
 export function applyMortality(population: Population, environment: Environment): void {
     const environmentalMortality = computeEnvironmentalMortality(environment);
-    const extraAnnualMortality = computeExtraAnnualMortality(environmentalMortality);
 
     population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -132,7 +91,14 @@ export function applyMortality(population: Population, environment: Environment)
             const starvationAcuteMortality =
                 category.starvationLevel === 0 ? 0 : Math.pow(category.starvationLevel, STARVATION_ACUTE_POWER);
 
-            const perTickMort = perTickMortality(age, extraAnnualMortality + starvationAcuteMortality);
+            const perTickMort = Math.min(
+                MAX_MORTALITY_PER_TICK,
+                convertAnnualToPerTick(
+                    mortalityProbability(age) * (1 + category.starvationLevel) +
+                        environmentalMortality +
+                        starvationAcuteMortality,
+                ),
+            );
 
             const dead = stochasticRound(category.total * perTickMort);
             const reallyDead = transferPopulation(population.demography, { age, occ, edu, skill }, undefined, dead);

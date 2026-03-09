@@ -4,6 +4,7 @@ import React from 'react';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import { TICKS_PER_YEAR } from '@/simulation/constants';
 
 /** Refetch interval — matches the snapshot interval so data updates whenever
  *  a new cold snapshot (and population history row) is written. */
@@ -11,13 +12,20 @@ const REFETCH_INTERVAL_MS = 1000;
 
 type Props = {
     planetId: string;
+    /** Live values from the already-fetched planet detail (current tick). */
+    live?: {
+        tick: number;
+        foodPrice: number;
+        starvationLevel: number;
+    };
 };
 
 /**
  * Fetches the planet_population_history rows for a single planet via tRPC
  * and renders the food price (price level) as an area chart.
+ * When `live` is provided the chart extends to the current tick.
  */
-export default function FoodPriceHistoryChart({ planetId }: Props): React.ReactElement {
+export default function FoodPriceHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
 
     const { data, isLoading } = useQuery({
@@ -30,10 +38,20 @@ export default function FoodPriceHistoryChart({ planetId }: Props): React.ReactE
     }
 
     const chartData = (data?.history ?? []).map((r) => ({
-        tick: r.tick,
+        year: r.tick / TICKS_PER_YEAR,
         foodPrice: r.foodPrice,
         starvationPct: r.starvationLevel * 100,
     }));
+
+    // Append a live data point at the current tick so the chart extends
+    // to "now" instead of stopping at the last yearly snapshot.
+    if (live && (chartData.length === 0 || live.tick / TICKS_PER_YEAR > chartData[chartData.length - 1].year)) {
+        chartData.push({
+            year: live.tick / TICKS_PER_YEAR,
+            foodPrice: live.foodPrice,
+            starvationPct: live.starvationLevel * 100,
+        });
+    }
 
     if (chartData.length === 0) {
         return (
@@ -52,8 +70,8 @@ export default function FoodPriceHistoryChart({ planetId }: Props): React.ReactE
         return v.toFixed(4);
     };
 
-    // Plot data oldest → newest (left to right)
-    const plotData = chartData.slice().reverse();
+    // Plot data oldest → newest (left to right), sorted by year.
+    const plotData = chartData.slice().sort((a, b) => a.year - b.year);
 
     return (
         <div className='space-y-1'>
@@ -91,10 +109,11 @@ export default function FoodPriceHistoryChart({ planetId }: Props): React.ReactE
                         </defs>
                         <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                         <XAxis
-                            dataKey='tick'
-                            reversed
+                            dataKey='year'
+                            type='number'
+                            domain={['dataMin', 'dataMax']}
                             tick={{ fontSize: 11 }}
-                            tickFormatter={(v) => (typeof v === 'number' ? String(Math.floor(v / 365)) : String(v))}
+                            tickFormatter={(v) => (typeof v === 'number' ? String(Math.round(v)) : String(v))}
                         />
                         <YAxis
                             yAxisId='left'
