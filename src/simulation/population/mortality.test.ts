@@ -3,12 +3,16 @@
  *
  * Unit tests for the mortality sub-system: annual-to-per-tick conversion,
  * environmental mortality, and combined per-tick mortality calculations.
+ *
+ * NOTE: `convertAnnualToPerTick` has moved to `population.ts`.
+ * `perTickMortality` now takes (age, extraAnnualMortality) — starvation
+ * is handled per-category inside `applyMortality`, not in the rate function.
  */
 
 import { describe, it, expect } from 'vitest';
 import { TICKS_PER_YEAR } from '../constants';
+import { convertAnnualToPerTick } from './population';
 import {
-    convertAnnualToPerTick,
     computeEnvironmentalMortality,
     computeExtraAnnualMortality,
     perTickMortality,
@@ -107,51 +111,33 @@ describe('computeExtraAnnualMortality', () => {
 });
 
 describe('perTickMortality', () => {
-    it('returns 0-ish for young people in clean conditions', () => {
-        // A 20-year-old with no starvation and no extra mortality
-        const mort = perTickMortality(20, 0, 0);
+    it('returns low mortality for young people in clean conditions', () => {
+        // A 20-year-old with no extra mortality
+        const mort = perTickMortality(20, 0);
         expect(mort).toBeGreaterThan(0);
         expect(mort).toBeLessThan(0.001); // very low
     });
 
     it('returns high mortality for very old age', () => {
-        const mort = perTickMortality(99, 0, 0);
+        const mort = perTickMortality(99, 0);
         expect(mort).toBeGreaterThan(0.0005);
     });
 
     it('is capped at MAX_MORTALITY_PER_TICK', () => {
-        // Extreme starvation + extreme extra mortality
-        const mort = perTickMortality(80, 1, 1);
+        // Extreme extra mortality
+        const mort = perTickMortality(80, 1);
         expect(mort).toBeLessThanOrEqual(MAX_MORTALITY_PER_TICK);
     });
 
-    it('starvation amplifies base mortality', () => {
-        const normal = perTickMortality(50, 0, 0);
-        const starved = perTickMortality(50, 1, 0);
-        expect(starved).toBeGreaterThan(normal);
-    });
-
     it('extra annual mortality increases per-tick mortality', () => {
-        const noExtra = perTickMortality(30, 0, 0);
-        const withExtra = perTickMortality(30, 0, 0.5);
+        const noExtra = perTickMortality(30, 0);
+        const withExtra = perTickMortality(30, 0.5);
         expect(withExtra).toBeGreaterThan(noExtra);
     });
 
-    it('partial starvation (S=0.5) does not collapse a young population', () => {
-        // At S=0.5, base mortality is amplified by (1 + 0.25 × 9) = 3.25×; extra is only env factors.
-        const mort = perTickMortality(30, 0.5, 0);
-        // Annual mortality still low for a 30-year-old even at moderate starvation
+    it('moderate extra mortality does not collapse a young population', () => {
+        const mort = perTickMortality(30, 0.1);
+        // Annual mortality still low for a 30-year-old even with moderate extra
         expect(mort).toBeLessThan(0.01);
-    });
-
-    it('severe starvation (S=0.9) is high but most young people survive per tick', () => {
-        // Without starvation
-        const mortNormal = perTickMortality(25, 0, 0);
-        // With S=0.9: base amplified by (1 + 0.81 × 9) = 8.29×; use 6× as conservative lower bound
-        const mort = perTickMortality(25, 0.9, 0);
-        // Should be clearly higher than normal
-        expect(mort).toBeGreaterThan(mortNormal * 6);
-        // Still a per-tick survival rate above 95%
-        expect(mort).toBeLessThan(0.05);
     });
 });

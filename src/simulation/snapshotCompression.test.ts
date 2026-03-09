@@ -15,8 +15,8 @@ import { describe, it, expect } from 'vitest';
 import { serializeSnapshot, deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { toImmutableGameState, fromImmutableGameState } from './immutableTypes';
 import type { GameState } from './engine';
-import type { Planet, Agent } from './planet';
-import type { ProductionFacility, StorageFacility } from './facilities';
+import type { Planet, Agent } from './planet/planet';
+import type { ProductionFacility, StorageFacility } from './planet/facilities';
 
 // ---------------------------------------------------------------------------
 // Minimal test fixtures (same pattern as immutableTypes.test.ts)

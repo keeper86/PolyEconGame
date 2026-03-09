@@ -2,7 +2,7 @@
  * population/nutrition.test.ts
  *
  * Unit tests for the nutrition sub-system: starvation level tracking
- * with equilibrium-convergence model.
+ * with equilibrium-convergence model and per-category food consumption.
  *
  * S converges towards the food shortfall (1 − nutritionalFactor) with a
  * time-constant of STARVATION_ADJUST_TICKS.
@@ -10,16 +10,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeFood } from './nutrition';
-import { agriculturalProductResourceType } from '../facilities';
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
-
-import {
-    createStorageFacility,
-    createPlanetWithStorage,
-    createPopulation,
-    createGovAgent,
-    agentsMap,
-} from './testFixtures';
+import { makePopulation } from '../utils/testHelper';
 
 describe('updateStarvationLevel', () => {
     it('returns 0 when fully fed and not starving', () => {
@@ -107,64 +99,63 @@ describe('updateStarvationLevel', () => {
     });
 });
 
-describe('consumeFood', () => {
-    it('consumes up to demand and updates storage when enough food', () => {
-        // Use populationTotal = 360 so per-tick demand = 1 ton (1/360 * 360)
-        const populationTotal = 360;
-        const perTickDemand = populationTotal * FOOD_PER_PERSON_PER_TICK;
+describe('consumeFood (per-category model)', () => {
+    it('consumes food from category foodStock and updates starvation', () => {
+        const pop = makePopulation();
+        const populationCount = 360;
+        const perTickDemand = populationCount * FOOD_PER_PERSON_PER_TICK; // = 1 ton
 
-        // Storage initially contains 5 tons
-        const storage = createStorageFacility(5);
-        const population = createPopulation(0.5);
-        const planet = createPlanetWithStorage(storage, population);
-        const gov = createGovAgent(storage);
+        // Place people and give them enough food
+        pop.demography[30].unoccupied.none.novice.total = populationCount;
+        pop.demography[30].unoccupied.none.novice.foodStock = 5;
+        pop.demography[30].unoccupied.none.novice.starvationLevel = 0.5;
 
-        const res = consumeFood(planet, population, populationTotal, agentsMap(gov));
+        consumeFood(pop);
 
-        // consumed should equal demand (1 ton)
-        expect(res.foodConsumed).toBeCloseTo(perTickDemand, 10);
-        // nutritionalFactor should be ≈ 1
-        expect(res.nutritionalFactor).toBeGreaterThanOrEqual(1);
-        // storage should be reduced by the consumed amount
-        expect(storage.currentInStorage[agriculturalProductResourceType.name].quantity).toBeCloseTo(
-            5 - perTickDemand,
-            10,
-        );
-        // population starvation level should have been updated (recovered)
-        expect(population.starvationLevel).toBeLessThan(0.5);
+        const cat = pop.demography[30].unoccupied.none.novice;
+        // foodStock should be reduced by consumption
+        expect(cat.foodStock).toBeCloseTo(5 - perTickDemand, 10);
+        // starvation level should recover (was 0.5, now well-fed)
+        expect(cat.starvationLevel).toBeLessThan(0.5);
     });
 
-    it('consumes what is available when storage insufficient and increases starvation', () => {
-        const populationTotal = 360;
+    it('increases starvation when food is insufficient', () => {
+        const pop = makePopulation();
+        const populationCount = 360;
 
-        const storage = createStorageFacility(0.2);
-        const population = createPopulation(0);
-        const planet = createPlanetWithStorage(storage, population);
-        const gov = createGovAgent(storage);
+        pop.demography[30].unoccupied.none.novice.total = populationCount;
+        pop.demography[30].unoccupied.none.novice.foodStock = 0.2; // less than demand
+        pop.demography[30].unoccupied.none.novice.starvationLevel = 0;
 
-        const res = consumeFood(planet, population, populationTotal, agentsMap(gov));
+        consumeFood(pop);
 
-        // consumed should equal available (0.2)
-        expect(res.foodConsumed).toBeCloseTo(0.2, 10);
-        // nutritionalFactor should be < 1
-        expect(res.nutritionalFactor).toBeLessThan(1);
-        // storage should be emptied for that resource
-        expect(storage.currentInStorage[agriculturalProductResourceType.name].quantity).toBeCloseTo(0, 10);
-        // starvation level should increase from 0
-        expect(population.starvationLevel).toBeGreaterThan(0);
+        const cat = pop.demography[30].unoccupied.none.novice;
+        // foodStock should be drained
+        expect(cat.foodStock).toBeCloseTo(0, 10);
+        // starvation should increase from 0
+        expect(cat.starvationLevel).toBeGreaterThan(0);
     });
 
-    it('handles missing storage gracefully (no consumption)', () => {
-        const populationTotal = 360;
-        const population = createPopulation(0);
-        const storage = createStorageFacility(0);
-        const planet = createPlanetWithStorage(storage, population);
-        const gov = createGovAgent(storage);
+    it('handles zero population in a category gracefully', () => {
+        const pop = makePopulation();
+        // All categories are zero by default
+        consumeFood(pop);
 
-        const res = consumeFood(planet, population, populationTotal, agentsMap(gov));
-        expect(res.foodConsumed).toBe(0);
-        expect(res.nutritionalFactor).toBe(0);
+        // Should not throw; starvation should remain 0
+        expect(pop.demography[0].education.none.novice.starvationLevel).toBe(0);
+    });
+
+    it('handles zero food stock gracefully', () => {
+        const pop = makePopulation();
+        pop.demography[20].unoccupied.none.novice.total = 100;
+        pop.demography[20].unoccupied.none.novice.foodStock = 0;
+        pop.demography[20].unoccupied.none.novice.starvationLevel = 0;
+
+        consumeFood(pop);
+
+        const cat = pop.demography[20].unoccupied.none.novice;
+        expect(cat.foodStock).toBe(0);
         // starvation should increase since no food
-        expect(population.starvationLevel).toBeGreaterThan(0);
+        expect(cat.starvationLevel).toBeGreaterThan(0);
     });
 });

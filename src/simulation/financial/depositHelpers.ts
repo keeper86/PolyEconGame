@@ -1,4 +1,4 @@
-import type { Agent } from '../planet';
+import type { Agent } from '../planet/planet';
 
 /**
  * Strict helpers for reading/writing agent deposits per-planet.

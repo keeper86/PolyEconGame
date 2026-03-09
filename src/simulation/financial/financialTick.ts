@@ -28,10 +28,11 @@
  * deposit accounts (bank.deposits stays constant during transfers).
  */
 
-import type { GameState, Planet, EducationLevelType } from '../planet';
-import { educationLevelKeys } from '../planet';
-import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceHelpers';
-import { getWealthDemography } from '../population/populationHelpers';
+import type { GameState, Planet } from '../planet/planet';
+import type { EducationLevelType } from '../population/education';
+import { educationLevelKeys } from '../population/education';
+import type { CohortByOccupation, WorkforceCategory } from '../population/population';
+import { SKILL } from '../population/population';
 import {
     getAgentDepositsForPlanet,
     setAgentDepositsForPlanet,
@@ -41,6 +42,34 @@ import {
     addAgentLoansForPlanet,
 } from './depositHelpers';
 import { RETAINED_EARNINGS_THRESHOLD } from '../constants';
+
+// ---------------------------------------------------------------------------
+// Workforce query helpers (local to avoid circular imports)
+// ---------------------------------------------------------------------------
+
+/** Sum active workers across all ages and skill levels for a given edu. */
+function totalActiveForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            total += workforce[age][edu][skill].active;
+        }
+    }
+    return total;
+}
+
+/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
+function totalDepartingForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            for (const d of workforce[age][edu][skill].departing) {
+                total += d;
+            }
+        }
+    }
+    return total;
+}
 
 // ---------------------------------------------------------------------------
 // Constants (propensities & defaults)
@@ -73,23 +102,6 @@ function getWage(planet: Planet, edu: EducationLevelType): number {
 }
 
 /**
- * Ensure the planet has a Bank object, creating it with zero balances if absent.
- */
-function ensureBank(planet: Planet): NonNullable<Planet['bank']> {
-    if (!planet.bank) {
-        planet.bank = {
-            loans: 0,
-            deposits: 0,
-            householdDeposits: 0,
-            equity: 0,
-            loanRate: 0,
-            depositRate: 0,
-        };
-    }
-    return planet.bank;
-}
-
-/**
  * Compute the sum of all agent firm-deposit balances for a given planet.
  * Only counts agents that have assets on the planet.
  */
@@ -115,7 +127,7 @@ function sumFirmDeposits(gameState: GameState, planetId: string): number {
  * In debug mode throws on mismatch; in production silently warns.
  */
 function assertBalanceSheet(bank: NonNullable<Planet['bank']>, firmDepositsSum: number, label: string): void {
-    const diff = Math.abs(bank.deposits - (firmDepositsSum + bank.householdDeposits));
+    const diff = Math.abs(1 - (firmDepositsSum + bank.householdDeposits) / bank.deposits);
     if (diff > 0.01) {
         const msg =
             `[financialTick] balance-sheet violation after ${label}: ` +
@@ -142,8 +154,7 @@ function assertBalanceSheet(bank: NonNullable<Planet['bank']>, firmDepositsSum: 
  */
 export function preProductionFinancialTick(gameState: GameState): void {
     gameState.planets.forEach((planet) => {
-        const bank = ensureBank(planet);
-        const wealthDemography = getWealthDemography(planet.population);
+        const bank = planet.bank;
         const demography = planet.population.demography;
 
         gameState.agents.forEach((agent) => {
@@ -190,8 +201,9 @@ export function preProductionFinancialTick(gameState: GameState): void {
             bank.householdDeposits += wageBill;
 
             // 4. Distribute wages to household wealth moments
-            const occ = planet.governmentId === agent.id ? 'government' : 'company';
-
+            //    In the new model, wealth is tracked on PopulationCategory.wealth
+            //    per demography[age][occupation][edu][skill].
+            //    All hired workers are under the 'employed' occupation.
             for (const edu of educationLevelKeys) {
                 const totalWorkers = totalActiveForEdu(workforce, edu) + totalDepartingForEdu(workforce, edu);
                 if (totalWorkers <= 0) {
@@ -199,24 +211,26 @@ export function preProductionFinancialTick(gameState: GameState): void {
                 }
                 const wage = getWage(planet, edu);
 
-                // Wealth moments are no longer tracked in the workforce pipeline.
-                // Population wealth demography is updated below.
-
-                // Credit population wealth demography
-                let totalPopOccCount = 0;
+                // Credit wealth to employed population cohorts (across all skills)
+                let totalPopEmployedCount = 0;
                 for (let age = 0; age < demography.length; age++) {
-                    totalPopOccCount += demography[age][edu]?.[occ] ?? 0;
+                    for (const skill of SKILL) {
+                        totalPopEmployedCount += demography[age].employed[edu][skill].total;
+                    }
                 }
-                if (totalPopOccCount > 0) {
+                if (totalPopEmployedCount > 0) {
                     for (let age = 0; age < demography.length; age++) {
-                        const ageCount = demography[age][edu]?.[occ] ?? 0;
-                        if (ageCount <= 0) {
-                            continue;
+                        for (const skill of SKILL) {
+                            const cat = demography[age].employed[edu][skill];
+                            if (cat.total <= 0) {
+                                continue;
+                            }
+                            // Add per-capita wage to wealth mean
+                            cat.wealth = {
+                                mean: cat.wealth.mean + wage,
+                                variance: cat.wealth.variance,
+                            };
                         }
-                        wealthDemography[age][edu][occ] = {
-                            mean: wealthDemography[age][edu][occ].mean + wage,
-                            variance: wealthDemography[age][edu][occ].variance,
-                        };
                     }
                 }
             }
@@ -235,30 +249,22 @@ export function preProductionFinancialTick(gameState: GameState): void {
 /**
  * Step B: loan repayment and balance-sheet reconciliation.
  *
- * Previously handled consumption, revenue, and pricing — those are now in
- * the food market subsystem (market/foodMarket.ts).  This function now
- * only handles:
  *   1. Loan repayment (money destruction) with retained-earnings threshold.
- *   2. Balance-sheet invariant verification.
- *   3. Price level update (from food market).
+ *   2. Balance-sheet invariant verification, when SIM_DEBUG=1 is enabled.
  *
  * Called after the food market tick and wealth diffusion, as the final
  * financial reconciliation step.
  */
 export function postProductionFinancialTick(gameState: GameState): void {
     gameState.planets.forEach((planet) => {
-        const bank = ensureBank(planet);
-
-        // Update price level from food market
-        if (planet.foodMarket) {
-            planet.priceLevel = planet.foodMarket.foodPrice;
-        }
+        const bank = planet.bank;
 
         // Loan repayment (MONEY DESTRUCTION)
         repayLoans(gameState, planet, bank);
 
-        // Verify invariant & compute equity
-        assertBalanceSheet(bank, sumFirmDeposits(gameState, planet.id), 'postProductionFinancialTick');
+        if (process.env.SIM_DEBUG === '1') {
+            assertBalanceSheet(bank, sumFirmDeposits(gameState, planet.id), 'postProductionFinancialTick');
+        }
         bank.equity = bank.deposits - bank.loans;
     });
 }

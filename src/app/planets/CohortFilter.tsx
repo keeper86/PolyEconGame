@@ -3,8 +3,10 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { EducationLevelType, Occupation } from '@/simulation/planet';
-import { educationLevelKeys, OCCUPATIONS } from '@/simulation/planet';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Occupation } from '@/simulation/population/population';
+import { OCCUPATIONS } from '@/simulation/population/population';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -15,7 +17,6 @@ export const EDU_COLORS: Record<EducationLevelType, string> = {
     primary: '#60a5fa',
     secondary: '#34d399',
     tertiary: '#f59e0b',
-    quaternary: '#8b5cf6',
 };
 
 export const EDU_LABELS: Record<EducationLevelType, string> = {
@@ -23,21 +24,18 @@ export const EDU_LABELS: Record<EducationLevelType, string> = {
     primary: 'Primary',
     secondary: 'Secondary',
     tertiary: 'Tertiary',
-    quaternary: 'Quaternary',
 };
 
 export const OCC_COLORS: Record<Occupation, string> = {
     unoccupied: '#60a5fa',
-    company: '#34d399',
-    government: '#f59e0b',
+    employed: '#34d399',
     education: '#f97316',
     unableToWork: '#ef4444',
 };
 
 export const OCC_LABELS: Record<Occupation, string> = {
     unoccupied: 'Unoccupied',
-    company: 'Company',
-    government: 'Government',
+    employed: 'Employed',
     education: 'Education',
     unableToWork: 'Unable to work',
 };

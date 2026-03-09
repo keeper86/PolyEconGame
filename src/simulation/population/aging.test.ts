@@ -5,25 +5,26 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emptyCohort, sumCohort } from './populationHelpers';
-import type { Cohort, Population } from '../planet';
-import { maxAge } from '../planet';
 import { populationAdvanceYear } from './aging';
+import { MAX_AGE, reducePopulationCohort } from './population';
+import { makePopulation } from '../utils/testHelper';
+import type { Cohort, PopulationCategory } from './population';
 
-function makePopulation(demography: Cohort[]): Population {
-    return { demography, starvationLevel: 0 };
+/** Sum total people in a single cohort across all occupations/education/skill. */
+function sumCohort(cohort: Cohort<PopulationCategory>): number {
+    return reducePopulationCohort(cohort).total;
 }
 
-function totalInCohortArray(demography: Cohort[]): number[] {
+/** Pre-compute total per age for the aging function. */
+function totalInCohortArray(demography: Cohort<PopulationCategory>[]): number[] {
     return demography.map((c) => sumCohort(c));
 }
 
 describe('populationAdvanceYear', () => {
     it('shifts cohort at age N to age N+1', () => {
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        demography[10].none.unoccupied = 100;
-        const population = makePopulation(demography);
-        const tic = totalInCohortArray(demography);
+        const population = makePopulation();
+        population.demography[10].unoccupied.none.novice.total = 100;
+        const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
@@ -33,10 +34,9 @@ describe('populationAdvanceYear', () => {
     });
 
     it('empties cohort 0 for future births', () => {
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        demography[0].none.education = 50;
-        const population = makePopulation(demography);
-        const tic = totalInCohortArray(demography);
+        const population = makePopulation();
+        population.demography[0].education.none.novice.total = 50;
+        const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
@@ -44,12 +44,11 @@ describe('populationAdvanceYear', () => {
     });
 
     it('does not create or destroy people for non-education occupations', () => {
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        demography[30].primary.company = 200;
-        demography[30].secondary.government = 100;
+        const population = makePopulation();
+        population.demography[30].employed.primary.novice.total = 200;
+        population.demography[30].employed.secondary.novice.total = 100;
         const totalBefore = 300;
-        const population = makePopulation(demography);
-        const tic = totalInCohortArray(demography);
+        const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
@@ -63,11 +62,10 @@ describe('populationAdvanceYear', () => {
     it('preserves total population for education cohorts (graduates + stayers)', () => {
         // Put a bunch of 8-year-olds in "none" education (about to graduate
         // from elementary school).
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        demography[8].none.education = 1000;
+        const population = makePopulation();
+        population.demography[8].education.none.novice.total = 1000;
         const totalBefore = 1000;
-        const population = makePopulation(demography);
-        const tic = totalInCohortArray(demography);
+        const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
@@ -80,9 +78,8 @@ describe('populationAdvanceYear', () => {
     });
 
     it('handles empty population gracefully', () => {
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        const population = makePopulation(demography);
-        const tic = totalInCohortArray(demography);
+        const population = makePopulation();
+        const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
@@ -92,26 +89,24 @@ describe('populationAdvanceYear', () => {
     });
 
     it('people at maxAge-1 move to maxAge', () => {
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        demography[maxAge - 1].none.unoccupied = 10;
-        const population = makePopulation(demography);
-        const tic = totalInCohortArray(demography);
+        const population = makePopulation();
+        population.demography[MAX_AGE - 1].unoccupied.none.novice.total = 10;
+        const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
-        expect(sumCohort(population.demography[maxAge])).toBe(10);
+        expect(sumCohort(population.demography[MAX_AGE])).toBe(10);
     });
 
     it('people at maxAge remain at maxAge (they die via per-tick mortality)', () => {
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        demography[maxAge].none.unoccupied = 5;
-        const population = makePopulation(demography);
-        const tic = totalInCohortArray(demography);
+        const population = makePopulation();
+        population.demography[MAX_AGE].unoccupied.none.novice.total = 5;
+        const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
         // maxAge survivors are carried over — they cannot age further but
         // will eventually die via per-tick mortality, not by aging out.
-        expect(sumCohort(population.demography[maxAge])).toBe(5);
+        expect(sumCohort(population.demography[MAX_AGE])).toBe(5);
     });
 });

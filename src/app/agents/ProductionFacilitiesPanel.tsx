@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import type { ProductionFacility, LastTickResults } from '../../simulation/facilities';
-import type { EducationLevelType } from '../../simulation/planet';
-import { educationLevels } from '../../simulation/planet';
+import type { ProductionFacility, LastTickResults } from '../../simulation/planet/facilities';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevels } from '@/simulation/population/education';
 
 // (colours reserved if we later make a chart here)
 
@@ -152,11 +152,7 @@ export default function ProductionFacilitiesPanel({
                                         <span
                                             className={`font-medium ${f.lastTickResults ? efficiencyColor(f.lastTickResults.overallEfficiency) : ''}`}
                                         >
-                                            {f.lastTickResults
-                                                ? pctStr(f.lastTickResults.overallEfficiency)
-                                                : typeof f.lastTickEfficiencyInPercent === 'number'
-                                                  ? `${f.lastTickEfficiencyInPercent}%`
-                                                  : '—'}
+                                            {f.lastTickResults.overallEfficiency}
                                         </span>
                                     </div>
                                     {f.lastTickResults && <FacilityEfficiencyDetails results={f.lastTickResults} />}

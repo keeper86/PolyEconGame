@@ -19,8 +19,10 @@ import {
     summarisePlanetAssets,
     type AgentPlanetSummary,
 } from '../snapshotRepository';
+import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../gameSnapshotRepository';
+import { db } from '../db';
 import { workerQueries } from '../../lib/workerQueries';
-import type { Agent } from '../../simulation/planet';
+import type { Agent } from '../../simulation/planet/planet';
 
 /** Latest snapshot for every planet (one row per planet). */
 export const getLatestPlanets = () =>
@@ -322,5 +324,40 @@ export const getAgentPlanetDetail = () =>
                     planetId: input.planetId,
                     assets,
                 },
+            };
+        });
+
+/**
+ * Population history time-series for a single planet.
+ * Reads from the planet_population_history table written alongside each
+ * cold snapshot (every SNAPSHOT_INTERVAL_TICKS ticks).
+ * Returns rows ordered tick ascending, ready for direct chart consumption.
+ */
+export const getPlanetPopulationHistory = () =>
+    procedure
+        .input(z.object({ planetId: z.string() }))
+        .output(
+            z.object({
+                planetId: z.string(),
+                history: z.array(
+                    z.object({
+                        tick: z.number(),
+                        population: z.number(),
+                        starvationLevel: z.number(),
+                        foodPrice: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input }) => {
+            const rows = await dbGetPlanetPopulationHistory(db, input.planetId);
+            return {
+                planetId: input.planetId,
+                history: rows.map((r) => ({
+                    tick: Number(r.tick),
+                    population: Number(r.population),
+                    starvationLevel: r.starvation_level ?? 0,
+                    foodPrice: r.food_price ?? 0,
+                })),
             };
         });

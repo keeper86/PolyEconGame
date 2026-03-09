@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronRight, Globe, Landmark, Users, Wheat } from 'lucide-react';
 import Link from 'next/link';
-import type { Planet } from '@/simulation/planet';
+import type { Planet } from '@/simulation/planet/planet';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -17,8 +17,6 @@ const fmtNumber = (n: number): string =>
         : n >= 1_000
           ? `${(n / 1_000).toFixed(1)}k`
           : String(Math.round(n));
-
-const pct = (frac: number): string => `${(frac * 100).toFixed(1)}%`;
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -39,9 +37,8 @@ export default function PlanetSummaryCard({
     populationTotal,
     planet,
 }: PlanetSummaryProps): React.ReactElement {
-    const starvation = planet.population?.starvationLevel ?? 0;
     const bank = planet.bank;
-    const foodPrice = planet.foodMarket?.foodPrice;
+    const foodPrice = planet.priceLevel ?? 0.01;
 
     return (
         <Link
@@ -75,19 +72,6 @@ export default function PlanetSummaryCard({
                             <div className='text-sm font-semibold tabular-nums'>{fmtNumber(populationTotal)}</div>
                         </div>
 
-                        {/* Starvation */}
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1 text-xs text-muted-foreground'>
-                                <Wheat className='h-3 w-3' />
-                                Starvation
-                            </div>
-                            <div
-                                className={`text-sm font-semibold tabular-nums ${starvation > 0.1 ? 'text-red-500' : starvation > 0 ? 'text-amber-500' : 'text-green-600'}`}
-                            >
-                                {pct(starvation)}
-                            </div>
-                        </div>
-
                         {/* Money supply */}
                         {bank && (
                             <div className='space-y-1'>
@@ -113,7 +97,6 @@ export default function PlanetSummaryCard({
 
                     {/* Badges */}
                     <div className='mt-3 flex flex-wrap gap-1.5'>
-                        {starvation > 0.2 && <Badge variant='destructive'>High starvation</Badge>}
                         {bank && bank.equity < 0 && <Badge variant='destructive'>Negative bank equity</Badge>}
                         {populationTotal === 0 && <Badge variant='secondary'>Uninhabited</Badge>}
                     </div>

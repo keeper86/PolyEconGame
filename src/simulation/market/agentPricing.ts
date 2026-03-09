@@ -1,53 +1,23 @@
 /**
  * market/agentPricing.ts
  *
- * Per-agent food-pricing AI — each food-producing company sets its own
- * price and offer quantity for the next market tick.
+ * Walrasian tâtonnement price adjustment.
  *
- * Design (mirrors `updateAllocatedWorkers`):
+ * Price reacts to excess demand:
  *
- * 1. **Bootstrap (first tick / no history):**  Use INITIAL_FOOD_PRICE and
- *    offer the full storage quantity.
+ *   excessDemand = sellThrough - targetSellThrough
  *
- * 2. **Feedback path:**  Compute the pricing metric
- *
- *      M = (produced − sold)² − a × inventory
- *
- *    where `a = INVENTORY_PENALTY_WEIGHT`.  The agent wants to *minimise* M
- *    (i.e. sold ≈ produced, and low inventory).
- *
- *    The discrete gradient with respect to the price multiplier is estimated
- *    from the sign of (produced − sold): if the agent produced more than it
- *    sold, price is too high → lower it; if sold ≈ produced and inventory is
- *    piling up, price is also too high.
- *
- *    Adjustment:  p_new = p_old × clamp(factor, PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP)
- *
- * 3. **Offer quantity:**  The agent offers all food currently in its storage
- *    facility.  (A human player can override both price and quantity.)
- *
- * Call once per tick AFTER productionTick and BEFORE foodMarketTick.
+ * price_next = price * (1 + α * excessDemand)
  */
 
-import type { Agent, GameState, Planet } from '../planet';
-import {
-    INITIAL_FOOD_PRICE,
-    FOOD_PRICE_FLOOR,
-    INVENTORY_PENALTY_WEIGHT,
-    PRICE_ADJUST_MAX_UP,
-    PRICE_ADJUST_MAX_DOWN,
-    PRICE_ADJUST_SENSITIVITY,
-} from '../constants';
-import { agriculturalProductResourceType, queryStorageFacility } from '../facilities';
+import type { Agent, GameState, Planet } from '../planet/planet';
+import { INITIAL_FOOD_PRICE, FOOD_PRICE_FLOOR, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN } from '../constants';
 
-// ---------------------------------------------------------------------------
-// Public entry point
-// ---------------------------------------------------------------------------
+import { agriculturalProductResourceType, queryStorageFacility } from '../planet/facilities';
 
-/**
- * Recompute every food-producing agent's `foodOfferPrice` and
- * `foodOfferQuantity` for the upcoming market clearing tick.
- */
+const TARGET_SELL_THROUGH = 0.9;
+const ADJUSTMENT_SPEED = 0.2;
+
 export function updateAgentPricing(gameState: GameState): void {
     gameState.planets.forEach((planet) => {
         gameState.agents.forEach((agent) => {
@@ -56,60 +26,39 @@ export function updateAgentPricing(gameState: GameState): void {
     });
 }
 
-// ---------------------------------------------------------------------------
-// Per-agent pricing logic
-// ---------------------------------------------------------------------------
-
 function updatePricingForAgent(agent: Agent, planet: Planet): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
     }
 
-    // Check if this agent produces food
-    const hasFoodProduction = assets.productionFacilities.some((f) =>
-        f.produces.some((p) => p.resource.name === agriculturalProductResourceType.name),
-    );
-    if (!hasFoodProduction) {
+    const inventory = queryStorageFacility(assets.storageFacility, agriculturalProductResourceType.name);
+
+    if (!assets.foodMarket) {
+        assets.foodMarket = {};
+    }
+
+    assets.foodMarket.offerQuantity = inventory;
+
+    const sold = assets.foodMarket.lastSold;
+    const price = assets.foodMarket.offerPrice;
+
+    if (sold === undefined || price === undefined) {
+        assets.foodMarket.offerPrice = INITIAL_FOOD_PRICE;
         return;
     }
 
-    // Current food in storage = what we offer to the market
-    const currentInventory = queryStorageFacility(assets.storageFacility, agriculturalProductResourceType.name);
-    assets.foodOfferQuantity = currentInventory;
+    const offered = Math.max(1, assets.foodMarket.offerQuantity ?? 1);
 
-    const hasHistory =
-        assets.lastFoodProduced !== undefined &&
-        assets.lastFoodSold !== undefined &&
-        assets.foodOfferPrice !== undefined;
+    const sellThrough = sold / offered;
 
-    if (!hasHistory) {
-        // Bootstrap: use initial price, offer everything
-        assets.foodOfferPrice = INITIAL_FOOD_PRICE;
-        return;
-    }
+    const excessDemand = sellThrough - TARGET_SELL_THROUGH;
 
-    // --- Feedback path ---
-    const produced = assets.lastFoodProduced!;
-    const sold = assets.lastFoodSold!;
-    const oldPrice = assets.foodOfferPrice!;
+    let factor = 1 + ADJUSTMENT_SPEED * excessDemand;
 
-    // Metric M = (produced - sold)² - a * inventory
-    // We want to minimise M.
-    // ∂M/∂price ≈ sign based reasoning:
-    //   If produced > sold  → excess supply, price too high → lower price
-    //   If produced < sold  → excess demand, price too low  → raise price
-    //   If inventory is high → additional pressure to lower price
-    const excessSupply = produced - sold;
-    const inventoryPressure = INVENTORY_PENALTY_WEIGHT * currentInventory;
+    factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(PRICE_ADJUST_MAX_DOWN, factor));
 
-    // Combined gradient signal: positive ⇒ lower price, negative ⇒ raise price
-    const gradientSignal = excessSupply + inventoryPressure;
+    const newPrice = Math.max(FOOD_PRICE_FLOOR, price * factor);
 
-    // Multiplicative adjustment: clamp to [MAX_DOWN, MAX_UP]
-    const rawFactor = 1 - PRICE_ADJUST_SENSITIVITY * gradientSignal;
-    const factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(PRICE_ADJUST_MAX_DOWN, rawFactor));
-
-    const newPrice = Math.max(FOOD_PRICE_FLOOR, oldPrice * factor);
-    assets.foodOfferPrice = newPrice;
+    assets.foodMarket.offerPrice = newPrice;
 }

@@ -2,17 +2,14 @@
  * population/retirement.test.ts
  *
  * Unit tests for the population-driven retirement sub-system:
- * age-dependent probability, per-cohort transitions, and population-level
- * retirement orchestration.
+ * age-dependent probability, and population-level retirement orchestration.
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Population } from '../planet';
-import { educationLevelKeys, maxAge } from '../planet';
-import { RETIREMENT_AGE } from '../workforce/workforceHelpers';
-import { emptyCohort } from './populationHelpers';
-
-import { applyRetirement, applyRetirementTransitions, perTickRetirement } from './retirement';
+import { RETIREMENT_AGE } from '../workforce/laborMarketTick';
+import { forEachPopulationCohort } from './population';
+import { makePopulation } from '../utils/testHelper';
+import { applyRetirement, perTickRetirement } from './retirement';
 
 // ---------------------------------------------------------------------------
 // perTickRetirement
@@ -38,165 +35,100 @@ describe('perTickRetirement', () => {
 });
 
 // ---------------------------------------------------------------------------
-// applyRetirementTransitions
-// ---------------------------------------------------------------------------
-
-describe('applyRetirementTransitions', () => {
-    it('does nothing for ages below RETIREMENT_AGE', () => {
-        const cohort = emptyCohort();
-        cohort.none.company = 100;
-        cohort.none.government = 50;
-
-        applyRetirementTransitions(cohort, 30);
-
-        expect(cohort.none.company).toBe(100);
-        expect(cohort.none.government).toBe(50);
-        expect(cohort.none.unableToWork).toBe(0);
-    });
-
-    it('moves some company workers to unableToWork at RETIREMENT_AGE', () => {
-        const cohort = emptyCohort();
-        cohort.primary.company = 1000;
-
-        // Run many ticks to expect at least some retirements
-        let totalRetired = 0;
-        for (let tick = 0; tick < 360; tick++) {
-            const before = cohort.primary.company;
-            applyRetirementTransitions(cohort, RETIREMENT_AGE);
-            totalRetired += before - cohort.primary.company;
-        }
-
-        expect(totalRetired).toBeGreaterThan(0);
-        expect(cohort.primary.unableToWork).toBe(totalRetired);
-        expect(cohort.primary.company + cohort.primary.unableToWork).toBe(1000);
-    });
-
-    it('moves government workers to unableToWork', () => {
-        const cohort = emptyCohort();
-        cohort.secondary.government = 500;
-
-        for (let tick = 0; tick < 360; tick++) {
-            applyRetirementTransitions(cohort, 70);
-        }
-
-        expect(cohort.secondary.unableToWork).toBeGreaterThan(0);
-        expect(cohort.secondary.government + cohort.secondary.unableToWork).toBe(500);
-    });
-
-    it('does not touch unoccupied or unableToWork', () => {
-        const cohort = emptyCohort();
-        cohort.none.unoccupied = 200;
-        cohort.none.unableToWork = 50;
-
-        applyRetirementTransitions(cohort, 70);
-
-        expect(cohort.none.unoccupied).toBe(200);
-        expect(cohort.none.unableToWork).toBe(50);
-    });
-
-    it('retires everyone at age 82+ (annual prob = 1.0) over enough ticks', () => {
-        const cohort = emptyCohort();
-        cohort.tertiary.company = 100;
-
-        for (let tick = 0; tick < 720; tick++) {
-            applyRetirementTransitions(cohort, 82);
-        }
-
-        // At 100% annual rate, 2 years of ticks should retire everyone
-        expect(cohort.tertiary.company).toBe(0);
-        expect(cohort.tertiary.unableToWork).toBe(100);
-    });
-
-    it('conserves total people in the cohort', () => {
-        const cohort = emptyCohort();
-        cohort.none.company = 300;
-        cohort.none.government = 200;
-        cohort.none.unoccupied = 100;
-        cohort.none.unableToWork = 50;
-        const total = 650;
-
-        for (let tick = 0; tick < 360; tick++) {
-            applyRetirementTransitions(cohort, 69);
-        }
-
-        const after = cohort.none.company + cohort.none.government + cohort.none.unoccupied + cohort.none.unableToWork;
-        expect(after).toBe(total);
-    });
-});
-
-// ---------------------------------------------------------------------------
 // applyRetirement — population-level
 // ---------------------------------------------------------------------------
 
 describe('applyRetirement', () => {
-    function makePopulation(config: { age: number; edu: string; occ: string; count: number }[]): Population {
-        const demography = Array.from({ length: maxAge + 1 }, () => emptyCohort());
-        for (const { age, edu, occ, count } of config) {
-            (demography[age] as Record<string, Record<string, number>>)[edu][occ] = count;
+    it('does nothing for ages below RETIREMENT_AGE', () => {
+        const pop = makePopulation();
+        pop.demography[30].employed.none.novice.total = 100;
+        pop.demography[30].unoccupied.none.novice.total = 50;
+
+        applyRetirement(pop);
+
+        expect(pop.demography[30].employed.none.novice.total).toBe(100);
+        expect(pop.demography[30].unoccupied.none.novice.total).toBe(50);
+        expect(pop.demography[30].unableToWork.none.novice.total).toBe(0);
+    });
+
+    it('moves some employed workers to unableToWork at RETIREMENT_AGE', () => {
+        const pop = makePopulation();
+        pop.demography[RETIREMENT_AGE].employed.primary.novice.total = 1000;
+
+        // Run many ticks to expect at least some retirements
+        let totalRetired = 0;
+        for (let tick = 0; tick < 360; tick++) {
+            const before = pop.demography[RETIREMENT_AGE].employed.primary.novice.total;
+            applyRetirement(pop);
+            totalRetired += before - pop.demography[RETIREMENT_AGE].employed.primary.novice.total;
         }
-        return { demography, starvationLevel: 0 };
-    }
 
-    it('writes tickNewRetirements accumulator', () => {
-        const pop = makePopulation([{ age: 70, edu: 'none', occ: 'company', count: 1000 }]);
-
-        applyRetirement(pop);
-
-        expect(pop.tickNewRetirements).toBeDefined();
-        // At age 70, retirement probability is high, so there should be some retirements
-        expect(pop.tickNewRetirements!.none.company).toBeGreaterThan(0);
+        expect(totalRetired).toBeGreaterThan(0);
+        expect(pop.demography[RETIREMENT_AGE].unableToWork.primary.novice.total).toBe(totalRetired);
+        expect(
+            pop.demography[RETIREMENT_AGE].employed.primary.novice.total +
+                pop.demography[RETIREMENT_AGE].unableToWork.primary.novice.total,
+        ).toBe(1000);
     });
 
-    it('does not record retirements for ages below RETIREMENT_AGE', () => {
-        const pop = makePopulation([{ age: 30, edu: 'primary', occ: 'company', count: 500 }]);
+    it('retires employed workers across education levels', () => {
+        const pop = makePopulation();
+        pop.demography[70].employed.secondary.novice.total = 500;
 
-        applyRetirement(pop);
-
-        expect(pop.tickNewRetirements!.primary.company).toBe(0);
-    });
-
-    it('records both company and government retirements', () => {
-        const pop = makePopulation([
-            { age: 70, edu: 'none', occ: 'company', count: 1000 },
-            { age: 70, edu: 'none', occ: 'government', count: 500 },
-        ]);
-
-        // Run many ticks to get some retirements from both
-        for (let tick = 0; tick < 100; tick++) {
+        for (let tick = 0; tick < 360; tick++) {
             applyRetirement(pop);
         }
 
-        expect(pop.demography[70].none.unableToWork).toBeGreaterThan(0);
-        const totalBefore = 1500;
-        const totalAfter =
-            pop.demography[70].none.company + pop.demography[70].none.government + pop.demography[70].none.unableToWork;
-        expect(totalAfter).toBe(totalBefore);
+        expect(pop.demography[70].unableToWork.secondary.novice.total).toBeGreaterThan(0);
+        expect(
+            pop.demography[70].employed.secondary.novice.total + pop.demography[70].unableToWork.secondary.novice.total,
+        ).toBe(500);
     });
 
-    it('does not move unoccupied to unableToWork', () => {
-        const pop = makePopulation([{ age: 70, edu: 'tertiary', occ: 'unoccupied', count: 300 }]);
+    it('does not touch unableToWork population', () => {
+        const pop = makePopulation();
+        pop.demography[70].unableToWork.none.novice.total = 50;
 
         applyRetirement(pop);
 
-        expect(pop.demography[70].tertiary.unoccupied).toBe(300);
-        expect(pop.demography[70].tertiary.unableToWork).toBe(0);
+        expect(pop.demography[70].unableToWork.none.novice.total).toBe(50);
+    });
+
+    it('retires everyone at age 82+ (annual prob = 1.0) over enough ticks', () => {
+        const pop = makePopulation();
+        pop.demography[82].employed.tertiary.novice.total = 100;
+
+        for (let tick = 0; tick < 720; tick++) {
+            applyRetirement(pop);
+        }
+
+        // At 100% annual rate, 2 years of ticks should retire everyone
+        expect(pop.demography[82].employed.tertiary.novice.total).toBe(0);
+        expect(pop.demography[82].unableToWork.tertiary.novice.total).toBe(100);
+    });
+
+    it('records retirement events in countThisMonth', () => {
+        const pop = makePopulation();
+        pop.demography[70].employed.none.novice.total = 1000;
+
+        applyRetirement(pop);
+
+        // At age 70, retirement probability is high, so there should be some retirements
+        expect(pop.demography[70].employed.none.novice.retirements.countThisMonth).toBeGreaterThan(0);
     });
 
     it('conserves population across all ages', () => {
-        const pop = makePopulation([
-            { age: 30, edu: 'none', occ: 'company', count: 5000 },
-            { age: 67, edu: 'none', occ: 'company', count: 1000 },
-            { age: 70, edu: 'primary', occ: 'government', count: 500 },
-            { age: 80, edu: 'secondary', occ: 'company', count: 200 },
-        ]);
+        const pop = makePopulation();
+        pop.demography[30].employed.none.novice.total = 5000;
+        pop.demography[RETIREMENT_AGE].employed.none.novice.total = 1000;
+        pop.demography[70].employed.primary.novice.total = 500;
+        pop.demography[80].employed.secondary.novice.total = 200;
 
         let totalBefore = 0;
         for (const cohort of pop.demography) {
-            for (const edu of educationLevelKeys) {
-                for (const occ of ['company', 'government', 'unoccupied', 'unableToWork'] as const) {
-                    totalBefore += cohort[edu][occ];
-                }
-            }
+            forEachPopulationCohort(cohort, (cat) => {
+                totalBefore += cat.total;
+            });
         }
 
         for (let tick = 0; tick < 360; tick++) {
@@ -205,13 +137,29 @@ describe('applyRetirement', () => {
 
         let totalAfter = 0;
         for (const cohort of pop.demography) {
-            for (const edu of educationLevelKeys) {
-                for (const occ of ['company', 'government', 'unoccupied', 'unableToWork'] as const) {
-                    totalAfter += cohort[edu][occ];
-                }
-            }
+            forEachPopulationCohort(cohort, (cat) => {
+                totalAfter += cat.total;
+            });
         }
 
         expect(totalAfter).toBe(totalBefore);
+    });
+
+    it('retires both employed and unoccupied people', () => {
+        const pop = makePopulation();
+        pop.demography[70].employed.none.novice.total = 1000;
+        pop.demography[70].unoccupied.none.novice.total = 500;
+
+        // Run many ticks to get some retirements from both
+        for (let tick = 0; tick < 100; tick++) {
+            applyRetirement(pop);
+        }
+
+        expect(pop.demography[70].unableToWork.none.novice.total).toBeGreaterThan(0);
+        const totalAfter =
+            pop.demography[70].employed.none.novice.total +
+            pop.demography[70].unoccupied.none.novice.total +
+            pop.demography[70].unableToWork.none.novice.total;
+        expect(totalAfter).toBe(1500);
     });
 });

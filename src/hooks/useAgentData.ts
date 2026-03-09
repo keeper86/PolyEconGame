@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useTRPC } from '@/lib/trpc';
-import type { Agent } from '../simulation/planet';
+import type { Agent } from '../simulation/planet/planet';
 import type { AgentTimeSeries, AgentResourceSnapshot } from '@/app/agents/AgentOverview';
 
 const REFETCH_INTERVAL_MS = 1000;

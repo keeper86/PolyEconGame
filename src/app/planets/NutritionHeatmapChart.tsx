@@ -2,11 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import type { Population, Cohort, FoodMarket } from '@/simulation/planet';
-import { educationLevelKeys, OCCUPATIONS } from '@/simulation/planet';
-import type { EducationLevelType, Occupation } from '@/simulation/planet';
+
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import CohortFilter, { type CohortFilterState } from './CohortFilter';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Population, Occupation } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -16,24 +18,63 @@ import CohortFilter, { type CohortFilterState } from './CohortFilter';
 const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
 /* ------------------------------------------------------------------ */
-/*  Food-security severity bands                                       */
+/*  Nutrition-status bands                                             */
 /* ------------------------------------------------------------------ */
 
 /**
- * Each band classifies a cohort-class cell by its food buffer ratio.
- * Bands are ordered from worst (bottom of stacked bar) to best (top),
- * so severe starvation is always visually anchored at y=0.
+ * Each band classifies a cohort-class cell by a **two-tier** scheme:
+ *
+ *   1. **Starvation bands** — keyed on `starvationLevel` (S), the smoothed
+ *      physiological malnutrition index (0 = healthy, 1 = fully starving).
+ *      These represent accumulated bodily harm, not an instantaneous gap.
+ *
+ *   2. **Food-security bands** — keyed on the instantaneous food-buffer
+ *      ratio (current stock / target stock).  These only apply when S = 0.
+ *
+ * Bands are ordered worst-first (bottom of stacked bar) so severe
+ * starvation is always visually anchored at y = 0.
  */
 const BANDS = [
-    { key: 'severeStarvation', label: 'Severe starvation', color: '#991b1b', min: 0, max: 0.1 },
-    { key: 'moderateStarvation', label: 'Moderate starvation', color: '#dc2626', min: 0.1, max: 0.3 },
-    { key: 'lightStarvation', label: 'Light starvation', color: '#f97316', min: 0.3, max: 0.5 },
-    { key: 'foodInsecure', label: 'Food insecure', color: '#eab308', min: 0.5, max: 0.8 },
-    { key: 'adequate', label: 'Adequate', color: '#86efac', min: 0.8, max: 1.0 },
-    { key: 'fullBuffer', label: 'Full buffer', color: '#16a34a', min: 1.0, max: Infinity },
+    { key: 'severeStarvation', label: 'Severe starvation', color: '#991b1b' },
+    { key: 'moderateStarvation', label: 'Moderate starvation', color: '#dc2626' },
+    { key: 'lightStarvation', label: 'Light starvation', color: '#f97316' },
+    { key: 'foodInsecure', label: 'Food insecure', color: '#eab308' },
+    { key: 'adequate', label: 'Adequate', color: '#86efac' },
+    { key: 'fullBuffer', label: 'Full buffer', color: '#16a34a' },
 ] as const;
 
 type BandKey = (typeof BANDS)[number]['key'];
+
+/**
+ * Classify a population cell into one of the nutrition-status bands.
+ *
+ * Priority: starvation level (physiological harm) takes precedence.
+ * Only when S = 0 does the instantaneous buffer ratio matter.
+ *
+ * @param starvationLevel  Smoothed malnutrition index S ∈ [0, 1].
+ * @param bufferRatio      Instantaneous foodStock / target (≥ 0).
+ * @returns  Index into `BANDS`.
+ */
+function classifyBand(starvationLevel: number, bufferRatio: number): number {
+    // --- Starvation bands (physiological) ---
+    if (starvationLevel > 0.9) {
+        return 0; // severe starvation
+    }
+    if (starvationLevel > 0.5) {
+        return 1; // moderate starvation
+    }
+    if (starvationLevel > 0.05) {
+        return 2; // light starvation
+    }
+    // --- Food-security bands (buffer) — S = 0 ---
+    if (bufferRatio < 0.1) {
+        return 3; // food insecure
+    }
+    if (bufferRatio < 0.95) {
+        return 4; // adequate
+    }
+    return 5; // full buffer
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -51,23 +92,12 @@ const fmt = (n: number): string => {
 
 const fmtPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
 
-/** Classify a buffer ratio into the matching band index. */
-function bandIndex(ratio: number): number {
-    for (let i = 0; i < BANDS.length; i++) {
-        if (ratio < BANDS[i].max) {
-            return i;
-        }
-    }
-    return BANDS.length - 1;
-}
-
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
 /* ------------------------------------------------------------------ */
 
 type Props = {
     population: Population;
-    foodMarket?: FoodMarket;
 };
 
 /* ------------------------------------------------------------------ */
@@ -85,8 +115,10 @@ type ChartRow = {
     foodInsecure: number;
     adequate: number;
     fullBuffer: number;
-    /** Weighted-average buffer ratio (for tooltip). */
+    /** Weighted-average food-buffer ratio (for tooltip). */
     avgBufferRatio: number;
+    /** Weighted-average starvation level S ∈ [0, 1] (for tooltip). */
+    avgStarvationLevel: number;
     /** Fraction of population in acute starvation (buffer < 1 tick). */
     acuteStarvationFrac: number;
 };
@@ -96,31 +128,31 @@ type ChartRow = {
 /* ------------------------------------------------------------------ */
 
 /**
- * NutritionHeatmapChart — visualises food security by age using stacked bars
- * where each segment represents a severity band.
+ * NutritionHeatmapChart — visualises nutrition status by age using stacked
+ * bars where each segment represents a severity band.
  *
- * Instead of colouring bars by an averaged ratio (which hides starvation in
- * individual edu×occ cells), this chart counts how many people fall into each
- * food-security band:
+ * Classification uses a **two-tier** scheme:
  *
- *   - Severe starvation (ratio < 10 %)  — deep red
- *   - Moderate starvation (10–30 %)     — red
- *   - Light starvation (30–50 %)        — orange
- *   - Food insecure (50–80 %)           — yellow
- *   - Adequate (80–100 %)               — light green
- *   - Full buffer (≥ 100 %)             — deep green
+ *   1. Starvation bands — based on the physiological `starvationLevel` (S):
+ *      - Severe starvation (S > 0.9) — deep red
+ *      - Moderate starvation (S > 0.3) — red
+ *      - Light starvation (S > 0) — orange
  *
- * This way, even if most people have full buffers, a small starving cohort
- * is clearly visible as a red band at the bottom of the bar.
+ *   2. Food-security bands — based on instantaneous buffer ratio (S = 0):
+ *      - Food insecure (buffer < 10 %) — yellow
+ *      - Adequate (buffer < 100 %) — light green
+ *      - Full buffer (buffer ≥ 100 %) — deep green
+ *
+ * This way, even if most people have full buffers, a small cohort with
+ * accumulated physiological harm is clearly visible as a red band.
  */
-export default function NutritionHeatmapChart({ population, foodMarket }: Props): React.ReactElement {
+export default function NutritionHeatmapChart({ population }: Props): React.ReactElement {
     const [filter, setFilter] = useState<CohortFilterState>({ edu: null, occ: null });
 
     const demography = population.demography;
-    const buffers = foodMarket?.householdFoodBuffers;
 
     const chartData = useMemo<ChartRow[]>(() => {
-        if (!buffers || buffers.length === 0) {
+        if (!demography || demography.length === 0) {
             return [];
         }
 
@@ -128,35 +160,38 @@ export default function NutritionHeatmapChart({ population, foodMarket }: Props)
         const edus: readonly EducationLevelType[] = filter.edu ? [filter.edu] : educationLevelKeys;
         const occs: readonly Occupation[] = filter.occ ? [filter.occ] : ([...OCCUPATIONS] as Occupation[]);
 
-        for (let age = 0; age < Math.min(demography.length, buffers.length); age++) {
-            const cohort: Cohort | undefined = demography[age];
-            const fbCohort = buffers[age];
-            if (!cohort || !fbCohort) {
+        for (let age = 0; age < demography.length; age++) {
+            const cohort = demography[age];
+            if (!cohort) {
                 continue;
             }
 
             const bandPops: number[] = new Array(BANDS.length).fill(0);
             let totalPop = 0;
             let weightedRatio = 0;
+            let weightedStarvation = 0;
             let acutePop = 0;
 
-            for (const edu of edus) {
-                for (const occ of occs) {
-                    const pop = Number(cohort[edu]?.[occ] ?? 0);
-                    if (pop <= 0) {
-                        continue;
-                    }
+            for (const occ of occs) {
+                for (const edu of edus) {
+                    for (const skill of SKILL) {
+                        const cat = cohort[occ][edu][skill];
+                        if (cat.total <= 0) {
+                            continue;
+                        }
 
-                    const fb = fbCohort[edu]?.[occ];
-                    const stock = fb ? fb.foodStock : 0;
-                    const ratio = FOOD_TARGET_PER_PERSON > 0 ? stock / FOOD_TARGET_PER_PERSON : 0;
+                        const stock = cat.foodStock;
+                        const bufferRatio =
+                            FOOD_TARGET_PER_PERSON > 0 ? stock / (FOOD_TARGET_PER_PERSON * cat.total) : 0;
 
-                    totalPop += pop;
-                    weightedRatio += pop * ratio;
-                    bandPops[bandIndex(ratio)] += pop;
+                        totalPop += cat.total;
+                        weightedRatio += cat.total * bufferRatio;
+                        weightedStarvation += cat.total * cat.starvationLevel;
+                        bandPops[classifyBand(cat.starvationLevel, bufferRatio)] += cat.total;
 
-                    if (stock < FOOD_PER_PERSON_PER_TICK) {
-                        acutePop += pop;
+                        if (stock < FOOD_PER_PERSON_PER_TICK * cat.total) {
+                            acutePop += cat.total;
+                        }
                     }
                 }
             }
@@ -171,13 +206,14 @@ export default function NutritionHeatmapChart({ population, foodMarket }: Props)
                 adequate: bandPops[4],
                 fullBuffer: bandPops[5],
                 avgBufferRatio: totalPop > 0 ? weightedRatio / totalPop : 0,
+                avgStarvationLevel: totalPop > 0 ? weightedStarvation / totalPop : 0,
                 acuteStarvationFrac: totalPop > 0 ? acutePop / totalPop : 0,
             });
         }
         return rows;
-    }, [demography, buffers, filter.edu, filter.occ]);
+    }, [demography, filter.edu, filter.occ]);
 
-    if (!buffers || buffers.length === 0 || chartData.length === 0) {
+    if (chartData.length === 0) {
         return <div className='text-xs text-muted-foreground'>No food buffer data available</div>;
     }
 
@@ -188,8 +224,8 @@ export default function NutritionHeatmapChart({ population, foodMarket }: Props)
 
     // Global summary stats
     const totalPop = chartData.reduce((s, d) => s + d.pop, 0);
-    const totalAcute = chartData.reduce((s, d) => s + d.acuteStarvationFrac * d.pop, 0);
-    const globalAcuteFrac = totalPop > 0 ? totalAcute / totalPop : 0;
+    const globalAvgStarvation =
+        totalPop > 0 ? chartData.reduce((s, d) => s + d.avgStarvationLevel * d.pop, 0) / totalPop : 0;
     const globalAvgRatio = totalPop > 0 ? chartData.reduce((s, d) => s + d.avgBufferRatio * d.pop, 0) / totalPop : 0;
 
     // Global band totals for the header breakdown
@@ -200,10 +236,10 @@ export default function NutritionHeatmapChart({ population, foodMarket }: Props)
         <div>
             <div className='flex items-start justify-between gap-4 mb-2'>
                 <div>
-                    <h4 className='text-sm font-medium'>Food security by age</h4>
+                    <h4 className='text-sm font-medium'>Nutrition status by age</h4>
                     <div className='flex gap-3 text-[10px] text-muted-foreground mt-0.5 flex-wrap'>
                         <span>
-                            Starving:{' '}
+                            Starving (S&gt;0):{' '}
                             <span
                                 className={
                                     globalStarvingPop / totalPop > 0.05
@@ -217,17 +253,17 @@ export default function NutritionHeatmapChart({ population, foodMarket }: Props)
                             </span>
                         </span>
                         <span>
-                            Acute (≤1 tick):{' '}
+                            Avg starvation:{' '}
                             <span
                                 className={
-                                    globalAcuteFrac > 0.05
+                                    globalAvgStarvation > 0.3
                                         ? 'text-red-500 font-semibold'
-                                        : globalAcuteFrac > 0
+                                        : globalAvgStarvation > 0
                                           ? 'text-amber-500'
                                           : 'text-green-600'
                                 }
                             >
-                                {fmtPct(globalAcuteFrac)}
+                                {fmtPct(globalAvgStarvation)}
                             </span>
                         </span>
                         <span>
@@ -310,22 +346,9 @@ export default function NutritionHeatmapChart({ population, foodMarket }: Props)
                                             );
                                         })}
                                         <div className='mt-1 pt-1 border-t border-border'>
-                                            Avg buffer: {fmtPct(row.avgBufferRatio)}
+                                            Starvation level: {fmtPct(row.avgStarvationLevel)}
                                         </div>
-                                        {row.acuteStarvationFrac > 0 && (
-                                            <div>
-                                                Acute starvation:{' '}
-                                                <span
-                                                    className={
-                                                        row.acuteStarvationFrac > 0.05
-                                                            ? 'text-red-500 font-semibold'
-                                                            : ''
-                                                    }
-                                                >
-                                                    {fmtPct(row.acuteStarvationFrac)}
-                                                </span>
-                                            </div>
-                                        )}
+                                        <div>Avg buffer: {fmtPct(row.avgBufferRatio)}</div>
                                     </div>
                                 );
                             }}

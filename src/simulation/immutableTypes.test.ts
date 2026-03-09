@@ -14,9 +14,9 @@ import {
     toImmutableGameState,
     fromImmutableGameState,
 } from './immutableTypes';
-import type { Planet, Agent } from './planet';
+import type { Planet, Agent } from './planet/planet';
 import type { GameState } from './engine';
-import type { ProductionFacility, StorageFacility } from './facilities';
+import type { ProductionFacility, StorageFacility } from './planet/facilities';
 
 // ---------------------------------------------------------------------------
 // Minimal test fixtures

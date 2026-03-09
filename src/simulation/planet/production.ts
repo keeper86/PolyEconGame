@@ -1,17 +1,60 @@
-import { extractFromClaimedResource, queryClaimedResource } from './entities';
+import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facilities';
-import type { EducationLevelType, GameState } from './planet';
-import { educationLevelKeys } from './planet';
-import {
-    ageProductivityMultiplier,
-    ageMean,
-    DEFAULT_HIRE_AGE_MEAN,
-    DEPARTING_EFFICIENCY,
-    experienceMultiplier,
-    totalActiveForEdu,
-    totalDepartingForEdu,
-} from './workforce/workforceHelpers';
-import { stochasticRound } from './utils/stochasticRound';
+import type { GameState } from './planet';
+import type { EducationLevelType } from '../population/education';
+import { educationLevelKeys } from '../population/education';
+import type { CohortByOccupation, WorkforceCategory } from '../population/population';
+import { SKILL } from '../population/population';
+import { ageProductivityMultiplier, DEPARTING_EFFICIENCY } from '../workforce/laborMarketTick';
+import { stochasticRound } from '../utils/stochasticRound';
+
+// ---------------------------------------------------------------------------
+// Local workforce aggregation helpers (new age × skill model)
+// ---------------------------------------------------------------------------
+
+/** Sum active workers across all ages and skill levels for a given edu. */
+function totalActiveForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            total += workforce[age][edu][skill].active;
+        }
+    }
+    return total;
+}
+
+/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
+function totalDepartingForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            for (const d of workforce[age][edu][skill].departing) {
+                total += d;
+            }
+        }
+    }
+    return total;
+}
+
+/**
+ * Compute a worker-count-weighted mean age for a given education level
+ * across the age-resolved workforce.  Only considers active workers.
+ * Returns 30 (a sensible default) when no workers are present.
+ */
+function weightedMeanAgeForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+    let sumAge = 0;
+    let count = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            const active = workforce[age][edu][skill].active;
+            if (active > 0) {
+                sumAge += age * active;
+                count += active;
+            }
+        }
+    }
+    return count > 0 ? sumAge / count : 30;
+}
 
 export function productionTick(gameState: GameState) {
     gameState.agents.forEach((agent) => {
@@ -35,30 +78,11 @@ export function productionTick(gameState: GameState) {
             }
 
             // Compute age-dependent productivity multiplier per education level,
-            // weighted by the number of active workers in each tenure cohort.
+            // using weighted mean age from the age-resolved workforce.
             const workerAgeProductivity = {} as Record<EducationLevelType, number>;
-            // Compute tenure (experience) productivity multiplier per education
-            // level, weighted by active workers per tenure year.
-            const workerTenureProductivity = {} as Record<EducationLevelType, number>;
             for (const edu of educationLevelKeys) {
-                let totalCount = 0;
-                let weightedAgeMean = 0;
-                let weightedTenureExp = 0;
-                if (workforce) {
-                    for (let year = 0; year < workforce.length; year++) {
-                        const cohort = workforce[year];
-                        const moments = cohort.active[edu];
-                        const count = moments.count;
-                        if (count > 0) {
-                            weightedAgeMean += count * ageMean(moments);
-                            weightedTenureExp += count * experienceMultiplier(year);
-                            totalCount += count;
-                        }
-                    }
-                }
-                const overallMean = totalCount > 0 ? weightedAgeMean / totalCount : DEFAULT_HIRE_AGE_MEAN;
-                workerAgeProductivity[edu] = ageProductivityMultiplier(overallMean);
-                workerTenureProductivity[edu] = totalCount > 0 ? weightedTenureExp / totalCount : 1.0;
+                const meanAge = workforce ? weightedMeanAgeForEdu(workforce, edu) : 30;
+                workerAgeProductivity[edu] = ageProductivityMultiplier(meanAge);
             }
             assets.productionFacilities.forEach((facility) => {
                 // --- Two-pass worker allocation ---
@@ -90,7 +114,6 @@ export function productionTick(gameState: GameState) {
                     primary: { total: 0, overqualified: 0, efficiency: 1, takenByEdu: {} },
                     secondary: { total: 0, overqualified: 0, efficiency: 1, takenByEdu: {} },
                     tertiary: { total: 0, overqualified: 0, efficiency: 1, takenByEdu: {} },
-                    quaternary: { total: 0, overqualified: 0, efficiency: 1, takenByEdu: {} },
                 };
 
                 // Collect scaled requirements for slots that actually need workers.
@@ -150,20 +173,17 @@ export function productionTick(gameState: GameState) {
                 for (const { jobEdu, effectiveTarget } of activeSlots) {
                     const acc = slotFilled.get(jobEdu)!;
                     const ageProd = workerAgeProductivity[jobEdu];
-                    const tenureProd = workerTenureProductivity[jobEdu];
-                    const combinedProd = ageProd * tenureProd;
                     const available = remainingWorker[jobEdu] || 0;
                     // Note: scale the effective target down according to resource availability
                     // so we don't allocate workers for production that can't happen.
                     const scaledEffectiveTarget = effectiveTarget * resourceEfficiencyScalar;
                     const effectiveGapScaled = scaledEffectiveTarget - acc.effectiveFilled;
-                    const bodiesNeeded =
-                        combinedProd > 0 ? Math.ceil(Math.max(0, effectiveGapScaled) / combinedProd) : available;
+                    const bodiesNeeded = ageProd > 0 ? Math.ceil(Math.max(0, effectiveGapScaled) / ageProd) : available;
                     const take = Math.min(bodiesNeeded, available);
                     if (take > 0) {
                         remainingWorker[jobEdu] -= bodiesNeeded;
                         acc.totalFilled += take;
-                        acc.effectiveFilled += take * combinedProd;
+                        acc.effectiveFilled += take * ageProd;
                         acc.takenByEdu[jobEdu] = (acc.takenByEdu[jobEdu] ?? 0) + take;
                     }
                 }
@@ -183,17 +203,14 @@ export function productionTick(gameState: GameState) {
                     ) {
                         const candidateEdu = educationLevelKeys[i];
                         const ageProd = workerAgeProductivity[candidateEdu];
-                        const tenureProd = workerTenureProductivity[candidateEdu];
-                        const combinedProd = ageProd * tenureProd;
                         const available = remainingWorker[candidateEdu] || 0;
                         const effectiveGap = scaledEffectiveTarget - acc.effectiveFilled;
-                        const bodiesNeeded =
-                            combinedProd > 0 ? Math.ceil(Math.max(0, effectiveGap) / combinedProd) : available;
+                        const bodiesNeeded = ageProd > 0 ? Math.ceil(Math.max(0, effectiveGap) / ageProd) : available;
                         const take = Math.min(bodiesNeeded, available);
                         if (take > 0) {
                             remainingWorker[candidateEdu] -= bodiesNeeded;
                             acc.totalFilled += take;
-                            acc.effectiveFilled += take * combinedProd;
+                            acc.effectiveFilled += take * ageProd;
                             acc.overqualified += take;
                             acc.takenByEdu[candidateEdu] = (acc.takenByEdu[candidateEdu] ?? 0) + take;
                         }
@@ -216,7 +233,7 @@ export function productionTick(gameState: GameState) {
 
                 // resourceEfficiencyMap and resourceEfficiencies were computed earlier
                 const overallEfficiency = Math.min(reducedEfficiencyDueToWorkers, ...resourceEfficiencies);
-                facility.lastTickEfficiencyInPercent = Math.round(overallEfficiency * 100);
+                facility.lastTickResults.overallEfficiency = overallEfficiency;
 
                 // Build per-edu worker efficiency map (effective fill rate including
                 // age-productivity compensation – the facility over-draws bodies so
@@ -235,11 +252,9 @@ export function productionTick(gameState: GameState) {
                     [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number };
                 };
                 const overqualifiedMatrix: OverqualifiedMatrix = {};
-                const overqualifiedFlat: { [edu in EducationLevelType]?: number } = {};
                 for (const edu of educationLevelKeys) {
                     const alloc = workerAllocation[edu];
                     if (alloc.overqualified > 0) {
-                        overqualifiedFlat[edu] = alloc.overqualified;
                         // Build per-workerEdu breakdown (only entries where workerEdu > jobEdu)
                         const jobIdx = educationLevelKeys.indexOf(edu);
                         const breakdown: { [workerEdu in EducationLevelType]?: number } = {};
@@ -254,8 +269,7 @@ export function productionTick(gameState: GameState) {
                         }
                     }
                 }
-                facility.lastTickOverqualifiedWorkers =
-                    Object.keys(overqualifiedFlat).length > 0 ? overqualifiedFlat : undefined;
+                facility.lastTickResults.overqualifiedWorkers = overqualifiedMatrix;
 
                 // Populate detailed lastTickResults
                 facility.lastTickResults = {
@@ -339,8 +353,6 @@ export function productionTick(gameState: GameState) {
                 return sum + active + stochasticRound(departing * DEPARTING_EFFICIENCY);
             }, 0);
             const totalUnused = educationLevelKeys.reduce((sum, edu) => sum + (remainingWorker[edu] || 0), 0);
-            assets.unusedWorkers = { ...remainingWorker } as Record<EducationLevelType, number>;
-            assets.unusedWorkerFraction = totalHired > 0 ? totalUnused / totalHired : 0;
 
             // Aggregate overqualified matrix across all facilities on this planet
             type OQMatrix = { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
@@ -364,7 +376,12 @@ export function productionTick(gameState: GameState) {
                     }
                 }
             }
-            assets.overqualifiedMatrix = Object.keys(aggMatrix).length > 0 ? aggMatrix : undefined;
+
+            assets.workerFeedback = {
+                unusedWorkers: { ...remainingWorker } as Record<EducationLevelType, number>,
+                unusedWorkerFraction: totalHired > 0 ? totalUnused / totalHired : 0,
+                overqualifiedMatrix: Object.keys(aggMatrix).length > 0 ? aggMatrix : undefined,
+            };
         });
     });
 }

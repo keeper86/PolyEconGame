@@ -1,4 +1,5 @@
-import type { PlanetaryId, EducationLevelType } from './planet';
+import type { PlanetaryId } from './planet';
+import type { EducationLevelType } from '../population/education';
 
 export type Resource = {
     name: string;
@@ -103,13 +104,7 @@ export type ProductionFacility = Facilility & {
      * Detailed results from the last production tick.
      * `undefined` before the first tick has run.
      */
-    lastTickResults?: LastTickResults;
-
-    /** @deprecated Use `lastTickResults.overallEfficiency` instead. Kept for backward-compat during migration. */
-    lastTickEfficiencyInPercent: number;
-
-    /** @deprecated Use `lastTickResults.overqualifiedWorkers` instead. Kept for backward-compat during migration. */
-    lastTickOverqualifiedWorkers?: { [jobEdu in EducationLevelType]?: number };
+    lastTickResults: LastTickResults;
 };
 
 export type StorageFacility = Facilility & {

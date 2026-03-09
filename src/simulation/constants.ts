@@ -134,7 +134,7 @@ export const PRECAUTIONARY_RESERVE_TICKS = 60;
  * Low starvation levels (< 0.4) are sustainable in the mortality model,
  * higher values lead to death or disability.
  */
-export const SUPPORTER_SURVIVAL_FRACTION = 0.55;
+export const SUPPORTER_SURVIVAL_FRACTION = 0.01;
 
 /**
  * Standard deviation (in years) for the Gaussian support weight kernel.
@@ -142,7 +142,7 @@ export const SUPPORTER_SURVIVAL_FRACTION = 0.55;
  * approximately ±2σ of each peak.  A value of 8 means meaningful support
  * reaches relatives ≈ 9–41 years from each generational peak.
  */
-export const SUPPORT_WEIGHT_SIGMA = 3;
+export const SUPPORT_WEIGHT_SIGMA = 4;
 
 /**
  * Number of generational harmonics in the multi-modal support kernel.
@@ -150,18 +150,17 @@ export const SUPPORT_WEIGHT_SIGMA = 3;
  *
  *   N=1 → parent ↔ child only
  *   N=2 → parent ↔ child + grandparent ↔ grandchild
- *   N=3 → up to great-grandparent (covers 75-year gap with GENERATION_GAP=25)
  *
  * With maxAge=100 and GENERATION_GAP=25, N=3 covers the full age range.
  */
-export const GENERATION_KERNEL_N = 3;
+export const GENERATION_KERNEL_N = 2;
 
 /**
  * Minimum age for a person to be considered a potential supporter
  * in intergenerational transfers.  Must be at least MIN_EMPLOYABLE_AGE.
  * Below this age, supportCapacity() returns 0.
  */
-export const SUPPORTER_MIN_AGE = 18;
+export const SUPPORTER_MIN_AGE = MIN_EMPLOYABLE_AGE;
 
 /**
  * Fraction of the food buffer target that an *elderly* supporter must
@@ -172,23 +171,4 @@ export const SUPPORTER_MIN_AGE = 18;
  *
  * Set to 30 % of food target (vs 55 % for working age).
  */
-export const ELDERLY_FLOOR_FRACTION = 0.3;
-
-// ---------------------------------------------------------------------------
-// Wealth diffusion constants
-// ---------------------------------------------------------------------------
-
-/**
- * Diffusion half-life in years.  After this many years of zero economic
- * driving forces, wealth variance will have decayed to 50% of its initial
- * value.  Set to ~100 years for a very slow, "low-temperature" process.
- */
-export const DIFFUSION_HALF_LIFE_YEARS = 100;
-
-/**
- * Per-tick diffusion parameter epsilon, derived from the half-life.
- *
- *   (1 − ε)^(halfLife × TICKS_PER_YEAR) = 0.5
- *   ε = 1 − 0.5^(1 / (halfLife × TICKS_PER_YEAR))
- */
-export const DIFFUSION_EPSILON = 1 - Math.pow(0.5, 1 / (DIFFUSION_HALF_LIFE_YEARS * TICKS_PER_YEAR));
+export const ELDERLY_FLOOR_FRACTION = 0;

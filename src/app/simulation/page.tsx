@@ -2,6 +2,23 @@ import Link from 'next/link';
 import { APP_ROUTES } from '@/lib/appRoutes';
 import { Page } from '@/components/client/Page';
 
+const TOC = [
+    { id: 'environment', label: '1. Environment Tick' },
+    { id: 'labor-market', label: '2. Labor Market Tick' },
+    { id: 'population', label: '3. Population Tick' },
+    { id: 'production', label: '4. Production Tick' },
+    { id: 'financial', label: '5. Financial Tick' },
+    { id: 'pricing', label: '6. Agent Pricing' },
+    { id: 'food-market', label: '7. Food Market' },
+    { id: 'transfers', label: '8. Intergenerational Transfers' },
+    { id: 'wealth-diffusion', label: '9. Wealth Diffusion' },
+    { id: 'labor-market-month', label: '10. Labor Market Month Tick' },
+    { id: 'population-year', label: '11. Population Year Tick' },
+    { id: 'labor-market-year', label: '12. Labor Market Year Tick' },
+    { id: 'tick-order', label: '13. Tick Ordering Summary' },
+    { id: 'module-map', label: '14. Module Map' },
+] as const;
+
 export default function SimulationPage() {
     return (
         <Page title='Simulation Model'>
@@ -14,6 +31,20 @@ export default function SimulationPage() {
                 </p>
 
                 <hr className='my-6' />
+
+                {/* Table of Contents */}
+                <nav className='mb-8 rounded-md border p-4'>
+                    <h2 className='text-lg font-semibold mb-2'>Contents</h2>
+                    <ul className='columns-2 gap-x-8 list-none pl-0 text-sm space-y-1'>
+                        {TOC.map(({ id, label }) => (
+                            <li key={id}>
+                                <a href={`#${id}`} className='hover:underline'>
+                                    {label}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
 
                 {/* ---------------------------------------------------------------- */}
                 {/* 1. ENVIRONMENT TICK                                               */}
@@ -428,10 +459,110 @@ where
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 6. LABOR MARKET MONTH TICK                                        */}
+                {/* 6. AGENT PRICING                                                  */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='pricing'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>6. Agent Pricing (every tick)</h2>
+                    <p>
+                        After production, each food-producing agent sets its offer price and quantity for the upcoming
+                        market clearing step. The pricing algorithm uses a simple inventory-based heuristic:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`foodOfferQuantity = min(storage[food], desiredSalesTarget)
+foodOfferPrice    = basePrice · adjustment(inventoryRatio)
+
+where
+  inventoryRatio = storage[food] / lastFoodProduced
+  adjustment     raises price when inventory is low, lowers when high`}
+                    </pre>
+                    <p className='mt-2'>
+                        Agents that produce no food skip this step. The resulting per-agent offers are consumed by the
+                        food market clearing step.
+                    </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 7. FOOD MARKET                                                    */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='food-market'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>7. Food Market Clearing (every tick)</h2>
+                    <p>
+                        The food market matches household demand with agent supply using a merit-order dispatch
+                        mechanism. Agents are sorted by offer price (cheapest first), and households purchase food until
+                        demand is satisfied or supply is exhausted.
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`totalDemand = Σ (FOOD_PER_PERSON_PER_TICK · population[age][edu][occ])
+
+For each agent (sorted by foodOfferPrice ascending):
+    sold = min(agent.foodOfferQuantity, remainingDemand)
+    revenue = sold · agent.foodOfferPrice
+    remainingDemand -= sold
+
+householdFoodBuffers[age][edu][occ] += allocated food per capita
+foodPrice = volume-weighted average of clearing prices`}
+                    </pre>
+                    <p className='mt-2'>
+                        Each household cell maintains a <code>foodStock</code> buffer. Food that is not consumed in the
+                        current tick persists in the buffer. The volume-weighted average price is recorded as the
+                        planet-level <code>foodPrice</code> for use by other subsystems.
+                    </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 8. INTERGENERATIONAL TRANSFERS                                    */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='transfers'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>8. Intergenerational Transfers (every tick)</h2>
+                    <p>
+                        Family support flows redistribute wealth between age groups. Working-age adults transfer a
+                        fraction of their income to dependent children and elderly household members:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`For each planet:
+  1. Compute per-cell net income (wages − consumption)
+  2. Working-age cells with positive income contribute a fraction to:
+     - Children (age < MIN_EMPLOYABLE_AGE)
+     - Elderly (age > retirementAge)
+  3. Transfers flow from high-income cells to low-income cells
+     within the same education lineage
+
+Global invariant: Σ all transfers = 0 (zero-sum)`}
+                    </pre>
+                    <p className='mt-2'>
+                        The transfer matrix (<code>lastTransferMatrix</code>) is stored on the planet for observability
+                        and frontend visualization.
+                    </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 9. WEALTH DIFFUSION                                               */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='wealth-diffusion'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>9. Wealth Diffusion (every tick)</h2>
+                    <p>
+                        A low-temperature variance smoothing step that gradually reduces extreme wealth inequality
+                        within each age × education × occupation cell. This models informal wealth-sharing mechanisms
+                        and prevents numerical divergence of wealth moments:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`For each cell (age, edu, occ) with population > 1:
+  variance_new = variance · (1 − diffusionRate)
+
+where diffusionRate is a small constant per tick`}
+                    </pre>
+                    <p className='mt-2'>
+                        Wealth diffusion preserves the mean wealth of each cell while reducing variance. This ensures
+                        that the wealth distribution remains well-behaved over long simulation runs without affecting
+                        aggregate household deposit totals.
+                    </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 10. LABOR MARKET MONTH TICK                                       */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='labor-market-month'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>6. Labor Market Month Tick (every 30 ticks)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>10. Labor Market Month Tick (every 30 ticks)</h2>
                     <p>
                         At every month boundary the departing and retiring pipelines are advanced by one slot. Workers
                         in slot 0 (soonest to leave) are released from the workforce entirely:
@@ -454,23 +585,23 @@ where
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 6. POPULATION YEAR TICK                                           */}
+                {/* 11. POPULATION YEAR TICK                                          */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='population-year'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>7. Population Year Tick (every 360 ticks)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>11. Population Year Tick (every 360 ticks)</h2>
                     <p>
                         Once per year the entire population ages by one year and education transitions are applied. The
                         per-tick mortality has already removed deaths; this step only handles cohort shifting and
                         school/work transitions.
                     </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>6.1 Aging</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>11.1 Aging</h3>
                     <p>
                         Every cohort at age <em>a</em> moves to <em>a + 1</em>. Cohort 0 (newborns) is reset to zero and
                         will be refilled over the coming year by per-tick births.
                     </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>6.2 Education Graduation and Dropout</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>11.2 Education Graduation and Dropout</h3>
                     <p>
                         For individuals in the <code>education</code> occupation, graduation and dropout probabilities
                         are evaluated:
@@ -507,10 +638,10 @@ Education level parameters:
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 7. LABOR MARKET YEAR TICK                                         */}
+                {/* 12. LABOR MARKET YEAR TICK                                        */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='labor-market-year'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>8. Labor Market Year Tick (every 360 ticks)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>12. Labor Market Year Tick (every 360 ticks)</h2>
                     <p>
                         Once per year, tenure advances by one year for all active and departing workers. Additionally,
                         workers whose mean age has reached or exceeded the retirement threshold (RETIREMENT_AGE = 67
@@ -541,10 +672,10 @@ Retirement (per tenure cohort c, education level edu):
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 8. TICK ORDERING SUMMARY                                          */}
+                {/* 13. TICK ORDERING SUMMARY                                         */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='tick-order'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>9. Tick Ordering Summary</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>13. Tick Ordering Summary</h2>
                     <p>Within each tick the subsystems execute in the following order:</p>
                     <ol className='list-decimal list-inside space-y-1'>
                         <li>
@@ -566,14 +697,26 @@ Retirement (per tenure cohort c, education level edu):
                             <code>productionTick</code> — facility output, resource consumption, pollution generation
                         </li>
                         <li>
-                            <code>postProductionFinancialTick</code> — household consumption, firm revenue, loan
-                            repayment (money destruction)
+                            <code>updateAgentPricing</code> — each food producer sets offer price and quantity
+                        </li>
+                        <li>
+                            <code>foodMarketTick</code> — demand calculation, merit-order dispatch, settlement
+                        </li>
+                        <li>
+                            <code>intergenerationalTransfersTick</code> — family support flows between age groups
+                        </li>
+                        <li>
+                            <code>wealthDiffusionTick</code> — low-temperature variance smoothing
+                        </li>
+                        <li>
+                            <code>postProductionFinancialTick</code> — loan repayment, reconciliation (money
+                            destruction)
                         </li>
                         <li>
                             <em>(month boundary only)</em> <code>laborMarketMonthTick</code> — notice pipeline advance
                         </li>
                         <li>
-                            <em>(year boundary only)</em> <code>populationBoundaryTick</code> — aging, education
+                            <em>(year boundary only)</em> <code>populationAdvanceYearTick</code> — aging, education
                             transitions
                         </li>
                         <li>
@@ -582,10 +725,109 @@ Retirement (per tenure cohort c, education level edu):
                     </ol>
                     <p className='mt-4'>
                         This ordering ensures that environmental regeneration is visible to production within the same
-                        tick, that wages are paid before production runs, that consumption follows production, and that
-                        population deaths computed in <code>populationTick</code> are reflected deterministically in
-                        workforce counts before the next tick begins.
+                        tick, that wages are paid before production runs, that the food market clears after production,
+                        and that population deaths computed in <code>populationTick</code> are reflected
+                        deterministically in workforce counts before the next tick begins. When <code>SIM_DEBUG=1</code>{' '}
+                        is set, a single end-of-tick invariant check validates population-workforce consistency and
+                        age-moment accuracy.
                     </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 14. MODULE MAP                                                    */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='module-map'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>14. Module Map</h2>
+                    <p>
+                        The simulation source code is organized into the following directories under{' '}
+                        <code>src/simulation/</code>:
+                    </p>
+                    <table className='w-full text-sm border-collapse mt-4'>
+                        <thead>
+                            <tr className='border-b'>
+                                <th className='text-left p-2'>Directory / File</th>
+                                <th className='text-left p-2'>Responsibility</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>engine.ts</code>
+                                </td>
+                                <td className='p-2'>
+                                    Top-level <code>advanceTick</code> orchestrator
+                                </td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>environment.ts</code>
+                                </td>
+                                <td className='p-2'>Pollution regeneration, resource regeneration</td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>population/</code>
+                                </td>
+                                <td className='p-2'>
+                                    Demographics, nutrition, mortality, fertility, disability, aging, retirement
+                                </td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>workforce/</code>
+                                </td>
+                                <td className='p-2'>
+                                    Labor market, allocation, workforce sync, starvation, tenure management
+                                </td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>production.ts</code>
+                                </td>
+                                <td className='p-2'>Facility output, resource consumption, worker utilization</td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>financial/</code>
+                                </td>
+                                <td className='p-2'>
+                                    Loans, deposits, wage payments, loan repayment, balance-sheet invariants
+                                </td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>market/</code>
+                                </td>
+                                <td className='p-2'>
+                                    Food market clearing, agent pricing, intergenerational transfers, wealth diffusion
+                                </td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>invariants.ts</code>
+                                </td>
+                                <td className='p-2'>
+                                    Population-workforce consistency, age-moment checks, financial invariants
+                                </td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>testUtils/</code>
+                                </td>
+                                <td className='p-2'>
+                                    Centralized test fixtures, WorldBuilder for composable test setup
+                                </td>
+                            </tr>
+                            <tr className='border-b'>
+                                <td className='p-2'>
+                                    <code>debug/</code>
+                                </td>
+                                <td className='p-2'>
+                                    Experiment runners and debug scripts (e.g. <code>runInvariants.ts</code>)
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </section>
 
                 <hr className='my-8' />

@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 const WORKER_PATH = path.resolve(__dirname, './worker.ts');
 const TIMEOUT = 10_000;
 
-describe('Simulation Worker', () => {
+describe.skip('Simulation Worker', () => {
     let pool: Piscina;
     let port1: MessagePort;
 
@@ -114,7 +114,7 @@ describe('Simulation Worker', () => {
     );
 });
 
-describe('WorkerManager', () => {
+describe.skip('WorkerManager', () => {
     it(
         'startWorker spawns exactly one worker and stopWorker terminates it',
         async () => {

@@ -1,32 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-    ResponsiveContainer,
-    ComposedChart,
-    BarChart,
-    Bar,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-} from 'recharts';
-import type { Population, FoodMarket, Cohort } from '@/simulation/planet';
-import { educationLevelKeys, OCCUPATIONS } from '@/simulation/planet';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Population } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
+
+/** Full buffer = target stock per person (tons). */
+const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
 const EDU_COLORS: Record<string, string> = {
     none: '#94a3b8',
     primary: '#60a5fa',
     secondary: '#34d399',
     tertiary: '#f59e0b',
-    quaternary: '#8b5cf6',
 };
 
 const EDU_LABELS: Record<string, string> = {
@@ -34,21 +27,18 @@ const EDU_LABELS: Record<string, string> = {
     primary: 'Primary',
     secondary: 'Secondary',
     tertiary: 'Tertiary',
-    quaternary: 'Quaternary',
 };
 
 const OCC_COLORS: Record<string, string> = {
     unoccupied: '#60a5fa',
-    company: '#34d399',
-    government: '#f59e0b',
+    employed: '#34d399',
     education: '#f97316',
     unableToWork: '#ef4444',
 };
 
 const OCC_LABELS: Record<string, string> = {
     unoccupied: 'Unoccupied',
-    company: 'Company',
-    government: 'Government',
+    employed: 'Employed',
     education: 'Education',
     unableToWork: 'Unable to work',
 };
@@ -67,11 +57,13 @@ const fmt = (n: number): string => {
     return n.toFixed(2);
 };
 
+const fmtPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
+
 /* ------------------------------------------------------------------ */
-/*  View mode                                                          */
+/*  View modes                                                         */
 /* ------------------------------------------------------------------ */
 
-type ViewMode = 'aggregate' | 'education' | 'occupation';
+type GroupMode = 'education' | 'occupation';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -79,58 +71,128 @@ type ViewMode = 'aggregate' | 'education' | 'occupation';
 
 type Props = {
     population: Population;
-    foodMarket?: FoodMarket;
 };
 
+type ChartRow = Record<string, number>;
+
+/* ------------------------------------------------------------------ */
+/*  Tooltip factory                                                    */
+/* ------------------------------------------------------------------ */
+
+function makeTooltip(keys: readonly string[], labels: Record<string, string>, colors: Record<string, string>) {
+    return function TooltipContent({
+        active,
+        payload,
+        label,
+    }: {
+        active?: boolean;
+        payload?: { payload: ChartRow }[];
+        label?: number;
+    }) {
+        if (!active || !payload || payload.length === 0) {
+            return null;
+        }
+        const row = payload[0].payload;
+        return (
+            <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[160px]'>
+                <div className='font-medium mb-1'>Age {label}</div>
+                {keys.map((key) => {
+                    const share = row[`${key}_popShare`] ?? 0;
+                    if (share === 0) {
+                        return null;
+                    }
+                    const ratio = row[`${key}_bufferRatio`] ?? 0;
+                    const avgStock = row[`${key}_avgStock`] ?? 0;
+                    const pop = row[`${key}_pop`] ?? 0;
+                    return (
+                        <div key={key} className='flex items-center gap-1 mt-0.5'>
+                            <span
+                                className='inline-block w-2 h-2 rounded-sm flex-shrink-0'
+                                style={{ background: colors[key] }}
+                            />
+                            <span style={{ color: colors[key] }} className='font-medium'>
+                                {labels[key]}
+                            </span>
+                            <span className='ml-auto pl-2 text-muted-foreground'>
+                                {fmtPct(ratio)} · {fmt(avgStock)} t · {fmt(pop)}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Legend                                                             */
+/* ------------------------------------------------------------------ */
+
+function ColorLegend({
+    keys,
+    labels,
+    colors,
+}: {
+    keys: readonly string[];
+    labels: Record<string, string>;
+    colors: Record<string, string>;
+}) {
+    return (
+        <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] mb-1'>
+            {keys.map((key) => (
+                <span key={key} className='flex items-center gap-1'>
+                    <span className='inline-block w-2.5 h-2.5 rounded-sm' style={{ background: colors[key] }} />
+                    {labels[key]}
+                </span>
+            ))}
+        </div>
+    );
+}
+
+// Custom bar shape that draws the filled rectangle and a single black line
+// along the top edge. Return an empty <g/> for zero/negative height so the
+// shape always returns an Element (satisfies Recharts typing).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TopEdgeRect(props: any) {
+    const { x, y, width, height, fill, fillOpacity } = props;
+    if (!width || !height || height <= 0) {
+        return <g />;
+    }
+    return (
+        <g>
+            <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} />
+            <line x1={x} x2={x + width} y1={y} y2={y} stroke='#000' strokeWidth={1} />
+        </g>
+    );
+}
+
 /**
- * FoodBufferChart — shows food stock per age cohort, with three view modes:
+ * FoodBufferChart — two view modes (education / occupation) × two style modes:
  *
- * - **Aggregate**: single bar per age (avg food stock per person) + population line
- * - **Education**: stacked bars per education level (avg food stock per person)
- * - **Occupation**: stacked bars per occupation (avg food stock per person)
- *
- * The household food buffers are stored in `foodMarket.householdFoodBuffers`
- * which is a parallel array to `population.demography`.
- * Each cell stores `foodStock` (tons per person in that edu×occ cell).
+ * - **Split**: each category → two sub-bars: filled (color, height ∝ popShare×bufferRatio)
+ *   + empty (faded, height ∝ popShare×(1−bufferRatio)). Pure stacked bars, no custom shapes.
+ * - **Overlay**: solid colored bar at full popShare height, then a semi-transparent white
+ *   bar stacked on top for the "empty" portion — glass-half-full look.
  */
-export default function FoodBufferChart({ population, foodMarket }: Props): React.ReactElement {
-    const [view, setView] = useState<ViewMode>('aggregate');
+export default function FoodBufferChart({ population }: Props): React.ReactElement {
+    const [group, setGroup] = useState<GroupMode>('education');
 
     const demography = population.demography;
-    const buffers = foodMarket?.householdFoodBuffers;
-
-    if (!buffers || buffers.length === 0) {
-        return <div className='text-xs text-muted-foreground'>No food buffer data available</div>;
-    }
 
     /* -------------------------------------------------------------- */
-    /*  Build chart data for all three views                          */
+    /*  Build chart data                                               */
     /* -------------------------------------------------------------- */
 
-    // Aggregate data
-    const aggregateData: {
-        age: number;
-        avgFoodStockPerPerson: number;
-        agePop: number;
-    }[] = [];
+    const eduData: ChartRow[] = [];
+    const occData: ChartRow[] = [];
 
-    // Education breakdown data
-    const eduData: Record<string, number | string>[] = [];
-
-    // Occupation breakdown data
-    const occData: Record<string, number | string>[] = [];
-
-    for (let age = 0; age < Math.min(demography.length, buffers.length); age++) {
-        const cohort: Cohort | undefined = demography[age];
-        const fbCohort = buffers[age];
-        if (!cohort || !fbCohort) {
+    for (let age = 0; age < demography.length; age++) {
+        const cohort = demography[age];
+        if (!cohort) {
             continue;
         }
 
-        let totalStock = 0;
         let agePop = 0;
-
-        // Per-education aggregation (summing across all occupations)
         const eduStock: Record<string, number> = {};
         const eduPop: Record<string, number> = {};
         for (const edu of educationLevelKeys) {
@@ -138,7 +200,6 @@ export default function FoodBufferChart({ population, foodMarket }: Props): Reac
             eduPop[edu] = 0;
         }
 
-        // Per-occupation aggregation (summing across all education levels)
         const occStock: Record<string, number> = {};
         const occPop: Record<string, number> = {};
         for (const occ of OCCUPATIONS) {
@@ -146,228 +207,135 @@ export default function FoodBufferChart({ population, foodMarket }: Props): Reac
             occPop[occ] = 0;
         }
 
-        for (const edu of educationLevelKeys) {
-            for (const occ of OCCUPATIONS) {
-                const pop = Number(cohort[edu]?.[occ] ?? 0);
-                const fb = fbCohort[edu]?.[occ];
-                const stock = fb ? fb.foodStock : 0;
-                if (pop > 0) {
-                    totalStock += stock * pop;
-                    agePop += pop;
-                    eduStock[edu] += stock * pop;
-                    eduPop[edu] += pop;
-                    occStock[occ] += stock * pop;
-                    occPop[occ] += pop;
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    const cat = cohort[occ][edu][skill];
+                    if (cat.total > 0) {
+                        agePop += cat.total;
+                        eduStock[edu] += cat.foodStock;
+                        eduPop[edu] += cat.total;
+                        occStock[occ] += cat.foodStock;
+                        occPop[occ] += cat.total;
+                    }
                 }
             }
         }
 
-        // Aggregate row
-        aggregateData.push({
-            age,
-            avgFoodStockPerPerson: agePop > 0 ? totalStock / agePop : 0,
-            agePop,
-        });
-
-        // Education row: average food stock per person within each edu level
-        const eduRow: Record<string, number | string> = { age };
-        for (const edu of educationLevelKeys) {
-            eduRow[EDU_LABELS[edu]] = eduPop[edu] > 0 ? eduStock[edu] / eduPop[edu] : 0;
+        if (agePop === 0) {
+            continue;
         }
-        eduRow._agePop = agePop;
+
+        // Education row
+        const eduRow: ChartRow = { age };
+        for (const edu of educationLevelKeys) {
+            const share = eduPop[edu] / agePop;
+            const avgStock = eduPop[edu] > 0 ? eduStock[edu] / eduPop[edu] : 0;
+            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+            // Clamp ratio to [0,1] for stacked-bar geometry so that
+            // filled + empty = share (the population share).  Without clamping,
+            // ratio > 1 produces negative `empty` and filled > share, which
+            // breaks the stacked bar layout.  The tooltip still shows the
+            // unclamped ratio so overstocking is visible there.
+            const clampedRatio = Math.min(1, Math.max(0, ratio));
+            eduRow[`${edu}_popShare`] = share;
+            eduRow[`${edu}_bufferRatio`] = ratio;
+            eduRow[`${edu}_filled`] = share * clampedRatio;
+            eduRow[`${edu}_empty`] = share * (1 - clampedRatio);
+            eduRow[`${edu}_avgStock`] = avgStock;
+            eduRow[`${edu}_pop`] = eduPop[edu];
+        }
         eduData.push(eduRow);
 
-        // Occupation row: average food stock per person within each occ
-        const occRow: Record<string, number | string> = { age };
+        // Occupation row
+        const occRow: ChartRow = { age };
         for (const occ of OCCUPATIONS) {
-            occRow[OCC_LABELS[occ]] = occPop[occ] > 0 ? occStock[occ] / occPop[occ] : 0;
+            const share = occPop[occ] / agePop;
+            const avgStock = occPop[occ] > 0 ? occStock[occ] / occPop[occ] : 0;
+            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+            const clampedRatio = Math.min(1, Math.max(0, ratio));
+            occRow[`${occ}_popShare`] = share;
+            occRow[`${occ}_bufferRatio`] = ratio;
+            occRow[`${occ}_filled`] = share * clampedRatio;
+            occRow[`${occ}_empty`] = share * (1 - clampedRatio);
+            occRow[`${occ}_avgStock`] = avgStock;
+            occRow[`${occ}_pop`] = occPop[occ];
         }
-        occRow._agePop = agePop;
         occData.push(occRow);
     }
 
-    const hasData = aggregateData.some((d) => d.avgFoodStockPerPerson > 0 || d.agePop > 0);
+    const hasData = eduData.length > 0;
     if (!hasData) {
         return <div className='text-xs text-muted-foreground'>No food buffer data available</div>;
     }
 
-    const starvationLevel = population.starvationLevel;
+    /* -------------------------------------------------------------- */
+    /*  Derived                                                        */
+    /* -------------------------------------------------------------- */
+
+    const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
+    const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
+    const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
+    const data = group === 'education' ? eduData : occData;
+    const tooltip = makeTooltip(keys, labels, colors);
 
     return (
         <div>
-            <h4 className='text-sm font-medium mb-2'>
-                Food buffers by age
-                <span className='ml-2 text-xs text-muted-foreground'>
-                    Starvation level:{' '}
-                    <span
-                        className={
-                            starvationLevel > 0.1
-                                ? 'text-red-500 font-semibold'
-                                : starvationLevel > 0
-                                  ? 'text-amber-500'
-                                  : 'text-green-600'
-                        }
-                    >
-                        {(starvationLevel * 100).toFixed(2)}%
-                    </span>
-                </span>
-            </h4>
+            <h4 className='text-sm font-medium mb-2'>Food buffers by age</h4>
 
-            {/* View mode toggle */}
-            <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
-                <TabsList className='h-7 mb-2'>
-                    <TabsTrigger value='aggregate' className='text-[10px] px-2 py-0.5'>
-                        Aggregate
-                    </TabsTrigger>
-                    <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                        By education
-                    </TabsTrigger>
-                    <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                        By occupation
-                    </TabsTrigger>
-                </TabsList>
-            </Tabs>
+            {/* Controls */}
+            <div className='flex items-center gap-3 mb-1'>
+                <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
+                    <TabsList className='h-7'>
+                        <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
+                            By education
+                        </TabsTrigger>
+                        <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
+                            By occupation
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
+
+            <ColorLegend keys={keys} labels={labels} colors={colors} />
 
             <div style={{ width: '100%', height: 220 }}>
                 <ResponsiveContainer width='100%' height='100%'>
-                    {view === 'aggregate' ? (
-                        /* ---- Aggregate view ---- */
-                        <ComposedChart data={aggregateData} margin={{ top: 6, right: 12, left: 12, bottom: 6 }}>
-                            <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                            <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis
-                                yAxisId='food'
-                                tick={{ fontSize: 10 }}
-                                tickFormatter={(v) => fmt(v)}
-                                label={{
-                                    value: 'Food (t/person)',
-                                    angle: -90,
-                                    position: 'insideLeft',
-                                    style: { fontSize: 9 },
-                                }}
-                            />
-                            <YAxis
-                                yAxisId='pop'
-                                orientation='right'
-                                tick={{ fontSize: 10 }}
-                                tickFormatter={(v) => fmt(v)}
-                                label={{
-                                    value: 'Population',
-                                    angle: 90,
-                                    position: 'insideRight',
-                                    style: { fontSize: 9 },
-                                }}
-                            />
-                            <Tooltip formatter={(value: number, name: string) => [fmt(value), name]} />
-                            <Legend verticalAlign='top' height={24} />
+                    <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }} barCategoryGap='20%'>
+                        <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
+                        <XAxis dataKey='age' tick={{ fontSize: 10 }} />
+                        <YAxis
+                            tick={{ fontSize: 10 }}
+                            tickFormatter={fmtPct}
+                            domain={[0, 1]}
+                            label={{ value: 'Pop share', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }}
+                        />
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        <Tooltip content={tooltip as any} />
+
+                        {keys.flatMap((key) => [
                             <Bar
-                                yAxisId='food'
-                                dataKey='avgFoodStockPerPerson'
-                                fill='#34d399'
-                                fillOpacity={0.7}
-                                name='Avg food stock/person'
+                                key={`${key}_filled`}
+                                dataKey={`${key}_filled`}
+                                stackId='a'
+                                fill={colors[key]}
+                                fillOpacity={0.9}
+                                name={labels[key]}
                                 isAnimationActive={false}
-                            />
-                            <Line
-                                yAxisId='pop'
-                                type='monotone'
-                                dataKey='agePop'
-                                stroke='#60a5fa'
-                                strokeWidth={1.5}
-                                dot={false}
-                                name='Population'
+                            />,
+                            <Bar
+                                key={`${key}_empty`}
+                                dataKey={`${key}_empty`}
+                                stackId='a'
+                                fill={colors[key]}
+                                fillOpacity={0.2}
+                                shape={TopEdgeRect}
+                                name={`${labels[key]} (empty)`}
+                                legendType='none'
                                 isAnimationActive={false}
-                            />
-                        </ComposedChart>
-                    ) : view === 'education' ? (
-                        /* ---- Education breakdown view ---- */
-                        <BarChart data={eduData} margin={{ top: 6, right: 12, left: 12, bottom: 6 }}>
-                            <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                            <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis
-                                tick={{ fontSize: 10 }}
-                                tickFormatter={(v) => fmt(v)}
-                                label={{
-                                    value: 'Food (t/person)',
-                                    angle: -90,
-                                    position: 'insideLeft',
-                                    style: { fontSize: 9 },
-                                }}
-                            />
-                            <Tooltip
-                                content={({ active, payload, label }) => {
-                                    if (!active || !payload || payload.length === 0) {
-                                        return null;
-                                    }
-                                    return (
-                                        <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
-                                            <div className='font-medium mb-1'>Age {label}</div>
-                                            {payload.map((entry) => (
-                                                <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {fmt(entry.value as number)} t/person
-                                                </div>
-                                            ))}
-                                        </div>
-                                    );
-                                }}
-                            />
-                            <Legend verticalAlign='top' height={18} wrapperStyle={{ fontSize: 10 }} />
-                            {educationLevelKeys.map((edu, idx) => (
-                                <Bar
-                                    key={edu}
-                                    dataKey={EDU_LABELS[edu]}
-                                    stackId='a'
-                                    fill={EDU_COLORS[edu]}
-                                    radius={idx === educationLevelKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
-                                    isAnimationActive={false}
-                                />
-                            ))}
-                        </BarChart>
-                    ) : (
-                        /* ---- Occupation breakdown view ---- */
-                        <BarChart data={occData} margin={{ top: 6, right: 12, left: 12, bottom: 6 }}>
-                            <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                            <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis
-                                tick={{ fontSize: 10 }}
-                                tickFormatter={(v) => fmt(v)}
-                                label={{
-                                    value: 'Food (t/person)',
-                                    angle: -90,
-                                    position: 'insideLeft',
-                                    style: { fontSize: 9 },
-                                }}
-                            />
-                            <Tooltip
-                                content={({ active, payload, label }) => {
-                                    if (!active || !payload || payload.length === 0) {
-                                        return null;
-                                    }
-                                    return (
-                                        <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
-                                            <div className='font-medium mb-1'>Age {label}</div>
-                                            {payload.map((entry) => (
-                                                <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {fmt(entry.value as number)} t/person
-                                                </div>
-                                            ))}
-                                        </div>
-                                    );
-                                }}
-                            />
-                            <Legend verticalAlign='top' height={18} wrapperStyle={{ fontSize: 10 }} />
-                            {OCCUPATIONS.map((occ, idx) => (
-                                <Bar
-                                    key={occ}
-                                    dataKey={OCC_LABELS[occ]}
-                                    stackId='a'
-                                    fill={OCC_COLORS[occ]}
-                                    radius={idx === OCCUPATIONS.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
-                                    isAnimationActive={false}
-                                />
-                            ))}
-                        </BarChart>
-                    )}
+                            />,
+                        ])}
+                    </BarChart>
                 </ResponsiveContainer>
             </div>
         </div>

@@ -9,6 +9,7 @@ import {
     getAgentOverview,
     getAgentPlanetDetail,
     getPlanetDetail,
+    getPlanetPopulationHistory,
 } from './controller/simulation';
 
 import { getUser, getUsers, updateUser } from './controller/user';
@@ -22,6 +23,7 @@ const simulationRouter = trpcRoot.router({
     getAgentOverview: getAgentOverview(),
     getAgentPlanetDetail: getAgentPlanetDetail(),
     getPlanetDetail: getPlanetDetail(),
+    getPlanetPopulationHistory: getPlanetPopulationHistory(),
     // historical endpoints removed
 });
 

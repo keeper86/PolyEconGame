@@ -9,8 +9,8 @@
 import { describe, it, expect } from 'vitest';
 
 import { toImmutableGameState, type GameStateRecord } from './immutableTypes';
-import type { Planet, Agent, GameState } from './planet';
-import type { ProductionFacility, StorageFacility } from './facilities';
+import type { Planet, Agent, GameState } from './planet/planet';
+import type { ProductionFacility, StorageFacility } from './planet/facilities';
 import type { WorkerQuery, WorkerQueryMessage, WorkerQueryResult } from './queries';
 
 // ---------------------------------------------------------------------------

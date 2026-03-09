@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { MessageChannel, type MessagePort } from 'node:worker_threads';
 import { Piscina } from 'piscina';
+import { spawnSync } from 'node:child_process';
 
 import type { InboundMessage, OutboundMessage } from './worker';
 
@@ -133,6 +134,39 @@ function createPool(): { pool: Piscina; port: MessagePort } {
         );
     }
 
+    // Preflight check: try to require() the worker module in a fresh Node
+    // process with the same execArgv (so tsx/cjs is preloaded). This catches
+    // missing transitive imports early and produces a clear error message
+    // instead of letting Piscina silently fall back to ESM resolution.
+    if (execArgv) {
+        try {
+            const nodeArgs = [
+                ...execArgv,
+                '-e',
+                `try { require(${JSON.stringify(workerPath)}); console.log('__WORKER_IMPORT_OK__'); } catch (e) { console.error(e && (e.stack || e.message) || e); process.exit(1); }`,
+            ];
+            const res = spawnSync(process.execPath, nodeArgs, { cwd: process.cwd(), encoding: 'utf8' });
+            if (res.stdout) {
+                console.log('[workerManager] worker import preflight stdout:', res.stdout.trim());
+            }
+            if (res.status !== 0) {
+                console.error('[workerManager] Worker import preflight failed:');
+                console.error(res.stderr || res.stdout || 'no output');
+                throw new Error('Worker import preflight failed - aborting pool creation');
+            }
+        } catch (err) {
+            console.error(
+                '[workerManager] Worker import preflight threw:',
+                err instanceof Error ? err.stack || err.message : String(err),
+            );
+            throw err;
+        }
+    } else {
+        // If we couldn't resolve a tsx prerequire arg, we can't reliably
+        // validate TypeScript imports here. Leave a debug hint.
+        console.debug('[workerManager] No execArgv for tsx found — skipping worker import preflight');
+    }
+
     // Create a dedicated MessageChannel for custom messages between the main
     // thread and the worker.  Piscina owns `parentPort` for its internal task
     // protocol — sending arbitrary messages via `threads[0].postMessage()`
@@ -151,7 +185,7 @@ function createPool(): { pool: Piscina; port: MessagePort } {
         // Piscina pauses the event-loop between tasks by default via Atomics.
         // Our worker runs a perpetual setTimeout loop, so we need async mode.
         atomics: 'disabled',
-        workerData: { tickIntervalMs: 10 },
+        workerData: { tickIntervalMs: 0 },
         ...(execArgv ? { execArgv } : {}),
     });
 
@@ -175,8 +209,8 @@ function createPool(): { pool: Piscina; port: MessagePort } {
                 console.error('[workerManager] Simulation task rejected unexpectedly:', err);
                 console.error('[workerManager] rejection details:', {
                     message: err instanceof Error ? err.message : String(err),
-                    code: (err as any)?.code,
-                    url: (err as any)?.url,
+                    code: (err as { code?: string })?.code,
+                    url: (err as { url?: string })?.url,
                     stack: err instanceof Error ? err.stack : undefined,
                 });
             } catch (_e) {

@@ -2,11 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import type { Population, Cohort } from '@/simulation/planet';
-import { educationLevelKeys, OCCUPATIONS } from '@/simulation/planet';
-import type { EducationLevelType, Occupation } from '@/simulation/planet';
+
 import CohortFilter, { type CohortFilterState, EDU_COLORS, OCC_COLORS } from './CohortFilter';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Population, Occupation } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL, mergeGaussianMoments } from '@/simulation/population/population';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -62,164 +64,144 @@ type Props = {
 /* ------------------------------------------------------------------ */
 
 /**
- * WealthDistributionChart — enhanced wealth visualization with:
- * - Aggregate view: mean ± 1σ band, filtered by CohortFilter
- * - By Education: stacked lines showing mean wealth per education level
- * - By Occupation: stacked lines showing mean wealth per occupation
- * - Summary statistics: total wealth, Gini-like CV, population
+ * WealthDistributionChart — enhanced wealth visualization.
+ * Wealth is now embedded in each PopulationCategory as `.wealth` (GaussianMoments).
  */
 export default function WealthDistributionChart({ population }: Props): React.ReactElement {
     const [filter, setFilter] = useState<CohortFilterState>({ edu: null, occ: null });
     const [view, setView] = useState<ViewMode>('aggregate');
 
     const demography = population.demography;
-    const wealthDem = population.wealthDemography;
 
     // ---- Aggregate data (filtered) ----
     const aggregateData = useMemo<AggregateRow[]>(() => {
-        if (!wealthDem || wealthDem.length === 0) {
+        if (!demography || demography.length === 0) {
             return [];
         }
         const edus: readonly EducationLevelType[] = filter.edu ? [filter.edu] : educationLevelKeys;
         const occs: readonly Occupation[] = filter.occ ? [filter.occ] : ([...OCCUPATIONS] as Occupation[]);
         const rows: AggregateRow[] = [];
 
-        for (let age = 0; age < Math.min(demography.length, wealthDem.length); age++) {
-            const cohort: Cohort | undefined = demography[age];
-            const wCohort = wealthDem[age];
-            if (!cohort || !wCohort) {
+        for (let age = 0; age < demography.length; age++) {
+            const cohort = demography[age];
+            if (!cohort) {
                 continue;
             }
 
-            let totalPop = 0;
-            let weightedMean = 0;
+            let accN = 0;
+            let accMoments = { mean: 0, variance: 0 };
 
-            for (const edu of edus) {
-                for (const occ of occs) {
-                    const pop = Number(cohort[edu]?.[occ] ?? 0);
-                    const wm = wCohort[edu]?.[occ];
-                    if (pop > 0 && wm) {
-                        weightedMean += pop * wm.mean;
-                        totalPop += pop;
+            for (const occ of occs) {
+                for (const edu of edus) {
+                    for (const skill of SKILL) {
+                        const cat = cohort[occ][edu][skill];
+                        if (cat.total > 0) {
+                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                            accN += cat.total;
+                        }
                     }
                 }
             }
 
-            if (totalPop === 0) {
+            if (accN === 0) {
                 rows.push({ age, mean: 0, upper: 0, lower: 0, band: [0, 0], pop: 0, cv: 0 });
                 continue;
             }
 
-            const pooledMean = weightedMean / totalPop;
-
-            let pooledVariance = 0;
-            for (const edu of edus) {
-                for (const occ of occs) {
-                    const pop = Number(cohort[edu]?.[occ] ?? 0);
-                    const wm = wCohort[edu]?.[occ];
-                    if (pop > 0 && wm) {
-                        const diff = wm.mean - pooledMean;
-                        pooledVariance += pop * (wm.variance + diff * diff);
-                    }
-                }
-            }
-            pooledVariance /= totalPop;
-
-            const sigma = Math.sqrt(Math.max(0, pooledVariance));
-            const upper = pooledMean + sigma;
-            const lower = Math.max(0, pooledMean - sigma);
-            const cv = pooledMean > 0 ? sigma / pooledMean : 0;
+            const sigma = Math.sqrt(Math.max(0, accMoments.variance));
+            const upper = accMoments.mean + sigma;
+            const lower = Math.max(0, accMoments.mean - sigma);
+            const cv = accMoments.mean > 0 ? sigma / accMoments.mean : 0;
 
             rows.push({
                 age,
-                mean: pooledMean,
+                mean: accMoments.mean,
                 upper,
                 lower,
                 band: [lower, upper],
-                pop: totalPop,
+                pop: accN,
                 cv,
             });
         }
         return rows;
-    }, [demography, wealthDem, filter.edu, filter.occ]);
+    }, [demography, filter.edu, filter.occ]);
 
     // ---- Education breakdown data ----
     const eduBreakdown = useMemo<BreakdownRow[]>(() => {
-        if (!wealthDem || wealthDem.length === 0 || view !== 'byEducation') {
+        if (!demography || demography.length === 0 || view !== 'byEducation') {
             return [];
         }
         const occs: readonly Occupation[] = filter.occ ? [filter.occ] : ([...OCCUPATIONS] as Occupation[]);
         const rows: BreakdownRow[] = [];
 
-        for (let age = 0; age < Math.min(demography.length, wealthDem.length); age++) {
-            const cohort: Cohort | undefined = demography[age];
-            const wCohort = wealthDem[age];
-            if (!cohort || !wCohort) {
+        for (let age = 0; age < demography.length; age++) {
+            const cohort = demography[age];
+            if (!cohort) {
                 continue;
             }
 
             const row: BreakdownRow = { age };
             for (const edu of educationLevelKeys) {
-                let pop = 0;
-                let wSum = 0;
+                let accN = 0;
+                let accMoments = { mean: 0, variance: 0 };
                 for (const occ of occs) {
-                    const p = Number(cohort[edu]?.[occ] ?? 0);
-                    const wm = wCohort[edu]?.[occ];
-                    if (p > 0 && wm) {
-                        pop += p;
-                        wSum += p * wm.mean;
+                    for (const skill of SKILL) {
+                        const cat = cohort[occ][edu][skill];
+                        if (cat.total > 0) {
+                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                            accN += cat.total;
+                        }
                     }
                 }
                 const label = edu.charAt(0).toUpperCase() + edu.slice(1);
-                row[label] = pop > 0 ? wSum / pop : 0;
+                row[label] = accN > 0 ? accMoments.mean : 0;
             }
             rows.push(row);
         }
         return rows;
-    }, [demography, wealthDem, filter.occ, view]);
+    }, [demography, filter.occ, view]);
 
     // ---- Occupation breakdown data ----
     const occBreakdown = useMemo<BreakdownRow[]>(() => {
-        if (!wealthDem || wealthDem.length === 0 || view !== 'byOccupation') {
+        if (!demography || demography.length === 0 || view !== 'byOccupation') {
             return [];
         }
         const edus: readonly EducationLevelType[] = filter.edu ? [filter.edu] : educationLevelKeys;
         const rows: BreakdownRow[] = [];
 
-        for (let age = 0; age < Math.min(demography.length, wealthDem.length); age++) {
-            const cohort: Cohort | undefined = demography[age];
-            const wCohort = wealthDem[age];
-            if (!cohort || !wCohort) {
+        for (let age = 0; age < demography.length; age++) {
+            const cohort = demography[age];
+            if (!cohort) {
                 continue;
             }
 
             const row: BreakdownRow = { age };
             const occLabels: Record<string, string> = {
                 unoccupied: 'Unoccupied',
-                company: 'Company',
-                government: 'Government',
+                employed: 'Employed',
                 education: 'Education',
                 unableToWork: 'Unable to work',
             };
             for (const occ of OCCUPATIONS) {
-                let pop = 0;
-                let wSum = 0;
+                let accN = 0;
+                let accMoments = { mean: 0, variance: 0 };
                 for (const edu of edus) {
-                    const p = Number(cohort[edu]?.[occ] ?? 0);
-                    const wm = wCohort[edu]?.[occ];
-                    if (p > 0 && wm) {
-                        pop += p;
-                        wSum += p * wm.mean;
+                    for (const skill of SKILL) {
+                        const cat = cohort[occ][edu][skill];
+                        if (cat.total > 0) {
+                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                            accN += cat.total;
+                        }
                     }
                 }
-                row[occLabels[occ]] = pop > 0 ? wSum / pop : 0;
+                row[occLabels[occ]] = accN > 0 ? accMoments.mean : 0;
             }
             rows.push(row);
         }
         return rows;
-    }, [demography, wealthDem, filter.edu, view]);
+    }, [demography, filter.edu, view]);
 
-    if (!wealthDem || wealthDem.length === 0) {
+    if (!demography || demography.length === 0) {
         return <div className='text-xs text-muted-foreground'>No wealth data available</div>;
     }
 
@@ -391,8 +373,7 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                             {OCCUPATIONS.map((occ) => {
                                 const occLabels: Record<string, string> = {
                                     unoccupied: 'Unoccupied',
-                                    company: 'Company',
-                                    government: 'Government',
+                                    employed: 'Employed',
                                     education: 'Education',
                                     unableToWork: 'Unable to work',
                                 };

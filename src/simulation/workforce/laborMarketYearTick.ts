@@ -2,22 +2,18 @@
  * workforce/laborMarketYearTick.ts
  *
  * Annual labor-market processing:
- * Advances tenure by one year for all active workers and their departing
- * pipeline, shifting every cohort from year N-1 into year N.
- * Active AgeMoments are aged by +1 year and merged during the shift.
+ * 1. Age all workforce workers by one year: shift workers from age index `a`
+ *    to `a+1` (workers at maxAge are dropped — they should have already been
+ *    retired/died).
  *
- * Retirement is handled population-side (applyRetirement + workforceSync).
+ * With the new age-resolved model, tenure is no longer tracked separately —
+ * the age index itself is the natural proxy.
  */
 
-import type { Agent } from '../planet';
-import { educationLevelKeys } from '../planet';
-import {
-    emptyAgeMoments,
-    MAX_TENURE_YEARS,
-    NOTICE_PERIOD_MONTHS,
-    mergeAgeMoments,
-    ageAgeMomentsByOneYear,
-} from './workforceHelpers';
+import type { Agent } from '../planet/planet';
+import { educationLevelKeys } from '../population/education';
+import { MAX_AGE, SKILL } from '../population/population';
+import { NOTICE_PERIOD_MONTHS } from './laborMarketTick';
 
 export function laborMarketYearTick(agents: Map<string, Agent>): void {
     for (const agent of agents.values()) {
@@ -26,49 +22,38 @@ export function laborMarketYearTick(agents: Map<string, Agent>): void {
             if (!workforce) {
                 continue;
             }
-            // Shift from highest tenure down to avoid double-counting.
-            for (let year = MAX_TENURE_YEARS; year > 0; year--) {
-                const src = workforce[year - 1];
-                const dst = workforce[year];
+
+            // Shift from highest age down to avoid double-counting.
+            // Workers at maxAge are dropped (overflow — should be rare
+            // since retirement/mortality should have removed them).
+            for (let age = MAX_AGE; age > 0; age--) {
+                const src = workforce[age - 1];
+                const dst = workforce[age];
+                if (!src || !dst) {
+                    continue;
+                }
                 for (const edu of educationLevelKeys) {
-                    const srcMoments = src.active[edu];
-                    const dstMoments = dst.active[edu];
+                    for (const skill of SKILL) {
+                        const srcCat = src[edu][skill];
+                        const dstCat = dst[edu][skill];
 
-                    if (srcMoments.count > 0 && dstMoments.count > 0) {
-                        // Both cohorts have workers — age both +1 year, then merge.
-                        dst.active[edu] = mergeAgeMoments(
-                            ageAgeMomentsByOneYear(dstMoments),
-                            ageAgeMomentsByOneYear(srcMoments),
-                        );
-                    } else if (srcMoments.count > 0) {
-                        dst.active[edu] = ageAgeMomentsByOneYear(srcMoments);
-                    } else if (dstMoments.count > 0) {
-                        dst.active[edu] = ageAgeMomentsByOneYear(dstMoments);
-                    }
-                    // else both empty — leave dst as-is (already empty)
-
-                    // Clear src active
-                    src.active[edu] = emptyAgeMoments();
-
-                    // Shift departing + departingFired pipelines
-                    // Departing workers must also be aged +1 year to stay in
-                    // sync with the population model (which ages everyone).
-                    for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                        const srcDep = src.departing[edu][m];
-                        const dstDep = dst.departing[edu][m];
-                        if (srcDep.count > 0 && dstDep.count > 0) {
-                            dst.departing[edu][m] = mergeAgeMoments(
-                                ageAgeMomentsByOneYear(dstDep),
-                                ageAgeMomentsByOneYear(srcDep),
-                            );
-                        } else if (srcDep.count > 0) {
-                            dst.departing[edu][m] = ageAgeMomentsByOneYear(srcDep);
-                        } else if (dstDep.count > 0) {
-                            dst.departing[edu][m] = ageAgeMomentsByOneYear(dstDep);
+                        // Merge active
+                        if (srcCat.active > 0) {
+                            dstCat.active += srcCat.active;
+                            srcCat.active = 0;
                         }
-                        src.departing[edu][m] = emptyAgeMoments();
-                        dst.departingFired[edu][m] += src.departingFired[edu][m];
-                        src.departingFired[edu][m] = 0;
+
+                        // Merge departing pipeline
+                        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                            if ((srcCat.departing[m] ?? 0) > 0) {
+                                dstCat.departing[m] = (dstCat.departing[m] ?? 0) + srcCat.departing[m];
+                                srcCat.departing[m] = 0;
+                            }
+                            if ((srcCat.departingFired[m] ?? 0) > 0) {
+                                dstCat.departingFired[m] = (dstCat.departingFired[m] ?? 0) + srcCat.departingFired[m];
+                                srcCat.departingFired[m] = 0;
+                            }
+                        }
                     }
                 }
             }

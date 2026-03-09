@@ -1,24 +1,34 @@
 'use client';
 import React from 'react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 
 export default function PlanetPopulationChartRecharts({
     data,
     height = 120,
 }: {
-    data: { tick: number; value: number }[];
+    data: { tick: number; value: number; starvation?: number }[];
     height?: number;
 }): React.ReactElement {
     if (!data || data.length === 0) {
         return <div className='text-sm text-gray-500'>No data</div>;
     }
 
+    const hasStarvation = data.some((d) => d.starvation !== undefined && d.starvation !== null);
+
     // Recharts expects data ordered from left->right. We store newest first in the UI state,
     // so reverse for plotting (older -> newer left->right).
     // Prefer using Recharts' built-in logarithmic scale instead of pre-taking Math.log.
     // Only enable log scale when all values are finite and > 0 (log undefined for <= 0).
-    const useLogScale = data.every((d) => Number.isFinite(d.value) && d.value > 0);
-    const plotData = data.slice().reverse();
+    const useLogScale = false;
+    // data.every((d) => Number.isFinite(d.value) && d.value > 0);
+    const plotData = data
+        .slice()
+        .reverse()
+        .map((d) => ({
+            ...d,
+            // Convert starvation from 0-1 fraction to percentage for display
+            starvationPct: d.starvation !== undefined ? d.starvation * 100 : undefined,
+        }));
 
     // Prepare log-scale ticks and a number formatter for axis ticks/tooltips.
     // Use powers-of-10 ticks when using log scale so labels are clean.
@@ -73,32 +83,78 @@ export default function PlanetPopulationChartRecharts({
     return (
         <div style={{ width: '100%', height }}>
             <ResponsiveContainer width='100%' height='100%'>
-                <AreaChart data={plotData} margin={{ top: 6, right: 6, left: 6, bottom: 6 }}>
+                <AreaChart data={plotData} margin={{ top: 6, right: hasStarvation ? 40 : 6, left: 6, bottom: 6 }}>
                     <defs>
                         <linearGradient id='colorPop' x1='0' x2='0' y1='0' y2='1'>
                             <stop offset='5%' stopColor='#4f46e5' stopOpacity={0.8} />
                             <stop offset='95%' stopColor='#4f46e5' stopOpacity={0} />
                         </linearGradient>
+                        {hasStarvation && (
+                            <linearGradient id='colorStarvation' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#ef4444' stopOpacity={0.6} />
+                                <stop offset='95%' stopColor='#ef4444' stopOpacity={0} />
+                            </linearGradient>
+                        )}
                     </defs>
                     <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                     <XAxis
                         dataKey='tick'
+                        reversed
                         tick={{ fontSize: 11 }}
                         tickFormatter={(v) => (typeof v === 'number' ? String(Math.floor(v / 365)) : String(v))}
                     />
                     <YAxis
+                        yAxisId='left'
                         type='number'
                         // use 'log' when safe, otherwise fall back to automatic (linear)
                         scale={useLogScale ? 'log' : 'auto'}
-                        domain={['auto', 'auto']}
+                        // floor at 0 (linear) or 1 (log, since log(0) is undefined)
+                        domain={useLogScale ? ['auto', 'auto'] : ['auto', 'auto']}
                         tick={{ fontSize: 11 }}
                         // when using log scale prefer nice powers-of-10 ticks
                         ticks={useLogScale ? logTicks : undefined}
                         // format numbers using our helper
                         tickFormatter={(v) => (typeof v === 'number' ? formatNumber(v) : String(v))}
                     />
-                    <Tooltip formatter={(value) => (typeof value === 'number' ? formatNumber(value) : String(value))} />
-                    <Area type='monotone' dataKey='value' stroke='#4f46e5' fill='url(#colorPop)' />
+                    {hasStarvation && (
+                        <YAxis
+                            yAxisId='right'
+                            orientation='right'
+                            type='number'
+                            domain={[0, (dataMax: number) => Math.max(dataMax, 1)]}
+                            tick={{ fontSize: 11 }}
+                            tickFormatter={(v) => `${typeof v === 'number' ? v.toFixed(0) : v}%`}
+                        />
+                    )}
+                    <Tooltip
+                        formatter={(value: number, name: string) => {
+                            if (name === 'starvationPct') {
+                                return [`${value.toFixed(2)}%`, 'Starvation'];
+                            }
+                            return [formatNumber(value), 'Population'];
+                        }}
+                    />
+                    {hasStarvation && (
+                        <Legend formatter={(value) => (value === 'starvationPct' ? 'Starvation %' : 'Population')} />
+                    )}
+                    <Area
+                        yAxisId='left'
+                        type='monotone'
+                        dataKey='value'
+                        name='value'
+                        stroke='#4f46e5'
+                        fill='url(#colorPop)'
+                    />
+                    {hasStarvation && (
+                        <Area
+                            yAxisId='right'
+                            type='monotone'
+                            dataKey='starvationPct'
+                            name='starvationPct'
+                            stroke='#ef4444'
+                            fill='url(#colorStarvation)'
+                        />
+                    )}
                 </AreaChart>
             </ResponsiveContainer>
         </div>

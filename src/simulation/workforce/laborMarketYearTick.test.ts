@@ -1,18 +1,41 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import type { Agent } from '../planet';
-import { educationLevelKeys } from '../planet';
+import type { Agent } from '../planet/planet';
+import { educationLevelKeys } from '../population/education';
+import type { EducationLevelType } from '../population/education';
+import { MAX_AGE, SKILL } from '../population/population';
 
 import { laborMarketYearTick } from './laborMarketYearTick';
-import { makeAgent } from './testHelpers';
-import {
-    MAX_TENURE_YEARS,
-    totalActiveForEdu,
-    totalDepartingForEdu,
-    ageMomentsForAge,
-    ageMean,
-    ageVariance,
-} from './workforceHelpers';
+import { makeAgent } from '../utils/testHelper';
+import type { makeWorkforceDemography } from '../utils/testHelper';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Sum active workers across all ages and skill levels for a given edu. */
+function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            total += workforce[age][edu][skill].active;
+        }
+    }
+    return total;
+}
+
+/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
+function totalDepartingForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            for (const dep of workforce[age][edu][skill].departing) {
+                total += dep;
+            }
+        }
+    }
+    return total;
+}
 
 // ---------------------------------------------------------------------------
 // laborMarketYearTick — basic behaviour
@@ -25,88 +48,90 @@ describe('laborMarketYearTick', () => {
         agent = makeAgent();
     });
 
-    it('moves workers from year 0 to year 1', () => {
+    it('shifts workers from age 25 to age 26', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[0].active.primary = ageMomentsForAge(25, 100);
+        workforce[25].primary.novice.active = 100;
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
-        expect(workforce[0].active.primary.count).toBe(0);
-        expect(workforce[1].active.primary.count).toBe(100);
+        expect(workforce[25].primary.novice.active).toBe(0);
+        expect(workforce[26].primary.novice.active).toBe(100);
     });
 
-    it('workers in the last tenure year stay there (do not overflow)', () => {
+    it('workers at MAX_AGE are dropped (overflow)', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[MAX_TENURE_YEARS].active.secondary = ageMomentsForAge(50, 50);
+        workforce[MAX_AGE].secondary.novice.active = 50;
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
-        expect(workforce[MAX_TENURE_YEARS].active.secondary.count).toBe(50);
+        // Workers at MAX_AGE remain because nothing shifts into MAX_AGE+1
+        // The function shifts age-1 → age, so MAX_AGE gets contributions from MAX_AGE-1
+        // but existing MAX_AGE workers stay (they aren't removed by year tick)
+        expect(workforce[MAX_AGE].secondary.novice.active).toBe(50);
     });
 
     it('shifts departing pipeline entries along with active workers', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[0].departing.tertiary[1] = ageMomentsForAge(30, 8);
+        workforce[30].tertiary.professional.departing[1] = 8;
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
-        expect(workforce[0].departing.tertiary[1].count).toBe(0);
-        expect(workforce[1].departing.tertiary[1].count).toBe(8);
+        expect(workforce[30].tertiary.professional.departing[1]).toBe(0);
+        expect(workforce[31].tertiary.professional.departing[1]).toBe(8);
+    });
+
+    it('shifts departingFired pipeline along with departing', () => {
+        const workforce = agent.assets.p.workforceDemography!;
+        workforce[30].none.novice.departingFired[2] = 5;
+
+        laborMarketYearTick(new Map([[agent.id, agent]]));
+
+        expect(workforce[30].none.novice.departingFired[2]).toBe(0);
+        expect(workforce[31].none.novice.departingFired[2]).toBe(5);
     });
 });
 
 // ---------------------------------------------------------------------------
-// Age moments — year tick
+// Accumulation at MAX_AGE
 // ---------------------------------------------------------------------------
 
-describe('age moments — year tick', () => {
-    it('advances mean age by 1 when shifting tenure years', () => {
+describe('accumulation at MAX_AGE', () => {
+    it('merges workers at MAX_AGE-1 into MAX_AGE', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.primary = ageMomentsForAge(25, 100);
+        wf[MAX_AGE].secondary.novice.active = 100;
+        wf[MAX_AGE - 1].secondary.novice.active = 100;
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
-        expect(wf[1].active.primary.count).toBe(100);
-        expect(ageMean(wf[1].active.primary)).toBeCloseTo(26, 5);
-        expect(ageVariance(wf[1].active.primary)).toBeCloseTo(0, 5);
+        expect(wf[MAX_AGE].secondary.novice.active).toBe(200);
+        expect(wf[MAX_AGE - 1].secondary.novice.active).toBe(0);
     });
 
-    it('merges two cohorts and advances combined mean by 1 when both land in the same bucket', () => {
+    it('workers in distinct ages each advance independently', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
-        wf[MAX_TENURE_YEARS].active.secondary = ageMomentsForAge(50, 100);
-        wf[MAX_TENURE_YEARS - 1].active.secondary = ageMomentsForAge(48, 100);
+        wf[25].secondary.novice.active = 100;
+        wf[30].secondary.novice.active = 100;
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
-        expect(wf[MAX_TENURE_YEARS].active.secondary.count).toBe(200);
-        // Both advance by 1: 51 and 49, merge mean = 50
-        expect(ageMean(wf[MAX_TENURE_YEARS].active.secondary)).toBeCloseTo(50, 0);
+        expect(wf[26].secondary.novice.active).toBe(100);
+        expect(wf[31].secondary.novice.active).toBe(100);
+        // Source ages are cleared
+        expect(wf[25].secondary.novice.active).toBe(0);
+        expect(wf[30].secondary.novice.active).toBe(0);
     });
 
-    it('workers in distinct tenure years each advance independently', () => {
+    it('resets source age after shifting', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.secondary = ageMomentsForAge(25, 100);
-        wf[1].active.secondary = ageMomentsForAge(26, 100);
+        wf[22].none.expert.active = 50;
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
-        expect(wf[1].active.secondary.count).toBe(100);
-        expect(ageMean(wf[1].active.secondary)).toBeCloseTo(26, 5);
-        expect(wf[2].active.secondary.count).toBe(100);
-        expect(ageMean(wf[2].active.secondary)).toBeCloseTo(27, 5);
-    });
-
-    it('resets year-0 after shifting', () => {
-        const agent = makeAgent();
-        const wf = agent.assets.p.workforceDemography!;
-        wf[0].active.none = ageMomentsForAge(22, 50);
-
-        laborMarketYearTick(new Map([[agent.id, agent]]));
-
-        expect(wf[0].active.none.count).toBe(0);
+        expect(wf[22].none.expert.active).toBe(0);
+        expect(wf[23].none.expert.active).toBe(50);
     });
 });
 
@@ -115,14 +140,14 @@ describe('age moments — year tick', () => {
 // ---------------------------------------------------------------------------
 
 describe('laborMarketYearTick — conservation', () => {
-    it('conserves total active workers across tenure shift', () => {
+    it('conserves total active workers across age shift (workers below MAX_AGE)', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[0].active.none = ageMomentsForAge(25, 100);
-        wf[5].active.none = ageMomentsForAge(30, 200);
-        wf[MAX_TENURE_YEARS].active.none = ageMomentsForAge(60, 50);
-        wf[0].active.primary = ageMomentsForAge(25, 80);
+        wf[25].none.novice.active = 100;
+        wf[30].none.professional.active = 200;
+        wf[60].none.expert.active = 50;
+        wf[25].primary.novice.active = 80;
 
         const totalBefore = totalActiveForEdu(wf, 'none') + totalActiveForEdu(wf, 'primary');
 
@@ -132,13 +157,13 @@ describe('laborMarketYearTick — conservation', () => {
         expect(totalAfter).toBe(totalBefore);
     });
 
-    it('conserves departing pipeline counts across tenure shift', () => {
+    it('conserves departing pipeline counts across age shift', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[0].departing.none[3] = ageMomentsForAge(30, 10);
-        wf[0].departing.none[7] = ageMomentsForAge(30, 5);
-        wf[2].departing.primary[0] = ageMomentsForAge(30, 20);
+        wf[30].none.novice.departing[2] = 10;
+        wf[30].none.professional.departing[0] = 5;
+        wf[40].primary.novice.departing[0] = 20;
 
         const depNoneBefore = totalDepartingForEdu(wf, 'none');
         const depPrimBefore = totalDepartingForEdu(wf, 'primary');
@@ -149,46 +174,43 @@ describe('laborMarketYearTick — conservation', () => {
         expect(totalDepartingForEdu(wf, 'primary')).toBe(depPrimBefore);
     });
 
-    it("workers at MAX_TENURE_YEARS accumulate (don't overflow)", () => {
+    it('age-0 bucket is fully cleared after shift', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[MAX_TENURE_YEARS].active.none = ageMomentsForAge(60, 30);
-        wf[MAX_TENURE_YEARS - 1].active.none = ageMomentsForAge(58, 20);
+        wf[0].none.novice.active = 100;
+        wf[0].primary.professional.departing[1] = 10;
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
-        expect(wf[MAX_TENURE_YEARS].active.none.count).toBe(50);
-        expect(wf[MAX_TENURE_YEARS - 1].active.none.count).toBe(0);
+        expect(wf[0].none.novice.active).toBe(0);
+        expect(wf[0].primary.professional.departing[1]).toBe(0);
+        // Shifted to age 1
+        expect(wf[1].none.novice.active).toBe(100);
+        expect(wf[1].primary.professional.departing[1]).toBe(10);
     });
 
-    it('year-0 bucket is fully cleared after shift', () => {
-        const agent = makeAgent();
-        const wf = agent.assets.p.workforceDemography!;
-
-        wf[0].active.none = ageMomentsForAge(25, 100);
-        wf[0].departing.primary[5] = ageMomentsForAge(30, 10);
-
-        laborMarketYearTick(new Map([[agent.id, agent]]));
-
-        expect(wf[0].active.none.count).toBe(0);
-        expect(wf[0].departing.primary[5].count).toBe(0);
-    });
-
-    it('workforce at MAX_TENURE_YEARS survives year tick without data loss', () => {
+    it('workforce in the middle of the age range survives year tick without data loss', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
 
         for (const edu of educationLevelKeys) {
-            wf[MAX_TENURE_YEARS].active[edu] = ageMomentsForAge(60, 100);
-            wf[MAX_TENURE_YEARS].departing[edu][3] = ageMomentsForAge(60, 10);
+            wf[40][edu].novice.active = 100;
+            wf[40][edu].novice.departing[2] = 10;
         }
 
         laborMarketYearTick(new Map([[agent.id, agent]]));
 
         for (const edu of educationLevelKeys) {
-            expect(wf[MAX_TENURE_YEARS].active[edu].count).toBe(100);
-            expect(wf[MAX_TENURE_YEARS].departing[edu][3].count).toBe(10);
+            // Shifted from age 40 → age 41
+            expect(wf[41][edu].novice.active).toBe(100);
+            expect(wf[41][edu].novice.departing[2]).toBe(10);
         }
+    });
+
+    it('does nothing when workforceDemography is absent', () => {
+        const a = makeAgent();
+        a.assets.p.workforceDemography = undefined as never;
+        expect(() => laborMarketYearTick(new Map([[a.id, a]]))).not.toThrow();
     });
 });

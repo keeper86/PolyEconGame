@@ -16,7 +16,7 @@ export default function TickDisplay({ tick }: { tick: number }) {
         const startUnixTime = new Date(2200 + elapsedYears, monthsIntoYear, daysIntoMonth);
         return (
             startUnixTime.toLocaleString('en-US', { month: 'short', year: 'numeric' }) +
-            `: Week ${Math.floor((tick % TICKS_PER_YEAR) / 7) + 1}`
+            `: Week ${Math.floor((tick % TICKS_PER_YEAR) / 7) + 1}: Day ${daysIntoMonth + 1}`
         );
     };
 

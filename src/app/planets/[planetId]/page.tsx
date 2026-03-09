@@ -9,13 +9,17 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Globe, Landmark, Users, Wheat } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { Planet } from '@/simulation/planet';
+import type { Planet } from '@/simulation/planet/planet';
+import { educationLevelKeys } from '@/simulation/population/education';
+import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import type { Population } from '@/simulation/population/population';
 import PlanetDemography from '@/app/planets/PlanetDemography';
 import BankPanel from '@/app/planets/BankPanel';
 import WealthDistributionChart from '@/app/planets/WealthDistributionChart';
 import NutritionHeatmapChart from '@/app/planets/NutritionHeatmapChart';
 import FoodBufferChart from '@/app/planets/FoodBufferChart';
 import IntergenerationalTransferChart from '@/app/planets/IntergenerationalTransferChart';
+import FoodPriceHistoryChart from '@/app/planets/FoodPriceHistoryChart';
 import PlanetOverviewPanel from '../PlanetOverviewPanel';
 
 const REFETCH_INTERVAL_MS = 1000;
@@ -30,6 +34,29 @@ const fmtNumber = (n: number): string =>
         : n >= 1_000
           ? `${(n / 1_000).toFixed(1)}k`
           : String(Math.round(n));
+
+/** Compute a global average starvation level from per-category values. */
+function computeGlobalStarvation(pop: Population): number {
+    let totalStarvation = 0;
+    let totalPop = 0;
+    for (const cohort of pop.demography) {
+        if (!cohort) {
+            continue;
+        }
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    const cat = cohort[occ][edu][skill];
+                    if (cat.total > 0) {
+                        totalStarvation += cat.starvationLevel * cat.total;
+                        totalPop += cat.total;
+                    }
+                }
+            }
+        }
+    }
+    return totalPop > 0 ? totalStarvation / totalPop : 0;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
@@ -48,6 +75,7 @@ export default function PlanetDetailPage() {
     const tick = data?.tick ?? 0;
     const planet = data?.planet as Planet | null;
     const populationTotal = data?.populationTotal ?? 0;
+    const starvationLevel = planet ? computeGlobalStarvation(planet.population) : 0;
 
     return (
         <Page
@@ -95,14 +123,14 @@ export default function PlanetDetailPage() {
                             </div>
                             <div
                                 className={`text-lg font-semibold tabular-nums ${
-                                    planet.population.starvationLevel > 0.1
+                                    starvationLevel > 0.1
                                         ? 'text-red-500'
-                                        : planet.population.starvationLevel > 0
+                                        : starvationLevel > 0
                                           ? 'text-amber-500'
                                           : 'text-green-600'
                                 }`}
                             >
-                                {(planet.population.starvationLevel * 100).toFixed(2)}%
+                                {(starvationLevel * 100).toFixed(2)}%
                             </div>
                         </div>
                         <div className='space-y-1'>
@@ -143,46 +171,22 @@ export default function PlanetDetailPage() {
                                 priceLevel={planet.priceLevel}
                             />
                             <WealthDistributionChart population={planet.population} />
-                            <IntergenerationalTransferChart
-                                population={planet.population}
-                                foodMarket={planet.foodMarket}
-                            />
+                            <IntergenerationalTransferChart population={planet.population} />
                         </TabsContent>
 
                         {/* Food & Nutrition tab */}
                         <TabsContent value='food' className='space-y-4'>
-                            <NutritionHeatmapChart population={planet.population} foodMarket={planet.foodMarket} />
-                            <FoodBufferChart population={planet.population} foodMarket={planet.foodMarket} />
+                            <NutritionHeatmapChart population={planet.population} />
+                            <FoodBufferChart population={planet.population} />
 
-                            {/* Food market summary stats */}
-                            {planet.foodMarket && (
-                                <div className='border rounded-md p-3 space-y-2'>
-                                    <h4 className='text-sm font-semibold flex items-center gap-1.5'>
-                                        <Wheat className='h-4 w-4 text-muted-foreground' />
-                                        Food Market
-                                    </h4>
-                                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-xs'>
-                                        <div className='flex justify-between'>
-                                            <span className='text-muted-foreground'>Food price</span>
-                                            <span className='tabular-nums font-medium'>
-                                                {planet.foodMarket.foodPrice.toFixed(4)}
-                                            </span>
-                                        </div>
-                                        <div className='flex justify-between'>
-                                            <span className='text-muted-foreground'>Starvation level</span>
-                                            <span
-                                                className={`tabular-nums font-medium ${
-                                                    planet.population.starvationLevel > 0.1
-                                                        ? 'text-red-500'
-                                                        : 'text-green-600'
-                                                }`}
-                                            >
-                                                {(planet.population.starvationLevel * 100).toFixed(2)}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            {/* Price level history chart */}
+                            <div className='border rounded-md p-3 space-y-2'>
+                                <h4 className='text-sm font-semibold flex items-center gap-1.5'>
+                                    <Wheat className='h-4 w-4 text-muted-foreground' />
+                                    Price History
+                                </h4>
+                                <FoodPriceHistoryChart planetId={planetId} />
+                            </div>
                         </TabsContent>
                     </Tabs>
                 </div>

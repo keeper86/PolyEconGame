@@ -1,103 +1,146 @@
 import { describe, it, expect } from 'vitest';
 
-import type { AgeResolvedAccumulator, EducationLevelType, Occupation } from '../planet';
-import { educationLevelKeys } from '../planet';
+import { educationLevelKeys } from '../population/education';
+import { SKILL } from '../population/population';
 
 import { syncWorkforceWithPopulation } from './workforceSync';
 import { laborMarketTick } from './laborMarketTick';
-import { makeAgent, makePlanet } from './testHelpers';
-import { totalActiveForEdu, ageMomentsForAge, removeFromAgeMoments, ageMean } from './workforceHelpers';
+import { makeAgent, makePlanetWithPopulation, sumActiveForEdu, agentMap, planetMap } from '../utils/testHelper';
 
 // ---------------------------------------------------------------------------
-// Test helper: build an age-resolved accumulator for a single (age, edu, occ)
+// Helpers
 // ---------------------------------------------------------------------------
-function ageResolved(
-    entries: Array<{ age: number; edu: EducationLevelType; occ: Occupation; count: number }>,
-): AgeResolvedAccumulator {
-    const acc: AgeResolvedAccumulator = {};
-    for (const { age, edu, occ, count } of entries) {
-        if (!acc[age]) {
-            acc[age] = {} as Record<EducationLevelType, Record<Occupation, number>>;
+
+/**
+ * Set deaths.countThisTick on the employed population at a given (age, edu).
+ * The sync function reads from `demography[age].employed[edu][skill].deaths.countThisTick`.
+ * We place the count on novice skill since the exact distribution doesn't matter.
+ */
+function setDeathsAtAge(
+    planet: ReturnType<typeof makePlanetWithPopulation>['planet'],
+    age: number,
+    edu: string,
+    count: number,
+): void {
+    const cat = (
+        planet.population.demography[age] as Record<
+            string,
+            Record<string, Record<string, { deaths: { countThisTick: number }; total: number }>>
+        >
+    ).employed[edu].novice;
+    cat.deaths.countThisTick = count;
+}
+
+function setDisabilitiesAtAge(
+    planet: ReturnType<typeof makePlanetWithPopulation>['planet'],
+    age: number,
+    edu: string,
+    count: number,
+): void {
+    const cat = (
+        planet.population.demography[age] as Record<
+            string,
+            Record<string, Record<string, { disabilities: { countThisTick: number }; total: number }>>
+        >
+    ).employed[edu].novice;
+    cat.disabilities.countThisTick = count;
+}
+
+function setRetirementsAtAge(
+    planet: ReturnType<typeof makePlanetWithPopulation>['planet'],
+    age: number,
+    edu: string,
+    count: number,
+): void {
+    const cat = (
+        planet.population.demography[age] as Record<
+            string,
+            Record<string, Record<string, { retirements: { countThisTick: number }; total: number }>>
+        >
+    ).employed[edu].novice;
+    cat.retirements.countThisTick = count;
+}
+
+/** Sum active workers across all ages/skills for a given edu directly from workforce. */
+function totalActiveForEdu(
+    wf: NonNullable<ReturnType<typeof makeAgent>['assets']['p']['workforceDemography']>,
+    edu: string,
+): number {
+    let total = 0;
+    for (let age = 0; age < wf.length; age++) {
+        for (const skill of SKILL) {
+            total += (wf[age] as Record<string, Record<string, { active: number }>>)[edu][skill].active;
         }
-        if (!acc[age][edu]) {
-            acc[age][edu] = {} as Record<Occupation, number>;
-        }
-        acc[age][edu][occ] = (acc[age][edu][occ] ?? 0) + count;
     }
-    return acc;
+    return total;
 }
 
 // ---------------------------------------------------------------------------
-// syncWorkforceWithPopulation — conservation
+// syncWorkforceWithPopulation -- conservation
 // ---------------------------------------------------------------------------
 
-describe('syncWorkforceWithPopulation — conservation', () => {
+describe('syncWorkforceWithPopulation -- conservation', () => {
     it('removes exactly the right number of deaths from workforce', () => {
-        const { planet } = makePlanet({ none: 5000 });
+        const { planet } = makePlanetWithPopulation({ none: 5000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
-        const wfBefore = totalActiveForEdu(agent.assets.p.workforceDemography!, 'none');
+        const wfBefore = sumActiveForEdu(agent, 'p', 'none');
 
-        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 10 }]);
+        // Set deaths at age 30 for employed/none/novice
+        setDeathsAtAge(planet, 30, 'none', 10);
 
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
-        const wfAfter = totalActiveForEdu(agent.assets.p.workforceDemography!, 'none');
+        const wfAfter = sumActiveForEdu(agent, 'p', 'none');
         expect(wfAfter).toBe(wfBefore - 10);
     });
 
     it('removes exactly the right number of disabilities from workforce', () => {
-        const { planet } = makePlanet({ primary: 5000 });
+        const { planet } = makePlanetWithPopulation({ primary: 5000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.primary = 300;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
-        const wfBefore = totalActiveForEdu(agent.assets.p.workforceDemography!, 'primary');
+        const wfBefore = sumActiveForEdu(agent, 'p', 'primary');
 
-        planet.population.tickDisabilitiesByAge = ageResolved([{ age: 30, edu: 'primary', occ: 'company', count: 5 }]);
+        setDisabilitiesAtAge(planet, 30, 'primary', 5);
 
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
-        const wfAfter = totalActiveForEdu(agent.assets.p.workforceDemography!, 'primary');
+        const wfAfter = sumActiveForEdu(agent, 'p', 'primary');
         expect(wfAfter).toBe(wfBefore - 5);
     });
 
     it('distributes deaths across multiple agents proportionally', () => {
-        const { planet } = makePlanet({ none: 10000 });
+        const { planet } = makePlanetWithPopulation({ none: 10000 });
         const agent1 = makeAgent('agent-1');
         const agent2 = makeAgent('agent-2');
 
-        agent1.assets.p.allocatedWorkers.none = 300;
-        agent2.assets.p.allocatedWorkers.none = 700;
-        laborMarketTick(
-            new Map([
-                [agent1.id, agent1],
-                [agent2.id, agent2],
-            ]),
-            new Map([[planet.id, planet]]),
-        );
+        // Manually place workers at age 30 so deaths at age 30 can fully apply
+        const wf1 = agent1.assets.p.workforceDemography!;
+        const wf2 = agent2.assets.p.workforceDemography!;
+        wf1[30].none.novice.active = 300;
+        wf2[30].none.novice.active = 700;
+        planet.population.demography[30].employed.none.novice.total = 1000;
 
-        const wf1Before = totalActiveForEdu(agent1.assets.p.workforceDemography!, 'none');
-        const wf2Before = totalActiveForEdu(agent2.assets.p.workforceDemography!, 'none');
+        const wf1Before = totalActiveForEdu(wf1, 'none');
+        const wf2Before = totalActiveForEdu(wf2, 'none');
 
-        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 100 }]);
+        setDeathsAtAge(planet, 30, 'none', 100);
 
-        syncWorkforceWithPopulation(
-            new Map([
-                [agent1.id, agent1],
-                [agent2.id, agent2],
-            ]),
-            planet.id,
-            planet.population,
-            planet.environment,
-        );
+        const agents = new Map([
+            [agent1.id, agent1],
+            [agent2.id, agent2],
+        ]);
 
-        const wf1After = totalActiveForEdu(agent1.assets.p.workforceDemography!, 'none');
-        const wf2After = totalActiveForEdu(agent2.assets.p.workforceDemography!, 'none');
+        syncWorkforceWithPopulation(agents, planet.id, planet.population, planet.environment);
+
+        const wf1After = totalActiveForEdu(wf1, 'none');
+        const wf2After = totalActiveForEdu(wf2, 'none');
 
         expect(wf1Before - wf1After + (wf2Before - wf2After)).toBe(100);
 
@@ -107,150 +150,185 @@ describe('syncWorkforceWithPopulation — conservation', () => {
     });
 
     it('never makes workforce counts negative during sync', () => {
-        const { planet } = makePlanet({ none: 5000 });
+        const { planet } = makePlanetWithPopulation({ none: 5000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 10;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
-        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 100 }]);
+        // Set more deaths than workers exist at age 30
+        setDeathsAtAge(planet, 30, 'none', 100);
 
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
         const wf = agent.assets.p.workforceDemography!;
-        for (const cohort of wf) {
+        for (let age = 0; age < wf.length; age++) {
             for (const edu of educationLevelKeys) {
-                expect(cohort.active[edu].count).toBeGreaterThanOrEqual(0);
+                for (const skill of SKILL) {
+                    expect(wf[age][edu][skill].active).toBeGreaterThanOrEqual(0);
+                }
             }
         }
     });
 
     it('redistributes overflow when a cohort cannot absorb all assigned deaths', () => {
-        // Set up two agents: one with very few workers, one with many.
-        // If age-weighted distribution assigns more deaths to the small
-        // agent's cohort than it has, overflow must be redistributed.
-        const { planet } = makePlanet({ none: 10000 });
+        const { planet } = makePlanetWithPopulation({ none: 10000 });
         const agent1 = makeAgent('agent-1');
         const agent2 = makeAgent('agent-2');
 
-        agent1.assets.p.allocatedWorkers.none = 5;
-        agent2.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(
-            new Map([
-                [agent1.id, agent1],
-                [agent2.id, agent2],
-            ]),
-            new Map([[planet.id, planet]]),
-        );
+        // Manually place workers at age 30
+        const wf1 = agent1.assets.p.workforceDemography!;
+        const wf2 = agent2.assets.p.workforceDemography!;
+        wf1[30].none.novice.active = 5;
+        wf2[30].none.novice.active = 500;
+        planet.population.demography[30].employed.none.novice.total = 505;
 
-        const wf1Before = totalActiveForEdu(agent1.assets.p.workforceDemography!, 'none');
-        const wf2Before = totalActiveForEdu(agent2.assets.p.workforceDemography!, 'none');
+        const wf1Before = totalActiveForEdu(wf1, 'none');
+        const wf2Before = totalActiveForEdu(wf2, 'none');
 
         // Report deaths much larger than agent1's workforce
-        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 100 }]);
+        setDeathsAtAge(planet, 30, 'none', 100);
 
-        syncWorkforceWithPopulation(
-            new Map([
-                [agent1.id, agent1],
-                [agent2.id, agent2],
-            ]),
-            planet.id,
-            planet.population,
-            planet.environment,
-        );
+        const agents = new Map([
+            [agent1.id, agent1],
+            [agent2.id, agent2],
+        ]);
 
-        const wf1After = totalActiveForEdu(agent1.assets.p.workforceDemography!, 'none');
-        const wf2After = totalActiveForEdu(agent2.assets.p.workforceDemography!, 'none');
+        syncWorkforceWithPopulation(agents, planet.id, planet.population, planet.environment);
+
+        const wf1After = totalActiveForEdu(wf1, 'none');
+        const wf2After = totalActiveForEdu(wf2, 'none');
 
         // Total removed must equal 100 (all deaths accounted for)
         expect(wf1Before - wf1After + (wf2Before - wf2After)).toBe(100);
     });
 
-    it('removes all deaths even when concentrated in a single tenure cohort', () => {
-        const { planet } = makePlanet({ none: 5000 });
+    it('removes all deaths even when concentrated in a single age cohort', () => {
+        const { planet } = makePlanetWithPopulation({ none: 5000 });
         const agent = makeAgent();
 
-        // Hire into tenure 0, then manually split: 3 workers at tenure 5 (old), rest at tenure 0 (young)
-        agent.assets.p.allocatedWorkers.none = 200;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
-
+        // Manually place workers: 197 at age 30, 3 at age 50
         const wf = agent.assets.p.workforceDemography!;
-        // Move 3 workers to a high-tenure cohort with high mean age
-        wf[5].active.none = ageMomentsForAge(80, 3);
-        wf[0].active.none = removeFromAgeMoments(wf[0].active.none, ageMean(wf[0].active.none), 3);
+        wf[30].none.novice.active = 197;
+        wf[50].none.novice.active = 3;
+        planet.population.demography[30].employed.none.novice.total = 197;
+        planet.population.demography[50].employed.none.novice.total = 3;
 
         const totalBefore = totalActiveForEdu(wf, 'none');
 
-        // Report 10 deaths at age 30 — distributed across cohorts
-        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 10 }]);
+        // Report 10 deaths at age 30
+        setDeathsAtAge(planet, 30, 'none', 10);
 
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
         const totalAfter = totalActiveForEdu(wf, 'none');
-        // Exactly 10 deaths should be removed, even though old cohort only had 3
+        // Exactly 10 deaths should be removed
         expect(totalBefore - totalAfter).toBe(10);
+    });
+
+    it('distributes deaths correctly when agents have workers in different edu levels', () => {
+        // Regression: totalWorkersAtAge used all-edu headcounts to distribute
+        // per-edu deaths, causing misallocation to agents without workers in
+        // that edu level and silent removal shortfalls.
+        const { planet } = makePlanetWithPopulation({ none: 10000, secondary: 10000 });
+        const agent1 = makeAgent('agent-1');
+        const agent2 = makeAgent('agent-2');
+
+        const wf1 = agent1.assets.p.workforceDemography!;
+        const wf2 = agent2.assets.p.workforceDemography!;
+
+        // Agent 1 has 100 "none" workers at age 30, 0 "secondary"
+        wf1[30].none.novice.active = 100;
+        // Agent 2 has 0 "none" workers at age 30, 100 "secondary"
+        wf2[30].secondary.novice.active = 100;
+
+        planet.population.demography[30].employed.none.novice.total = 100;
+        planet.population.demography[30].employed.secondary.novice.total = 100;
+
+        // 10 deaths in edu=none at age 30 — should all come from agent1
+        setDeathsAtAge(planet, 30, 'none', 10);
+
+        const agents = new Map([
+            [agent1.id, agent1],
+            [agent2.id, agent2],
+        ]);
+
+        syncWorkforceWithPopulation(agents, planet.id, planet.population, planet.environment);
+
+        const wf1NoneAfter = totalActiveForEdu(wf1, 'none');
+        const wf2NoneAfter = totalActiveForEdu(wf2, 'none');
+
+        // All 10 deaths should be removed from agent1 (the only one with none workers)
+        expect(100 - wf1NoneAfter).toBe(10);
+        // Agent2 should be untouched (has no none workers)
+        expect(wf2NoneAfter).toBe(0);
+        // Total none workers removed must equal 10
+        expect(100 - wf1NoneAfter + 0 - wf2NoneAfter).toBe(10);
     });
 });
 
 // ---------------------------------------------------------------------------
-// syncWorkforceWithPopulation — demographic event tracking
+// syncWorkforceWithPopulation -- demographic event tracking
 // ---------------------------------------------------------------------------
 
-describe('syncWorkforceWithPopulation — event tracking', () => {
+describe('syncWorkforceWithPopulation -- event tracking', () => {
     it('tracks deathsThisMonth on agent assets', () => {
-        const { planet } = makePlanet({ none: 5000 });
+        const { planet } = makePlanetWithPopulation({ none: 5000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
-        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 7 }]);
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        setDeathsAtAge(planet, 30, 'none', 7);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
-        expect(agent.assets.p.deathsThisMonth?.none).toBe(7);
+        expect(agent.assets.p.deaths?.thisMonth.none).toBe(7);
     });
 
     it('tracks disabilitiesThisMonth on agent assets', () => {
-        const { planet } = makePlanet({ primary: 5000 });
+        const { planet } = makePlanetWithPopulation({ primary: 5000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.primary = 300;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
-        planet.population.tickDisabilitiesByAge = ageResolved([{ age: 45, edu: 'primary', occ: 'company', count: 3 }]);
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        setDisabilitiesAtAge(planet, 30, 'primary', 3);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
-        expect(agent.assets.p.disabilitiesThisMonth?.primary).toBe(3);
+        expect(agent.assets.p.disabilities?.thisMonth.primary).toBe(3);
     });
 
     it('tracks retirementsThisMonth on agent assets', () => {
-        const { planet } = makePlanet({ none: 5000 });
+        const { planet } = makePlanetWithPopulation({ none: 5000 });
         const agent = makeAgent();
 
-        agent.assets.p.allocatedWorkers.none = 400;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        // Manually place workers at age 67 where retirement happens
+        const wf = agent.assets.p.workforceDemography!;
+        wf[67].none.novice.active = 400;
+        planet.population.demography[67].employed.none.novice.total = 400;
 
-        planet.population.tickRetirementsByAge = ageResolved([{ age: 67, edu: 'none', occ: 'company', count: 12 }]);
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        setRetirementsAtAge(planet, 67, 'none', 12);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
-        expect(agent.assets.p.retirementsThisMonth?.none).toBe(12);
+        expect(agent.assets.p.retirements?.thisMonth.none).toBe(12);
     });
 
     it('accumulates across multiple calls within same month', () => {
-        const { planet } = makePlanet({ none: 5000 });
+        const { planet } = makePlanetWithPopulation({ none: 5000 });
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 500;
-        laborMarketTick(new Map([[agent.id, agent]]), new Map([[planet.id, planet]]));
+        laborMarketTick(agentMap(agent), planetMap(planet));
 
-        // First tick: 5 deaths
-        planet.population.tickDeathsByAge = ageResolved([{ age: 30, edu: 'none', occ: 'company', count: 5 }]);
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        // First tick: 5 deaths at age 30
+        setDeathsAtAge(planet, 30, 'none', 5);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
-        // Second tick: 3 more deaths
-        planet.population.tickDeathsByAge = ageResolved([{ age: 40, edu: 'none', occ: 'company', count: 3 }]);
-        syncWorkforceWithPopulation(new Map([[agent.id, agent]]), planet.id, planet.population, planet.environment);
+        // Reset countThisTick for second call, set at different age
+        planet.population.demography[30].employed.none.novice.deaths.countThisTick = 0;
+        setDeathsAtAge(planet, 40, 'none', 3);
+        syncWorkforceWithPopulation(agentMap(agent), planet.id, planet.population, planet.environment);
 
-        expect(agent.assets.p.deathsThisMonth?.none).toBe(8);
+        expect(agent.assets.p.deaths?.thisMonth.none).toBe(8);
     });
 });

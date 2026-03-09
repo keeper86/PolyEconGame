@@ -3,10 +3,11 @@
 import React from 'react';
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Page } from '../../components/client/Page';
-import type { LastTickResults, ProductionFacility } from '../../simulation/facilities';
-import type { Agent, EducationLevelType } from '../../simulation/planet';
-import { educationLevels } from '../../simulation/planet';
+import type { LastTickResults, ProductionFacility } from '../../simulation/planet/facilities';
 import WorkforceDemographyPanel from './WorkforceDemographyPanel';
+import type { Agent } from '../../simulation/planet/planet';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevels } from '@/simulation/population/education';
 
 /** One snapshot per tick, keyed by resource name → quantity. */
 export type AgentResourceSnapshot = {
@@ -214,8 +215,6 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
         const allocatedWorkers: Record<string, number> = {} as Record<string, number>;
         const rawRequirement: Record<string, number> = {} as Record<string, number>;
         const unusedWorkers: Record<string, number> = {} as Record<string, number>;
-        const hiredThisTick: Record<string, number> = {} as Record<string, number>;
-        const firedThisTick: Record<string, number> = {} as Record<string, number>;
         let unusedWorkerFraction = 0;
         type OQMatrix = { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
         const overqualifiedMatrix: OQMatrix = {};
@@ -225,8 +224,7 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
         const disabilitiesPrevMonth: Record<string, number> = {} as Record<string, number>;
         const retirementsThisMonth: Record<string, number> = {} as Record<string, number>;
         const retirementsPrevMonth: Record<string, number> = {} as Record<string, number>;
-        const availableOnMarket: Record<string, number> = {} as Record<string, number>;
-        let mergedWorkforceDemography = undefined as Agent['assets'][string]['workforceDemography'];
+        let mergedWorkforceDemography: Agent['assets'][string]['workforceDemography'] | undefined = undefined;
 
         for (const assetsEntry of Object.values(agent.assets)) {
             totalProductionFacilities += assetsEntry.productionFacilities?.length ?? 0;
@@ -254,35 +252,27 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                     }
                 }
             }
-            if (assetsEntry.unusedWorkers) {
-                for (const [k, v] of Object.entries(assetsEntry.unusedWorkers)) {
+            // Worker feedback data
+            const wf = assetsEntry.workerFeedback;
+            if (wf) {
+                for (const [k, v] of Object.entries(wf.unusedWorkers)) {
                     unusedWorkers[k] = (unusedWorkers[k] || 0) + (v || 0);
                 }
-            }
-            if (assetsEntry.hiredThisTick) {
-                for (const [k, v] of Object.entries(assetsEntry.hiredThisTick)) {
-                    hiredThisTick[k] = (hiredThisTick[k] || 0) + (v || 0);
-                }
-            }
-            if (assetsEntry.firedThisTick) {
-                for (const [k, v] of Object.entries(assetsEntry.firedThisTick)) {
-                    firedThisTick[k] = (firedThisTick[k] || 0) + (v || 0);
-                }
-            }
-            unusedWorkerFraction = Math.max(unusedWorkerFraction, assetsEntry.unusedWorkerFraction ?? 0);
-            // Merge overqualified matrix
-            if (assetsEntry.overqualifiedMatrix) {
-                for (const [jobEdu, breakdown] of Object.entries(assetsEntry.overqualifiedMatrix)) {
-                    const je = jobEdu as EducationLevelType;
-                    if (!breakdown) {
-                        continue;
-                    }
-                    if (!overqualifiedMatrix[je]) {
-                        overqualifiedMatrix[je] = {};
-                    }
-                    for (const [workerEdu, count] of Object.entries(breakdown)) {
-                        const we = workerEdu as EducationLevelType;
-                        overqualifiedMatrix[je]![we] = (overqualifiedMatrix[je]![we] ?? 0) + (count ?? 0);
+                unusedWorkerFraction = Math.max(unusedWorkerFraction, wf.unusedWorkerFraction);
+                // Merge overqualified matrix
+                if (wf.overqualifiedMatrix) {
+                    for (const [jobEdu, breakdown] of Object.entries(wf.overqualifiedMatrix)) {
+                        const je = jobEdu as EducationLevelType;
+                        if (!breakdown) {
+                            continue;
+                        }
+                        if (!overqualifiedMatrix[je]) {
+                            overqualifiedMatrix[je] = {};
+                        }
+                        for (const [workerEdu, count] of Object.entries(breakdown)) {
+                            const we = workerEdu as EducationLevelType;
+                            overqualifiedMatrix[je]![we] = (overqualifiedMatrix[je]![we] ?? 0) + (count ?? 0);
+                        }
                     }
                 }
             }
@@ -290,43 +280,29 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
             if (!mergedWorkforceDemography && assetsEntry.workforceDemography) {
                 mergedWorkforceDemography = assetsEntry.workforceDemography;
             }
-            // Accumulate death counters
-            if (assetsEntry.deathsThisMonth) {
-                for (const [k, v] of Object.entries(assetsEntry.deathsThisMonth)) {
+            // Accumulate demographic event counters
+            if (assetsEntry.deaths) {
+                for (const [k, v] of Object.entries(assetsEntry.deaths.thisMonth)) {
                     deathsThisMonth[k] = (deathsThisMonth[k] || 0) + (v || 0);
                 }
-            }
-            if (assetsEntry.deathsPrevMonth) {
-                for (const [k, v] of Object.entries(assetsEntry.deathsPrevMonth)) {
+                for (const [k, v] of Object.entries(assetsEntry.deaths.prevMonth)) {
                     deathsPrevMonth[k] = (deathsPrevMonth[k] || 0) + (v || 0);
                 }
             }
-            // Accumulate disability counters
-            if (assetsEntry.disabilitiesThisMonth) {
-                for (const [k, v] of Object.entries(assetsEntry.disabilitiesThisMonth)) {
+            if (assetsEntry.disabilities) {
+                for (const [k, v] of Object.entries(assetsEntry.disabilities.thisMonth)) {
                     disabilitiesThisMonth[k] = (disabilitiesThisMonth[k] || 0) + (v || 0);
                 }
-            }
-            if (assetsEntry.disabilitiesPrevMonth) {
-                for (const [k, v] of Object.entries(assetsEntry.disabilitiesPrevMonth)) {
+                for (const [k, v] of Object.entries(assetsEntry.disabilities.prevMonth)) {
                     disabilitiesPrevMonth[k] = (disabilitiesPrevMonth[k] || 0) + (v || 0);
                 }
             }
-            // Accumulate retirement counters
-            if (assetsEntry.retirementsThisMonth) {
-                for (const [k, v] of Object.entries(assetsEntry.retirementsThisMonth)) {
+            if (assetsEntry.retirements) {
+                for (const [k, v] of Object.entries(assetsEntry.retirements.thisMonth)) {
                     retirementsThisMonth[k] = (retirementsThisMonth[k] || 0) + (v || 0);
                 }
-            }
-            if (assetsEntry.retirementsPrevMonth) {
-                for (const [k, v] of Object.entries(assetsEntry.retirementsPrevMonth)) {
+                for (const [k, v] of Object.entries(assetsEntry.retirements.prevMonth)) {
                     retirementsPrevMonth[k] = (retirementsPrevMonth[k] || 0) + (v || 0);
-                }
-            }
-            // Accumulate available (unoccupied) workers on the labor market
-            if (assetsEntry.availableOnMarket) {
-                for (const [k, v] of Object.entries(assetsEntry.availableOnMarket)) {
-                    availableOnMarket[k] = (availableOnMarket[k] || 0) + (v || 0);
                 }
             }
         }
@@ -338,8 +314,6 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
             rawRequirement,
             unusedWorkers,
             unusedWorkerFraction,
-            hiredThisTick,
-            firedThisTick,
             overqualifiedMatrix,
             facilities,
             mergedWorkforceDemography,
@@ -349,7 +323,6 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
             disabilitiesPrevMonth,
             retirementsThisMonth,
             retirementsPrevMonth,
-            availableOnMarket,
         };
     };
 
@@ -426,9 +399,7 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                                                     >
                                                         {f.lastTickResults
                                                             ? pctStr(f.lastTickResults.overallEfficiency)
-                                                            : typeof f.lastTickEfficiencyInPercent === 'number'
-                                                              ? `${f.lastTickEfficiencyInPercent}%`
-                                                              : '—'}
+                                                            : '—'}
                                                     </span>
                                                 </div>
                                                 {f.lastTickResults && (
@@ -448,63 +419,17 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
 
                             {/* Workforce demography panel */}
                             <WorkforceDemographyPanel
-                                allocatedWorkers={
-                                    s.allocatedWorkers as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
+                                allocatedWorkers={s.allocatedWorkers as Record<EducationLevelType, number>}
                                 workforceDemography={s.mergedWorkforceDemography}
-                                unusedWorkers={
-                                    s.unusedWorkers as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
+                                unusedWorkers={s.unusedWorkers as Record<EducationLevelType, number>}
                                 unusedWorkerFraction={s.unusedWorkerFraction}
                                 overqualifiedMatrix={s.overqualifiedMatrix}
-                                deathsThisMonth={
-                                    s.deathsThisMonth as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
-                                deathsPrevMonth={
-                                    s.deathsPrevMonth as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
-                                disabilitiesThisMonth={
-                                    s.disabilitiesThisMonth as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
-                                disabilitiesPrevMonth={
-                                    s.disabilitiesPrevMonth as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
-                                retirementsThisMonth={
-                                    s.retirementsThisMonth as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
-                                retirementsPrevMonth={
-                                    s.retirementsPrevMonth as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
-                                availableOnMarket={
-                                    s.availableOnMarket as Record<
-                                        import('../../simulation/planet').EducationLevelType,
-                                        number
-                                    >
-                                }
+                                deathsThisMonth={s.deathsThisMonth as Record<EducationLevelType, number>}
+                                deathsPrevMonth={s.deathsPrevMonth as Record<EducationLevelType, number>}
+                                disabilitiesThisMonth={s.disabilitiesThisMonth as Record<EducationLevelType, number>}
+                                disabilitiesPrevMonth={s.disabilitiesPrevMonth as Record<EducationLevelType, number>}
+                                retirementsThisMonth={s.retirementsThisMonth as Record<EducationLevelType, number>}
+                                retirementsPrevMonth={s.retirementsPrevMonth as Record<EducationLevelType, number>}
                             />
 
                             {/* Time-series charts */}

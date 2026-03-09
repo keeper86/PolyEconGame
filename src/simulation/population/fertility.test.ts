@@ -6,10 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emptyCohort } from './populationHelpers';
-import type { Population } from '../planet';
-import { maxAge } from '../planet';
 import { fertReductionFromPollution, computeBirthsThisTick, applyBirths } from './fertility';
+import { makePopulation } from '../utils/testHelper';
 
 describe('fertReductionFromPollution', () => {
     it('returns 0 for zero pollution', () => {
@@ -75,29 +73,22 @@ describe('computeBirthsThisTick', () => {
 });
 
 describe('applyBirths', () => {
-    function makeEmptyPopulation(): Population {
-        return {
-            demography: Array.from({ length: maxAge + 1 }, () => emptyCohort()),
-            starvationLevel: 0,
-        };
-    }
-
-    it('adds newborns to cohort 0 education slot', () => {
-        const pop = makeEmptyPopulation();
+    it('adds newborns to cohort 0 education/none/novice slot', () => {
+        const pop = makePopulation();
         applyBirths(pop, 10);
-        expect(pop.demography[0].none.education).toBe(10);
+        expect(pop.demography[0].education.none.novice.total).toBe(10);
     });
 
     it('accumulates births over multiple calls', () => {
-        const pop = makeEmptyPopulation();
+        const pop = makePopulation();
         applyBirths(pop, 5);
         applyBirths(pop, 3);
-        expect(pop.demography[0].none.education).toBe(8);
+        expect(pop.demography[0].education.none.novice.total).toBe(8);
     });
 
     it('does nothing when births = 0', () => {
-        const pop = makeEmptyPopulation();
+        const pop = makePopulation();
         applyBirths(pop, 0);
-        expect(pop.demography[0].none.education).toBe(0);
+        expect(pop.demography[0].education.none.novice.total).toBe(0);
     });
 });

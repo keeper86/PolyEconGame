@@ -2,8 +2,8 @@
  * Shared constants, helpers, and types for the Workforce Demography panel family.
  */
 
-import type { EducationLevelType } from '../../simulation/planet';
-import { educationLevelKeys, educationLevels } from '../../simulation/planet';
+import type { EducationLevelType } from '@/simulation/population/education';
+import { educationLevelKeys, educationLevels } from '@/simulation/population/education';
 
 // ---------------------------------------------------------------------------
 // Education-level colour palette
@@ -23,7 +23,6 @@ export const EDU_COLORS: Record<EducationLevelType, { badge: string; text: strin
         chart: '#34d399',
     },
     tertiary: { badge: 'border-amber-300 bg-amber-50 text-amber-700', text: 'text-amber-600', chart: '#f59e0b' },
-    quaternary: { badge: 'border-violet-300 bg-violet-50 text-violet-700', text: 'text-violet-600', chart: '#8b5cf6' },
 };
 
 /** Ordered chart fill colours matching the education level order. */

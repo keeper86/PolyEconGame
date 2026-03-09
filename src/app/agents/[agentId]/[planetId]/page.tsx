@@ -4,12 +4,12 @@ import type { AgentResourceSnapshot } from '@/app/agents/AgentOverview';
 import AgentFinancialPanel from '@/app/agents/AgentFinancialPanel';
 import ProductionFacilitiesPanel from '@/app/agents/ProductionFacilitiesPanel';
 import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
+import type { WorkforceDemography } from '@/app/agents/workforce-summary';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
 import { useAgentHistory } from '@/hooks/useAgentData';
 import { useTRPC } from '@/lib/trpc';
-import type { ProductionFacility, StorageFacility } from '@/simulation/facilities';
-import type { EducationLevelType } from '@/simulation/planet';
+import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facilities';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -17,6 +17,7 @@ import { useParams } from 'next/navigation';
 import { route } from 'nextjs-routes';
 import React from 'react';
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { EducationLevelType } from '@/simulation/population/education';
 
 const REFETCH_INTERVAL_MS = 1000;
 
@@ -166,19 +167,15 @@ type PlanetAssets = {
     productionFacilities: ProductionFacility[];
     storageFacility: StorageFacility;
     allocatedWorkers: Record<EducationLevelType, number>;
-    unusedWorkers?: Record<EducationLevelType, number>;
-    unusedWorkerFraction?: number;
-    overqualifiedMatrix?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
-    hiredThisTick?: Record<EducationLevelType, number>;
-    firedThisTick?: Record<EducationLevelType, number>;
-    deathsThisMonth?: Record<EducationLevelType, number>;
-    deathsPrevMonth?: Record<EducationLevelType, number>;
-    disabilitiesThisMonth?: Record<EducationLevelType, number>;
-    disabilitiesPrevMonth?: Record<EducationLevelType, number>;
-    retirementsThisMonth?: Record<EducationLevelType, number>;
-    retirementsPrevMonth?: Record<EducationLevelType, number>;
-    availableOnMarket?: Record<EducationLevelType, number>;
-    workforceDemography?: import('@/simulation/planet').WorkforceDemography;
+    workerFeedback?: {
+        unusedWorkers: Record<EducationLevelType, number>;
+        unusedWorkerFraction: number;
+        overqualifiedMatrix?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
+    };
+    deaths?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
+    disabilities?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
+    retirements?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
+    workforceDemography?: WorkforceDemography;
 };
 
 export default function AgentPlanetDetailPage() {
@@ -228,16 +225,15 @@ export default function AgentPlanetDetailPage() {
                     <WorkforceDemographyPanel
                         allocatedWorkers={assets.allocatedWorkers}
                         workforceDemography={assets.workforceDemography}
-                        unusedWorkers={assets.unusedWorkers}
-                        unusedWorkerFraction={assets.unusedWorkerFraction}
-                        overqualifiedMatrix={assets.overqualifiedMatrix}
-                        deathsThisMonth={assets.deathsThisMonth}
-                        deathsPrevMonth={assets.deathsPrevMonth}
-                        disabilitiesThisMonth={assets.disabilitiesThisMonth}
-                        disabilitiesPrevMonth={assets.disabilitiesPrevMonth}
-                        retirementsThisMonth={assets.retirementsThisMonth}
-                        retirementsPrevMonth={assets.retirementsPrevMonth}
-                        availableOnMarket={assets.availableOnMarket}
+                        unusedWorkers={assets.workerFeedback?.unusedWorkers}
+                        unusedWorkerFraction={assets.workerFeedback?.unusedWorkerFraction}
+                        overqualifiedMatrix={assets.workerFeedback?.overqualifiedMatrix}
+                        deathsThisMonth={assets.deaths?.thisMonth}
+                        deathsPrevMonth={assets.deaths?.prevMonth}
+                        disabilitiesThisMonth={assets.disabilities?.thisMonth}
+                        disabilitiesPrevMonth={assets.disabilities?.prevMonth}
+                        retirementsThisMonth={assets.retirements?.thisMonth}
+                        retirementsPrevMonth={assets.retirements?.prevMonth}
                     />
 
                     {/* Storage */}

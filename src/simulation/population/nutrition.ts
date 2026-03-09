@@ -30,8 +30,7 @@
  */
 
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
-import { agriculturalProductResourceType, removeFromStorageFacility } from '../facilities';
-import type { Agent, Planet, Population } from '../planet';
+import { forEachPopulationCohort, type Population } from './population';
 
 // ---------------------------------------------------------------------------
 // Starvation constants
@@ -67,31 +66,19 @@ export interface NutritionResult {
  * The function *mutates* the planet's storage facility (removes consumed
  * food) and the population's `starvationLevel`.
  */
-export function consumeFood(
-    planet: Planet,
-    population: Population,
-    populationTotal: number,
-    agents: Map<string, Agent>,
-): NutritionResult {
-    // FOOD_PER_PERSON_PER_TICK is already per-tick; compute per-tick demand
-    const perTickFoodDemand = populationTotal * FOOD_PER_PERSON_PER_TICK;
-
-    // Look up the government agent by ID for canonical storage access
-    const gov = agents.get(planet.governmentId);
-
-    // Food intake equals available supply — no guaranteed over-consumption.
-    const foodConsumed = removeFromStorageFacility(
-        gov?.assets[planet.id]?.storageFacility,
-        agriculturalProductResourceType.name,
-        perTickFoodDemand,
-    );
-
-    const nutritionalFactor = foodConsumed / perTickFoodDemand;
-
-    const starvationLevel = updateStarvationLevel(population.starvationLevel, nutritionalFactor);
-    population.starvationLevel = starvationLevel;
-
-    return { foodConsumed, nutritionalFactor, starvationLevel };
+export function consumeFood(population: Population) {
+    population.demography.forEach((cohort) => {
+        return forEachPopulationCohort(cohort, (category) => {
+            if (category.total === 0) {
+                return; // skip empty cells
+            }
+            const foodDemand = category.total * FOOD_PER_PERSON_PER_TICK;
+            const foodConsumed = Math.min(category.foodStock, foodDemand);
+            const nutritionalFactor = foodConsumed / foodDemand;
+            category.foodStock -= foodConsumed;
+            category.starvationLevel = updateStarvationLevel(category.starvationLevel, nutritionalFactor);
+        });
+    });
 }
 
 /**

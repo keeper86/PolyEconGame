@@ -22,13 +22,12 @@
  */
 
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
-import { agriculturalProductResourceType, removeFromStorageFacility } from '../facilities';
+import { agriculturalProductResourceType, removeFromStorageFacility } from '../planet/facilities';
 import { addAgentDepositsForPlanet } from '../financial/depositHelpers';
-import type { Agent, EducationLevelType, GameState, Occupation, Planet, WealthMoments } from '../planet';
-import { educationLevelKeys, OCCUPATIONS } from '../planet';
-import { updateStarvationLevel } from '../population/nutrition';
-import { getWealthDemography } from '../population/populationHelpers';
-import { ensureFoodMarket, expectedPurchaseQuantity, getFoodBufferDemography } from './foodMarketHelpers';
+import type { Agent, GameState, Planet } from '../planet/planet';
+import type { GaussianMoments, Occupation, Skill } from '../population/population';
+import { forEachPopulationCohort } from '../population/population';
+import type { EducationLevelType } from '../population/education';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,9 +38,10 @@ interface DemandRecord {
     age: number;
     edu: EducationLevelType;
     occ: Occupation;
+    skill: Skill;
     population: number;
     effectiveDemand: number; // total tons demanded by this cell
-    wealthMoments: WealthMoments;
+    wealthMoments: GaussianMoments;
 }
 
 /** A single agent's offer on the market. */
@@ -54,6 +54,37 @@ interface MarketOffer {
 }
 
 // ---------------------------------------------------------------------------
+// Truncated expectation under lognormal wealth distribution
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the expected purchase quantity for a cohort-class under the
+ * assumption that wealth is lognormally distributed.
+ *
+ * E[min(w / price, desiredPurchase)] where w ~ LogNormal(μ_ln, σ_ln²)
+ *
+ * For the initial implementation we use a simpler mean-field approximation:
+ * all members of the cohort-class have exactly meanWealth.  This is exact
+ * when wealthVariance = 0 and a reasonable first-order approximation
+ * otherwise.
+ *
+ * TODO: Replace with closed-form truncated lognormal expectation when
+ *       variance tracking is well-calibrated.
+ */
+export function expectedPurchaseQuantity(
+    meanWealth: number,
+    _wealthVariance: number,
+    foodPrice: number,
+    desiredPurchase: number,
+): number {
+    if (foodPrice <= 0 || desiredPurchase <= 0) {
+        return 0;
+    }
+    const affordableQuantity = meanWealth / foodPrice;
+    return Math.min(desiredPurchase, Math.max(0, affordableQuantity));
+}
+
+// ---------------------------------------------------------------------------
 // Main food market tick
 // ---------------------------------------------------------------------------
 
@@ -61,84 +92,63 @@ interface MarketOffer {
  * Execute the food market clearing for all planets.
  *
  * Must be called AFTER `updateAgentPricing` (so offers are set) and
- * BEFORE intergenerational transfers.
+ * AFTER intergenerational transfers (so dependents have wealth to spend).
  */
 export function foodMarketTick(gameState: GameState): void {
     gameState.planets.forEach((planet) => {
-        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
-        planet.foodMarket = foodMarket;
-
         // --- Step 0: Collect per-agent offers ---
         const offers = collectOffers(gameState, planet);
 
         const demography = planet.population.demography;
-        const wealthDemography = getWealthDemography(planet.population);
-        const foodBuffers = getFoodBufferDemography(foodMarket, planet.population);
-
-        // --- Step 1: Household consumption (deplete food stock) ---
-        let totalConsumptionRequirement = 0;
-        let totalActualConsumption = 0;
-
-        for (let age = 0; age < demography.length; age++) {
-            for (const edu of educationLevelKeys) {
-                for (const occ of OCCUPATIONS) {
-                    const pop = demography[age][edu][occ];
-                    if (pop <= 0) {
-                        continue;
-                    }
-                    const fb = foodBuffers[age][edu][occ];
-                    const consumptionReq = pop * FOOD_PER_PERSON_PER_TICK;
-                    totalConsumptionRequirement += consumptionReq;
-
-                    const totalStock = fb.foodStock * pop;
-                    const actualConsumption = Math.min(totalStock, consumptionReq);
-                    fb.foodStock = pop > 0 ? Math.max(0, (totalStock - actualConsumption) / pop) : 0;
-                    totalActualConsumption += actualConsumption;
-                }
-            }
-        }
 
         // --- Step 2/3/4: Demand formation with liquidity constraint ---
         const demandRecords: DemandRecord[] = [];
         let aggregateDemand = 0;
+        // Each household aims to hold `FOOD_BUFFER_TARGET_TICKS` worth of
+        // consumption. The previous implementation multiplied this by 2,
+        // effectively causing agents to target a 60‑day buffer even though
+        // the constant is documented and used elsewhere as a 30‑day target.
+        // That led to persistent hoarding and very large apparent buffer
+        // percentages (e.g. 400%+) in the UI.  Use the single-target value
+        // here so demand formation aligns with the rest of the model.
         const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
         // Use the volume-weighted average price from offers for demand formation
-        const referencePrice = computeReferencePrice(offers, foodMarket.foodPrice);
+        const referencePrice = computeReferencePrice(offers, planet.priceLevel ?? 0.01);
 
-        for (let age = 0; age < demography.length; age++) {
-            for (const edu of educationLevelKeys) {
-                for (const occ of OCCUPATIONS) {
-                    const pop = demography[age][edu][occ];
-                    if (pop <= 0) {
-                        continue;
-                    }
-                    const fb = foodBuffers[age][edu][occ];
-                    const wm = wealthDemography[age][edu][occ];
-
-                    const desiredPurchasePerPerson = Math.max(0, foodTargetPerPerson - fb.foodStock);
-                    const effectiveDemandPerPerson = expectedPurchaseQuantity(
-                        wm.mean,
-                        wm.variance,
-                        referencePrice,
-                        desiredPurchasePerPerson,
-                    );
-                    const effectiveDemandTotal = effectiveDemandPerPerson * pop;
-
-                    if (effectiveDemandTotal > 0) {
-                        demandRecords.push({
-                            age,
-                            edu,
-                            occ,
-                            population: pop,
-                            effectiveDemand: effectiveDemandTotal,
-                            wealthMoments: wm,
-                        });
-                        aggregateDemand += effectiveDemandTotal;
-                    }
+        demography.forEach((cohort, age) =>
+            forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+                const pop = category.total;
+                if (pop <= 0) {
+                    return;
                 }
-            }
-        }
+                const fb = category;
+                const wm = category.wealth;
+
+                const foodStockPerPerson = fb.foodStock / pop;
+                const desiredPurchasePerPerson = Math.max(0, foodTargetPerPerson - foodStockPerPerson);
+                const effectiveDemandPerPerson = expectedPurchaseQuantity(
+                    wm.mean,
+                    wm.variance,
+                    referencePrice,
+                    desiredPurchasePerPerson,
+                );
+                const effectiveDemandTotal = effectiveDemandPerPerson * pop;
+
+                if (effectiveDemandTotal > 0) {
+                    demandRecords.push({
+                        age,
+                        edu,
+                        occ,
+                        skill,
+                        population: pop,
+                        effectiveDemand: effectiveDemandTotal,
+                        wealthMoments: wm,
+                    });
+                    aggregateDemand += effectiveDemandTotal;
+                }
+            }),
+        );
 
         // --- Step 5: Merit-order clearing (cheapest offers first) ---
         // Sort offers by price ascending
@@ -173,18 +183,14 @@ export function foodMarketTick(gameState: GameState): void {
                     continue;
                 }
                 const cost = quantityReceived * avgPricePaid;
-                const perPersonQuantity = quantityReceived / record.population;
                 const perPersonCost = cost / record.population;
 
-                // Update food buffer
-                const fb = foodBuffers[record.age][record.edu][record.occ];
-                fb.foodStock += perPersonQuantity;
+                const category = demography[record.age][record.occ][record.edu][record.skill];
+                category.foodStock += quantityReceived;
 
-                // Update household wealth moments (subtract purchase cost)
-                const wm = wealthDemography[record.age][record.edu][record.occ];
-                wealthDemography[record.age][record.edu][record.occ] = {
-                    mean: Math.max(0, wm.mean - perPersonCost),
-                    variance: wm.variance,
+                category.wealth = {
+                    mean: Math.max(0, category.wealth.mean - perPersonCost),
+                    variance: category.wealth.variance,
                 };
             }
         }
@@ -213,33 +219,36 @@ export function foodMarketTick(gameState: GameState): void {
                 offer.sold,
             );
 
-            // Record lastFoodSold for the pricing AI
+            // Record lastSold for the pricing AI
             const assets = offer.agent.assets[planet.id];
             if (assets) {
-                assets.lastFoodSold = offer.sold;
+                if (!assets.foodMarket) {
+                    assets.foodMarket = {};
+                }
+                assets.foodMarket.lastSold = offer.sold;
             }
         }
 
-        // Record lastFoodProduced → lastFoodSold = 0 for agents that had offers but sold nothing
+        // Record lastSold = 0 for agents that had offers but sold nothing
         for (const offer of offers) {
             if (offer.sold <= 0) {
                 const assets = offer.agent.assets[planet.id];
-                if (assets && assets.lastFoodSold === undefined) {
-                    assets.lastFoodSold = 0;
+                if (assets) {
+                    if (!assets.foodMarket) {
+                        assets.foodMarket = {};
+                    }
+                    if (assets.foodMarket.lastSold === undefined) {
+                        assets.foodMarket.lastSold = 0;
+                    }
                 }
             }
         }
 
         // --- Step 8: Update volume-weighted average price ---
         if (totalFoodSold > 0) {
-            foodMarket.foodPrice = totalRevenue / totalFoodSold;
+            planet.priceLevel = totalRevenue / totalFoodSold;
         }
         // If nothing was sold, keep the previous price (or initial)
-
-        // --- Step 9: Update starvation level ---
-        const nutritionalFactor =
-            totalConsumptionRequirement > 0 ? totalActualConsumption / totalConsumptionRequirement : 1;
-        planet.population.starvationLevel = updateStarvationLevel(planet.population.starvationLevel, nutritionalFactor);
     });
 }
 
@@ -272,8 +281,8 @@ function collectOffers(gameState: GameState, planet: Planet): MarketOffer[] {
             return;
         }
 
-        const price = assets.foodOfferPrice ?? INITIAL_FOOD_PRICE;
-        const quantity = assets.foodOfferQuantity ?? 0;
+        const price = assets.foodMarket?.offerPrice ?? INITIAL_FOOD_PRICE;
+        const quantity = assets.foodMarket?.offerQuantity ?? 0;
 
         if (quantity > 0) {
             offers.push({
@@ -287,7 +296,9 @@ function collectOffers(gameState: GameState, planet: Planet): MarketOffer[] {
 
         // Record the food currently in storage as "produced" for the pricing AI
         // (This captures both newly produced and carried-over inventory)
-        assets.lastFoodProduced = quantity;
+        if (!assets.foodMarket) {
+            assets.foodMarket = {};
+        }
     });
 
     return offers;

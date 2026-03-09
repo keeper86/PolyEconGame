@@ -12,8 +12,9 @@
  * Year-boundary aging is handled separately by `populationAdvanceYearTick`.
  */
 
-import type { GameState } from '../planet';
-import { syncWorkforceWithPopulation } from '../workforce';
+import type { GameState } from '../planet/planet';
+import { assertPopulationWorkforceConsistency } from '../workforce/populationBridge';
+import { syncWorkforceWithPopulation } from '../workforce/workforceSync';
 
 import { populationAdvanceYear } from './aging';
 import { calculateDemographicStats } from './demographics';
@@ -31,17 +32,17 @@ export function populationTick(gameState: GameState): void {
     gameState.planets.forEach((planet) => {
         const { population } = planet;
 
-        const { populationTotal, fertileWomen, totalInCohort } = calculateDemographicStats(population);
+        const { populationTotal, fertileWomen } = calculateDemographicStats(population);
 
         if (populationTotal === 0) {
             return; // no population, skip
         }
 
         // 1. Food consumption & starvation tracking
-        consumeFood(planet, population, populationTotal, gameState.agents);
+        consumeFood(population);
 
         // 2. Mortality — writes population.tickDeaths
-        applyMortality(population, planet.environment, totalInCohort);
+        applyMortality(population, planet.environment);
 
         // 3. Disability — writes population.tickNewDisabilities
         applyDisability(population, planet.environment);
@@ -53,7 +54,12 @@ export function populationTick(gameState: GameState): void {
         populationBirthsTick(population, fertileWomen, planet.environment.pollution);
 
         // 6. Sync workforce with authoritative population deaths, disabilities & retirements
-        syncWorkforceWithPopulation(gameState.agents, planet.id, population, planet.environment, planet);
+        syncWorkforceWithPopulation(gameState.agents, planet.id, population, planet.environment);
+
+        // Verify population↔workforce consistency after sync
+        if (process.env.SIM_DEBUG === '1') {
+            assertPopulationWorkforceConsistency(gameState.agents, planet, 'populationTick/syncWorkforce');
+        }
     });
 }
 

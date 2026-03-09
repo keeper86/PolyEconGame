@@ -12,15 +12,21 @@
  */
 
 import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
-import { getLatestGameSnapshot, insertGameSnapshot, pruneGameSnapshots } from '../server/gameSnapshotRepository';
-import { advanceTick, seedRng, type GameState } from './engine';
-import { earth, earthGovernment, testCompany } from './entities';
-import { agriculturalProductResourceType, putIntoStorageFacility, waterResourceType } from './facilities';
+import {
+    getLatestGameSnapshot,
+    insertGameSnapshot,
+    insertPlanetPopulationHistory,
+    pruneGameSnapshots,
+} from '../server/gameSnapshotRepository';
+import { computePopulationTotal, computeGlobalStarvation } from '../server/snapshotRepository';
+import { advanceTick, seedRng } from './engine';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
-import { type TransportShip } from './planet';
+import type { GameState } from './planet/planet';
+import { type TransportShip } from './planet/planet';
 import type { WorkerErrorResponse, WorkerQueryMessage, WorkerSuccessResponse } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
+import { createInitialGameState } from './utils/initialWorld';
 
 export type InboundMessage =
     | { type: 'ping' }
@@ -146,26 +152,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
     if (!recovered) {
         // Fall back to fresh initial state
-        state = {
-            tick: 0,
-            planets: new Map([[earth.id, earth]]),
-            agents: new Map([
-                [earthGovernment.id, earthGovernment],
-                [testCompany.id, testCompany],
-            ]),
-        };
+        state = createInitialGameState();
         currentSnapshot = toImmutableGameState(state);
-
-        const earthGovernmentStorage = earthGovernment.assets[earth.id]?.storageFacility;
-        if (!earthGovernmentStorage) {
-            throw new Error('Earth government has no storage facility');
-        }
-
-        console.log(
-            'put in food',
-            putIntoStorageFacility(earthGovernmentStorage, agriculturalProductResourceType, 10000000000),
-        );
-        console.log('put in water', putIntoStorageFacility(earthGovernmentStorage, waterResourceType, 100000));
     }
 
     // -----------------------------------------------------------------
@@ -244,6 +232,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     snapshot_data: snapshotData,
                 });
 
+                // Record per-planet population alongside the cold snapshot.
+                const populationRows = [...gs.planets.values()].map((planet) => ({
+                    tick,
+                    planet_id: planet.id,
+                    population: computePopulationTotal(planet),
+                    starvation_level: computeGlobalStarvation(planet),
+                    food_price: planet.priceLevel ?? 0,
+                }));
+                await insertPlanetPopulationHistory(db, populationRows);
+
                 if (SNAPSHOT_MAX_RETAINED > 0) {
                     const pruned = await pruneGameSnapshots(db, SNAPSHOT_MAX_RETAINED);
                     if (pruned > 0) {
@@ -282,7 +280,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             currentSnapshot = toImmutableGameState(state);
 
             // Periodically persist a cold snapshot for crash recovery.
-            if (state.tick > 0 && state.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
+            if (state.tick >= 0 && state.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
                 spawnSnapshotTask(currentSnapshot, state.tick);
             }
 
@@ -361,26 +359,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 default: {
                     const _exhaustive: never = msg;
                     throw new Error(`Unknown query type: ${(_exhaustive as { type: string }).type}`);
-                }
-            }
-            // Optional debug logging: print the data payload for queries when
-            // SIM_DEBUG=1 so we can trace where numeric fields may be lost.
-            if (process.env.SIM_DEBUG === '1') {
-                try {
-                    // Only log for the heavier queries we care about.
-                    if (
-                        msg.type === 'getAllPlanets' ||
-                        msg.type === 'getAllAgents' ||
-                        msg.type === 'getPlanet' ||
-                        msg.type === 'getAgent'
-                    ) {
-                        console.debug(
-                            `[worker] queryResponse payload for ${msg.type}:`,
-                            JSON.parse(JSON.stringify(data)),
-                        );
-                    }
-                } catch (_e) {
-                    // ignore logging failures
                 }
             }
 

@@ -2,16 +2,17 @@
  * population/disability.test.ts
  *
  * Unit tests for the disability sub-system: age-dependent base probability,
- * environmental disability, and cohort-level transitions.
+ * environmental disability, and population-level transitions.
  */
 
 import { describe, it, expect } from 'vitest';
-import { emptyCohort } from './populationHelpers';
-import { educationLevelKeys } from '../planet';
+import { educationLevelKeys } from './education';
+import { forEachPopulationCohort, SKILL } from './population';
+import { makePopulation, makeEnvironment } from '../utils/testHelper';
 import {
     ageDependentBaseDisabilityProb,
     computeEnvironmentalDisability,
-    applyDisabilityTransitions,
+    applyDisability,
     STARVATION_DISABILITY_COEFFICIENT,
 } from './disability';
 
@@ -50,117 +51,111 @@ describe('ageDependentBaseDisabilityProb', () => {
 
 describe('computeEnvironmentalDisability', () => {
     it('returns zero for clean environment', () => {
-        const env = {
-            pollution: { air: 0, water: 0, soil: 0 },
-            naturalDisasters: { earthquakes: 0, floods: 0, storms: 0 },
-            regenerationRates: {
-                air: { constant: 0, percentage: 0 },
-                water: { constant: 0, percentage: 0 },
-                soil: { constant: 0, percentage: 0 },
-            },
-        };
+        const env = makeEnvironment();
         const result = computeEnvironmentalDisability(env);
         expect(result.pollutionDisabilityProb).toBe(0);
         expect(result.disasterDisabilityProb).toBe(0);
     });
 
     it('caps pollution disability at 0.5', () => {
-        const env = {
+        const env = makeEnvironment({
             pollution: { air: 10000, water: 10000, soil: 10000 },
-            naturalDisasters: { earthquakes: 0, floods: 0, storms: 0 },
-            regenerationRates: {
-                air: { constant: 0, percentage: 0 },
-                water: { constant: 0, percentage: 0 },
-                soil: { constant: 0, percentage: 0 },
-            },
-        };
+        });
         const result = computeEnvironmentalDisability(env);
         expect(result.pollutionDisabilityProb).toBe(0.5);
     });
 
     it('caps disaster disability at 0.3', () => {
-        const env = {
-            pollution: { air: 0, water: 0, soil: 0 },
+        const env = makeEnvironment({
             naturalDisasters: { earthquakes: 100000, floods: 100000, storms: 100000 },
-            regenerationRates: {
-                air: { constant: 0, percentage: 0 },
-                water: { constant: 0, percentage: 0 },
-                soil: { constant: 0, percentage: 0 },
-            },
-        };
+        });
         const result = computeEnvironmentalDisability(env);
         expect(result.disasterDisabilityProb).toBe(0.3);
     });
 });
 
-describe('applyDisabilityTransitions', () => {
+describe('applyDisability (population-level)', () => {
     it('moves people from active occupations to unableToWork', () => {
-        const cohort = emptyCohort();
-        cohort.none.company = 10000;
-        cohort.primary.government = 5000;
+        const pop = makePopulation();
+        // Place people at age 30 in employed slots — use large numbers for statistical stability
+        pop.demography[30].employed.none.novice.total = 100000;
+        pop.demography[30].employed.primary.novice.total = 100000;
 
-        const envDisability = { pollutionDisabilityProb: 0.1, disasterDisabilityProb: 0.1 };
-        applyDisabilityTransitions(cohort, 30, envDisability);
+        const env = makeEnvironment({
+            pollution: { air: 80, water: 80, soil: 80 },
+        });
+        applyDisability(pop, env);
 
         // Some should have moved to unableToWork
-        expect(cohort.none.company).toBeLessThan(10000);
-        expect(cohort.none.unableToWork).toBeGreaterThan(0);
-        expect(cohort.primary.government).toBeLessThan(5000);
-        expect(cohort.primary.unableToWork).toBeGreaterThan(0);
+        expect(pop.demography[30].employed.none.novice.total).toBeLessThan(100000);
+        expect(pop.demography[30].unableToWork.none.novice.total).toBeGreaterThan(0);
+        expect(pop.demography[30].employed.primary.novice.total).toBeLessThan(100000);
+        expect(pop.demography[30].unableToWork.primary.novice.total).toBeGreaterThan(0);
     });
 
-    it('does not move people already unableToWork back', () => {
-        const cohort = emptyCohort();
-        cohort.none.unableToWork = 100;
+    it('does not move people already unableToWork', () => {
+        const pop = makePopulation();
+        pop.demography[30].unableToWork.none.novice.total = 100;
 
-        const envDisability = { pollutionDisabilityProb: 0, disasterDisabilityProb: 0 };
-        applyDisabilityTransitions(cohort, 30, envDisability);
+        const env = makeEnvironment();
+        applyDisability(pop, env);
 
         // unableToWork is not a source occupation, count should stay the same
-        expect(cohort.none.unableToWork).toBe(100);
+        expect(pop.demography[30].unableToWork.none.novice.total).toBe(100);
     });
 
-    it('does nothing when cohort is empty', () => {
-        const cohort = emptyCohort();
-        const envDisability = { pollutionDisabilityProb: 0.1, disasterDisabilityProb: 0.1 };
-        applyDisabilityTransitions(cohort, 50, envDisability);
+    it('does nothing when population is empty', () => {
+        const pop = makePopulation();
+        const env = makeEnvironment({
+            pollution: { air: 50, water: 50, soil: 50 },
+        });
+        applyDisability(pop, env);
 
-        for (const edu of educationLevelKeys) {
-            expect(cohort[edu].unableToWork).toBe(0);
+        for (const cohort of pop.demography) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    expect(cohort.unableToWork[edu][skill].total).toBe(0);
+                }
+            }
         }
     });
 
     it('preserves total headcount (no people created or destroyed)', () => {
-        const cohort = emptyCohort();
-        cohort.none.company = 1000;
-        cohort.none.government = 500;
-        cohort.primary.education = 200;
+        const pop = makePopulation();
+        pop.demography[40].employed.none.novice.total = 1000;
+        pop.demography[40].employed.none.professional.total = 500;
+        pop.demography[40].education.primary.novice.total = 200;
         const totalBefore = 1000 + 500 + 200;
 
-        const envDisability = { pollutionDisabilityProb: 0.05, disasterDisabilityProb: 0.02 };
-        applyDisabilityTransitions(cohort, 40, envDisability);
+        const env = makeEnvironment({
+            pollution: { air: 25, water: 10, soil: 5 },
+        });
+        applyDisability(pop, env);
 
         let totalAfter = 0;
-        for (const edu of educationLevelKeys) {
-            for (const occ of ['company', 'government', 'education', 'unoccupied', 'unableToWork'] as const) {
-                totalAfter += cohort[edu][occ];
-            }
-        }
+        forEachPopulationCohort(pop.demography[40], (cat) => {
+            totalAfter += cat.total;
+        });
         expect(totalAfter).toBe(totalBefore);
     });
 
     it('starvation increases disability transitions', () => {
-        const cohortNoStarv = emptyCohort();
-        cohortNoStarv.none.company = 100000;
-        const cohortStarved = emptyCohort();
-        cohortStarved.none.company = 100000;
+        const popNoStarv = makePopulation();
+        popNoStarv.demography[30].employed.none.novice.total = 100000;
 
-        const envDisability = { pollutionDisabilityProb: 0, disasterDisabilityProb: 0 };
-        applyDisabilityTransitions(cohortNoStarv, 30, envDisability, 0);
-        applyDisabilityTransitions(cohortStarved, 30, envDisability, 1);
+        const popStarved = makePopulation();
+        popStarved.demography[30].employed.none.novice.total = 100000;
+        popStarved.demography[30].employed.none.novice.starvationLevel = 1;
+
+        // With clean environment, disability comes only from base + starvation
+        const env = makeEnvironment();
+        applyDisability(popNoStarv, env);
+        applyDisability(popStarved, env);
 
         // Full starvation should produce more disability than no starvation
-        expect(cohortStarved.none.unableToWork).toBeGreaterThan(cohortNoStarv.none.unableToWork);
+        expect(popStarved.demography[30].unableToWork.none.novice.total).toBeGreaterThan(
+            popNoStarv.demography[30].unableToWork.none.novice.total,
+        );
     });
 
     it('STARVATION_DISABILITY_COEFFICIENT is small relative to max pollution disability', () => {
@@ -169,16 +164,16 @@ describe('applyDisabilityTransitions', () => {
         expect(STARVATION_DISABILITY_COEFFICIENT).toBeGreaterThan(0);
     });
 
-    it('zero starvation level leaves disability unchanged vs no starvation argument', () => {
-        const cohortA = emptyCohort();
-        cohortA.none.company = 10000;
-        const cohortB = emptyCohort();
-        cohortB.none.company = 10000;
+    it('records disability events in countThisMonth', () => {
+        const pop = makePopulation();
+        pop.demography[50].employed.none.novice.total = 100000;
 
-        const envDisability = { pollutionDisabilityProb: 0.02, disasterDisabilityProb: 0.01 };
-        applyDisabilityTransitions(cohortA, 40, envDisability, 0);
-        applyDisabilityTransitions(cohortB, 40, envDisability);
+        const env = makeEnvironment({
+            pollution: { air: 80, water: 80, soil: 80 },
+        });
+        applyDisability(pop, env);
 
-        expect(cohortA.none.unableToWork).toBe(cohortB.none.unableToWork);
+        // The source cell should have recorded disability transitions
+        expect(pop.demography[50].employed.none.novice.disabilities.countThisMonth).toBeGreaterThan(0);
     });
 });

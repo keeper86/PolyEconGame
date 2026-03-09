@@ -10,16 +10,59 @@
  * cascading unmet demand upward through the education hierarchy.
  */
 
-import type { Agent, EducationLevelType, Planet } from '../planet';
-import { educationLevelKeys } from '../planet';
-import {
-    ACCEPTABLE_IDLE_FRACTION,
-    DEPARTING_EFFICIENCY,
-    totalActiveForEdu,
-    totalDepartingForEdu,
-    totalDepartingFiredForEdu,
-} from './workforceHelpers';
+import type { Agent, Planet } from '../planet/planet';
+import type { EducationLevelType } from '../population/education';
+import { educationLevelKeys } from '../population/education';
+import type { CohortByOccupation, WorkforceCategory } from '../population/population';
+import { SKILL } from '../population/population';
+import { ACCEPTABLE_IDLE_FRACTION, DEPARTING_EFFICIENCY } from './laborMarketTick';
 import { totalUnoccupiedForEdu } from './populationBridge';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Sum active workers across all ages and skill levels for a given edu. */
+function totalActiveForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            total += workforce[age][edu][skill].active;
+        }
+    }
+    return total;
+}
+
+/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
+function totalDepartingForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            const cat = workforce[age][edu][skill];
+            for (const d of cat.departing) {
+                total += d;
+            }
+        }
+    }
+    return total;
+}
+
+/** Sum all fired-departing workers across all ages, skill levels, and pipeline slots for a given edu. */
+function totalDepartingFiredForEdu(
+    workforce: CohortByOccupation<WorkforceCategory>[],
+    edu: EducationLevelType,
+): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const skill of SKILL) {
+            const cat = workforce[age][edu][skill];
+            for (const d of cat.departingFired) {
+                total += d;
+            }
+        }
+    }
+    return total;
+}
 
 /**
  * updateAllocatedWorkers — recomputes the hiring targets for every agent
@@ -86,7 +129,7 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<
             // 1. Determine per-edu requirement: feedback-based or bootstrap.
             const requirement = {} as Record<EducationLevelType, number>;
 
-            const hasUsageData = assets.unusedWorkers !== undefined;
+            const hasUsageData = assets.workerFeedback !== undefined;
 
             if (hasUsageData) {
                 // Feedback path: derive consumed workers from last production tick.
@@ -101,13 +144,13 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<
                     // (Retiring pipeline removed — retirements handled via population sync.)
                     const voluntaryDeparting = departing - departingFired;
                     const currentPool = active + Math.floor(voluntaryDeparting * DEPARTING_EFFICIENCY);
-                    const unused = assets.unusedWorkers![edu] ?? 0;
+                    const unused = assets.workerFeedback!.unusedWorkers[edu] ?? 0;
                     consumed[edu] = currentPool - unused;
                 }
 
                 // Redistribute overqualified consumption back to the job slot
                 // level that actually needed those workers.
-                const oq = assets.overqualifiedMatrix;
+                const oq = assets.workerFeedback!.overqualifiedMatrix;
                 if (oq) {
                     for (const [jobEdu, breakdown] of Object.entries(oq)) {
                         if (!breakdown) {

@@ -11,26 +11,21 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import type { Agent, Planet, GameState } from '../planet';
-import { makeAgent, makePlanet } from '../workforce/testHelpers';
-import { getWealthDemography } from '../population/populationHelpers';
-import { agriculturalProductResourceType, putIntoStorageFacility } from '../facilities';
-import { FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
-import { foodMarketTick } from './foodMarket';
-import { ensureFoodMarket, getFoodBufferDemography, expectedPurchaseQuantity } from './foodMarketHelpers';
+import type { Agent, Planet, GameState } from '../planet/planet';
+import { agriculturalProductResourceType, putIntoStorageFacility } from '../planet/facilities';
+import { INITIAL_FOOD_PRICE, FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '../constants';
+import { foodMarketTick, expectedPurchaseQuantity } from './foodMarket';
 import { updateAgentPricing } from './agentPricing';
 import { setAgentDepositsForPlanet } from '../financial/depositHelpers';
+import { makeAgent, makePlanetWithPopulation, makeGameState as makeGS } from '../utils/testHelper';
+import { forEachPopulationCohort, SKILL } from '../population/population';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
-    return {
-        tick: 1,
-        planets: new Map([[planet.id, planet]]),
-        agents: new Map(agents.map((a) => [a.id, a])),
-    };
+    return makeGS(planet, agents, 1);
 }
 
 function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
@@ -42,8 +37,14 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
             id: 'food-fac',
             name: 'Food Farm',
             scale: 1,
-            lastTickEfficiencyInPercent: 100,
             powerConsumptionPerTick: 0,
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                workerEfficiencyOverall: 1,
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+            },
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },
             needs: [],
@@ -51,6 +52,22 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
         },
     ];
     return agent;
+}
+
+/** Give all unoccupied/none/novice population cells some wealth. */
+function giveHouseholdsWealth(planet: Planet, wealthPerPerson: number): number {
+    const demography = planet.population.demography;
+    let totalPop = 0;
+    for (let age = 0; age < demography.length; age++) {
+        for (const skill of SKILL) {
+            const cat = demography[age].unoccupied.none[skill];
+            if (cat.total > 0) {
+                cat.wealth = { mean: wealthPerPerson, variance: 0 };
+                totalPop += cat.total;
+            }
+        }
+    }
+    return totalPop;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,17 +81,17 @@ describe('foodMarketTick', () => {
     let gs: GameState;
 
     beforeEach(() => {
-        ({ planet, gov } = makePlanet({ none: 1000 }));
-        planet.bank = { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0, depositRate: 0 };
+        const result = makePlanetWithPopulation({ none: 1000 });
+        planet = result.planet;
+        gov = result.gov;
         foodAgent = makeAgentWithFoodFacility();
         gs = makeGameState(planet, gov, foodAgent);
     });
 
-    it('initialises food market lazily', () => {
-        expect(planet.foodMarket).toBeUndefined();
+    it('runs without error on fresh planet', () => {
         foodMarketTick(gs);
-        expect(planet.foodMarket).toBeDefined();
-        expect(planet.foodMarket!.foodPrice).toBeGreaterThan(0);
+        // After running, priceLevel may or may not be set depending on offers
+        // The key assertion is that it doesn't throw
     });
 
     it('collects per-agent offers from storage and sells food', () => {
@@ -84,62 +101,22 @@ describe('foodMarketTick', () => {
         updateAgentPricing(gs);
 
         // Give households wealth so they can buy
-        const wealthDemography = getWealthDemography(planet.population);
-        const demography = planet.population.demography;
-        let totalPop = 0;
-        for (let age = 0; age < demography.length; age++) {
-            if (demography[age].none.unoccupied > 0) {
-                wealthDemography[age].none.unoccupied = { mean: 100, variance: 0 };
-                totalPop += demography[age].none.unoccupied;
-            }
-        }
+        const totalPop = giveHouseholdsWealth(planet, 100);
         planet.bank.householdDeposits = totalPop * 100;
         planet.bank.deposits = totalPop * 100;
 
         foodMarketTick(gs);
 
-        // Food agent should have recorded lastFoodSold
-        expect(foodAgent.assets.p.lastFoodSold).toBeDefined();
+        // Food agent should have recorded lastSold
+        expect(foodAgent.assets.p.foodMarket?.lastSold).toBeDefined();
         // Storage should be reduced (food was sold)
         const remaining =
             foodAgent.assets.p.storageFacility.currentInStorage[agriculturalProductResourceType.name]?.quantity ?? 0;
-        expect(remaining).toBeLessThanOrEqual(500);
-    });
-
-    it('households consume food from their food stock', () => {
-        // Give all households some food stock
-        const foodMarket = ensureFoodMarket(planet.population, planet.foodMarket);
-        planet.foodMarket = foodMarket;
-        const buffers = getFoodBufferDemography(foodMarket, planet.population);
-        const demography = planet.population.demography;
-
-        // Set food stock to 5 ticks of consumption per person
-        for (let age = 0; age < demography.length; age++) {
-            buffers[age].none.unoccupied.foodStock = FOOD_PER_PERSON_PER_TICK * 5;
-        }
-
-        foodMarketTick(gs);
-
-        // Food stock should have decreased (consumed 1 tick)
-        let totalFoodStock = 0;
-        for (let age = 0; age < demography.length; age++) {
-            totalFoodStock += buffers[age].none.unoccupied.foodStock * demography[age].none.unoccupied;
-        }
-        expect(totalFoodStock).toBeGreaterThanOrEqual(0);
+        expect(remaining).toBeLessThan(500);
     });
 
     it('households with wealth purchase food from the market', () => {
-        // Give households wealth and food in the market
-        const wealthDemography = getWealthDemography(planet.population);
-        const demography = planet.population.demography;
-
-        let totalPop = 0;
-        for (let age = 0; age < demography.length; age++) {
-            if (demography[age].none.unoccupied > 0) {
-                wealthDemography[age].none.unoccupied = { mean: 100, variance: 0 };
-                totalPop += demography[age].none.unoccupied;
-            }
-        }
+        const totalPop = giveHouseholdsWealth(planet, 100);
 
         // Provide household deposits
         planet.bank.householdDeposits = totalPop * 100;
@@ -155,6 +132,33 @@ describe('foodMarketTick', () => {
         expect(planet.bank.householdDeposits).toBeLessThan(totalPop * 100);
     });
 
+    it('does not target more than the buffer target per person', () => {
+        // set up scenario with one person and no initial food stock
+        const pop = giveHouseholdsWealth(planet, 1000);
+        planet.bank.householdDeposits = pop * 1000;
+        planet.bank.deposits = pop * 1000;
+
+        // Put huge amount of food in the market to ensure supply is unconstrained
+        putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 1e6);
+        updateAgentPricing(gs);
+
+        // zero out existing food stock explicitly (should already be zero)
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                cat.foodStock = 0;
+            }),
+        );
+
+        foodMarketTick(gs);
+
+        // after tick, avg foodStock per person should equal the single buffer target
+        const expected = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        // Population lives at ages 14–64 (MIN_EMPLOYABLE_AGE upwards); age 0 is empty.
+        const cat = planet.population.demography[14].unoccupied.none.novice;
+        expect(cat.total).toBeGreaterThan(0); // sanity: cell is populated
+        expect(cat.foodStock / cat.total).toBeCloseTo(expected, 5);
+    });
+
     it('merit-order: cheapest agent sells first', () => {
         // Create two food agents with different prices
         const cheapAgent = makeAgentWithFoodFacility('cheap');
@@ -163,34 +167,23 @@ describe('foodMarketTick', () => {
         putIntoStorageFacility(cheapAgent.assets.p.storageFacility, agriculturalProductResourceType, 100);
         putIntoStorageFacility(expensiveAgent.assets.p.storageFacility, agriculturalProductResourceType, 100);
 
-        // Set explicit prices
-        cheapAgent.assets.p.foodOfferPrice = 1.0;
-        cheapAgent.assets.p.foodOfferQuantity = 100;
-        expensiveAgent.assets.p.foodOfferPrice = 5.0;
-        expensiveAgent.assets.p.foodOfferQuantity = 100;
+        cheapAgent.assets.p.foodMarket = { offerPrice: 1.0, offerQuantity: 100 };
+        expensiveAgent.assets.p.foodMarket = { offerPrice: 5.0, offerQuantity: 100 };
 
         const gs2 = makeGameState(planet, gov, cheapAgent, expensiveAgent);
 
         // Give households limited wealth — enough to buy ~80 tons at price 1.0
-        const wealthDemography = getWealthDemography(planet.population);
-        const demography = planet.population.demography;
-        let totalPop = 0;
-        for (let age = 0; age < demography.length; age++) {
-            if (demography[age].none.unoccupied > 0) {
-                wealthDemography[age].none.unoccupied = { mean: 0.08, variance: 0 };
-                totalPop += demography[age].none.unoccupied;
-            }
-        }
+        const totalPop = giveHouseholdsWealth(planet, 0.08);
         planet.bank.householdDeposits = totalPop * 0.08;
         planet.bank.deposits = totalPop * 0.08;
 
         foodMarketTick(gs2);
 
         // Cheap agent should have sold some food
-        expect(cheapAgent.assets.p.lastFoodSold).toBeGreaterThan(0);
+        expect(cheapAgent.assets.p.foodMarket?.lastSold).toBeGreaterThan(0);
         // Expensive agent may or may not have sold, but cheap should sell more
-        const cheapSold = cheapAgent.assets.p.lastFoodSold ?? 0;
-        const expensiveSold = expensiveAgent.assets.p.lastFoodSold ?? 0;
+        const cheapSold = cheapAgent.assets.p.foodMarket?.lastSold ?? 0;
+        const expensiveSold = expensiveAgent.assets.p.foodMarket?.lastSold ?? 0;
         expect(cheapSold).toBeGreaterThanOrEqual(expensiveSold);
     });
 
@@ -200,15 +193,7 @@ describe('foodMarketTick', () => {
         updateAgentPricing(gs);
 
         // Give households wealth
-        const wealthDemography = getWealthDemography(planet.population);
-        const demography = planet.population.demography;
-        let totalPop = 0;
-        for (let age = 0; age < demography.length; age++) {
-            if (demography[age].none.unoccupied > 0) {
-                wealthDemography[age].none.unoccupied = { mean: 100, variance: 0 };
-                totalPop += demography[age].none.unoccupied;
-            }
-        }
+        const totalPop = giveHouseholdsWealth(planet, 100);
         planet.bank.householdDeposits = totalPop * 100;
         planet.bank.deposits = totalPop * 100;
 
@@ -221,50 +206,29 @@ describe('foodMarketTick', () => {
     it('does not produce negative food stock', () => {
         foodMarketTick(gs);
 
-        const foodMarket = planet.foodMarket!;
-        if (foodMarket.householdFoodBuffers) {
-            for (let age = 0; age < foodMarket.householdFoodBuffers.length; age++) {
-                for (const edu of ['none', 'primary', 'secondary', 'tertiary', 'quaternary'] as const) {
-                    for (const occ of ['unoccupied', 'company', 'government', 'education', 'unableToWork'] as const) {
-                        expect(foodMarket.householdFoodBuffers[age][edu][occ].foodStock).toBeGreaterThanOrEqual(0);
-                    }
+        const demography = planet.population.demography;
+        for (let age = 0; age < demography.length; age++) {
+            forEachPopulationCohort(demography[age], (cat) => {
+                if (cat.total > 0) {
+                    expect(cat.foodStock).toBeGreaterThanOrEqual(0);
                 }
-            }
+            });
         }
-    });
-
-    it('starvation level rises when no food is available', () => {
-        // No food in storage, no food stock
-        const initialStarvation = planet.population.starvationLevel;
-
-        foodMarketTick(gs);
-
-        // Starvation should have risen (but not instantly to 1)
-        expect(planet.population.starvationLevel).toBeGreaterThanOrEqual(initialStarvation);
     });
 
     it('volume-weighted average price is updated', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 1000);
-        foodAgent.assets.p.foodOfferPrice = 2.5;
-        foodAgent.assets.p.foodOfferQuantity = 1000;
+        foodAgent.assets.p.foodMarket = { offerPrice: 2.5, offerQuantity: 1000 };
 
         // Give households wealth
-        const wealthDemography = getWealthDemography(planet.population);
-        const demography = planet.population.demography;
-        let totalPop = 0;
-        for (let age = 0; age < demography.length; age++) {
-            if (demography[age].none.unoccupied > 0) {
-                wealthDemography[age].none.unoccupied = { mean: 100, variance: 0 };
-                totalPop += demography[age].none.unoccupied;
-            }
-        }
+        const totalPop = giveHouseholdsWealth(planet, 100);
         planet.bank.householdDeposits = totalPop * 100;
         planet.bank.deposits = totalPop * 100;
 
         foodMarketTick(gs);
 
         // Price should reflect the agent's offer price (2.5)
-        expect(planet.foodMarket!.foodPrice).toBeCloseTo(2.5, 1);
+        expect(planet.priceLevel).toBeCloseTo(2.5, 1);
     });
 });
 
@@ -274,10 +238,10 @@ describe('updateAgentPricing', () => {
     let gs: GameState;
 
     beforeEach(() => {
-        ({ planet } = makePlanet({ none: 100 }));
-        planet.bank = { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0, depositRate: 0 };
+        const result = makePlanetWithPopulation({ none: 100 });
+        planet = result.planet;
         foodAgent = makeAgentWithFoodFacility();
-        gs = makeGameState(planet, foodAgent);
+        gs = makeGameState(planet, result.gov, foodAgent);
     });
 
     it('bootstraps with INITIAL_FOOD_PRICE on first tick', () => {
@@ -285,50 +249,35 @@ describe('updateAgentPricing', () => {
 
         updateAgentPricing(gs);
 
-        expect(foodAgent.assets.p.foodOfferPrice).toBe(INITIAL_FOOD_PRICE);
-        expect(foodAgent.assets.p.foodOfferQuantity).toBe(100);
+        expect(foodAgent.assets.p.foodMarket?.offerPrice).toBe(INITIAL_FOOD_PRICE);
+        expect(foodAgent.assets.p.foodMarket?.offerQuantity).toBe(100);
     });
 
     it('lowers price when excess supply (produced > sold)', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 100);
-        foodAgent.assets.p.foodOfferPrice = 2.0;
-        foodAgent.assets.p.lastFoodProduced = 100;
-        foodAgent.assets.p.lastFoodSold = 20; // only 20% sold → price too high
+        foodAgent.assets.p.foodMarket = { offerPrice: 2.0, lastSold: 20 }; // only 20% sold → price too high
 
         updateAgentPricing(gs);
 
-        expect(foodAgent.assets.p.foodOfferPrice!).toBeLessThan(2.0);
+        expect(foodAgent.assets.p.foodMarket!.offerPrice!).toBeLessThan(2.0);
     });
 
     it('raises price when excess demand (produced < sold)', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
-        foodAgent.assets.p.foodOfferPrice = 1.0;
-        foodAgent.assets.p.lastFoodProduced = 10;
-        foodAgent.assets.p.lastFoodSold = 50; // sold more than produced (from buffer)
+        foodAgent.assets.p.foodMarket = { offerPrice: 1.0, lastProduced: 10, lastSold: 50 }; // sold more than produced (from buffer)
 
         updateAgentPricing(gs);
 
-        expect(foodAgent.assets.p.foodOfferPrice!).toBeGreaterThan(1.0);
+        expect(foodAgent.assets.p.foodMarket!.offerPrice!).toBeGreaterThan(1.0);
     });
 
     it('does not set price below FOOD_PRICE_FLOOR', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 10000);
-        foodAgent.assets.p.foodOfferPrice = 0.02;
-        foodAgent.assets.p.lastFoodProduced = 10000;
-        foodAgent.assets.p.lastFoodSold = 0;
+        foodAgent.assets.p.foodMarket = { offerPrice: 0.02, lastProduced: 10000, lastSold: 0 };
 
         updateAgentPricing(gs);
 
-        expect(foodAgent.assets.p.foodOfferPrice!).toBeGreaterThanOrEqual(0.01);
-    });
-
-    it('does nothing for non-food-producing agents', () => {
-        const normalAgent = makeAgent('normal');
-        const gs2 = makeGameState(planet, normalAgent);
-
-        updateAgentPricing(gs2);
-
-        expect(normalAgent.assets.p.foodOfferPrice).toBeUndefined();
+        expect(foodAgent.assets.p.foodMarket!.offerPrice!).toBeGreaterThanOrEqual(0.01);
     });
 });
 
