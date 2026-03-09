@@ -9,15 +9,10 @@
  * is handled per-category inside `applyMortality`, not in the rate function.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { TICKS_PER_YEAR } from '../constants';
+import { computeEnvironmentalMortality } from './mortality';
 import { convertAnnualToPerTick } from './population';
-import {
-    computeEnvironmentalMortality,
-    computeExtraAnnualMortality,
-    perTickMortality,
-    MAX_MORTALITY_PER_TICK,
-} from './mortality';
 
 describe('convertAnnualToPerTick', () => {
     it('returns 0 for annual rate 0', () => {
@@ -59,8 +54,7 @@ describe('computeEnvironmentalMortality', () => {
             },
         };
         const result = computeEnvironmentalMortality(env);
-        expect(result.pollutionMortalityRate).toBe(0);
-        expect(result.disasterDeathProbability).toBe(0);
+        expect(result).toBe(0);
     });
 
     it('pollution mortality scales with air pollution', () => {
@@ -74,7 +68,7 @@ describe('computeEnvironmentalMortality', () => {
             },
         };
         const result = computeEnvironmentalMortality(env);
-        expect(result.pollutionMortalityRate).toBeCloseTo(50 * 0.006, 8);
+        expect(result).toBeCloseTo(50 * 0.006, 8);
     });
 
     it('disaster mortality includes all disaster types', () => {
@@ -89,55 +83,6 @@ describe('computeEnvironmentalMortality', () => {
         };
         const result = computeEnvironmentalMortality(env);
         const expected = 10 * 0.0005 + 20 * 0.00005 + 30 * 0.000015;
-        expect(result.disasterDeathProbability).toBeCloseTo(expected, 8);
-    });
-});
-
-describe('computeExtraAnnualMortality', () => {
-    it('returns zero with no pollution or disasters', () => {
-        const envMort = { pollutionMortalityRate: 0, disasterDeathProbability: 0 };
-        expect(computeExtraAnnualMortality(envMort)).toBe(0);
-    });
-
-    it('sums pollution + disaster only (starvation excluded to avoid double counting)', () => {
-        const envMort = { pollutionMortalityRate: 0.1, disasterDeathProbability: 0.05 };
-        expect(computeExtraAnnualMortality(envMort)).toBeCloseTo(0.15, 8);
-    });
-
-    it('pollution and disaster are additive', () => {
-        const envMort = { pollutionMortalityRate: 0.2, disasterDeathProbability: 0.03 };
-        expect(computeExtraAnnualMortality(envMort)).toBeCloseTo(0.23, 8);
-    });
-});
-
-describe('perTickMortality', () => {
-    it('returns low mortality for young people in clean conditions', () => {
-        // A 20-year-old with no extra mortality
-        const mort = perTickMortality(20, 0);
-        expect(mort).toBeGreaterThan(0);
-        expect(mort).toBeLessThan(0.001); // very low
-    });
-
-    it('returns high mortality for very old age', () => {
-        const mort = perTickMortality(99, 0);
-        expect(mort).toBeGreaterThan(0.0005);
-    });
-
-    it('is capped at MAX_MORTALITY_PER_TICK', () => {
-        // Extreme extra mortality
-        const mort = perTickMortality(80, 1);
-        expect(mort).toBeLessThanOrEqual(MAX_MORTALITY_PER_TICK);
-    });
-
-    it('extra annual mortality increases per-tick mortality', () => {
-        const noExtra = perTickMortality(30, 0);
-        const withExtra = perTickMortality(30, 0.5);
-        expect(withExtra).toBeGreaterThan(noExtra);
-    });
-
-    it('moderate extra mortality does not collapse a young population', () => {
-        const mort = perTickMortality(30, 0.1);
-        // Annual mortality still low for a 30-year-old even with moderate extra
-        expect(mort).toBeLessThan(0.01);
+        expect(result).toBeCloseTo(expected, 8);
     });
 });
