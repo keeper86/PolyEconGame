@@ -179,33 +179,30 @@ export function preProductionFinancialTick(gameState: GameState): void {
             bank.householdDeposits += wageBill;
 
             // 4. Distribute wages to household wealth moments
-            //    In the new model, wealth is tracked on PopulationCategory.wealth
-            //    per demography[age][occupation][edu][skill].
-            //    All hired workers are under the 'employed' occupation.
-            for (const edu of educationLevelKeys) {
-                const totalWorkers = totalActiveForEdu(workforce, edu) + totalDepartingForEdu(workforce, edu);
-                if (totalWorkers <= 0) {
-                    continue;
-                }
-                const wage = getWage(planet, edu);
-
-                // Credit wealth to employed population cohorts (across all skills)
-                let totalPopEmployedCount = 0;
-                for (let age = 0; age < demography.length; age++) {
+            //    Each agent distributes *its own* wageBill (not the per-edu
+            //    wage rate) proportionally across all employed population
+            //    cells on this planet.  This keeps the total wealth change
+            //    equal to the bank.householdDeposits change regardless of
+            //    how many agents operate on the planet.
+            let totalPopEmployedCount = 0;
+            for (let age = 0; age < demography.length; age++) {
+                for (const edu of educationLevelKeys) {
                     for (const skill of SKILL) {
                         totalPopEmployedCount += demography[age].employed[edu][skill].total;
                     }
                 }
-                if (totalPopEmployedCount > 0) {
-                    for (let age = 0; age < demography.length; age++) {
+            }
+            if (totalPopEmployedCount > 0) {
+                const perCapitaWage = wageBill / totalPopEmployedCount;
+                for (let age = 0; age < demography.length; age++) {
+                    for (const edu of educationLevelKeys) {
                         for (const skill of SKILL) {
                             const cat = demography[age].employed[edu][skill];
                             if (cat.total <= 0) {
                                 continue;
                             }
-                            // Add per-capita wage to wealth mean
                             cat.wealth = {
-                                mean: cat.wealth.mean + wage,
+                                mean: cat.wealth.mean + perCapitaWage,
                                 variance: cat.wealth.variance,
                             };
                         }

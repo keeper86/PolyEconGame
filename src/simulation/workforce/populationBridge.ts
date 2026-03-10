@@ -310,7 +310,7 @@ export function returnToPopulationAtAge(
                 { age, occ: srcOcc, edu, skill },
                 { age, occ: dstOcc, edu, skill },
                 amount,
-            );
+            ).count;
             moved += actual;
         }
     }
@@ -423,7 +423,7 @@ function moveAcrossSkills(
                 { age, occ: srcOcc, edu, skill },
                 { age, occ: dstOcc, edu, skill },
                 perSkill[si],
-            );
+            ).count;
         }
     }
     return moved;

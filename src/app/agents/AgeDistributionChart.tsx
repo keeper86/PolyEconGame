@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import type { WorkforceSummary } from './workforce-summary';
-import { fmt, CHART_COLORS, EDU_COLORS, eduLabel } from './workforce-theme';
+import { CHART_COLORS, EDU_COLORS, eduLabel } from './workforce-theme';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { educationLevelKeys } from '@/simulation/population/education';
+import { formatNumbers } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Colours for the departure-reason breakdown
@@ -92,16 +93,16 @@ export function AgeDistributionChart({
                                             <div className='font-medium mb-1'>Age {label}</div>
                                             {payload.map((entry) => (
                                                 <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {fmt(entry.value as number)}
+                                                    {entry.name}: {formatNumbers(entry.value as number)}
                                                 </div>
                                             ))}
                                             {totalLeaving > 0 && (
                                                 <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                                                    Total leaving: {fmt(totalLeaving)}
+                                                    Total leaving: {formatNumbers(totalLeaving)}
                                                 </div>
                                             )}
                                             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                                                Total: {fmt(total)}
+                                                Total: {formatNumbers(total)}
                                             </div>
                                         </div>
                                     );
@@ -136,11 +137,11 @@ export function AgeDistributionChart({
                                             <div className='font-medium mb-1'>Age {label}</div>
                                             {payload.map((entry) => (
                                                 <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {fmt(entry.value as number)}
+                                                    {entry.name}: {formatNumbers(entry.value as number)}
                                                 </div>
                                             ))}
                                             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                                                Total: {fmt(total)}
+                                                Total: {formatNumbers(total)}
                                             </div>
                                         </div>
                                     );

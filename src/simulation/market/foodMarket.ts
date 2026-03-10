@@ -170,19 +170,31 @@ export function foodMarketTick(gameState: GameState): void {
             totalFoodSold += filledQuantity;
         }
 
-        // --- Step 6: Distribute purchased food to households ---
-        // Allocate proportionally among demand records based on what was sold
+        // --- Step 6 & 7: Financial settlement + wealth update ---
+        // Compute how much households can actually pay, then scale both
+        // the bank debit and the per-capita wealth reduction consistently
+        // so that householdDeposits and population wealth stay in sync.
+        const bank = planet.bank;
+        const actualHouseholdDebit = Math.min(totalRevenue, bank.householdDeposits);
+        bank.householdDeposits -= actualHouseholdDebit;
+
+        // Scale revenue proportionally if household deposits were insufficient
+        const revenueScale = totalRevenue > 0 ? actualHouseholdDebit / totalRevenue : 0;
+
+        // Distribute purchased food to households and reduce wealth
         if (totalFoodSold > 0 && aggregateDemand > 0) {
             const fillRatio = Math.min(1, totalFoodSold / aggregateDemand);
-            // Compute the effective average price paid
+            // Effective average price paid, scaled by what households
+            // could actually afford via the bank.
             const avgPricePaid = totalRevenue / totalFoodSold;
+            const effectiveAvgPrice = avgPricePaid * revenueScale;
 
             for (const record of demandRecords) {
                 const quantityReceived = record.effectiveDemand * fillRatio;
                 if (quantityReceived <= 0) {
                     continue;
                 }
-                const cost = quantityReceived * avgPricePaid;
+                const cost = quantityReceived * effectiveAvgPrice;
                 const perPersonCost = cost / record.population;
 
                 const category = demography[record.age][record.occ][record.edu][record.skill];
@@ -194,16 +206,6 @@ export function foodMarketTick(gameState: GameState): void {
                 };
             }
         }
-
-        // --- Step 7: Financial settlement ---
-        // Debit household deposits
-        const bank = planet.bank;
-        const actualHouseholdDebit = Math.min(totalRevenue, bank.householdDeposits);
-        bank.householdDeposits -= actualHouseholdDebit;
-
-        // Credit each agent's deposits and remove sold food from storage
-        // Scale agent revenue proportionally if household deposits were insufficient
-        const revenueScale = totalRevenue > 0 ? actualHouseholdDebit / totalRevenue : 0;
 
         for (const offer of offers) {
             if (offer.sold <= 0) {

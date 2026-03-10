@@ -3,62 +3,76 @@ import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility
 import type { GameState } from './planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import type { CohortByOccupation, WorkforceCategory } from '../population/population';
 import { SKILL } from '../population/population';
 import { ageProductivityMultiplier, DEPARTING_EFFICIENCY } from '../workforce/laborMarketTick';
 import { stochasticRound } from '../utils/stochasticRound';
-import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 
 // ---------------------------------------------------------------------------
 // Local workforce aggregation helpers (new age × skill model)
 // ---------------------------------------------------------------------------
-
-/**
- * Compute a worker-count-weighted mean age for a given education level
- * across the age-resolved workforce.  Only considers active workers.
- * Returns 30 (a sensible default) when no workers are present.
- */
-function weightedMeanAgeForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
-    let sumAge = 0;
-    let count = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            const active = workforce[age][edu][skill].active;
-            if (active > 0) {
-                sumAge += age * active;
-                count += active;
-            }
-        }
-    }
-    return count > 0 ? sumAge / count : 30;
-}
 
 export function productionTick(gameState: GameState) {
     gameState.agents.forEach((agent) => {
         gameState.planets.forEach((planet) => {
             const assets = agent.assets[planet.id];
 
-            if (!assets) {
+            if (!assets || assets.productionFacilities.length === 0) {
+                // Still set workerFeedback so callers don't need to null-check.
+                if (assets) {
+                    assets.workerFeedback = {
+                        unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+                        unusedWorkerFraction: 0,
+                        overqualifiedMatrix: undefined,
+                    };
+                }
                 return; // this agent has no assets on this planet, skip
             }
 
-            // Build remaining worker pool from actual workforce demography
-            // (how many are really hired), not from allocatedWorkers (the target).
-            // Departing workers (in their notice period) still contribute but at
-            // DEPARTING_EFFICIENCY (50%).
-            const remainingWorker = {} as Record<EducationLevelType, number>;
+            // --- Single-pass workforce aggregation ---
+            // Combine all per-edu active/departing counts and weighted-age sums
+            // into one O(numAges × 3) scan instead of 12 separate scans.
             const workforce = assets.workforceDemography;
-            for (const edu of educationLevelKeys) {
-                const active = workforce ? totalActiveForEdu(workforce, edu) : 0;
-                const departing = workforce ? totalDepartingForEdu(workforce, edu) : 0;
-                remainingWorker[edu] = active + stochasticRound(departing * DEPARTING_EFFICIENCY);
+            const activeByEdu: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+            const departingByEdu: Record<EducationLevelType, number> = {
+                none: 0,
+                primary: 0,
+                secondary: 0,
+                tertiary: 0,
+            };
+            const weightedAgeSumByEdu: Record<EducationLevelType, number> = {
+                none: 0,
+                primary: 0,
+                secondary: 0,
+                tertiary: 0,
+            };
+
+            if (workforce) {
+                for (let age = 0; age < workforce.length; age++) {
+                    const cohort = workforce[age];
+                    for (const edu of educationLevelKeys) {
+                        for (const skill of SKILL) {
+                            const cat = cohort[edu][skill];
+                            const act = cat.active;
+                            if (act > 0) {
+                                activeByEdu[edu] += act;
+                                weightedAgeSumByEdu[edu] += age * act;
+                            }
+                            for (const d of cat.departing) {
+                                departingByEdu[edu] += d;
+                            }
+                        }
+                    }
+                }
             }
 
-            // Compute age-dependent productivity multiplier per education level,
-            // using weighted mean age from the age-resolved workforce.
+            // Build remaining worker pool and age-productivity from aggregated data.
+            const remainingWorker = {} as Record<EducationLevelType, number>;
             const workerAgeProductivity = {} as Record<EducationLevelType, number>;
             for (const edu of educationLevelKeys) {
-                const meanAge = workforce ? weightedMeanAgeForEdu(workforce, edu) : 30;
+                const active = activeByEdu[edu];
+                const departing = departingByEdu[edu];
+                remainingWorker[edu] = active + stochasticRound(departing * DEPARTING_EFFICIENCY);
+                const meanAge = active > 0 ? weightedAgeSumByEdu[edu] / active : 30;
                 workerAgeProductivity[edu] = ageProductivityMultiplier(meanAge);
             }
             assets.productionFacilities.forEach((facility) => {
@@ -324,11 +338,11 @@ export function productionTick(gameState: GameState) {
             // (next tick) can reduce hiring targets when too many workers
             // sit unused.  totalHired includes departing workers at reduced
             // efficiency, consistent with how remainingWorker was built.
-            const totalHired = educationLevelKeys.reduce((sum, edu) => {
-                const active = workforce ? totalActiveForEdu(workforce, edu) : 0;
-                const departing = workforce ? totalDepartingForEdu(workforce, edu) : 0;
-                return sum + active + stochasticRound(departing * DEPARTING_EFFICIENCY);
-            }, 0);
+            // Re-use the already-computed per-edu counts — no second scan needed.
+            let totalHired = 0;
+            for (const edu of educationLevelKeys) {
+                totalHired += activeByEdu[edu] + stochasticRound(departingByEdu[edu] * DEPARTING_EFFICIENCY);
+            }
             const totalUnused = educationLevelKeys.reduce((sum, edu) => sum + (remainingWorker[edu] || 0), 0);
 
             // Aggregate overqualified matrix across all facilities on this planet

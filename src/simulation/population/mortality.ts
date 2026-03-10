@@ -3,6 +3,8 @@ import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { Population } from './population';
 import { convertAnnualToPerTick, forEachPopulationCohort, transferPopulation } from './population';
+import type { InheritanceRecord } from './inheritance';
+import { redistributeInheritance } from './inheritance';
 
 export const mortalityProbability = (age: number) => {
     const mortalityByThousands: number[] = [
@@ -77,9 +79,19 @@ export function computeEnvironmentalMortality(environment: Environment): number 
  * for each education×occupation cell, a fraction dies according to the
  * per‑tick mortality probability.  Deaths are recorded in
  * `population.tickDeaths` and `population.tickDeathsByAge`.
+ *
+ * **Inheritance**: the monetary wealth of the deceased is redistributed
+ * to younger generations via a Gaussian kernel centred GENERATION_GAP
+ * years below the deceased's age.  This is a zero-sum transfer within
+ * household wealth — `bank.householdDeposits` is unchanged because the
+ * total per-cohort wealth is conserved.  Food stock is destroyed
+ * (perishable).
  */
 export function applyMortality(population: Population, environment: Environment): void {
     const environmentalMortality = computeEnvironmentalMortality(environment);
+
+    // Collect inheritance records per source age
+    const inheritanceByAge = new Map<number, number>();
 
     population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -101,9 +113,21 @@ export function applyMortality(population: Population, environment: Environment)
             );
 
             const dead = stochasticRound(category.total * perTickMort);
-            const reallyDead = transferPopulation(population.demography, { age, occ, edu, skill }, undefined, dead);
-            category.deaths.countThisMonth += reallyDead;
-            category.deaths.countThisTick = reallyDead;
+            const result = transferPopulation(population.demography, { age, occ, edu, skill }, undefined, dead);
+            category.deaths.countThisMonth += result.count;
+            category.deaths.countThisTick = result.count;
+
+            // Accumulate inherited wealth for this source age
+            if (result.inheritedWealth > 0) {
+                inheritanceByAge.set(age, (inheritanceByAge.get(age) ?? 0) + result.inheritedWealth);
+            }
         });
     });
+
+    // Redistribute accumulated inherited wealth to younger generations
+    const records: InheritanceRecord[] = [];
+    for (const [sourceAge, amount] of inheritanceByAge) {
+        records.push({ sourceAge, amount });
+    }
+    redistributeInheritance(population.demography, records);
 }

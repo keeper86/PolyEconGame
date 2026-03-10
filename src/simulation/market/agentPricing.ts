@@ -64,7 +64,7 @@ function updatePricingForAgent(agent: Agent, planet: Planet): void {
 
     factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(PRICE_ADJUST_MAX_DOWN, factor));
 
-    const newPrice = Math.min(FOOD_PRICE_CEIL, Math.max(FOOD_PRICE_FLOOR, price * factor));
+    const newPrice = Math.max(FOOD_PRICE_FLOOR, price * factor);
 
     assets.foodMarket.offerPrice = newPrice;
 }

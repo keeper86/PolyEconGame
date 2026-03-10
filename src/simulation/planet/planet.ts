@@ -17,8 +17,14 @@ export interface Bank {
     /**
      * Aggregate household deposit balance (currency units).
      * Wages flow into this account; consumption flows out.
-     * Tracks the monetary component of household wealth that is held
-     * as bank deposits (as opposed to non-monetary wealth tracked per-cohort).
+     *
+     * Invariant: this must always equal the sum of per-cohort monetary
+     * wealth across the entire population demography:
+     *   householdDeposits === Σ (category.total × category.wealth.mean)
+     *
+     * Updated incrementally by each subsystem that mutates household
+     * wealth: preProductionFinancialTick (+wages), foodMarket (−purchases),
+     * mortality (−deceased wealth), intergenerationalTransfers (zero-sum).
      */
     householdDeposits: number;
     /** Bank's own equity = deposits − loans. */
@@ -311,7 +317,6 @@ export type Agent = {
     id: string;
     name: string;
     associatedPlanetId: string;
-    wealth: number;
     transportShips: TransportShip[];
     assets: {
         [planetId in string]: AgentPlanetAssets;

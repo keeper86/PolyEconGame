@@ -5,13 +5,7 @@ import type { Population } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL, mergeGaussianMoments } from '@/simulation/population/population';
 import React from 'react';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmt = (n: number): string =>
-    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : n.toFixed(1);
+import { formatNumbers } from '@/lib/utils';
 
 type Props = {
     population: Population;
@@ -107,13 +101,13 @@ export default function WealthByAgeChart({ population }: Props): React.ReactElem
                         </defs>
                         <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                         <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v)} />
+                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatNumbers(v)} />
                         <Tooltip
                             formatter={(value: number | [number, number], name: string) => {
                                 if (Array.isArray(value)) {
-                                    return [`${fmt(value[0])} – ${fmt(value[1])}`, '±1σ range'];
+                                    return [`${formatNumbers(value[0])} – ${formatNumbers(value[1])}`, '±1σ range'];
                                 }
-                                return [fmt(value), name];
+                                return [formatNumbers(value), name];
                             }}
                         />
                         <Legend verticalAlign='top' height={24} />

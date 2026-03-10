@@ -159,14 +159,15 @@ describe('transferPopulation', () => {
         const demography = makePopulationDemography();
         demography[25].unoccupied.none.novice.total = 100;
 
-        const moved = transferPopulation(
+        const result = transferPopulation(
             demography,
             { age: 25, occ: 'unoccupied', edu: 'none', skill: 'novice' },
             { age: 25, occ: 'employed', edu: 'none', skill: 'novice' },
             40,
         );
 
-        expect(moved).toBe(40);
+        expect(result.count).toBe(40);
+        expect(result.inheritedWealth).toBe(0);
         expect(demography[25].unoccupied.none.novice.total).toBe(60);
         expect(demography[25].employed.none.novice.total).toBe(40);
     });
@@ -175,19 +176,19 @@ describe('transferPopulation', () => {
         const demography = makePopulationDemography();
         demography[30].employed.primary.novice.total = 10;
 
-        const moved = transferPopulation(
+        const result = transferPopulation(
             demography,
             { age: 30, occ: 'employed', edu: 'primary', skill: 'novice' },
             { age: 30, occ: 'unoccupied', edu: 'primary', skill: 'novice' },
             100,
         );
 
-        expect(moved).toBe(10);
+        expect(result.count).toBe(10);
         expect(demography[30].employed.primary.novice.total).toBe(0);
         expect(demography[30].unoccupied.primary.novice.total).toBe(10);
     });
 
-    it('returns 0 for zero or negative count', () => {
+    it('returns count 0 for zero or negative count', () => {
         const demography = makePopulationDemography();
         demography[20].unoccupied.none.novice.total = 50;
 
@@ -197,7 +198,7 @@ describe('transferPopulation', () => {
                 { age: 20, occ: 'unoccupied', edu: 'none', skill: 'novice' },
                 { age: 20, occ: 'employed', edu: 'none', skill: 'novice' },
                 0,
-            ),
+            ).count,
         ).toBe(0);
 
         expect(
@@ -206,7 +207,7 @@ describe('transferPopulation', () => {
                 { age: 20, occ: 'unoccupied', edu: 'none', skill: 'novice' },
                 { age: 20, occ: 'employed', edu: 'none', skill: 'novice' },
                 -5,
-            ),
+            ).count,
         ).toBe(0);
 
         expect(demography[20].unoccupied.none.novice.total).toBe(50);
@@ -216,29 +217,48 @@ describe('transferPopulation', () => {
         const demography = makePopulationDemography();
         demography[50].employed.secondary.expert.total = 100;
 
-        const moved = transferPopulation(
+        const result = transferPopulation(
             demography,
             { age: 50, occ: 'employed', edu: 'secondary', skill: 'expert' },
             undefined,
             30,
         );
 
-        expect(moved).toBe(30);
+        expect(result.count).toBe(30);
         expect(demography[50].employed.secondary.expert.total).toBe(70);
+    });
+
+    it('returns inherited wealth on death (to=undefined)', () => {
+        const demography = makePopulationDemography();
+        demography[50].employed.secondary.expert.total = 100;
+        demography[50].employed.secondary.expert.wealth = { mean: 50, variance: 10 };
+
+        const result = transferPopulation(
+            demography,
+            { age: 50, occ: 'employed', edu: 'secondary', skill: 'expert' },
+            undefined,
+            30,
+        );
+
+        expect(result.count).toBe(30);
+        // 30 people × 50 mean wealth = 1500 inherited
+        expect(result.inheritedWealth).toBeCloseTo(1500, 5);
+        // Remaining population still has same per-capita wealth
+        expect(demography[50].employed.secondary.expert.wealth.mean).toBeCloseTo(50, 5);
     });
 
     it('transfers across different ages', () => {
         const demography = makePopulationDemography();
         demography[20].unoccupied.none.novice.total = 50;
 
-        const moved = transferPopulation(
+        const result = transferPopulation(
             demography,
             { age: 20, occ: 'unoccupied', edu: 'none', skill: 'novice' },
             { age: 21, occ: 'unoccupied', edu: 'none', skill: 'novice' },
             30,
         );
 
-        expect(moved).toBe(30);
+        expect(result.count).toBe(30);
         expect(demography[20].unoccupied.none.novice.total).toBe(20);
         expect(demography[21].unoccupied.none.novice.total).toBe(30);
     });

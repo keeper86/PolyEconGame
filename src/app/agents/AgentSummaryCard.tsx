@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { formatNumbers } from '@/lib/utils';
 import { Building2, ChevronRight, Globe, Package, Ship, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { route } from 'nextjs-routes';
@@ -24,13 +25,6 @@ const effColor = (frac: number): string => {
 
 const pct = (frac: number): string => `${Math.round(frac * 100)}%`;
 
-const fmtNumber = (n: number): string =>
-    n >= 1_000_000
-        ? `${(n / 1_000_000).toFixed(1)}M`
-        : n >= 1_000
-          ? `${(n / 1_000).toFixed(1)}k`
-          : String(Math.round(n));
-
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -40,7 +34,7 @@ export type AgentSummary = {
     agentId: string;
     name: string;
     associatedPlanetId: string;
-    wealth: number;
+    bilance: number;
     facilityCount: number;
     avgEfficiency: number | null;
     totalWorkers: number;
@@ -89,9 +83,9 @@ export default function AgentSummaryCard({ summary: s }: Props): React.ReactElem
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
                                 <Wallet className='h-3.5 w-3.5' />
-                                Wealth
+                                Bilance
                             </div>
-                            <div className='text-lg font-semibold tabular-nums'>{fmtNumber(s.wealth)}</div>
+                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(s.bilance)}</div>
                         </div>
 
                         {/* Facilities */}
@@ -117,7 +111,9 @@ export default function AgentSummaryCard({ summary: s }: Props): React.ReactElem
                                 Workers
                             </div>
                             <div className='flex items-baseline gap-2'>
-                                <span className='text-lg font-semibold tabular-nums'>{fmtNumber(s.totalWorkers)}</span>
+                                <span className='text-lg font-semibold tabular-nums'>
+                                    {formatNumbers(s.totalWorkers)}
+                                </span>
                                 {s.unusedWorkerFraction > 0.01 && (
                                     <span className='text-xs text-amber-500'>{pct(s.unusedWorkerFraction)} idle</span>
                                 )}
@@ -142,7 +138,7 @@ export default function AgentSummaryCard({ summary: s }: Props): React.ReactElem
                             <Package className='h-3.5 w-3.5 text-muted-foreground' />
                             {s.topResources.map((r) => (
                                 <Badge key={r.name} variant='secondary'>
-                                    {r.name}: {fmtNumber(r.quantity)}
+                                    {r.name}: {formatNumbers(r.quantity)}
                                 </Badge>
                             ))}
                         </div>

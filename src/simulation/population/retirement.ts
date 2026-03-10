@@ -106,7 +106,7 @@ export function applyRetirement(population: Population): void {
                 { age, occ, edu, skill },
                 { age, occ: 'unableToWork', edu, skill },
                 toRetire,
-            );
+            ).count;
             category.retirements.countThisMonth += retired;
             category.retirements.countThisTick = retired;
         });

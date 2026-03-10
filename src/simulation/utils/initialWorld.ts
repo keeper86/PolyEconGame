@@ -55,6 +55,7 @@ function makeProductionFacility(opts: {
         planetId: opts.planetId,
         id: opts.id,
         name: opts.name,
+        maxScale: opts.scale,
         scale: opts.scale,
         powerConsumptionPerTick: opts.powerPerTick,
         workerRequirement: {
@@ -88,6 +89,7 @@ function makeStorage(opts: {
         planetId: opts.planetId,
         id: opts.id,
         name: opts.name,
+        maxScale: opts.scale ?? 1,
         scale: opts.scale ?? 1,
         powerConsumptionPerTick: 0.1,
         workerRequirement: { none: 10, primary: 10, secondary: 5, tertiary: 0 },
@@ -370,7 +372,6 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
                     [arableClaimId, waterClaimId], // they tenant them
                 ),
             },
-            wealth: spec.wealth,
         };
         agents.push(agent);
     }
@@ -419,7 +420,6 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
                 assets: {
                     [EARTH_ID]: makeAgentPlanetAssets(EARTH_ID, [ironProd], agentStorage, [], [ironClaimId]),
                 },
-                wealth: spec.wealth,
             };
             agents.push(agent);
         }
@@ -481,7 +481,6 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
                 govTenancies,
             ),
         },
-        wealth: 1_000_000_000,
     };
     agents.unshift(earthGovernment); // government first
 
@@ -683,7 +682,6 @@ function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                     [arableClaimId, waterClaimId],
                 ),
             },
-            wealth: spec.wealth,
         });
     }
 
@@ -739,7 +737,6 @@ function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                 govTenancies,
             ),
         },
-        wealth: 100_000_000,
     };
     agents.unshift(acGovernment);
 

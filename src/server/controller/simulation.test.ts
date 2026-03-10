@@ -11,7 +11,7 @@ import { getUnauthenticatedCaller } from 'tests/vitest/setupTestcontainer';
 describe('simulation tRPC controller', () => {
     it('getLatestPlanets returns empty result when no snapshots exist', async () => {
         const caller = getUnauthenticatedCaller();
-        const result = await caller.simulation.getLatestPlanets();
+        const result = await caller.simulation.getLatestPlanetSummaries();
         expect(result).toBeDefined();
         expect(result.tick).toBe(0);
         expect(Array.isArray(result.planets)).toBe(true);

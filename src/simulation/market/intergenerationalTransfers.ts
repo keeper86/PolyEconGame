@@ -68,9 +68,6 @@
  * frontend can visualise them without re-running the simulation on the
  * client.  Positive = received, negative = given.  Global sum = 0.
  *
- * Skill-level detail for kernel-based transfers is written to
- * `population.lastVerticalTransferMatrix`.
- *
  * ## Invariants
  *
  * - Total wealth is conserved exactly (zero-sum transfers).
@@ -104,9 +101,6 @@ import type {
     PopulationCategory,
     PopulationTransferCohort,
     PopulationTransferMatrix,
-    Skill,
-    SkillTransferCohort,
-    SkillTransferMatrix,
 } from '../population/population';
 import { mergeGaussianMoments, OCCUPATIONS, SKILL } from '../population/population';
 
@@ -452,40 +446,6 @@ export function sumTransferMatrix(matrix: PopulationTransferMatrix): number {
     return total;
 }
 
-/** Create a zero-initialised skill-aware transfer matrix for `numAges` age slots. */
-export function createZeroSkillTransferMatrix(numAges: number): SkillTransferMatrix {
-    const matrix: SkillTransferMatrix = new Array(numAges);
-    for (let age = 0; age < numAges; age++) {
-        const cohort = {} as SkillTransferCohort;
-        for (const edu of educationLevelKeys) {
-            cohort[edu] = {} as { [O in Occupation]: { [S in Skill]: number } };
-            for (const occ of OCCUPATIONS) {
-                cohort[edu][occ] = {} as { [S in Skill]: number };
-                for (const skill of SKILL) {
-                    cohort[edu][occ][skill] = 0;
-                }
-            }
-        }
-        matrix[age] = cohort;
-    }
-    return matrix;
-}
-
-/** Sum all cells of a skill-aware transfer matrix (should be ~0 for a balanced system). */
-export function sumSkillTransferMatrix(matrix: SkillTransferMatrix): number {
-    let total = 0;
-    for (let age = 0; age < matrix.length; age++) {
-        for (const edu of educationLevelKeys) {
-            for (const occ of OCCUPATIONS) {
-                for (const skill of SKILL) {
-                    total += matrix[age][edu][occ][skill];
-                }
-            }
-        }
-    }
-    return total;
-}
-
 // ---------------------------------------------------------------------------
 // Main tick
 // ---------------------------------------------------------------------------
@@ -533,9 +493,6 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
 
     // Per-cell transfer matrix (age × edu × occ): positive = received, negative = given
     const transferMatrix: PopulationTransferMatrix = createZeroTransferMatrix(numAges);
-
-    // Skill-aware matrix for frontend visualisation (all kernel-based transfers)
-    const verticalMatrix: SkillTransferMatrix = createZeroSkillTransferMatrix(numAges);
 
     // Pre-compute per-age support capacity and survival floor
     const capacities = new Array<number>(numAges);
@@ -647,7 +604,6 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
         capacities,
         oneTickFood,
         foodPrice,
-        verticalMatrix,
     );
 
     // ===================================================================
@@ -741,7 +697,6 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
         capacities,
         foodTargetPerPerson,
         foodPrice,
-        verticalMatrix,
     );
 
     // ===================================================================
@@ -752,15 +707,8 @@ function intergenerationalTransfersForPlanet(planet: Planet): void {
         if (Math.abs(matrixSum) > 1e-4) {
             console.warn(`[intergenerationalTransfers] transfer matrix not zero-sum: Δ=${matrixSum.toExponential(4)}`);
         }
-        const verticalSum = sumSkillTransferMatrix(verticalMatrix);
-        if (Math.abs(verticalSum) > 1e-4) {
-            console.warn(
-                `[intergenerationalTransfers] vertical matrix not zero-sum: Δ=${verticalSum.toExponential(4)}`,
-            );
-        }
     }
     planet.population.lastTransferMatrix = transferMatrix;
-    planet.population.lastVerticalTransferMatrix = verticalMatrix;
 }
 
 // ---------------------------------------------------------------------------
@@ -791,7 +739,6 @@ function executeVerticalTransfers(
     capacities: number[],
     targetPerPerson: number,
     foodPrice: number,
-    skillMatrix?: SkillTransferMatrix,
 ): void {
     // Mutable copy of remaining surplus per supporter age
     const remaining = surplusPool.map((s) => s.totalSurplus);
@@ -865,7 +812,7 @@ function executeVerticalTransfers(
         // Track actual debits to ensure credit matches exactly.
         let actualTotalDebited = 0;
         for (const { supAge, amount } of transfers) {
-            const debited = debitSupporters(demography, supAge, amount, floors[supAge], transferMatrix, skillMatrix);
+            const debited = debitSupporters(demography, supAge, amount, floors[supAge], transferMatrix);
             remaining[supAge] -= debited;
             actualTotalDebited += debited;
         }
@@ -878,15 +825,7 @@ function executeVerticalTransfers(
 
         // Credit dependent age: only credit what was actually debited
         log('creditDependents call', { depAge, amount: actualTotalDebited });
-        creditDependents(
-            demography,
-            depAge,
-            actualTotalDebited,
-            targetPerPerson,
-            foodPrice,
-            transferMatrix,
-            skillMatrix,
-        );
+        creditDependents(demography, depAge, actualTotalDebited, targetPerPerson, foodPrice, transferMatrix);
         log('creditDependents done', { depAge });
     }
 }
@@ -912,7 +851,6 @@ function debitSupporters(
     amount: number,
     floor: number,
     transferMatrix?: PopulationTransferMatrix,
-    skillMatrix?: SkillTransferMatrix,
 ): number {
     if (amount <= 0) {
         return 0;
@@ -970,15 +908,6 @@ function debitSupporters(
         if (transferMatrix) {
             transferMatrix[age][cell.edu][cell.occ] -= share;
         }
-        // Track per-skill breakdown (proportional by skill population)
-        if (skillMatrix && cell.pop > 0) {
-            for (const skill of SKILL) {
-                const skillPop = demography[age][cell.occ][cell.edu][skill].total;
-                if (skillPop > 0) {
-                    skillMatrix[age][cell.edu][cell.occ][skill] -= share * (skillPop / cell.pop);
-                }
-            }
-        }
     }
 
     vlog('debitSupporters done', { age, actualDebit });
@@ -1001,7 +930,6 @@ function creditDependents(
     targetPerPerson: number,
     foodPrice: number,
     transferMatrix?: PopulationTransferMatrix,
-    skillMatrix?: SkillTransferMatrix,
 ): void {
     if (amount <= 0) {
         return;
@@ -1043,17 +971,6 @@ function creditDependents(
 
     log('creditDependents summary', { age, amount, totalNeed, totalPop });
 
-    const recordSkill = (cell: CellInfo, share: number) => {
-        if (skillMatrix && cell.pop > 0) {
-            for (const skill of SKILL) {
-                const skillPop = demography[age][cell.occ][cell.edu][skill].total;
-                if (skillPop > 0) {
-                    skillMatrix[age][cell.edu][cell.occ][skill] += share * (skillPop / cell.pop);
-                }
-            }
-        }
-    };
-
     // Distribute by need if possible, otherwise by population
     if (totalNeed > 0) {
         for (const cell of cells) {
@@ -1067,7 +984,6 @@ function creditDependents(
             if (transferMatrix) {
                 transferMatrix[age][cell.edu][cell.occ] += share;
             }
-            recordSkill(cell, share);
         }
     } else {
         // Fallback: population-proportional
@@ -1079,7 +995,6 @@ function creditDependents(
             if (transferMatrix) {
                 transferMatrix[age][cell.edu][cell.occ] += share;
             }
-            recordSkill(cell, share);
         }
     }
 }

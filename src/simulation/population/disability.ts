@@ -106,7 +106,7 @@ export function applyDisability(population: Population, environment: Environment
                 { age, occ, edu, skill },
                 { age, occ: 'unableToWork', edu, skill },
                 moveFromOcc,
-            );
+            ).count;
             category.disabilities.countThisMonth += moved;
             category.disabilities.countThisTick = moved;
         });

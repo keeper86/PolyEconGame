@@ -42,6 +42,8 @@ export function populationTick(gameState: GameState): void {
         consumeFood(population);
 
         // 2. Mortality — writes population.tickDeaths
+        //    Inheritance: deceased wealth is redistributed to younger
+        //    generations via Gaussian kernel (zero-sum, no bank mutation).
         applyMortality(population, planet.environment);
 
         // 3. Disability — writes population.tickNewDisabilities

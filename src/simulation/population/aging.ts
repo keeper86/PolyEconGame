@@ -8,46 +8,21 @@
 import { stochasticRound } from '../utils/stochasticRound';
 import type { EducationLevelType } from './education';
 import { educationGraduationProbabilityForAge, educationLevels, ageDropoutProbabilityForEducation } from './education';
-import type { Population, Cohort, PopulationCategory, Skill } from './population';
+import type { Population, Cohort, PopulationCategory, Skill, Occupation } from './population';
 import {
     MAX_AGE,
     createEmptyCohort,
     nullPopulationCategory,
     forEachPopulationCohort,
-    mergeGaussianMoments,
+    mergePopulationCategory,
 } from './population';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Merge a source PopulationCategory into a destination, pooling
- * total, wealth (Gaussian moments), foodStock and starvation.
- *
- * Demographic-event counters (deaths, disabilities, retirements) are
- * intentionally reset in the new demography (they are per-tick accumulators).
- */
-function mergeCategory(dst: PopulationCategory, src: PopulationCategory, count: number): void {
-    if (count <= 0) {
-        return;
-    }
-    const srcWealth = src.wealth;
-    dst.wealth = mergeGaussianMoments(dst.total, dst.wealth, count, srcWealth);
-    const srcFoodPer = src.total > 0 ? src.foodStock / src.total : 0;
-    dst.foodStock += srcFoodPer * count;
-    // Weighted average starvation
-    const totalAfter = dst.total + count;
-    if (totalAfter > 0) {
-        dst.starvationLevel = (dst.total * dst.starvationLevel + count * src.starvationLevel) / totalAfter;
-    }
-    dst.total += count;
-}
-
-// ---------------------------------------------------------------------------
-// Public
-// ---------------------------------------------------------------------------
-
+type CategoryWithIndex = {
+    occ: Occupation;
+    edu: EducationLevelType;
+    skill: Skill;
+    cat: PopulationCategory;
+};
 /**
  * Advance the population by one year: shift every cohort to age + 1 and
  * process education graduation / dropout transitions.
@@ -55,55 +30,100 @@ function mergeCategory(dst: PopulationCategory, src: PopulationCategory, count: 
  * Cohort 0 is left empty — it will be filled over the coming year by
  * per-tick births.
  *
- * People at maxAge remain at maxAge (they cannot age further) and will
- * eventually die via per-tick mortality.  Workers aging from maxAge-1 to
- * maxAge are merged with any survivors already at maxAge.
+ * People at MAX_AGE are carried forward (they remain at MAX_AGE).
+ * Per-tick mortality already handles killing them.
  *
- * @param population     the population to mutate
- * @param totalInCohort  pre-computed totals per age (used to skip empty cohorts)
  */
 export const populationAdvanceYear = (population: Population, totalInCohort: number[]): void => {
-    const newDemography: Cohort<PopulationCategory>[] = Array.from({ length: MAX_AGE + 1 }, () =>
-        createEmptyCohort(nullPopulationCategory),
-    );
+    const demo = population.demography;
 
-    // --- Carry over existing maxAge survivors first ---
-    const existingMaxAge = population.demography[MAX_AGE];
-    if (existingMaxAge) {
-        forEachPopulationCohort(existingMaxAge, (category, occ, edu, skill) => {
-            if (category.total <= 0) {
-                return;
-            }
-            mergeCategory(newDemography[MAX_AGE][occ][edu][skill], category, category.total);
-        });
-    }
+    const maxAgeSnapshot: CategoryWithIndex[] = [];
+    forEachPopulationCohort(demo[MAX_AGE], (category, occ, edu, skill) => {
+        if (category.total > 0) {
+            // Shallow-copy so the later zero-reset of slot MAX_AGE doesn't corrupt.
+            maxAgeSnapshot.push({ occ, edu, skill, cat: { ...category, wealth: { ...category.wealth } } });
+        }
+    });
 
-    // --- Shift each age cohort up by one year ---
-    for (let age = 0; age < MAX_AGE; age++) {
-        const cohort = population.demography[age];
+    // --- Descending shift: age MAX_AGE-1 down to 0 ---
+    // Processing descending means slot k+1 is written BEFORE slot k is read as
+    // a source for any subsequent step — there is no aliasing.
+    for (let age = MAX_AGE - 1; age >= 0; age--) {
         const total = totalInCohort[age];
+        const targetAge = age + 1;
+
         if (!total || total === 0) {
+            // Source is empty: zero-reset target slot so last year's data is gone.
+            resetCohortInPlace(demo[targetAge]);
+            // Still need to restore carried-forward MAX_AGE people even when
+            // age MAX_AGE-1 is empty.
+            if (targetAge === MAX_AGE) {
+                for (const { occ, edu, skill, cat } of maxAgeSnapshot) {
+                    mergePopulationCategory(demo[MAX_AGE][occ][edu][skill], cat, cat.total);
+                }
+            }
             continue;
         }
 
-        const targetAge = Math.min(age + 1, MAX_AGE);
-
-        forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
-            if (category.total <= 0) {
-                return;
-            }
-
-            if (occ === 'education') {
-                processEducationAging(newDemography, targetAge, age, category, edu, skill);
-            } else {
-                // Non-education occupations simply move to the next age
-                mergeCategory(newDemography[targetAge][occ][edu][skill], category, category.total);
+        // Collect non-empty source cells.
+        const srcCells: CategoryWithIndex[] = [];
+        forEachPopulationCohort(demo[age], (category, occ, edu, skill) => {
+            if (category.total > 0) {
+                srcCells.push({ occ, edu, skill, cat: { ...category, wealth: { ...category.wealth } } });
             }
         });
+
+        // Zero-reset the target slot.  Its previous contents have already been
+        // processed (we go descending, so targetAge was already shifted up).
+        resetCohortInPlace(demo[targetAge]);
+
+        // Merge carry-forward MAX_AGE people into slot MAX_AGE when targetAge === MAX_AGE.
+        if (targetAge === MAX_AGE) {
+            for (const { occ, edu, skill, cat } of maxAgeSnapshot) {
+                mergePopulationCategory(demo[MAX_AGE][occ][edu][skill], cat, cat.total);
+            }
+        }
+
+        // Write source cells into target.
+        for (const { occ, edu, skill, cat } of srcCells) {
+            if (occ === 'education') {
+                processEducationAging(demo, targetAge, age, cat, edu, skill);
+            } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                mergePopulationCategory((demo[targetAge] as any)[occ][edu][skill], cat, cat.total);
+            }
+        }
     }
 
-    population.demography = newDemography;
+    demo[0] = createEmptyCohort(nullPopulationCategory);
 };
+
+// ---------------------------------------------------------------------------
+// Private helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Zero-reset every leaf PopulationCategory cell of a cohort in-place,
+ * without allocating any new objects.
+ */
+function resetCohortInPlace(cohort: Cohort<PopulationCategory>): void {
+    forEachPopulationCohort(cohort, (cat) => {
+        cat.total = 0;
+        cat.wealth.mean = 0;
+        cat.wealth.variance = 0;
+        cat.foodStock = 0;
+        cat.starvationLevel = 0;
+        cat.deaths.countThisTick = 0;
+        cat.deaths.countThisMonth = 0;
+        cat.deaths.countLastMonth = 0;
+        cat.disabilities.countThisTick = 0;
+        cat.disabilities.countThisMonth = 0;
+        cat.disabilities.countLastMonth = 0;
+        cat.retirements.countThisTick = 0;
+        cat.retirements.countThisMonth = 0;
+        cat.retirements.countLastMonth = 0;
+    });
+}
 
 // ---------------------------------------------------------------------------
 // Education graduation / dropout transitions
@@ -143,11 +163,11 @@ function processEducationAging(
 
         // Transitioners continue education at the next level
         if (transitioners > 0) {
-            mergeCategory(newDemography[targetAge].education[nextEdu][skill], category, transitioners);
+            mergePopulationCategory(newDemography[targetAge].education[nextEdu][skill], category, transitioners);
         }
         // Voluntary dropouts become unoccupied at the graduated level
         if (voluntaryDropouts > 0) {
-            mergeCategory(newDemography[targetAge].unoccupied[nextEdu][skill], category, voluntaryDropouts);
+            mergePopulationCategory(newDemography[targetAge].unoccupied[nextEdu][skill], category, voluntaryDropouts);
         }
     }
 
@@ -160,14 +180,14 @@ function processEducationAging(
         if (dropouts > 0) {
             if (sourceAge < 6) {
                 // Very young children who "drop out" stay in education at same level
-                mergeCategory(newDemography[targetAge].education[edu][skill], category, dropouts);
+                mergePopulationCategory(newDemography[targetAge].education[edu][skill], category, dropouts);
             } else {
                 // Older dropouts become unoccupied
-                mergeCategory(newDemography[targetAge].unoccupied[edu][skill], category, dropouts);
+                mergePopulationCategory(newDemography[targetAge].unoccupied[edu][skill], category, dropouts);
             }
         }
         if (remainers > 0) {
-            mergeCategory(newDemography[targetAge].education[edu][skill], category, remainers);
+            mergePopulationCategory(newDemography[targetAge].education[edu][skill], category, remainers);
         }
     }
 }

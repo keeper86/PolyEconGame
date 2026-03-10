@@ -24,42 +24,52 @@ import { db } from '../db';
 import { workerQueries } from '../../lib/workerQueries';
 import type { Agent } from '../../simulation/planet/planet';
 
+export const getCurrentTick = () =>
+    procedure
+        .input(z.void())
+        .output(z.object({ tick: z.number() }))
+        .query(async () => {
+            const { tick } = await workerQueries.getCurrentTick();
+            return { tick };
+        });
+
+const planetSummarySchema = z.object({
+    planetId: z.string(),
+    name: z.string(),
+    populationTotal: z.number(),
+    bank: z.object({
+        equity: z.number(),
+        deposits: z.number(),
+    }),
+    foodPrice: z.number(),
+});
+
+export type PlanetSummary = z.infer<typeof planetSummarySchema>;
+
 /** Latest snapshot for every planet (one row per planet). */
-export const getLatestPlanets = () =>
+export const getLatestPlanetSummaries = () =>
     procedure
         .input(z.void())
         .output(
             z.object({
                 tick: z.number(),
-                planets: z.array(
-                    z.object({
-                        planetId: z.string(),
-                        populationTotal: z.number(),
-                        snapshot: z.any(),
-                    }),
-                ),
+                planets: z.array(planetSummarySchema),
             }),
         )
         .query(async () => {
             const { tick, planets } = await workerQueries.getAllPlanets();
-            if (process.env.SIM_DEBUG === '1') {
-                try {
-                    // Log bank slices for each planet so we can trace server-side values
-                    // before tRPC serialization.
-                    console.debug(
-                        '[controller] getLatestPlanets banks:',
-                        planets.map((p) => ({ id: p.id, bank: p.bank })),
-                    );
-                } catch (_e) {
-                    // ignore logging issues
-                }
-            }
+
             return {
                 tick,
                 planets: planets.map((p) => ({
                     planetId: p.id,
                     populationTotal: computePopulationTotal(p),
-                    snapshot: p,
+                    bank: {
+                        equity: p.bank.equity,
+                        deposits: p.bank.deposits,
+                    },
+                    foodPrice: p.priceLevel ?? 1,
+                    name: p.name,
                 })),
             };
         });
@@ -74,7 +84,7 @@ export const getLatestAgents = () =>
                 agents: z.array(
                     z.object({
                         agentId: z.string(),
-                        wealth: z.number(),
+                        bilance: z.number(),
                         storage: z.record(z.string(), z.number()),
                         production: z.record(z.string(), z.number()),
                         consumption: z.record(z.string(), z.number()),
@@ -89,7 +99,9 @@ export const getLatestAgents = () =>
                 tick,
                 agents: agents.map((a) => ({
                     agentId: a.id,
-                    wealth: a.wealth,
+                    bilance: a.assets
+                        ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+                        : 0,
                     storage: computeAgentStorage(a),
                     production: computeAgentProduction(a),
                     consumption: computeAgentConsumption(a),
@@ -129,7 +141,7 @@ export const getAgentListSummaries = () =>
                         agentId: z.string(),
                         name: z.string(),
                         associatedPlanetId: z.string(),
-                        wealth: z.number(),
+                        bilance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),
                         totalWorkers: z.number(),
@@ -144,7 +156,7 @@ export const getAgentListSummaries = () =>
             const { tick, agents } = await workerQueries.getAllAgents();
             return {
                 tick,
-                agents: agents.map((a: Agent) => summariseAgentBlob(a.id, a.wealth, a)),
+                agents: agents.map((a: Agent) => summariseAgentBlob(a.id, a)),
             };
         });
 
@@ -165,7 +177,7 @@ export const getAgentDetail = () =>
                 agent: z
                     .object({
                         agentId: z.string(),
-                        wealth: z.number(),
+                        bilance: z.number(),
                         storage: z.record(z.string(), z.number()),
                         production: z.record(z.string(), z.number()),
                         consumption: z.record(z.string(), z.number()),
@@ -186,7 +198,9 @@ export const getAgentDetail = () =>
                 tick,
                 agent: {
                     agentId: agent.id,
-                    wealth: agent.wealth,
+                    bilance: agent.assets
+                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+                        : 0,
                     storage: computeAgentStorage(agent),
                     production: computeAgentProduction(agent),
                     consumption: computeAgentConsumption(agent),
@@ -210,7 +224,7 @@ export const getAgentOverview = () =>
                         agentId: z.string(),
                         name: z.string(),
                         associatedPlanetId: z.string(),
-                        wealth: z.number(),
+                        bilance: z.number(),
                         shipCount: z.number(),
                         planets: z.array(
                             z.object({
@@ -246,7 +260,9 @@ export const getAgentOverview = () =>
                     agentId: agent.id,
                     name: agent.name,
                     associatedPlanetId: agent.associatedPlanetId ?? '',
-                    wealth: agent.wealth,
+                    bilance: agent.assets
+                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+                        : 0,
                     shipCount: agent.transportShips?.length ?? 0,
                     planets,
                 },
@@ -274,11 +290,10 @@ export const getPlanetDetail = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { planets }] = await Promise.all([
+            const [{ tick }, { planet }] = await Promise.all([
                 workerQueries.getCurrentTick(),
-                workerQueries.getAllPlanets(),
+                workerQueries.getPlanet(input.planetId),
             ]);
-            const planet = planets.find((p) => p.id === input.planetId) ?? null;
             if (!planet) {
                 return { tick, planet: null, populationTotal: 0 };
             }

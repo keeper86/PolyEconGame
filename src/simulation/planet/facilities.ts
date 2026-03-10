@@ -54,7 +54,8 @@ export const agriculturalProductResourceType: Resource = {
 
 export type Facilility = PlanetaryId & {
     name: string;
-    scale: number; // multiplier for everything below
+    maxScale: number; // Maximum scale level for this facility, agent can reduce scale below this but not increase it above this
+    scale: number; // multiplier for everything below; can be adjusted by the agent up to maxScale, but not above to address bottlenecks in production or low demand
 
     powerConsumptionPerTick: number; // energy consumed per tick while operating at full efficiency
     workerRequirement: {

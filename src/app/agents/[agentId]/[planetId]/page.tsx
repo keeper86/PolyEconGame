@@ -1,38 +1,22 @@
 'use client';
 
-import type { AgentResourceSnapshot } from '@/app/agents/AgentOverview';
 import AgentFinancialPanel from '@/app/agents/AgentFinancialPanel';
 import ProductionFacilitiesPanel from '@/app/agents/ProductionFacilitiesPanel';
 import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
 import type { WorkforceDemography } from '@/app/agents/workforce-summary';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
-import { useAgentHistory } from '@/hooks/useAgentData';
 import { useTRPC } from '@/lib/trpc';
 import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facilities';
+import type { EducationLevelType } from '@/simulation/population/education';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { route } from 'nextjs-routes';
 import React from 'react';
-import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { EducationLevelType } from '@/simulation/population/education';
 
 const REFETCH_INTERVAL_MS = 1000;
-
-const COLORS = [
-    '#60a5fa',
-    '#34d399',
-    '#f59e0b',
-    '#f97316',
-    '#ef4444',
-    '#8b5cf6',
-    '#ec4899',
-    '#14b8a6',
-    '#a3e635',
-    '#f43f5e',
-];
 
 /* ------------------------------------------------------------------ */
 /*  Storage table                                                      */
@@ -75,91 +59,6 @@ function StorageOverview({ storage }: { storage: StorageFacility }): React.React
 }
 
 /* ------------------------------------------------------------------ */
-/*  Resource time-series chart (reused from AgentOverview pattern)     */
-/* ------------------------------------------------------------------ */
-
-function ResourceTimeSeriesChart({
-    title,
-    snapshots,
-}: {
-    title: string;
-    snapshots: AgentResourceSnapshot[];
-}): React.ReactElement {
-    if (!snapshots || snapshots.length === 0) {
-        return <div className='text-xs text-muted-foreground'>No {title.toLowerCase()} data yet</div>;
-    }
-
-    const resourceNames = Array.from(
-        snapshots.reduce<Set<string>>((set, s) => {
-            for (const rName of Object.keys(s.resources)) {
-                set.add(rName);
-            }
-            return set;
-        }, new Set()),
-    ).sort();
-
-    if (resourceNames.length === 0) {
-        return <div className='text-xs text-muted-foreground'>No {title.toLowerCase()} data yet</div>;
-    }
-
-    const chartData = snapshots
-        .slice()
-        .reverse()
-        .map((s) => {
-            const row: Record<string, number | string> = { tick: s.tick };
-            for (const rName of resourceNames) {
-                row[rName] = s.resources[rName] ?? 0;
-            }
-            return row;
-        });
-
-    return (
-        <div>
-            <h5 className='text-xs font-medium mb-1'>{title}</h5>
-            <div style={{ width: '100%', height: 160 }}>
-                <ResponsiveContainer width='100%' height='100%'>
-                    <BarChart data={chartData} margin={{ top: 6, right: 6, left: 6, bottom: 6 }}>
-                        <XAxis dataKey='tick' tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip />
-                        <Legend verticalAlign='top' height={20} wrapperStyle={{ fontSize: 10 }} />
-                        {resourceNames.map((rName, idx) => (
-                            <Bar
-                                key={rName}
-                                dataKey={rName}
-                                stackId='a'
-                                fill={COLORS[idx % COLORS.length]}
-                                name={rName}
-                            />
-                        ))}
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
-    );
-}
-
-/* ------------------------------------------------------------------ */
-/*  History charts wrapper                                             */
-/* ------------------------------------------------------------------ */
-
-function AgentStorageHistoryCharts({ agentId }: { agentId: string }): React.ReactElement {
-    const { series } = useAgentHistory();
-
-    if (series.storage.length === 0) {
-        return <div className='text-xs text-muted-foreground'>No history data for agent {agentId} yet</div>;
-    }
-
-    return (
-        <div className='mt-4 space-y-3'>
-            <ResourceTimeSeriesChart title='Storage over time' snapshots={series.storage} />
-            <ResourceTimeSeriesChart title='Production over time' snapshots={series.production} />
-            <ResourceTimeSeriesChart title='Consumption over time' snapshots={series.consumption} />
-        </div>
-    );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -176,6 +75,16 @@ type PlanetAssets = {
     disabilities?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
     retirements?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
     workforceDemography?: WorkforceDemography;
+    deposits: number;
+    loans?: number;
+    lastWageBill?: number;
+    foodMarket?: {
+        offerPrice?: number;
+        offerQuantity?: number;
+        lastSold?: number;
+        lastRevenue?: number;
+        priceDirection?: number;
+    };
 };
 
 export default function AgentPlanetDetailPage() {
@@ -194,7 +103,6 @@ export default function AgentPlanetDetailPage() {
         agentId: string;
         agentName: string;
         planetId: string;
-        deposits: number;
         assets: PlanetAssets;
     } | null;
     const assets = detail?.assets;
@@ -238,12 +146,13 @@ export default function AgentPlanetDetailPage() {
 
                     {/* Storage */}
                     {assets.storageFacility && <StorageOverview storage={assets.storageFacility} />}
-                    <AgentStorageHistoryCharts agentId={agentId} />
 
                     {/* Financial position */}
                     <AgentFinancialPanel
-                        deposits={detail?.deposits ?? 0}
-                        workforceDemography={assets.workforceDemography}
+                        deposits={assets.deposits ?? 0}
+                        loans={assets.loans ?? 0}
+                        lastWageBill={assets.lastWageBill ?? 0}
+                        foodMarket={assets.foodMarket}
                     />
                 </div>
             ) : isLoading ? (

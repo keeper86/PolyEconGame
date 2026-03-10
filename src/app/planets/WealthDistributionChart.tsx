@@ -9,20 +9,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { Population, Occupation } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL, mergeGaussianMoments } from '@/simulation/population/population';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmt = (n: number): string => {
-    if (Math.abs(n) >= 1_000_000) {
-        return `${(n / 1_000_000).toFixed(1)}M`;
-    }
-    if (Math.abs(n) >= 1_000) {
-        return `${(n / 1_000).toFixed(1)}k`;
-    }
-    return n.toFixed(1);
-};
+import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  View mode                                                          */
@@ -223,10 +210,10 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                     <h4 className='text-sm font-medium'>Wealth distribution by age</h4>
                     <div className='flex gap-3 text-[10px] text-muted-foreground mt-0.5'>
                         <span>
-                            Total wealth: <span className='font-medium'>{fmt(totalWealth)}</span>
+                            Total wealth: <span className='font-medium'>{formatNumbers(totalWealth)}</span>
                         </span>
                         <span>
-                            Mean/person: <span className='font-medium'>{fmt(globalMean)}</span>
+                            Mean/person: <span className='font-medium'>{formatNumbers(globalMean)}</span>
                         </span>
                         <span>
                             Avg CV: <span className='font-medium'>{avgCv.toFixed(2)}</span>
@@ -265,7 +252,7 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                             </defs>
                             <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                             <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v)} />
+                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatNumbers(v)} />
                             <Tooltip
                                 content={({ active, payload, label }) => {
                                     if (!active || !payload || payload.length === 0) {
@@ -278,10 +265,10 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                                     return (
                                         <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[160px]'>
                                             <div className='font-medium mb-1'>Age {label}</div>
-                                            <div>Population: {fmt(row.pop)}</div>
-                                            <div>Mean wealth: {fmt(row.mean)}</div>
+                                            <div>Population: {formatNumbers(row.pop)}</div>
+                                            <div>Mean wealth: {formatNumbers(row.mean)}</div>
                                             <div>
-                                                ±1σ range: {fmt(row.lower)} – {fmt(row.upper)}
+                                                ±1σ range: {formatNumbers(row.lower)} – {formatNumbers(row.upper)}
                                             </div>
                                             <div>CV (σ/μ): {row.cv.toFixed(2)}</div>
                                         </div>
@@ -312,7 +299,7 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                         <ComposedChart data={eduBreakdown} margin={{ top: 6, right: 12, left: 12, bottom: 6 }}>
                             <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                             <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v)} />
+                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatNumbers(v)} />
                             <Tooltip
                                 content={({ active, payload, label }) => {
                                     if (!active || !payload || payload.length === 0) {
@@ -323,7 +310,7 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                                             <div className='font-medium mb-1'>Age {label}</div>
                                             {payload.map((entry) => (
                                                 <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {fmt(entry.value as number)}
+                                                    {entry.name}: {formatNumbers(entry.value as number)}
                                                 </div>
                                             ))}
                                         </div>
@@ -351,7 +338,7 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                         <ComposedChart data={occBreakdown} margin={{ top: 6, right: 12, left: 12, bottom: 6 }}>
                             <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                             <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v)} />
+                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatNumbers(v)} />
                             <Tooltip
                                 content={({ active, payload, label }) => {
                                     if (!active || !payload || payload.length === 0) {
@@ -362,7 +349,7 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                                             <div className='font-medium mb-1'>Age {label}</div>
                                             {payload.map((entry) => (
                                                 <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {fmt(entry.value as number)}
+                                                    {entry.name}: {formatNumbers(entry.value as number)}
                                                 </div>
                                             ))}
                                         </div>

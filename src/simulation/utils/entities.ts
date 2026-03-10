@@ -17,6 +17,7 @@ export const agriculturalProductionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-agricultural',
     name: 'Agricultural Facility',
+    maxScale: 2000,
     scale: 2000,
     powerConsumptionPerTick: 1,
     workerRequirement: {
@@ -48,6 +49,7 @@ export const waterExtractionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-water-extraction',
     name: 'Water Extraction Facility',
+    maxScale: 2000,
     scale: 2000,
     lastTickResults: {
         overallEfficiency: 1,
@@ -76,6 +78,7 @@ export const ironExtractionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-iron-extraction',
     name: 'Iron Extraction Facility',
+    maxScale: 1,
     scale: 1,
     lastTickResults: {
         overallEfficiency: 1,
@@ -104,6 +107,7 @@ export const testCompanyStorage: StorageFacility = {
     planetId: 'earth',
     id: 'test-company-storage',
     name: 'Test Company Storage',
+    maxScale: 1,
     scale: 1,
     powerConsumptionPerTick: 0.1,
     workerRequirement: {
@@ -132,6 +136,7 @@ export const earthStorage: StorageFacility = {
     planetId: 'earth',
     id: 'earth-storage',
     name: 'Governmental Storage',
+    maxScale: 1,
     scale: 1,
     powerConsumptionPerTick: 0.1,
     workerRequirement: {
@@ -177,7 +182,6 @@ export const earthGovernment: Agent = {
             workforceDemography: makeWorkforceDemography(),
         },
     },
-    wealth: 1000000000, // in coins
 };
 
 export const testCompany: Agent = {
@@ -201,7 +205,6 @@ export const testCompany: Agent = {
             workforceDemography: makeWorkforceDemography(),
         },
     },
-    wealth: 1000000000, // in coins
 };
 
 export const earth: Planet = {
@@ -484,6 +487,7 @@ export function createPopulation(total: number): Population {
                 wealth: { mean: 0, variance: 0 },
             })),
         ),
+        lastTransferMatrix: [],
     };
     const remainder = total - perAge * (MAX_AGE + 1);
 

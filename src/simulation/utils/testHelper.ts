@@ -157,6 +157,7 @@ export function makeWorkforceDemography(): CohortByOccupation<WorkforceCategory>
 export function makePopulation(): Population {
     return {
         demography: makePopulationDemography(),
+        lastTransferMatrix: [],
     };
 }
 
@@ -317,6 +318,7 @@ export function makeProductionFacility(
         planetId: 'p',
         id: 'facility-1',
         name: 'Test Facility',
+        maxScale: 1,
         scale: 1,
         lastTickResults: {
             overallEfficiency: 0,
@@ -375,7 +377,6 @@ export function makeAgent(id = 'agent-1', planetId = 'p', overrides?: Partial<Ag
         id,
         name: id,
         associatedPlanetId: planetId,
-        wealth: 0,
         transportShips: [],
         assets: {
             [planetId]: makeAgentPlanetAssets(planetId),
@@ -441,10 +442,17 @@ export function makePlanetWithPopulation(
  * Create a GameState from a planet and agents. The planet's government
  * agent must be included in `agents`.
  */
-export function makeGameState(planet: Planet, agents: Agent[], tick = 0): GameState {
+export function makeGameState(
+    planets: Planet[] | Planet = [makePlanet()],
+    agents: Agent[] = [makeGovernmentAgent()],
+    tick = 0,
+): GameState {
+    if (!Array.isArray(planets)) {
+        planets = [planets];
+    }
     return {
         tick,
-        planets: new Map([[planet.id, planet]]),
+        planets: new Map(planets.map((p) => [p.id, p])),
         agents: new Map(agents.map((a) => [a.id, a])),
     };
 }
@@ -474,7 +482,7 @@ export function makeWorld(opts?: {
     const agents = [gov, ...companies];
 
     return {
-        gameState: makeGameState(planet, agents, opts?.tick),
+        gameState: makeGameState([planet], agents, opts?.tick),
         planet,
         gov,
         agents,

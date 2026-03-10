@@ -1,4 +1,5 @@
 import { TICKS_PER_YEAR } from '../constants';
+import { stochasticRound } from '../utils/stochasticRound';
 import type { EducationLevelType } from './education';
 import { educationLevelKeys } from './education';
 
@@ -15,13 +16,6 @@ export type Skill = (typeof SKILL)[number];
 
 export type PopulationTransferCohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
 export type PopulationTransferMatrix = PopulationTransferCohort[];
-
-/** Skill-aware transfer cohort: age → edu → occ → skill. */
-export type SkillTransferCohort = {
-    [L in EducationLevelType]: { [O in Occupation]: { [S in Skill]: number } };
-};
-/** Skill-aware transfer matrix (one entry per age). */
-export type SkillTransferMatrix = SkillTransferCohort[];
 
 export type CategoryIndex = {
     age: number;
@@ -77,8 +71,11 @@ export type DemographicEventType = RetirementStats['type'] | DeathStats['type'] 
 
 export type PopulationCategory = {
     total: number;
+    // Gaussian moments of per-capita monetary wealth for this category
     wealth: GaussianMoments;
+    // total food stock for this category (not per capita)
     foodStock: number;
+    // category-bound starvation level (0 to 1)
     starvationLevel: number;
     deaths: DeathStats;
     disabilities: DisabilityStats;
@@ -96,9 +93,7 @@ export type Cohort<T> = { [O in Occupation]: CohortByOccupation<T> };
 
 export type Population = {
     demography: Cohort<PopulationCategory>[];
-    lastTransferMatrix?: PopulationTransferMatrix;
-    /** Kernel-based transfers (all support ties: peer, vertical, etc.) — skill-aware. */
-    lastVerticalTransferMatrix?: SkillTransferMatrix;
+    lastTransferMatrix: PopulationTransferMatrix;
 };
 
 // ---------------------------------------------------------------------------
@@ -148,58 +143,111 @@ export const nullWorkforceCategory = (): WorkforceCategory => ({
     departingFired: [],
 });
 
-// What happens with ppl dying? currently we reduce the count.
-// we need to subtract wealth and food stock from the category,
-// maybe we allow to here to be undefined and then we just "destroy the count and wealth and so on
-// "
+/**
+ * Result of a population transfer, including any "orphaned" wealth
+ * from people who were removed without a destination (deaths).
+ */
+export type TransferResult = {
+    /** Number of people actually moved (capped at source total). */
+    count: number;
+    /**
+     * Total wealth orphaned by this transfer (count × perCapitaMean).
+     * Non-zero only when `to` is undefined (death / removal).
+     * Callers should credit this amount to the planet's bank as
+     * inheritance so that monetary wealth is conserved.
+     */
+    inheritedWealth: number;
+};
 
+// ---------------------------------------------------------------------------
+// Merge helper — the shared building block
+// ---------------------------------------------------------------------------
+
+/**
+ * Merge `count` people from a source PopulationCategory into a destination
+ * by direct reference, pooling total, wealth (Gaussian moments), foodStock
+ * and starvation.
+ *
+ * This is the low-level building block used by both `transferPopulation`
+ * (for in-place indexed transfers) and `aging.ts` (for cross-demography
+ * transfers when building a new demography array).
+ *
+ * Note: only the *destination* is mutated.  The caller is responsible for
+ * decrementing the source's `total` and `foodStock` if needed (as
+ * `transferPopulation` does).
+ *
+ * Demographic-event counters (deaths, disabilities, retirements) are
+ * intentionally NOT merged — they are per-tick accumulators that should
+ * be reset in newly created demography arrays.
+ */
+export function mergePopulationCategory(dst: PopulationCategory, src: PopulationCategory, count: number): void {
+    if (count <= 0) {
+        return;
+    }
+    dst.wealth = mergeGaussianMoments(dst.total, dst.wealth, count, src.wealth);
+    const srcFoodPer = src.total > 0 ? stochasticRound(src.foodStock / src.total) : 0;
+    dst.foodStock += srcFoodPer * count;
+
+    //const totalAfter = dst.total + count;
+    //if (totalAfter > 0) {
+    //    dst.starvationLevel = (dst.total * dst.starvationLevel + count * src.starvationLevel) / totalAfter;
+    //}
+    dst.total += count;
+}
+
+/**
+ * Transfer `count` people from one population cell to another.
+ *
+ * Both source and destination are identified by `CategoryIndex`
+ * (age, occ, edu, skill) within the same `demography` array.
+ *
+ * When `to` is undefined the people are removed (death).  Their food
+ * stock is destroyed (perishable) but their monetary wealth is returned
+ * in `TransferResult.inheritedWealth` so the caller can route it to
+ * the inheritance redistribution system.
+ *
+ * For normal transfers (to !== undefined) wealth moments, food stock,
+ * and starvation level are moved proportionally via `mergePopulationCategory`.
+ * The source's per-capita moments are unchanged (random sub-sample assumption).
+ */
 export const transferPopulation = (
     demography: Cohort<PopulationCategory>[],
     from: CategoryIndex,
     to: CategoryIndex | undefined,
     count: number,
-): number => {
+): TransferResult => {
     if (count <= 0) {
-        return 0;
+        return { count: 0, inheritedWealth: 0 };
     }
     const fromCategory = demography[from.age][from.occ][from.edu][from.skill];
     const toCategory = to ? demography[to.age][to.occ][to.edu][to.skill] : undefined;
 
     const transferMaximum = Math.min(fromCategory.total, count);
     const originalTotal = fromCategory.total;
-
-    fromCategory.total -= transferMaximum;
-    if (toCategory) {
-        toCategory.total += transferMaximum;
-    }
-
-    // Shift wealth and foodStock proportionally to the transfer count.
-    // We use the original total (before decrement) so the proportional
-    // split is correct even when transferring all population out.
     const fraction = originalTotal > 0 ? transferMaximum / originalTotal : 0;
 
-    // Wealth: the transferred group carries the same mean & variance as
-    // the source (it's a random sub-sample).  After removing them, the
-    // remaining group also keeps the original moments (no information
-    // about sub-group differences).
-    const wealthTransfer: GaussianMoments = { mean: fromCategory.wealth.mean, variance: fromCategory.wealth.variance };
-    // Source wealth moments stay unchanged (same distribution, fewer people).
-    // Destination gets the transferred wealth merged in.
+    let inheritedWealth = 0;
     if (toCategory) {
-        toCategory.wealth = mergeGaussianMoments(
-            toCategory.total - transferMaximum, // dst count before this transfer
-            toCategory.wealth,
-            transferMaximum,
-            wealthTransfer,
-        );
+        // Merge into destination *before* decrementing source total so that
+        // mergePopulationCategory sees the correct per-capita foodStock.
+        mergePopulationCategory(toCategory, fromCategory, transferMaximum);
+        fromCategory.total -= transferMaximum;
+        // Subtract the food stock that was merged into the destination
+        const foodStockTransfer = fromCategory.foodStock * fraction;
+        fromCategory.foodStock -= foodStockTransfer;
+    } else {
+        // Death: decrement source and orphan the wealth for inheritance.
+        fromCategory.total -= transferMaximum;
+        const wealthTransfer: GaussianMoments = {
+            mean: fromCategory.wealth.mean,
+            variance: fromCategory.wealth.variance,
+        };
+        inheritedWealth = transferMaximum * Math.max(0, wealthTransfer.mean);
+        // Food stock of the dead is destroyed (perishable).
+        fromCategory.foodStock -= fromCategory.foodStock * fraction;
     }
 
-    const foodStockTransfer = fromCategory.foodStock * fraction;
-    fromCategory.foodStock -= foodStockTransfer;
-    if (toCategory) {
-        toCategory.foodStock += foodStockTransfer;
-    }
-    return transferMaximum;
+    return { count: transferMaximum, inheritedWealth };
 };
 
 const reduceCohort = <T>(cohort: Cohort<T>, sumFunction: (categoryA: T, categoryB: T) => T, initialValue: T): T => {

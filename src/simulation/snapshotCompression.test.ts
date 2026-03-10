@@ -10,13 +10,13 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { serializeSnapshot, deserializeSnapshot, serializeGameState } from './snapshotCompression';
-import { toImmutableGameState, fromImmutableGameState } from './immutableTypes';
-import type { GameState } from './engine';
-import type { Planet, Agent } from './planet/planet';
+import { fromImmutableGameState, toImmutableGameState } from './immutableTypes';
 import type { ProductionFacility, StorageFacility } from './planet/facilities';
+import type { Agent, GameState, Planet } from './planet/planet';
+import { deserializeSnapshot, serializeSnapshot } from './snapshotCompression';
+import { makeGameState } from './utils/testHelper';
 
 // ---------------------------------------------------------------------------
 // Minimal test fixtures (same pattern as immutableTypes.test.ts)
@@ -42,7 +42,6 @@ function makeAgent(id: string): Agent {
         id,
         name: `agent-${id}`,
         associatedPlanetId: 'planet-1',
-        wealth: 1000,
         transportShips: [],
         assets: {
             'planet-1': {
@@ -50,8 +49,9 @@ function makeAgent(id: string): Agent {
                 resourceTenancies: [],
                 productionFacilities: [] as ProductionFacility[],
                 deposits: 0,
+                workforceDemography: [],
                 storageFacility: makeStorage(),
-                allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
+                allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
             },
         },
     };
@@ -63,7 +63,7 @@ function makePlanet(id = 'planet-1'): Planet {
         id,
         name: `Planet ${id}`,
         position: { x: 1, y: 2, z: 3 },
-        population: { demography: [], starvationLevel: 0.5 },
+        population: { demography: [] , lastTransferMatrix: [] },
         resources: {},
         governmentId: government.id,
         bank: {
@@ -94,48 +94,15 @@ function makePlanet(id = 'planet-1'): Planet {
     };
 }
 
-function makeGameState(): GameState {
-    const planet = makePlanet();
-    const agent = makeAgent('agent-1');
-    return {
-        tick: 42,
-        planets: new Map([[planet.id, planet]]),
-        agents: new Map([[agent.id, agent]]),
-    };
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('snapshotCompression', () => {
-    describe('toImmutableGameState / fromImmutableGameState round-trip', () => {
-        it('round-trips a GameState through immutable records', () => {
-            const gs = makeGameState();
-            const record = toImmutableGameState(gs);
-            const restored = fromImmutableGameState(record);
-
-            expect(restored.tick).toBe(42);
-            expect(restored.planets.size).toBe(1);
-            expect(restored.agents.size).toBe(1);
-        });
-
-        it('preserves planet data through immutable conversion', () => {
-            const gs = makeGameState();
-            const record = toImmutableGameState(gs);
-            const restoredGs = fromImmutableGameState(record);
-
-            const resPlanet = restoredGs.planets.get('planet-1')!;
-            expect(resPlanet.id).toBe('planet-1');
-            expect(resPlanet.name).toBe('Planet planet-1');
-            expect(resPlanet.position).toEqual({ x: 1, y: 2, z: 3 });
-            expect(resPlanet.population.starvationLevel).toBe(0.5);
-        });
-    });
-
     describe('serializeSnapshot / deserializeSnapshot', () => {
         it('round-trips a GameStateRecord through serialization', () => {
             const gs = makeGameState();
+            gs.tick = 42; // non-default tick to verify it's preserved
             const record = toImmutableGameState(gs);
 
             const serialized = serializeSnapshot(record);
@@ -150,6 +117,10 @@ describe('snapshotCompression', () => {
 
         it('preserves full game state data through serialization', () => {
             const gs = makeGameState();
+            const firstPlanetName = gs.planets.keys().next().value;
+            expect(firstPlanetName).toBeDefined();
+            const firstAgentName = gs.agents.keys().next().value;
+            expect(firstAgentName).toBeDefined();
             const record = toImmutableGameState(gs);
 
             const serialized = serializeSnapshot(record);
@@ -160,21 +131,20 @@ describe('snapshotCompression', () => {
             expect(restoredGs.tick).toBe(gs.tick);
 
             // Planet
-            const origPlanet = gs.planets.get('planet-1')!;
-            const resPlanet = restoredGs.planets.get('planet-1')!;
+            const origPlanet = gs.planets.get(firstPlanetName!)!;
+            expect(origPlanet).toBeDefined();
+            const resPlanet = restoredGs.planets.get(firstPlanetName!)!;
             expect(resPlanet.id).toBe(origPlanet.id);
             expect(resPlanet.name).toBe(origPlanet.name);
             expect(resPlanet.position).toEqual(origPlanet.position);
-            expect(resPlanet.population.starvationLevel).toBe(origPlanet.population.starvationLevel);
             expect(resPlanet.infrastructure.primarySchools).toBe(origPlanet.infrastructure.primarySchools);
             expect(resPlanet.environment.pollution.air).toBe(origPlanet.environment.pollution.air);
 
             // Agent
-            const origAgent = gs.agents.get('agent-1')!;
-            const resAgent = restoredGs.agents.get('agent-1')!;
+            const origAgent = gs.agents.get(firstAgentName!)!;
+            const resAgent = restoredGs.agents.get(firstAgentName!)!;
             expect(resAgent.id).toBe(origAgent.id);
             expect(resAgent.name).toBe(origAgent.name);
-            expect(resAgent.wealth).toBe(origAgent.wealth);
         });
 
         it('produces serialized output smaller than raw JSON', () => {
@@ -196,32 +166,14 @@ describe('snapshotCompression', () => {
         });
     });
 
-    describe('serializeGameState', () => {
-        it('round-trips a GameState through serialization', () => {
-            const gs = makeGameState();
-
-            const serialized = serializeGameState(gs);
-            const restored = deserializeSnapshot(serialized);
-
-            expect(restored.tick).toBe(42);
-            expect(restored.planets.size).toBe(1);
-            expect(restored.agents.size).toBe(1);
-        });
-    });
-
     describe('multi-planet / multi-agent', () => {
         it('handles multiple planets and agents', () => {
+            const planetIds = ['p1', 'p2', 'p3'].sort();
+            const agentIds = ['a1', 'a2'].sort();
             const gs: GameState = {
                 tick: 100,
-                planets: new Map([
-                    ['p1', makePlanet('p1')],
-                    ['p2', makePlanet('p2')],
-                    ['p3', makePlanet('p3')],
-                ]),
-                agents: new Map([
-                    ['a1', makeAgent('a1')],
-                    ['a2', makeAgent('a2')],
-                ]),
+                planets: new Map(planetIds.map((id) => [id, makePlanet(id)])),
+                agents: new Map(agentIds.map((id) => [id, makeAgent(id)])),
             };
             const record = toImmutableGameState(gs);
 
@@ -232,8 +184,8 @@ describe('snapshotCompression', () => {
             expect(restoredGs.tick).toBe(100);
             expect(restoredGs.planets.size).toBe(3);
             expect(restoredGs.agents.size).toBe(2);
-            expect([...restoredGs.planets.values()].map((p) => p.id).sort()).toEqual(['p1', 'p2', 'p3']);
-            expect([...restoredGs.agents.values()].map((a) => a.id).sort()).toEqual(['a1', 'a2']);
+            expect([...restoredGs.planets.values()].map((p) => p.id).sort()).toEqual(planetIds);
+            expect([...restoredGs.agents.values()].map((a) => a.id).sort()).toEqual(agentIds);
         });
     });
 });

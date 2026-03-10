@@ -14,9 +14,9 @@ import {
     toImmutableGameState,
     fromImmutableGameState,
 } from './immutableTypes';
-import type { Planet, Agent } from './planet/planet';
-import type { GameState } from './engine';
+import type { Planet, Agent, GameState } from './planet/planet';
 import type { ProductionFacility, StorageFacility } from './planet/facilities';
+import { makeGameState } from './utils/testHelper';
 
 // ---------------------------------------------------------------------------
 // Minimal test fixtures
@@ -42,7 +42,6 @@ function makeAgent(id: string): Agent {
         id,
         name: `agent-${id}`,
         associatedPlanetId: 'planet-1',
-        wealth: 1000,
         transportShips: [],
         assets: {
             'planet-1': {
@@ -50,8 +49,9 @@ function makeAgent(id: string): Agent {
                 resourceTenancies: [],
                 productionFacilities: [] as ProductionFacility[],
                 deposits: 0,
+                workforceDemography: [],
                 storageFacility: makeStorage(),
-                allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0, quaternary: 0 },
+                allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
             },
         },
     };
@@ -63,7 +63,7 @@ function makePlanet(id = 'planet-1'): Planet {
         id,
         name: `Planet ${id}`,
         position: { x: 0, y: 0, z: 0 },
-        population: { demography: [], starvationLevel: 0 },
+        population: { demography: [], lastTransferMatrix: [] },
         resources: {},
         governmentId: government.id,
         bank: { depositRate: 0, loanRate: 0, deposits: 0, loans: 0, equity: 0, householdDeposits: 0 },
@@ -84,16 +84,6 @@ function makePlanet(id = 'planet-1'): Planet {
                 soil: { constant: 0, percentage: 0 },
             },
         },
-    };
-}
-
-function makeGameState(): GameState {
-    const planet = makePlanet();
-    const agent = makeAgent('agent-1');
-    return {
-        tick: 5,
-        planets: Map([[planet.id, planet]]),
-        agents: Map([[agent.id, agent]]),
     };
 }
 
@@ -239,14 +229,7 @@ describe('toImmutableGameState', () => {
     it('converts multiple planets correctly', () => {
         const p1 = makePlanet('alpha');
         const p2 = makePlanet('beta');
-        const state: GameState = {
-            tick: 3,
-            planets: Map([
-                [p1.id, p1],
-                [p2.id, p2],
-            ]),
-            agents: Map(),
-        };
+        const state: GameState = makeGameState([p1, p2]);
 
         const record = toImmutableGameState(state);
         expect(record.planets.size).toBe(2);

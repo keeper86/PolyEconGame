@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { route } from 'nextjs-routes';
 import { Building2, ChevronRight, Globe, Package, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -21,13 +22,6 @@ const effColor = (frac: number): string => {
 };
 
 const pct = (frac: number): string => `${Math.round(frac * 100)}%`;
-
-const fmtNumber = (n: number): string =>
-    n >= 1_000_000
-        ? `${(n / 1_000_000).toFixed(1)}M`
-        : n >= 1_000
-          ? `${(n / 1_000).toFixed(1)}k`
-          : String(Math.round(n));
 
 /* ------------------------------------------------------------------ */
 /*  Stat row — label / value pair (matching EducationLevelCards style) */
@@ -129,7 +123,7 @@ export default function PlanetAssetCard({ agentId, planet: p, isHomePlanet }: Pr
                     }
                     value={
                         <span>
-                            {fmtNumber(p.totalWorkers)}
+                            {formatNumbers(p.totalWorkers)}
                             {p.unusedWorkerFraction > 0.01 && (
                                 <span className='text-[10px] text-amber-500 ml-1'>
                                     {pct(p.unusedWorkerFraction)} idle
@@ -145,7 +139,7 @@ export default function PlanetAssetCard({ agentId, planet: p, isHomePlanet }: Pr
                         <Package className='h-3 w-3 text-muted-foreground mt-0.5 shrink-0' />
                         {p.topResources.map((r) => (
                             <Badge key={r.name} variant='secondary' className='text-[10px] px-1 py-0'>
-                                {r.name}: {fmtNumber(r.quantity)}
+                                {r.name}: {formatNumbers(r.quantity)}
                             </Badge>
                         ))}
                     </div>

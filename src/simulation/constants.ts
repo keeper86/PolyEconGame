@@ -42,7 +42,7 @@ export const FOOD_PRICE_BETA = 0.001;
  * Minimum food price (prevents zero or negative prices).
  */
 export const FOOD_PRICE_FLOOR = 0.01;
-export const FOOD_PRICE_CEIL = 10000.0;
+
 
 /**
  * Initial food price per unit (currency units per ton of agricultural product).

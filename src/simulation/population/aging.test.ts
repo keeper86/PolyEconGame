@@ -98,15 +98,26 @@ describe('populationAdvanceYear', () => {
         expect(sumCohort(population.demography[MAX_AGE])).toBe(10);
     });
 
-    it('people at maxAge remain at maxAge (they die via per-tick mortality)', () => {
+    it('people at maxAge are carried forward (not killed) during year advance', () => {
         const population = makePopulation();
         population.demography[MAX_AGE].unoccupied.none.novice.total = 5;
         const tic = totalInCohortArray(population.demography);
 
         populationAdvanceYear(population, tic);
 
-        // maxAge survivors are carried over — they cannot age further but
-        // will eventually die via per-tick mortality, not by aging out.
+        // maxAge people remain — mortality handles killing them per-tick.
         expect(sumCohort(population.demography[MAX_AGE])).toBe(5);
+    });
+
+    it('people at maxAge-1 who age to maxAge are merged with existing maxAge', () => {
+        const population = makePopulation();
+        population.demography[MAX_AGE].unoccupied.none.novice.total = 3;
+        population.demography[MAX_AGE - 1].unoccupied.none.novice.total = 7;
+        const tic = totalInCohortArray(population.demography);
+
+        populationAdvanceYear(population, tic);
+
+        // 3 existing + 7 aged up = 10
+        expect(sumCohort(population.demography[MAX_AGE])).toBe(10);
     });
 });
