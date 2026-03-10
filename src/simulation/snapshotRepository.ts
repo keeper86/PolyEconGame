@@ -6,9 +6,9 @@
  * only the data it needs rather than receiving the full GameState over SSE.
  */
 
-import type { Planet, Agent } from '../simulation/planet/planet';
-import { OCCUPATIONS, SKILL } from '../simulation/population/population';
-import { educationLevelKeys } from '../simulation/population/education';
+import type { Planet, Agent } from './planet/planet';
+import { OCCUPATIONS, SKILL } from './population/population';
+import { educationLevelKeys } from './population/education';
 
 // ---------------------------------------------------------------------------
 // Serialisation helpers

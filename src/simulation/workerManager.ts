@@ -106,11 +106,22 @@ function debugResolveTsxCandidates(): Array<{ name: string; resolved?: string; e
 function createPool(): { pool: Piscina; port: MessagePort } {
     // __dirname is unreliable inside Next.js bundles (resolves to /ROOT/…).
     // Use process.cwd() which always points to the real project root.
-    const workerPath = path.resolve(process.cwd(), 'src', 'simulation', 'worker.ts');
-    const execArgv = resolveTsxExecArgv();
+    //
+    // In production (standalone), the postbuild script bundles the worker
+    // into a single `worker.mjs` at the standalone root (= process.cwd()).
+    // In development, tsx handles TS resolution so we use the .ts source.
+    const bundledWorkerPath = path.resolve(process.cwd(), 'worker.mjs');
+    const tsWorkerPath = path.resolve(process.cwd(), 'src', 'simulation', 'worker.ts');
+    const useBundledWorker = fs.existsSync(bundledWorkerPath);
+    const workerPath = useBundledWorker ? bundledWorkerPath : tsWorkerPath;
+    const execArgv = useBundledWorker ? undefined : resolveTsxExecArgv();
 
     console.log(`[workerManager] Creating Piscina pool with worker: ${workerPath}`);
-    console.log('[workerManager] Pool options:', { execArgv, workerData: { tickIntervalMs: 0 } });
+    console.log('[workerManager] Pool options:', {
+        execArgv,
+        workerData: { tickIntervalMs: 0 },
+        bundled: useBundledWorker,
+    });
     // Extra debug: log whether the worker file exists and perms.
     try {
         const exists = fs.existsSync(workerPath);

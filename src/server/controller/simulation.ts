@@ -18,8 +18,8 @@ import {
     summariseAgentBlob,
     summarisePlanetAssets,
     type AgentPlanetSummary,
-} from '../snapshotRepository';
-import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../gameSnapshotRepository';
+} from '../../simulation/snapshotRepository';
+import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
 import { db } from '../db';
 import { workerQueries } from '../../lib/workerQueries';
 import type { Agent } from '../../simulation/planet/planet';

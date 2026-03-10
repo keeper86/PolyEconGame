@@ -17,8 +17,8 @@ import {
     insertGameSnapshot,
     insertPlanetPopulationHistory,
     pruneGameSnapshots,
-} from '../server/gameSnapshotRepository';
-import { computePopulationTotal, computeGlobalStarvation } from '../server/snapshotRepository';
+} from './gameSnapshotRepository';
+import { computePopulationTotal, computeGlobalStarvation } from './snapshotRepository';
 import { advanceTick, seedRng } from './engine';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { GameState } from './planet/planet';
