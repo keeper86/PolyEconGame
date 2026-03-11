@@ -297,14 +297,6 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                     disabilitiesPrevMonth[k] = (disabilitiesPrevMonth[k] || 0) + (v || 0);
                 }
             }
-            if (assetsEntry.retirements) {
-                for (const [k, v] of Object.entries(assetsEntry.retirements.thisMonth)) {
-                    retirementsThisMonth[k] = (retirementsThisMonth[k] || 0) + (v || 0);
-                }
-                for (const [k, v] of Object.entries(assetsEntry.retirements.prevMonth)) {
-                    retirementsPrevMonth[k] = (retirementsPrevMonth[k] || 0) + (v || 0);
-                }
-            }
         }
 
         return {

@@ -20,6 +20,7 @@ import {
     makeWorld,
     totalPopulation,
 } from './utils/testHelper';
+import { createWorkforceEventAccumulator } from './workforce/workforceDemographicTick';
 
 /**
  * Sets up actual hired workers in the agent's workforceDemography for a planet.
@@ -218,7 +219,7 @@ describe('engine basic behavior', () => {
         planet.population = pop;
 
         // Should not throw
-        populationTick(agentMap(agent), planet);
+        populationTick(agentMap(agent), planet, createWorkforceEventAccumulator());
 
         const popAfter = totalPopulation(planet);
         // Population should still be positive (no starvation deaths in 1 tick with foodStock)

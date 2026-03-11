@@ -4,7 +4,8 @@ import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type { Cohort, PopulationCategory, Occupation } from '../population/population';
 import { SKILL } from '../population/population';
-import { ACCEPTABLE_IDLE_FRACTION, DEPARTING_EFFICIENCY } from './laborMarketTick';
+import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
+import { DEPARTING_EFFICIENCY } from '../planet/production';
 
 import { totalActiveForEdu, totalDepartingFiredForEdu, totalDepartingForEdu } from './workforceAggregates';
 
@@ -159,6 +160,9 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planet: Plane
             // If there's still overflow after the highest edu level, add it there
             if (overflow > 0) {
                 const lastEdu = educationLevelKeys[educationLevelKeys.length - 1];
+                if (!assets.allocatedWorkers[lastEdu]) {
+                    assets.allocatedWorkers[lastEdu] = 0;
+                }
                 assets.allocatedWorkers[lastEdu] += overflow;
             }
         }

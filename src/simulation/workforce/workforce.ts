@@ -1,6 +1,7 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
+import type { PopulationCategoryIndex } from '../population/population';
 import {
     emptySkillCategory,
     emptySkillDemography,
@@ -12,14 +13,21 @@ import { distributeProportionally } from '../utils/distributeProportionally';
 
 export type WorkforceCategory = {
     active: number;
-    departing: number[];
-    departingFired: number[];
+    voluntaryDeparting: number[]; // voluntary departing workers
+    departingFired: number[]; // fired departing workers
+    departingRetired: number[]; // retired departing workers
 };
+
+export const totalDeparting = (category: WorkforceCategory): number =>
+    category.voluntaryDeparting.reduce((sum, count) => sum + count, 0) +
+    category.departingFired.reduce((sum, count) => sum + count, 0) +
+    category.departingRetired.reduce((sum, count) => sum + count, 0);
 
 export const nullWorkforceCategory = (): WorkforceCategory => ({
     active: 0,
-    departing: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+    voluntaryDeparting: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+    departingRetired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
 });
 
 export type WorkforceCohort<T> = {
@@ -28,10 +36,12 @@ export type WorkforceCohort<T> = {
     };
 };
 
+export type WorkforceCategoryIndex = Omit<PopulationCategoryIndex, 'occ'>;
+
 export type WorkforceDemography = WorkforceCohort<WorkforceCategory>[];
 
 export type Workforce = {
-    demography: WorkforceDemography[];
+    demography: WorkforceDemography;
     summedWorkforce: WorkforceCohort<WorkforceCategory>;
     count: number;
 };
@@ -63,8 +73,9 @@ export const nullWorkforceCohort = (): WorkforceCohort<WorkforceCategory> => {
 
 export const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory): WorkforceCategory => ({
     active: a.active + b.active,
-    departing: a.departing.map((count, i) => count + (b.departing[i] ?? 0)),
+    voluntaryDeparting: a.voluntaryDeparting.map((count, i) => count + (b.voluntaryDeparting[i] ?? 0)),
     departingFired: a.departingFired.map((count, i) => count + (b.departingFired[i] ?? 0)),
+    departingRetired: a.departingRetired.map((count, i) => count + (b.departingRetired[i] ?? 0)),
 });
 
 export const reduceWorkforceCohort = (cohort: WorkforceCohort<WorkforceCategory>): WorkforceCategory => {

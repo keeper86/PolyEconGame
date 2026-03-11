@@ -1,11 +1,12 @@
 import type { Environment } from '../planet/planet';
 
-import { stochasticRound } from '../utils/stochasticRound';
-import type { Population } from './population';
-import { forEachPopulationCohort, transferPopulation } from './population';
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
+import { stochasticRound } from '../utils/stochasticRound';
+import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
 import type { InheritanceRecord } from './inheritance';
 import { redistributeInheritance } from './inheritance';
+import type { Population } from './population';
+import { forEachPopulationCohort, transferPopulation } from './population';
 
 export const mortalityProbability = (age: number) => {
     const mortalityByThousands: number[] = [
@@ -73,22 +74,26 @@ export function computeEnvironmentalMortality(environment: Environment): number 
     return pollutionMortalityRate + disasterDeathProbability;
 }
 
-/**
- * Apply mortality to every age cohort of a population.
- *
- * Now follows the same direct‑per‑cell pattern as disability:
- * for each education×occupation cell, a fraction dies according to the
- * per‑tick mortality probability.  Deaths are recorded in
- * `population.tickDeaths` and `population.tickDeathsByAge`.
- *
- * **Inheritance**: the monetary wealth of the deceased is redistributed
- * to younger generations via a Gaussian kernel centred GENERATION_GAP
- * years below the deceased's age.  This is a zero-sum transfer within
- * household wealth — `bank.householdDeposits` is unchanged because the
- * total per-cohort wealth is conserved.  Food stock is destroyed
- * (perishable).
- */
-export function applyMortality(population: Population, environment: Environment): void {
+export const computeMortalityProbabilityPerTick = (
+    starvationLevel: number,
+    environmentalMortality: number,
+    age: number,
+): number => {
+    const starvationAcuteMortality = starvationLevel === 0 ? 0 : Math.pow(starvationLevel, STARVATION_ACUTE_POWER);
+
+    return Math.min(
+        MAX_MORTALITY_PER_TICK,
+        convertAnnualToPerTick(
+            mortalityProbability(age) * (1 + starvationLevel) + environmentalMortality + starvationAcuteMortality,
+        ),
+    );
+};
+
+export function applyMortality(
+    population: Population,
+    environment: Environment,
+    workforceEvents: WorkforceEventAccumulator,
+): void {
     const environmentalMortality = computeEnvironmentalMortality(environment);
 
     // Collect inheritance records per source age
@@ -101,20 +106,25 @@ export function applyMortality(population: Population, environment: Environment)
                 return; // skip empty cells
             }
 
-            const starvationAcuteMortality =
-                category.starvationLevel === 0 ? 0 : Math.pow(category.starvationLevel, STARVATION_ACUTE_POWER);
+            let dead = 0;
 
-            const perTickMort = Math.min(
-                MAX_MORTALITY_PER_TICK,
-                convertAnnualToPerTick(
-                    mortalityProbability(age) * (1 + category.starvationLevel) +
-                        environmentalMortality +
-                        starvationAcuteMortality,
-                ),
-            );
+            if (occ === 'employed') {
+                dead = workforceEvents[age][edu][skill].deaths;
+            } else {
+                const mortalityPerTick = computeMortalityProbabilityPerTick(
+                    category.starvationLevel,
+                    environmentalMortality,
+                    age,
+                );
+                dead = stochasticRound(category.total * mortalityPerTick);
+            }
 
-            const dead = stochasticRound(category.total * perTickMort);
             const result = transferPopulation(population, { age, occ, edu, skill }, undefined, dead);
+            if (result.count !== dead) {
+                console.warn(
+                    `Mortality transfer mismatch at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected ${dead} deaths, but actually transferred ${result.count}.`,
+                );
+            }
             category.deaths.countThisMonth += result.count;
             category.deaths.countThisTick = result.count;
 

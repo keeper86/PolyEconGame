@@ -8,7 +8,7 @@ import {
     waterResourceType,
     waterSourceResourceType,
 } from '../planet/facilities';
-import type { Agent, Planet } from '../planet/planet';
+import { createEmptyDemographicEventCounters, type Agent, type Planet } from '../planet/planet';
 import type { Population } from '../population/population';
 import { createEmptyPopulationCohort, MAX_AGE } from '../population/population';
 import { makeWorkforceDemography } from './testHelper';
@@ -181,6 +181,8 @@ export const earthGovernment: Agent = {
                 tertiary: 0,
             },
             workforceDemography: makeWorkforceDemography(),
+            deaths: createEmptyDemographicEventCounters(),
+            disabilities: createEmptyDemographicEventCounters(),
         },
     },
 };
@@ -205,6 +207,8 @@ export const testCompany: Agent = {
                 tertiary: 0,
             },
             workforceDemography: makeWorkforceDemography(),
+            deaths: createEmptyDemographicEventCounters(),
+            disabilities: createEmptyDemographicEventCounters(),
         },
     },
 };

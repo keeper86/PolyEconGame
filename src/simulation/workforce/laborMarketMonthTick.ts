@@ -1,30 +1,11 @@
-/**
- * workforce/laborMarketMonthTick.ts
- *
- * Monthly post-production labor-market processing:
- * 1. Rotate death/disability/retirement counters (this month → prev month, reset this month).
- * 2. Pipeline advancement: departing → unoccupied.
- *
- * With age-resolved workforce cohorts, departing workers are returned to
- * the population at their exact age — no Gaussian weighting needed.
- */
-
+import { NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Agent, PerEducation, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import { transferPopulation } from '../population/population';
-import { forEachWorkforceCohort } from './workforce';
-import { NOTICE_PERIOD_MONTHS } from './laborMarketTick';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+import { forEachWorkforceCohort } from './workforce';
 
 export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet: Planet): void {
-    // -----------------------------------------------------------------------
-    // Phase 0: snapshots & counter rotation (per-agent)
-    // -----------------------------------------------------------------------
-
     for (const agent of agents.values()) {
         for (const [_planetId, assets] of Object.entries(agent.assets)) {
             const workforce = assets.workforceDemography;
@@ -55,23 +36,9 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
             }
             assets.disabilities.prevMonth = assets.disabilities.thisMonth;
             assets.disabilities.thisMonth = fresh();
-
-            // Retirements
-            if (!assets.retirements) {
-                assets.retirements = { thisMonth: fresh(), prevMonth: fresh() };
-            }
-            assets.retirements.prevMonth = assets.retirements.thisMonth;
-            assets.retirements.thisMonth = fresh();
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Phase 1: Pipeline advancement (per-agent)
-    //
-    // For each age × edu × skill, drain departing[0] back into the
-    // population (unoccupied pool) and then shift the pipeline down by
-    // one slot.
-    // -----------------------------------------------------------------------
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             const workforce = assets.workforceDemography;
@@ -83,22 +50,41 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                 continue;
             }
 
-            // Return departing[0] workers to the population at their exact age.
             if (planet) {
                 for (let age = 0; age < workforce.length; age++) {
                     forEachWorkforceCohort(workforce[age], (category, edu, skill) => {
-                        const departingAtAge = category.departing[0] ?? 0;
-                        if (departingAtAge > 0) {
+                        const departingAtAge = category.voluntaryDeparting[0];
+                        const firedAtAge = category.departingFired[0];
+
+                        // Non-retired departing → unoccupied
+                        if (departingAtAge + firedAtAge > 0) {
                             const moved = transferPopulation(
                                 planet.population,
                                 { age, occ: 'employed', edu, skill },
                                 { age, occ: 'unoccupied', edu, skill },
-                                departingAtAge,
+                                departingAtAge + firedAtAge,
                             ).count;
 
-                            if (moved !== departingAtAge) {
+                            if (moved !== departingAtAge + firedAtAge) {
                                 console.warn(
-                                    `[postProductionLaborMarketTick] departing mismatch for edu=${edu} age=${age} on agent=${agent.id}: requested=${departingAtAge}, moved=${moved}`,
+                                    `[postProductionLaborMarketTick] departing mismatch for edu=${edu} age=${age} on agent=${agent.id}: requested=${departingAtAge + firedAtAge}, moved=${moved}`,
+                                );
+                            }
+                        }
+
+                        const retiredAtAge = category.departingRetired[0];
+                        // Retired departing → unableToWork
+                        if (retiredAtAge > 0) {
+                            const moved = transferPopulation(
+                                planet.population,
+                                { age, occ: 'employed', edu, skill },
+                                { age, occ: 'unableToWork', edu, skill },
+                                retiredAtAge,
+                            ).count;
+
+                            if (moved !== retiredAtAge) {
+                                console.warn(
+                                    `[postProductionLaborMarketTick] retired departing mismatch for edu=${edu} age=${age} on agent=${agent.id}: requested=${retiredAtAge}, moved=${moved}`,
                                 );
                             }
                         }
@@ -110,11 +96,13 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
             for (let age = 0; age < workforce.length; age++) {
                 forEachWorkforceCohort(workforce[age], (category) => {
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {
-                        category.departing[i] = category.departing[i + 1] ?? 0;
+                        category.voluntaryDeparting[i] = category.voluntaryDeparting[i + 1] ?? 0;
                         category.departingFired[i] = category.departingFired[i + 1] ?? 0;
+                        category.departingRetired[i] = category.departingRetired[i + 1] ?? 0;
                     }
-                    category.departing[NOTICE_PERIOD_MONTHS - 1] = 0;
+                    category.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 0;
                     category.departingFired[NOTICE_PERIOD_MONTHS - 1] = 0;
+                    category.departingRetired[NOTICE_PERIOD_MONTHS - 1] = 0;
                 });
             }
         }

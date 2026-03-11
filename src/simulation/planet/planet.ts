@@ -200,7 +200,7 @@ export type Planet = {
 // Per-education record helper type
 // ---------------------------------------------------------------------------
 
-export type PerEducation = { [L in EducationLevelType]: number };
+export type PerEducation = { [L in EducationLevelType]?: number };
 
 // ---------------------------------------------------------------------------
 // Sub-objects that group related intermediate/feedback state
@@ -216,6 +216,11 @@ export type DemographicEventCounters = {
     thisMonth: PerEducation;
     prevMonth: PerEducation;
 };
+
+export const createEmptyDemographicEventCounters = (): DemographicEventCounters => ({
+    thisMonth: {},
+    prevMonth: {},
+});
 
 /**
  * Production-feedback results persisted per tick so that
@@ -307,11 +312,9 @@ export type AgentPlanetAssets = {
     // ----- Demographic event tracking -----
 
     /** Deaths affecting this agent's workforce, per education level. */
-    deaths?: DemographicEventCounters;
+    deaths: DemographicEventCounters;
     /** Disabilities affecting this agent's workforce, per education level. */
-    disabilities?: DemographicEventCounters;
-    /** Retirements affecting this agent's workforce, per education level. */
-    retirements?: DemographicEventCounters;
+    disabilities: DemographicEventCounters;
 };
 
 export type Agent = {

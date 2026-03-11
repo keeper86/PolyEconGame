@@ -7,7 +7,6 @@
 import { describe, expect, it } from 'vitest';
 import { educationLevelKeys } from '../population/education';
 import { MAX_AGE, OCCUPATIONS, SKILL } from '../population/population';
-import { NOTICE_PERIOD_MONTHS } from '../workforce/laborMarketTick';
 
 import {
     makeAgent,
@@ -32,6 +31,7 @@ import {
     sumWorkforceForEdu,
     totalPopulation,
 } from './testHelper';
+import { NOTICE_PERIOD_MONTHS } from '../constants';
 
 // ============================================================================
 // Leaf factories
@@ -58,9 +58,9 @@ describe('makeWorkforceCategory', () => {
     it('returns zeroed category with departing arrays', () => {
         const wf = makeWorkforceCategory();
         expect(wf.active).toBe(0);
-        expect(wf.departing).toHaveLength(NOTICE_PERIOD_MONTHS);
+        expect(wf.voluntaryDeparting).toHaveLength(NOTICE_PERIOD_MONTHS);
         expect(wf.departingFired).toHaveLength(NOTICE_PERIOD_MONTHS);
-        expect(wf.departing.every((v) => v === 0)).toBe(true);
+        expect(wf.voluntaryDeparting.every((v) => v === 0)).toBe(true);
     });
 });
 
@@ -87,7 +87,7 @@ describe('makeWorkforceCohort', () => {
         for (const edu of educationLevelKeys) {
             for (const skill of SKILL) {
                 expect(cohort[edu][skill].active).toBe(0);
-                expect(cohort[edu][skill].departing).toHaveLength(NOTICE_PERIOD_MONTHS);
+                expect(cohort[edu][skill].voluntaryDeparting).toHaveLength(NOTICE_PERIOD_MONTHS);
             }
         }
     });
@@ -261,7 +261,7 @@ describe('sumWorkforceForEdu / sumActiveForEdu', () => {
 
     it('counts departing workers in sumWorkforceForEdu', () => {
         const agent = makeAgent();
-        agent.assets.p.workforceDemography[30].primary.novice.departing[0] = 5;
+        agent.assets.p.workforceDemography[30].primary.novice.voluntaryDeparting[0] = 5;
         expect(sumWorkforceForEdu(agent, 'p', 'primary')).toBe(5);
         expect(sumActiveForEdu(agent, 'p', 'primary')).toBe(0);
     });

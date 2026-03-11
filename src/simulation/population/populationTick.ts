@@ -1,6 +1,6 @@
 import type { Agent, Planet } from '../planet/planet';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-import { syncWorkforceWithPopulation } from '../workforce/workforceSync';
+import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
 
 import { populationAdvanceYear } from './aging';
 import { calculateDemographicStats } from './demographics';
@@ -11,11 +11,13 @@ import { consumeFood } from './nutrition';
 import type { Population } from './population';
 import { applyRetirement } from './retirement';
 
-// ---------------------------------------------------------------------------
-// Per-tick population update
-// ---------------------------------------------------------------------------
-
-export function populationTick(agents: Map<string, Agent>, planet: Planet): void {
+// @param agents - all agents that have assets on this planet. We guarantuee that only data for these assests are changed
+// @param planet - the planet whose population is being updated
+export function populationTick(
+    agents: Map<string, Agent>,
+    planet: Planet,
+    workforceEvents: WorkforceEventAccumulator,
+): void {
     const { population } = planet;
 
     const { populationTotal, fertileWomen } = calculateDemographicStats(population);
@@ -24,38 +26,19 @@ export function populationTick(agents: Map<string, Agent>, planet: Planet): void
         return; // no population, skip
     }
 
-    // 1. Food consumption & starvation tracking
     consumeFood(population);
 
-    // 2. Mortality — writes population.tickDeaths
-    applyMortality(population, planet.environment);
+    applyMortality(population, planet.environment, workforceEvents);
+    applyDisability(population, planet.environment, workforceEvents);
+    applyRetirement(population); // no workforceEvents required, this applies only to education/unoccupied
 
-    // 3. Disability — writes population.tickNewDisabilities
-    applyDisability(population, planet.environment);
-
-    // 4. Retirement — writes population.tickNewRetirements
-    applyRetirement(population);
-
-    // 5. Births
     populationBirthsTick(population, fertileWomen, planet.environment.pollution);
 
-    // 6. Sync workforce with authoritative population deaths, disabilities & retirements
-    syncWorkforceWithPopulation(agents, planet.id, population, planet.environment);
-
-    // Verify population↔workforce consistency after sync
     if (process.env.SIM_DEBUG === '1') {
-        assertPopulationWorkforceConsistency(agents, planet, 'populationTick/syncWorkforce');
+        assertPopulationWorkforceConsistency(agents, planet, 'populationTick');
     }
 }
 
-// ---------------------------------------------------------------------------
-// Year-boundary aging
-// ---------------------------------------------------------------------------
-
-/**
- * Called at every year boundary.
- * Applies aging and education progression to every planet's population.
- */
 export function populationAdvanceYearTick(population: Population): void {
     const { totalInCohort } = calculateDemographicStats(population);
     populationAdvanceYear(population, totalInCohort);

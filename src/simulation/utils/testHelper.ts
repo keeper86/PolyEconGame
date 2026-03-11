@@ -14,10 +14,19 @@
  * - Optional `Partial` overrides are applied via spread where useful.
  */
 
-import { MIN_EMPLOYABLE_AGE } from '../constants';
+import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import type { ProductionFacility, StorageFacility } from '../planet/facilities';
 import { agriculturalProductResourceType } from '../planet/facilities';
-import type { Agent, AgentPlanetAssets, Bank, Environment, GameState, Infrastructure, Planet } from '../planet/planet';
+import {
+    createEmptyDemographicEventCounters,
+    type Agent,
+    type AgentPlanetAssets,
+    type Bank,
+    type Environment,
+    type GameState,
+    type Infrastructure,
+    type Planet,
+} from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -33,7 +42,6 @@ import type {
 } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS, SKILL } from '../population/population';
-import { NOTICE_PERIOD_MONTHS } from '../workforce/laborMarketTick';
 
 // ============================================================================
 // Leaf value factories
@@ -81,8 +89,9 @@ export function makePopulationCategory(overrides?: Partial<PopulationCategory>):
 export function makeWorkforceCategory(overrides?: Partial<WorkforceCategory>): WorkforceCategory {
     return {
         active: 0,
-        departing: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+        voluntaryDeparting: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
         departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+        departingRetired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
         ...overrides,
     };
 }
@@ -362,6 +371,8 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
         allocatedWorkers: makeAllocatedWorkers(),
         workforceDemography: makeWorkforceDemography(),
+        deaths: createEmptyDemographicEventCounters(),
+        disabilities: createEmptyDemographicEventCounters(),
         ...overrides,
     };
 }
@@ -543,8 +554,15 @@ export function sumWorkforceForEdu(agent: Agent, planetId: string, edu: Educatio
     let total = 0;
     for (const cohort of wf) {
         for (const skill of SKILL) {
-            total += cohort[edu][skill].active;
-            for (const dep of cohort[edu][skill].departing) {
+            const cell = cohort[edu][skill];
+            total += cell.active;
+            for (const dep of cell.voluntaryDeparting) {
+                total += dep;
+            }
+            for (const dep of cell.departingFired) {
+                total += dep;
+            }
+            for (const dep of cell.departingRetired) {
                 total += dep;
             }
         }
@@ -580,8 +598,8 @@ export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>,
         }
 
         // Sum workforce across all agents on this planet.
-        // NOTE: departingFired is a *subset tag* on departing — not an
-        // additional pool.  Only active + departing are counted.
+        // All three departing pipelines (voluntary, fired, retired) are
+        // independent — each must be counted.
         let wfTotal = 0;
         for (const agent of agents.values()) {
             const wf = agent.assets[planet.id]?.workforceDemography;
@@ -592,7 +610,9 @@ export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>,
                 for (const skill of SKILL) {
                     const cell = wf[age][edu][skill];
                     wfTotal += cell.active;
-                    wfTotal += cell.departing.reduce((s: number, d: number) => s + d, 0);
+                    wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
+                    wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
+                    wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
                 }
             }
         }

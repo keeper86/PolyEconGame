@@ -3,6 +3,7 @@ import type { Population } from './population';
 import { forEachPopulationCohort, transferPopulation } from './population';
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 import { stochasticRound } from '../utils/stochasticRound';
+import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
 
 /**
  * Coefficient for starvation-driven disability: `c × S²`.
@@ -63,50 +64,51 @@ export function computeEnvironmentalDisability(environment: Environment): Enviro
     return { pollutionDisabilityProb, disasterDisabilityProb };
 }
 
-// ---------------------------------------------------------------------------
-// Population-level disability step
-// ---------------------------------------------------------------------------
+export function computeTotalDisabilityProbability(
+    age: number,
+    starvationLevel: number,
+    environmentalDisability: EnvironmentalDisability,
+): number {
+    const starvationDisabilityProb = STARVATION_DISABILITY_COEFFICIENT * starvationLevel * starvationLevel;
+    const probPerYear =
+        environmentalDisability.pollutionDisabilityProb +
+        environmentalDisability.disasterDisabilityProb +
+        ageDependentBaseDisabilityProb(age) +
+        starvationDisabilityProb;
+    return convertAnnualToPerTick(probPerYear);
+}
 
-/**
- * Apply disability transitions to every age cohort of a population.
- *
- * - Computes environmental + starvation disability per cohort.
- * - Moves affected people from source occupations to 'unableToWork'.
- * - Records new disability transitions per education × source-occupation
- *   in `population.tickNewDisabilities` for downstream consumption (e.g.
- *   workforce sync, snapshots).
- *
- * This is the **only** place where disability transitions happen — the
- * orchestrator does not need any inline loop.
- */
-export function applyDisability(population: Population, environment: Environment): void {
+export function applyDisability(
+    population: Population,
+    environment: Environment,
+    workforceEvents: WorkforceEventAccumulator,
+): void {
     const environmentalDisability = computeEnvironmentalDisability(environment);
 
     population.demography.forEach((cohort, age) => {
-        const { pollutionDisabilityProb, disasterDisabilityProb } = environmentalDisability;
         return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
             if (occ === 'unableToWork') {
                 return; // skip already disabled
             }
 
-            const starvationDisabilityProb =
-                STARVATION_DISABILITY_COEFFICIENT * category.starvationLevel * category.starvationLevel;
-            const totalDisabilityProb =
-                pollutionDisabilityProb +
-                disasterDisabilityProb +
-                ageDependentBaseDisabilityProb(age) +
-                starvationDisabilityProb;
-            const perTickDisabilityProb = convertAnnualToPerTick(totalDisabilityProb);
+            let disabilityEvents = 0;
+            if (occ === 'employed') {
+                disabilityEvents = workforceEvents[age][edu][skill].disabilities;
+            } else {
+                const perTickDisabilityProb = computeTotalDisabilityProbability(
+                    age,
+                    category.starvationLevel,
+                    environmentalDisability,
+                );
 
-            //We need a generalized transfer module for this kind of operation
-            const occCount = category.total;
-            const moveFromOcc = stochasticRound(occCount * perTickDisabilityProb);
+                disabilityEvents = stochasticRound(category.total * perTickDisabilityProb);
+            }
 
             const moved = transferPopulation(
                 population,
                 { age, occ, edu, skill },
                 { age, occ: 'unableToWork', edu, skill },
-                moveFromOcc,
+                disabilityEvents,
             ).count;
             category.disabilities.countThisMonth += moved;
             category.disabilities.countThisTick = moved;

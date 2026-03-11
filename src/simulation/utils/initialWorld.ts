@@ -31,7 +31,13 @@ import {
     waterResourceType,
     waterSourceResourceType,
 } from '../planet/facilities';
-import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
+import {
+    createEmptyDemographicEventCounters,
+    type Agent,
+    type AgentPlanetAssets,
+    type GameState,
+    type Planet,
+} from '../planet/planet';
 import type { ResourceClaim, ResourceQuantity } from '../planet/planet';
 import { createPopulation } from './entities';
 import { makeWorkforceDemography } from './testHelper';
@@ -167,6 +173,8 @@ function makeAgentPlanetAssets(
         loans: 0,
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         workforceDemography: makeWorkforceDemography(),
+        deaths: createEmptyDemographicEventCounters(),
+        disabilities: createEmptyDemographicEventCounters(),
     };
 }
 

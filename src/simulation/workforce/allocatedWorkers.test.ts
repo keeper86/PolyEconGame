@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 
 import { updateAllocatedWorkers } from './allocatedWorkers';
-import { NOTICE_PERIOD_MONTHS } from './laborMarketTick';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
+import { NOTICE_PERIOD_MONTHS } from '../constants';
 
 // ---------------------------------------------------------------------------
 // updateAllocatedWorkers
@@ -179,7 +179,7 @@ describe('updateAllocatedWorkers', () => {
 
         const wf = agent.assets.p.workforceDemography!;
         wf[30].none.novice.active = 900;
-        wf[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 1] = 100;
+        wf[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 100;
         wf[30].none.novice.departingFired[NOTICE_PERIOD_MONTHS - 1] = 100;
         agent.assets.p.workerFeedback = {
             unusedWorkerFraction: 0,
@@ -198,7 +198,7 @@ describe('updateAllocatedWorkers', () => {
 
         const wf = agent.assets.p.workforceDemography!;
         wf[30].none.novice.active = 800;
-        wf[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 1] = 150;
+        wf[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 150;
         wf[30].none.novice.departingFired[NOTICE_PERIOD_MONTHS - 1] = 50;
         agent.assets.p.workerFeedback = {
             unusedWorkerFraction: 0,
@@ -220,7 +220,7 @@ describe('updateAllocatedWorkers', () => {
 
         const wf = agent.assets.p.workforceDemography!;
         // All workers in departing pipeline, all fired -> pool is 0
-        wf[30].tertiary.novice.departing[2] = 500;
+        wf[30].tertiary.novice.voluntaryDeparting[2] = 500;
         wf[30].tertiary.novice.departingFired[2] = 500;
         agent.assets.p.workerFeedback = {
             unusedWorkerFraction: 0,

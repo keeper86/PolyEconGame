@@ -76,9 +76,9 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
                         cell.active,
                         `negative active at age=${age}, edu=${edu}, skill=${skill} for agent ${agent.id}`,
                     ).toBeGreaterThanOrEqual(0);
-                    for (let m = 0; m < cell.departing.length; m++) {
+                    for (let m = 0; m < cell.voluntaryDeparting.length; m++) {
                         expect(
-                            cell.departing[m],
+                            cell.voluntaryDeparting[m],
                             `negative departing at age=${age}, edu=${edu}, skill=${skill}, m=${m} for agent ${agent.id}`,
                         ).toBeGreaterThanOrEqual(0);
                         expect(

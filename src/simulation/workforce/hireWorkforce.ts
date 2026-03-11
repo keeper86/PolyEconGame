@@ -11,36 +11,13 @@
  *    Fired workers enter the departing pipeline (notice period).
  */
 
+import { NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { NOTICE_PERIOD_MONTHS } from '../constants';
-import { hireFromPopulation } from './workforce';
-import { forEachWorkforceCohort } from './workforce';
-import { stochasticRound } from '../utils/stochasticRound';
-import { totalActiveForEdu } from './workforceAggregates';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-
-// Re-export so existing importers continue to work.
-export { NOTICE_PERIOD_MONTHS } from '../constants';
-
-/**
- * Fraction of active workers per age cohort per education level that
- * voluntarily quit each tick.
- */
-export const VOLUNTARY_QUIT_RATE_PER_MONTH = 0.001;
-
-/**
- * Productivity multiplier for workers in the departing pipeline.
- * Fired/quitting workers still contribute to production but at reduced
- * efficiency during their notice period.
- */
-export const DEPARTING_EFFICIENCY = 0.5;
-
-/**
- * Age (years) at which workers retire.
- */
-export const RETIREMENT_AGE = 67;
+import { hireFromPopulation } from './workforce';
+import { totalActiveForEdu } from './workforceAggregates';
 
 /**
  * Fraction of total hired workforce that may remain idle after all
@@ -50,36 +27,7 @@ export const RETIREMENT_AGE = 67;
  */
 export const ACCEPTABLE_IDLE_FRACTION = 0.05;
 
-// ---------------------------------------------------------------------------
-// Age-dependent productivity
-// ---------------------------------------------------------------------------
-
-/**
- * Returns a productivity multiplier [0.7, 1.0] based on the age of a
- * worker (or mean age of a group).  Productivity is highest for ages
- * 30–50, gradually lower for young (<30) and older (>50) workers.
- */
-export const ageProductivityMultiplier = (age: number): number => {
-    if (age <= 18) {
-        return 0.8;
-    }
-    if (age < 30) {
-        return 0.8 + ((age - 18) * 0.2) / 12;
-    } // 0.80 → 1.00
-    if (age <= 50) {
-        return 1.0;
-    } // peak productivity
-    if (age < 65) {
-        return 1.0 - ((age - 50) * 0.15) / 15;
-    } // 1.00 → 0.85
-    return Math.max(0.7, 0.85 - ((age - 65) * 0.15) / 15); // declining after 65
-};
-
-// ---------------------------------------------------------------------------
-// Main monthly pre-production entry point
-// ---------------------------------------------------------------------------
-
-export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet: Planet): void {
+export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             if (planetId !== planet.id) {
@@ -90,26 +38,6 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet:
                 continue;
             }
 
-            // ------------------------------------------------------------------
-            // Phase 1: Voluntary quits
-            // ------------------------------------------------------------------
-            for (let age = 0; age < workforce.length; age++) {
-                forEachWorkforceCohort(workforce[age], (category) => {
-                    if (category.active <= 0) {
-                        return;
-                    }
-                    const voluntaryQuitters = stochasticRound(category.active * VOLUNTARY_QUIT_RATE_PER_MONTH);
-                    if (voluntaryQuitters > 0) {
-                        const actual = Math.min(voluntaryQuitters, category.active);
-                        category.active -= actual;
-                        category.departing[NOTICE_PERIOD_MONTHS - 1] += actual;
-                    }
-                });
-            }
-
-            // ------------------------------------------------------------------
-            // Phase 2: Hiring / Firing per education level
-            // ------------------------------------------------------------------
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;
                 const currentActive = totalActiveForEdu(workforce, edu);
@@ -145,7 +73,6 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet:
                             if (fire > 0) {
                                 cat.active -= fire;
                                 cat.departingFired[NOTICE_PERIOD_MONTHS - 1] += fire;
-                                cat.departing[NOTICE_PERIOD_MONTHS - 1] += fire;
                                 toFire -= fire;
                             }
                         }
@@ -155,7 +82,6 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet:
         }
     }
 
-    // Verify population↔workforce consistency after all hiring/firing
     if (process.env.SIM_DEBUG === '1') {
         assertPopulationWorkforceConsistency(agents, planet, 'preProductionLaborMarketTick');
     }

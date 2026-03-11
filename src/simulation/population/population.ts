@@ -37,7 +37,7 @@ export const emptySkillDemography: { [S in Skill]: number }[] = Array.from({ len
 export type PopulationTransferCohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
 export type PopulationTransferMatrix = PopulationTransferCohort[];
 
-export type CategoryIndex = {
+export type PopulationCategoryIndex = {
     age: number;
     occ: Occupation;
     edu: EducationLevelType;
@@ -170,8 +170,8 @@ export type TransferResult = {
 
 export const transferPopulation = (
     population: Population,
-    from: CategoryIndex,
-    to: CategoryIndex | undefined,
+    from: PopulationCategoryIndex,
+    to: PopulationCategoryIndex | undefined,
     count: number,
 ): TransferResult => {
     if (count <= 0) {
