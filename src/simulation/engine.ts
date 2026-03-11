@@ -26,7 +26,7 @@ export function advanceTick(gameState: GameState) {
         environmentTick(planet);
 
         const workforceEvents = workforceDemographicTick(planetAgents, planet);
-        populationTick(planetAgents, planet, workforceEvents);
+        populationTick(planet, workforceEvents);
 
         if (isMonthBoundary(gameState.tick)) {
             updateAllocatedWorkers(planetAgents, planet);

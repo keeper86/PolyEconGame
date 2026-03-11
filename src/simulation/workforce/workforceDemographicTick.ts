@@ -56,7 +56,7 @@ export function workforceDemographicTick(agents: Map<string, Agent>, planet: Pla
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
         if (!assets?.workforceDemography) {
-            return accumulator;
+            continue;
         }
 
         const workforce = assets.workforceDemography;

@@ -110,6 +110,11 @@ export function applyMortality(
 
             if (occ === 'employed') {
                 dead = workforceEvents[age][edu][skill].deaths;
+                if (dead > category.total) {
+                    throw new Error(
+                        `Mortality count exceeds population at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected at most ${category.total} deaths, but got ${dead}.`,
+                    );
+                }
             } else {
                 const mortalityPerTick = computeMortalityProbabilityPerTick(
                     category.starvationLevel,
