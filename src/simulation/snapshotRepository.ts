@@ -121,7 +121,7 @@ export type AgentListSummary = {
     agentId: string;
     name: string;
     associatedPlanetId: string;
-    bilance: number;
+    balance: number;
     facilityCount: number;
     avgEfficiency: number | null;
     totalWorkers: number;
@@ -180,7 +180,7 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
         agentId,
         name: a.name ?? agentId,
         associatedPlanetId: a.associatedPlanetId ?? '',
-        bilance: a.assets
+        balance: a.assets
             ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
             : 0,
         facilityCount,

@@ -49,9 +49,9 @@ export default function AgentDetailPage() {
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
                                 <Wallet className='h-3.5 w-3.5' />
-                                Bilance
+                                Balance
                             </div>
-                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(overview.bilance)}</div>
+                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(overview.balance)}</div>
                         </div>
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>

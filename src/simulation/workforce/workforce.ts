@@ -1,4 +1,4 @@
-import { MIN_EMPLOYABLE_AGE } from '../constants';
+import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import {
@@ -18,8 +18,8 @@ export type WorkforceCategory = {
 
 export const nullWorkforceCategory = (): WorkforceCategory => ({
     active: 0,
-    departing: [],
-    departingFired: [],
+    departing: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+    departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
 });
 
 export type WorkforceCohort<T> = {
@@ -127,12 +127,6 @@ export function hireFromPopulation(
         buckets.map((b) => b.avail),
     );
 
-    const allocated = new Array(demography.length).fill(0);
-    for (let i = 0; i < buckets.length; i++) {
-        const { age } = buckets[i];
-        allocated[age] += allocatedBuckets[i];
-    }
-
     // Apply moves and collect per-age hire counts
     const hiredByAge: {
         [S in Skill]: number;
@@ -141,24 +135,18 @@ export function hireFromPopulation(
     }));
     let hired = 0;
 
-    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        for (const skill of SKILL) {
-            const wanted = allocated[age];
-            if (wanted <= 0) {
-                continue;
-            }
-            const avail = demography[age].unoccupied[edu][skill].total;
-            const actual = Math.min(wanted, avail);
-            if (actual > 0) {
-                transferPopulation(
-                    planet.population,
-                    { age, occ: 'unoccupied', edu, skill },
-                    { age, occ: 'employed', edu, skill },
-                    actual,
-                );
-                hiredByAge[age][skill] = actual;
-                hired += actual;
-            }
+    for (let i = 0; i < buckets.length; i++) {
+        const { age, skill } = buckets[i];
+        const actual = allocatedBuckets[i];
+        if (actual > 0) {
+            transferPopulation(
+                planet.population,
+                { age, occ: 'unoccupied', edu, skill },
+                { age, occ: 'employed', edu, skill },
+                actual,
+            );
+            hiredByAge[age][skill] += actual;
+            hired += actual;
         }
     }
 

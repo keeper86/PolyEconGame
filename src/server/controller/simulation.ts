@@ -84,7 +84,7 @@ export const getLatestAgents = () =>
                 agents: z.array(
                     z.object({
                         agentId: z.string(),
-                        bilance: z.number(),
+                        balance: z.number(),
                         storage: z.record(z.string(), z.number()),
                         production: z.record(z.string(), z.number()),
                         consumption: z.record(z.string(), z.number()),
@@ -99,7 +99,7 @@ export const getLatestAgents = () =>
                 tick,
                 agents: agents.map((a) => ({
                     agentId: a.id,
-                    bilance: a.assets
+                    balance: a.assets
                         ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
                         : 0,
                     storage: computeAgentStorage(a),
@@ -141,7 +141,7 @@ export const getAgentListSummaries = () =>
                         agentId: z.string(),
                         name: z.string(),
                         associatedPlanetId: z.string(),
-                        bilance: z.number(),
+                        balance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),
                         totalWorkers: z.number(),
@@ -177,7 +177,7 @@ export const getAgentDetail = () =>
                 agent: z
                     .object({
                         agentId: z.string(),
-                        bilance: z.number(),
+                        balance: z.number(),
                         storage: z.record(z.string(), z.number()),
                         production: z.record(z.string(), z.number()),
                         consumption: z.record(z.string(), z.number()),
@@ -198,7 +198,7 @@ export const getAgentDetail = () =>
                 tick,
                 agent: {
                     agentId: agent.id,
-                    bilance: agent.assets
+                    balance: agent.assets
                         ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
                         : 0,
                     storage: computeAgentStorage(agent),
@@ -224,7 +224,7 @@ export const getAgentOverview = () =>
                         agentId: z.string(),
                         name: z.string(),
                         associatedPlanetId: z.string(),
-                        bilance: z.number(),
+                        balance: z.number(),
                         shipCount: z.number(),
                         planets: z.array(
                             z.object({
@@ -260,7 +260,7 @@ export const getAgentOverview = () =>
                     agentId: agent.id,
                     name: agent.name,
                     associatedPlanetId: agent.associatedPlanetId ?? '',
-                    bilance: agent.assets
+                    balance: agent.assets
                         ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
                         : 0,
                     shipCount: agent.transportShips?.length ?? 0,

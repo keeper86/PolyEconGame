@@ -34,7 +34,7 @@ export type AgentSummary = {
     agentId: string;
     name: string;
     associatedPlanetId: string;
-    bilance: number;
+    balance: number;
     facilityCount: number;
     avgEfficiency: number | null;
     totalWorkers: number;
@@ -83,9 +83,9 @@ export default function AgentSummaryCard({ summary: s }: Props): React.ReactElem
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
                                 <Wallet className='h-3.5 w-3.5' />
-                                Bilance
+                                Balance
                             </div>
-                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(s.bilance)}</div>
+                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(s.balance)}</div>
                         </div>
 
                         {/* Facilities */}

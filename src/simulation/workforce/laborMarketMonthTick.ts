@@ -73,9 +73,13 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
     // one slot.
     // -----------------------------------------------------------------------
     for (const agent of agents.values()) {
-        for (const [_planetId, assets] of Object.entries(agent.assets)) {
+        for (const [planetId, assets] of Object.entries(agent.assets)) {
             const workforce = assets.workforceDemography;
             if (!workforce) {
+                continue;
+            }
+
+            if (planetId !== planet.id) {
                 continue;
             }
 

@@ -101,7 +101,7 @@ export function productionSuite(): BenchmarkSuite {
         'environmentTick – 1 planet',
         () => makeSmallWorld(1),
         (gs) => {
-            environmentTick(Object.values(gs.planets)[0]);
+            environmentTick(gs.planets.values().next().value!);
         },
         { iterations: 1000, warmup: 100 },
     );
@@ -118,7 +118,7 @@ export function productionSuite(): BenchmarkSuite {
             return gs;
         },
         (gs) => {
-            productionTick(gs.agents, Object.values(gs.planets)[0]);
+            productionTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 500, warmup: 50 },
     );
@@ -131,7 +131,7 @@ export function productionSuite(): BenchmarkSuite {
             return gs;
         },
         (gs) => {
-            productionTick(gs.agents, Object.values(gs.planets)[0]);
+            productionTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 200, warmup: 20 },
     );
@@ -153,7 +153,7 @@ export function productionSuite(): BenchmarkSuite {
             return w.gameState;
         },
         (gs) => {
-            productionTick(gs.agents, Object.values(gs.planets)[0]);
+            productionTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 50, warmup: 5 },
     );

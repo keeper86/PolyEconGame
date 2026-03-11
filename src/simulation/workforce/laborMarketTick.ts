@@ -14,19 +14,15 @@
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
+import { NOTICE_PERIOD_MONTHS } from '../constants';
 import { hireFromPopulation } from './workforce';
 import { forEachWorkforceCohort } from './workforce';
 import { stochasticRound } from '../utils/stochasticRound';
 import { totalActiveForEdu } from './workforceAggregates';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 
-/**
- * Length of the departing notice pipeline in months.
- * Fired workers enter this pipeline and work at reduced efficiency
- * (DEPARTING_EFFICIENCY) for its duration before leaving entirely.
- * Voluntary quits also use this pipeline.
- */
-export const NOTICE_PERIOD_MONTHS = 3;
+// Re-export so existing importers continue to work.
+export { NOTICE_PERIOD_MONTHS } from '../constants';
 
 /**
  * Fraction of active workers per age cohort per education level that
@@ -117,13 +113,11 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet:
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;
                 const currentActive = totalActiveForEdu(workforce, edu);
-                console.log(currentActive, '0?');
 
                 const gap = target - currentActive;
 
                 if (gap > 0) {
                     // --- Hire the gap, spread across skill levels proportionally ---
-                    console.log('hired', gap);
 
                     const result = hireFromPopulation(planet, edu, gap);
                     if (result.count > 0) {

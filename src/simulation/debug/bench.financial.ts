@@ -50,7 +50,7 @@ export function financialSuite(): BenchmarkSuite {
         'preProductionFinancialTick – small (2 agents, 100K pop)',
         () => makeSmallWorld(1).gameState,
         (gs) => {
-            preProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            preProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 500, warmup: 50 },
     );
@@ -59,7 +59,7 @@ export function financialSuite(): BenchmarkSuite {
         'preProductionFinancialTick – medium (5 agents, 1M pop)',
         () => makeMediumWorld(4).gameState,
         (gs) => {
-            preProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            preProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 200, warmup: 20 },
     );
@@ -68,7 +68,7 @@ export function financialSuite(): BenchmarkSuite {
         'preProductionFinancialTick – large (21 agents, 8M pop)',
         () => makeLargeWorld(20).gameState,
         (gs) => {
-            preProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            preProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 50, warmup: 5 },
     );
@@ -81,7 +81,7 @@ export function financialSuite(): BenchmarkSuite {
         'postProductionFinancialTick – small (2 agents, 100K pop)',
         () => makeSmallWorld(1).gameState,
         (gs) => {
-            postProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            postProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 500, warmup: 50 },
     );
@@ -90,7 +90,7 @@ export function financialSuite(): BenchmarkSuite {
         'postProductionFinancialTick – medium (5 agents, 1M pop)',
         () => makeMediumWorld(4).gameState,
         (gs) => {
-            postProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            postProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 200, warmup: 20 },
     );
@@ -99,7 +99,7 @@ export function financialSuite(): BenchmarkSuite {
         'postProductionFinancialTick – large (21 agents, 8M pop)',
         () => makeLargeWorld(20).gameState,
         (gs) => {
-            postProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            postProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 50, warmup: 5 },
     );
@@ -112,8 +112,8 @@ export function financialSuite(): BenchmarkSuite {
         'pre+post financial – small (2 agents, 100K pop)',
         () => makeSmallWorld(1).gameState,
         (gs) => {
-            preProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
-            postProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            preProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
+            postProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -122,8 +122,8 @@ export function financialSuite(): BenchmarkSuite {
         'pre+post financial – large (21 agents, 8M pop)',
         () => makeLargeWorld(20).gameState,
         (gs) => {
-            preProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
-            postProductionFinancialTick(gs.agents, Object.values(gs.planets)[0]);
+            preProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
+            postProductionFinancialTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 30, warmup: 5 },
     );

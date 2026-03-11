@@ -47,7 +47,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            updateAllocatedWorkers(gs.agents, Object.values(gs.planets)[0]);
+            updateAllocatedWorkers(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 500, warmup: 50 },
     );
@@ -59,7 +59,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            updateAllocatedWorkers(gs.agents, Object.values(gs.planets)[0]);
+            updateAllocatedWorkers(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -75,7 +75,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            preProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
+            preProductionLaborMarketTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -87,7 +87,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            preProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
+            preProductionLaborMarketTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 200, warmup: 20 },
     );
@@ -103,7 +103,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            postProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
+            postProductionLaborMarketTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -115,7 +115,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            postProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
+            postProductionLaborMarketTick(gs.agents, gs.planets.values().next().value!);
         },
         { iterations: 200, warmup: 20 },
     );
