@@ -1,24 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { SKILL } from '../population/population';
 
-import { preProductionLaborMarketTick, VOLUNTARY_QUIT_RATE_PER_MONTH, NOTICE_PERIOD_MONTHS } from './laborMarketTick';
-import {
-    makeAgent,
-    makeStorageFacility,
-    makePlanetWithPopulation,
-    makePlanet,
-    makeWorkforceDemography,
-    makeAllocatedWorkers,
-    totalPopulation,
-    sumPopOcc,
-    agentMap,
-    planetMap,
-} from '../utils/testHelper';
 import { assertTotalPopulationConserved, assertWorkforcePopulationConsistency } from '../utils/testAssertions';
+import {
+    agentMap,
+    makeAgent,
+    makeAllocatedWorkers,
+    makePlanet,
+    makePlanetWithPopulation,
+    makeStorageFacility,
+    makeWorkforceDemography,
+    sumPopOcc,
+    totalPopulation,
+} from '../utils/testHelper';
+import { NOTICE_PERIOD_MONTHS, preProductionLaborMarketTick, VOLUNTARY_QUIT_RATE_PER_MONTH } from './laborMarketTick';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,7 +62,7 @@ describe('preProductionLaborMarketTick', () => {
 
     it('does nothing when workforceDemography is absent', () => {
         agent.assets.p.workforceDemography = undefined as never;
-        expect(() => preProductionLaborMarketTick(agentMap(agent), planetMap(planet))).not.toThrow();
+        expect(() => preProductionLaborMarketTick(agentMap(agent), planet)).not.toThrow();
     });
 
     it('moves a fraction of active workers into the departing pipeline', () => {
@@ -71,7 +70,7 @@ describe('preProductionLaborMarketTick', () => {
         workforce[30].none.novice.active = 10000;
         agent.assets.p.allocatedWorkers.none = 10000; // match target so firing doesn't trigger
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         const expectedQuitters = Math.floor(10000 * VOLUNTARY_QUIT_RATE_PER_MONTH);
         expect(workforce[30].none.novice.active).toBe(10000 - expectedQuitters);
@@ -83,7 +82,7 @@ describe('preProductionLaborMarketTick', () => {
         workforce[30].none.novice.active = 1; // floor(1 * 0.0001) = 0
         agent.assets.p.allocatedWorkers.none = 1; // match target so firing doesn't trigger
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         expect(workforce[30].none.novice.active).toBe(1);
         expect(workforce[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
@@ -93,7 +92,7 @@ describe('preProductionLaborMarketTick', () => {
         const { planet: p } = makePlanetWithPopulation({ primary: 1000 });
         agent.assets.p.allocatedWorkers.primary = 500;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(p));
+        preProductionLaborMarketTick(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
         const hired = totalActiveForEdu(workforce, 'primary');
@@ -105,7 +104,7 @@ describe('preProductionLaborMarketTick', () => {
         agent.assets.p.allocatedWorkers.none = 100;
         agent.assets.p.workforceDemography![30].none.novice.active = 100;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(p));
+        preProductionLaborMarketTick(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
         const totalActive = totalActiveForEdu(workforce, 'none');
@@ -116,7 +115,7 @@ describe('preProductionLaborMarketTick', () => {
         const { planet: p } = makePlanetWithPopulation({ none: 5 });
         agent.assets.p.allocatedWorkers.none = 1000;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(p));
+        preProductionLaborMarketTick(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
         const hired = totalActiveForEdu(workforce, 'none');
@@ -130,7 +129,7 @@ describe('preProductionLaborMarketTick', () => {
         }
         agent.assets.p.allocatedWorkers.none = 500;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(p));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         const workforce = agent.assets.p.workforceDemography!;
         const hired = totalActiveForEdu(workforce, 'none');
@@ -145,7 +144,7 @@ describe('preProductionLaborMarketTick', () => {
         const { planet: p } = makePlanetWithPopulation({ primary: 100000 });
         agent.assets.p.allocatedWorkers.primary = 3000;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(p));
+        preProductionLaborMarketTick(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
         expect(totalActiveForEdu(workforce, 'primary')).toBe(3000);
@@ -165,7 +164,7 @@ describe('preProductionLaborMarketTick', () => {
                 [agentA.id, agentA],
                 [agentB.id, agentB],
             ]),
-            planetMap(p),
+            planet,
         );
 
         const hiredA = totalActiveForEdu(agentA.assets.p.workforceDemography!, 'none');
@@ -198,7 +197,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
         agent.assets.p.allocatedWorkers.none = 500;
         agent.assets.p.allocatedWorkers.primary = 200;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         assertTotalPopulationConserved(planet, before);
         assertWorkforcePopulationConsistency(planet, [agent], 'after hire');
@@ -206,10 +205,10 @@ describe('preProductionLaborMarketTick — population conservation', () => {
 
     it('conserves total population after voluntary quits', () => {
         agent.assets.p.allocatedWorkers.none = 10000;
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
         const afterHire = totalPopulation(planet);
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         assertTotalPopulationConserved(planet, afterHire);
         assertWorkforcePopulationConsistency(planet, [agent], 'after quits');
@@ -217,11 +216,11 @@ describe('preProductionLaborMarketTick — population conservation', () => {
 
     it('conserves total population after firing', () => {
         agent.assets.p.allocatedWorkers.none = 1000;
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
         const afterHire = totalPopulation(planet);
 
         agent.assets.p.allocatedWorkers.none = 500;
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         assertTotalPopulationConserved(planet, afterHire);
         assertWorkforcePopulationConsistency(planet, [agent], 'after firing');
@@ -234,6 +233,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
                 resourceTenancies: [],
                 productionFacilities: [],
                 deposits: 0,
+                loans: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: makeAllocatedWorkers({ primary: 300 }),
                 workforceDemography: makeWorkforceDemography(),
@@ -248,7 +248,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
                 [agent.id, agent],
                 [gov.id, gov],
             ]),
-            planetMap(planet),
+            planet,
         );
 
         assertTotalPopulationConserved(planet, before);
@@ -267,7 +267,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
                 [agent.id, agent],
                 [agent2.id, agent2],
             ]),
-            planetMap(planet),
+            planet,
         );
 
         assertTotalPopulationConserved(planet, before);
@@ -291,7 +291,7 @@ describe('per-education level isolation', () => {
         const noneBefore = sumPopOcc(planet, 'none', 'unoccupied');
         const secBefore = sumPopOcc(planet, 'secondary', 'unoccupied');
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         expect(sumPopOcc(planet, 'none', 'unoccupied')).toBe(noneBefore);
         expect(sumPopOcc(planet, 'secondary', 'unoccupied')).toBe(secBefore);
@@ -303,12 +303,12 @@ describe('per-education level isolation', () => {
 
         agent.assets.p.allocatedWorkers.none = 500;
         agent.assets.p.allocatedWorkers.primary = 500;
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         agent.assets.p.allocatedWorkers.none = 200;
         agent.assets.p.allocatedWorkers.primary = 500;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         expect(totalActiveForEdu(agent.assets.p.workforceDemography!, 'primary')).toBe(500);
     });
@@ -324,13 +324,13 @@ describe('voluntary quit rate', () => {
         const agent = makeAgent();
 
         agent.assets.p.allocatedWorkers.none = 50000;
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         const wf = agent.assets.p.workforceDemography!;
         const activeAfterHire = totalActiveForEdu(wf, 'none');
 
         agent.assets.p.allocatedWorkers.none = 100000;
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         const expectedQuits = Math.floor(activeAfterHire * VOLUNTARY_QUIT_RATE_PER_MONTH);
         const departingNow = totalDepartingForEdu(wf, 'none');
@@ -345,7 +345,7 @@ describe('voluntary quit rate', () => {
         wf[30].none.novice.active = 1;
         agent.assets.p.allocatedWorkers.none = 1;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         expect(wf[30].none.novice.active).toBe(1);
     });

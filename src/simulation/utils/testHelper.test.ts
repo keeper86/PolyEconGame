@@ -4,35 +4,33 @@
  * Smoke tests for centralized test fixture factories.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { educationLevelKeys } from '../population/education';
 import { MAX_AGE, OCCUPATIONS, SKILL } from '../population/population';
 import { NOTICE_PERIOD_MONTHS } from '../workforce/laborMarketTick';
 
 import {
-    makePopulationCategory,
-    makeWorkforceCategory,
-    makePopulationCohort,
-    makeWorkforceCohort,
-    makePopulationDemography,
-    makeWorkforceDemography,
-    makePopulation,
-    makePopulationWithWorkers,
-    makePopulationByEducation,
-    makeStorageFacility,
-    makeStorageFacilityWithFood,
-    makeProductionFacility,
     makeAgent,
+    makeGameState,
     makePlanet,
     makePlanetWithPopulation,
-    makeGameState,
+    makePopulation,
+    makePopulationByEducation,
+    makePopulationCategory,
+    makePopulationCohort,
+    makePopulationDemography,
+    makePopulationWithWorkers,
+    makeProductionFacility,
+    makeStorageFacility,
+    makeStorageFacilityWithFood,
+    makeWorkforceCategory,
+    makeWorkforceCohort,
+    makeWorkforceDemography,
     makeWorld,
-    agentMap,
-    planetMap,
-    totalPopulation,
+    sumActiveForEdu,
     sumPopOcc,
     sumWorkforceForEdu,
-    sumActiveForEdu,
+    totalPopulation,
 } from './testHelper';
 
 // ============================================================================
@@ -224,28 +222,6 @@ describe('makeWorld', () => {
         expect(gameState.agents.size).toBe(3); // gov + 2 companies
         expect(planet.governmentId).toBe(gov.id);
         expect(agents).toHaveLength(3);
-    });
-});
-
-// ============================================================================
-// Map helpers
-// ============================================================================
-
-describe('agentMap', () => {
-    it('creates map keyed by id', () => {
-        const a1 = makeAgent('a1');
-        const a2 = makeAgent('a2');
-        const map = agentMap(a1, a2);
-        expect(map.get('a1')).toBe(a1);
-        expect(map.get('a2')).toBe(a2);
-    });
-});
-
-describe('planetMap', () => {
-    it('creates map keyed by id', () => {
-        const p = makePlanet({ id: 'earth' });
-        const map = planetMap(p);
-        expect(map.get('earth')).toBe(p);
     });
 });
 

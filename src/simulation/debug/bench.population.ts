@@ -15,16 +15,16 @@
  * state mutations from one iteration don't skew the next.
  */
 
-import { consumeFood } from '../../src/simulation/population/nutrition';
-import { applyMortality } from '../../src/simulation/population/mortality';
-import { applyDisability } from '../../src/simulation/population/disability';
-import { applyRetirement } from '../../src/simulation/population/retirement';
-import { populationBirthsTick } from '../../src/simulation/population/fertility';
-import { populationAdvanceYear } from '../../src/simulation/population/aging';
-import { calculateDemographicStats } from '../../src/simulation/population/demographics';
-import { createPopulation } from '../../src/simulation/utils/entities';
-import { makeEnvironment } from '../../src/simulation/utils/testHelper';
-import { BenchmarkSuite } from './harness';
+import { populationAdvanceYear } from '../population/aging';
+import { calculateDemographicStats } from '../population/demographics';
+import { applyDisability } from '../population/disability';
+import { populationBirthsTick } from '../population/fertility';
+import { applyMortality } from '../population/mortality';
+import { consumeFood } from '../population/nutrition';
+import { applyRetirement } from '../population/retirement';
+import { createPopulation } from '../utils/entities';
+import { makeEnvironment } from '../utils/testHelper';
+import { BenchmarkSuite } from './bench.harness';
 
 const ENV_CLEAN = makeEnvironment();
 const ENV_POLLUTED = makeEnvironment({

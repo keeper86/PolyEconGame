@@ -7,14 +7,7 @@ import { SKILL } from '../population/population';
 
 import { postProductionLaborMarketTick } from './laborMarketMonthTick';
 import { preProductionLaborMarketTick, NOTICE_PERIOD_MONTHS } from './laborMarketTick';
-import {
-    makeAgent,
-    makePlanetWithPopulation,
-    totalPopulation,
-    sumPopOcc,
-    agentMap,
-    planetMap,
-} from '../utils/testHelper';
+import { makeAgent, makePlanetWithPopulation, totalPopulation, sumPopOcc, agentMap } from '../utils/testHelper';
 import { assertTotalPopulationConserved } from '../utils/testAssertions';
 import type { makeWorkforceDemography } from '../utils/testHelper';
 
@@ -57,7 +50,7 @@ describe('postProductionLaborMarketTick', () => {
         // Need employed population at age 30 so returnToPopulationAtAge can move them
         planet.population.demography[30].employed.none.novice.total = 100;
 
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         // Pipeline shifted: slot[1]->slot[0], slot[2]->slot[1], last slot cleared
         expect(workforce[30].none.novice.departing[0]).toBe(5);
@@ -74,7 +67,7 @@ describe('postProductionLaborMarketTick', () => {
         planet.population.demography[25].employed.primary.novice.total = 20;
         planet.population.demography[25].unoccupied.primary.novice.total = 50;
 
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         // Workers moved from employed to unoccupied at age 25
         expect(planet.population.demography[25].employed.primary.novice.total).toBe(10);
@@ -85,7 +78,7 @@ describe('postProductionLaborMarketTick', () => {
         const workforce = agent.assets.p.workforceDemography!;
         workforce[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 1] = 7;
 
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         expect(workforce[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 2]).toBe(7);
         expect(workforce[30].none.novice.departing[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
@@ -93,7 +86,7 @@ describe('postProductionLaborMarketTick', () => {
 
     it('does nothing when workforceDemography is absent', () => {
         agent.assets.p.workforceDemography = undefined as never;
-        expect(() => postProductionLaborMarketTick(agentMap(agent), planetMap(planet))).not.toThrow();
+        expect(() => postProductionLaborMarketTick(agentMap(agent), planet)).not.toThrow();
     });
 
     it('resets death, disability, and retirement counters', () => {
@@ -112,7 +105,7 @@ describe('postProductionLaborMarketTick', () => {
             prevMonth: { ...zero },
         };
 
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         // "this month" rotated into "prev month"
         expect(agent.assets.p.deaths!.prevMonth.none).toBe(5);
@@ -137,7 +130,7 @@ describe('postProductionLaborMarketTick — population conservation', () => {
         agent.assets.p.allocatedWorkers.none = 1000;
 
         // Hire workers via preProductionLaborMarketTick
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
         const afterHire = totalPopulation(planet);
 
         // Manually move some active workers into the departing pipeline
@@ -158,7 +151,7 @@ describe('postProductionLaborMarketTick — population conservation', () => {
             }
         }
 
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         assertTotalPopulationConserved(planet, afterHire);
     });
@@ -185,7 +178,7 @@ describe('postProductionLaborMarketTick — population conservation', () => {
 
         const popBefore = totalPopulation(planet);
 
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         // After month tick: slot[0] was drained, rest shifted down
         let pipelineAfter = 0;
@@ -213,7 +206,7 @@ describe('departingFired pipeline — consistency', () => {
         wf[30].none.novice.active = 1000;
         agent.assets.p.allocatedWorkers.none = 500;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         for (let age = 0; age < wf.length; age++) {
             for (const edu of educationLevelKeys) {
@@ -244,7 +237,7 @@ describe('departingFired pipeline — consistency', () => {
         // Ensure employed population at age 30 for drain
         planet.population.demography[30].employed.none.novice.total = 200;
 
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         // Slot 2 -> slot 1 after shift
         expect(wf[30].none.novice.departing[1]).toBe(50);
@@ -266,7 +259,7 @@ describe('pipeline drain edge cases', () => {
         agent.assets.p.allocatedWorkers.none = 500;
 
         // Hire, then move all active into the departing pipeline
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
         const before = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
@@ -283,7 +276,7 @@ describe('pipeline drain edge cases', () => {
         agent.assets.p.allocatedWorkers.none = 0;
 
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+            postProductionLaborMarketTick(agentMap(agent), planet);
         }
 
         expect(totalDepartingForEdu(wf, 'none')).toBe(0);
@@ -297,7 +290,7 @@ describe('pipeline drain edge cases', () => {
         agent.assets.p.allocatedWorkers.none = 100;
         agent.assets.p.allocatedWorkers.primary = 50;
 
-        preProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        preProductionLaborMarketTick(agentMap(agent), planet);
 
         const wf = agent.assets.p.workforceDemography!;
         const primaryBefore = totalDepartingForEdu(wf, 'primary');
@@ -320,7 +313,7 @@ describe('pipeline drain edge cases', () => {
         }
 
         const before = totalPopulation(planet);
-        postProductionLaborMarketTick(agentMap(agent), planetMap(planet));
+        postProductionLaborMarketTick(agentMap(agent), planet);
 
         // Primary departing should be unchanged (still whatever voluntary quits placed)
         expect(totalDepartingForEdu(wf, 'primary')).toBe(primaryBefore);

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import { updateAllocatedWorkers } from './allocatedWorkers';
 import { NOTICE_PERIOD_MONTHS } from './laborMarketTick';
-import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap, planetMap } from '../utils/testHelper';
+import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
 
 // ---------------------------------------------------------------------------
 // updateAllocatedWorkers
@@ -14,7 +14,7 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeProductionFacility({ none: 100, primary: 50 }, { scale: 10 })];
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(525);
@@ -26,7 +26,7 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeProductionFacility({ none: 100, primary: 50 }, { scale: 10 })];
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(0);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(1575);
@@ -37,7 +37,7 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeProductionFacility({ none: 50, primary: 30 }, { scale: 10 })];
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(0);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(0);
@@ -49,7 +49,7 @@ describe('updateAllocatedWorkers', () => {
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeProductionFacility({ none: 100 }, { scale: 10 })];
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(200);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(850);
@@ -63,7 +63,7 @@ describe('updateAllocatedWorkers', () => {
         const wf = agent.assets.p.workforceDemography!;
         wf[30].none.novice.active = 600;
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(600);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(450);
@@ -77,19 +77,10 @@ describe('updateAllocatedWorkers', () => {
             makeProductionFacility({ none: 4, primary: 2 }, { scale: 100, id: 'facility-2' }),
         ];
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(6720);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(3360);
-    });
-
-    it('handles the case where no planet is found (uses buffered requirements)', () => {
-        const agent = makeAgent();
-        agent.assets.p.productionFacilities = [makeProductionFacility({ none: 10 }, { scale: 5 })];
-
-        updateAllocatedWorkers(agentMap(agent), planetMap());
-
-        expect(agent.assets.p.allocatedWorkers.none).toBe(53);
     });
 
     it('uses feedback-based allocation when unusedWorkers is available (surplus)', () => {
@@ -104,7 +95,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: 30, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1019);
     });
@@ -121,7 +112,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: -50, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(998);
     });
@@ -136,7 +127,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: 100, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(0);
     });
@@ -155,7 +146,7 @@ describe('updateAllocatedWorkers', () => {
             overqualifiedMatrix: { none: { primary: 500 } },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(525);
@@ -175,7 +166,7 @@ describe('updateAllocatedWorkers', () => {
             overqualifiedMatrix: { none: { primary: 800 } },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(400);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(650);
@@ -195,7 +186,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(945);
     });
@@ -214,7 +205,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         // effective pool = 800 + floor((150-50) * 0.5) = 800 + 50 = 850
         // consumed = 850 - 0 = 850
@@ -236,7 +227,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.tertiary).toBe(1050);
     });
@@ -253,7 +244,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: -100, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1365);
     });
@@ -268,7 +259,7 @@ describe('updateAllocatedWorkers', () => {
             unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         };
 
-        updateAllocatedWorkers(agentMap(agent), planetMap(planet));
+        updateAllocatedWorkers(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.tertiary).toBe(525);
     });

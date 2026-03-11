@@ -4,7 +4,7 @@ import { productionTick } from './production';
 
 import { ironOreDepositResourceType, ironOreResourceType } from './facilities';
 import type { GameState } from './planet';
-import { makePlanetWithPopulation, makeAgent, makeProductionFacility, planetMap, agentMap } from '../utils/testHelper';
+import { makePlanetWithPopulation, makeAgent, makeProductionFacility, agentMap } from '../utils/testHelper';
 
 // test helpers create fresh objects; no deep clone needed
 
@@ -45,11 +45,11 @@ describe('productionTick (basic)', () => {
 
         const gameState: GameState = {
             tick: 0,
-            planets: planetMap(planet),
+            planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
         };
 
-        productionTick(gameState);
+        productionTick(gameState.agents, planet);
 
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
         // ironExtractionFacility produces 1000 * scale(1) * overallEfficiency (should be 1)
@@ -89,12 +89,11 @@ describe('productionTick (basic)', () => {
 
         const gameState: GameState = {
             tick: 0,
-            planets: planetMap(planet),
+            planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
         };
 
-        productionTick(gameState);
-
+        productionTick(gameState.agents, planet);
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
         expect(storedIron).toBe(0);
 
@@ -132,8 +131,8 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = { tick: 0, planets: planetMap(planet), agents: agentMap(agent, gov) };
-        productionTick(gs);
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
 
         // facility should record overqualified usage for jobEdu 'none'
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'oq-fac');
@@ -191,8 +190,8 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = { tick: 0, planets: planetMap(planet), agents: agentMap(agent, gov) };
-        productionTick(gs);
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'scale-fac');
         expect(recorded).toBeDefined();
@@ -230,8 +229,8 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = { tick: 0, planets: planetMap(planet), agents: agentMap(agent, gov) };
-        productionTick(gs);
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
 
         // one worker should remain unused
         const feedback = agent.assets.p.workerFeedback;

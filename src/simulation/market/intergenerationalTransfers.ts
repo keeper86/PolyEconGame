@@ -91,7 +91,7 @@ import {
     SUPPORT_WEIGHT_SIGMA,
     SUPPORTER_SURVIVAL_FRACTION,
 } from '../constants';
-import type { GameState, Planet } from '../planet/planet';
+import type { Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
@@ -446,30 +446,7 @@ export function sumTransferMatrix(matrix: PopulationTransferMatrix): number {
     return total;
 }
 
-// ---------------------------------------------------------------------------
-// Main tick
-// ---------------------------------------------------------------------------
-
-/**
- * Execute intergenerational transfers for all planets.
- *
- * Called BEFORE food market clearing (so dependents receive wealth they
- * can immediately spend on food) and BEFORE wealth diffusion.
- */
-export function intergenerationalTransfersTick(gameState: GameState): void {
-    log('intergenerationalTransfersTick start', { numPlanets: gameState.planets.size });
-    gameState.planets.forEach((planet, planetKey) => {
-        log('planet start', {
-            planetKey,
-            demographyLength: planet.population?.demography?.length,
-            priceLevel: planet.priceLevel,
-        });
-        intergenerationalTransfersForPlanet(planet);
-        log('planet end', { planetKey });
-    });
-}
-
-function intergenerationalTransfersForPlanet(planet: Planet): void {
+export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
 

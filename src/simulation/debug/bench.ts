@@ -19,8 +19,8 @@
  *   BENCH_QUICK=1 npm run bench
  */
 
-import { printAllReports, maybeEmitJson } from './harness';
-import type { SuiteReport } from './harness';
+import { printAllReports, maybeEmitJson } from './bench.harness';
+import type { SuiteReport } from './bench.harness';
 import { setupSuite } from './bench.setup';
 import { populationSuite } from './bench.population';
 import { workforceSuite } from './bench.workforce';

@@ -9,13 +9,13 @@
  *   - syncWorkforceWithPopulation
  */
 
-import { updateAllocatedWorkers } from '../../src/simulation/workforce/allocatedWorkers';
-import { preProductionLaborMarketTick } from '../../src/simulation/workforce/laborMarketTick';
-import { postProductionLaborMarketTick } from '../../src/simulation/workforce/laborMarketMonthTick';
-import { laborMarketYearTick } from '../../src/simulation/workforce/laborMarketYearTick';
-import { syncWorkforceWithPopulation } from '../../src/simulation/workforce/workforceSync';
-import { makeWorld, makeEnvironment } from '../../src/simulation/utils/testHelper';
-import { BenchmarkSuite } from './harness';
+import { makeEnvironment, makeWorld } from '../utils/testHelper';
+import { updateAllocatedWorkers } from '../workforce/allocatedWorkers';
+import { postProductionLaborMarketTick } from '../workforce/laborMarketMonthTick';
+import { preProductionLaborMarketTick } from '../workforce/laborMarketTick';
+import { laborMarketYearTick } from '../workforce/laborMarketYearTick';
+import { syncWorkforceWithPopulation } from '../workforce/workforceSync';
+import { BenchmarkSuite } from './bench.harness';
 
 const ENV = makeEnvironment();
 
@@ -47,7 +47,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            updateAllocatedWorkers(gs.agents, gs.planets);
+            updateAllocatedWorkers(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 500, warmup: 50 },
     );
@@ -59,7 +59,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            updateAllocatedWorkers(gs.agents, gs.planets);
+            updateAllocatedWorkers(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -75,7 +75,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            preProductionLaborMarketTick(gs.agents, gs.planets);
+            preProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -87,7 +87,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            preProductionLaborMarketTick(gs.agents, gs.planets);
+            preProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 200, warmup: 20 },
     );
@@ -103,7 +103,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            postProductionLaborMarketTick(gs.agents, gs.planets);
+            postProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -115,7 +115,7 @@ export function workforceSuite(): BenchmarkSuite {
             return gameState;
         },
         (gs) => {
-            postProductionLaborMarketTick(gs.agents, gs.planets);
+            postProductionLaborMarketTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 200, warmup: 20 },
     );

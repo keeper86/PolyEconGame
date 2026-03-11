@@ -1,13 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { makeEnvironment, makeGovernmentAgent, makePlanet } from '../utils/testHelper';
 import { environmentTick } from './environment';
-import type { GameState } from './planet';
-import { makePlanet, makeEnvironment, makeGameState, makeGovernmentAgent } from '../utils/testHelper';
 
 describe('environmentTick', () => {
     it('reduces pollution by constant and percentage and not below zero', () => {
-        const gov = makeGovernmentAgent();
         const planet = makePlanet({
-            governmentId: gov.id,
+            governmentId: 'gov1',
             environment: makeEnvironment({
                 pollution: { air: 50, water: 10, soil: 2 },
                 regenerationRates: {
@@ -17,9 +15,8 @@ describe('environmentTick', () => {
                 },
             }),
         });
-        const gameState = makeGameState(planet, [gov]);
 
-        environmentTick(gameState);
+        environmentTick(planet);
 
         // air: 50 - 5 - 50 * 0.1 = 40
         expect(planet.environment.pollution.air).toBeCloseTo(40);
@@ -56,20 +53,15 @@ describe('environmentTick', () => {
                 ],
             },
         });
-        const state: GameState = {
-            tick: 0,
-            agents: new Map(),
-            planets: new Map([['p2', planet]]),
-        };
 
-        environmentTick(state);
+        environmentTick(planet);
 
-        const entry = state.planets.get('p2')!.resources.iron[0];
+        const entry = planet.resources.iron[0];
         // regenerationRate = 20, capacity left = 10 -> should increase by 10 to reach 60
         expect(entry.quantity).toBe(60);
 
         // running again should not exceed maximumCapacity
-        environmentTick(state);
-        expect(state.planets.get('p2')!.resources.iron[0].quantity).toBe(60);
+        environmentTick(planet);
+        expect(planet.resources.iron[0].quantity).toBe(60);
     });
 });

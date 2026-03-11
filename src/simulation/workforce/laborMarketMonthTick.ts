@@ -19,7 +19,7 @@ import { returnToPopulationAtAge, assertPopulationWorkforceConsistency } from '.
 // Public API
 // ---------------------------------------------------------------------------
 
-export function postProductionLaborMarketTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet: Planet): void {
     // -----------------------------------------------------------------------
     // Phase 0: snapshots & counter rotation (per-agent)
     // -----------------------------------------------------------------------
@@ -72,13 +72,11 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
     // one slot.
     // -----------------------------------------------------------------------
     for (const agent of agents.values()) {
-        for (const [planetId, assets] of Object.entries(agent.assets)) {
+        for (const [_planetId, assets] of Object.entries(agent.assets)) {
             const workforce = assets.workforceDemography;
             if (!workforce) {
                 continue;
             }
-
-            const planet = planets.get(planetId);
 
             // Return departing[0] workers to the population at their exact age.
             if (planet) {
@@ -113,8 +111,6 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
 
     // Verify population↔workforce consistency after pipeline advancement
     if (process.env.SIM_DEBUG === '1') {
-        for (const planet of planets.values()) {
-            assertPopulationWorkforceConsistency(agents, planet, 'postProductionLaborMarketTick');
-        }
+        assertPopulationWorkforceConsistency(agents, planet, 'postProductionLaborMarketTick');
     }
 }

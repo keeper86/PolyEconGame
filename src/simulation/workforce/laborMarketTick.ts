@@ -81,16 +81,14 @@ export const ageProductivityMultiplier = (age: number): number => {
 // Main monthly pre-production entry point
 // ---------------------------------------------------------------------------
 
-export function preProductionLaborMarketTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
-            const workforce = assets.workforceDemography;
-            if (!workforce) {
+            if (planetId !== planet.id) {
                 continue;
             }
-
-            const planet = planets.get(planetId);
-            if (!planet) {
+            const workforce = assets.workforceDemography;
+            if (!workforce) {
                 continue;
             }
 
@@ -165,8 +163,6 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planets
 
     // Verify population↔workforce consistency after all hiring/firing
     if (process.env.SIM_DEBUG === '1') {
-        for (const planet of planets.values()) {
-            assertPopulationWorkforceConsistency(agents, planet, 'preProductionLaborMarketTick');
-        }
+        assertPopulationWorkforceConsistency(agents, planet, 'preProductionLaborMarketTick');
     }
 }

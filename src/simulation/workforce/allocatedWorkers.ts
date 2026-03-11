@@ -15,7 +15,7 @@ import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { ACCEPTABLE_IDLE_FRACTION, DEPARTING_EFFICIENCY } from './laborMarketTick';
 import { totalUnoccupiedForEdu } from './populationBridge';
-import { totalActiveForEdu, totalDepartingForEdu, totalDepartingFiredForEdu } from './workforceAggregates';
+import { totalActiveForEdu, totalDepartingFiredForEdu, totalDepartingForEdu } from './workforceAggregates';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,9 +80,12 @@ import { totalActiveForEdu, totalDepartingForEdu, totalDepartingFiredForEdu } fr
  * Call this once per tick **before** `preProductionLaborMarketTick` so that the hiring
  * logic always chases up-to-date requirements.
  */
-export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+export function updateAllocatedWorkers(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
+            if (planetId !== planet.id) {
+                continue;
+            }
             // 1. Determine per-edu requirement: feedback-based or bootstrap.
             const requirement = {} as Record<EducationLevelType, number>;
 
@@ -173,7 +176,6 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<
             }
 
             // 2. Cascade unmet demand upward through the education hierarchy.
-            const planet = planets.get(planetId);
             for (const edu of educationLevelKeys) {
                 assets.allocatedWorkers[edu] = 0;
             }

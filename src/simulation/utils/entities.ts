@@ -173,6 +173,7 @@ export const earthGovernment: Agent = {
             productionFacilities: [waterExtractionFacility, agriculturalProductionFacility],
             storageFacility: earthStorage,
             deposits: 0,
+            loans: 0,
             allocatedWorkers: {
                 none: 0,
                 primary: 0,
@@ -196,6 +197,7 @@ export const testCompany: Agent = {
             productionFacilities: [ironExtractionFacility],
             storageFacility: testCompanyStorage,
             deposits: 0,
+            loans: 0,
             allocatedWorkers: {
                 none: 0,
                 primary: 0,

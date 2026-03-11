@@ -280,7 +280,7 @@ export type AgentPlanetAssets = {
     /** Firm deposit balance for this agent on this planet (currency units). */
     deposits: number;
     /** Outstanding loan principal for this agent on this planet (currency units). */
-    loans?: number;
+    loans: number;
     /**
      * Last tick's wage bill (currency units).
      * Used by the retained-earnings threshold for partial loan repayment.

@@ -9,11 +9,10 @@
  * engine scales linearly with agent/population count.
  */
 
-import { advanceTick } from '../../src/simulation/engine';
-import { createInitialGameState } from '../../src/simulation/utils/initialWorld';
-import { makeWorld } from '../../src/simulation/utils/testHelper';
-import { seedRng } from '../../src/simulation/utils/stochasticRound';
-import { BenchmarkSuite } from './harness';
+import { seedRng, advanceTick } from '../engine';
+import { createInitialGameState } from '../utils/initialWorld';
+import { makeWorld } from '../utils/testHelper';
+import { BenchmarkSuite } from './bench.harness';
 
 seedRng(42);
 

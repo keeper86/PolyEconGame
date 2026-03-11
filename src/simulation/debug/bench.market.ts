@@ -10,12 +10,12 @@
  * population sizes to show how each step scales with market breadth.
  */
 
-import { updateAgentPricing } from '../../src/simulation/market/agentPricing';
-import { foodMarketTick } from '../../src/simulation/market/foodMarket';
-import { intergenerationalTransfersTick } from '../../src/simulation/market/intergenerationalTransfers';
-import { makeWorld, makeStorageFacilityWithFood } from '../../src/simulation/utils/testHelper';
-import type { EducationLevelType } from '../../src/simulation/population/population';
-import { BenchmarkSuite } from './harness';
+import { updateAgentPricing } from '../market/agentPricing';
+import { foodMarketTick } from '../market/foodMarket';
+import { intergenerationalTransfersForPlanet } from '../market/intergenerationalTransfers';
+import type { EducationLevelType } from '../population/education';
+import { makeStorageFacilityWithFood, makeWorld } from '../utils/testHelper';
+import { BenchmarkSuite } from './bench.harness';
 
 // ---------------------------------------------------------------------------
 // Helpers — pre-seed storage so that agents actually have food to sell
@@ -72,7 +72,7 @@ export function marketSuite(): BenchmarkSuite {
         'agentPricing – 2 agents, 100K pop',
         () => makeMarketWorld(1, { none: 60_000, primary: 30_000, secondary: 8_000, tertiary: 2_000 }),
         (gs) => {
-            updateAgentPricing(gs);
+            updateAgentPricing(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 500, warmup: 50 },
     );
@@ -87,7 +87,7 @@ export function marketSuite(): BenchmarkSuite {
                 tertiary: 200_000,
             }),
         (gs) => {
-            updateAgentPricing(gs);
+            updateAgentPricing(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 100, warmup: 10 },
     );
@@ -100,7 +100,7 @@ export function marketSuite(): BenchmarkSuite {
         'foodMarketTick – 2 agents, 100K pop',
         () => makeMarketWorld(1, { none: 60_000, primary: 30_000, secondary: 8_000, tertiary: 2_000 }),
         (gs) => {
-            foodMarketTick(gs);
+            foodMarketTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -109,7 +109,7 @@ export function marketSuite(): BenchmarkSuite {
         'foodMarketTick – 6 agents, 1M pop',
         () => makeMarketWorld(5, { none: 500_000, primary: 300_000, secondary: 150_000, tertiary: 50_000 }),
         (gs) => {
-            foodMarketTick(gs);
+            foodMarketTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 100, warmup: 10 },
     );
@@ -124,7 +124,7 @@ export function marketSuite(): BenchmarkSuite {
                 tertiary: 200_000,
             }),
         (gs) => {
-            foodMarketTick(gs);
+            foodMarketTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 30, warmup: 5 },
     );
@@ -137,7 +137,7 @@ export function marketSuite(): BenchmarkSuite {
         'intergenerationalTransfers – 100K pop',
         () => makeMarketWorld(1, { none: 60_000, primary: 30_000, secondary: 8_000, tertiary: 2_000 }),
         (gs) => {
-            intergenerationalTransfersTick(gs);
+            intergenerationalTransfersForPlanet(Object.values(gs.planets)[0]);
         },
         { iterations: 300, warmup: 30 },
     );
@@ -152,7 +152,7 @@ export function marketSuite(): BenchmarkSuite {
                 tertiary: 200_000,
             }),
         (gs) => {
-            intergenerationalTransfersTick(gs);
+            intergenerationalTransfersForPlanet(Object.values(gs.planets)[0]);
         },
         { iterations: 50, warmup: 5 },
     );

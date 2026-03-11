@@ -1,28 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { Agent, Planet, GameState } from '../planet/planet';
-import { preProductionFinancialTick, postProductionFinancialTick } from './financialTick';
-import { getAgentLoansForPlanet, setAgentDepositsForPlanet, setAgentLoansForPlanet } from './depositHelpers';
-import { makeAgent, makePlanetWithPopulation, makeGameState as makeGS } from '../utils/testHelper';
+import type { Agent, Planet } from '../planet/planet';
+import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
 import { hireFromPopulation } from '../workforce/populationBridge';
 
-function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
-    return makeGS(planet, agents, 1);
-}
+import { postProductionFinancialTick, preProductionFinancialTick } from './financialTick';
 
 describe('per-agent loan bookkeeping', () => {
     let agent: Agent;
-    let gov: Agent;
+
     let planet: Planet;
-    let gs: GameState;
 
     beforeEach(() => {
         agent = makeAgent();
-        const result = makePlanetWithPopulation({ none: 1000 });
-        planet = result.planet;
-        gov = result.gov;
+        planet = makePlanetWithPopulation({ none: 1000 }).planet;
         planet.wagePerEdu = { none: 1.0 };
-        gs = makeGameState(planet, gov, agent);
     });
 
     it('records per-agent loan on issuance', () => {
@@ -37,9 +29,9 @@ describe('per-agent loan bookkeeping', () => {
             }
         }
 
-        preProductionFinancialTick(gs);
+        preProductionFinancialTick(agentMap(agent), planet);
 
-        const agentLoan = getAgentLoansForPlanet(agent, planet.id);
+        const agentLoan = agent.assets[planet.id]!.loans ?? 0;
         expect(agentLoan).toBeCloseTo(count, 6);
         expect(planet.bank!.loans).toBeCloseTo(count, 6);
     });
@@ -48,13 +40,13 @@ describe('per-agent loan bookkeeping', () => {
         // Set up an outstanding loan owned by the agent and matching deposits
         planet.bank!.loans = 50;
         planet.bank!.deposits = 50;
-        setAgentDepositsForPlanet(agent, planet.id, 50);
-        setAgentLoansForPlanet(agent, planet.id, 50);
+        agent.assets[planet.id]!.deposits = 50;
+        agent.assets[planet.id]!.loans = 50;
 
         // postProduction should trigger repayment even when cNom == 0
-        postProductionFinancialTick(gs);
+        postProductionFinancialTick(agentMap(agent), planet);
 
-        expect(getAgentLoansForPlanet(agent, planet.id)).toBe(0);
+        expect(agent.assets[planet.id]?.loans).toBe(0);
         expect(planet.bank!.loans).toBe(0);
         expect(agent.assets[planet.id]?.deposits ?? 0).toBe(0);
     });

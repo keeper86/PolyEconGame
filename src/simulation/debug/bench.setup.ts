@@ -10,10 +10,10 @@
  *  3. They show how demography initialisation (createPopulation) scales.
  */
 
-import { createInitialGameState } from '../../src/simulation/utils/initialWorld';
-import { makeWorld } from '../../src/simulation/utils/testHelper';
-import { createPopulation } from '../../src/simulation/utils/entities';
-import { BenchmarkSuite } from './harness';
+import { createPopulation } from '../utils/entities';
+import { createInitialGameState } from '../utils/initialWorld';
+import { makeWorld } from '../utils/testHelper';
+import { BenchmarkSuite } from './bench.harness';
 
 export function setupSuite(): BenchmarkSuite {
     const suite = new BenchmarkSuite('World setup & initialisation');

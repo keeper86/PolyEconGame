@@ -10,15 +10,11 @@
  * a realistic set of facilities to expose per-facility overhead.
  */
 
-import { productionTick } from '../../src/simulation/planet/production';
-import { environmentTick } from '../../src/simulation/planet/environment';
-import { makeWorld, makeProductionFacility } from '../../src/simulation/utils/testHelper';
-import {
-    agriculturalProductResourceType,
-    waterResourceType,
-    arableLandResourceType,
-} from '../../src/simulation/planet/facilities';
-import { BenchmarkSuite } from './harness';
+import { environmentTick } from '../planet/environment';
+import { agriculturalProductResourceType, waterResourceType, arableLandResourceType } from '../planet/facilities';
+import { productionTick } from '../planet/production';
+import { makeWorld, makeProductionFacility } from '../utils/testHelper';
+import { BenchmarkSuite } from './bench.harness';
 
 /** Seed each agent's storage with enough water + arable land for production. */
 function seedResources(gs: ReturnType<typeof makeWorld>['gameState']): void {
@@ -105,7 +101,7 @@ export function productionSuite(): BenchmarkSuite {
         'environmentTick – 1 planet',
         () => makeSmallWorld(1),
         (gs) => {
-            environmentTick(gs);
+            environmentTick(Object.values(gs.planets)[0]);
         },
         { iterations: 1000, warmup: 100 },
     );
@@ -122,7 +118,7 @@ export function productionSuite(): BenchmarkSuite {
             return gs;
         },
         (gs) => {
-            productionTick(gs);
+            productionTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 500, warmup: 50 },
     );
@@ -135,7 +131,7 @@ export function productionSuite(): BenchmarkSuite {
             return gs;
         },
         (gs) => {
-            productionTick(gs);
+            productionTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 200, warmup: 20 },
     );
@@ -157,7 +153,7 @@ export function productionSuite(): BenchmarkSuite {
             return w.gameState;
         },
         (gs) => {
-            productionTick(gs);
+            productionTick(gs.agents, Object.values(gs.planets)[0]);
         },
         { iterations: 50, warmup: 5 },
     );

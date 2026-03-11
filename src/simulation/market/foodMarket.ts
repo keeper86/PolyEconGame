@@ -23,11 +23,10 @@
 
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
 import { agriculturalProductResourceType, removeFromStorageFacility } from '../planet/facilities';
-import { addAgentDepositsForPlanet } from '../financial/depositHelpers';
-import type { Agent, GameState, Planet } from '../planet/planet';
+import type { Agent, Planet } from '../planet/planet';
+import type { EducationLevelType } from '../population/education';
 import type { GaussianMoments, Occupation, Skill } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
-import type { EducationLevelType } from '../population/education';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,164 +93,162 @@ export function expectedPurchaseQuantity(
  * Must be called AFTER `updateAgentPricing` (so offers are set) and
  * AFTER intergenerational transfers (so dependents have wealth to spend).
  */
-export function foodMarketTick(gameState: GameState): void {
-    gameState.planets.forEach((planet) => {
-        // --- Step 0: Collect per-agent offers ---
-        const offers = collectOffers(gameState, planet);
+export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void {
+    // --- Step 0: Collect per-agent offers ---
+    const offers = collectOffers(agents, planet);
 
-        const demography = planet.population.demography;
+    const demography = planet.population.demography;
 
-        // --- Step 2/3/4: Demand formation with liquidity constraint ---
-        const demandRecords: DemandRecord[] = [];
-        let aggregateDemand = 0;
-        // Each household aims to hold `FOOD_BUFFER_TARGET_TICKS` worth of
-        // consumption. The previous implementation multiplied this by 2,
-        // effectively causing agents to target a 60‑day buffer even though
-        // the constant is documented and used elsewhere as a 30‑day target.
-        // That led to persistent hoarding and very large apparent buffer
-        // percentages (e.g. 400%+) in the UI.  Use the single-target value
-        // here so demand formation aligns with the rest of the model.
-        const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+    // --- Step 2/3/4: Demand formation with liquidity constraint ---
+    const demandRecords: DemandRecord[] = [];
+    let aggregateDemand = 0;
+    // Each household aims to hold `FOOD_BUFFER_TARGET_TICKS` worth of
+    // consumption. The previous implementation multiplied this by 2,
+    // effectively causing agents to target a 60‑day buffer even though
+    // the constant is documented and used elsewhere as a 30‑day target.
+    // That led to persistent hoarding and very large apparent buffer
+    // percentages (e.g. 400%+) in the UI.  Use the single-target value
+    // here so demand formation aligns with the rest of the model.
+    const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
-        // Use the volume-weighted average price from offers for demand formation
-        const referencePrice = computeReferencePrice(offers, planet.priceLevel ?? 0.01);
+    // Use the volume-weighted average price from offers for demand formation
+    const referencePrice = computeReferencePrice(offers, planet.priceLevel ?? 0.01);
 
-        demography.forEach((cohort, age) =>
-            forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
-                const pop = category.total;
-                if (pop <= 0) {
-                    return;
-                }
-                const fb = category;
-                const wm = category.wealth;
-
-                const foodStockPerPerson = fb.foodStock / pop;
-                const desiredPurchasePerPerson = Math.max(0, foodTargetPerPerson - foodStockPerPerson);
-                const effectiveDemandPerPerson = expectedPurchaseQuantity(
-                    wm.mean,
-                    wm.variance,
-                    referencePrice,
-                    desiredPurchasePerPerson,
-                );
-                const effectiveDemandTotal = effectiveDemandPerPerson * pop;
-
-                if (effectiveDemandTotal > 0) {
-                    demandRecords.push({
-                        age,
-                        edu,
-                        occ,
-                        skill,
-                        population: pop,
-                        effectiveDemand: effectiveDemandTotal,
-                        wealthMoments: wm,
-                    });
-                    aggregateDemand += effectiveDemandTotal;
-                }
-            }),
-        );
-
-        // --- Step 5: Merit-order clearing (cheapest offers first) ---
-        // Sort offers by price ascending
-        offers.sort((a, b) => a.price - b.price);
-
-        let remainingDemand = aggregateDemand;
-        let totalRevenue = 0;
-        let totalFoodSold = 0;
-
-        for (const offer of offers) {
-            if (remainingDemand <= 0) {
-                break;
+    demography.forEach((cohort, age) =>
+        forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+            const pop = category.total;
+            if (pop <= 0) {
+                return;
             }
-            const filledQuantity = Math.min(offer.quantity, remainingDemand);
-            offer.sold = filledQuantity;
-            offer.revenue = filledQuantity * offer.price;
-            remainingDemand -= filledQuantity;
-            totalRevenue += offer.revenue;
-            totalFoodSold += filledQuantity;
-        }
+            const fb = category;
+            const wm = category.wealth;
 
-        // --- Step 6 & 7: Financial settlement + wealth update ---
-        // Compute how much households can actually pay, then scale both
-        // the bank debit and the per-capita wealth reduction consistently
-        // so that householdDeposits and population wealth stay in sync.
-        const bank = planet.bank;
-        const actualHouseholdDebit = Math.min(totalRevenue, bank.householdDeposits);
-        bank.householdDeposits -= actualHouseholdDebit;
+            const foodStockPerPerson = fb.foodStock / pop;
+            const desiredPurchasePerPerson = Math.max(0, foodTargetPerPerson - foodStockPerPerson);
+            const effectiveDemandPerPerson = expectedPurchaseQuantity(
+                wm.mean,
+                wm.variance,
+                referencePrice,
+                desiredPurchasePerPerson,
+            );
+            const effectiveDemandTotal = effectiveDemandPerPerson * pop;
 
-        // Scale revenue proportionally if household deposits were insufficient
-        const revenueScale = totalRevenue > 0 ? actualHouseholdDebit / totalRevenue : 0;
-
-        // Distribute purchased food to households and reduce wealth
-        if (totalFoodSold > 0 && aggregateDemand > 0) {
-            const fillRatio = Math.min(1, totalFoodSold / aggregateDemand);
-            // Effective average price paid, scaled by what households
-            // could actually afford via the bank.
-            const avgPricePaid = totalRevenue / totalFoodSold;
-            const effectiveAvgPrice = avgPricePaid * revenueScale;
-
-            for (const record of demandRecords) {
-                const quantityReceived = record.effectiveDemand * fillRatio;
-                if (quantityReceived <= 0) {
-                    continue;
-                }
-                const cost = quantityReceived * effectiveAvgPrice;
-                const perPersonCost = cost / record.population;
-
-                const category = demography[record.age][record.occ][record.edu][record.skill];
-                category.foodStock += quantityReceived;
-
-                category.wealth = {
-                    mean: Math.max(0, category.wealth.mean - perPersonCost),
-                    variance: category.wealth.variance,
-                };
+            if (effectiveDemandTotal > 0) {
+                demandRecords.push({
+                    age,
+                    edu,
+                    occ,
+                    skill,
+                    population: pop,
+                    effectiveDemand: effectiveDemandTotal,
+                    wealthMoments: wm,
+                });
+                aggregateDemand += effectiveDemandTotal;
             }
-        }
+        }),
+    );
 
-        for (const offer of offers) {
-            if (offer.sold <= 0) {
+    // --- Step 5: Merit-order clearing (cheapest offers first) ---
+    // Sort offers by price ascending
+    offers.sort((a, b) => a.price - b.price);
+
+    let remainingDemand = aggregateDemand;
+    let totalRevenue = 0;
+    let totalFoodSold = 0;
+
+    for (const offer of offers) {
+        if (remainingDemand <= 0) {
+            break;
+        }
+        const filledQuantity = Math.min(offer.quantity, remainingDemand);
+        offer.sold = filledQuantity;
+        offer.revenue = filledQuantity * offer.price;
+        remainingDemand -= filledQuantity;
+        totalRevenue += offer.revenue;
+        totalFoodSold += filledQuantity;
+    }
+
+    // --- Step 6 & 7: Financial settlement + wealth update ---
+    // Compute how much households can actually pay, then scale both
+    // the bank debit and the per-capita wealth reduction consistently
+    // so that householdDeposits and population wealth stay in sync.
+    const bank = planet.bank;
+    const actualHouseholdDebit = Math.min(totalRevenue, bank.householdDeposits);
+    bank.householdDeposits -= actualHouseholdDebit;
+
+    // Scale revenue proportionally if household deposits were insufficient
+    const revenueScale = totalRevenue > 0 ? actualHouseholdDebit / totalRevenue : 0;
+
+    // Distribute purchased food to households and reduce wealth
+    if (totalFoodSold > 0 && aggregateDemand > 0) {
+        const fillRatio = Math.min(1, totalFoodSold / aggregateDemand);
+        // Effective average price paid, scaled by what households
+        // could actually afford via the bank.
+        const avgPricePaid = totalRevenue / totalFoodSold;
+        const effectiveAvgPrice = avgPricePaid * revenueScale;
+
+        for (const record of demandRecords) {
+            const quantityReceived = record.effectiveDemand * fillRatio;
+            if (quantityReceived <= 0) {
                 continue;
             }
-            const agentRevenue = offer.revenue * revenueScale;
-            addAgentDepositsForPlanet(offer.agent, planet.id, agentRevenue);
+            const cost = quantityReceived * effectiveAvgPrice;
+            const perPersonCost = cost / record.population;
 
-            // Remove sold food from the agent's storage
-            removeFromStorageFacility(
-                offer.agent.assets[planet.id]?.storageFacility,
-                agriculturalProductResourceType.name,
-                offer.sold,
-            );
+            const category = demography[record.age][record.occ][record.edu][record.skill];
+            category.foodStock += quantityReceived;
 
-            // Record lastSold for the pricing AI
+            category.wealth = {
+                mean: Math.max(0, category.wealth.mean - perPersonCost),
+                variance: category.wealth.variance,
+            };
+        }
+    }
+
+    for (const offer of offers) {
+        if (offer.sold <= 0) {
+            continue;
+        }
+        const agentRevenue = offer.revenue * revenueScale;
+        offer.agent.assets[planet.id].deposits += agentRevenue;
+
+        // Remove sold food from the agent's storage
+        removeFromStorageFacility(
+            offer.agent.assets[planet.id]?.storageFacility,
+            agriculturalProductResourceType.name,
+            offer.sold,
+        );
+
+        // Record lastSold for the pricing AI
+        const assets = offer.agent.assets[planet.id];
+        if (assets) {
+            if (!assets.foodMarket) {
+                assets.foodMarket = {};
+            }
+            assets.foodMarket.lastSold = offer.sold;
+        }
+    }
+
+    // Record lastSold = 0 for agents that had offers but sold nothing
+    for (const offer of offers) {
+        if (offer.sold <= 0) {
             const assets = offer.agent.assets[planet.id];
             if (assets) {
                 if (!assets.foodMarket) {
                     assets.foodMarket = {};
                 }
-                assets.foodMarket.lastSold = offer.sold;
-            }
-        }
-
-        // Record lastSold = 0 for agents that had offers but sold nothing
-        for (const offer of offers) {
-            if (offer.sold <= 0) {
-                const assets = offer.agent.assets[planet.id];
-                if (assets) {
-                    if (!assets.foodMarket) {
-                        assets.foodMarket = {};
-                    }
-                    if (assets.foodMarket.lastSold === undefined) {
-                        assets.foodMarket.lastSold = 0;
-                    }
+                if (assets.foodMarket.lastSold === undefined) {
+                    assets.foodMarket.lastSold = 0;
                 }
             }
         }
+    }
 
-        // --- Step 8: Update volume-weighted average price ---
-        if (totalFoodSold > 0) {
-            planet.priceLevel = totalRevenue / totalFoodSold;
-        }
-        // If nothing was sold, keep the previous price (or initial)
-    });
+    // --- Step 8: Update volume-weighted average price ---
+    if (totalFoodSold > 0) {
+        planet.priceLevel = totalRevenue / totalFoodSold;
+    }
+    // If nothing was sold, keep the previous price (or initial)
 }
 
 // ---------------------------------------------------------------------------
@@ -266,10 +263,10 @@ export function foodMarketTick(gameState: GameState): void {
  * been run yet, the agent bootstraps with INITIAL_FOOD_PRICE and its
  * full storage quantity.
  */
-function collectOffers(gameState: GameState, planet: Planet): MarketOffer[] {
+function collectOffers(agents: Map<string, Agent>, planet: Planet): MarketOffer[] {
     const offers: MarketOffer[] = [];
 
-    gameState.agents.forEach((agent) => {
+    agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
             return;

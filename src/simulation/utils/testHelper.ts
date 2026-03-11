@@ -358,6 +358,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         resourceTenancies: [],
         productionFacilities: [],
         deposits: 0,
+        loans: 0,
         storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
         allocatedWorkers: makeAllocatedWorkers(),
         workforceDemography: makeWorkforceDemography(),
@@ -496,11 +497,6 @@ export function makeWorld(opts?: {
 /** Wrap agents into a Map keyed by their id. */
 export function agentMap(...agents: Agent[]): Map<string, Agent> {
     return new Map(agents.map((a) => [a.id, a]));
-}
-
-/** Wrap planets into a Map keyed by their id. */
-export function planetMap(...planets: Planet[]): Map<string, Planet> {
-    return new Map(planets.map((p) => [p.id, p]));
 }
 
 // ============================================================================
