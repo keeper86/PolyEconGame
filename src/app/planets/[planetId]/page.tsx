@@ -1,39 +1,28 @@
 'use client';
 
-import React from 'react';
+import BankPanel from '@/app/planets/BankPanel';
+import FoodBufferChart from '@/app/planets/FoodBufferChart';
+import FoodPriceHistoryChart from '@/app/planets/FoodPriceHistoryChart';
+import IntergenerationalTransferChart from '@/app/planets/IntergenerationalTransferChart';
+import NutritionHeatmapChart from '@/app/planets/NutritionHeatmapChart';
+import PlanetDemography from '@/app/planets/PlanetDemography';
+import WealthDistributionChart from '@/app/planets/WealthDistributionChart';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
+import type { Planet } from '@/simulation/planet/planet';
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Population } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Globe, Landmark, Users, Wheat } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { Planet } from '@/simulation/planet/planet';
-import { educationLevelKeys } from '@/simulation/population/education';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
-import type { Population } from '@/simulation/population/population';
-import PlanetDemography from '@/app/planets/PlanetDemography';
-import BankPanel from '@/app/planets/BankPanel';
-import WealthDistributionChart from '@/app/planets/WealthDistributionChart';
-import NutritionHeatmapChart from '@/app/planets/NutritionHeatmapChart';
-import FoodBufferChart from '@/app/planets/FoodBufferChart';
-import IntergenerationalTransferChart from '@/app/planets/IntergenerationalTransferChart';
-import FoodPriceHistoryChart from '@/app/planets/FoodPriceHistoryChart';
 import PlanetOverviewPanel from '../PlanetOverviewPanel';
+import { formatNumbers } from '@/lib/utils';
 
 const REFETCH_INTERVAL_MS = 1000;
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmtNumber = (n: number): string =>
-    n >= 1_000_000
-        ? `${(n / 1_000_000).toFixed(1)}M`
-        : n >= 1_000
-          ? `${(n / 1_000).toFixed(1)}k`
-          : String(Math.round(n));
 
 /** Compute a global average starvation level from per-category values. */
 function computeGlobalStarvation(pop: Population): number {
@@ -103,7 +92,7 @@ export default function PlanetDetailPage() {
                                 <Users className='h-3.5 w-3.5' />
                                 Population
                             </div>
-                            <div className='text-lg font-semibold tabular-nums'>{fmtNumber(populationTotal)}</div>
+                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(populationTotal)}</div>
                         </div>
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
@@ -130,7 +119,7 @@ export default function PlanetDetailPage() {
                                           : 'text-green-600'
                                 }`}
                             >
-                                {(starvationLevel * 100).toFixed(2)}%
+                                {(starvationLevel * 100).toFixed(0)}%
                             </div>
                         </div>
                         <div className='space-y-1'>
@@ -139,7 +128,7 @@ export default function PlanetDetailPage() {
                                 Money supply
                             </div>
                             <div className='text-lg font-semibold tabular-nums'>
-                                {planet.bank ? fmtNumber(planet.bank.deposits) : '—'}
+                                {planet.bank ? formatNumbers(planet.bank.deposits) : '—'}
                             </div>
                         </div>
                     </div>

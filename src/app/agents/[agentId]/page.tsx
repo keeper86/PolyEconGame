@@ -4,19 +4,13 @@ import PlanetAssetCard from '@/app/agents/PlanetAssetCard';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
 import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Globe, Ship, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 const REFETCH_INTERVAL_MS = 1000;
-
-const fmtNumber = (n: number): string =>
-    n >= 1_000_000
-        ? `${(n / 1_000_000).toFixed(1)}M`
-        : n >= 1_000
-          ? `${(n / 1_000).toFixed(1)}k`
-          : String(Math.round(n));
 
 export default function AgentDetailPage() {
     const params = useParams<'/agents/[agentId]'>();
@@ -55,9 +49,9 @@ export default function AgentDetailPage() {
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
                                 <Wallet className='h-3.5 w-3.5' />
-                                Wealth
+                                Balance
                             </div>
-                            <div className='text-lg font-semibold tabular-nums'>{fmtNumber(overview.wealth)}</div>
+                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(overview.balance)}</div>
                         </div>
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>

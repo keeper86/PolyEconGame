@@ -1,45 +1,19 @@
 'use client';
 
-import React from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { formatNumbers } from '@/lib/utils';
+import type { PlanetSummary } from '@/server/controller/simulation';
 import { ChevronRight, Globe, Landmark, Users, Wheat } from 'lucide-react';
 import Link from 'next/link';
-import type { Planet } from '@/simulation/planet/planet';
+import React from 'react';
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
+interface PlanetSummaryCardProps {
+    summary: PlanetSummary;
+}
 
-const fmtNumber = (n: number): string =>
-    n >= 1_000_000
-        ? `${(n / 1_000_000).toFixed(1)}M`
-        : n >= 1_000
-          ? `${(n / 1_000).toFixed(1)}k`
-          : String(Math.round(n));
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-export type PlanetSummaryProps = {
-    planetId: string;
-    populationTotal: number;
-    planet: Planet;
-};
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-export default function PlanetSummaryCard({
-    planetId,
-    populationTotal,
-    planet,
-}: PlanetSummaryProps): React.ReactElement {
-    const bank = planet.bank;
-    const foodPrice = planet.priceLevel ?? 0.01;
-
+export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): React.ReactElement {
+    const { planetId, name, populationTotal, bank, foodPrice } = summary;
     return (
         <Link
             href={`/planets/${encodeURIComponent(planetId)}` as never}
@@ -53,7 +27,7 @@ export default function PlanetSummaryCard({
                                 <Globe className='h-5 w-5' />
                             </div>
                             <div>
-                                <h3 className='text-lg font-semibold leading-none'>{planet.name}</h3>
+                                <h3 className='text-lg font-semibold leading-none'>{name}</h3>
                                 <div className='mt-1 text-xs text-muted-foreground'>{planetId}</div>
                             </div>
                         </div>
@@ -69,7 +43,7 @@ export default function PlanetSummaryCard({
                                 <Users className='h-3 w-3' />
                                 Population
                             </div>
-                            <div className='text-sm font-semibold tabular-nums'>{fmtNumber(populationTotal)}</div>
+                            <div className='text-sm font-semibold tabular-nums'>{formatNumbers(populationTotal)}</div>
                         </div>
 
                         {/* Money supply */}
@@ -79,7 +53,7 @@ export default function PlanetSummaryCard({
                                     <Landmark className='h-3 w-3' />
                                     Money supply
                                 </div>
-                                <div className='text-sm font-semibold tabular-nums'>{fmtNumber(bank.deposits)}</div>
+                                <div className='text-sm font-semibold tabular-nums'>{formatNumbers(bank.deposits)}</div>
                             </div>
                         )}
 

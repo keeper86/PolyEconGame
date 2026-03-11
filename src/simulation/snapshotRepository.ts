@@ -121,7 +121,7 @@ export type AgentListSummary = {
     agentId: string;
     name: string;
     associatedPlanetId: string;
-    wealth: number;
+    balance: number;
     facilityCount: number;
     avgEfficiency: number | null;
     totalWorkers: number;
@@ -134,7 +134,7 @@ export type AgentListSummary = {
  * Compute card-level summary data from a full Agent JSONB blob.
  * Runs server-side so only the small summary is sent to the client.
  */
-export const summariseAgentBlob = (agentId: string, wealth: number, blob: unknown): AgentListSummary => {
+export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSummary => {
     // blob is the Agent object stored as JSONB
     const a = blob as Agent;
 
@@ -180,7 +180,9 @@ export const summariseAgentBlob = (agentId: string, wealth: number, blob: unknow
         agentId,
         name: a.name ?? agentId,
         associatedPlanetId: a.associatedPlanetId ?? '',
-        wealth,
+        balance: a.assets
+            ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+            : 0,
         facilityCount,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,
@@ -277,39 +279,3 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         topResources,
     };
 };
-
-/**
- * Return overview data for a single agent: top-level stats plus per-planet
- * summaries.  Computes everything server-side from the agent_summary JSONB
- * so only a lightweight payload is sent to the client.
- */
-// getAgentOverview removed — callers should compute overview data from the
-// live Agent object provided by the worker.
-
-// ---------------------------------------------------------------------------
-// Agent planet detail (full assets for one agent on one planet)
-// ---------------------------------------------------------------------------
-
-/** Shape returned by getAgentPlanetDetail. */
-export type AgentPlanetDetailData = {
-    agentId: string;
-    agentName: string;
-    planetId: string;
-    /** The full per-planet assets object, passed as-is so the UI can render
-     *  facilities, workforce demography, storage, etc. */
-    assets: Agent['assets'][string];
-};
-
-/**
- * Return the full per-planet assets for a single agent on a single planet.
- * Extracts from the agent_summary JSONB blob server-side and returns only
- * the relevant planet slice.
- */
-// getAgentPlanetDetail removed — callers should query the live Agent blob
-// and extract per-planet assets from it.
-
-/**
- * Return resource history (storage / production / consumption) for a specific
- * agent, ordered newest-first.
- */
-// historical agent resource queries removed.

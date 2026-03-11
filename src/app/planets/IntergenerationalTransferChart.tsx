@@ -1,10 +1,10 @@
 'use client';
 
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Population } from '@/simulation/population/population';
+import { OCCUPATIONS } from '@/simulation/population/population';
 import React from 'react';
 import TransferChart from './TransferChart';
-import type { Population } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
-import { educationLevelKeys } from '@/simulation/population/education';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -27,11 +27,11 @@ type Props = {
  * with autoscaled Y-axis to the total (all-skills) domain.
  */
 export default function IntergenerationalTransferChart({ population }: Props): React.ReactElement {
-    const matrix = population.lastVerticalTransferMatrix;
+    const matrix = population.lastTransferMatrix;
 
-    // Compute per-age totals from the skill-aware transfer matrix and derive
+    // Compute per-age totals from the transfer matrix and derive
     // a symmetric bound (±max(|min|, |max|)). The `matrix` here is a
-    // SkillTransferMatrix: age -> edu -> occ -> skill.
+    // PopulationTransferMatrix: age -> edu -> occ -> number.
     let min = 0;
     let max = 0;
     let found = false;
@@ -41,11 +41,9 @@ export default function IntergenerationalTransferChart({ population }: Props): R
             let total = 0;
             for (const edu of educationLevelKeys) {
                 for (const occ of OCCUPATIONS) {
-                    for (const skill of SKILL) {
-                        const v = cohort?.[edu]?.[occ]?.[skill];
-                        if (typeof v === 'number') {
-                            total += v;
-                        }
+                    const v = cohort?.[edu]?.[occ];
+                    if (typeof v === 'number') {
+                        total += v;
                     }
                 }
             }

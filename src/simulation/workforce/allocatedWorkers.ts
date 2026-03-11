@@ -1,88 +1,41 @@
-/**
- * workforce/allocatedWorkers.ts
- *
- * Feedback-based hiring-target computation.
- *
- * `updateAllocatedWorkers` recomputes the hiring targets for every agent on
- * every planet. After the first tick, the production system stores per-education
- * `unusedWorkers` counts.  This function derives how many workers were actually
- * consumed by production facilities and sets `allocatedWorkers` accordingly,
- * cascading unmet demand upward through the education hierarchy.
- */
-
+import { MIN_EMPLOYABLE_AGE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
+import type { Cohort, PopulationCategory, Occupation } from '../population/population';
+import { SKILL } from '../population/population';
 import { ACCEPTABLE_IDLE_FRACTION, DEPARTING_EFFICIENCY } from './laborMarketTick';
-import { totalUnoccupiedForEdu } from './populationBridge';
-import { totalActiveForEdu, totalDepartingForEdu, totalDepartingFiredForEdu } from './workforceAggregates';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+import { totalActiveForEdu, totalDepartingFiredForEdu, totalDepartingForEdu } from './workforceAggregates';
 
-/**
- * updateAllocatedWorkers — recomputes the hiring targets for every agent
- * on every planet using a **feedback-based** approach.
- *
- * After the first tick, the production system stores per-education
- * `unusedWorkers` counts (which can be negative when demand exceeds supply).
- * This function uses those values to derive how many workers were actually
- * consumed by production facilities:
- *
- *   consumed[edu] = currentPool[edu] − unusedWorkers[edu]
- *
- * where `currentPool` is the effective hired workforce, computed as:
- *
- *   currentPool = active
- *               + floor(voluntaryDeparting × DEPARTING_EFFICIENCY)
- *
- * Only voluntary quitters (departing minus departingFired) contribute at
- * reduced efficiency.  Fired workers are excluded
- * entirely because they are already committed to leaving the workforce.
- * Without this correction the pool would be inflated by soon-to-leave
- * workers, causing the hiring target to overshoot the intended 5 % buffer.
- *
- * A negative `unusedWorkers` value means facilities needed *more* workers
- * than were available, so `consumed` exceeds the pool.
- *
- * **Overqualified-worker correction:**  The production cascade allows
- * higher-educated workers to fill lower-level slots.  The aggregated
- * `overqualifiedMatrix[jobEdu][workerEdu]` tells how many `workerEdu`
- * workers were used for `jobEdu` slots.  This function redistributes
- * that consumption back to the *job* level: it subtracts the count from
- * `workerEdu`'s consumed tally and adds it to `jobEdu`'s.  This ensures
- * the hiring system targets the education level the facilities actually
- * need, rather than perpetually chasing the higher-educated substitutes.
- *
- * **Facility-based floor:**  When the feedback-derived target for an
- * education level drops to zero but facilities still declare non-zero
- * `workerRequirement` for that level, the system falls back to the raw
- * facility requirement (workerRequirement × scale × buffer).  This
- * prevents a dead-lock where a cascade shock fires all workers of an
- * education level, consumed drops to 0, and the system never requests
- * new hires.  When feedback is positive it remains fully in control,
- * allowing the system to rightfully lower targets below the raw facility
- * requirement (e.g. due to age-productivity gains).
- *
- * The hiring target is therefore:
- *   - feedback > 0:  ceil(consumed × 1.05)
- *   - feedback = 0 but facilities need workers:  ceil(facilityFloor × 1.05)
- *   - otherwise: 0
- *
- * On the very first tick (no `unusedWorkers` data yet), the function falls
- * back to summing `workerRequirement × scale` from all facilities with the
- * same 5 % buffer.
- *
- * After computing raw targets, unmet demand is cascaded upward through higher
- * education levels (mirroring the cascade in `productionTick`).
- *
- * Call this once per tick **before** `preProductionLaborMarketTick` so that the hiring
- * logic always chases up-to-date requirements.
- */
-export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+function sumSkills(
+    demography: Cohort<PopulationCategory>[],
+    age: number,
+    occ: Occupation,
+    edu: EducationLevelType,
+): number {
+    let total = 0;
+    for (const skill of SKILL) {
+        total += demography[age][occ][edu][skill].total;
+    }
+    return total;
+}
+
+export function totalUnoccupiedForEdu(planet: Planet, edu: EducationLevelType): number {
+    let total = 0;
+    const demography = planet.population.demography;
+    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
+        total += sumSkills(demography, age, 'unoccupied', edu);
+    }
+    return total;
+}
+
+export function updateAllocatedWorkers(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
+            if (planetId !== planet.id) {
+                continue;
+            }
             // 1. Determine per-edu requirement: feedback-based or bootstrap.
             const requirement = {} as Record<EducationLevelType, number>;
 
@@ -173,7 +126,6 @@ export function updateAllocatedWorkers(agents: Map<string, Agent>, planets: Map<
             }
 
             // 2. Cascade unmet demand upward through the education hierarchy.
-            const planet = planets.get(planetId);
             for (const edu of educationLevelKeys) {
                 assets.allocatedWorkers[edu] = 0;
             }

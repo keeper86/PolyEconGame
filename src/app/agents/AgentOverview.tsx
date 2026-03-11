@@ -338,12 +338,6 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                                 <div className='text-sm font-medium'>{a.name}</div>
                                 <div className='text-xs text-muted-foreground'>Home: {a.associatedPlanetId}</div>
                             </div>
-                            <div className='text-right'>
-                                <div className='text-sm'>Wealth: {a.wealth}</div>
-                                <div className='text-xs text-muted-foreground'>
-                                    Ships: {a.transportShips?.length ?? 0}
-                                </div>
-                            </div>
                         </div>
 
                         <div className='mt-3 text-sm'>

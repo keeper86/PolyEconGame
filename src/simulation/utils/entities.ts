@@ -9,14 +9,15 @@ import {
     waterSourceResourceType,
 } from '../planet/facilities';
 import type { Agent, Planet } from '../planet/planet';
-import type { Population, PopulationCategory } from '../population/population';
-import { createEmptyCohort, MAX_AGE, nullPopulationCategory } from '../population/population';
+import type { Population } from '../population/population';
+import { createEmptyPopulationCohort, MAX_AGE } from '../population/population';
 import { makeWorkforceDemography } from './testHelper';
 
 export const agriculturalProductionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-agricultural',
     name: 'Agricultural Facility',
+    maxScale: 2000,
     scale: 2000,
     powerConsumptionPerTick: 1,
     workerRequirement: {
@@ -48,6 +49,7 @@ export const waterExtractionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-water-extraction',
     name: 'Water Extraction Facility',
+    maxScale: 2000,
     scale: 2000,
     lastTickResults: {
         overallEfficiency: 1,
@@ -76,6 +78,7 @@ export const ironExtractionFacility: ProductionFacility = {
     planetId: 'earth',
     id: 'earth-iron-extraction',
     name: 'Iron Extraction Facility',
+    maxScale: 1,
     scale: 1,
     lastTickResults: {
         overallEfficiency: 1,
@@ -104,6 +107,7 @@ export const testCompanyStorage: StorageFacility = {
     planetId: 'earth',
     id: 'test-company-storage',
     name: 'Test Company Storage',
+    maxScale: 1,
     scale: 1,
     powerConsumptionPerTick: 0.1,
     workerRequirement: {
@@ -132,6 +136,7 @@ export const earthStorage: StorageFacility = {
     planetId: 'earth',
     id: 'earth-storage',
     name: 'Governmental Storage',
+    maxScale: 1,
     scale: 1,
     powerConsumptionPerTick: 0.1,
     workerRequirement: {
@@ -168,6 +173,7 @@ export const earthGovernment: Agent = {
             productionFacilities: [waterExtractionFacility, agriculturalProductionFacility],
             storageFacility: earthStorage,
             deposits: 0,
+            loans: 0,
             allocatedWorkers: {
                 none: 0,
                 primary: 0,
@@ -177,7 +183,6 @@ export const earthGovernment: Agent = {
             workforceDemography: makeWorkforceDemography(),
         },
     },
-    wealth: 1000000000, // in coins
 };
 
 export const testCompany: Agent = {
@@ -192,6 +197,7 @@ export const testCompany: Agent = {
             productionFacilities: [ironExtractionFacility],
             storageFacility: testCompanyStorage,
             deposits: 0,
+            loans: 0,
             allocatedWorkers: {
                 none: 0,
                 primary: 0,
@@ -201,7 +207,6 @@ export const testCompany: Agent = {
             workforceDemography: makeWorkforceDemography(),
         },
     },
-    wealth: 1000000000, // in coins
 };
 
 export const earth: Planet = {
@@ -477,13 +482,9 @@ export function createPopulation(total: number): Population {
     // Create empty cohorts for ages 0..maxAge
     // New model: demography[age][occ][edu][skill] → PopulationCategory
     const pop: Population = {
-        demography: Array.from({ length: MAX_AGE + 1 }, () =>
-            createEmptyCohort<PopulationCategory>(() => ({
-                ...nullPopulationCategory(),
-                foodStock: 0,
-                wealth: { mean: 0, variance: 0 },
-            })),
-        ),
+        demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
+        summedPopulation: createEmptyPopulationCohort(),
+        lastTransferMatrix: [],
     };
     const remainder = total - perAge * (MAX_AGE + 1);
 

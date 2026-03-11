@@ -9,6 +9,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { Population, Occupation } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -76,21 +77,7 @@ function classifyBand(starvationLevel: number, bufferRatio: number): number {
     return 5; // full buffer
 }
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmt = (n: number): string => {
-    if (n >= 1_000_000) {
-        return `${(n / 1_000_000).toFixed(1)}M`;
-    }
-    if (n >= 1_000) {
-        return `${(n / 1_000).toFixed(1)}k`;
-    }
-    return n.toFixed(0);
-};
-
-const fmtPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
+const formatNumbersPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -249,7 +236,8 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                                           : 'text-green-600'
                                 }
                             >
-                                {fmt(globalStarvingPop)} ({fmtPct(totalPop > 0 ? globalStarvingPop / totalPop : 0)})
+                                {formatNumbers(globalStarvingPop)} (
+                                {formatNumbersPct(totalPop > 0 ? globalStarvingPop / totalPop : 0)})
                             </span>
                         </span>
                         <span>
@@ -263,7 +251,7 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                                           : 'text-green-600'
                                 }
                             >
-                                {fmtPct(globalAvgStarvation)}
+                                {formatNumbersPct(globalAvgStarvation)}
                             </span>
                         </span>
                         <span>
@@ -277,7 +265,7 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                                           : 'text-green-600'
                                 }
                             >
-                                {fmtPct(globalAvgRatio)}
+                                {formatNumbersPct(globalAvgRatio)}
                             </span>
                         </span>
                     </div>
@@ -306,7 +294,7 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                         <XAxis dataKey='age' tick={{ fontSize: 10 }} />
                         <YAxis
                             tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => fmt(v)}
+                            tickFormatter={(v) => formatNumbers(v)}
                             label={{
                                 value: 'Population',
                                 angle: -90,
@@ -326,7 +314,7 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                                 return (
                                     <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[200px]'>
                                         <div className='font-medium mb-1'>Age {label}</div>
-                                        <div className='mb-1'>Total: {fmt(row.pop)}</div>
+                                        <div className='mb-1'>Total: {formatNumbers(row.pop)}</div>
                                         {BANDS.map((b) => {
                                             const count = row[b.key as BandKey] as number;
                                             if (count <= 0) {
@@ -340,15 +328,15 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                                                         style={{ backgroundColor: b.color }}
                                                     />
                                                     <span>
-                                                        {b.label}: {fmt(count)} ({fmtPct(pct)})
+                                                        {b.label}: {formatNumbers(count)} ({formatNumbersPct(pct)})
                                                     </span>
                                                 </div>
                                             );
                                         })}
                                         <div className='mt-1 pt-1 border-t border-border'>
-                                            Starvation level: {fmtPct(row.avgStarvationLevel)}
+                                            Starvation level: {formatNumbersPct(row.avgStarvationLevel)}
                                         </div>
-                                        <div>Avg buffer: {fmtPct(row.avgBufferRatio)}</div>
+                                        <div>Avg buffer: {formatNumbersPct(row.avgBufferRatio)}</div>
                                     </div>
                                 );
                             }}

@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_YEAR } from '../constants';
 import { computeEnvironmentalMortality } from './mortality';
-import { convertAnnualToPerTick } from './population';
+import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 
 describe('convertAnnualToPerTick', () => {
     it('returns 0 for annual rate 0', () => {

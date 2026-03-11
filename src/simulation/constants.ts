@@ -6,6 +6,14 @@ export const FOOD_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR; // tons per person p
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
+/**
+ * Number of months in the departing/firing pipeline.
+ * Fired workers enter this pipeline and work at reduced efficiency
+ * for its duration before leaving entirely.
+ * Voluntary quits also use this pipeline.
+ */
+export const NOTICE_PERIOD_MONTHS = 3;
+
 /** True only on clean month boundaries (every TICKS_PER_MONTH ticks). */
 export const isMonthBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_MONTH === 0;
 

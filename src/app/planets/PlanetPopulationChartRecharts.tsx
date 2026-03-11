@@ -27,6 +27,8 @@ export default function PlanetPopulationChartRecharts({
             starvationPct: d.starvation !== undefined ? d.starvation * 100 : undefined,
         }));
 
+    const maxYear = Math.ceil(plotData[plotData.length - 1].year);
+
     // Prepare log-scale ticks and a number formatter for axis ticks/tooltips.
     // Use powers-of-10 ticks when using log scale so labels are clean.
     let logTicks: number[] | undefined = undefined;
@@ -95,9 +97,13 @@ export default function PlanetPopulationChartRecharts({
                     </defs>
                     <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                     <XAxis
-                        dataKey='tick'
+                        dataKey='year'
+                        type='number'
                         tick={{ fontSize: 11 }}
-                        tickFormatter={(v) => (typeof v === 'number' ? String(Math.round(v)) : String(v))}
+                        domain={[0, maxYear]}
+                        tickFormatter={(v) =>
+                            typeof v === 'number' ? (Number.isInteger(v) ? `Y${v}` : `Y${v.toFixed(1)}`) : String(v)
+                        }
                     />
                     <YAxis
                         yAxisId='left'
@@ -117,12 +123,13 @@ export default function PlanetPopulationChartRecharts({
                             yAxisId='right'
                             orientation='right'
                             type='number'
-                            domain={[0, (dataMax: number) => Math.max(dataMax, 1)]}
+                            domain={[0, 100]}
                             tick={{ fontSize: 11 }}
                             tickFormatter={(v) => `${typeof v === 'number' ? v.toFixed(0) : v}%`}
                         />
                     )}
                     <Tooltip
+                        labelFormatter={(label: number) => `${Number.isInteger(label) ? label : label.toFixed(2)}`}
                         formatter={(value: number, name: string) => {
                             if (name === 'starvationPct') {
                                 return [`${value.toFixed(2)}%`, 'Starvation'];

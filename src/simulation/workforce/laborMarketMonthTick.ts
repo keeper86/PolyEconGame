@@ -9,17 +9,18 @@
  * the population at their exact age — no Gaussian weighting needed.
  */
 
-import type { Agent, Planet, PerEducation } from '../planet/planet';
+import type { Agent, PerEducation, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
-import { forEachWorkforceCohort } from '../population/population';
+import { transferPopulation } from '../population/population';
+import { forEachWorkforceCohort } from './workforce';
 import { NOTICE_PERIOD_MONTHS } from './laborMarketTick';
-import { returnToPopulationAtAge, assertPopulationWorkforceConsistency } from './populationBridge';
+import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-export function postProductionLaborMarketTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet: Planet): void {
     // -----------------------------------------------------------------------
     // Phase 0: snapshots & counter rotation (per-agent)
     // -----------------------------------------------------------------------
@@ -78,15 +79,23 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                 continue;
             }
 
-            const planet = planets.get(planetId);
+            if (planetId !== planet.id) {
+                continue;
+            }
 
             // Return departing[0] workers to the population at their exact age.
             if (planet) {
                 for (let age = 0; age < workforce.length; age++) {
-                    forEachWorkforceCohort(workforce[age], (category, edu) => {
+                    forEachWorkforceCohort(workforce[age], (category, edu, skill) => {
                         const departingAtAge = category.departing[0] ?? 0;
                         if (departingAtAge > 0) {
-                            const moved = returnToPopulationAtAge(planet, edu, departingAtAge, 'employed', age);
+                            const moved = transferPopulation(
+                                planet.population,
+                                { age, occ: 'employed', edu, skill },
+                                { age, occ: 'unoccupied', edu, skill },
+                                departingAtAge,
+                            ).count;
+
                             if (moved !== departingAtAge) {
                                 console.warn(
                                     `[postProductionLaborMarketTick] departing mismatch for edu=${edu} age=${age} on agent=${agent.id}: requested=${departingAtAge}, moved=${moved}`,
@@ -113,8 +122,6 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
 
     // Verify population↔workforce consistency after pipeline advancement
     if (process.env.SIM_DEBUG === '1') {
-        for (const planet of planets.values()) {
-            assertPopulationWorkforceConsistency(agents, planet, 'postProductionLaborMarketTick');
-        }
+        assertPopulationWorkforceConsistency(agents, planet, 'postProductionLaborMarketTick');
     }
 }

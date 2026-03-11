@@ -1,4 +1,5 @@
-import type { CohortByOccupation, EducationLevelType, Population, WorkforceCategory } from '../population/population';
+import type { EducationLevelType, Population } from '../population/population';
+import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ProductionFacility, Resource, ResourceType, StorageFacility } from './facilities';
 
 /**
@@ -17,8 +18,14 @@ export interface Bank {
     /**
      * Aggregate household deposit balance (currency units).
      * Wages flow into this account; consumption flows out.
-     * Tracks the monetary component of household wealth that is held
-     * as bank deposits (as opposed to non-monetary wealth tracked per-cohort).
+     *
+     * Invariant: this must always equal the sum of per-cohort monetary
+     * wealth across the entire population demography:
+     *   householdDeposits === Σ (category.total × category.wealth.mean)
+     *
+     * Updated incrementally by each subsystem that mutates household
+     * wealth: preProductionFinancialTick (+wages), foodMarket (−purchases),
+     * mortality (−deceased wealth), intergenerationalTransfers (zero-sum).
      */
     householdDeposits: number;
     /** Bank's own equity = deposits − loans. */
@@ -266,7 +273,7 @@ export type AgentPlanetAssets = {
     resourceClaims: string[]; // resource claims owned by this agent
     resourceTenancies: string[]; // resource claims where this agent is the tenant
     productionFacilities: ProductionFacility[];
-    workforceDemography: CohortByOccupation<WorkforceCategory>[];
+    workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 
     // ----- Financial state -----
@@ -274,7 +281,7 @@ export type AgentPlanetAssets = {
     /** Firm deposit balance for this agent on this planet (currency units). */
     deposits: number;
     /** Outstanding loan principal for this agent on this planet (currency units). */
-    loans?: number;
+    loans: number;
     /**
      * Last tick's wage bill (currency units).
      * Used by the retained-earnings threshold for partial loan repayment.
@@ -311,7 +318,6 @@ export type Agent = {
     id: string;
     name: string;
     associatedPlanetId: string;
-    wealth: number;
     transportShips: TransportShip[];
     assets: {
         [planetId in string]: AgentPlanetAssets;

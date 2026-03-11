@@ -1,61 +1,30 @@
-/**
- * market/intergenerationalTransfers.test.ts
- *
- * Comprehensive tests for the intergenerational transfer system.
- *
- * Covers:
- *   - Asymmetric multi-modal Gaussian weight kernel (with generation amplitudes)
- *   - Generation amplitude function (asymmetric child > peer > parent > grandparent)
- *   - Continuous support capacity curve (ramp, plateau, decline, elderly)
- *   - Age-appropriate survival floor (working-age vs elderly)
- *   - Cross-education transfers (no education matching)
- *   - Same-age support via unified kernel (spousal / peer pooling)
- *   - Survival floor enforcement
- *   - Precautionary reserve floor in Phase 3
- *   - Wealth conservation (zero-sum balances)
- *   - Inequality-sensitive surplus (variance friction)
- *   - Need-weighted credit distribution
- *   - Friction-weighted debit distribution
- *   - Elderly as supporters (rich elderly give to younger generations)
- *   - Edge cases: empty planet, single person, starvation, all elderly, all children
- */
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { describe, it, expect, beforeEach } from 'vitest';
-
-import type { Agent, Planet, GameState } from '../planet/planet';
 import {
-    GENERATION_GAP,
-    FOOD_PER_PERSON_PER_TICK,
-    FOOD_BUFFER_TARGET_TICKS,
-    SUPPORTER_SURVIVAL_FRACTION,
-    PRECAUTIONARY_RESERVE_TICKS,
-    ELDERLY_MIN_AGE,
     ELDERLY_FLOOR_FRACTION,
+    ELDERLY_MIN_AGE,
+    FOOD_BUFFER_TARGET_TICKS,
+    FOOD_PER_PERSON_PER_TICK,
+    GENERATION_GAP,
     GENERATION_KERNEL_N,
+    PRECAUTIONARY_RESERVE_TICKS,
+    SUPPORTER_SURVIVAL_FRACTION,
 } from '../constants';
+import type { Planet } from '../planet/planet';
+import type { EducationLevelType } from '../population/education';
+import { educationLevelKeys } from '../population/education';
+import type { Occupation } from '../population/population';
+import { OCCUPATIONS, SKILL } from '../population/population';
+import { makePlanetWithPopulation } from '../utils/testHelper';
 import {
-    intergenerationalTransfersTick,
-    supportWeight,
-    generationAmplitude,
+    createZeroTransferMatrix,
     effectiveSurplus,
+    generationAmplitude,
+    intergenerationalTransfersForPlanet,
+    sumTransferMatrix,
     supportCapacity,
     survivalFloorForAge,
-    createZeroTransferMatrix,
-    sumTransferMatrix,
 } from './intergenerationalTransfers';
-import { makePlanetWithPopulation, makeGameState as makeGS } from '../utils/testHelper';
-import { OCCUPATIONS, SKILL } from '../population/population';
-import type { Occupation } from '../population/population';
-import { educationLevelKeys } from '../population/education';
-import type { EducationLevelType } from '../population/education';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
-    return makeGS(planet, agents, 1);
-}
 
 /**
  * Set population total for a specific (age, occ, edu) cell,
@@ -189,69 +158,6 @@ describe('generationAmplitude', () => {
 });
 
 // ===========================================================================
-// Unit tests: supportWeight (asymmetric multi-modal kernel)
-// ===========================================================================
-
-describe('supportWeight', () => {
-    it('peaks at -GENERATION_GAP (n=-1, child) with amplitude 1.0', () => {
-        expect(supportWeight(-GENERATION_GAP)).toBeCloseTo(1.0, 10);
-    });
-
-    it('peaks at +GENERATION_GAP (n=+1, parent) with amplitude exp(-0.66)', () => {
-        expect(supportWeight(GENERATION_GAP)).toBeCloseTo(Math.exp(-0.66), 5);
-    });
-
-    it('has a peak at 0 (n=0, self/peer) with amplitude exp(-0.33)', () => {
-        expect(supportWeight(0)).toBeCloseTo(Math.exp(-0.33), 5);
-    });
-
-    it('peaks at -2*GENERATION_GAP (n=-2, grandchild) with amplitude exp(-0.33)', () => {
-        expect(supportWeight(-2 * GENERATION_GAP)).toBeCloseTo(Math.exp(-0.33), 5);
-    });
-
-    it('peaks at +2*GENERATION_GAP (n=+2, grandparent) with amplitude exp(-0.99)', () => {
-        expect(supportWeight(2 * GENERATION_GAP)).toBeCloseTo(Math.exp(-0.99), 5);
-    });
-
-    it('peaks at -3*GENERATION_GAP (n=-3, great-grandchild) with amplitude exp(-0.66)', () => {
-        if (GENERATION_KERNEL_N >= 3) {
-            expect(supportWeight(-3 * GENERATION_GAP)).toBeCloseTo(Math.exp(-0.66), 5);
-        }
-    });
-
-    it('decays for age differences away from any peak', () => {
-        const peak = supportWeight(-GENERATION_GAP);
-        const farAway = supportWeight(-GENERATION_GAP - 20);
-        expect(farAway).toBeLessThan(peak);
-        expect(farAway).toBeGreaterThan(0);
-    });
-
-    it('is symmetric around each peak center', () => {
-        // The kernel is symmetric around each peak center n*G
-        const below = supportWeight(-GENERATION_GAP - 5);
-        const above = supportWeight(-GENERATION_GAP + 5);
-        expect(below).toBeCloseTo(above, 10);
-    });
-
-    it('valley between peaks is lower than adjacent peaks', () => {
-        // Between n=-1 and n=0 peaks
-        const midpoint = -GENERATION_GAP / 2;
-        const valleyWeight = supportWeight(midpoint);
-        expect(valleyWeight).toBeLessThan(supportWeight(-GENERATION_GAP));
-        expect(valleyWeight).toBeLessThan(supportWeight(0));
-    });
-
-    it('child peak (n=-1) is higher than parent peak (n=+1)', () => {
-        expect(supportWeight(-GENERATION_GAP)).toBeGreaterThan(supportWeight(GENERATION_GAP));
-    });
-
-    it('kernel is intentionally asymmetric (not symmetric in ±Δ)', () => {
-        // supportWeight(-25) ≠ supportWeight(+25) because amplitudes differ
-        expect(supportWeight(-GENERATION_GAP)).not.toBeCloseTo(supportWeight(GENERATION_GAP), 5);
-    });
-});
-
-// ===========================================================================
 // Unit tests: supportCapacity (continuous curve)
 // ===========================================================================
 
@@ -370,12 +276,9 @@ describe('effectiveSurplus', () => {
 
 describe('intergenerationalTransfersTick', () => {
     let planet: Planet;
-    let gov: Agent;
-    let gs: GameState;
 
     beforeEach(() => {
-        ({ planet, gov } = makePlanetWithPopulation({}));
-        gs = makeGameState(planet, gov);
+        ({ planet } = makePlanetWithPopulation({}));
     });
 
     // -----------------------------------------------------------------------
@@ -391,7 +294,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'unoccupied', 'none', 1000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, supporterAge, 'unoccupied', 'none')).toBeLessThan(1000);
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
@@ -406,7 +309,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'unoccupied', 'none', 500);
         setFoodStock(planet, elderlyAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, elderlyAge, 'unoccupied', 'none')).toBeGreaterThan(0);
     });
@@ -419,7 +322,7 @@ describe('intergenerationalTransfersTick', () => {
         setPopulation(planet, supporterAge, 'unoccupied', 'none', 100);
         setWealth(planet, supporterAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBe(0);
     });
@@ -437,7 +340,7 @@ describe('intergenerationalTransfersTick', () => {
 
         const supporterBefore = getWealth(planet, supporterAge, 'employed', 'none');
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, supporterAge, 'employed', 'none')).toBeCloseTo(supporterBefore, 5);
     });
@@ -455,7 +358,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'employed', 'none', 1000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix;
         expect(matrix).toBeDefined();
@@ -492,7 +395,7 @@ describe('intergenerationalTransfersTick', () => {
 
         const wealthBefore = totalWealth(planet);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const wealthAfter = totalWealth(planet);
         expect(Math.abs(wealthAfter - wealthBefore)).toBeLessThan(1e-6);
@@ -516,7 +419,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'employed', 'none', floor);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeCloseTo(0, 10);
     });
@@ -537,7 +440,7 @@ describe('intergenerationalTransfersTick', () => {
         setPopulation(planet, childAge, 'unoccupied', 'none', 100);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
     });
@@ -561,7 +464,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'employed', 'none', floor + phase2Need * 1.5);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
         expect(getWealth(planet, supporterAge, 'employed', 'none')).toBeLessThan(floor + phase2Need * 1.5);
@@ -582,7 +485,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'employed', 'none', generousWealth);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const childWealth = getWealth(planet, childAge, 'unoccupied', 'none');
         expect(childWealth).toBeGreaterThan(0);
@@ -604,7 +507,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'employed', 'primary', 1000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
         expect(getWealth(planet, supporterAge, 'employed', 'primary')).toBeLessThan(1000);
@@ -618,7 +521,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, age, 'unoccupied', 'none', 0);
         setFoodStock(planet, age, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, age, 'unoccupied', 'none')).toBeGreaterThan(0);
         expect(getWealth(planet, age, 'employed', 'none')).toBeLessThan(500);
@@ -631,7 +534,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, age, 'employed', 'none', 800);
         setFoodStock(planet, age, 'unableToWork', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, age, 'unableToWork', 'none')).toBeGreaterThan(0);
     });
@@ -653,7 +556,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, offsetAge, 'employed', 'none', 1000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, exactAge, 'employed', 'none')).toBeLessThan(1000);
         expect(getWealth(planet, offsetAge, 'employed', 'none')).toBeLessThan(1000);
@@ -672,7 +575,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, grandparentAge, 'employed', 'none', 1000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, grandparentAge, 'employed', 'none')).toBeLessThan(1000);
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
@@ -691,7 +594,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, greatGrandparentAge, 'unoccupied', 'none', 5000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, greatGrandparentAge, 'unoccupied', 'none')).toBeLessThan(5000);
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
@@ -711,7 +614,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, elderlyAge, 'unoccupied', 'none', 5000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, elderlyAge, 'unoccupied', 'none')).toBeLessThan(5000);
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
@@ -733,7 +636,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, primeAge, 'employed', 'none', supporterMean);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
         const primeContrib = supporterMean - getWealth(planet, primeAge, 'employed', 'none');
 
         // --- Scenario 2: elderly supporter ---
@@ -746,7 +649,7 @@ describe('intergenerationalTransfersTick', () => {
         setPopulation(planet, elderlyAge, 'unoccupied', 'none', 100);
         setWealth(planet, elderlyAge, 'unoccupied', 'none', supporterMean);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
         const elderlyContrib = supporterMean - getWealth(planet, elderlyAge, 'unoccupied', 'none');
 
         expect(primeContrib).toBeGreaterThan(0);
@@ -774,7 +677,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, elderlyAge, 'unoccupied', 'none', sharedWealth);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, workingAge, 'employed', 'none')).toBeCloseTo(sharedWealth, 5);
         expect(getWealth(planet, elderlyAge, 'unoccupied', 'none')).toBeLessThan(sharedWealth);
@@ -792,7 +695,7 @@ describe('intergenerationalTransfersTick', () => {
         const elderlyAge = 70;
         setPopulation(planet, elderlyAge, 'unoccupied', 'none', 100);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, youngAge, 'unoccupied', 'none')).toBe(10000);
     });
@@ -806,7 +709,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, youngAdultAge, 'employed', 'none', 1000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, youngAdultAge, 'employed', 'none')).toBeLessThan(1000);
     });
@@ -821,7 +724,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'employed', 'none', 1000);
         setWealth(planet, workingAge, 'employed', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, workingAge, 'employed', 'none')).toBe(0);
     });
@@ -846,7 +749,7 @@ describe('intergenerationalTransfersTick', () => {
         setPopulation(planet, supporterAge, 'employed', 'none', 50);
         setWealth(planet, supporterAge, 'employed', 'none', supporterMean);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
         const childWealth1 = getWealth(planet, childAge, 'unoccupied', 'none');
 
         // Reset
@@ -856,7 +759,7 @@ describe('intergenerationalTransfersTick', () => {
         // Scenario 2: high variance
         setWealth(planet, supporterAge, 'employed', 'none', supporterMean, supporterMean * supporterMean);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
         const childWealth2 = getWealth(planet, childAge, 'unoccupied', 'none');
 
         expect(childWealth1).toBeGreaterThan(0);
@@ -868,7 +771,7 @@ describe('intergenerationalTransfersTick', () => {
     // -----------------------------------------------------------------------
 
     it('handles empty planet gracefully', () => {
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix;
         expect(matrix).toBeDefined();
@@ -887,7 +790,7 @@ describe('intergenerationalTransfersTick', () => {
         setPopulation(planet, 5, 'unoccupied', 'none', 500);
         setPopulation(planet, 10, 'unoccupied', 'none', 500);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, 5, 'unoccupied', 'none')).toBe(0);
         expect(getWealth(planet, 10, 'unoccupied', 'none')).toBe(0);
@@ -899,7 +802,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, 80, 'unoccupied', 'none', 5000);
         setFoodStock(planet, 70, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const poorElderlyWealth = getWealth(planet, 70, 'unoccupied', 'none');
         expect(poorElderlyWealth).toBeGreaterThan(0);
@@ -909,7 +812,7 @@ describe('intergenerationalTransfersTick', () => {
         setPopulation(planet, 30, 'employed', 'none', 1);
         setWealth(planet, 30, 'employed', 'none', 100);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, 30, 'employed', 'none')).toBe(100);
     });
@@ -920,7 +823,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, 30, 'employed', 'none', 0.001);
         setFoodStock(planet, 5, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const dem = planet.population.demography;
         for (let age = 0; age < dem.length; age++) {
@@ -948,7 +851,7 @@ describe('intergenerationalTransfersTick', () => {
         setWealth(planet, supporterAge, 'employed', 'primary', 1000);
         setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         expect(getWealth(planet, supporterAge, 'employed', 'none')).toBeLessThan(1000);
         expect(getWealth(planet, supporterAge, 'employed', 'primary')).toBeLessThan(1000);
@@ -967,7 +870,7 @@ describe('intergenerationalTransfersTick', () => {
 
         const wealthBefore = totalWealth(planet);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const wealthAfter = totalWealth(planet);
         expect(Math.abs(wealthAfter - wealthBefore)).toBeLessThan(1e-6);
@@ -987,7 +890,7 @@ describe('intergenerationalTransfersTick', () => {
 
         const wealthBefore = totalWealth(planet);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const wealthAfter = totalWealth(planet);
         expect(Math.abs(wealthAfter - wealthBefore)).toBeLessThan(1e-4);
@@ -1037,12 +940,9 @@ describe('sumTransferMatrix', () => {
 
 describe('transfer matrix invariants', () => {
     let planet: Planet;
-    let gov: Agent;
-    let gs: GameState;
 
     beforeEach(() => {
-        ({ planet, gov } = makePlanetWithPopulation({}));
-        gs = makeGameState(planet, gov);
+        ({ planet } = makePlanetWithPopulation({}));
     });
 
     it('matrix is globally zero-sum after basic transfer', () => {
@@ -1051,7 +951,7 @@ describe('transfer matrix invariants', () => {
         setWealth(planet, 30, 'employed', 'none', 500);
         setFoodStock(planet, 5, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-6);
@@ -1067,7 +967,7 @@ describe('transfer matrix invariants', () => {
         setWealth(planet, 35, 'employed', 'none', 1000);
         setWealth(planet, 40, 'employed', 'primary', 800);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         let sumPositive = 0;
@@ -1095,7 +995,7 @@ describe('transfer matrix invariants', () => {
         setFoodStock(planet, 5, 'unoccupied', 'none', 0);
         setFoodStock(planet, 5, 'unoccupied', 'primary', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(matrix[5].none.unoccupied).toBeGreaterThan(0);
@@ -1109,7 +1009,7 @@ describe('transfer matrix invariants', () => {
         setWealth(planet, 30, 'employed', 'none', 500);
         setWealth(planet, 40, 'employed', 'primary', 800);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(sumTransferMatrix(matrix)).toBe(0);
@@ -1126,7 +1026,7 @@ describe('transfer matrix invariants', () => {
         setPopulation(planet, 5, 'unoccupied', 'none', 500);
         setPopulation(planet, 10, 'unoccupied', 'none', 500);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(sumTransferMatrix(matrix)).toBe(0);
@@ -1136,7 +1036,7 @@ describe('transfer matrix invariants', () => {
         setPopulation(planet, 30, 'employed', 'none', 1);
         setWealth(planet, 30, 'employed', 'none', 100);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(sumTransferMatrix(matrix)).toBe(0);
@@ -1148,7 +1048,7 @@ describe('transfer matrix invariants', () => {
         setWealth(planet, 80, 'unoccupied', 'none', 5000);
         setFoodStock(planet, 70, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-6);
@@ -1160,7 +1060,7 @@ describe('transfer matrix invariants', () => {
         setWealth(planet, 30, 'employed', 'none', 0.001);
         setFoodStock(planet, 5, 'unoccupied', 'none', 0);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-6);
@@ -1177,7 +1077,7 @@ describe('transfer matrix invariants', () => {
         setWealth(planet, 75, 'unoccupied', 'none', 5000, 100);
         setWealth(planet, 85, 'unoccupied', 'none', 3000, 200);
 
-        intergenerationalTransfersTick(gs);
+        intergenerationalTransfersForPlanet(planet);
 
         const matrix = planet.population.lastTransferMatrix!;
         expect(Math.abs(sumTransferMatrix(matrix))).toBeLessThan(1e-4);

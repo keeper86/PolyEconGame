@@ -16,40 +16,9 @@ import { CHILD_MAX_AGE, ELDERLY_MIN_AGE } from '@/simulation/constants';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Skill } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
-import type { SkillTransferMatrix } from '@/simulation/population/population';
-import { cn } from '@/lib/utils';
-
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-const SKILL_LABELS: Record<Skill, string> = {
-    novice: 'Nov',
-    professional: 'Pro',
-    expert: 'Exp',
-};
-
-const SKILL_COLORS: Record<Skill, string> = {
-    novice: '#94a3b8', // slate-400
-    professional: '#8b5cf6', // violet-500
-    expert: '#f59e0b', // amber-500
-};
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmt = (n: number): string => {
-    if (Math.abs(n) >= 1_000_000) {
-        return `${(n / 1_000_000).toFixed(1)}M`;
-    }
-    if (Math.abs(n) >= 1_000) {
-        return `${(n / 1_000).toFixed(1)}k`;
-    }
-    return n.toFixed(1);
-};
+import type { PopulationTransferMatrix } from '@/simulation/population/population';
+import { OCCUPATIONS } from '@/simulation/population/population';
+import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  View modes                                                         */
@@ -63,7 +32,7 @@ type ViewMode = 'occupation' | 'education';
 
 type Props = {
     title: string;
-    matrix: SkillTransferMatrix | undefined;
+    matrix: PopulationTransferMatrix | undefined;
     yMin?: number;
     yMax?: number;
 };
@@ -73,19 +42,15 @@ type Props = {
 /* ------------------------------------------------------------------ */
 
 /**
- * TransferChart — reusable stacked diverging bar chart for any
- * skill-aware transfer matrix.
+ * TransferChart — reusable stacked diverging bar chart for a
+ * PopulationTransferMatrix (age × education × occupation).
  *
  * Features:
  * - Stacked by occupation or education level.
- * - Skill toggle buttons (novice / pro / expert) with multi-select.
- *   Default = all selected (total mode).
- * - Y-axis always autoscales to "total mode" domain so toggling
- *   skills doesn't re-scale the chart — easier to compare.
+ * - Y-axis autoscales to the total domain so comparisons are stable.
  */
 export default function TransferChart({ title, matrix, yMin, yMax }: Props): React.ReactElement {
     const [viewMode, setViewMode] = useState<ViewMode>('occupation');
-    const [selectedSkills, setSelectedSkills] = useState<Set<Skill>>(new Set(SKILL));
 
     // Refs that hold the last non-empty chart data and domain so we can
     // keep rendering a stable empty frame instead of collapsing to text.
@@ -93,34 +58,14 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
     const lastEduData = useRef<Record<string, number | string>[]>([]);
     const lastYDomain = useRef<[number, number]>([-1, 1]);
 
-    const toggleSkill = (skill: Skill) => {
-        setSelectedSkills((prev) => {
-            const next = new Set(prev);
-            if (next.has(skill)) {
-                // Don't allow deselecting all — keep at least one
-                if (next.size > 1) {
-                    next.delete(skill);
-                }
-            } else {
-                next.add(skill);
-            }
-            return next;
-        });
-    };
-
-    const allSkillsSelected = selectedSkills.size === SKILL.length;
-
     /**
-     * Compute chart data for both view modes, and for both the full
-     * (all-skills) domain (for Y-axis) and the filtered (selected skills) view.
+     * Compute chart data for both view modes.
      */
-    const { occData, eduData, totalOccData, totalEduData, totalReceived, totalGiven } = useMemo(() => {
+    const { occData, eduData, totalReceived, totalGiven } = useMemo(() => {
         if (!matrix || matrix.length === 0) {
             return {
                 occData: lastOccData.current,
                 eduData: lastEduData.current,
-                totalOccData: lastOccData.current,
-                totalEduData: lastEduData.current,
                 totalReceived: 0,
                 totalGiven: 0,
             };
@@ -128,23 +73,19 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
 
         const occRows: Record<string, number | string>[] = [];
         const eduRows: Record<string, number | string>[] = [];
-        const totalOccRows: Record<string, number | string>[] = [];
-        const totalEduRows: Record<string, number | string>[] = [];
         let received = 0;
         let given = 0;
 
         for (let age = 0; age < matrix.length; age++) {
-            // --- Filtered data (selected skills only) ---
+            const cohort = matrix[age];
+
+            // --- Occupation view ---
             const occRow: Record<string, number | string> = { age };
             let ageTotal = 0;
             for (const occ of OCCUPATIONS) {
                 let sum = 0;
                 for (const edu of educationLevelKeys) {
-                    for (const skill of SKILL) {
-                        if (selectedSkills.has(skill)) {
-                            sum += matrix[age][edu][occ][skill];
-                        }
-                    }
+                    sum += cohort?.[edu]?.[occ] ?? 0;
                 }
                 occRow[OCC_LABELS[occ]] = sum;
                 ageTotal += sum;
@@ -152,16 +93,13 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             occRow._total = ageTotal;
             occRows.push(occRow);
 
+            // --- Education view ---
             const eduRow: Record<string, number | string> = { age };
             let eduAgeTotal = 0;
             for (const edu of educationLevelKeys) {
                 let sum = 0;
                 for (const occ of OCCUPATIONS) {
-                    for (const skill of SKILL) {
-                        if (selectedSkills.has(skill)) {
-                            sum += matrix[age][edu][occ][skill];
-                        }
-                    }
+                    sum += cohort?.[edu]?.[occ] ?? 0;
                 }
                 eduRow[EDU_LABELS[edu]] = sum;
                 eduAgeTotal += sum;
@@ -169,54 +107,21 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             eduRow._total = eduAgeTotal;
             eduRows.push(eduRow);
 
-            // --- Total data (all skills — for Y-axis domain) ---
-            const totalOccRow: Record<string, number | string> = { age };
-            let totalAgeTotal = 0;
-            for (const occ of OCCUPATIONS) {
-                let sum = 0;
-                for (const edu of educationLevelKeys) {
-                    for (const skill of SKILL) {
-                        sum += matrix[age][edu][occ][skill];
-                    }
-                }
-                totalOccRow[OCC_LABELS[occ]] = sum;
-                totalAgeTotal += sum;
-            }
-            totalOccRow._total = totalAgeTotal;
-            totalOccRows.push(totalOccRow);
-
-            const totalEduRow: Record<string, number | string> = { age };
-            let totalEduAgeTotal = 0;
-            for (const edu of educationLevelKeys) {
-                let sum = 0;
-                for (const occ of OCCUPATIONS) {
-                    for (const skill of SKILL) {
-                        sum += matrix[age][edu][occ][skill];
-                    }
-                }
-                totalEduRow[EDU_LABELS[edu]] = sum;
-                totalEduAgeTotal += sum;
-            }
-            totalEduRow._total = totalEduAgeTotal;
-            totalEduRows.push(totalEduRow);
-
-            // Summary stats (always use total / all skills)
-            if (totalAgeTotal > 0) {
-                received += totalAgeTotal;
+            // Summary stats
+            if (ageTotal > 0) {
+                received += ageTotal;
             } else {
-                given += -totalAgeTotal;
+                given += -ageTotal;
             }
         }
 
         return {
             occData: occRows,
             eduData: eduRows,
-            totalOccData: totalOccRows,
-            totalEduData: totalEduRows,
             totalReceived: received,
             totalGiven: given,
         };
-    }, [matrix, selectedSkills]);
+    }, [matrix]);
 
     // Persist the last non-empty data into refs so when matrix goes empty
     // we can keep showing the last-seen chart frame without a layout shift.
@@ -229,7 +134,7 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
         }
     }, [occData, eduData]);
 
-    /** Compute fixed Y-axis domain from total (all-skills) data, and persist it. If yMin/yMax props are provided use them. */
+    /** Compute fixed Y-axis domain, and persist it. If yMin/yMax props are provided use them. */
     const yDomain = useMemo<[number, number]>(() => {
         // If explicit bounds were provided by the parent, use them directly.
         if (typeof yMin === 'number' && typeof yMax === 'number') {
@@ -238,13 +143,13 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             return domain;
         }
 
-        const totalData = viewMode === 'occupation' ? totalOccData : totalEduData;
-        if (totalData.length === 0) {
+        const data = viewMode === 'occupation' ? occData : eduData;
+        if (data.length === 0) {
             return lastYDomain.current;
         }
         let min = 0;
         let max = 0;
-        for (const row of totalData) {
+        for (const row of data) {
             const v = Number(row._total ?? 0);
             if (v < min) {
                 min = v;
@@ -258,7 +163,7 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
         const domain: [number, number] = [min - pad, max + pad];
         lastYDomain.current = domain;
         return domain;
-    }, [totalOccData, totalEduData, viewMode, yMin, yMax]);
+    }, [occData, eduData, viewMode, yMin, yMax]);
 
     const hasData = totalReceived > 0 || totalGiven > 0;
     const chartData = viewMode === 'occupation' ? occData : eduData;
@@ -274,13 +179,15 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                         {hasData ? (
                             <>
                                 <span>
-                                    Received: <span className='text-blue-500 font-medium'>{fmt(totalReceived)}</span>
+                                    Received:{' '}
+                                    <span className='text-blue-500 font-medium'>{formatNumbers(totalReceived)}</span>
                                 </span>
                                 <span>
-                                    Given: <span className='text-green-600 font-medium'>{fmt(totalGiven)}</span>
+                                    Given:{' '}
+                                    <span className='text-green-600 font-medium'>{formatNumbers(totalGiven)}</span>
                                 </span>
                                 <span className='text-muted-foreground/60'>
-                                    (Δ = {fmt(totalReceived - totalGiven)})
+                                    (Δ = {formatNumbers(totalReceived - totalGiven)})
                                 </span>
                             </>
                         ) : (
@@ -295,7 +202,7 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                 </div>
             </div>
 
-            {/* Controls row: view mode tabs + skill toggles */}
+            {/* Controls row: view mode tabs */}
             <div className='flex items-center gap-2 mb-2'>
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
                     <TabsList className='h-7'>
@@ -307,40 +214,6 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
-
-                {/* Skill toggles — pushed to the right */}
-                <div className='ml-auto flex items-center gap-1'>
-                    {SKILL.map((skill) => {
-                        const active = selectedSkills.has(skill);
-                        return (
-                            <button
-                                key={skill}
-                                type='button'
-                                onClick={() => toggleSkill(skill)}
-                                className={cn(
-                                    'h-5 px-1.5 rounded text-[9px] font-medium border transition-colors',
-                                    active
-                                        ? 'border-transparent text-white'
-                                        : 'border-border text-muted-foreground bg-transparent opacity-50 hover:opacity-75',
-                                )}
-                                style={active ? { backgroundColor: SKILL_COLORS[skill] } : undefined}
-                                title={`${active ? 'Hide' : 'Show'} ${skill} skill level`}
-                            >
-                                {SKILL_LABELS[skill]}
-                            </button>
-                        );
-                    })}
-                    {!allSkillsSelected && (
-                        <button
-                            type='button'
-                            onClick={() => setSelectedSkills(new Set(SKILL))}
-                            className='h-5 px-1.5 rounded text-[9px] font-medium border border-border text-muted-foreground hover:text-foreground transition-colors'
-                            title='Show all skill levels'
-                        >
-                            All
-                        </button>
-                    )}
-                </div>
             </div>
 
             <div style={{ width: '100%', height: 240 }}>
@@ -350,7 +223,7 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                         <XAxis dataKey='age' tick={{ fontSize: 10 }} />
                         <YAxis
                             tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => fmt(v as number)}
+                            tickFormatter={(v) => formatNumbers(v as number)}
                             domain={yDomain}
                             label={{
                                 value: 'Net wealth transfer',
@@ -381,13 +254,13 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                                             return (
                                                 <div key={entry.dataKey as string} style={{ color: entry.color }}>
                                                     {entry.name}: {val > 0 ? '+' : ''}
-                                                    {fmt(val)}
+                                                    {formatNumbers(val)}
                                                 </div>
                                             );
                                         })}
                                         <div className='mt-1 pt-1 border-t text-muted-foreground'>
                                             Total: {ageTotal > 0 ? '+' : ''}
-                                            {fmt(ageTotal)}
+                                            {formatNumbers(ageTotal)}
                                         </div>
                                     </div>
                                 );

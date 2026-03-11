@@ -6,20 +6,7 @@ import type { Bank } from '@/simulation/planet/planet';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmt = (n: number): string =>
-    !n
-        ? '0'
-        : n >= 1_000_000
-          ? `${(n / 1_000_000).toFixed(2)}M`
-          : n >= 1_000
-            ? `${(n / 1_000).toFixed(1)}k`
-            : n.toFixed(2);
-
+import { formatNumbers } from '@/lib/utils';
 const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 
 /* ------------------------------------------------------------------ */
@@ -85,24 +72,28 @@ export default function BankPanel({ bank, wagePerEdu, priceLevel }: Props): Reac
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
                     <Stat
                         label='Outstanding loans'
-                        value={fmt(bank.loans)}
+                        value={formatNumbers(bank.loans)}
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
                     />
-                    <Stat label='Money supply' value={fmt(bank.deposits)} icon={<TrendingUp className='h-3 w-3' />} />
+                    <Stat
+                        label='Money supply'
+                        value={formatNumbers(bank.deposits)}
+                        icon={<TrendingUp className='h-3 w-3' />}
+                    />
                     <Stat
                         label='Firm deposits'
-                        value={fmt(bank.deposits - bank.householdDeposits)}
+                        value={formatNumbers(bank.deposits - bank.householdDeposits)}
                         icon={<Wallet className='h-3 w-3' />}
                     />
                     <Stat
                         label='Household deposits'
-                        value={fmt(bank.householdDeposits)}
+                        value={formatNumbers(bank.householdDeposits)}
                         icon={<Users className='h-3 w-3' />}
                     />
                     <Stat
                         label='Bank equity'
-                        value={fmt(bank.equity)}
+                        value={formatNumbers(bank.equity)}
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />
@@ -128,7 +119,7 @@ export default function BankPanel({ bank, wagePerEdu, priceLevel }: Props): Reac
                         return (
                             <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
                                 <span className='text-muted-foreground capitalize'>{edu}</span>
-                                <span className='tabular-nums font-medium'>{fmt(wage)}</span>
+                                <span className='tabular-nums font-medium'>{formatNumbers(wage)}</span>
                             </div>
                         );
                     })}

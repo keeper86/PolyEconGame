@@ -58,9 +58,6 @@ export function tenureYearColor(index: number, total: number): string {
 /** Human-readable label for an education level key. */
 export const eduLabel = (edu: EducationLevelType): string => educationLevels[edu].name;
 
-/** Format large numbers with locale-aware separators. */
-export const fmt = (n: number): string => n.toLocaleString();
-
 /** Sum a Record<EducationLevelType, number> across all education levels. */
 export const sumByEdu = (rec: Record<EducationLevelType, number>): number =>
     educationLevelKeys.reduce((sum, edu) => sum + (rec[edu] ?? 0), 0);

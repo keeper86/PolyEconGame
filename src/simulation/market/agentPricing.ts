@@ -10,25 +10,23 @@
  * price_next = price * (1 + α * excessDemand)
  */
 
-import type { Agent, GameState, Planet } from '../planet/planet';
 import {
-    INITIAL_FOOD_PRICE,
-    FOOD_PRICE_FLOOR,
-    PRICE_ADJUST_MAX_UP,
-    PRICE_ADJUST_MAX_DOWN,
     FOOD_PRICE_CEIL,
+    FOOD_PRICE_FLOOR,
+    INITIAL_FOOD_PRICE,
+    PRICE_ADJUST_MAX_DOWN,
+    PRICE_ADJUST_MAX_UP,
 } from '../constants';
+import type { Agent, Planet } from '../planet/planet';
 
 import { agriculturalProductResourceType, queryStorageFacility } from '../planet/facilities';
 
 const TARGET_SELL_THROUGH = 0.9;
 const ADJUSTMENT_SPEED = 0.2;
 
-export function updateAgentPricing(gameState: GameState): void {
-    gameState.planets.forEach((planet) => {
-        gameState.agents.forEach((agent) => {
-            updatePricingForAgent(agent, planet);
-        });
+export function updateAgentPricing(agents: Map<string, Agent>, planet: Planet): void {
+    agents.forEach((agent) => {
+        updatePricingForAgent(agent, planet);
     });
 }
 

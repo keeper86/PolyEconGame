@@ -101,3 +101,132 @@ export function checkAgeMomentConsistency(agents: Map<string, Agent>, planets: M
 
     return discrepancies;
 }
+
+// ---------------------------------------------------------------------------
+// Monetary conservation: householdDeposits + Σ(agent.deposits) − bank.loans === 0
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify the fundamental monetary conservation invariant for each planet.
+ *
+ * All money is created via bank loans and destroyed via repayment.
+ * At any point in time:
+ *
+ *   bank.loans === bank.deposits                         (balance sheet)
+ *   bank.deposits === Σ(agent.deposits) + householdDeposits  (deposit decomposition)
+ *
+ * Combining these:
+ *   householdDeposits + Σ(agent.deposits) − bank.loans === 0
+ *
+ * A non-zero residual indicates a monetary leak (money created or
+ * destroyed outside of the loan/repayment mechanism).
+ *
+ * @param tolerance  Relative tolerance for floating-point comparison
+ *                   (default 0.01 = 1%).
+ */
+export function checkMonetaryConservation(
+    agents: Map<string, Agent>,
+    planets: Map<string, Planet>,
+    tolerance = 0.01,
+): string[] {
+    const discrepancies: string[] = [];
+
+    for (const [planetId, planet] of planets) {
+        const bank = planet.bank;
+
+        // Sum firm deposits across all agents on this planet (Kahan summation)
+        let firmDeposits = 0;
+        let c = 0;
+        for (const agent of agents.values()) {
+            if (agent.assets[planetId]) {
+                const d = (agent.assets[planetId].deposits ?? 0) - c;
+                const t = firmDeposits + d;
+                c = t - firmDeposits - d;
+                firmDeposits = t;
+            }
+        }
+
+        // Invariant 1: bank.deposits === firmDeposits + householdDeposits
+        const depositSum = firmDeposits + bank.householdDeposits;
+        const depositDiff =
+            bank.deposits === 0 && depositSum === 0
+                ? 0
+                : bank.deposits === 0
+                  ? Math.abs(depositSum)
+                  : Math.abs(1 - depositSum / bank.deposits);
+
+        if (depositDiff > tolerance) {
+            discrepancies.push(
+                `planet=${planetId}: deposit decomposition violated: ` +
+                    `bank.deposits=${bank.deposits.toFixed(4)}, ` +
+                    `firmDeposits=${firmDeposits.toFixed(4)}, ` +
+                    `householdDeposits=${bank.householdDeposits.toFixed(4)}, ` +
+                    `relDiff=${depositDiff.toFixed(6)}`,
+            );
+        }
+
+        // Invariant 2: householdDeposits + firmDeposits - bank.loans === 0
+        const residual = bank.householdDeposits + firmDeposits - bank.loans;
+        const residualRel =
+            bank.loans === 0 && residual === 0
+                ? 0
+                : bank.loans === 0
+                  ? Math.abs(residual)
+                  : Math.abs(residual / bank.loans);
+
+        if (residualRel > tolerance) {
+            discrepancies.push(
+                `planet=${planetId}: monetary conservation violated: ` +
+                    `householdDeposits + firmDeposits - loans = ${residual.toFixed(4)}, ` +
+                    `loans=${bank.loans.toFixed(4)}, relResidual=${residualRel.toFixed(6)}`,
+            );
+        }
+    }
+
+    return discrepancies;
+}
+
+// ---------------------------------------------------------------------------
+// Wealth ↔ householdDeposits consistency
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify that the sum of population wealth matches `bank.householdDeposits`.
+ *
+ *   bank.householdDeposits ≈ Σ (category.total × category.wealth.mean)
+ *
+ * A divergence means that wealth moments are being mutated without a
+ * corresponding change to the bank's householdDeposits (or vice versa).
+ *
+ * @param tolerance  Absolute tolerance (default 1.0 monetary units).
+ */
+export function checkWealthBankConsistency(planets: Map<string, Planet>, tolerance = 1.0): string[] {
+    const discrepancies: string[] = [];
+
+    for (const [planetId, planet] of planets) {
+        const bank = planet.bank;
+        const demography = planet.population.demography;
+
+        // Sum total population wealth: Σ (category.total × category.wealth.mean)
+        let totalWealth = 0;
+        for (const cohort of demography) {
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    totalWealth += cat.total * cat.wealth.mean;
+                }
+            });
+        }
+
+        const diff = Math.abs(bank.householdDeposits - totalWealth);
+        if (diff > tolerance) {
+            discrepancies.push(
+                `planet=${planetId}: wealth/bank divergence: ` +
+                    `householdDeposits=${bank.householdDeposits.toFixed(4)}, ` +
+                    `populationWealth=${totalWealth.toFixed(4)}, ` +
+                    `diff=${diff.toFixed(4)}`,
+            );
+        }
+    }
+
+    return discrepancies;
+}

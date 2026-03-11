@@ -1,96 +1,34 @@
 'use client';
 
 import React from 'react';
-import { Coins, Landmark, TrendingDown, TrendingUp } from 'lucide-react';
-import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
-import type { EducationLevelType } from '@/simulation/population/education';
-import { educationLevelKeys } from '@/simulation/population/education';
-import { SKILL } from '@/simulation/population/population';
-import type { WorkforceDemography } from './workforce-summary';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmt = (n: number): string =>
-    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : n.toFixed(2);
+import {
+    ArrowDownRight,
+    ArrowUpRight,
+    Coins,
+    Landmark,
+    Minus,
+    ShoppingCart,
+    TrendingDown,
+    TrendingUp,
+} from 'lucide-react';
+import { RETAINED_EARNINGS_THRESHOLD } from '@/simulation/constants';
+import type { FoodMarketState } from '@/simulation/planet/planet';
+import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
 type Props = {
-    /** Current firm deposit balance (currency units). */
+    /** Firm deposit balance on this planet (currency units). */
     deposits: number;
-    /** Per-planet workforce demography (for wage-bill estimate). */
-    workforceDemography?: WorkforceDemography;
-    /** Planet's wage-per-edu schedule, if set. */
-    wagePerEdu?: Partial<Record<EducationLevelType, number>>;
+    /** Outstanding loan principal on this planet (currency units). */
+    loans: number;
+    /** Actual wage bill computed by the last pre-production financial tick. */
+    lastWageBill: number;
+    /** Per-agent food market pricing & history. */
+    foodMarket?: FoodMarketState;
 };
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-/** Estimate the wage bill from the workforce demography snapshot. */
-function estimateWageBill(
-    wfd: WorkforceDemography,
-    wagePerEdu: Partial<Record<EducationLevelType, number>>,
-): { total: number; byEdu: Record<EducationLevelType, number> } {
-    const byEdu = {} as Record<EducationLevelType, number>;
-    let total = 0;
-    for (const edu of educationLevelKeys) {
-        byEdu[edu] = 0;
-    }
-    for (let age = 0; age < wfd.length; age++) {
-        const cohort = wfd[age];
-        if (!cohort) {
-            continue;
-        }
-        for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                const cat = cohort[edu][skill];
-                const activeCount = cat.active;
-                // Also count departing workers — they still receive wages until they leave.
-                const departingCount = cat.departing.reduce((s: number, d: number) => s + d, 0);
-                const wage = wagePerEdu[edu] ?? DEFAULT_WAGE_PER_EDU;
-                const bill = (activeCount + departingCount) * wage;
-                byEdu[edu] += bill;
-                total += bill;
-            }
-        }
-    }
-    return { total, byEdu };
-}
-
-/** Aggregate worker counts from the workforce demography. */
-function aggregateWealthStats(wfd: WorkforceDemography): {
-    byEdu: Record<EducationLevelType, { mean: number; workers: number }>;
-    totalWorkers: number;
-} {
-    const byEdu = {} as Record<EducationLevelType, { mean: number; workers: number }>;
-    for (const edu of educationLevelKeys) {
-        byEdu[edu] = { mean: 0, workers: 0 };
-    }
-    let totalWorkers = 0;
-
-    for (let age = 0; age < wfd.length; age++) {
-        const cohort = wfd[age];
-        if (!cohort) {
-            continue;
-        }
-        for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                const activeCount = cohort[edu][skill].active;
-                if (activeCount > 0) {
-                    byEdu[edu].workers += activeCount;
-                    totalWorkers += activeCount;
-                }
-            }
-        }
-    }
-    return { byEdu, totalWorkers };
-}
 
 /* ------------------------------------------------------------------ */
 /*  Stat row                                                           */
@@ -124,17 +62,11 @@ function Stat({
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export default function AgentFinancialPanel({ deposits, workforceDemography, wagePerEdu }: Props): React.ReactElement {
-    const wageBill =
-        workforceDemography && workforceDemography.length > 0
-            ? estimateWageBill(workforceDemography, wagePerEdu ?? {})
-            : null;
-
-    const wealthStats =
-        workforceDemography && workforceDemography.length > 0 ? aggregateWealthStats(workforceDemography) : null;
-
-    const cashCoversTicks =
-        wageBill && wageBill.total > 0 && deposits > 0 ? Math.floor(deposits / wageBill.total) : null;
+export default function AgentFinancialPanel({ deposits, loans, lastWageBill, foodMarket }: Props): React.ReactElement {
+    const netPosition = deposits - loans;
+    const retainedThreshold = lastWageBill * RETAINED_EARNINGS_THRESHOLD;
+    const excessDeposits = Math.max(0, deposits - retainedThreshold);
+    const cashCoversTicks = lastWageBill > 0 && deposits > 0 ? Math.floor(deposits / lastWageBill) : null;
 
     return (
         <div className='border rounded-md p-3 space-y-3'>
@@ -144,21 +76,41 @@ export default function AgentFinancialPanel({ deposits, workforceDemography, wag
                 <span className='text-sm font-semibold'>Financial Position</span>
             </div>
 
-            {/* Balance */}
+            {/* Balance sheet */}
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
                 <Stat
                     label='Firm deposits'
-                    value={fmt(deposits)}
-                    icon={<Landmark className='h-3 w-3' />}
+                    value={formatNumbers(deposits)}
+                    icon={<Coins className='h-3 w-3' />}
                     valueClassName={deposits < 0 ? 'text-red-500' : deposits === 0 ? 'text-muted-foreground' : ''}
                 />
-                {wageBill !== null && (
-                    <>
+                <Stat
+                    label='Outstanding loans'
+                    value={formatNumbers(loans)}
+                    icon={<TrendingDown className='h-3 w-3' />}
+                    valueClassName={loans > 0 ? 'text-amber-500' : 'text-muted-foreground'}
+                />
+                <Stat
+                    label='Net position (deposits − loans)'
+                    value={formatNumbers(netPosition)}
+                    icon={netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />}
+                    valueClassName={netPosition < 0 ? 'text-red-500' : netPosition > 0 ? 'text-green-600' : ''}
+                />
+            </div>
+
+            {/* Wage bill & cash flow */}
+            {lastWageBill > 0 && (
+                <div>
+                    <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
+                        <Landmark className='h-3 w-3' />
+                        Cash flow
+                    </div>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
                         <Stat
-                            label='Est. wage bill / tick'
-                            value={fmt(wageBill.total)}
-                            icon={<TrendingDown className='h-3 w-3' />}
-                            valueClassName={wageBill.total > 0 ? 'text-amber-500' : ''}
+                            label='Last wage bill / tick'
+                            value={formatNumbers(lastWageBill)}
+                            icon={<ArrowDownRight className='h-3 w-3' />}
+                            valueClassName='text-amber-500'
                         />
                         {cashCoversTicks !== null && (
                             <Stat
@@ -168,51 +120,65 @@ export default function AgentFinancialPanel({ deposits, workforceDemography, wag
                                 valueClassName={cashCoversTicks < 2 ? 'text-red-500' : 'text-green-600'}
                             />
                         )}
-                    </>
-                )}
-            </div>
-
-            {/* Wage bill breakdown by education */}
-            {wageBill !== null && wageBill.total > 0 && (
-                <div>
-                    <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
-                        <Coins className='h-3 w-3' />
-                        Wage bill by education
-                    </div>
-                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5'>
-                        {educationLevelKeys
-                            .filter((edu) => wageBill.byEdu[edu] > 0)
-                            .map((edu) => (
-                                <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
-                                    <span className='text-muted-foreground capitalize'>{edu}</span>
-                                    <span className='tabular-nums font-medium'>{fmt(wageBill.byEdu[edu])}</span>
-                                </div>
-                            ))}
+                        <Stat
+                            label={`Retained threshold (${RETAINED_EARNINGS_THRESHOLD}× wage bill)`}
+                            value={formatNumbers(retainedThreshold)}
+                            icon={<Minus className='h-3 w-3' />}
+                        />
+                        <Stat
+                            label='Excess deposits (avail. for repayment)'
+                            value={formatNumbers(excessDeposits)}
+                            icon={<ArrowUpRight className='h-3 w-3' />}
+                            valueClassName={excessDeposits > 0 ? 'text-green-600' : 'text-muted-foreground'}
+                        />
                     </div>
                 </div>
             )}
 
-            {/* Worker wealth by education */}
-            {wealthStats !== null && wealthStats.totalWorkers > 0 && (
+            {/* Food market */}
+            {foodMarket && (
                 <div>
                     <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
-                        <Coins className='h-3 w-3' />
-                        Avg. worker wealth by education
+                        <ShoppingCart className='h-3 w-3' />
+                        Food market
                     </div>
-                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5'>
-                        {educationLevelKeys
-                            .filter((edu) => wealthStats.byEdu[edu].workers > 0)
-                            .map((edu) => (
-                                <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
-                                    <span className='text-muted-foreground capitalize'>{edu}</span>
-                                    <span className='tabular-nums font-medium'>
-                                        {fmt(wealthStats.byEdu[edu].mean)}
-                                        <span className='text-muted-foreground ml-1'>
-                                            ({wealthStats.byEdu[edu].workers.toLocaleString()} w)
-                                        </span>
-                                    </span>
-                                </div>
-                            ))}
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
+                        {foodMarket.offerPrice != null && (
+                            <Stat label='Offer price' value={formatNumbers(foodMarket.offerPrice)} />
+                        )}
+                        {foodMarket.offerQuantity != null && (
+                            <Stat label='Offer quantity' value={formatNumbers(foodMarket.offerQuantity)} />
+                        )}
+                        {foodMarket.lastSold != null && (
+                            <Stat label='Last sold (qty)' value={formatNumbers(foodMarket.lastSold)} />
+                        )}
+                        {foodMarket.lastRevenue != null && (
+                            <Stat
+                                label='Last revenue'
+                                value={formatNumbers(foodMarket.lastRevenue)}
+                                icon={<Coins className='h-3 w-3' />}
+                                valueClassName={foodMarket.lastRevenue > 0 ? 'text-green-600' : 'text-muted-foreground'}
+                            />
+                        )}
+                        {foodMarket.priceDirection != null && (
+                            <Stat
+                                label='Price direction'
+                                value={
+                                    foodMarket.priceDirection > 0
+                                        ? `↑ +${foodMarket.priceDirection.toFixed(4)}`
+                                        : foodMarket.priceDirection < 0
+                                          ? `↓ ${foodMarket.priceDirection.toFixed(4)}`
+                                          : '→ 0'
+                                }
+                                valueClassName={
+                                    foodMarket.priceDirection > 0
+                                        ? 'text-green-600'
+                                        : foodMarket.priceDirection < 0
+                                          ? 'text-red-500'
+                                          : ''
+                                }
+                            />
+                        )}
                     </div>
                 </div>
             )}

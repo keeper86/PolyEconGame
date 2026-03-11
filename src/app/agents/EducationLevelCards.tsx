@@ -3,23 +3,24 @@
 import React from 'react';
 import { Badge } from '../../components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip';
-import { eduLabel, fmt, EDU_COLORS, sumByEdu } from './workforce-theme';
+import { eduLabel, EDU_COLORS, sumByEdu } from './workforce-theme';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
+import { formatNumbers } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /** Format "next (total)" for on-notice pipeline values. */
-function fmtNextTotal(next: number, total: number): string {
+function formatNumbersNextTotal(next: number, total: number): string {
     if (total <= 0) {
         return '—';
     }
     if (next > 0) {
-        return `${fmt(next)}  (${fmt(total)})`;
+        return `${formatNumbers(next)}  (${formatNumbers(total)})`;
     }
-    return `—  (${fmt(total)})`;
+    return `—  (${formatNumbers(total)})`;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,19 +138,21 @@ function EducationCard({
                 label='Target'
                 value={
                     <>
-                        {fmt(target)}
+                        {formatNumbers(target)}
                         {overqualified && overqualified > 0 ? (
                             <Tooltip>
                                 <TooltipTrigger>
-                                    <span className='text-amber-600 ml-1 tabular-nums'>({fmt(overqualified)})</span>
+                                    <span className='text-amber-600 ml-1 tabular-nums'>
+                                        ({formatNumbers(overqualified)})
+                                    </span>
                                 </TooltipTrigger>
                                 <TooltipContent sideOffset={6}>
                                     <div className='max-w-xs'>
                                         <div className='font-medium'>Overqualified workers</div>
                                         <div className='text-xs text-muted-foreground mt-1'>
-                                            Facilities filled {fmt(overqualified)} slot{overqualified !== 1 ? 's' : ''}{' '}
-                                            with higher-educated workers because lower-education workers were not
-                                            available.
+                                            Facilities filled {formatNumbers(overqualified)} slot
+                                            {overqualified !== 1 ? 's' : ''} with higher-educated workers because
+                                            lower-education workers were not available.
                                         </div>
                                         {overqualifiedBreakdown && (
                                             <div className='mt-2 text-xs'>
@@ -169,23 +172,27 @@ function EducationCard({
                     </>
                 }
             />
-            <Stat label='Current total' value={fmt(totalWorkforce)} valueClassName='text-foreground' bold />
+            <Stat label='Current total' value={formatNumbers(totalWorkforce)} valueClassName='text-foreground' bold />
             <Stat
                 label={`${unused < 0 ? 'Worker shortage' : 'Unused Worker '}`}
-                value={`${fmt(Math.abs(unused))}`}
+                value={`${formatNumbers(Math.abs(unused))}`}
                 valueClassName={unused > 0 ? 'text-green-600' : unused < 0 ? 'text-red-500' : 'text-muted-foreground'}
             />
 
             <Rule />
 
             {/* ── Breakdown: Active + On notice = Total ── */}
-            <Stat label='Active' value={fmt(active)} />
+            <Stat label='Active' value={formatNumbers(active)} />
 
             {/* Deaths this month (and last month) */}
             {typeof deaths === 'number' && (
                 <Stat
                     label='Deaths'
-                    value={typeof deathsPrev === 'number' ? `${fmt(deaths)} (${fmt(deathsPrev)})` : fmt(deaths)}
+                    value={
+                        typeof deathsPrev === 'number'
+                            ? `${formatNumbers(deaths)} (${formatNumbers(deathsPrev)})`
+                            : formatNumbers(deaths)
+                    }
                     valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
                 />
             )}
@@ -196,8 +203,8 @@ function EducationCard({
                     label='Disabilities'
                     value={
                         typeof disabilitiesPrev === 'number'
-                            ? `${fmt(disabilities)} (${fmt(disabilitiesPrev)})`
-                            : fmt(disabilities)
+                            ? `${formatNumbers(disabilities)} (${formatNumbers(disabilitiesPrev)})`
+                            : formatNumbers(disabilities)
                     }
                     valueClassName={disabilities > 0 ? 'text-orange-700' : 'text-muted-foreground'}
                 />
@@ -209,8 +216,8 @@ function EducationCard({
                     label='Retirements'
                     value={
                         typeof retirementsPrev === 'number'
-                            ? `${fmt(retirements)} (${fmt(retirementsPrev)})`
-                            : fmt(retirements)
+                            ? `${formatNumbers(retirements)} (${formatNumbers(retirementsPrev)})`
+                            : formatNumbers(retirements)
                     }
                     valueClassName={retirements > 0 ? 'text-blue-700' : 'text-muted-foreground'}
                 />
@@ -245,7 +252,7 @@ function EducationCard({
                 <span
                     className={`tabular-nums whitespace-nowrap ${totalOnNotice > 0 ? 'text-orange-500' : 'text-muted-foreground'}`}
                 >
-                    {fmtNextTotal(totalNextOnNotice, totalOnNotice)}
+                    {formatNumbersNextTotal(totalNextOnNotice, totalOnNotice)}
                 </span>
             </div>
 
@@ -256,13 +263,13 @@ function EducationCard({
                     </div>
                     <Stat
                         label='Voluntary'
-                        value={fmtNextTotal(voluntaryNext, voluntaryTotal)}
+                        value={formatNumbersNextTotal(voluntaryNext, voluntaryTotal)}
                         valueClassName={voluntaryTotal > 0 ? 'text-amber-600' : 'text-muted-foreground'}
                         indent
                     />
                     <Stat
                         label='Fired'
-                        value={fmtNextTotal(firedNext, firedTotal)}
+                        value={formatNumbersNextTotal(firedNext, firedTotal)}
                         valueClassName={firedTotal > 0 ? 'text-red-500' : 'text-muted-foreground'}
                         indent
                     />

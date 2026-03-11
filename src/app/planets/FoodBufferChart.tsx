@@ -7,6 +7,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import type { Population } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
+import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -43,21 +44,7 @@ const OCC_LABELS: Record<string, string> = {
     unableToWork: 'Unable to work',
 };
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const fmt = (n: number): string => {
-    if (n >= 1_000_000) {
-        return `${(n / 1_000_000).toFixed(1)}M`;
-    }
-    if (n >= 1_000) {
-        return `${(n / 1_000).toFixed(1)}k`;
-    }
-    return n.toFixed(2);
-};
-
-const fmtPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
+const formatNumbersPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
 
 /* ------------------------------------------------------------------ */
 /*  View modes                                                         */
@@ -114,7 +101,7 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {fmtPct(ratio)} · {fmt(avgStock)} t · {fmt(pop)}
+                                {formatNumbersPct(ratio)} · {formatNumbers(avgStock)} t · {formatNumbers(pop)}
                             </span>
                         </div>
                     );
@@ -306,7 +293,7 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
                         <XAxis dataKey='age' tick={{ fontSize: 10 }} />
                         <YAxis
                             tick={{ fontSize: 10 }}
-                            tickFormatter={fmtPct}
+                            tickFormatter={formatNumbersPct}
                             domain={[0, 1]}
                             label={{ value: 'Pop share', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }}
                         />

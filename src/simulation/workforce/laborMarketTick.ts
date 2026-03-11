@@ -13,18 +13,16 @@
 
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
-import { forEachWorkforceCohort, SKILL } from '../population/population';
+import { SKILL } from '../population/population';
+import { NOTICE_PERIOD_MONTHS } from '../constants';
+import { hireFromPopulation } from './workforce';
+import { forEachWorkforceCohort } from './workforce';
 import { stochasticRound } from '../utils/stochasticRound';
-import { assertPopulationWorkforceConsistency, hireFromPopulation } from './populationBridge';
 import { totalActiveForEdu } from './workforceAggregates';
+import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 
-/**
- * Length of the departing notice pipeline in months.
- * Fired workers enter this pipeline and work at reduced efficiency
- * (DEPARTING_EFFICIENCY) for its duration before leaving entirely.
- * Voluntary quits also use this pipeline.
- */
-export const NOTICE_PERIOD_MONTHS = 3;
+// Re-export so existing importers continue to work.
+export { NOTICE_PERIOD_MONTHS } from '../constants';
 
 /**
  * Fraction of active workers per age cohort per education level that
@@ -81,16 +79,14 @@ export const ageProductivityMultiplier = (age: number): number => {
 // Main monthly pre-production entry point
 // ---------------------------------------------------------------------------
 
-export function preProductionLaborMarketTick(agents: Map<string, Agent>, planets: Map<string, Planet>): void {
+export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
-            const workforce = assets.workforceDemography;
-            if (!workforce) {
+            if (planetId !== planet.id) {
                 continue;
             }
-
-            const planet = planets.get(planetId);
-            if (!planet) {
+            const workforce = assets.workforceDemography;
+            if (!workforce) {
                 continue;
             }
 
@@ -117,26 +113,22 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planets
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;
                 const currentActive = totalActiveForEdu(workforce, edu);
+
                 const gap = target - currentActive;
 
                 if (gap > 0) {
                     // --- Hire the gap, spread across skill levels proportionally ---
-                    // Build skill-level weights from unoccupied population
-                    let totalHiredForEdu = 0;
-                    for (const skill of SKILL) {
-                        const result = hireFromPopulation(planet, edu, skill, gap - totalHiredForEdu);
-                        if (result.count > 0) {
-                            // Place hired workers at their exact age in the workforce
-                            for (let age = 0; age < result.hiredByAge.length; age++) {
-                                const count = result.hiredByAge[age];
+
+                    const result = hireFromPopulation(planet, edu, gap);
+                    if (result.count > 0) {
+                        // Place hired workers at their exact age in the workforce
+                        for (let age = 0; age < result.hiredByAge.length; age++) {
+                            for (const skill of SKILL) {
+                                const count = result.hiredByAge[age][skill];
                                 if (count > 0) {
                                     workforce[age][edu][skill].active += count;
                                 }
                             }
-                            totalHiredForEdu += result.count;
-                        }
-                        if (totalHiredForEdu >= gap) {
-                            break;
                         }
                     }
                 } else if (gap < -currentActive * ACCEPTABLE_IDLE_FRACTION) {
@@ -165,8 +157,6 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planets
 
     // Verify population↔workforce consistency after all hiring/firing
     if (process.env.SIM_DEBUG === '1') {
-        for (const planet of planets.values()) {
-            assertPopulationWorkforceConsistency(agents, planet, 'preProductionLaborMarketTick');
-        }
+        assertPopulationWorkforceConsistency(agents, planet, 'preProductionLaborMarketTick');
     }
 }

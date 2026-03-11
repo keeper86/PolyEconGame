@@ -1,51 +1,9 @@
-/**
- * financial/financialTick.ts
- *
- * Implements the two-part financial tick that runs each simulation tick:
- *
- * A) Pre-production financial tick (after labor market, before production):
- *    1. Compute each firm's wage bill.
- *    2. Issue working-capital loans if firm deposits < wage bill (money creation).
- *    3. Pay wages: debit firm deposits, credit household deposits.
- *
- * B) Post-production financial tick (after production, before population tick):
- *    1. Determine the price level P = C_nom / Q.
- *    2. Compute household consumption and update wealth moments.
- *    3. Distribute revenue to firms: debit household deposits, credit firm deposits.
- *    4. Firms repay outstanding loans (money destruction).
- *
- * Accounting model (double-entry, all per-planet):
- *   bank.loans              – asset side: total outstanding loans to firms.
- *   bank.deposits           – liability side: total money in the system.
- *   bank.householdDeposits  – subset of deposits held by households.
- *   Σ agent.deposits        – subset of deposits held by firms.
- *
- * Invariant (checked after every sub-step in debug mode):
- *   bank.deposits ≈ Σ agent.deposits + bank.householdDeposits
- *
- * Money is created only via loan issuance and destroyed only via repayment.
- * All other operations are internal transfers between firm and household
- * deposit accounts (bank.deposits stays constant during transfers).
- */
-
-import type { GameState, Planet } from '../planet/planet';
+import { RETAINED_EARNINGS_THRESHOLD } from '../constants';
+import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import {
-    getAgentDepositsForPlanet,
-    setAgentDepositsForPlanet,
-    addAgentDepositsForPlanet,
-    getAgentLoansForPlanet,
-    setAgentLoansForPlanet,
-    addAgentLoansForPlanet,
-} from './depositHelpers';
-import { RETAINED_EARNINGS_THRESHOLD } from '../constants';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
-
-// ---------------------------------------------------------------------------
-// Constants (propensities & defaults)
-// ---------------------------------------------------------------------------
 
 /**
  * Default wage per education level per tick (currency units per worker).
@@ -65,159 +23,94 @@ export const C_INC = 1.0;
  */
 export const C_WEALTH = 0.0;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function getWage(planet: Planet, edu: EducationLevelType): number {
     return planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
-}
-
-/**
- * Compute the sum of all agent firm-deposit balances for a given planet.
- * Only counts agents that have assets on the planet.
- */
-function sumFirmDeposits(gameState: GameState, planetId: string): number {
-    // Use Kahan summation to reduce floating-point error when summing many
-    // potentially large and small deposit values. This avoids tiny
-    // balance-sheet mismatches due to summation order/rounding.
-    let sum = 0;
-    let c = 0; // compensation
-    gameState.agents.forEach((agent) => {
-        if (agent.assets[planetId]) {
-            const y = getAgentDepositsForPlanet(agent, planetId) - c;
-            const t = sum + y;
-            c = t - sum - y;
-            sum = t;
-        }
-    });
-    return sum;
-}
-
-/**
- * Assert the fundamental balance-sheet invariant.
- * In debug mode throws on mismatch; in production silently warns.
- */
-function assertBalanceSheet(bank: NonNullable<Planet['bank']>, firmDepositsSum: number, label: string): void {
-    const totalDeposits = firmDepositsSum + bank.householdDeposits;
-    const diff =
-        bank.deposits === 0 && totalDeposits === 0
-            ? 0
-            : bank.deposits === 0
-              ? 1
-              : Math.abs(1 - totalDeposits / bank.deposits);
-    if (diff > 0.01) {
-        const msg =
-            `[financialTick] balance-sheet violation after ${label}: ` +
-            `bank.deposits=${bank.deposits.toFixed(4)}, ` +
-            `firmDeposits=${firmDepositsSum.toFixed(4)}, ` +
-            `householdDeposits=${bank.householdDeposits.toFixed(4)}, ` +
-            `diff=${diff.toFixed(6)}`;
-        if (process.env.SIM_DEBUG === '1') {
-            throw new Error(msg);
-        }
-
-        console.warn(msg);
-    }
 }
 
 // ---------------------------------------------------------------------------
 // A) Pre-production financial tick
 // ---------------------------------------------------------------------------
 
-/**
- * Step A: wage-bill calculation, working-capital loans, and wage payment.
- *
- * Called after the labor-market tick and before the production tick.
- */
-export function preProductionFinancialTick(gameState: GameState): void {
-    gameState.planets.forEach((planet) => {
-        const bank = planet.bank;
-        const demography = planet.population.demography;
+export function preProductionFinancialTick(agents: Map<string, Agent>, planet: Planet): void {
+    const bank = planet.bank;
+    const demography = planet.population.demography;
 
-        gameState.agents.forEach((agent) => {
-            const assets = agent.assets[planet.id];
-            if (!assets?.workforceDemography) {
-                return;
-            }
-            const workforce = assets.workforceDemography;
+    agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets?.workforceDemography) {
+            return;
+        }
+        const workforce = assets.workforceDemography;
 
-            // 1. Compute wage bill
-            let wageBill = 0;
+        // 1. Compute wage bill
+        let wageBill = 0;
+        const totalWorkersForEdu: Record<EducationLevelType, number> = {
+            none: 0,
+            primary: 0,
+            secondary: 0,
+            tertiary: 0,
+        };
+        for (const edu of educationLevelKeys) {
+            const activeWorkers = totalActiveForEdu(workforce, edu);
+            const departingWorkers = totalDepartingForEdu(workforce, edu);
+            const totalWorkers = activeWorkers + departingWorkers;
+            totalWorkersForEdu[edu] = totalWorkers;
+            const wage = getWage(planet, edu);
+            wageBill += totalWorkers * wage;
+        }
+
+        if (wageBill <= 0) {
+            assets.lastWageBill = 0;
+            return;
+        }
+
+        // Record wage bill for retained-earnings threshold
+        assets.lastWageBill = wageBill;
+
+        // 2. Working-capital loan if needed (MONEY CREATION)
+        //    bank.loans↑  bank.deposits↑  agent.deposits↑
+        if (assets.deposits < wageBill) {
+            const shortfall = wageBill - assets.deposits;
+            // Record aggregate bank loan and per-agent loan principal
+            bank.loans += shortfall;
+            bank.deposits += shortfall;
+            assets.deposits += shortfall;
+            assets.loans += shortfall;
+        }
+
+        assets.deposits -= wageBill;
+        bank.householdDeposits += wageBill;
+        assets.lastWageBill = wageBill;
+
+        let totalPopEmployedCount = 0;
+        for (let age = 0; age < demography.length; age++) {
             for (const edu of educationLevelKeys) {
-                const activeWorkers = totalActiveForEdu(workforce, edu);
-                const departingWorkers = totalDepartingForEdu(workforce, edu);
-                const totalWorkers = activeWorkers + departingWorkers;
-                const wage = getWage(planet, edu);
-                wageBill += totalWorkers * wage;
-            }
-
-            if (wageBill <= 0) {
-                assets.lastWageBill = 0;
-                return;
-            }
-
-            // Record wage bill for retained-earnings threshold
-            assets.lastWageBill = wageBill;
-
-            // 2. Working-capital loan if needed (MONEY CREATION)
-            //    bank.loans↑  bank.deposits↑  agent.deposits↑
-            const currentDeposits = getAgentDepositsForPlanet(agent, planet.id);
-            if (currentDeposits < wageBill) {
-                const shortfall = wageBill - currentDeposits;
-                // Record aggregate bank loan and per-agent loan principal
-                bank.loans += shortfall;
-                bank.deposits += shortfall;
-                setAgentDepositsForPlanet(agent, planet.id, currentDeposits + shortfall);
-                addAgentLoansForPlanet(agent, planet.id, shortfall);
-            }
-
-            // 3. Pay wages (INTERNAL TRANSFER: firm → household)
-            //    agent.deposits↓  bank.householdDeposits↑
-            //    bank.deposits is unchanged (money moves between sub-accounts).
-            addAgentDepositsForPlanet(agent, planet.id, -wageBill);
-            bank.householdDeposits += wageBill;
-
-            // 4. Distribute wages to household wealth moments
-            //    In the new model, wealth is tracked on PopulationCategory.wealth
-            //    per demography[age][occupation][edu][skill].
-            //    All hired workers are under the 'employed' occupation.
-            for (const edu of educationLevelKeys) {
-                const totalWorkers = totalActiveForEdu(workforce, edu) + totalDepartingForEdu(workforce, edu);
-                if (totalWorkers <= 0) {
-                    continue;
+                for (const skill of SKILL) {
+                    totalPopEmployedCount += demography[age].employed[edu][skill].total;
                 }
-                const wage = getWage(planet, edu);
+            }
+        }
 
-                // Credit wealth to employed population cohorts (across all skills)
-                let totalPopEmployedCount = 0;
-                for (let age = 0; age < demography.length; age++) {
+        if (totalPopEmployedCount > 0) {
+            const perCapitaWage = wageBill / totalPopEmployedCount;
+            for (let age = 0; age < demography.length; age++) {
+                for (const edu of educationLevelKeys) {
                     for (const skill of SKILL) {
-                        totalPopEmployedCount += demography[age].employed[edu][skill].total;
-                    }
-                }
-                if (totalPopEmployedCount > 0) {
-                    for (let age = 0; age < demography.length; age++) {
-                        for (const skill of SKILL) {
-                            const cat = demography[age].employed[edu][skill];
-                            if (cat.total <= 0) {
-                                continue;
-                            }
-                            // Add per-capita wage to wealth mean
-                            cat.wealth = {
-                                mean: cat.wealth.mean + wage,
-                                variance: cat.wealth.variance,
-                            };
+                        const cat = demography[age].employed[edu][skill];
+                        if (cat.total <= 0) {
+                            continue;
                         }
+                        cat.wealth = {
+                            mean: cat.wealth.mean + perCapitaWage,
+                            variance: cat.wealth.variance,
+                        };
                     }
                 }
             }
-        });
-
-        // Verify invariant & compute equity
-        assertBalanceSheet(bank, sumFirmDeposits(gameState, planet.id), 'preProductionFinancialTick');
-        bank.equity = bank.deposits - bank.loans;
+        }
     });
+
+    bank.equity = bank.deposits - bank.loans;
 }
 
 // ---------------------------------------------------------------------------
@@ -233,44 +126,20 @@ export function preProductionFinancialTick(gameState: GameState): void {
  * Called after the food market tick and wealth diffusion, as the final
  * financial reconciliation step.
  */
-export function postProductionFinancialTick(gameState: GameState): void {
-    gameState.planets.forEach((planet) => {
-        const bank = planet.bank;
+export function postProductionFinancialTick(agents: Map<string, Agent>, planet: Planet): void {
+    const bank = planet.bank;
 
-        // Loan repayment (MONEY DESTRUCTION)
-        repayLoans(gameState, planet, bank);
-
-        if (process.env.SIM_DEBUG === '1') {
-            assertBalanceSheet(bank, sumFirmDeposits(gameState, planet.id), 'postProductionFinancialTick');
-        }
-        bank.equity = bank.deposits - bank.loans;
-    });
-}
-
-// ---------------------------------------------------------------------------
-// Loan repayment helper
-// ---------------------------------------------------------------------------
-
-/**
- * Firms repay their own outstanding loans from their deposits (money destruction).
- * agent.deposits↓  agent.loans↓  bank.loans↓  bank.deposits↓
- *
- * Persistent money: firms only repay when deposits exceed a retained
- * earnings threshold (RETAINED_EARNINGS_THRESHOLD × lastWageBill).
- * This allows persistent firm balances and prevents the "perfect
- * monetary circle" where all money is created and destroyed each tick.
- */
-function repayLoans(gameState: GameState, planet: Planet, bank: NonNullable<Planet['bank']>): void {
     if (bank.loans <= 0) {
         return;
     }
-    gameState.agents.forEach((agent) => {
+
+    agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets?.workforceDemography) {
             return;
         }
-        const deposits = getAgentDepositsForPlanet(agent, planet.id);
-        const agentLoan = getAgentLoansForPlanet(agent, planet.id);
+        const deposits = assets.deposits;
+        const agentLoan = assets.loans;
         if (deposits <= 0 || bank.loans <= 0 || agentLoan <= 0) {
             return;
         }
@@ -284,9 +153,10 @@ function repayLoans(gameState: GameState, planet: Planet, bank: NonNullable<Plan
         }
         // Agents only repay up to their own loan principal and available excess.
         const repayment = Math.min(agentLoan, excessDeposits, bank.loans);
-        setAgentDepositsForPlanet(agent, planet.id, deposits - repayment);
-        setAgentLoansForPlanet(agent, planet.id, agentLoan - repayment);
+        assets.deposits -= repayment;
+        assets.loans -= repayment;
         bank.loans -= repayment;
         bank.deposits -= repayment;
     });
+    bank.equity = bank.deposits - bank.loans;
 }
