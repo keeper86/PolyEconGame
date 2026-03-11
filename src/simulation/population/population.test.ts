@@ -90,8 +90,8 @@ describe('createEmptyWorkforceCohort', () => {
             for (const skill of SKILL) {
                 const cat = cohort[edu][skill];
                 expect(cat.active).toBe(0);
-                expect(cat.departing).toEqual([]);
-                expect(cat.departingFired).toEqual([]);
+                expect(cat.departing).toEqual([0, 0, 0]);
+                expect(cat.departingFired).toEqual([0, 0, 0]);
             }
         }
     });
@@ -124,8 +124,8 @@ describe('nullWorkforceCategory', () => {
     it('returns a zeroed WorkforceCategory each call', () => {
         const a = nullWorkforceCategory();
         expect(a.active).toBe(0);
-        expect(a.departing).toEqual([]);
-        expect(a.departingFired).toEqual([]);
+        expect(a.departing).toEqual([0, 0, 0]);
+        expect(a.departingFired).toEqual([0, 0, 0]);
     });
 });
 
