@@ -2,7 +2,8 @@ import type { Environment } from '../planet/planet';
 
 import { stochasticRound } from '../utils/stochasticRound';
 import type { Population } from './population';
-import { convertAnnualToPerTick, forEachPopulationCohort, transferPopulation } from './population';
+import { forEachPopulationCohort, transferPopulation } from './population';
+import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 import type { InheritanceRecord } from './inheritance';
 import { redistributeInheritance } from './inheritance';
 
@@ -113,7 +114,7 @@ export function applyMortality(population: Population, environment: Environment)
             );
 
             const dead = stochasticRound(category.total * perTickMort);
-            const result = transferPopulation(population.demography, { age, occ, edu, skill }, undefined, dead);
+            const result = transferPopulation(population, { age, occ, edu, skill }, undefined, dead);
             category.deaths.countThisMonth += result.count;
             category.deaths.countThisTick = result.count;
 

@@ -10,12 +10,12 @@
 
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { CohortByOccupation, WorkforceCategory } from '@/simulation/population/population';
+import type { WorkforceCohort, WorkforceCategory } from '@/simulation/workforce/workforce';
 import { MAX_AGE, SKILL } from '@/simulation/population/population';
 import { ageProductivityMultiplier } from '@/simulation/workforce/laborMarketTick';
 
 /** Alias for the workforce demography structure used by agents. */
-export type WorkforceDemography = CohortByOccupation<WorkforceCategory>[];
+export type WorkforceDemography = WorkforceCohort<WorkforceCategory>[];
 
 // ---------------------------------------------------------------------------
 // Summary type

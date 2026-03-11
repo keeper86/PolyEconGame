@@ -1,4 +1,5 @@
-import type { CohortByOccupation, EducationLevelType, Population, WorkforceCategory } from '../population/population';
+import type { EducationLevelType, Population } from '../population/population';
+import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ProductionFacility, Resource, ResourceType, StorageFacility } from './facilities';
 
 /**
@@ -272,7 +273,7 @@ export type AgentPlanetAssets = {
     resourceClaims: string[]; // resource claims owned by this agent
     resourceTenancies: string[]; // resource claims where this agent is the tenant
     productionFacilities: ProductionFacility[];
-    workforceDemography: CohortByOccupation<WorkforceCategory>[];
+    workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 
     // ----- Financial state -----

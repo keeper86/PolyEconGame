@@ -14,8 +14,8 @@ import { describe, it, expect } from 'vitest';
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { EducationLevelType } from '@/simulation/population/education';
-import type { Population, Occupation, Skill, PopulationCategory, Cohort } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL, createEmptyCohort, nullPopulationCategory } from '@/simulation/population/population';
+import type { Occupation, Skill, PopulationCategory, Cohort } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL, createEmptyPopulationCohort } from '@/simulation/population/population';
 
 // ---- Replicate chart constants ----
 const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
@@ -155,10 +155,8 @@ function makePopulation(
     total: number,
     foodStock: number,
     starvationLevel = 0,
-): Population {
-    const demography = Array.from({ length: Math.max(age + 1, 1) }, () =>
-        createEmptyCohort<PopulationCategory>(() => ({ ...nullPopulationCategory() })),
-    );
+): { demography: Cohort<PopulationCategory>[] } {
+    const demography = Array.from({ length: Math.max(age + 1, 1) }, () => createEmptyPopulationCohort());
     demography[age][occ][edu][skill].total = total;
     demography[age][occ][edu][skill].foodStock = foodStock;
     demography[age][occ][edu][skill].starvationLevel = starvationLevel;
@@ -233,9 +231,7 @@ describe('NutritionHeatmapChart — two-tier classification', () => {
         // The previously impossible scenario: high avg buffer + 100% "starving".
         // With the new semantics, people with S=0 and buffer=105% are NOT starving.
         // Only people with S>0 are in starvation bands.
-        const demography = Array.from({ length: 31 }, () =>
-            createEmptyCohort<PopulationCategory>(() => ({ ...nullPopulationCategory() })),
-        );
+        const demography = Array.from({ length: 31 }, () => createEmptyPopulationCohort());
 
         // Half the population: S=0, 200% buffer → should be fullBuffer
         demography[30].employed.primary.novice.total = 500;
@@ -260,9 +256,7 @@ describe('NutritionHeatmapChart — two-tier classification', () => {
     });
 
     it('handles zero-population ages correctly', () => {
-        const demography = Array.from({ length: 31 }, () =>
-            createEmptyCohort<PopulationCategory>(() => ({ ...nullPopulationCategory() })),
-        );
+        const demography = Array.from({ length: 31 }, () => createEmptyPopulationCohort());
         demography[30].employed.primary.novice.total = 100;
         demography[30].employed.primary.novice.foodStock = 100 * FOOD_TARGET_PER_PERSON;
         demography[30].employed.primary.novice.starvationLevel = 0;

@@ -19,7 +19,8 @@
 import { stochasticRound } from '../utils/stochasticRound';
 import { RETIREMENT_AGE } from '../workforce/laborMarketTick';
 import type { Population } from './population';
-import { convertAnnualToPerTick, forEachPopulationCohort, transferPopulation } from './population';
+import { forEachPopulationCohort, transferPopulation } from './population';
+import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 
 // ---------------------------------------------------------------------------
 // Retirement rate function
@@ -102,7 +103,7 @@ export function applyRetirement(population: Population): void {
 
             const toRetire = stochasticRound(category.total * prob);
             const retired = transferPopulation(
-                population.demography,
+                population,
                 { age, occ, edu, skill },
                 { age, occ: 'unableToWork', edu, skill },
                 toRetire,

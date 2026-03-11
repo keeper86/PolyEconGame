@@ -164,6 +164,7 @@ function makeAgentPlanetAssets(
         productionFacilities: facilities,
         storageFacility: storage,
         deposits: 0,
+        loans: 0,
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         workforceDemography: makeWorkforceDemography(),
     };

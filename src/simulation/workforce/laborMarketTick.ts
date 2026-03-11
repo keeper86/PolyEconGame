@@ -13,10 +13,12 @@
 
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
-import { forEachWorkforceCohort, SKILL } from '../population/population';
+import { SKILL } from '../population/population';
+import { hireFromPopulation } from './workforce';
+import { forEachWorkforceCohort } from './workforce';
 import { stochasticRound } from '../utils/stochasticRound';
-import { assertPopulationWorkforceConsistency, hireFromPopulation } from './populationBridge';
 import { totalActiveForEdu } from './workforceAggregates';
+import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 
 /**
  * Length of the departing notice pipeline in months.
@@ -115,26 +117,24 @@ export function preProductionLaborMarketTick(agents: Map<string, Agent>, planet:
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;
                 const currentActive = totalActiveForEdu(workforce, edu);
+                console.log(currentActive, '0?');
+
                 const gap = target - currentActive;
 
                 if (gap > 0) {
                     // --- Hire the gap, spread across skill levels proportionally ---
-                    // Build skill-level weights from unoccupied population
-                    let totalHiredForEdu = 0;
-                    for (const skill of SKILL) {
-                        const result = hireFromPopulation(planet, edu, skill, gap - totalHiredForEdu);
-                        if (result.count > 0) {
-                            // Place hired workers at their exact age in the workforce
-                            for (let age = 0; age < result.hiredByAge.length; age++) {
-                                const count = result.hiredByAge[age];
+                    console.log('hired', gap);
+
+                    const result = hireFromPopulation(planet, edu, gap);
+                    if (result.count > 0) {
+                        // Place hired workers at their exact age in the workforce
+                        for (let age = 0; age < result.hiredByAge.length; age++) {
+                            for (const skill of SKILL) {
+                                const count = result.hiredByAge[age][skill];
                                 if (count > 0) {
                                     workforce[age][edu][skill].active += count;
                                 }
                             }
-                            totalHiredForEdu += result.count;
-                        }
-                        if (totalHiredForEdu >= gap) {
-                            break;
                         }
                     }
                 } else if (gap < -currentActive * ACCEPTABLE_IDLE_FRACTION) {

@@ -1,6 +1,7 @@
 import type { Environment } from '../planet/planet';
 import type { Population } from './population';
-import { convertAnnualToPerTick, forEachPopulationCohort, transferPopulation } from './population';
+import { forEachPopulationCohort, transferPopulation } from './population';
+import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 import { stochasticRound } from '../utils/stochasticRound';
 
 /**
@@ -102,7 +103,7 @@ export function applyDisability(population: Population, environment: Environment
             const moveFromOcc = stochasticRound(occCount * perTickDisabilityProb);
 
             const moved = transferPopulation(
-                population.demography,
+                population,
                 { age, occ, edu, skill },
                 { age, occ: 'unableToWork', edu, skill },
                 moveFromOcc,

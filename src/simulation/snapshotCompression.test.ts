@@ -63,7 +63,7 @@ function makePlanet(id = 'planet-1'): Planet {
         id,
         name: `Planet ${id}`,
         position: { x: 1, y: 2, z: 3 },
-        population: { demography: [] , lastTransferMatrix: [] },
+        population: { demography: [], lastTransferMatrix: [] },
         resources: {},
         governmentId: government.id,
         bank: {

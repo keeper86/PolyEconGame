@@ -9,8 +9,8 @@ import {
     waterSourceResourceType,
 } from '../planet/facilities';
 import type { Agent, Planet } from '../planet/planet';
-import type { Population, PopulationCategory } from '../population/population';
-import { createEmptyCohort, MAX_AGE, nullPopulationCategory } from '../population/population';
+import type { Population } from '../population/population';
+import { createEmptyPopulationCohort, MAX_AGE } from '../population/population';
 import { makeWorkforceDemography } from './testHelper';
 
 export const agriculturalProductionFacility: ProductionFacility = {
@@ -482,13 +482,8 @@ export function createPopulation(total: number): Population {
     // Create empty cohorts for ages 0..maxAge
     // New model: demography[age][occ][edu][skill] → PopulationCategory
     const pop: Population = {
-        demography: Array.from({ length: MAX_AGE + 1 }, () =>
-            createEmptyCohort<PopulationCategory>(() => ({
-                ...nullPopulationCategory(),
-                foodStock: 0,
-                wealth: { mean: 0, variance: 0 },
-            })),
-        ),
+        demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
+        summedPopulation: createEmptyPopulationCohort(),
         lastTransferMatrix: [],
     };
     const remainder = total - perAge * (MAX_AGE + 1);

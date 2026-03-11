@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
-import { hireFromPopulation } from '../workforce/populationBridge';
 
 import { postProductionFinancialTick, preProductionFinancialTick } from './financialTick';
+import { hireFromPopulation } from '../workforce/workforce';
 
 describe('per-agent loan bookkeeping', () => {
     let agent: Agent;
@@ -19,13 +19,13 @@ describe('per-agent loan bookkeeping', () => {
 
     it('records per-agent loan on issuance', () => {
         // Hire 10 workers → wage bill = 10 * default wage (1.0)
-        const { count, hiredByAge } = hireFromPopulation(planet, 'none', 'novice', 10);
+        const { count, hiredByAge } = hireFromPopulation(planet, 'none', 10);
 
         // Reflect hires in agent workforce demography
         const wf = agent.assets[planet.id].workforceDemography!;
         for (let age = 0; age < hiredByAge.length; age++) {
-            if (hiredByAge[age] > 0) {
-                wf[age].none.novice.active += hiredByAge[age];
+            if (hiredByAge[age].novice > 0) {
+                wf[age].none.novice.active += hiredByAge[age].novice;
             }
         }
 

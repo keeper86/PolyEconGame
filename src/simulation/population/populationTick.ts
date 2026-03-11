@@ -1,19 +1,5 @@
-/**
- * population/populationTick.ts
- *
- * Orchestrates the per-tick population update by composing the independent
- * sub-systems (nutrition → mortality → disability → fertility).
- *
- * Each step operates on the shared `Population` state and writes its
- * results (e.g. `tickDeaths`, `tickNewDisabilities`) into population
- * fields so that downstream systems (workforce sync, snapshots) can
- * consume them without requiring threaded accumulators.
- *
- * Year-boundary aging is handled separately by `populationAdvanceYearTick`.
- */
-
 import type { Agent, Planet } from '../planet/planet';
-import { assertPopulationWorkforceConsistency } from '../workforce/populationBridge';
+import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 import { syncWorkforceWithPopulation } from '../workforce/workforceSync';
 
 import { populationAdvanceYear } from './aging';

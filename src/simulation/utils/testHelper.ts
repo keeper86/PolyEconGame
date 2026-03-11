@@ -22,7 +22,6 @@ import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
-    CohortByOccupation,
     DeathStats,
     DisabilityStats,
     GaussianMoments,
@@ -31,8 +30,8 @@ import type {
     Population,
     RetirementStats,
     Skill,
-    WorkforceCategory,
 } from '../population/population';
+import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS, SKILL } from '../population/population';
 import { NOTICE_PERIOD_MONTHS } from '../workforce/laborMarketTick';
 
@@ -101,7 +100,7 @@ export function makeWorkforceCategory(overrides?: Partial<WorkforceCategory>): W
 export function makePopulationCohort(): Cohort<PopulationCategory> {
     const cohort = {} as Cohort<PopulationCategory>;
     for (const occ of OCCUPATIONS) {
-        cohort[occ] = {} as CohortByOccupation<PopulationCategory>;
+        cohort[occ] = {} as WorkforceCohort<PopulationCategory>;
         for (const edu of educationLevelKeys) {
             cohort[occ][edu] = {} as Record<Skill, PopulationCategory>;
             for (const skill of SKILL) {
@@ -116,8 +115,8 @@ export function makePopulationCohort(): Cohort<PopulationCategory> {
  * Create a single empty workforce cohort for one age bucket.
  * Shape: { [EducationLevelType]: { [Skill]: WorkforceCategory } }
  */
-export function makeWorkforceCohort(): CohortByOccupation<WorkforceCategory> {
-    const cohort = {} as CohortByOccupation<WorkforceCategory>;
+export function makeWorkforceCohort(): WorkforceCohort<WorkforceCategory> {
+    const cohort = {} as WorkforceCohort<WorkforceCategory>;
     for (const edu of educationLevelKeys) {
         cohort[edu] = {} as Record<Skill, WorkforceCategory>;
         for (const skill of SKILL) {
@@ -143,7 +142,7 @@ export function makePopulationDemography(): Cohort<PopulationCategory>[] {
  * Create a full workforce demography: CohortByOccupation<WorkforceCategory>[]
  * of length MAX_AGE + 1 (ages 0 … MAX_AGE), all zeroed.
  */
-export function makeWorkforceDemography(): CohortByOccupation<WorkforceCategory>[] {
+export function makeWorkforceDemography(): WorkforceCohort<WorkforceCategory>[] {
     return Array.from({ length: MAX_AGE + 1 }, () => makeWorkforceCohort());
 }
 
@@ -157,6 +156,7 @@ export function makeWorkforceDemography(): CohortByOccupation<WorkforceCategory>
 export function makePopulation(): Population {
     return {
         demography: makePopulationDemography(),
+        summedPopulation: makePopulationCohort(),
         lastTransferMatrix: [],
     };
 }
@@ -568,4 +568,43 @@ export function sumActiveForEdu(agent: Agent, planetId: string, edu: EducationLe
         }
     }
     return total;
+}
+export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>, planet: Planet, label: string): void {
+    for (const edu of educationLevelKeys) {
+        // Sum employed in population across all ages and skills
+        let popEmployed = 0;
+        for (const cohort of planet.population.demography) {
+            for (const skill of SKILL) {
+                popEmployed += cohort.employed[edu][skill].total;
+            }
+        }
+
+        // Sum workforce across all agents on this planet.
+        // NOTE: departingFired is a *subset tag* on departing — not an
+        // additional pool.  Only active + departing are counted.
+        let wfTotal = 0;
+        for (const agent of agents.values()) {
+            const wf = agent.assets[planet.id]?.workforceDemography;
+            if (!wf) {
+                continue;
+            }
+            for (let age = 0; age < wf.length; age++) {
+                for (const skill of SKILL) {
+                    const cell = wf[age][edu][skill];
+                    wfTotal += cell.active;
+                    wfTotal += cell.departing.reduce((s: number, d: number) => s + d, 0);
+                }
+            }
+        }
+
+        if (popEmployed !== wfTotal) {
+            const msg =
+                `[populationBridge] workforce consistency violation after ${label}: ` +
+                `planet=${planet.id} edu=${edu}: population(employed)=${popEmployed} ≠ workforce=${wfTotal}`;
+            if (process.env.SIM_DEBUG === '1') {
+                throw new Error(msg);
+            }
+            console.warn(msg);
+        }
+    }
 }

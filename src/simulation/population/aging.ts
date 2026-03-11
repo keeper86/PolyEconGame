@@ -7,15 +7,9 @@
 
 import { stochasticRound } from '../utils/stochasticRound';
 import type { EducationLevelType } from './education';
-import { educationGraduationProbabilityForAge, educationLevels, ageDropoutProbabilityForEducation } from './education';
-import type { Population, Cohort, PopulationCategory, Skill, Occupation } from './population';
-import {
-    MAX_AGE,
-    createEmptyCohort,
-    nullPopulationCategory,
-    forEachPopulationCohort,
-    mergePopulationCategory,
-} from './population';
+import { ageDropoutProbabilityForEducation, educationGraduationProbabilityForAge, educationLevels } from './education';
+import type { Cohort, Occupation, Population, PopulationCategory, Skill } from './population';
+import { MAX_AGE, createEmptyPopulationCohort, forEachPopulationCohort, mergePopulationCategory } from './population';
 
 type CategoryWithIndex = {
     occ: Occupation;
@@ -95,7 +89,7 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
         }
     }
 
-    demo[0] = createEmptyCohort(nullPopulationCategory);
+    demo[0] = createEmptyPopulationCohort();
 };
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import type { CohortByOccupation, WorkforceCategory } from '../population/population';
+import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import { SKILL } from '../population/population';
 import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { stochasticRound } from '../utils/stochasticRound';
@@ -18,7 +18,7 @@ import type { Agent, Planet } from './planet';
  * across the age-resolved workforce.  Only considers active workers.
  * Returns 30 (a sensible default) when no workers are present.
  */
-function weightedMeanAgeForEdu(workforce: CohortByOccupation<WorkforceCategory>[], edu: EducationLevelType): number {
+function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
     let count = 0;
     for (let age = 0; age < workforce.length; age++) {

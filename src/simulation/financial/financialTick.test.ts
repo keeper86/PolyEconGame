@@ -11,22 +11,22 @@ import { DEFAULT_WAGE_PER_EDU, postProductionFinancialTick, preProductionFinanci
 
 import { SKILL } from '../population/population';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
-import { hireFromPopulation } from '../workforce/populationBridge';
 
 import type { EducationLevelType } from '../population/population';
+import { hireFromPopulation } from '../workforce/workforce';
 
 /**
  * Hire workers from the planet's unoccupied pool into the agent's workforce.
  * Moves population from 'unoccupied' → 'employed' and updates the agent's
  * workforce demography to match.
  */
-function hireWorkers(planet: Planet, agent: Agent, edu: string, count: number): number {
-    const { count: hired, hiredByAge } = hireFromPopulation(planet, edu as EducationLevelType, 'novice', count);
+function hireWorkers(planet: Planet, agent: Agent, edu: EducationLevelType, count: number): number {
+    const { count: hired, hiredByAge } = hireFromPopulation(planet, edu, count);
     // Reflect hires in agent workforce demography
     const wf = agent.assets[planet.id].workforceDemography!;
     for (let age = 0; age < hiredByAge.length; age++) {
-        if (hiredByAge[age] > 0) {
-            wf[age][edu as 'none'].novice.active += hiredByAge[age];
+        if (hiredByAge[age].novice > 0) {
+            wf[age][edu].novice.active += hiredByAge[age].novice;
         }
     }
     return hired;
@@ -206,11 +206,11 @@ describe('money conservation', () => {
         planet.wagePerEdu = { none: 1.0 };
         agent.assets[planet.id]!.deposits = 0;
 
-        const { count: hired, hiredByAge } = hireFromPopulation(planet, 'none', 'novice', 100);
+        const { count: hired, hiredByAge } = hireFromPopulation(planet, 'none', 100);
         const wf = agent.assets[planet.id].workforceDemography!;
         for (let age = 0; age < hiredByAge.length; age++) {
-            if (hiredByAge[age] > 0) {
-                wf[age].none.novice.active += hiredByAge[age];
+            if (hiredByAge[age].novice > 0) {
+                wf[age].none.novice.active += hiredByAge[age].novice;
             }
         }
 
