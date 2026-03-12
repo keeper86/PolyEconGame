@@ -9,6 +9,7 @@ import PlanetDemography from '@/app/planets/PlanetDemography';
 import WealthDistributionChart from '@/app/planets/WealthDistributionChart';
 import { Page } from '@/components/client/Page';
 import TickDisplay from '@/components/client/TickDisplay';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
 import type { Planet } from '@/simulation/planet/planet';
@@ -21,6 +22,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PlanetOverviewPanel from '../PlanetOverviewPanel';
 import { formatNumbers } from '@/lib/utils';
+import WealthByAgeChart from '../WealthByAgeChart';
 
 const REFETCH_INTERVAL_MS = 1000;
 
@@ -87,50 +89,60 @@ export default function PlanetDetailPage() {
                 <div className='space-y-6'>
                     {/* Top-level stats */}
                     <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                <Users className='h-3.5 w-3.5' />
-                                Population
-                            </div>
-                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(populationTotal)}</div>
-                        </div>
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                <Globe className='h-3.5 w-3.5' />
-                                Position
-                            </div>
-                            <div className='text-sm font-semibold'>
-                                {planet.position
-                                    ? `${planet.position.x}, ${planet.position.y}, ${planet.position.z}`
-                                    : '—'}
-                            </div>
-                        </div>
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                <Wheat className='h-3.5 w-3.5' />
-                                Starvation
-                            </div>
-                            <div
-                                className={`text-lg font-semibold tabular-nums ${
-                                    starvationLevel > 0.1
-                                        ? 'text-red-500'
-                                        : starvationLevel > 0
-                                          ? 'text-amber-500'
-                                          : 'text-green-600'
-                                }`}
-                            >
-                                {(starvationLevel * 100).toFixed(0)}%
-                            </div>
-                        </div>
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                <Landmark className='h-3.5 w-3.5' />
-                                Money supply
-                            </div>
-                            <div className='text-lg font-semibold tabular-nums'>
-                                {planet.bank ? formatNumbers(planet.bank.deposits) : '—'}
-                            </div>
-                        </div>
+                        <Card>
+                            <CardContent className='pt-4'>
+                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
+                                    <Users className='h-3.5 w-3.5' />
+                                    Population
+                                </div>
+                                <div className='text-lg font-semibold tabular-nums'>
+                                    {formatNumbers(populationTotal)}
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className='pt-4'>
+                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
+                                    <Globe className='h-3.5 w-3.5' />
+                                    Position
+                                </div>
+                                <div className='text-sm font-semibold'>
+                                    {planet.position
+                                        ? `${planet.position.x}, ${planet.position.y}, ${planet.position.z}`
+                                        : '—'}
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className='pt-4'>
+                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
+                                    <Wheat className='h-3.5 w-3.5' />
+                                    Starvation
+                                </div>
+                                <div
+                                    className={`text-lg font-semibold tabular-nums ${
+                                        starvationLevel > 0.1
+                                            ? 'text-red-500'
+                                            : starvationLevel > 0
+                                              ? 'text-amber-500'
+                                              : 'text-green-600'
+                                    }`}
+                                >
+                                    {(starvationLevel * 100).toFixed(0)}%
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className='pt-4'>
+                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
+                                    <Landmark className='h-3.5 w-3.5' />
+                                    Money supply
+                                </div>
+                                <div className='text-lg font-semibold tabular-nums'>
+                                    {planet.bank ? formatNumbers(planet.bank.deposits) : '—'}
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Tabbed content */}
@@ -164,6 +176,7 @@ export default function PlanetDetailPage() {
                                 wagePerEdu={planet.wagePerEdu}
                                 priceLevel={planet.priceLevel}
                             />
+                            <WealthByAgeChart population={planet.population} />
                             <WealthDistributionChart population={planet.population} />
                             <IntergenerationalTransferChart population={planet.population} />
                         </TabsContent>
@@ -174,20 +187,22 @@ export default function PlanetDetailPage() {
                             <FoodBufferChart population={planet.population} />
 
                             {/* Price level history chart */}
-                            <div className='border rounded-md p-3 space-y-2'>
-                                <h4 className='text-sm font-semibold flex items-center gap-1.5'>
-                                    <Wheat className='h-4 w-4 text-muted-foreground' />
-                                    Price History
-                                </h4>
-                                <FoodPriceHistoryChart
-                                    planetId={planetId}
-                                    live={{
-                                        tick,
-                                        foodPrice: planet.priceLevel ?? 0,
-                                        starvationLevel,
-                                    }}
-                                />
-                            </div>
+                            <Card>
+                                <CardContent className='pt-4 space-y-2'>
+                                    <h4 className='text-sm font-semibold flex items-center gap-1.5'>
+                                        <Wheat className='h-4 w-4 text-muted-foreground' />
+                                        Price History
+                                    </h4>
+                                    <FoodPriceHistoryChart
+                                        planetId={planetId}
+                                        live={{
+                                            tick,
+                                            foodPrice: planet.priceLevel ?? 0,
+                                            starvationLevel,
+                                        }}
+                                    />
+                                </CardContent>
+                            </Card>
                         </TabsContent>
                     </Tabs>
                 </div>

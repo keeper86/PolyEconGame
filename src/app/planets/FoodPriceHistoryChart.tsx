@@ -45,24 +45,16 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
         }))
         .sort((a, b) => a.year - b.year);
 
-    const maxYear = Math.ceil(plotData[plotData.length - 1].year);
+    const maxYear = plotData.length > 0 ? plotData[plotData.length - 1]?.year : 0;
 
     // Append a live data point at the current tick so the chart extends
     // to "now" instead of stopping at the last yearly snapshot.
-    if (live && (plotData.length === 0 || live.tick / TICKS_PER_YEAR > plotData[plotData.length - 1].year)) {
+    if (live) {
         plotData.push({
             year: live.tick / TICKS_PER_YEAR,
             foodPrice: live.foodPrice,
             starvationPct: live.starvationLevel * 100,
         });
-    }
-
-    if (plotData.length === 0) {
-        return (
-            <div className='text-xs text-muted-foreground'>
-                No price history yet — recorded every snapshot interval.
-            </div>
-        );
     }
 
     const lastRow = plotData[plotData.length - 1];

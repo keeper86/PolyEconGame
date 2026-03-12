@@ -111,22 +111,6 @@ export const getLatestAgents = () =>
         });
 
 /**
- * Population time-series for a single planet (newest-first).
- * NOTE: Still reads from the database because it requires historical data
- * spanning many ticks.  Will be replaced once lightweight statistics
- * persistence is implemented.
- */
-// Historical planet population API removed — snapshot persistence no longer used.
-
-/**
- * Resource history (storage / production / consumption) for a single agent (newest-first).
- * NOTE: Still reads from the database because it requires historical data
- * spanning many ticks.  Will be replaced once lightweight statistics
- * persistence is implemented.
- */
-// Historical agent resource API removed — snapshot persistence no longer used.
-
-/**
  * Lightweight summaries for the agent list page.
  * Returns only the data needed for AgentSummaryCard — no full Agent blob.
  */

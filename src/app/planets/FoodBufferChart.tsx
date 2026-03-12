@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { educationLevelKeys } from '@/simulation/population/education';
-import type { Population } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { formatNumbers } from '@/lib/utils';
+import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
+import { educationLevelKeys } from '@/simulation/population/education';
+import type { Population, Skill } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import React, { useRef, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -45,6 +46,75 @@ const OCC_LABELS: Record<string, string> = {
 };
 
 const formatNumbersPct = (n: number): string => `${n.toFixed(0)}`;
+
+/* ------------------------------------------------------------------ */
+/*  Skill labels + colors                                              */
+/* ------------------------------------------------------------------ */
+
+const SKILL_LABELS: Record<Skill, string> = {
+    novice: 'Novice',
+    professional: 'Pro',
+    expert: 'Expert',
+};
+
+/** Accent colors for the three skill levels (bg when active). */
+const SKILL_COLORS: Record<Skill, string> = {
+    novice: '#94a3b8', // slate-400
+    professional: '#60a5fa', // blue-400
+    expert: '#f59e0b', // amber-400
+};
+
+/* ------------------------------------------------------------------ */
+/*  Skill filter — compact colored toggle buttons                     */
+/* ------------------------------------------------------------------ */
+
+function SkillFilter({ selected, onChange }: { selected: Set<Skill>; onChange: (s: Set<Skill>) => void }) {
+    const allSelected = SKILL.every((s) => selected.has(s));
+    const toggle = (skill: Skill) => {
+        const next = new Set(selected);
+        if (next.has(skill)) {
+            next.delete(skill);
+        } else {
+            next.add(skill);
+        }
+        // Prevent deselecting the last active skill
+        if (next.size > 0) {
+            onChange(next);
+        }
+    };
+    return (
+        <div className='flex items-center gap-1'>
+            <button
+                className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted/80'
+                disabled={allSelected}
+                onClick={() => onChange(new Set(SKILL))}
+            >
+                All
+            </button>
+            {SKILL.map((skill) => {
+                const active = selected.has(skill);
+                return (
+                    <button
+                        key={skill}
+                        onClick={() => toggle(skill)}
+                        className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors'
+                        style={
+                            active
+                                ? { background: SKILL_COLORS[skill], borderColor: SKILL_COLORS[skill], color: '#fff' }
+                                : {
+                                      background: 'transparent',
+                                      borderColor: 'transparent',
+                                      color: 'var(--muted-foreground)',
+                                  }
+                        }
+                    >
+                        {SKILL_LABELS[skill]}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
 
 /* ------------------------------------------------------------------ */
 /*  View modes                                                         */
@@ -162,7 +232,11 @@ function TopEdgeRect(props: any) {
  *   bar stacked on top for the "empty" portion — glass-half-full look.
  */
 export default function FoodBufferChart({ population }: Props): React.ReactElement {
-    const [group, setGroup] = useState<GroupMode>('education');
+    const [group, setGroup] = useState<GroupMode>('occupation');
+    const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
+
+    /** Remember the last non-empty Y domain so the chart doesn't collapse. */
+    const lastYDomainRef = useRef<[number, number]>([0, 1]);
 
     const demography = population.demography;
 
@@ -197,6 +271,9 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
                 for (const skill of SKILL) {
+                    if (!activeSkills.has(skill)) {
+                        continue;
+                    }
                     const cat = cohort[occ][edu][skill];
                     if (cat.total > 0) {
                         agePop += cat.total;
@@ -252,9 +329,6 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
     }
 
     const hasData = eduData.length > 0;
-    if (!hasData) {
-        return <div className='text-xs text-muted-foreground'>No food buffer data available</div>;
-    }
 
     /* -------------------------------------------------------------- */
     /*  Derived                                                        */
@@ -266,37 +340,48 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
     const data = group === 'education' ? eduData : occData;
     const tooltip = makeTooltip(keys, labels, colors);
 
+    // Compute the max Y from current data and persist it; fall back to last known value when empty.
+    if (hasData) {
+        let maxY = 0;
+        for (const row of data) {
+            for (const key of keys) {
+                const filled = (row[`${key}_filled`] ?? 0) + (row[`${key}_empty`] ?? 0);
+                if (filled > maxY) {
+                    maxY = filled;
+                }
+            }
+        }
+        lastYDomainRef.current = [0, maxY > 0 ? maxY : 1];
+    }
+    const yDomain = lastYDomainRef.current;
+
     return (
-        <div>
-            <h4 className='text-sm font-medium mb-2'>Food buffers by age</h4>
-
-            {/* Controls */}
-            <div className='flex items-center gap-3 mb-1'>
-                <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
-                    <TabsList className='h-7'>
-                        <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                            By education
-                        </TabsTrigger>
-                        <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                            By occupation
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
-
-            <ColorLegend keys={keys} labels={labels} colors={colors} />
-
-            <div style={{ width: '100%', height: 220 }}>
-                <ResponsiveContainer width='100%' height='100%'>
-                    <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }} barCategoryGap='20%'>
+        <Card>
+            <CardHeader className='pb-2'>
+                <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
+                    <CardTitle className='text-sm font-medium shrink-0'>Food buffers by age</CardTitle>
+                    <div className='flex flex-wrap items-center gap-2'>
+                        <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
+                            <TabsList className='h-7'>
+                                <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
+                                    By occupation
+                                </TabsTrigger>
+                                <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
+                                    By education
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        <SkillFilter selected={activeSkills} onChange={setActiveSkills} />
+                    </div>
+                </div>
+                <ColorLegend keys={keys} labels={labels} colors={colors} />
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width='100%' minHeight={220} minWidth={300} style={{ marginLeft: '-20px' }}>
+                    <BarChart data={data} margin={{ top: 5, right: -100, bottom: 5, left: 0 }} barCategoryGap='5%'>
                         <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                         <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                        <YAxis
-                            tick={{ fontSize: 10 }}
-                            tickFormatter={formatNumbersPct}
-                            domain={[0, 1]}
-                            label={{ value: 'Population', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }}
-                        />
+                        <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         <Tooltip content={tooltip as any} />
 
@@ -324,7 +409,7 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
                         ])}
                     </BarChart>
                 </ResponsiveContainer>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

@@ -83,17 +83,20 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
     let snapshotDb: import('knex').Knex | null = null;
 
-    function getSnapshotDb(): import('knex').Knex | null {
+    async function getSnapshotDb(): Promise<import('knex').Knex | null> {
         if (snapshotDb) {
             return snapshotDb;
         }
         try {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const knexModule = require('knex') as typeof import('knex').default;
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const knexConfig = require('../../knexfile') as { default: Record<string, import('knex').Knex.Config> };
+            // Use dynamic import() instead of require() so this works in both
+            // the dev (tsx/ts-node) environment and the esbuild ESM bundle
+            // (.next/standalone/worker.mjs) where `require` is not available.
+            const { default: knexModule } = await import('knex');
+            const { default: knexConfig } = (await import('../../knexfile')) as {
+                default: Record<string, import('knex').Knex.Config>;
+            };
             const isDevelopment = process.env.NODE_ENV === 'development';
-            const dbConfig = isDevelopment ? knexConfig.default.development : knexConfig.default.production;
+            const dbConfig = isDevelopment ? knexConfig.development : knexConfig.production;
 
             if (!dbConfig) {
                 console.warn('[worker] No knex config found — snapshot persistence disabled');
@@ -132,7 +135,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     let recovered = false;
 
     try {
-        const db = getSnapshotDb();
+        const db = await getSnapshotDb();
         if (db) {
             const latestRow = await getLatestGameSnapshot(db);
             if (latestRow) {
@@ -213,15 +216,15 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
-        const db = getSnapshotDb();
-        if (!db) {
-            return;
-        }
-
         snapshotInFlight = true;
         const gs = fromImmutableGameState(snapshot);
 
         void (async () => {
+            const db = await getSnapshotDb();
+            if (!db) {
+                snapshotInFlight = false;
+                return;
+            }
             const start = Date.now();
             try {
                 const snapshotData = serializeGameState(gs);

@@ -33,7 +33,7 @@ const WORKER_ENTRY = 'src/simulation/worker.ts';
 const BUNDLE_OUTPUT = path.join(STANDALONE_DIR, 'worker.mjs');
 
 /**
- * esbuild plugin that rewrites the `require('../../knexfile')` import
+ * esbuild plugin that rewrites the `import('../../knexfile')` import
  * in worker.ts to `./knexfile.js` — the correct path relative to
  * the bundled output at `.next/standalone/worker.mjs`.
  */
