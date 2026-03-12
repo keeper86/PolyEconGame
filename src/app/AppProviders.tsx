@@ -6,6 +6,7 @@ import type { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react';
 import { useLogger } from '../hooks/useLogger';
+import { SimulationOfflineBanner } from '@/components/client/SimulationOfflineBanner';
 
 function makeQueryClient() {
     return new QueryClient({
@@ -53,6 +54,7 @@ export default function AppProviders({ children, session }: { children: React.Re
         <QueryClientProvider client={queryClient}>
             <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
                 <AttachLoggerToQueryClient queryClient={queryClient} />
+                <SimulationOfflineBanner />
                 <SessionProvider session={session}>{children}</SessionProvider>
             </TRPCProvider>
         </QueryClientProvider>

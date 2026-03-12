@@ -2,13 +2,17 @@
 
 import React from 'react';
 import { useTRPC } from '@/lib/trpc';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useQuery } from '@tanstack/react-query';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
 
+/** Refetch interval — matches the snapshot interval so data updates whenever
+ *  a new cold snapshot (and population history row) is written. */
+const REFETCH_INTERVAL_MS = 1000;
+
 type Props = {
     planetId: string;
-    /** Live values from the already-fetched planet food data (current tick). */
+    /** Live values from the already-fetched planet detail (current tick). */
     live?: {
         tick: number;
         foodPrice: number;
@@ -24,9 +28,10 @@ type Props = {
 export default function FoodPriceHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
 
-    const { data, isLoading } = useSimulationQuery(
-        trpc.simulation.getPlanetPopulationHistory.queryOptions({ planetId }),
-    );
+    const { data, isLoading } = useQuery({
+        ...trpc.simulation.getPlanetPopulationHistory.queryOptions({ planetId }),
+        refetchInterval: REFETCH_INTERVAL_MS,
+    });
 
     if (isLoading) {
         return <div className='text-xs text-muted-foreground'>Loading price history…</div>;
