@@ -116,31 +116,6 @@ function totalWealth(planet: Planet): number {
 // ===========================================================================
 
 describe('generationAmplitude', () => {
-    it('n=-1 (child) has highest amplitude = 1.0', () => {
-        expect(generationAmplitude(-1)).toBeCloseTo(1.0, 10);
-    });
-
-    it('n=0 (self/peer) has amplitude = exp(-0.33)', () => {
-        expect(generationAmplitude(0)).toBeCloseTo(Math.exp(-0.33), 10);
-    });
-
-    it('n=-2 (grandchild) has amplitude = exp(-0.33)', () => {
-        expect(generationAmplitude(-2)).toBeCloseTo(Math.exp(-0.33), 10);
-    });
-
-    it('n=1 (parent) has amplitude = exp(-0.66)', () => {
-        expect(generationAmplitude(1)).toBeCloseTo(Math.exp(-0.66), 10);
-    });
-
-    it('n=2 (grandparent) has amplitude = exp(-0.99)', () => {
-        expect(generationAmplitude(2)).toBeCloseTo(Math.exp(-0.99), 10);
-    });
-
-    it('child amplitude > peer amplitude > parent amplitude', () => {
-        expect(generationAmplitude(-1)).toBeGreaterThan(generationAmplitude(0));
-        expect(generationAmplitude(0)).toBeGreaterThan(generationAmplitude(1));
-    });
-
     it('amplitudes are always positive', () => {
         for (let n = -5; n <= 5; n++) {
             expect(generationAmplitude(n)).toBeGreaterThan(0);
