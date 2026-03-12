@@ -1,24 +1,19 @@
 'use client';
 
 import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import NutritionHeatmapChart from './NutritionHeatmapChart';
 import FoodBufferChart from './FoodBufferChart';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
 
-const REFETCH_INTERVAL_MS = 1_000;
-
 export default function FoodPage() {
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
     const trpc = useTRPC();
 
-    const { data, isLoading } = useQuery({
-        ...trpc.simulation.getPlanetFood.queryOptions({ planetId }),
-        refetchInterval: REFETCH_INTERVAL_MS,
-    });
+    const { data, isLoading } = useSimulationQuery(trpc.simulation.getPlanetFood.queryOptions({ planetId }));
 
     if (isLoading) {
         return <div className='text-sm text-muted-foreground p-4'>Loading food data…</div>;

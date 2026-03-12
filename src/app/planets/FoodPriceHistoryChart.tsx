@@ -8,7 +8,7 @@ import { TICKS_PER_YEAR } from '@/simulation/constants';
 
 type Props = {
     planetId: string;
-    /** Live values from the already-fetched planet food data (current tick). */
+    /** Live values from the already-fetched planet detail (current tick). */
     live?: {
         tick: number;
         foodPrice: number;
@@ -24,9 +24,9 @@ type Props = {
 export default function FoodPriceHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
 
-    const { data, isLoading } = useSimulationQuery(
-        trpc.simulation.getPlanetPopulationHistory.queryOptions({ planetId }),
-    );
+    const { data, isLoading } = useSimulationQuery({
+        ...trpc.simulation.getPlanetPopulationHistory.queryOptions({ planetId }),
+    });
 
     if (isLoading) {
         return <div className='text-xs text-muted-foreground'>Loading price history…</div>;

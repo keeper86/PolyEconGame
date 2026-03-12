@@ -3,17 +3,12 @@
 import PlanetSummaryCard from '@/app/planets/PlanetSummaryCard';
 import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
-
-const REFETCH_INTERVAL_MS = 1000;
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 
 export default function PlanetsPage() {
     const trpc = useTRPC();
 
-    const { isLoading, data } = useQuery({
-        ...trpc.simulation.getLatestPlanetSummaries.queryOptions(),
-        refetchInterval: REFETCH_INTERVAL_MS,
-    });
+    const { isLoading, data } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
 
     const tick = data?.tick ?? 0;
     const planetSummaries = data?.planets ?? [];

@@ -2,17 +2,12 @@
 
 import { useTRPC } from '@/lib/trpc';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
-import { useQuery } from '@tanstack/react-query';
-
-const REFETCH_INTERVAL_MS = 1000;
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 
 /** Client wrapper that fetches the current tick from the simulation and displays it. */
 export default function TickDisplay() {
     const trpc = useTRPC();
-    const { data } = useQuery({
-        ...trpc.simulation.getCurrentTick.queryOptions(),
-        refetchInterval: REFETCH_INTERVAL_MS,
-    });
+    const { data } = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions());
     const tick = data?.tick ?? 0;
 
     const mapTickToDate = (tick: number): string => {

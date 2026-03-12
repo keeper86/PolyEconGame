@@ -1,19 +1,14 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import AgentSummaryCard from '@/app/agents/AgentSummaryCard';
 import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
 
-const REFETCH_INTERVAL_MS = 1000;
-
 export default function AgentsPage() {
     const trpc = useTRPC();
 
-    const { data, isLoading } = useQuery({
-        ...trpc.simulation.getAgentListSummaries.queryOptions(),
-        refetchInterval: REFETCH_INTERVAL_MS,
-    });
+    const { data, isLoading } = useSimulationQuery(trpc.simulation.getAgentListSummaries.queryOptions());
 
     const tick = data?.tick ?? 0;
     const agents = data?.agents ?? [];

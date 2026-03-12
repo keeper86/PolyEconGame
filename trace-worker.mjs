@@ -26,7 +26,9 @@
  *
  *   The solution: bundle all local TypeScript sources into one .mjs file
  *   at build time.  Packages that only the worker uses (immutable,
- *   @msgpack/msgpack, dotenv, dotenv-expand) are inlined into the bundle.
+ *   @msgpack/msgpack, dotenv, dotenv-expand) are inlined into the bundle,
+ *   including knexfile.js itself (so its dotenv imports are satisfied at
+ *   bundle time and no loose knexfile.js is needed in the production image).
  *   Only knex is kept external — it is in serverExternalPackages and
  *   therefore already traced by Next.js into the standalone node_modules.
  *
@@ -42,17 +44,26 @@ const WORKER_ENTRY = 'src/simulation/worker.ts';
 const BUNDLE_OUTPUT = path.join(STANDALONE_DIR, 'worker.mjs');
 
 /**
- * esbuild plugin that rewrites the `import('../../knexfile.js')` import
- * in worker.ts to `./knexfile.js` — the correct path relative to
- * the bundled output at `.next/standalone/worker.mjs`.
+ * esbuild plugin that resolves the `import('../../knexfile.js')` dynamic
+ * import in worker.ts to the actual knexfile.js path on disk so that
+ * esbuild can bundle it (and its dotenv/dotenv-expand dependencies) inline.
+ *
+ * Previously knexfile.js was kept external and copied next to the bundle,
+ * but that caused a hard failure in production because dotenv/dotenv-expand
+ * are not present in the standalone node_modules and the top-level ESM
+ * import statements in knexfile.js cannot be guarded by a runtime check.
+ * Inlining knexfile.js into the bundle resolves the issue: esbuild bundles
+ * knexfile.js and its dotenv/dotenv-expand dependencies directly into the
+ * worker output, so no loose knexfile.js or dotenv modules are needed and
+ * the runtime is not required to resolve those files from node_modules.
  */
 const knexfilePlugin = {
-    name: 'knexfile-rewrite',
+    name: 'knexfile-inline',
     setup(build) {
-        // Intercept the `../../knexfile.js` specifier used in worker.ts.
-        build.onResolve({ filter: /\.\.\/\.\.\/knexfile\.js$/ }, () => ({
-            path: './knexfile.js',
-            external: true,
+        // Rewrite the `../../knexfile.js` specifier to the real absolute
+        // path so esbuild can find and bundle the file.
+        build.onResolve({ filter: /\.\.\/\.\.\/knexfile\.js$/ }, (args) => ({
+            path: path.resolve(path.dirname(args.importer), args.path),
         }));
     },
 };
@@ -81,9 +92,9 @@ async function main() {
 
         // Only keep packages external that Next.js already traced into the
         // standalone node_modules (via serverExternalPackages in next.config.js).
-        // Worker-only packages (immutable, @msgpack/msgpack) are inlined.
-        // dotenv and dotenv-expand are inlined too — they are imported by
-        // knexfile.js and are NOT traced by Next.js into standalone/node_modules.
+        // Worker-only packages (immutable, @msgpack/msgpack, dotenv,
+        // dotenv-expand) are inlined — including those transitively pulled in
+        // by knexfile.js, which is also bundled inline (see knexfilePlugin).
         external: ['knex'],
 
         plugins: [knexfilePlugin],
@@ -98,17 +109,6 @@ async function main() {
     if (result.errors.length > 0) {
         console.error('[trace-worker] esbuild errors:', result.errors);
         process.exit(1);
-    }
-
-    // Copy knexfile.js next to the bundle so the rewritten
-    // import('./knexfile.js') resolves at runtime.
-    const knexSrc = path.join(cwd, 'knexfile.js');
-    const knexDst = path.join(standaloneDir, 'knexfile.js');
-    try {
-        await fs.copyFile(knexSrc, knexDst);
-        console.log('[trace-worker] Copied knexfile.js into standalone.');
-    } catch (err) {
-        console.warn('[trace-worker] Could not copy knexfile.js:', err.message);
     }
 
     const stat = await fs.stat(path.join(cwd, BUNDLE_OUTPUT));

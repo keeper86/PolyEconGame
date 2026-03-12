@@ -8,14 +8,12 @@ import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
 import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facilities';
 import type { EducationLevelType } from '@/simulation/population/education';
-import { useQuery } from '@tanstack/react-query';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { route } from 'nextjs-routes';
 import React from 'react';
-
-const REFETCH_INTERVAL_MS = 1000;
 
 /* ------------------------------------------------------------------ */
 /*  Storage table                                                      */
@@ -92,10 +90,9 @@ export default function AgentPlanetDetailPage() {
     const planetId = params.planetId;
     const trpc = useTRPC();
 
-    const { data, isLoading } = useQuery({
-        ...trpc.simulation.getAgentPlanetDetail.queryOptions({ agentId, planetId }),
-        refetchInterval: REFETCH_INTERVAL_MS,
-    });
+    const { data, isLoading } = useSimulationQuery(
+        trpc.simulation.getAgentPlanetDetail.queryOptions({ agentId, planetId }),
+    );
 
     const tick = data?.tick ?? 0;
     const detail = data?.detail as {

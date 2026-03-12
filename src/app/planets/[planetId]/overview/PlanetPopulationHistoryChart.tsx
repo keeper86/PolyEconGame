@@ -2,11 +2,9 @@
 
 import React from 'react';
 import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import PlanetPopulationChartRecharts from './PlanetPopulationChartRecharts';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
-
-const REFETCH_INTERVAL_MS = 1000;
 
 type Props = {
     planetId: string;
@@ -20,10 +18,9 @@ type Props = {
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
 
-    const { data, isLoading } = useQuery({
-        ...trpc.simulation.getPlanetPopulationHistory.queryOptions({ planetId }),
-        refetchInterval: REFETCH_INTERVAL_MS,
-    });
+    const { data, isLoading } = useSimulationQuery(
+        trpc.simulation.getPlanetPopulationHistory.queryOptions({ planetId }),
+    );
 
     if (isLoading) {
         return <div className='text-xs text-muted-foreground'>Loading population history…</div>;

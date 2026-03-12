@@ -74,7 +74,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # the workerManager expects at runtime.
 COPY --from=worker-builder --chown=nextjs:nodejs /app/.next/standalone/worker.mjs ./worker.mjs
 COPY --from=worker-builder --chown=nextjs:nodejs /app/.next/standalone/worker.mjs.map ./worker.mjs.map
-COPY --from=worker-builder --chown=nextjs:nodejs /app/.next/standalone/knexfile.js ./knexfile.js
 
 USER nextjs
 
