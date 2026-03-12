@@ -27,6 +27,11 @@ import type { WorkerErrorResponse, WorkerQueryMessage, WorkerSuccessResponse } f
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { createInitialGameState } from './utils/initialWorld';
+// Static import so esbuild can inline knexfile.js (and its dotenv/dotenv-expand
+// dependencies) directly into the bundle.  A dynamic import() of a local file
+// is emitted as a separate chunk by esbuild and cannot be resolved at runtime
+// inside the standalone production image.
+import knexConfig from '../../knexfile.js';
 
 export type InboundMessage =
     | { type: 'ping' }
@@ -88,13 +93,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return snapshotDb;
         }
         try {
-            // Use dynamic import() instead of require() so this works in both
+            // Use dynamic import() for knex itself so this works in both
             // the dev (tsx/ts-node) environment and the esbuild ESM bundle
             // (.next/standalone/worker.mjs) where `require` is not available.
             const { default: knexModule } = await import('knex');
-            const { default: knexConfig } = (await import('../../knexfile.js')) as {
-                default: Record<string, import('knex').Knex.Config>;
-            };
             const isDevelopment = process.env.NODE_ENV === 'development';
             const dbConfig = isDevelopment ? knexConfig.development : knexConfig.production;
 

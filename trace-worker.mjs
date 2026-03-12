@@ -44,26 +44,42 @@ const WORKER_ENTRY = 'src/simulation/worker.ts';
 const BUNDLE_OUTPUT = path.join(STANDALONE_DIR, 'worker.mjs');
 
 /**
- * esbuild plugin that resolves the `import('../../knexfile.js')` dynamic
- * import in worker.ts to the actual knexfile.js path on disk so that
- * esbuild can bundle it (and its dotenv/dotenv-expand dependencies) inline.
+ * esbuild plugin that inlines knexfile.js into the bundle and stubs out
+ * dotenv/dotenv-expand.
  *
- * Previously knexfile.js was kept external and copied next to the bundle,
- * but that caused a hard failure in production because dotenv/dotenv-expand
- * are not present in the standalone node_modules and the top-level ESM
- * import statements in knexfile.js cannot be guarded by a runtime check.
- * Inlining knexfile.js into the bundle resolves the issue: esbuild bundles
- * knexfile.js and its dotenv/dotenv-expand dependencies directly into the
- * worker output, so no loose knexfile.js or dotenv modules are needed and
- * the runtime is not required to resolve those files from node_modules.
+ * Two things need to happen when knexfile.js is bundled for production:
+ *
+ * 1. The `../../knexfile.js` specifier in worker.ts must resolve to the real
+ *    file on disk so esbuild can inline it.
+ *
+ * 2. knexfile.js has top-level `import dotenv from 'dotenv'` statements.
+ *    dotenv is a CJS package; bundling it into an ESM output causes esbuild
+ *    to emit `require()` shims that fail at runtime ("Dynamic require of 'fs'
+ *    is not supported").  We cannot use top-level await in knexfile.js either
+ *    because the knex CLI loads it via require().
+ *
+ *    The solution: intercept the dotenv/dotenv-expand imports during the
+ *    bundle step and replace them with empty ESM stubs.  In production the
+ *    `if (NODE_ENV !== 'production')` guard in knexfile.js means their
+ *    exports are never called, so stubbing them out is safe.
  */
 const knexfilePlugin = {
     name: 'knexfile-inline',
     setup(build) {
-        // Rewrite the `../../knexfile.js` specifier to the real absolute
-        // path so esbuild can find and bundle the file.
+        // Resolve the knexfile specifier to its real path so esbuild inlines it.
         build.onResolve({ filter: /\.\.\/\.\.\/knexfile\.js$/ }, (args) => ({
             path: path.resolve(path.dirname(args.importer), args.path),
+        }));
+
+        // Replace dotenv and dotenv-expand with no-op stubs so their CJS
+        // internals never end up in the ESM bundle.
+        build.onResolve({ filter: /^dotenv(-expand)?$/ }, (args) => ({
+            path: args.path,
+            namespace: 'dotenv-stub',
+        }));
+        build.onLoad({ filter: /.*/, namespace: 'dotenv-stub' }, () => ({
+            contents: 'export default {}; export const config = () => ({}); export const expand = () => ({});',
+            loader: 'js',
         }));
     },
 };
@@ -92,9 +108,8 @@ async function main() {
 
         // Only keep packages external that Next.js already traced into the
         // standalone node_modules (via serverExternalPackages in next.config.js).
-        // Worker-only packages (immutable, @msgpack/msgpack, dotenv,
-        // dotenv-expand) are inlined — including those transitively pulled in
-        // by knexfile.js, which is also bundled inline (see knexfilePlugin).
+        // Worker-only packages (immutable, @msgpack/msgpack) are inlined.
+        // dotenv/dotenv-expand are stubbed out by knexfilePlugin (see above).
         external: ['knex'],
 
         plugins: [knexfilePlugin],

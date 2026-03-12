@@ -38,8 +38,8 @@ const WORKER_ENTRY = path.join(REPO_ROOT, 'src/simulation/worker.ts');
 
 /**
  * Same knexfile-inline plugin as in trace-worker.mjs.
- * Resolves `../../knexfile.js` to the real file on disk so esbuild
- * can bundle it (and its dotenv/dotenv-expand dependencies) inline.
+ * Resolves knexfile.js to the real file on disk and stubs out
+ * dotenv/dotenv-expand so their CJS internals don't end up in the bundle.
  */
 function makeKnexfilePlugin(_bundleDir: string) {
     return {
@@ -47,6 +47,14 @@ function makeKnexfilePlugin(_bundleDir: string) {
         setup(b: import('esbuild').PluginBuild) {
             b.onResolve({ filter: /\.\.\/\.\.\/knexfile\.js$/ }, (args) => ({
                 path: path.resolve(path.dirname(args.importer), args.path),
+            }));
+            b.onResolve({ filter: /^dotenv(-expand)?$/ }, (args) => ({
+                path: args.path,
+                namespace: 'dotenv-stub',
+            }));
+            b.onLoad({ filter: /.*/, namespace: 'dotenv-stub' }, () => ({
+                contents: 'export default {}; export const config = () => ({}); export const expand = () => ({});',
+                loader: 'js' as const,
             }));
         },
     };
