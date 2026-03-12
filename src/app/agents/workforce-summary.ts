@@ -12,7 +12,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { WorkforceCohort, WorkforceCategory } from '@/simulation/workforce/workforce';
 import { MAX_AGE, SKILL } from '@/simulation/population/population';
-import { ageProductivityMultiplier } from '@/simulation/workforce/laborMarketTick';
+import { ageProductivityMultiplier } from '@/simulation/planet/production';
 
 /** Alias for the workforce demography structure used by agents. */
 export type WorkforceDemography = WorkforceCohort<WorkforceCategory>[];
@@ -136,8 +136,8 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
                 }
 
                 // Departing pipeline
-                for (let m = 0; m < cat.departing.length; m++) {
-                    const depCount = cat.departing[m] ?? 0;
+                for (let m = 0; m < cat.voluntaryDeparting.length; m++) {
+                    const depCount = cat.voluntaryDeparting[m] ?? 0;
                     const firedCount = cat.departingFired[m] ?? 0;
                     departingByEdu[edu] += depCount;
                     totalDeparting += depCount;

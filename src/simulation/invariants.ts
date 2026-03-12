@@ -48,7 +48,7 @@ export function checkPopulationWorkforceConsistency(
                     for (const skill of SKILL) {
                         const cell = wf[age][edu][skill];
                         wfTotal += cell.active;
-                        for (const d of cell.departing) {
+                        for (const d of cell.voluntaryDeparting) {
                             wfTotal += d;
                         }
                     }

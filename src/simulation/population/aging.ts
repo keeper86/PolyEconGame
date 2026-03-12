@@ -83,8 +83,7 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
             if (occ === 'education') {
                 processEducationAging(demo, targetAge, age, cat, edu, skill);
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                mergePopulationCategory((demo[targetAge] as any)[occ][edu][skill], cat, cat.total);
+                mergePopulationCategory(demo[targetAge][occ][edu][skill], cat, cat.total);
             }
         }
     }

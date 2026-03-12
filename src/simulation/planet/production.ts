@@ -4,7 +4,6 @@ import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce'
 import { SKILL } from '../population/population';
 import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { stochasticRound } from '../utils/stochasticRound';
-import { ageProductivityMultiplier, DEPARTING_EFFICIENCY } from '../workforce/laborMarketTick';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facilities';
 import type { Agent, Planet } from './planet';
@@ -352,3 +351,25 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
         };
     });
 }
+/**
+ * Productivity multiplier for workers in the departing pipeline.
+ * Fired/quitting workers still contribute to production but at reduced
+ * efficiency during their notice period.
+ */
+
+export const DEPARTING_EFFICIENCY = 0.5;
+export const ageProductivityMultiplier = (age: number): number => {
+    if (age <= 18) {
+        return 0.8;
+    }
+    if (age < 30) {
+        return 0.8 + ((age - 18) * 0.2) / 12;
+    } // 0.80 → 1.00
+    if (age <= 50) {
+        return 1.0;
+    } // peak productivity
+    if (age < 65) {
+        return 1.0 - ((age - 50) * 0.15) / 15;
+    } // 1.00 → 0.85
+    return Math.max(0.7, 0.85 - ((age - 65) * 0.15) / 15); // declining after 65
+};

@@ -26,7 +26,7 @@ export function totalDepartingForEdu(workforce: WorkforceCohort<WorkforceCategor
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
         for (const skill of SKILL) {
-            for (const d of workforce[age][edu][skill].departing) {
+            for (const d of workforce[age][edu][skill].voluntaryDeparting) {
                 total += d;
             }
         }

@@ -35,6 +35,7 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
             planetId: 'p',
             id: 'food-fac',
             name: 'Food Farm',
+            maxScale: 1000,
             scale: 1,
             powerConsumptionPerTick: 0,
             lastTickResults: {

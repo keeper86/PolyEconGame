@@ -8,7 +8,7 @@ import {
     waterResourceType,
     waterSourceResourceType,
 } from '../planet/facilities';
-import type { Agent, Planet } from '../planet/planet';
+import { createEmptyDemographicEventCounters, type Agent, type Planet } from '../planet/planet';
 import type { Population } from '../population/population';
 import { createEmptyPopulationCohort, MAX_AGE } from '../population/population';
 import { makeWorkforceDemography } from './testHelper';
@@ -181,6 +181,8 @@ export const earthGovernment: Agent = {
                 tertiary: 0,
             },
             workforceDemography: makeWorkforceDemography(),
+            deaths: createEmptyDemographicEventCounters(),
+            disabilities: createEmptyDemographicEventCounters(),
         },
     },
 };
@@ -205,6 +207,8 @@ export const testCompany: Agent = {
                 tertiary: 0,
             },
             workforceDemography: makeWorkforceDemography(),
+            deaths: createEmptyDemographicEventCounters(),
+            disabilities: createEmptyDemographicEventCounters(),
         },
     },
 };
@@ -532,9 +536,9 @@ export function createPopulation(total: number): Population {
             const primaryUnocc = Math.floor(ageCount * 0.45);
             const secondaryUnocc = Math.floor(ageCount * 0.27);
             const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
-            addTo(pop, age, 'unoccupied', 'primary', primaryUnocc);
-            addTo(pop, age, 'unoccupied', 'secondary', secondaryUnocc);
-            addTo(pop, age, 'unoccupied', 'tertiary', tertiaryUnocc);
+            addTo(pop, age, 'unableToWork', 'primary', primaryUnocc);
+            addTo(pop, age, 'unableToWork', 'secondary', secondaryUnocc);
+            addTo(pop, age, 'unableToWork', 'tertiary', tertiaryUnocc);
         }
     }
     return pop;

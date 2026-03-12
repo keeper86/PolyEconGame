@@ -44,7 +44,7 @@ const OCC_LABELS: Record<string, string> = {
     unableToWork: 'Unable to work',
 };
 
-const formatNumbersPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
+const formatNumbersPct = (n: number): string => `${n.toFixed(0)}`;
 
 /* ------------------------------------------------------------------ */
 /*  View modes                                                         */
@@ -216,7 +216,7 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
         // Education row
         const eduRow: ChartRow = { age };
         for (const edu of educationLevelKeys) {
-            const share = eduPop[edu] / agePop;
+            const share = eduPop[edu];
             const avgStock = eduPop[edu] > 0 ? eduStock[edu] / eduPop[edu] : 0;
             const ratio = avgStock / FOOD_TARGET_PER_PERSON;
             // Clamp ratio to [0,1] for stacked-bar geometry so that
@@ -237,7 +237,7 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
         // Occupation row
         const occRow: ChartRow = { age };
         for (const occ of OCCUPATIONS) {
-            const share = occPop[occ] / agePop;
+            const share = occPop[occ];
             const avgStock = occPop[occ] > 0 ? occStock[occ] / occPop[occ] : 0;
             const ratio = avgStock / FOOD_TARGET_PER_PERSON;
             const clampedRatio = Math.min(1, Math.max(0, ratio));
@@ -295,7 +295,7 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
                             tick={{ fontSize: 10 }}
                             tickFormatter={formatNumbersPct}
                             domain={[0, 1]}
-                            label={{ value: 'Pop share', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }}
+                            label={{ value: 'Population', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }}
                         />
                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         <Tooltip content={tooltip as any} />
