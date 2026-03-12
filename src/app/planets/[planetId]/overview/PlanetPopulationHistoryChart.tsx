@@ -6,13 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import PlanetPopulationChartRecharts from './PlanetPopulationChartRecharts';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
 
-/** Refetch interval — matches the snapshot interval so data updates whenever
- *  a new cold snapshot (and population history row) is written. */
 const REFETCH_INTERVAL_MS = 1000;
 
 type Props = {
     planetId: string;
-    /** Live values from the already-fetched planet detail (current tick). */
     live?: {
         tick: number;
         population: number;
@@ -20,11 +17,6 @@ type Props = {
     };
 };
 
-/**
- * Fetches the planet_population_history rows for a single planet via tRPC
- * and renders them as an area chart with population + starvation level.
- * When `live` is provided the chart extends to the current tick.
- */
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
 
@@ -43,8 +35,6 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         starvation: r.starvationLevel,
     }));
 
-    // Append a live data point at the current tick so the chart extends
-    // to "now" instead of stopping at the last yearly snapshot.
     if (live && (chartData.length === 0 || live.tick / TICKS_PER_YEAR > chartData[chartData.length - 1].year)) {
         chartData.push({
             year: live.tick / TICKS_PER_YEAR,
@@ -70,12 +60,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                     {chartData.length} data point{chartData.length !== 1 ? 's' : ''}
                 </span>
                 <span className='text-xs text-muted-foreground tabular-nums space-x-3'>
-                    <span>
-                        Pop:{' '}
-                        {(lastRow?.value ?? 0).toLocaleString(undefined, {
-                            maximumFractionDigits: 0,
-                        })}
-                    </span>
+                    <span>Pop: {(lastRow?.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     <span
                         className={
                             (lastRow?.starvation ?? 0) > 0.1

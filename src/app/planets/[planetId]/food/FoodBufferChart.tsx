@@ -5,16 +5,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumbers } from '@/lib/utils';
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Population, Skill } from '@/simulation/population/population';
+import type { Skill } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import React, { useRef, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-/** Full buffer = target stock per person (tons). */
 const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
 const EDU_COLORS: Record<string, string> = {
@@ -23,50 +18,37 @@ const EDU_COLORS: Record<string, string> = {
     secondary: '#34d399',
     tertiary: '#f59e0b',
 };
-
 const EDU_LABELS: Record<string, string> = {
     none: 'None',
     primary: 'Primary',
     secondary: 'Secondary',
     tertiary: 'Tertiary',
 };
-
 const OCC_COLORS: Record<string, string> = {
     unoccupied: '#60a5fa',
     employed: '#34d399',
     education: '#f97316',
     unableToWork: '#ef4444',
 };
-
 const OCC_LABELS: Record<string, string> = {
     unoccupied: 'Unoccupied',
     employed: 'Employed',
     education: 'Education',
     unableToWork: 'Unable to work',
 };
+const SKILL_LABELS: Record<Skill, string> = { novice: 'Novice', professional: 'Pro', expert: 'Expert' };
+const SKILL_COLORS: Record<Skill, string> = {
+    novice: '#94a3b8',
+    professional: '#60a5fa',
+    expert: '#f59e0b',
+};
 
 const formatNumbersPct = (n: number): string => `${n.toFixed(0)}`;
 
-/* ------------------------------------------------------------------ */
-/*  Skill labels + colors                                              */
-/* ------------------------------------------------------------------ */
-
-const SKILL_LABELS: Record<Skill, string> = {
-    novice: 'Novice',
-    professional: 'Pro',
-    expert: 'Expert',
-};
-
-/** Accent colors for the three skill levels (bg when active). */
-const SKILL_COLORS: Record<Skill, string> = {
-    novice: '#94a3b8', // slate-400
-    professional: '#60a5fa', // blue-400
-    expert: '#f59e0b', // amber-400
-};
-
-/* ------------------------------------------------------------------ */
-/*  Skill filter — compact colored toggle buttons                     */
-/* ------------------------------------------------------------------ */
+type FoodCategory = { total: number; foodStock: number; starvationLevel: number };
+type FoodCohort = { [occ: string]: { [edu: string]: { [skill: string]: FoodCategory } } };
+type GroupMode = 'education' | 'occupation';
+type ChartRow = Record<string, number>;
 
 function SkillFilter({ selected, onChange }: { selected: Set<Skill>; onChange: (s: Set<Skill>) => void }) {
     const allSelected = SKILL.every((s) => selected.has(s));
@@ -77,7 +59,6 @@ function SkillFilter({ selected, onChange }: { selected: Set<Skill>; onChange: (
         } else {
             next.add(skill);
         }
-        // Prevent deselecting the last active skill
         if (next.size > 0) {
             onChange(next);
         }
@@ -115,26 +96,6 @@ function SkillFilter({ selected, onChange }: { selected: Set<Skill>; onChange: (
         </div>
     );
 }
-
-/* ------------------------------------------------------------------ */
-/*  View modes                                                         */
-/* ------------------------------------------------------------------ */
-
-type GroupMode = 'education' | 'occupation';
-
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
-
-type Props = {
-    population: Population;
-};
-
-type ChartRow = Record<string, number>;
-
-/* ------------------------------------------------------------------ */
-/*  Tooltip factory                                                    */
-/* ------------------------------------------------------------------ */
 
 function makeTooltip(keys: readonly string[], labels: Record<string, string>, colors: Record<string, string>) {
     return function TooltipContent({
@@ -181,10 +142,6 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
     };
 }
 
-/* ------------------------------------------------------------------ */
-/*  Legend                                                             */
-/* ------------------------------------------------------------------ */
-
 function ColorLegend({
     keys,
     labels,
@@ -206,9 +163,6 @@ function ColorLegend({
     );
 }
 
-// Custom bar shape that draws the filled rectangle and a single black line
-// along the top edge. Return an empty <g/> for zero/negative height so the
-// shape always returns an Element (satisfies Recharts typing).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TopEdgeRect(props: any) {
     const { x, y, width, height, fill, fillOpacity } = props;
@@ -223,33 +177,21 @@ function TopEdgeRect(props: any) {
     );
 }
 
-/**
- * FoodBufferChart — two view modes (education / occupation) × two style modes:
- *
- * - **Split**: each category → two sub-bars: filled (color, height ∝ popShare×bufferRatio)
- *   + empty (faded, height ∝ popShare×(1−bufferRatio)). Pure stacked bars, no custom shapes.
- * - **Overlay**: solid colored bar at full popShare height, then a semi-transparent white
- *   bar stacked on top for the "empty" portion — glass-half-full look.
- */
-export default function FoodBufferChart({ population }: Props): React.ReactElement {
+type Props = {
+    demography: FoodCohort[];
+};
+
+export default function FoodBufferChart({ demography }: Props): React.ReactElement {
     const [group, setGroup] = useState<GroupMode>('occupation');
     const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
-
-    /** Remember the last non-empty Y domain so the chart doesn't collapse. */
     const lastYDomainRef = useRef<[number, number]>([0, 1]);
-
-    const demography = population.demography;
-
-    /* -------------------------------------------------------------- */
-    /*  Build chart data                                               */
-    /* -------------------------------------------------------------- */
 
     const eduData: ChartRow[] = [];
     const occData: ChartRow[] = [];
 
     for (let age = 0; age < demography.length; age++) {
         const cohort = demography[age];
-        if (!cohort) {
+        if (!cohort || Object.keys(cohort).length === 0) {
             continue;
         }
 
@@ -274,8 +216,8 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
                     if (!activeSkills.has(skill)) {
                         continue;
                     }
-                    const cat = cohort[occ][edu][skill];
-                    if (cat.total > 0) {
+                    const cat = cohort[occ]?.[edu]?.[skill];
+                    if (cat && cat.total > 0) {
                         agePop += cat.total;
                         eduStock[edu] += cat.foodStock;
                         eduPop[edu] += cat.total;
@@ -290,17 +232,11 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
             continue;
         }
 
-        // Education row
         const eduRow: ChartRow = { age };
         for (const edu of educationLevelKeys) {
             const share = eduPop[edu];
             const avgStock = eduPop[edu] > 0 ? eduStock[edu] / eduPop[edu] : 0;
             const ratio = avgStock / FOOD_TARGET_PER_PERSON;
-            // Clamp ratio to [0,1] for stacked-bar geometry so that
-            // filled + empty = share (the population share).  Without clamping,
-            // ratio > 1 produces negative `empty` and filled > share, which
-            // breaks the stacked bar layout.  The tooltip still shows the
-            // unclamped ratio so overstocking is visible there.
             const clampedRatio = Math.min(1, Math.max(0, ratio));
             eduRow[`${edu}_popShare`] = share;
             eduRow[`${edu}_bufferRatio`] = ratio;
@@ -311,7 +247,6 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
         }
         eduData.push(eduRow);
 
-        // Occupation row
         const occRow: ChartRow = { age };
         for (const occ of OCCUPATIONS) {
             const share = occPop[occ];
@@ -329,18 +264,12 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
     }
 
     const hasData = eduData.length > 0;
-
-    /* -------------------------------------------------------------- */
-    /*  Derived                                                        */
-    /* -------------------------------------------------------------- */
-
     const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
     const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
     const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
     const data = group === 'education' ? eduData : occData;
     const tooltip = makeTooltip(keys, labels, colors);
 
-    // Compute the max Y from current data and persist it; fall back to last known value when empty.
     if (hasData) {
         let maxY = 0;
         for (const row of data) {
@@ -384,7 +313,6 @@ export default function FoodBufferChart({ population }: Props): React.ReactEleme
                         <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         <Tooltip content={tooltip as any} />
-
                         {keys.flatMap((key) => [
                             <Bar
                                 key={`${key}_filled`}

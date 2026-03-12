@@ -15,22 +15,17 @@ export default function PlanetPopulationChartRecharts({
 
     const hasStarvation = data.some((d) => d.starvation !== undefined && d.starvation !== null);
 
-    // Recharts positions points by their numeric `year` value on the X axis,
-    // so we just need data sorted ascending (oldest → newest, left → right).
     const useLogScale = false;
     const plotData = data
         .slice()
         .sort((a, b) => a.year - b.year)
         .map((d) => ({
             ...d,
-            // Convert starvation from 0-1 fraction to percentage for display
             starvationPct: d.starvation !== undefined ? d.starvation * 100 : undefined,
         }));
 
     const maxYear = Math.ceil(plotData[plotData.length - 1].year);
 
-    // Prepare log-scale ticks and a number formatter for axis ticks/tooltips.
-    // Use powers-of-10 ticks when using log scale so labels are clean.
     let logTicks: number[] | undefined = undefined;
     if (useLogScale) {
         const vals = plotData.map((d) => d.value).filter((v) => Number.isFinite(v) && v > 0);
@@ -47,11 +42,8 @@ export default function PlanetPopulationChartRecharts({
         }
     }
 
-    // Format numbers for axis ticks and tooltips. Prefer Intl.NumberFormat with
-    // scientific notation when available; fall back to toExponential.
     const sciFormatter = (() => {
         try {
-            // notation: 'scientific' may not be supported in some older engines
             return new Intl.NumberFormat(undefined, { notation: 'scientific', maximumFractionDigits: 2 });
         } catch (_e) {
             return null;
@@ -66,7 +58,6 @@ export default function PlanetPopulationChartRecharts({
             return '0';
         }
         const abs = Math.abs(v);
-        // decide when to use scientific / exponential
         if (abs >= 1e6 || abs < 1e-3) {
             if (sciFormatter) {
                 return sciFormatter.format(v);
@@ -108,14 +99,10 @@ export default function PlanetPopulationChartRecharts({
                     <YAxis
                         yAxisId='left'
                         type='number'
-                        // use 'log' when safe, otherwise fall back to automatic (linear)
                         scale={useLogScale ? 'log' : 'auto'}
-                        // floor at 0 (linear) or 1 (log, since log(0) is undefined)
                         domain={useLogScale ? ['auto', 'auto'] : ['auto', 'auto']}
                         tick={{ fontSize: 11 }}
-                        // when using log scale prefer nice powers-of-10 ticks
                         ticks={useLogScale ? logTicks : undefined}
-                        // format numbers using our helper
                         tickFormatter={(v) => (typeof v === 'number' ? formatNumber(v) : String(v))}
                     />
                     {hasStarvation && (

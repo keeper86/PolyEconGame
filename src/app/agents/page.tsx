@@ -20,7 +20,6 @@ export default function AgentsPage() {
 
     return (
         <Page title='Agents'>
-
             {!isLoading && tick > 0 && agents.length > 0 ? (
                 <div className='grid grid-cols-1 gap-4'>
                     {agents.map((a) => (

@@ -12,7 +12,7 @@ const REFETCH_INTERVAL_MS = 1000;
 
 type Props = {
     planetId: string;
-    /** Live values from the already-fetched planet detail (current tick). */
+    /** Live values from the already-fetched planet food data (current tick). */
     live?: {
         tick: number;
         foodPrice: number;

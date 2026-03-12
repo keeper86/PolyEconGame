@@ -4,37 +4,15 @@ import React, { useState, useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
-import CohortFilter, { type CohortFilterState } from './CohortFilter';
+import CohortFilter, { type CohortFilterState } from '../../components/CohortFilter';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Population, Occupation } from '@/simulation/population/population';
+import type { Occupation } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { formatNumbers } from '@/lib/utils';
 
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-/** Food buffer target per person (tons). */
 const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
-/* ------------------------------------------------------------------ */
-/*  Nutrition-status bands                                             */
-/* ------------------------------------------------------------------ */
-
-/**
- * Each band classifies a cohort-class cell by a **two-tier** scheme:
- *
- *   1. **Starvation bands** — keyed on `starvationLevel` (S), the smoothed
- *      physiological malnutrition index (0 = healthy, 1 = fully starving).
- *      These represent accumulated bodily harm, not an instantaneous gap.
- *
- *   2. **Food-security bands** — keyed on the instantaneous food-buffer
- *      ratio (current stock / target stock).  These only apply when S = 0.
- *
- * Bands are ordered worst-first (bottom of stacked bar) so severe
- * starvation is always visually anchored at y = 0.
- */
 const BANDS = [
     { key: 'severeStarvation', label: 'Severe starvation', color: '#991b1b' },
     { key: 'moderateStarvation', label: 'Moderate starvation', color: '#dc2626' },
@@ -46,110 +24,62 @@ const BANDS = [
 
 type BandKey = (typeof BANDS)[number]['key'];
 
-/**
- * Classify a population cell into one of the nutrition-status bands.
- *
- * Priority: starvation level (physiological harm) takes precedence.
- * Only when S = 0 does the instantaneous buffer ratio matter.
- *
- * @param starvationLevel  Smoothed malnutrition index S ∈ [0, 1].
- * @param bufferRatio      Instantaneous foodStock / target (≥ 0).
- * @returns  Index into `BANDS`.
- */
 function classifyBand(starvationLevel: number, bufferRatio: number): number {
-    // --- Starvation bands (physiological) ---
     if (starvationLevel > 0.9) {
-        return 0; // severe starvation
+        return 0;
     }
     if (starvationLevel > 0.5) {
-        return 1; // moderate starvation
+        return 1;
     }
     if (starvationLevel > 0.05) {
-        return 2; // light starvation
+        return 2;
     }
-    // --- Food-security bands (buffer) — S = 0 ---
     if (bufferRatio < 0.1) {
-        return 3; // food insecure
+        return 3;
     }
     if (bufferRatio < 0.95) {
-        return 4; // adequate
+        return 4;
     }
-    return 5; // full buffer
+    return 5;
 }
 
 const formatNumbersPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
 
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
-
-type Props = {
-    population: Population;
-};
-
-/* ------------------------------------------------------------------ */
-/*  Data row                                                           */
-/* ------------------------------------------------------------------ */
+type FoodCategory = { total: number; foodStock: number; starvationLevel: number };
+type FoodCohort = { [occ: string]: { [edu: string]: { [skill: string]: FoodCategory } } };
 
 type ChartRow = {
     age: number;
-    /** Total population for this age (filtered). */
     pop: number;
-    /** Population count in each severity band. */
     severeStarvation: number;
     moderateStarvation: number;
     lightStarvation: number;
     foodInsecure: number;
     adequate: number;
     fullBuffer: number;
-    /** Weighted-average food-buffer ratio (for tooltip). */
     avgBufferRatio: number;
-    /** Weighted-average starvation level S ∈ [0, 1] (for tooltip). */
     avgStarvationLevel: number;
-    /** Fraction of population in acute starvation (buffer < 1 tick). */
     acuteStarvationFrac: number;
 };
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+type Props = {
+    demography: FoodCohort[];
+};
 
-/**
- * NutritionHeatmapChart — visualises nutrition status by age using stacked
- * bars where each segment represents a severity band.
- *
- * Classification uses a **two-tier** scheme:
- *
- *   1. Starvation bands — based on the physiological `starvationLevel` (S):
- *      - Severe starvation (S > 0.9) — deep red
- *      - Moderate starvation (S > 0.3) — red
- *      - Light starvation (S > 0) — orange
- *
- *   2. Food-security bands — based on instantaneous buffer ratio (S = 0):
- *      - Food insecure (buffer < 10 %) — yellow
- *      - Adequate (buffer < 100 %) — light green
- *      - Full buffer (buffer ≥ 100 %) — deep green
- *
- * This way, even if most people have full buffers, a small cohort with
- * accumulated physiological harm is clearly visible as a red band.
- */
-export default function NutritionHeatmapChart({ population }: Props): React.ReactElement {
+export default function NutritionHeatmapChart({ demography }: Props): React.ReactElement {
     const [filter, setFilter] = useState<CohortFilterState>({ edu: null, occ: null });
-
-    const demography = population.demography;
 
     const chartData = useMemo<ChartRow[]>(() => {
         if (!demography || demography.length === 0) {
             return [];
         }
-
         const rows: ChartRow[] = [];
         const edus: readonly EducationLevelType[] = filter.edu ? [filter.edu] : educationLevelKeys;
         const occs: readonly Occupation[] = filter.occ ? [filter.occ] : ([...OCCUPATIONS] as Occupation[]);
 
         for (let age = 0; age < demography.length; age++) {
             const cohort = demography[age];
-            if (!cohort) {
+            if (!cohort || Object.keys(cohort).length === 0) {
                 continue;
             }
 
@@ -162,21 +92,20 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
             for (const occ of occs) {
                 for (const edu of edus) {
                     for (const skill of SKILL) {
-                        const cat = cohort[occ][edu][skill];
-                        if (cat.total <= 0) {
+                        const cat = cohort[occ]?.[edu]?.[skill];
+                        if (!cat || cat.total <= 0) {
                             continue;
                         }
 
-                        const stock = cat.foodStock;
                         const bufferRatio =
-                            FOOD_TARGET_PER_PERSON > 0 ? stock / (FOOD_TARGET_PER_PERSON * cat.total) : 0;
+                            FOOD_TARGET_PER_PERSON > 0 ? cat.foodStock / (FOOD_TARGET_PER_PERSON * cat.total) : 0;
 
                         totalPop += cat.total;
                         weightedRatio += cat.total * bufferRatio;
                         weightedStarvation += cat.total * cat.starvationLevel;
                         bandPops[classifyBand(cat.starvationLevel, bufferRatio)] += cat.total;
 
-                        if (stock < FOOD_PER_PERSON_PER_TICK * cat.total) {
+                        if (cat.foodStock < FOOD_PER_PERSON_PER_TICK * cat.total) {
                             acutePop += cat.total;
                         }
                     }
@@ -200,24 +129,16 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
         return rows;
     }, [demography, filter.edu, filter.occ]);
 
-    if (chartData.length === 0) {
+    if (chartData.length === 0 || !chartData.some((d) => d.pop > 0)) {
         return <div className='text-xs text-muted-foreground'>No food buffer data available</div>;
     }
 
-    const hasData = chartData.some((d) => d.pop > 0);
-    if (!hasData) {
-        return <div className='text-xs text-muted-foreground'>No food buffer data available</div>;
-    }
-
-    // Global summary stats
     const totalPop = chartData.reduce((s, d) => s + d.pop, 0);
     const globalAvgStarvation =
         totalPop > 0 ? chartData.reduce((s, d) => s + d.avgStarvationLevel * d.pop, 0) / totalPop : 0;
     const globalAvgRatio = totalPop > 0 ? chartData.reduce((s, d) => s + d.avgBufferRatio * d.pop, 0) / totalPop : 0;
-
-    // Global band totals for the header breakdown
     const globalBands = BANDS.map((b) => chartData.reduce((s, d) => s + (d[b.key as BandKey] as number), 0));
-    const globalStarvingPop = globalBands[0] + globalBands[1] + globalBands[2]; // severe + moderate + light
+    const globalStarvingPop = globalBands[0] + globalBands[1] + globalBands[2];
 
     return (
         <div>
@@ -270,8 +191,6 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                         </span>
                     </div>
                 </div>
-
-                {/* Colour legend — matches band colours */}
                 <div className='flex items-center gap-0.5 text-[9px] text-muted-foreground shrink-0 flex-wrap justify-end'>
                     {BANDS.map((b) => (
                         <div key={b.key} className='flex items-center gap-0.5'>
@@ -282,7 +201,6 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                 </div>
             </div>
 
-            {/* Filter badges */}
             <div className='mb-2'>
                 <CohortFilter value={filter} onChange={setFilter} compact />
             </div>
@@ -295,12 +213,7 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                         <YAxis
                             tick={{ fontSize: 10 }}
                             tickFormatter={(v) => formatNumbers(v)}
-                            label={{
-                                value: 'Population',
-                                angle: -90,
-                                position: 'insideLeft',
-                                style: { fontSize: 9 },
-                            }}
+                            label={{ value: 'Population', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }}
                         />
                         <Tooltip
                             content={({ active, payload, label }) => {
@@ -342,8 +255,6 @@ export default function NutritionHeatmapChart({ population }: Props): React.Reac
                             }}
                         />
                         <Legend verticalAlign='top' height={36} />
-
-                        {/* Stacked bars — worst (severe starvation) at bottom, best (full buffer) on top */}
                         {BANDS.map((b) => (
                             <Bar
                                 key={b.key}

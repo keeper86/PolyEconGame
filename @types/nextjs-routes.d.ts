@@ -24,6 +24,10 @@ declare module "nextjs-routes" {
     | StaticRoute<"/imprint">
     | StaticRoute<"/planets">
     | DynamicRoute<"/planets/[planetId]", { "planetId": string }>
+    | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
+    | DynamicRoute<"/planets/[planetId]/economy", { "planetId": string }>
+    | DynamicRoute<"/planets/[planetId]/food", { "planetId": string }>
+    | DynamicRoute<"/planets/[planetId]/overview", { "planetId": string }>
     | StaticRoute<"/pong">
     | StaticRoute<"/simulation">;
 

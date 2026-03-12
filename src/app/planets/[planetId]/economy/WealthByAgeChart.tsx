@@ -1,85 +1,58 @@
 'use client';
 
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Population } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL, mergeGaussianMoments } from '@/simulation/population/population';
 import React from 'react';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { formatNumbers } from '@/lib/utils';
 
+type SlimCategory = { total: number; wealthMean: number; wealthVariance: number };
+type SlimCohort = { [occ: string]: { [edu: string]: { [skill: string]: SlimCategory } } };
+
 type Props = {
-    population: Population;
+    demography: SlimCohort[];
 };
 
-/**
- * WealthByAgeChart — shows mean financial wealth and ±1σ band per age cohort.
- *
- * Wealth data is now embedded in each PopulationCategory as `.wealth`
- * (GaussianMoments: {mean, variance}).  We pool across all
- * occupation × education × skill cells at each age.
- */
-export default function WealthByAgeChart({ population }: Props): React.ReactElement {
-    const demography = population.demography;
-
+export default function WealthByAgeChart({ demography }: Props): React.ReactElement {
     if (!demography || demography.length === 0) {
         return <div className='text-xs text-muted-foreground'>No wealth data available</div>;
     }
 
-    const chartData: {
-        age: number;
-        mean: number;
-        upper: number;
-        lower: number;
-        band: [number, number];
-    }[] = [];
+    const chartData: { age: number; mean: number; upper: number; lower: number; band: [number, number] }[] = [];
 
     for (let age = 0; age < demography.length; age++) {
         const cohort = demography[age];
-        if (!cohort) {
+        if (!cohort || Object.keys(cohort).length === 0) {
             continue;
         }
 
-        // Population-weighted pooled mean and variance across occ × edu × skill
-        let totalPop = 0;
-        let pooledMean = 0;
-        let pooledVariance = 0;
-        // Use two-pass: first compute pooled mean, then pooled variance
-        // Or use mergeGaussianMoments incrementally
         let accN = 0;
         let accMoments = { mean: 0, variance: 0 };
 
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
                 for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    if (cat.total > 0) {
-                        accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                    const cat = cohort[occ]?.[edu]?.[skill];
+                    if (cat && cat.total > 0) {
+                        accMoments = mergeGaussianMoments(accN, accMoments, cat.total, {
+                            mean: cat.wealthMean,
+                            variance: cat.wealthVariance,
+                        });
                         accN += cat.total;
                     }
                 }
             }
         }
 
-        totalPop = accN;
-        pooledMean = accMoments.mean;
-        pooledVariance = accMoments.variance;
-
-        if (totalPop === 0) {
+        if (accN === 0) {
             chartData.push({ age, mean: 0, upper: 0, lower: 0, band: [0, 0] });
             continue;
         }
 
-        const sigma = Math.sqrt(Math.max(0, pooledVariance));
-        const upper = pooledMean + sigma;
-        const lower = Math.max(0, pooledMean - sigma);
-
-        chartData.push({
-            age,
-            mean: pooledMean,
-            upper,
-            lower,
-            band: [lower, upper],
-        });
+        const sigma = Math.sqrt(Math.max(0, accMoments.variance));
+        const upper = accMoments.mean + sigma;
+        const lower = Math.max(0, accMoments.mean - sigma);
+        chartData.push({ age, mean: accMoments.mean, upper, lower, band: [lower, upper] });
     }
 
     const hasData = chartData.some((d) => d.mean > 0);
@@ -89,7 +62,7 @@ export default function WealthByAgeChart({ population }: Props): React.ReactElem
 
     return (
         <div>
-            <h4 className='text-sm font-medium mb-2'>Wealth distribution by age</h4>
+            <h4 className='text-sm font-medium mb-2'>Wealth by age (mean ± σ)</h4>
             <div style={{ width: '100%', height: 220 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <ComposedChart data={chartData} margin={{ top: 6, right: 12, left: 12, bottom: 6 }}>

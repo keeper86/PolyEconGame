@@ -14,21 +14,13 @@ import {
 } from 'recharts';
 import { CHILD_MAX_AGE, ELDERLY_MIN_AGE } from '@/simulation/constants';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { PopulationTransferMatrix } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { formatNumbers } from '@/lib/utils';
 
-/* ------------------------------------------------------------------ */
-/*  View modes                                                         */
-/* ------------------------------------------------------------------ */
-
 type ViewMode = 'occupation' | 'education';
-
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
 
 type Props = {
     title: string;
@@ -37,38 +29,16 @@ type Props = {
     yMax?: number;
 };
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-/**
- * TransferChart — reusable stacked diverging bar chart for a
- * PopulationTransferMatrix (age × education × occupation).
- *
- * Features:
- * - Stacked by occupation or education level.
- * - Y-axis autoscales to the total domain so comparisons are stable.
- */
 export default function TransferChart({ title, matrix, yMin, yMax }: Props): React.ReactElement {
     const [viewMode, setViewMode] = useState<ViewMode>('occupation');
 
-    // Refs that hold the last non-empty chart data and domain so we can
-    // keep rendering a stable empty frame instead of collapsing to text.
     const lastOccData = useRef<Record<string, number | string>[]>([]);
     const lastEduData = useRef<Record<string, number | string>[]>([]);
     const lastYDomain = useRef<[number, number]>([-1, 1]);
 
-    /**
-     * Compute chart data for both view modes.
-     */
     const { occData, eduData, totalReceived, totalGiven } = useMemo(() => {
         if (!matrix || matrix.length === 0) {
-            return {
-                occData: lastOccData.current,
-                eduData: lastEduData.current,
-                totalReceived: 0,
-                totalGiven: 0,
-            };
+            return { occData: lastOccData.current, eduData: lastEduData.current, totalReceived: 0, totalGiven: 0 };
         }
 
         const occRows: Record<string, number | string>[] = [];
@@ -79,7 +49,6 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
         for (let age = 0; age < matrix.length; age++) {
             const cohort = matrix[age];
 
-            // --- Occupation view ---
             const occRow: Record<string, number | string> = { age };
             let ageTotal = 0;
             for (const occ of OCCUPATIONS) {
@@ -93,7 +62,6 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             occRow._total = ageTotal;
             occRows.push(occRow);
 
-            // --- Education view ---
             const eduRow: Record<string, number | string> = { age };
             let eduAgeTotal = 0;
             for (const edu of educationLevelKeys) {
@@ -107,7 +75,6 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             eduRow._total = eduAgeTotal;
             eduRows.push(eduRow);
 
-            // Summary stats
             if (ageTotal > 0) {
                 received += ageTotal;
             } else {
@@ -115,16 +82,9 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             }
         }
 
-        return {
-            occData: occRows,
-            eduData: eduRows,
-            totalReceived: received,
-            totalGiven: given,
-        };
+        return { occData: occRows, eduData: eduRows, totalReceived: received, totalGiven: given };
     }, [matrix]);
 
-    // Persist the last non-empty data into refs so when matrix goes empty
-    // we can keep showing the last-seen chart frame without a layout shift.
     useEffect(() => {
         if (occData.length > 0) {
             lastOccData.current = occData;
@@ -134,15 +94,12 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
         }
     }, [occData, eduData]);
 
-    /** Compute fixed Y-axis domain, and persist it. If yMin/yMax props are provided use them. */
     const yDomain = useMemo<[number, number]>(() => {
-        // If explicit bounds were provided by the parent, use them directly.
         if (typeof yMin === 'number' && typeof yMax === 'number') {
             const domain: [number, number] = [yMin, yMax];
             lastYDomain.current = domain;
             return domain;
         }
-
         const data = viewMode === 'occupation' ? occData : eduData;
         if (data.length === 0) {
             return lastYDomain.current;
@@ -158,7 +115,6 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                 max = v;
             }
         }
-        // Add 10% padding
         const pad = Math.max(Math.abs(min), Math.abs(max)) * 0.1 || 1;
         const domain: [number, number] = [min - pad, max + pad];
         lastYDomain.current = domain;
@@ -195,14 +151,12 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                         )}
                     </div>
                 </div>
-                {/* Age boundary legend */}
-                <div className='flex items-center gap-2 text-[10px] text-muted-foreground shrink-0 flex-wrap'>
+                <div className='flex items-center gap-2 text-[10px] text-muted-foreground shrink-0'>
                     <span>Children: 0–{CHILD_MAX_AGE}</span>
                     <span>Elderly: {ELDERLY_MIN_AGE}+</span>
                 </div>
             </div>
 
-            {/* Controls row: view mode tabs */}
             <div className='flex items-center gap-2 mb-2'>
                 <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
                     <TabsList className='h-7'>
@@ -232,7 +186,6 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                                 style: { fontSize: 9 },
                             }}
                         />
-
                         <Tooltip
                             content={({ active, payload, label }) => {
                                 if (!active || !payload || payload.length === 0) {
@@ -267,11 +220,7 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                             }}
                         />
                         <Legend verticalAlign='top' height={20} wrapperStyle={{ fontSize: 10 }} />
-
-                        {/* Zero reference line */}
                         <ReferenceLine y={0} stroke='#64748b' strokeWidth={1} />
-
-                        {/* Stacked diverging bars */}
                         {viewMode === 'occupation'
                             ? OCCUPATIONS.map((occ) => (
                                   <Bar

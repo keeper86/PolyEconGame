@@ -12,6 +12,7 @@ import {
     getPlanetPopulationHistory,
     getCurrentTick,
 } from './controller/simulation';
+import { getPlanetOverview, getPlanetDemographics, getPlanetEconomy, getPlanetFood } from './controller/planet';
 
 import { getUser, getUsers, updateUser } from './controller/user';
 import { trpcRoot } from './trpcRoot';
@@ -26,6 +27,10 @@ const simulationRouter = trpcRoot.router({
     getAgentPlanetDetail: getAgentPlanetDetail(),
     getPlanetDetail: getPlanetDetail(),
     getPlanetPopulationHistory: getPlanetPopulationHistory(),
+    getPlanetOverview: getPlanetOverview(),
+    getPlanetDemographics: getPlanetDemographics(),
+    getPlanetEconomy: getPlanetEconomy(),
+    getPlanetFood: getPlanetFood(),
     // historical endpoints removed
 });
 

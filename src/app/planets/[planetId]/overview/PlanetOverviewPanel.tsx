@@ -1,64 +1,65 @@
 'use client';
 
 import React from 'react';
-import type { Planet, ResourceQuantity, ResourceClaim } from '@/simulation/planet/planet';
 import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-type ResourceEntry = ResourceQuantity & ResourceClaim;
-
-type Props = {
-    planet: Planet;
-    populationTotal: number;
-    /** Current simulation tick (for the live chart data point). */
-    tick?: number;
-    /** Current global starvation level (for the live chart data point). */
-    starvationLevel?: number;
+type ResourceEntry = {
+    id?: string;
+    quantity?: number;
+    claimAgentId?: string | null;
+    tenantAgentId?: string | null;
 };
 
-export default function PlanetOverviewPanel({
-    planet,
-    populationTotal,
-    tick,
-    starvationLevel,
-}: Props): React.ReactElement {
-    const p = planet;
+type OverviewData = {
+    id: string;
+    name: string;
+    position: { x: number; y: number; z: number };
+    populationTotal: number;
+    starvationLevel: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resources: Record<string, any[]>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    infrastructure: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    environment: any;
+};
 
-    // Build a live data point from the already-fetched planet detail state.
-    const live =
-        tick !== undefined
-            ? {
-                  tick,
-                  population: populationTotal,
-                  starvationLevel: starvationLevel ?? 0,
-              }
-            : undefined;
+type Props = {
+    overview: OverviewData;
+    tick: number;
+};
+
+export default function PlanetOverviewPanel({ overview, tick }: Props): React.ReactElement {
+    const live = {
+        tick,
+        population: overview.populationTotal,
+        starvationLevel: overview.starvationLevel,
+    };
 
     return (
         <div className='space-y-4'>
             {/* Population history chart */}
             <div className='border rounded-md p-3'>
                 <h4 className='text-sm font-semibold mb-2'>Population History</h4>
-                <PlanetPopulationHistoryChart planetId={p.id} live={live} />
+                <PlanetPopulationHistoryChart planetId={overview.id} live={live} />
             </div>
 
             {/* Position */}
             <div className='border rounded-md p-3'>
                 <h4 className='text-sm font-semibold mb-2'>Position</h4>
                 <div className='text-xs text-muted-foreground'>
-                    {p.position ? `x: ${p.position.x}, y: ${p.position.y}, z: ${p.position.z}` : '—'}
+                    {overview.position
+                        ? `x: ${overview.position.x}, y: ${overview.position.y}, z: ${overview.position.z}`
+                        : '—'}
                 </div>
             </div>
 
             {/* Resources */}
             <div className='border rounded-md p-3'>
                 <h4 className='text-sm font-semibold mb-2'>Resources</h4>
-                {p.resources && Object.keys(p.resources).length > 0 ? (
+                {overview.resources && Object.keys(overview.resources).length > 0 ? (
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-                        {Object.entries(p.resources).map(([resName, entries]) => {
+                        {Object.entries(overview.resources).map(([resName, entries]) => {
                             const total = Array.isArray(entries)
                                 ? entries.reduce((s, e: ResourceEntry) => s + (e.quantity || 0), 0)
                                 : 0;
@@ -72,9 +73,9 @@ export default function PlanetOverviewPanel({
                                     </div>
                                     {Array.isArray(entries) && entries.length > 0 && (
                                         <div className='mt-1 space-y-0.5'>
-                                            {entries.map((e: ResourceEntry) => (
+                                            {entries.map((e: ResourceEntry, i: number) => (
                                                 <div
-                                                    key={e.id ?? Math.random()}
+                                                    key={e.id ?? i}
                                                     className='text-[11px] text-muted-foreground flex justify-between'
                                                 >
                                                     <span>
@@ -99,33 +100,35 @@ export default function PlanetOverviewPanel({
             {/* Infrastructure */}
             <div className='border rounded-md p-3'>
                 <h4 className='text-sm font-semibold mb-2'>Infrastructure</h4>
-                {p.infrastructure ? (
+                {overview.infrastructure ? (
                     <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-xs'>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Primary schools</span>
-                            <span className='tabular-nums font-medium'>{p.infrastructure.primarySchools}</span>
+                            <span className='tabular-nums font-medium'>{overview.infrastructure.primarySchools}</span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Secondary schools</span>
-                            <span className='tabular-nums font-medium'>{p.infrastructure.secondarySchools}</span>
+                            <span className='tabular-nums font-medium'>{overview.infrastructure.secondarySchools}</span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Universities</span>
-                            <span className='tabular-nums font-medium'>{p.infrastructure.universities}</span>
+                            <span className='tabular-nums font-medium'>{overview.infrastructure.universities}</span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Hospitals</span>
-                            <span className='tabular-nums font-medium'>{p.infrastructure.hospitals}</span>
+                            <span className='tabular-nums font-medium'>{overview.infrastructure.hospitals}</span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Energy (MWh)</span>
                             <span className='tabular-nums font-medium'>
-                                {p.infrastructure.energy.production.toLocaleString()}
+                                {overview.infrastructure.energy?.production?.toLocaleString() ?? '—'}
                             </span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Spaceports</span>
-                            <span className='tabular-nums font-medium'>{p.infrastructure.mobility.spaceports}</span>
+                            <span className='tabular-nums font-medium'>
+                                {overview.infrastructure.mobility?.spaceports ?? '—'}
+                            </span>
                         </div>
                     </div>
                 ) : (
@@ -136,33 +139,43 @@ export default function PlanetOverviewPanel({
             {/* Environment */}
             <div className='border rounded-md p-3'>
                 <h4 className='text-sm font-semibold mb-2'>Environment</h4>
-                {p.environment ? (
+                {overview.environment ? (
                     <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-xs'>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Air pollution</span>
-                            <span className='tabular-nums font-medium'>{p.environment.pollution.air.toFixed(1)}</span>
+                            <span className='tabular-nums font-medium'>
+                                {overview.environment.pollution?.air?.toFixed(1) ?? '—'}
+                            </span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Water pollution</span>
-                            <span className='tabular-nums font-medium'>{p.environment.pollution.water.toFixed(1)}</span>
+                            <span className='tabular-nums font-medium'>
+                                {overview.environment.pollution?.water?.toFixed(1) ?? '—'}
+                            </span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Soil pollution</span>
-                            <span className='tabular-nums font-medium'>{p.environment.pollution.soil.toFixed(1)}</span>
+                            <span className='tabular-nums font-medium'>
+                                {overview.environment.pollution?.soil?.toFixed(1) ?? '—'}
+                            </span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Earthquakes/yr</span>
                             <span className='tabular-nums font-medium'>
-                                {p.environment.naturalDisasters.earthquakes}
+                                {overview.environment.naturalDisasters?.earthquakes ?? '—'}
                             </span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Floods/yr</span>
-                            <span className='tabular-nums font-medium'>{p.environment.naturalDisasters.floods}</span>
+                            <span className='tabular-nums font-medium'>
+                                {overview.environment.naturalDisasters?.floods ?? '—'}
+                            </span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Storms/yr</span>
-                            <span className='tabular-nums font-medium'>{p.environment.naturalDisasters.storms}</span>
+                            <span className='tabular-nums font-medium'>
+                                {overview.environment.naturalDisasters?.storms ?? '—'}
+                            </span>
                         </div>
                     </div>
                 ) : (

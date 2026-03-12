@@ -3,23 +3,18 @@
 import React, { useState, useMemo } from 'react';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
-import CohortFilter, { type CohortFilterState, EDU_COLORS, OCC_COLORS } from './CohortFilter';
+import CohortFilter, { type CohortFilterState, EDU_COLORS, OCC_COLORS } from '../../components/CohortFilter';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Population, Occupation } from '@/simulation/population/population';
+import type { Occupation } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL, mergeGaussianMoments } from '@/simulation/population/population';
 import { formatNumbers } from '@/lib/utils';
 
-/* ------------------------------------------------------------------ */
-/*  View mode                                                          */
-/* ------------------------------------------------------------------ */
+type SlimCategory = { total: number; wealthMean: number; wealthVariance: number };
+type SlimCohort = { [occ: string]: { [edu: string]: { [skill: string]: SlimCategory } } };
 
 type ViewMode = 'aggregate' | 'byEducation' | 'byOccupation';
-
-/* ------------------------------------------------------------------ */
-/*  Data rows                                                          */
-/* ------------------------------------------------------------------ */
 
 interface AggregateRow {
     age: number;
@@ -28,39 +23,22 @@ interface AggregateRow {
     lower: number;
     band: [number, number];
     pop: number;
-    /** Coefficient of variation (σ/μ) — useful inequality measure. */
     cv: number;
 }
 
-/** Row for multi-series (education or occupation) breakdown. */
 interface BreakdownRow {
     age: number;
-    [key: string]: number; // e.g. 'None': 123, 'Primary': 456
+    [key: string]: number;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
-
 type Props = {
-    population: Population;
+    demography: SlimCohort[];
 };
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-/**
- * WealthDistributionChart — enhanced wealth visualization.
- * Wealth is now embedded in each PopulationCategory as `.wealth` (GaussianMoments).
- */
-export default function WealthDistributionChart({ population }: Props): React.ReactElement {
+export default function WealthDistributionChart({ demography }: Props): React.ReactElement {
     const [filter, setFilter] = useState<CohortFilterState>({ edu: null, occ: null });
     const [view, setView] = useState<ViewMode>('aggregate');
 
-    const demography = population.demography;
-
-    // ---- Aggregate data (filtered) ----
     const aggregateData = useMemo<AggregateRow[]>(() => {
         if (!demography || demography.length === 0) {
             return [];
@@ -71,7 +49,7 @@ export default function WealthDistributionChart({ population }: Props): React.Re
 
         for (let age = 0; age < demography.length; age++) {
             const cohort = demography[age];
-            if (!cohort) {
+            if (!cohort || Object.keys(cohort).length === 0) {
                 continue;
             }
 
@@ -81,9 +59,12 @@ export default function WealthDistributionChart({ population }: Props): React.Re
             for (const occ of occs) {
                 for (const edu of edus) {
                     for (const skill of SKILL) {
-                        const cat = cohort[occ][edu][skill];
-                        if (cat.total > 0) {
-                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                        const cat = cohort[occ]?.[edu]?.[skill];
+                        if (cat && cat.total > 0) {
+                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, {
+                                mean: cat.wealthMean,
+                                variance: cat.wealthVariance,
+                            });
                             accN += cat.total;
                         }
                     }
@@ -94,26 +75,15 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                 rows.push({ age, mean: 0, upper: 0, lower: 0, band: [0, 0], pop: 0, cv: 0 });
                 continue;
             }
-
             const sigma = Math.sqrt(Math.max(0, accMoments.variance));
             const upper = accMoments.mean + sigma;
             const lower = Math.max(0, accMoments.mean - sigma);
             const cv = accMoments.mean > 0 ? sigma / accMoments.mean : 0;
-
-            rows.push({
-                age,
-                mean: accMoments.mean,
-                upper,
-                lower,
-                band: [lower, upper],
-                pop: accN,
-                cv,
-            });
+            rows.push({ age, mean: accMoments.mean, upper, lower, band: [lower, upper], pop: accN, cv });
         }
         return rows;
     }, [demography, filter.edu, filter.occ]);
 
-    // ---- Education breakdown data ----
     const eduBreakdown = useMemo<BreakdownRow[]>(() => {
         if (!demography || demography.length === 0 || view !== 'byEducation') {
             return [];
@@ -123,19 +93,21 @@ export default function WealthDistributionChart({ population }: Props): React.Re
 
         for (let age = 0; age < demography.length; age++) {
             const cohort = demography[age];
-            if (!cohort) {
+            if (!cohort || Object.keys(cohort).length === 0) {
                 continue;
             }
-
             const row: BreakdownRow = { age };
             for (const edu of educationLevelKeys) {
                 let accN = 0;
                 let accMoments = { mean: 0, variance: 0 };
                 for (const occ of occs) {
                     for (const skill of SKILL) {
-                        const cat = cohort[occ][edu][skill];
-                        if (cat.total > 0) {
-                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                        const cat = cohort[occ]?.[edu]?.[skill];
+                        if (cat && cat.total > 0) {
+                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, {
+                                mean: cat.wealthMean,
+                                variance: cat.wealthVariance,
+                            });
                             accN += cat.total;
                         }
                     }
@@ -148,35 +120,36 @@ export default function WealthDistributionChart({ population }: Props): React.Re
         return rows;
     }, [demography, filter.occ, view]);
 
-    // ---- Occupation breakdown data ----
     const occBreakdown = useMemo<BreakdownRow[]>(() => {
         if (!demography || demography.length === 0 || view !== 'byOccupation') {
             return [];
         }
         const edus: readonly EducationLevelType[] = filter.edu ? [filter.edu] : educationLevelKeys;
+        const occLabels: Record<string, string> = {
+            unoccupied: 'Unoccupied',
+            employed: 'Employed',
+            education: 'Education',
+            unableToWork: 'Unable to work',
+        };
         const rows: BreakdownRow[] = [];
 
         for (let age = 0; age < demography.length; age++) {
             const cohort = demography[age];
-            if (!cohort) {
+            if (!cohort || Object.keys(cohort).length === 0) {
                 continue;
             }
-
             const row: BreakdownRow = { age };
-            const occLabels: Record<string, string> = {
-                unoccupied: 'Unoccupied',
-                employed: 'Employed',
-                education: 'Education',
-                unableToWork: 'Unable to work',
-            };
             for (const occ of OCCUPATIONS) {
                 let accN = 0;
                 let accMoments = { mean: 0, variance: 0 };
                 for (const edu of edus) {
                     for (const skill of SKILL) {
-                        const cat = cohort[occ][edu][skill];
-                        if (cat.total > 0) {
-                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, cat.wealth);
+                        const cat = cohort[occ]?.[edu]?.[skill];
+                        if (cat && cat.total > 0) {
+                            accMoments = mergeGaussianMoments(accN, accMoments, cat.total, {
+                                mean: cat.wealthMean,
+                                variance: cat.wealthVariance,
+                            });
                             accN += cat.total;
                         }
                     }
@@ -191,13 +164,11 @@ export default function WealthDistributionChart({ population }: Props): React.Re
     if (!demography || demography.length === 0) {
         return <div className='text-xs text-muted-foreground'>No wealth data available</div>;
     }
-
     const hasData = aggregateData.some((d) => d.mean > 0);
     if (!hasData) {
         return <div className='text-xs text-muted-foreground'>No wealth data available</div>;
     }
 
-    // Summary stats
     const totalPop = aggregateData.reduce((s, d) => s + d.pop, 0);
     const totalWealth = aggregateData.reduce((s, d) => s + d.mean * d.pop, 0);
     const globalMean = totalPop > 0 ? totalWealth / totalPop : 0;
@@ -222,7 +193,6 @@ export default function WealthDistributionChart({ population }: Props): React.Re
                 </div>
             </div>
 
-            {/* Filter + view toggle */}
             <div className='flex items-start justify-between gap-2 mb-2'>
                 <CohortFilter value={filter} onChange={setFilter} compact />
                 <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>

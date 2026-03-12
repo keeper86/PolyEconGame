@@ -37,7 +37,6 @@ export default function AgentDetailPage() {
                 </Link>
             }
         >
-
             {!isLoading && tick > 0 && overview ? (
                 <div className='space-y-6'>
                     {/* Top-level agent stats */}
