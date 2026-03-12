@@ -536,9 +536,9 @@ export function createPopulation(total: number): Population {
             const primaryUnocc = Math.floor(ageCount * 0.45);
             const secondaryUnocc = Math.floor(ageCount * 0.27);
             const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
-            addTo(pop, age, 'unoccupied', 'primary', primaryUnocc);
-            addTo(pop, age, 'unoccupied', 'secondary', secondaryUnocc);
-            addTo(pop, age, 'unoccupied', 'tertiary', tertiaryUnocc);
+            addTo(pop, age, 'unableToWork', 'primary', primaryUnocc);
+            addTo(pop, age, 'unableToWork', 'secondary', secondaryUnocc);
+            addTo(pop, age, 'unableToWork', 'tertiary', tertiaryUnocc);
         }
     }
     return pop;

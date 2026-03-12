@@ -1,5 +1,4 @@
-import type { Agent, Planet } from '../planet/planet';
-import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
+import type { Planet } from '../planet/planet';
 import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
 
 import { populationAdvanceYear } from './aging';

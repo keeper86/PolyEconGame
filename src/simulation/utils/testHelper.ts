@@ -35,13 +35,13 @@ import type {
     DisabilityStats,
     GaussianMoments,
     Occupation,
-    PopulationCategory,
     Population,
+    PopulationCategory,
     RetirementStats,
     Skill,
 } from '../population/population';
-import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS, SKILL } from '../population/population';
+import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 
 // ============================================================================
 // Leaf value factories
@@ -625,6 +625,47 @@ export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>,
                 throw new Error(msg);
             }
             console.warn(msg);
+        }
+    }
+}
+
+/**
+ * Assert workforce counts match population counts for each (age, edu, skill) cell.
+ * This is a more granular version of assertWorkforcePopulationConsistency that catches
+ * per-cell mismatches that would cancel out in aggregates.
+ */
+export function assertPerCellWorkforcePopulationConsistency(
+    agents: Map<string, Agent>,
+    planet: Planet,
+    label = '',
+): void {
+    for (let age = 0; age < planet.population.demography.length; age++) {
+        for (const edu of educationLevelKeys) {
+            for (const skill of SKILL) {
+                const popEmployed = planet.population.demography[age].employed[edu][skill].total;
+
+                let wfTotal = 0;
+                for (const [_id, agent] of agents) {
+                    const wf = agent.assets[planet.id]?.workforceDemography;
+                    if (!wf || age >= wf.length) {
+                        continue;
+                    }
+                    const cell = wf[age][edu][skill];
+                    wfTotal += cell.active;
+                    wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
+                    wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
+                    wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
+                }
+
+                // Only check cells where at least one side is non-zero
+                if (popEmployed !== 0 || wfTotal !== 0) {
+                    if (wfTotal !== popEmployed) {
+                        console.error(
+                            `${label} per-cell mismatch at age=${age}, edu=${edu}, skill=${skill}: wf=${wfTotal} ≠ pop(employed)=${popEmployed}`,
+                        );
+                    }
+                }
+            }
         }
     }
 }

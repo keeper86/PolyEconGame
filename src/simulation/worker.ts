@@ -288,7 +288,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
 
             const elapsedMs = Date.now() - start;
-            console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
+            if (state.tick % 17 === 0) {
+                console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
+            }
 
             pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs };
             tryFlushMessages(Date.now());

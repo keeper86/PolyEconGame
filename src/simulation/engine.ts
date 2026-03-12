@@ -8,9 +8,10 @@ import type { Agent, GameState } from './planet/planet';
 import { productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
+import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
 import { updateAllocatedWorkers } from './workforce/allocatedWorkers';
-import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { hireWorkforce } from './workforce/hireWorkforce';
+import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 
@@ -25,12 +26,23 @@ export function advanceTick(gameState: GameState) {
 
         environmentTick(planet);
 
+        if (process.env.SIM_DEBUG) {
+            assertPerCellWorkforcePopulationConsistency(planetAgents, planet, `${planet.name} before workforce tick`);
+        }
+
         const workforceEvents = workforceDemographicTick(planetAgents, planet);
         populationTick(planet, workforceEvents);
+
+        if (process.env.SIM_DEBUG) {
+            assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'after');
+        }
 
         if (isMonthBoundary(gameState.tick)) {
             updateAllocatedWorkers(planetAgents, planet);
             hireWorkforce(planetAgents, planet);
+            if (process.env.SIM_DEBUG) {
+                assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'othermonth');
+            }
         }
 
         preProductionFinancialTick(planetAgents, planet);
@@ -50,8 +62,17 @@ export function advanceTick(gameState: GameState) {
         }
 
         if (isYearBoundary(gameState.tick)) {
+            if (process.env.SIM_DEBUG) {
+                assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'beforeYear');
+            }
             populationAdvanceYearTick(planet.population);
-            workforceAdvanceYearTick(planetAgents);
+            workforceAdvanceYearTick(planetAgents, planet);
+            if (process.env.SIM_DEBUG) {
+                assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'afterYear');
+            }
+        }
+        if (process.env.SIM_DEBUG) {
+            assertPerCellWorkforcePopulationConsistency(planetAgents, planet, `${planet.name} end of tick`);
         }
     });
 }
