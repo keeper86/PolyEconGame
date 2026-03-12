@@ -37,16 +37,16 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const WORKER_ENTRY = path.join(REPO_ROOT, 'src/simulation/worker.ts');
 
 /**
- * Same knexfile-rewrite plugin as in trace-worker.mjs.
- * Rewrites `../../knexfile.js` to the copy we place next to the bundle.
+ * Same knexfile-inline plugin as in trace-worker.mjs.
+ * Resolves `../../knexfile.js` to the real file on disk so esbuild
+ * can bundle it (and its dotenv/dotenv-expand dependencies) inline.
  */
-function makeKnexfilePlugin(bundleDir: string) {
+function makeKnexfilePlugin(_bundleDir: string) {
     return {
-        name: 'knexfile-rewrite',
+        name: 'knexfile-inline',
         setup(b: import('esbuild').PluginBuild) {
-            b.onResolve({ filter: /\.\.\/\.\.\/knexfile\.js$/ }, () => ({
-                path: path.join(bundleDir, 'knexfile.js'),
-                external: true,
+            b.onResolve({ filter: /\.\.\/\.\.\/knexfile\.js$/ }, (args) => ({
+                path: path.resolve(path.dirname(args.importer), args.path),
             }));
         },
     };
@@ -63,10 +63,6 @@ describe('worker production bundle', () => {
     beforeAll(async () => {
         tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'worker-bundle-test-'));
         bundlePath = path.join(tmpDir, 'worker.mjs');
-
-        // Copy knexfile next to the bundle (mirrors what trace-worker.mjs does)
-        // so the rewritten import resolves correctly at import-time.
-        await fs.copyFile(path.join(REPO_ROOT, 'knexfile.js'), path.join(tmpDir, 'knexfile.js'));
     });
 
     afterAll(async () => {
