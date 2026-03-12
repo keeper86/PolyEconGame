@@ -28,6 +28,31 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
+# ---------------------------------------------------------------------------
+# worker-builder — bundles the simulation worker independently of Next.js.
+#
+# Uses simulation.package.json (minimal deps: esbuild + runtime packages)
+# so the bundle step is isolated and its dependency surface is explicit.
+# The output worker.mjs is copied into the production image below.
+# ---------------------------------------------------------------------------
+FROM base AS worker-builder
+WORKDIR /app
+
+# Install only the minimal simulation worker dependencies.
+COPY simulation.package.json ./package.json
+RUN npm install
+
+# Source files needed by the bundle step.
+COPY trace-worker.mjs ./
+COPY knexfile.js ./
+COPY src/simulation/ ./src/simulation/
+
+# Create the output directory that trace-worker.mjs expects.
+RUN mkdir -p .next/standalone
+
+# Bundle worker.ts → .next/standalone/worker.mjs
+RUN node trace-worker.mjs
+
 FROM base AS production
 WORKDIR /app
 
@@ -43,6 +68,13 @@ COPY --from=builder /app/public ./public
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy the simulation worker bundle built by the dedicated worker-builder stage.
+# worker.mjs is placed at the root of the standalone output, matching the path
+# the workerManager expects at runtime.
+COPY --from=worker-builder --chown=nextjs:nodejs /app/.next/standalone/worker.mjs ./worker.mjs
+COPY --from=worker-builder --chown=nextjs:nodejs /app/.next/standalone/worker.mjs.map ./worker.mjs.map
+COPY --from=worker-builder --chown=nextjs:nodejs /app/.next/standalone/knexfile.js ./knexfile.js
 
 USER nextjs
 

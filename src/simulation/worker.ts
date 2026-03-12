@@ -92,7 +92,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             // the dev (tsx/ts-node) environment and the esbuild ESM bundle
             // (.next/standalone/worker.mjs) where `require` is not available.
             const { default: knexModule } = await import('knex');
-            const { default: knexConfig } = (await import('../../knexfile')) as {
+            const { default: knexConfig } = (await import('../../knexfile.js')) as {
                 default: Record<string, import('knex').Knex.Config>;
             };
             const isDevelopment = process.env.NODE_ENV === 'development';

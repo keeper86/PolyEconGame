@@ -12,7 +12,6 @@
 
 import path from 'node:path';
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import { MessageChannel, type MessagePort } from 'node:worker_threads';
 import { Piscina } from 'piscina';
 import { spawnSync } from 'node:child_process';
@@ -71,111 +70,92 @@ function getMessageHandlers(): Set<MessageHandler> {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Resolve tsx preload execArgv (if available), to support TS workers in dev. */
+/** Resolve tsx preload execArgv (if available), to support TS workers in dev.
+ *
+ * `createRequire` from inside a Next.js/Turbopack server bundle returns a
+ * webpack-shimmed require whose `.resolve` is undefined — so we cannot rely
+ * on it.  Instead we probe the file system directly: walk up from process.cwd()
+ * looking for each candidate path inside node_modules, the same way Node's own
+ * resolver would.  This is safe because we only need the absolute path to pass
+ * as a --require argument to a child Node process.
+ */
 function resolveTsxExecArgv(): string[] | undefined {
-    const requireFn = createRequire(process.cwd() + '/');
-    const tsxCandidates = ['tsx/cjs', 'tsx', 'tsx/register'];
-    for (const name of tsxCandidates) {
-        try {
-            const resolved = requireFn.resolve(name);
-            console.log(`[workerManager] Preloading ${name} -> ${resolved}`);
-            return ['--require', resolved];
-        } catch (_e) {
-            // try next candidate
-        }
-    }
-    return undefined;
-}
+    const tsxCandidates = [
+        'tsx/dist/cjs/index.cjs', // tsx ≥ 4 CJS entry (fast, no ESM loader overhead)
+        'tsx/dist/cjs/index.js',
+        'tsx/cjs',
+    ];
 
-/** Try resolving all tsx candidates and return a debug array. */
-function debugResolveTsxCandidates(): Array<{ name: string; resolved?: string; error?: string }> {
-    const requireFn = createRequire(process.cwd() + '/');
-    const tsxCandidates = ['tsx/cjs', 'tsx', 'tsx/register'];
-    const out: Array<{ name: string; resolved?: string; error?: string }> = [];
-    for (const name of tsxCandidates) {
-        try {
-            const resolved = requireFn.resolve(name);
-            out.push({ name, resolved });
-        } catch (e: unknown) {
-            out.push({ name, error: e instanceof Error ? e.message : String(e) });
+    // Walk up from cwd looking for node_modules containing the candidate.
+    let dir = process.cwd();
+    while (dir) {
+        for (const candidate of tsxCandidates) {
+            const full = path.join(dir, 'node_modules', candidate);
+            if (fs.existsSync(full)) {
+                console.log(`[workerManager] Preloading tsx -> ${full}`);
+                return ['--require', full];
+            }
         }
+        const parent = path.dirname(dir);
+        if (parent === dir) {
+            break; // reached filesystem root
+        }
+        dir = parent;
     }
-    return out;
+
+    return undefined;
 }
 
 function createPool(): { pool: Piscina; port: MessagePort } {
     // __dirname is unreliable inside Next.js bundles (resolves to /ROOT/…).
     // Use process.cwd() which always points to the real project root.
     //
-    // In production (standalone), the postbuild script bundles the worker
-    // into a single `worker.mjs` at the standalone root (= process.cwd()).
-    // In development, tsx handles TS resolution so we use the .ts source.
+    // In production (standalone), worker.mjs is bundled at the standalone root
+    // (= process.cwd()).  In development, tsx handles TS resolution.
     const bundledWorkerPath = path.resolve(process.cwd(), 'worker.mjs');
     const tsWorkerPath = path.resolve(process.cwd(), 'src', 'simulation', 'worker.ts');
     const useBundledWorker = fs.existsSync(bundledWorkerPath);
     const workerPath = useBundledWorker ? bundledWorkerPath : tsWorkerPath;
+
+    // tsx is only needed when running the .ts source directly (dev mode).
+    // Skip tsx resolution entirely when the bundled worker is present — it
+    // would produce confusing errors since the Next.js server bundle shims
+    // require() in a way that breaks require.resolve().
     const execArgv = useBundledWorker ? undefined : resolveTsxExecArgv();
 
-    console.log(`[workerManager] Creating Piscina pool with worker: ${workerPath}`);
-    console.log('[workerManager] Pool options:', {
-        execArgv,
-        workerData: { tickIntervalMs: 0 },
-        bundled: useBundledWorker,
-    });
-    // Extra debug: log whether the worker file exists and perms.
-    try {
-        const exists = fs.existsSync(workerPath);
-        let stat: fs.Stats | null = null;
-        if (exists) {
-            stat = fs.statSync(workerPath);
-        }
-        console.log('[workerManager] Worker file exists:', exists, stat ? { size: stat.size, mode: stat.mode } : null);
-    } catch (e) {
-        console.warn('[workerManager] Could not stat worker file:', e instanceof Error ? e.message : String(e));
-    }
+    console.log(`[workerManager] Starting simulation worker (${useBundledWorker ? 'bundled' : 'dev/ts'} mode)`);
 
-    // Debug resolve of tsx candidates to help track resolvers / loader selection
-    try {
-        const debugCandidates = debugResolveTsxCandidates();
-        console.log('[workerManager] tsx resolve candidates:', debugCandidates);
-    } catch (e) {
-        console.warn(
-            '[workerManager] Failed to debug-resolve tsx candidates:',
-            e instanceof Error ? e.message : String(e),
-        );
-    }
+    if (!useBundledWorker) {
+        // Dev-only diagnostics: log tsx resolution and run an import preflight
+        // so missing transitive imports surface immediately with a clear message.
+        console.log('[workerManager] execArgv:', execArgv);
 
-    // Preflight check: try to require() the worker module in a fresh Node
-    // process with the same execArgv (so tsx/cjs is preloaded). This catches
-    // missing transitive imports early and produces a clear error message
-    // instead of letting Piscina silently fall back to ESM resolution.
-    if (execArgv) {
-        try {
-            const nodeArgs = [
-                ...execArgv,
-                '-e',
-                `try { require(${JSON.stringify(workerPath)}); console.log('__WORKER_IMPORT_OK__'); } catch (e) { console.error(e && (e.stack || e.message) || e); process.exit(1); }`,
-            ];
-            const res = spawnSync(process.execPath, nodeArgs, { cwd: process.cwd(), encoding: 'utf8' });
-            if (res.stdout) {
-                console.log('[workerManager] worker import preflight stdout:', res.stdout.trim());
+        if (execArgv) {
+            try {
+                const nodeArgs = [
+                    ...execArgv,
+                    '-e',
+                    `try { require(${JSON.stringify(workerPath)}); console.log('__WORKER_IMPORT_OK__'); } catch (e) { console.error(e && (e.stack || e.message) || e); process.exit(1); }`,
+                ];
+                const res = spawnSync(process.execPath, nodeArgs, { cwd: process.cwd(), encoding: 'utf8' });
+                if (res.stdout?.includes('__WORKER_IMPORT_OK__')) {
+                    console.log('[workerManager] Worker import preflight OK');
+                }
+                if (res.status !== 0) {
+                    console.error('[workerManager] Worker import preflight failed:');
+                    console.error(res.stderr || res.stdout || 'no output');
+                    throw new Error('Worker import preflight failed - aborting pool creation');
+                }
+            } catch (err) {
+                console.error(
+                    '[workerManager] Worker import preflight threw:',
+                    err instanceof Error ? err.stack || err.message : String(err),
+                );
+                throw err;
             }
-            if (res.status !== 0) {
-                console.error('[workerManager] Worker import preflight failed:');
-                console.error(res.stderr || res.stdout || 'no output');
-                throw new Error('Worker import preflight failed - aborting pool creation');
-            }
-        } catch (err) {
-            console.error(
-                '[workerManager] Worker import preflight threw:',
-                err instanceof Error ? err.stack || err.message : String(err),
-            );
-            throw err;
+        } else {
+            console.warn('[workerManager] tsx not found — worker may fail to load TypeScript imports');
         }
-    } else {
-        // If we couldn't resolve a tsx prerequire arg, we can't reliably
-        // validate TypeScript imports here. Leave a debug hint.
-        console.debug('[workerManager] No execArgv for tsx found — skipping worker import preflight');
     }
 
     // Create a dedicated MessageChannel for custom messages between the main

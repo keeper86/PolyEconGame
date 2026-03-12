@@ -1,8 +1,13 @@
-// Load environment variables from .env with variable expansion support
+// Load environment variables from .env with variable expansion support.
+// Skip in production — env vars are injected by the container orchestrator
+// and dotenv/dotenv-expand may not be present in the standalone bundle's
+// node_modules.
 import dotenv from 'dotenv';
 import dotenvExpand from 'dotenv-expand';
-const env = dotenv.config();
-dotenvExpand.expand(env);
+if (process.env.NODE_ENV !== 'production') {
+    const env = dotenv.config();
+    dotenvExpand.expand(env);
+}
 
 const defaultConfig = (overrideUrl) => ({
     client: 'postgresql',
