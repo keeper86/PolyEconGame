@@ -52,10 +52,10 @@ const BUNDLE_OUTPUT = path.join(STANDALONE_DIR, 'worker.mjs');
  * but that caused a hard failure in production because dotenv/dotenv-expand
  * are not present in the standalone node_modules and the top-level ESM
  * import statements in knexfile.js cannot be guarded by a runtime check.
- * Inlining knexfile.js into the bundle resolves the issue: esbuild tree-
- * shakes the dead import() branch and the dotenv modules are only included
- * in the bundle (where they are available at build time), not as loose
- * files that the runtime must resolve.
+ * Inlining knexfile.js into the bundle resolves the issue: esbuild bundles
+ * knexfile.js and its dotenv/dotenv-expand dependencies directly into the
+ * worker output, so no loose knexfile.js or dotenv modules are needed and
+ * the runtime is not required to resolve those files from node_modules.
  */
 const knexfilePlugin = {
     name: 'knexfile-inline',
