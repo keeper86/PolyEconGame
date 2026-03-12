@@ -1,15 +1,10 @@
 import { Page } from '@/components/client/Page';
-import TickDisplayConnected from '@/components/client/TickDisplayConnected';
 import { APP_ROUTES } from '@/lib/appRoutes';
 import Link from 'next/link';
 
 export default function LandingPage() {
     return (
         <Page title='Game'>
-            <div className='mb-4'>
-                <TickDisplayConnected />
-            </div>
-
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'>
                 <Link
                     href={APP_ROUTES.agents.path}

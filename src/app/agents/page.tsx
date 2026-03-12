@@ -3,7 +3,6 @@
 import { useQuery } from '@tanstack/react-query';
 import AgentSummaryCard from '@/app/agents/AgentSummaryCard';
 import { Page } from '@/components/client/Page';
-import TickDisplay from '@/components/client/TickDisplay';
 import { useTRPC } from '@/lib/trpc';
 
 const REFETCH_INTERVAL_MS = 1000;
@@ -21,9 +20,6 @@ export default function AgentsPage() {
 
     return (
         <Page title='Agents'>
-            <div className='mb-4'>
-                <TickDisplay tick={tick} />
-            </div>
 
             {!isLoading && tick > 0 && agents.length > 0 ? (
                 <div className='grid grid-cols-1 gap-4'>

@@ -331,9 +331,9 @@ export function survivalFloorForAge(age: number, baseFoodCost: number): number {
  */
 export function generationAmplitude(n: number): number {
     if (n < 0) {
-        return Math.exp(-0.2 * (Math.abs(n) - 1));
+        return Math.exp(-0.4 * (Math.abs(n) - 1));
     } else {
-        return Math.exp(-0.2 * (n + 1));
+        return Math.exp(-0.4 * (n + 1));
     }
 }
 

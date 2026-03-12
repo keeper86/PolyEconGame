@@ -2,7 +2,6 @@
 
 import PlanetAssetCard from '@/app/agents/PlanetAssetCard';
 import { Page } from '@/components/client/Page';
-import TickDisplay from '@/components/client/TickDisplay';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -38,9 +37,6 @@ export default function AgentDetailPage() {
                 </Link>
             }
         >
-            <div className='mb-4'>
-                <TickDisplay tick={tick} />
-            </div>
 
             {!isLoading && tick > 0 && overview ? (
                 <div className='space-y-6'>

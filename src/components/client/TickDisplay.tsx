@@ -1,29 +1,35 @@
 'use client';
 
+import { useTRPC } from '@/lib/trpc';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
+import { useQuery } from '@tanstack/react-query';
 
-export default function TickDisplay({ tick }: { tick: number }) {
-    // we have TICKS_PER_MONTH and 12 months per year
-    // so we need to map tick 0 to "1 Jan 2200"
-    // and then we calculate the ticksPerYear and can map ticks into unixTimeseconds.
-    // We will just add unixTime to the start and the time mapping should be smooth
-    // Lets show "month year: week" for the date format, e.g. "Jan 2200: Week 3"
+const REFETCH_INTERVAL_MS = 1000;
+
+/** Client wrapper that fetches the current tick from the simulation and displays it. */
+export default function TickDisplay() {
+    const trpc = useTRPC();
+    const { data } = useQuery({
+        ...trpc.simulation.getCurrentTick.queryOptions(),
+        refetchInterval: REFETCH_INTERVAL_MS,
+    });
+    const tick = data?.tick ?? 0;
+
     const mapTickToDate = (tick: number): string => {
-        const elapsedYears = Math.floor(tick / TICKS_PER_YEAR);
+        const year = Math.floor(tick / TICKS_PER_YEAR) + 2200;
         const monthsIntoYear = Math.floor((tick % TICKS_PER_YEAR) / TICKS_PER_MONTH);
-        const daysIntoMonth = (tick % TICKS_PER_MONTH) % TICKS_PER_MONTH;
+        const daysIntoMonth = tick % TICKS_PER_MONTH;
 
-        const startUnixTime = new Date(2200 + elapsedYears, monthsIntoYear, daysIntoMonth);
-        return (
-            startUnixTime.toLocaleString('en-US', { month: 'short', year: 'numeric' }) +
-            `: Week ${Math.floor((tick % TICKS_PER_YEAR) / 7) + 1}: Day ${daysIntoMonth + 1}`
-        );
+        // day is 1-based; pad single-digit days with a leading zero to avoid layout shifts
+        const day = daysIntoMonth + 1;
+        const dayDisplay = day.toString().padStart(2, '0');
+
+        const startUnixTime = new Date(year, monthsIntoYear, daysIntoMonth);
+        const monthName = startUnixTime.toLocaleDateString('en-US', {
+            month: 'long',
+        });
+        return `${dayDisplay}. ${monthName} ${year}`;
     };
 
-    return (
-        <div className='rounded border p-2 inline-block bg-white/5'>
-            <div className='text-sm text-slate-400'>Date</div>
-            <div className='text-xl font-mono'>{tick > 0 ? mapTickToDate(tick) : '—'}</div>
-        </div>
-    );
+    return <div>{tick > 0 ? mapTickToDate(tick) : '—'}</div>;
 }

@@ -2,7 +2,6 @@
 
 import PlanetSummaryCard from '@/app/planets/PlanetSummaryCard';
 import { Page } from '@/components/client/Page';
-import TickDisplay from '@/components/client/TickDisplay';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
 
@@ -21,10 +20,6 @@ export default function PlanetsPage() {
 
     return (
         <Page title='Planets'>
-            <div className='mb-4'>
-                <TickDisplay tick={tick} />
-            </div>
-
             {!isLoading && tick > 0 && planetSummaries.length > 0 ? (
                 <div className='grid grid-cols-1 gap-4'>
                     {planetSummaries.map((p) => (

@@ -8,10 +8,10 @@ import NutritionHeatmapChart from '@/app/planets/NutritionHeatmapChart';
 import PlanetDemography from '@/app/planets/PlanetDemography';
 import WealthDistributionChart from '@/app/planets/WealthDistributionChart';
 import { Page } from '@/components/client/Page';
-import TickDisplay from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
 import type { Planet } from '@/simulation/planet/planet';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { Population } from '@/simulation/population/population';
@@ -21,7 +21,6 @@ import { ArrowLeft, Globe, Landmark, Users, Wheat } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PlanetOverviewPanel from '../PlanetOverviewPanel';
-import { formatNumbers } from '@/lib/utils';
 import WealthByAgeChart from '../WealthByAgeChart';
 
 const REFETCH_INTERVAL_MS = 1000;
@@ -81,70 +80,8 @@ export default function PlanetDetailPage() {
                 </Link>
             }
         >
-            <div className='mb-4'>
-                <TickDisplay tick={tick} />
-            </div>
-
             {!isLoading && tick > 0 && planet ? (
                 <div className='space-y-6'>
-                    {/* Top-level stats */}
-                    <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-                        <Card>
-                            <CardContent className='pt-4'>
-                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
-                                    <Users className='h-3.5 w-3.5' />
-                                    Population
-                                </div>
-                                <div className='text-lg font-semibold tabular-nums'>
-                                    {formatNumbers(populationTotal)}
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className='pt-4'>
-                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
-                                    <Globe className='h-3.5 w-3.5' />
-                                    Position
-                                </div>
-                                <div className='text-sm font-semibold'>
-                                    {planet.position
-                                        ? `${planet.position.x}, ${planet.position.y}, ${planet.position.z}`
-                                        : '—'}
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className='pt-4'>
-                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
-                                    <Wheat className='h-3.5 w-3.5' />
-                                    Starvation
-                                </div>
-                                <div
-                                    className={`text-lg font-semibold tabular-nums ${
-                                        starvationLevel > 0.1
-                                            ? 'text-red-500'
-                                            : starvationLevel > 0
-                                              ? 'text-amber-500'
-                                              : 'text-green-600'
-                                    }`}
-                                >
-                                    {(starvationLevel * 100).toFixed(0)}%
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className='pt-4'>
-                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground mb-1'>
-                                    <Landmark className='h-3.5 w-3.5' />
-                                    Money supply
-                                </div>
-                                <div className='text-lg font-semibold tabular-nums'>
-                                    {planet.bank ? formatNumbers(planet.bank.deposits) : '—'}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-
                     {/* Tabbed content */}
                     <Tabs defaultValue='overview' className='w-full'>
                         <TabsList className='grid w-full grid-cols-4'>

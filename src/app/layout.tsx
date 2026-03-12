@@ -1,21 +1,21 @@
 import Footer from '@/app/Footer';
+import TickDisplay from '@/components/client/TickDisplay';
+import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
-import { DynamicBreadcrumbs } from '@/components/navigation/dynamicBreadcrumbs';
+import BreadcrumbsClientWrapper from '@/components/navigation/BreadcrumbsClientWrapper';
+import { ThemeProvider } from '@/components/themeProvider';
+import ThemeWrapper from '@/components/themeWrapper';
+import BackToTopButton from '@/components/ui/BackToTopButton';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Metadata } from 'next';
 import { getServerSession } from 'next-auth';
-import type { ReactNode } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
+import type { ReactNode } from 'react';
 import { Toaster } from '../components/ui/sonner';
 import { authOptions } from './api/auth/[...nextauth]/authOptions';
 import AppProviders from './AppProviders';
 import './globals.css';
-import BackToTopButton from '@/components/ui/BackToTopButton';
-import ThemeWrapper from '@/components/themeWrapper';
-import { ThemeProvider } from '@/components/themeProvider';
-import { ModeToggle } from '@/components/modeToggle';
-import DevWorkerHotReload from '@/components/client/DevWorkerHotReload';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -50,15 +50,17 @@ export default async function RootLayout({
                             <SidebarProvider>
                                 <AppSidebar />
                                 <SidebarInset>
-                                    <header className='flex h-16 shrink-0 items-center justify-between gap-2 px-4'>
+                                    <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
                                         <div className='flex items-center gap-2 '>
                                             <SidebarTrigger className='-ml-1' />
                                             <Separator orientation='vertical' className='mr-2 h-4' />
-                                            <DynamicBreadcrumbs />
+                                            <BreadcrumbsClientWrapper />
                                         </div>
                                         <div className='flex items-center gap-2'>
+                                            <span className='text-sm text-muted-foreground flex items-center gap-1'>
+                                                <TickDisplay />
+                                            </span>
                                             <ModeToggle />
-                                            {process.env.NODE_ENV === 'development' && <DevWorkerHotReload />}
                                         </div>
                                     </header>
                                     <main className='flex-1 p-0 sm:p-4 overflow-x-auto break-words'>{children}</main>

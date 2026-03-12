@@ -5,7 +5,6 @@ import ProductionFacilitiesPanel from '@/app/agents/ProductionFacilitiesPanel';
 import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
 import type { WorkforceDemography } from '@/app/agents/workforce-summary';
 import { Page } from '@/components/client/Page';
-import TickDisplay from '@/components/client/TickDisplay';
 import { useTRPC } from '@/lib/trpc';
 import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facilities';
 import type { EducationLevelType } from '@/simulation/population/education';
@@ -120,10 +119,6 @@ export default function AgentPlanetDetailPage() {
                 </Link>
             }
         >
-            <div className='mb-4'>
-                <TickDisplay tick={tick} />
-            </div>
-
             {!isLoading && tick > 0 && assets ? (
                 <div className='space-y-6'>
                     {/* Production facilities */}
