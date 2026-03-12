@@ -191,7 +191,7 @@ export default function FoodBufferChart({ demography }: Props): React.ReactEleme
 
     for (let age = 0; age < demography.length; age++) {
         const cohort = demography[age];
-        if (!cohort || Object.keys(cohort).length === 0) {
+        if (!cohort) {
             continue;
         }
 
@@ -306,10 +306,10 @@ export default function FoodBufferChart({ demography }: Props): React.ReactEleme
                 <ColorLegend keys={keys} labels={labels} colors={colors} />
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width='100%' minHeight={220} minWidth={300} style={{ marginLeft: '-20px' }}>
-                    <BarChart data={data} margin={{ top: 5, right: -100, bottom: 5, left: 0 }} barCategoryGap='5%'>
+                <ResponsiveContainer width='100%' minHeight={220} minWidth={300} style={{ marginLeft: '-10px' }}>
+                    <BarChart data={data} margin={{ top: 5, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
                         <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                        <XAxis dataKey='age' tick={{ fontSize: 10 }} />
+                        <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
                         <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         <Tooltip content={tooltip as any} />

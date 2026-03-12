@@ -27,7 +27,7 @@ export default function FoodPage() {
     const live = { tick, foodPrice: food.priceLevel, starvationLevel: food.starvationLevel };
 
     return (
-        <div className='space-y-4 p-4'>
+        <div className='space-y-4'>
             <Card>
                 <CardHeader className='pb-2'>
                     <CardTitle className='text-sm font-medium'>Food price &amp; starvation history</CardTitle>
