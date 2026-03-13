@@ -8,6 +8,7 @@ import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 
@@ -275,53 +276,73 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
         return <div className='text-xs text-muted-foreground'>No nutrition data available</div>;
     }
 
+    const starvingPct = totalPop > 0 ? totalStarving / totalPop : 0;
+
+    // Decide colors similar to the inline classes previously used
+    const starvingColor = starvingPct > 0.05 ? '#ef4444' : totalStarving > 0 ? '#f59e0b' : '#16a34a';
+    const avgStarvColor = globalAvgStarvation > 0.3 ? '#ef4444' : globalAvgStarvation > 0 ? '#f59e0b' : '#16a34a';
+    const avgBufferColor = globalAvgBuffer < 0.3 ? '#ef4444' : globalAvgBuffer < 0.7 ? '#f59e0b' : '#16a34a';
+
+    const summaryCards = isVerySmall ? (
+        <div className='flex gap-1 mb-2'>
+            <div
+                className='flex-1 px-1.5 py-1 border rounded text-xs'
+                style={{ borderLeftColor: starvingColor, borderLeftWidth: 3 }}
+            >
+                <div className='text-muted-foreground text-[9px] leading-tight truncate'>Starving</div>
+                <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(totalStarving)}</div>
+                <div className='text-[9px] text-muted-foreground leading-tight'>{formatPct(starvingPct)}</div>
+            </div>
+
+            <div
+                className='flex-1 px-1.5 py-1 border rounded text-xs'
+                style={{ borderLeftColor: avgStarvColor, borderLeftWidth: 3 }}
+            >
+                <div className='text-muted-foreground text-[9px] leading-tight truncate'>Avg starvation</div>
+                <div className='font-semibold text-[11px] leading-tight'>{formatPct(globalAvgStarvation)}</div>
+                <div className='text-[9px] text-muted-foreground leading-tight'>Weighted</div>
+            </div>
+
+            <div
+                className='flex-1 px-1.5 py-1 border rounded text-xs'
+                style={{ borderLeftColor: avgBufferColor, borderLeftWidth: 3 }}
+            >
+                <div className='text-muted-foreground text-[9px] leading-tight truncate'>Avg buffer</div>
+                <div className='font-semibold text-[11px] leading-tight'>{formatPct(globalAvgBuffer)}</div>
+                <div className='text-[9px] text-muted-foreground leading-tight'>Target normalized</div>
+            </div>
+        </div>
+    ) : (
+        <div className='flex gap-2 mb-3'>
+            <Card className='flex-1 overflow-hidden' style={{ borderLeftColor: starvingColor, borderLeftWidth: 3 }}>
+                <CardContent className='px-3 py-2.5 space-y-0.5'>
+                    <p className='text-[11px] text-muted-foreground font-medium'>Starving</p>
+                    <p className='text-lg font-semibold leading-tight'>{formatNumbers(totalStarving)}</p>
+                    <p className='text-xs text-muted-foreground'>{formatPct(starvingPct)}</p>
+                </CardContent>
+            </Card>
+
+            <Card className='flex-1 overflow-hidden' style={{ borderLeftColor: avgStarvColor, borderLeftWidth: 3 }}>
+                <CardContent className='px-3 py-2.5 space-y-0.5'>
+                    <p className='text-[11px] text-muted-foreground font-medium'>Avg starvation</p>
+                    <p className='text-lg font-semibold leading-tight'>{formatPct(globalAvgStarvation)}</p>
+                    <p className='text-xs text-muted-foreground'>Weighted by population</p>
+                </CardContent>
+            </Card>
+
+            <Card className='flex-1 overflow-hidden' style={{ borderLeftColor: avgBufferColor, borderLeftWidth: 3 }}>
+                <CardContent className='px-3 py-2.5 space-y-0.5'>
+                    <p className='text-[11px] text-muted-foreground font-medium'>Avg buffer</p>
+                    <p className='text-lg font-semibold leading-tight'>{formatPct(globalAvgBuffer)}</p>
+                    <p className='text-xs text-muted-foreground'>Normalized to food target</p>
+                </CardContent>
+            </Card>
+        </div>
+    );
+
     return (
         <>
-            {/* Summary stats */}
-            <div className='flex gap-3 text-[10px] text-muted-foreground mb-2 flex-wrap'>
-                <span>
-                    Starving:{' '}
-                    <span
-                        className={
-                            totalStarving / totalPop > 0.05
-                                ? 'text-red-500 font-semibold'
-                                : totalStarving > 0
-                                  ? 'text-amber-500'
-                                  : 'text-green-600'
-                        }
-                    >
-                        {formatNumbers(totalStarving)} ({formatPct(totalPop > 0 ? totalStarving / totalPop : 0)})
-                    </span>
-                </span>
-                <span>
-                    Avg starvation:{' '}
-                    <span
-                        className={
-                            globalAvgStarvation > 0.3
-                                ? 'text-red-500 font-semibold'
-                                : globalAvgStarvation > 0
-                                  ? 'text-amber-500'
-                                  : 'text-green-600'
-                        }
-                    >
-                        {formatPct(globalAvgStarvation)}
-                    </span>
-                </span>
-                <span>
-                    Avg buffer:{' '}
-                    <span
-                        className={
-                            globalAvgBuffer < 0.3
-                                ? 'text-red-500'
-                                : globalAvgBuffer < 0.7
-                                  ? 'text-amber-500'
-                                  : 'text-green-600'
-                        }
-                    >
-                        {formatPct(globalAvgBuffer)}
-                    </span>
-                </span>
-            </div>
+            {summaryCards}
 
             <ResponsiveContainer width='100%' minHeight={200} minWidth={290}>
                 <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
