@@ -1,19 +1,15 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
-import ChartCard from '../../components/ChartCard';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Skill } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
-
-const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+import type { AggRow, GroupMode } from './demographicsTypes';
+import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 
 // ─── Nutrition bands ──────────────────────────────────────────────────────────
 
@@ -49,69 +45,9 @@ const formatPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type FoodCategory = { total: number; foodStock: number; starvationLevel: number };
-type FoodCohort = { [occ: string]: { [edu: string]: { [skill: string]: FoodCategory } } };
-type GroupMode = 'occupation' | 'education';
 type ChartRow = Record<string, number>;
 
-// ─── SkillFilter ──────────────────────────────────────────────────────────────
-
-const SKILL_LABELS: Record<Skill, string> = { novice: 'Novice', professional: 'Pro', expert: 'Expert' };
-const SKILL_COLORS: Record<Skill, string> = {
-    novice: '#94a3b8',
-    professional: '#60a5fa',
-    expert: '#f59e0b',
-};
-
-function SkillFilter({ selected, onChange }: { selected: Set<Skill>; onChange: (s: Set<Skill>) => void }) {
-    const allSelected = SKILL.every((s) => selected.has(s));
-    const toggle = (skill: Skill) => {
-        const next = new Set(selected);
-        if (next.has(skill)) {
-            next.delete(skill);
-        } else {
-            next.add(skill);
-        }
-        if (next.size > 0) {
-            onChange(next);
-        }
-    };
-    return (
-        <div className='flex items-center gap-1'>
-            <button
-                className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted/80'
-                disabled={allSelected}
-                onClick={() => onChange(new Set(SKILL))}
-            >
-                All
-            </button>
-            {SKILL.map((skill) => {
-                const active = selected.has(skill);
-                return (
-                    <button
-                        key={skill}
-                        onClick={() => toggle(skill)}
-                        className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors'
-                        style={
-                            active
-                                ? { background: SKILL_COLORS[skill], borderColor: SKILL_COLORS[skill], color: '#fff' }
-                                : {
-                                      background: 'transparent',
-                                      borderColor: 'transparent',
-                                      color: 'var(--muted-foreground)',
-                                  }
-                        }
-                    >
-                        {SKILL_LABELS[skill]}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
-
 // ─── TopEdgeRect — draws a segment with a dividing line at the top ─────────────
-// Used for the last band of each occ/edu group to mark the compartment boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TopEdgeRect(props: any) {
     const { x, y, width, height, fill, fillOpacity } = props;
@@ -173,7 +109,7 @@ function makeTooltip(
                             </div>
                             <div className='pl-3 flex flex-wrap gap-x-1'>
                                 {BANDS.map((b) => {
-                                    const cnt = row[`${gk}_${b.key}`] ?? 0;
+                                    const cnt = (row[`${gk}_${b.key}`] ?? 0) + (row[`${gk}_${b.key}_edge`] ?? 0);
                                     if (cnt <= 0) {
                                         return null;
                                     }
@@ -234,75 +170,56 @@ function GroupLegend({
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
-    demography: FoodCohort[];
+    rows: AggRow[];
+    groupMode: GroupMode;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function NutritionHeatmapChart({ demography }: Props): React.ReactElement {
-    const [group, setGroup] = useState<GroupMode>('occupation');
-    const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
+export default function NutritionHeatmapChart({ rows, groupMode }: Props): React.ReactElement {
     const lastYDomainRef = useRef<[number, number]>([0, 1]);
     const isVerySmall = useIsSmallScreen();
 
-    const groupKeys = group === 'occupation' ? OCCUPATIONS : educationLevelKeys;
-    const groupLabels = group === 'occupation' ? OCC_LABELS : (EDU_LABELS as Record<string, string>);
-    const groupColors =
-        group === 'occupation' ? (OCC_COLORS as Record<string, string>) : (EDU_COLORS as Record<string, string>);
+    const groupKeys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
+    const groupLabels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const groupColors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
     // ── Build chart data ──────────────────────────────────────────────────────
-    // For each age row we produce:
-    //   ${groupKey}_${bandKey}  — population in that band within this group (stacked)
-    //   ${groupKey}_${lastBand}_edge — same value but rendered with TopEdgeRect to mark the group boundary
-    //   ${groupKey}_total, ${groupKey}_avgStarvation, ${groupKey}_avgBuffer  — for tooltip
+    // For each age row we produce per group key:
+    //   ${gk}_${bandKey}       — band population (plain stacked bar)
+    //   ${gk}_${bandKey}_edge  — same for topmost band (rendered via TopEdgeRect)
+    //   ${gk}_total            — for tooltip
+    //   ${gk}_avgStarvation    — for tooltip
+    //   ${gk}_avgBuffer        — for tooltip
     const data: ChartRow[] = [];
 
-    for (let age = 0; age < demography.length; age++) {
-        const cohort = demography[age];
-        if (!cohort) {
-            continue;
-        }
-
-        const row: ChartRow = { age };
+    for (const r of rows) {
+        const row: ChartRow = { age: r.age };
         let ageTotalPop = 0;
 
-        for (const gk of groupKeys) {
+        for (let gi = 0; gi < groupKeys.length; gi++) {
+            const gk = groupKeys[gi];
+            const gv = r.groupValues[gi];
+            const gPop = gv[GV_POP];
+            const totalFood = gv[GV_FOOD];
+            const weightedStarv = gv[GV_STARV];
+
+            const avgStarvation = gPop > 0 ? weightedStarv / gPop : 0;
+            const avgStock = gPop > 0 ? totalFood / gPop : 0;
+            const avgBuffer = FOOD_TARGET_PER_PERSON > 0 ? avgStock / FOOD_TARGET_PER_PERSON : 0;
+
+            // We don't have per-cell data anymore — classify the whole group by its avg starvation
+            // and assign all population to that single band.
+            const bandIdx = classifyBand(avgStarvation);
             const bandPops: number[] = new Array(BANDS.length).fill(0);
-            let gPop = 0;
-            let weightedStarvation = 0;
-            let weightedBuffer = 0;
-
-            const occs = group === 'occupation' ? [gk] : OCCUPATIONS;
-            const edus = group === 'education' ? [gk] : educationLevelKeys;
-
-            for (const occ of occs) {
-                for (const edu of edus) {
-                    for (const skill of SKILL) {
-                        if (!activeSkills.has(skill as Skill)) {
-                            continue;
-                        }
-                        const cat = cohort[occ]?.[edu]?.[skill];
-                        if (!cat || cat.total <= 0) {
-                            continue;
-                        }
-                        const bufferRatio =
-                            FOOD_TARGET_PER_PERSON > 0 ? cat.foodStock / (FOOD_TARGET_PER_PERSON * cat.total) : 0;
-                        const bandIdx = classifyBand(cat.starvationLevel);
-                        bandPops[bandIdx] += cat.total;
-                        gPop += cat.total;
-                        weightedStarvation += cat.total * cat.starvationLevel;
-                        weightedBuffer += cat.total * bufferRatio;
-                    }
-                }
-            }
+            bandPops[bandIdx] = gPop;
 
             row[`${gk}_total`] = gPop;
-            row[`${gk}_avgStarvation`] = gPop > 0 ? weightedStarvation / gPop : 0;
-            row[`${gk}_avgBuffer`] = gPop > 0 ? weightedBuffer / gPop : 0;
+            row[`${gk}_avgStarvation`] = avgStarvation;
+            row[`${gk}_avgBuffer`] = avgBuffer;
             ageTotalPop += gPop;
 
-            // Emit plain band segments for all but the last non-zero band,
-            // and a TopEdgeRect segment for the topmost band to mark the group boundary.
+            // Topmost non-zero band gets the TopEdgeRect treatment
             let lastNonZeroIdx = -1;
             for (let bi = BANDS.length - 1; bi >= 0; bi--) {
                 if (bandPops[bi] > 0) {
@@ -314,7 +231,6 @@ export default function NutritionHeatmapChart({ demography }: Props): React.Reac
             for (let bi = 0; bi < BANDS.length; bi++) {
                 const bk = BANDS[bi].key;
                 if (bi === lastNonZeroIdx) {
-                    // Top segment of this group → plain value used by TopEdgeRect bar
                     row[`${gk}_${bk}`] = 0;
                     row[`${gk}_${bk}_edge`] = bandPops[bi];
                 } else {
@@ -375,25 +291,8 @@ export default function NutritionHeatmapChart({ demography }: Props): React.Reac
 
     const tooltip = makeTooltip(groupKeys, groupLabels, groupColors);
 
-    const tabs = (
-        <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
-            <TabsList className='h-7'>
-                <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                    By occupation
-                </TabsTrigger>
-                <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                    By education
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
-    );
-
     return (
-        <ChartCard
-            title='Nutrition status'
-            primaryControls={tabs}
-            secondaryControls={<SkillFilter selected={activeSkills} onChange={setActiveSkills} />}
-        >
+        <>
             {/* Summary stats */}
             <div className='flex gap-3 text-[10px] text-muted-foreground mb-2 flex-wrap'>
                 <span>
@@ -448,7 +347,6 @@ export default function NutritionHeatmapChart({ demography }: Props): React.Reac
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {isVerySmall ? null : <Tooltip content={tooltip as any} />}
 
-                    {/* For each group, emit one Bar per band (plain) + one Bar per band (edge / top boundary) */}
                     {groupKeys.flatMap((gk) =>
                         BANDS.flatMap((b) => [
                             <Bar
@@ -467,7 +365,6 @@ export default function NutritionHeatmapChart({ demography }: Props): React.Reac
                                 stackId='nutrition'
                                 fill={b.color}
                                 fillOpacity={0.88}
-                                shape={TopEdgeRect}
                                 name={`${b.label} (top)`}
                                 legendType='none'
                                 isAnimationActive={false}
@@ -479,6 +376,6 @@ export default function NutritionHeatmapChart({ demography }: Props): React.Reac
 
             <BandLegend />
             <GroupLegend keys={groupKeys} labels={groupLabels} colors={groupColors} />
-        </ChartCard>
+        </>
     );
 }

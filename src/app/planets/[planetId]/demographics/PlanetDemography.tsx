@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ChartCard from '../../components/ChartCard';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { formatNumbers } from '@/lib/utils';
+import type { GroupMode } from './demographicsTypes';
 
 type DemographyRow = {
     age: number;
@@ -18,18 +18,15 @@ type DemographyRow = {
 
 type Props = {
     rows: DemographyRow[];
+    group: GroupMode;
 };
-
-type GroupMode = 'education' | 'occupation';
 
 function safeNumber(v: unknown): number {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
 }
 
-export default function PlanetDemography({ rows }: Props): React.ReactElement {
-    const [group, setGroup] = useState<GroupMode>('occupation');
-
+export default function PlanetDemography({ rows, group }: Props): React.ReactElement {
     if (!rows || rows.length === 0) {
         return <div className='text-sm text-muted-foreground'>No demography data</div>;
     }
@@ -46,25 +43,12 @@ export default function PlanetDemography({ rows }: Props): React.ReactElement {
         return { ...base, ...eduEntries, ...occEntries };
     });
 
-    const tabs = (
-        <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
-            <TabsList className='h-7'>
-                <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                    By occupation
-                </TabsTrigger>
-                <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                    By education
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
-    );
-
     const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
     const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
     const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
 
     return (
-        <ChartCard title='Population' primaryControls={tabs}>
+        <ChartCard title='Population'>
             {/* Chart */}
             <ResponsiveContainer width='100%' height={180}>
                 <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>

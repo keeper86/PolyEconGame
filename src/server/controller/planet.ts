@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod';
-import { procedure } from '../trpcRoot';
+import { procedure, protectedProcedure } from '../trpcRoot';
 import { workerQueries } from '../../lib/workerQueries';
 import { computePopulationTotal, computeGlobalStarvation } from '../../simulation/snapshotRepository';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
@@ -341,70 +341,174 @@ export const getPlanetFood = () =>
 // ---------------------------------------------------------------------------
 
 /**
- * Unified per-cell demography used by the demographics accordion page.
+ * Compact per-age row sent for the demographics accordion page.
  *
- * One entry per age index; each cell holds every field needed by all three
- * accordion sections (population, wealth, food & nutrition) so the page
- * only needs a single query.
+ * The server pre-aggregates all 4800 cells (100 ages × 4 occs × 4 edus ×
+ * 3 skills) down to one row per living age.  The caller specifies which
+ * `groupMode` it wants ('occupation' | 'education') and which skills to
+ * include so that the groupValues tuple is already filtered and summed —
+ * no further work needed on the client.
+ *
+ * Each `groupValues` entry is a 4-element tuple parallel to the 4 group
+ * keys (OCCUPATIONS or educationLevelKeys):
+ *   [population, totalFoodStock, weightedStarvation, weightedWealth]
+ *
+ * Clients compute weighted means as:
+ *   avgStarvation = weightedStarvation / population
+ *   avgWealth     = weightedWealth     / population
+ *   avgBuffer     = totalFoodStock     / (population * FOOD_TARGET_PER_PERSON)
  */
-type UnifiedCategory = {
+type AggRow = {
+    age: number;
     total: number;
-    // wealth
-    wealthMean: number;
-    // food
-    foodStock: number;
-    starvationLevel: number;
+    /** Population pyramid totals — always over all skills, occupation-indexed. */
+    occ: [number, number, number, number];
+    /** Population pyramid totals — always over all skills, education-indexed. */
+    edu: [number, number, number, number];
+    /**
+     * Pre-filtered group values for the active groupMode + skills.
+     * 4 entries, one per group key; each entry is
+     * [population, totalFoodStock, weightedStarvation, weightedWealth]
+     */
+    groupValues: [
+        [number, number, number, number],
+        [number, number, number, number],
+        [number, number, number, number],
+        [number, number, number, number],
+    ];
 };
 
-type UnifiedCohort = {
-    [occ: string]: { [edu: string]: { [skill: string]: UnifiedCategory } };
-};
+function buildAggRows(
+    planet: Planet,
+    groupMode: 'occupation' | 'education',
+    activeSkills: readonly string[],
+): AggRow[] {
+    const skillSet = new Set(activeSkills);
+    const rows: AggRow[] = [];
 
-function buildUnifiedDemography(planet: Planet): UnifiedCohort[] {
-    return planet.population.demography.map((cohort) => {
+    for (let age = 0; age < planet.population.demography.length; age++) {
+        const cohort = planet.population.demography[age];
         if (!cohort) {
-            return {} as UnifiedCohort;
+            continue;
         }
-        const out: UnifiedCohort = {};
-        for (const occ of OCCUPATIONS) {
-            out[occ] = {};
-            for (const edu of educationLevelKeys) {
-                out[occ][edu] = {};
+
+        // Population pyramid totals (all skills — never filtered)
+        const edu: [number, number, number, number] = [0, 0, 0, 0];
+        const occ: [number, number, number, number] = [0, 0, 0, 0];
+        let total = 0;
+
+        for (let oi = 0; oi < OCCUPATIONS.length; oi++) {
+            const o = OCCUPATIONS[oi];
+            for (let ei = 0; ei < educationLevelKeys.length; ei++) {
+                const e = educationLevelKeys[ei];
+                let cell = 0;
                 for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    out[occ][edu][skill] = {
-                        total: cat.total,
-                        wealthMean: cat.wealth.mean,
-                        foodStock: cat.foodStock,
-                        starvationLevel: cat.starvationLevel,
-                    };
+                    cell += cohort[o][e][skill].total;
                 }
+                edu[ei] += cell;
+                occ[oi] += cell;
+                total += cell;
             }
         }
-        return out;
-    });
+
+        if (total === 0) {
+            continue;
+        }
+
+        // Compact group aggregates (skill-filtered)
+        const groupValues: [
+            [number, number, number, number],
+            [number, number, number, number],
+            [number, number, number, number],
+            [number, number, number, number],
+        ] = [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ];
+
+        for (let gi = 0; gi < 4; gi++) {
+            let gPop = 0,
+                gFoodStock = 0,
+                gWeightedStarvation = 0,
+                gWeightedWealth = 0;
+
+            const occs: readonly string[] = groupMode === 'occupation' ? [OCCUPATIONS[gi]] : OCCUPATIONS;
+            const edus: readonly string[] = groupMode === 'education' ? [educationLevelKeys[gi]] : educationLevelKeys;
+
+            for (const o of occs) {
+                for (const e of edus) {
+                    for (const skill of SKILL) {
+                        if (!skillSet.has(skill)) {
+                            continue;
+                        }
+                        const occ_ = o as (typeof OCCUPATIONS)[number];
+                        const edu_ = e as (typeof educationLevelKeys)[number];
+                        const cat = cohort[occ_][edu_][skill];
+                        if (!cat || cat.total <= 0) {
+                            continue;
+                        }
+                        gPop += cat.total;
+                        gFoodStock += cat.foodStock;
+                        gWeightedStarvation += cat.total * cat.starvationLevel;
+                        gWeightedWealth += cat.total * cat.wealth.mean;
+                    }
+                }
+            }
+
+            groupValues[gi] = [gPop, gFoodStock, gWeightedStarvation, gWeightedWealth];
+        }
+
+        rows.push({ age, total, occ, edu, groupValues });
+    }
+
+    return rows;
 }
 
+const groupModeSchema = z.enum(['occupation', 'education']);
+const skillsSchema = z.array(z.string()).min(1);
+
+/** 4-tuple: [population, totalFoodStock, weightedStarvation, weightedWealth] */
+const groupValueTuple = z.tuple([z.number(), z.number(), z.number(), z.number()]);
+
 export const getPlanetDemographicsFull = () =>
-    procedure
-        .input(z.object({ planetId: z.string() }))
+    protectedProcedure
+        .input(
+            z.object({
+                planetId: z.string(),
+                /** Which dimension to group by. Default: 'occupation'. */
+                groupMode: groupModeSchema.default('occupation'),
+                /** Skills to include in groupValues. Default: all three. */
+                activeSkills: skillsSchema.default(['novice', 'professional', 'expert']),
+            }),
+        )
         .output(
             z.object({
                 tick: z.number(),
                 data: z
                     .object({
                         planetName: z.string(),
-                        /** Aggregated rows for the population pyramid (edu/occ totals only). */
+                        groupMode: groupModeSchema,
+                        /**
+                         * One entry per living age.
+                         * occ/edu are full-skill pyramid totals.
+                         * groupValues is skill-filtered, grouped by groupMode.
+                         */
                         rows: z.array(
                             z.object({
                                 age: z.number(),
                                 total: z.number(),
                                 edu: z.tuple([z.number(), z.number(), z.number(), z.number()]),
                                 occ: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+                                groupValues: z.tuple([
+                                    groupValueTuple,
+                                    groupValueTuple,
+                                    groupValueTuple,
+                                    groupValueTuple,
+                                ]),
                             }),
                         ),
-                        /** Full per-cell demography for wealth & food charts. */
-                        demography: z.array(z.any()),
                         priceLevel: z.number(),
                         starvationLevel: z.number(),
                     })
@@ -423,8 +527,8 @@ export const getPlanetDemographicsFull = () =>
                 tick,
                 data: {
                     planetName: planet.name,
-                    rows: buildDemographyRows(planet),
-                    demography: buildUnifiedDemography(planet),
+                    groupMode: input.groupMode,
+                    rows: buildAggRows(planet, input.groupMode, input.activeSkills),
                     priceLevel: planet.priceLevel ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
                 },

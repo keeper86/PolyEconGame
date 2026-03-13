@@ -1,102 +1,36 @@
 'use client';
 
-import ChartCard from '@/app/planets/components/ChartCard';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Skill } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
-import React, { useRef, useState } from 'react';
+import { OCCUPATIONS } from '@/simulation/population/population';
+import React, { useRef } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
+import type { AggRow, GroupMode } from './demographicsTypes';
+import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP } from './demographicsTypes';
 
-const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const EDU_COLORS: Record<string, string> = {
-    none: '#94a3b8',
-    primary: '#60a5fa',
-    secondary: '#34d399',
-    tertiary: '#f59e0b',
-};
-const EDU_LABELS: Record<string, string> = {
-    none: 'None',
-    primary: 'Primary',
-    secondary: 'Secondary',
-    tertiary: 'Tertiary',
-};
-const OCC_COLORS: Record<string, string> = {
-    unoccupied: '#60a5fa',
-    employed: '#34d399',
-    education: '#f97316',
-    unableToWork: '#ef4444',
-};
-const OCC_LABELS: Record<string, string> = {
-    unoccupied: 'Unoccupied',
-    employed: 'Employed',
-    education: 'Education',
-    unableToWork: 'Unable to work',
-};
-const SKILL_LABELS: Record<Skill, string> = { novice: 'Novice', professional: 'Pro', expert: 'Expert' };
-const SKILL_COLORS: Record<Skill, string> = {
-    novice: '#94a3b8',
-    professional: '#60a5fa',
-    expert: '#f59e0b',
-};
-
-const formatNumbersPct = (n: number): string => `${n.toFixed(0)}`;
-
-type FoodCategory = { total: number; foodStock: number; starvationLevel: number };
-type FoodCohort = { [occ: string]: { [edu: string]: { [skill: string]: FoodCategory } } };
-type GroupMode = 'education' | 'occupation';
 type ChartRow = Record<string, number>;
 
-function SkillFilter({ selected, onChange }: { selected: Set<Skill>; onChange: (s: Set<Skill>) => void }) {
-    const allSelected = SKILL.every((s) => selected.has(s));
-    const toggle = (skill: Skill) => {
-        const next = new Set(selected);
-        if (next.has(skill)) {
-            next.delete(skill);
-        } else {
-            next.add(skill);
-        }
-        if (next.size > 0) {
-            onChange(next);
-        }
-    };
+// ─── TopEdgeRect ──────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TopEdgeRect(props: any) {
+    const { x, y, width, height, fill, fillOpacity } = props;
+    if (!width || !height || height <= 0) {
+        return <g />;
+    }
     return (
-        <div className='flex items-center gap-1'>
-            <button
-                className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted/80'
-                disabled={allSelected}
-                onClick={() => onChange(new Set(SKILL))}
-            >
-                All
-            </button>
-            {SKILL.map((skill) => {
-                const active = selected.has(skill);
-                return (
-                    <button
-                        key={skill}
-                        onClick={() => toggle(skill)}
-                        className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors'
-                        style={
-                            active
-                                ? { background: SKILL_COLORS[skill], borderColor: SKILL_COLORS[skill], color: '#fff' }
-                                : {
-                                      background: 'transparent',
-                                      borderColor: 'transparent',
-                                      color: 'var(--muted-foreground)',
-                                  }
-                        }
-                    >
-                        {SKILL_LABELS[skill]}
-                    </button>
-                );
-            })}
-        </div>
+        <g>
+            <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} />
+            <line x1={x} x2={x + width} y1={y} y2={y} stroke='#000' strokeWidth={1} />
+        </g>
     );
 }
+
+// ─── Tooltip ─────────────────────────────────────────────────────────────────
 
 function makeTooltip(keys: readonly string[], labels: Record<string, string>, colors: Record<string, string>) {
     return function TooltipContent({
@@ -116,13 +50,12 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[160px]'>
                 <div className='font-medium mb-1'>Age {label}</div>
                 {keys.map((key) => {
-                    const share = row[`${key}_popShare`] ?? 0;
-                    if (share === 0) {
+                    const pop = row[`${key}_pop`] ?? 0;
+                    if (pop === 0) {
                         return null;
                     }
                     const ratio = row[`${key}_bufferRatio`] ?? 0;
                     const avgStock = row[`${key}_avgStock`] ?? 0;
-                    const pop = row[`${key}_pop`] ?? 0;
                     return (
                         <div key={key} className='flex items-center gap-1 mt-0.5'>
                             <span
@@ -133,7 +66,7 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {formatNumbersPct(ratio)} · {formatNumbers(avgStock)} t · {formatNumbers(pop)}
+                                {(ratio * 100).toFixed(0)}% · {formatNumbers(avgStock)} t · {formatNumbers(pop)}
                             </span>
                         </div>
                     );
@@ -142,6 +75,40 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
         );
     };
 }
+
+// ─── mergePairs ───────────────────────────────────────────────────────────────
+
+function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
+    const result: ChartRow[] = [];
+    for (let i = 0; i < rows.length; i += 2) {
+        const a = rows[i];
+        const b = rows[i + 1];
+        if (!b) {
+            result.push(a);
+            continue;
+        }
+        const merged: ChartRow = { age: a.age };
+        for (const key of rowKeys) {
+            const aPop = a[`${key}_pop`] ?? 0;
+            const bPop = b[`${key}_pop`] ?? 0;
+            const totalPop = aPop + bPop;
+            const aAvgStock = a[`${key}_avgStock`] ?? 0;
+            const bAvgStock = b[`${key}_avgStock`] ?? 0;
+            const avgStock = totalPop > 0 ? (aAvgStock * aPop + bAvgStock * bPop) / totalPop : 0;
+            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+            const clampedRatio = Math.min(1, Math.max(0, ratio));
+            merged[`${key}_pop`] = totalPop;
+            merged[`${key}_avgStock`] = avgStock;
+            merged[`${key}_bufferRatio`] = ratio;
+            merged[`${key}_filled`] = totalPop * clampedRatio;
+            merged[`${key}_empty`] = totalPop * (1 - clampedRatio);
+        }
+        result.push(merged);
+    }
+    return result;
+}
+
+// ─── ColorLegend ─────────────────────────────────────────────────────────────
 
 function ColorLegend({
     keys,
@@ -164,183 +131,71 @@ function ColorLegend({
     );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function TopEdgeRect(props: any) {
-    const { x, y, width, height, fill, fillOpacity } = props;
-    if (!width || !height || height <= 0) {
-        return <g />;
-    }
-    return (
-        <g>
-            <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} />
-            <line x1={x} x2={x + width} y1={y} y2={y} stroke='#000' strokeWidth={1} />
-        </g>
-    );
-}
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
-    demography: FoodCohort[];
+    rows: AggRow[];
+    groupMode: GroupMode;
 };
 
-function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
-    const result: ChartRow[] = [];
-    for (let i = 0; i < rows.length; i += 2) {
-        const a = rows[i];
-        const b = rows[i + 1];
-        if (!b) {
-            result.push(a);
-            continue;
-        }
-        const merged: ChartRow = { age: a.age };
-        for (const key of rowKeys) {
-            const aPop = a[`${key}_pop`] ?? 0;
-            const bPop = b[`${key}_pop`] ?? 0;
-            const totalPop = aPop + bPop;
-            const aShare = a[`${key}_popShare`] ?? 0;
-            const bShare = b[`${key}_popShare`] ?? 0;
-            const totalShare = aShare + bShare;
-            const aAvgStock = a[`${key}_avgStock`] ?? 0;
-            const bAvgStock = b[`${key}_avgStock`] ?? 0;
-            const avgStock = totalPop > 0 ? (aAvgStock * aPop + bAvgStock * bPop) / totalPop : 0;
-            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
-            const clampedRatio = Math.min(1, Math.max(0, ratio));
-            merged[`${key}_pop`] = totalPop;
-            merged[`${key}_popShare`] = totalShare;
-            merged[`${key}_avgStock`] = avgStock;
-            merged[`${key}_bufferRatio`] = ratio;
-            merged[`${key}_filled`] = totalShare * clampedRatio;
-            merged[`${key}_empty`] = totalShare * (1 - clampedRatio);
-        }
-        result.push(merged);
-    }
-    return result;
-}
+// ─── Component ────────────────────────────────────────────────────────────────
 
-export default function FoodBufferChart({ demography }: Props): React.ReactElement {
-    const [group, setGroup] = useState<GroupMode>('occupation');
-    const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
+export default function FoodBufferChart({ rows, groupMode }: Props): React.ReactElement {
     const lastYDomainRef = useRef<[number, number]>([0, 1]);
-
-    const eduData: ChartRow[] = [];
-    const occData: ChartRow[] = [];
-
     const isVerySmall = useIsSmallScreen();
 
-    for (let age = 0; age < demography.length; age++) {
-        const cohort = demography[age];
-        if (!cohort) {
-            continue;
-        }
+    const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
+    const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
-        let agePop = 0;
-        const eduStock: Record<string, number> = {};
-        const eduPop: Record<string, number> = {};
-        for (const edu of educationLevelKeys) {
-            eduStock[edu] = 0;
-            eduPop[edu] = 0;
-        }
-
-        const occStock: Record<string, number> = {};
-        const occPop: Record<string, number> = {};
-        for (const occ of OCCUPATIONS) {
-            occStock[occ] = 0;
-            occPop[occ] = 0;
-        }
-
-        for (const occ of OCCUPATIONS) {
-            for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    if (!activeSkills.has(skill)) {
-                        continue;
-                    }
-                    const cat = cohort[occ]?.[edu]?.[skill];
-                    if (cat && cat.total > 0) {
-                        agePop += cat.total;
-                        eduStock[edu] += cat.foodStock;
-                        eduPop[edu] += cat.total;
-                        occStock[occ] += cat.foodStock;
-                        occPop[occ] += cat.total;
-                    }
+    // Build chart rows from pre-aggregated AggRows
+    const rawData: ChartRow[] = rows
+        .map((r) => {
+            const row: ChartRow = { age: r.age };
+            let ageHasData = false;
+            for (let gi = 0; gi < keys.length; gi++) {
+                const key = keys[gi];
+                const gv = r.groupValues[gi];
+                const pop = gv[GV_POP];
+                const totalFood = gv[GV_FOOD];
+                const avgStock = pop > 0 ? totalFood / pop : 0;
+                const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+                const clampedRatio = Math.min(1, Math.max(0, ratio));
+                row[`${key}_pop`] = pop;
+                row[`${key}_avgStock`] = avgStock;
+                row[`${key}_bufferRatio`] = ratio;
+                row[`${key}_filled`] = pop * clampedRatio;
+                row[`${key}_empty`] = pop * (1 - clampedRatio);
+                if (pop > 0) {
+                    ageHasData = true;
                 }
             }
-        }
+            return ageHasData ? row : null;
+        })
+        .filter((r): r is ChartRow => r !== null);
 
-        if (agePop === 0) {
-            continue;
-        }
-
-        const eduRow: ChartRow = { age };
-        for (const edu of educationLevelKeys) {
-            const share = eduPop[edu];
-            const avgStock = eduPop[edu] > 0 ? eduStock[edu] / eduPop[edu] : 0;
-            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
-            const clampedRatio = Math.min(1, Math.max(0, ratio));
-            eduRow[`${edu}_popShare`] = share;
-            eduRow[`${edu}_bufferRatio`] = ratio;
-            eduRow[`${edu}_filled`] = share * clampedRatio;
-            eduRow[`${edu}_empty`] = share * (1 - clampedRatio);
-            eduRow[`${edu}_avgStock`] = avgStock;
-            eduRow[`${edu}_pop`] = eduPop[edu];
-        }
-        eduData.push(eduRow);
-
-        const occRow: ChartRow = { age };
-        for (const occ of OCCUPATIONS) {
-            const share = occPop[occ];
-            const avgStock = occPop[occ] > 0 ? occStock[occ] / occPop[occ] : 0;
-            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
-            const clampedRatio = Math.min(1, Math.max(0, ratio));
-            occRow[`${occ}_popShare`] = share;
-            occRow[`${occ}_bufferRatio`] = ratio;
-            occRow[`${occ}_filled`] = share * clampedRatio;
-            occRow[`${occ}_empty`] = share * (1 - clampedRatio);
-            occRow[`${occ}_avgStock`] = avgStock;
-            occRow[`${occ}_pop`] = occPop[occ];
-        }
-        occData.push(occRow);
-    }
-
-    const hasData = eduData.length > 0;
-    const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
-    const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
-    const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
-    const rawData = group === 'education' ? eduData : occData;
     const data = isVerySmall ? mergePairs(rawData, keys) : rawData;
-    const tooltip = makeTooltip(keys, labels, colors);
 
-    if (hasData) {
-        let maxY = 0;
-        for (const row of data) {
-            for (const key of keys) {
-                const filled = (row[`${key}_filled`] ?? 0) + (row[`${key}_empty`] ?? 0);
-                if (filled > maxY) {
-                    maxY = filled;
-                }
+    if (data.length === 0) {
+        return <div className='text-xs text-muted-foreground'>No food data available</div>;
+    }
+
+    let maxY = 0;
+    for (const row of data) {
+        for (const key of keys) {
+            const v = (row[`${key}_filled`] ?? 0) + (row[`${key}_empty`] ?? 0);
+            if (v > maxY) {
+                maxY = v;
             }
         }
-        lastYDomainRef.current = [0, maxY > 0 ? maxY : 1];
     }
+    lastYDomainRef.current = [0, maxY > 0 ? maxY : 1];
     const yDomain = lastYDomainRef.current;
 
-    const tabs = (
-        <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
-            <TabsList className='h-7'>
-                <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                    By occupation
-                </TabsTrigger>
-                <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                    By education
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
-    );
+    const tooltip = makeTooltip(keys, labels, colors);
 
     return (
-        <ChartCard
-            title='Food buffers'
-            primaryControls={tabs}
-            secondaryControls={<SkillFilter selected={activeSkills} onChange={setActiveSkills} />}
-        >
+        <>
             <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
                 <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
                     <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
@@ -373,6 +228,6 @@ export default function FoodBufferChart({ demography }: Props): React.ReactEleme
                 </BarChart>
             </ResponsiveContainer>
             <ColorLegend keys={keys} labels={labels} colors={colors} />
-        </ChartCard>
+        </>
     );
 }

@@ -1,80 +1,19 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-import ChartCard from '@/app/planets/components/ChartCard';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '@/app/planets/components/CohortFilter';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
-import type { Skill } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import { OCCUPATIONS } from '@/simulation/population/population';
+import type { AggRow, GroupMode } from './demographicsTypes';
+import { GV_POP, GV_WEALTH } from './demographicsTypes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type UnifiedCategory = { total: number; wealthMean: number };
-type UnifiedCohort = { [occ: string]: { [edu: string]: { [skill: string]: UnifiedCategory } } };
-
-type GroupMode = 'occupation' | 'education';
 type ChartRow = Record<string, number>;
-
-// ─── SkillFilter (same pattern as FoodBufferChart) ────────────────────────────
-
-const SKILL_LABELS: Record<Skill, string> = { novice: 'Novice', professional: 'Pro', expert: 'Expert' };
-const SKILL_COLORS: Record<Skill, string> = {
-    novice: '#94a3b8',
-    professional: '#60a5fa',
-    expert: '#f59e0b',
-};
-
-function SkillFilter({ selected, onChange }: { selected: Set<Skill>; onChange: (s: Set<Skill>) => void }) {
-    const allSelected = SKILL.every((s) => selected.has(s));
-    const toggle = (skill: Skill) => {
-        const next = new Set(selected);
-        if (next.has(skill)) {
-            next.delete(skill);
-        } else {
-            next.add(skill);
-        }
-        if (next.size > 0) {
-            onChange(next);
-        }
-    };
-    return (
-        <div className='flex items-center gap-1'>
-            <button
-                className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted/80'
-                disabled={allSelected}
-                onClick={() => onChange(new Set(SKILL))}
-            >
-                All
-            </button>
-            {SKILL.map((skill) => {
-                const active = selected.has(skill);
-                return (
-                    <button
-                        key={skill}
-                        onClick={() => toggle(skill)}
-                        className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors'
-                        style={
-                            active
-                                ? { background: SKILL_COLORS[skill], borderColor: SKILL_COLORS[skill], color: '#fff' }
-                                : {
-                                      background: 'transparent',
-                                      borderColor: 'transparent',
-                                      color: 'var(--muted-foreground)',
-                                  }
-                        }
-                    >
-                        {SKILL_LABELS[skill]}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
 
 // ─── Tooltip factory ─────────────────────────────────────────────────────────
 
@@ -172,81 +111,45 @@ function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
     return result;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
-    demography: UnifiedCohort[];
+    rows: AggRow[];
+    groupMode: GroupMode;
 };
 
-export default function WealthDistributionChart({ demography }: Props): React.ReactElement {
-    const [group, setGroup] = useState<GroupMode>('occupation');
-    const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
-    const lastYDomainRef = useRef<[number, number]>([0, 1]);
+// ─── Main Component ───────────────────────────────────────────────────────────
 
+export default function WealthDistributionChart({ rows, groupMode }: Props): React.ReactElement {
+    const lastYDomainRef = useRef<[number, number]>([0, 1]);
     const isVerySmall = useIsSmallScreen();
 
-    const eduData: ChartRow[] = [];
-    const occData: ChartRow[] = [];
+    const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
+    const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
-    for (let age = 0; age < demography.length; age++) {
-        const cohort = demography[age];
-        if (!cohort) {
-            continue;
-        }
-
-        // ── by education ──────────────────────────────────────────────────
-        const eduRow: ChartRow = { age };
-        for (const edu of educationLevelKeys) {
-            let totalPop = 0;
-            let weightedWealth = 0;
-            for (const occ of OCCUPATIONS) {
-                for (const skill of SKILL) {
-                    if (!activeSkills.has(skill)) {
-                        continue;
-                    }
-                    const cat = cohort[occ]?.[edu]?.[skill];
-                    if (cat && cat.total > 0) {
-                        totalPop += cat.total;
-                        weightedWealth += cat.wealthMean * cat.total;
-                    }
+    // Build chart rows from pre-aggregated AggRows
+    const rawData: ChartRow[] = rows
+        .map((r) => {
+            const row: ChartRow = { age: r.age };
+            let ageHasData = false;
+            for (let gi = 0; gi < keys.length; gi++) {
+                const key = keys[gi];
+                const gv = r.groupValues[gi];
+                const pop = gv[GV_POP];
+                const weightedWealth = gv[GV_WEALTH];
+                const mean = pop > 0 ? weightedWealth / pop : 0;
+                row[`${key}_pop`] = pop;
+                row[`${key}_mean`] = mean;
+                row[`${key}_bar`] = pop > 0 ? mean : 0;
+                if (pop > 0) {
+                    ageHasData = true;
                 }
             }
-            const mean = totalPop > 0 ? weightedWealth : 0;
-            eduRow[`${edu}_pop`] = totalPop;
-            eduRow[`${edu}_mean`] = mean;
-            eduRow[`${edu}_bar`] = totalPop > 0 ? mean : 0;
-        }
-        eduData.push(eduRow);
+            return ageHasData ? row : null;
+        })
+        .filter((r): r is ChartRow => r !== null);
 
-        // ── by occupation ─────────────────────────────────────────────────
-        const occRow: ChartRow = { age };
-        for (const occ of OCCUPATIONS) {
-            let totalPop = 0;
-            let weightedWealth = 0;
-            for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    if (!activeSkills.has(skill)) {
-                        continue;
-                    }
-                    const cat = cohort[occ]?.[edu]?.[skill];
-                    if (cat && cat.total > 0) {
-                        totalPop += cat.total;
-                        weightedWealth += cat.wealthMean * cat.total;
-                    }
-                }
-            }
-            const mean = totalPop > 0 ? weightedWealth : 0;
-            occRow[`${occ}_pop`] = totalPop;
-            occRow[`${occ}_mean`] = mean;
-            occRow[`${occ}_bar`] = totalPop > 0 ? mean : 0;
-        }
-        occData.push(occRow);
-    }
-
-    const keys: readonly string[] = group === 'education' ? educationLevelKeys : OCCUPATIONS;
-    const labels: Record<string, string> = group === 'education' ? EDU_LABELS : OCC_LABELS;
-    const colors: Record<string, string> = group === 'education' ? EDU_COLORS : OCC_COLORS;
-    const rawData = group === 'education' ? eduData : occData;
     const data = isVerySmall ? mergePairs(rawData, keys) : rawData;
 
     const hasData = data.some((row) => keys.some((k) => (row[`${k}_bar`] ?? 0) > 0));
@@ -284,25 +187,8 @@ export default function WealthDistributionChart({ demography }: Props): React.Re
 
     const tooltip = makeTooltip(keys, labels, colors);
 
-    const tabs = (
-        <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
-            <TabsList className='h-7'>
-                <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                    By occupation
-                </TabsTrigger>
-                <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                    By education
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
-    );
-
     return (
-        <ChartCard
-            title='Wealth'
-            primaryControls={tabs}
-            secondaryControls={<SkillFilter selected={activeSkills} onChange={setActiveSkills} />}
-        >
+        <>
             {/* Summary stats */}
             <div className='flex gap-3 text-[10px] text-muted-foreground mb-2'>
                 <span>
@@ -336,6 +222,6 @@ export default function WealthDistributionChart({ demography }: Props): React.Re
                 </BarChart>
             </ResponsiveContainer>
             <ColorLegend keys={keys} labels={labels} colors={colors} />
-        </ChartCard>
+        </>
     );
 }
