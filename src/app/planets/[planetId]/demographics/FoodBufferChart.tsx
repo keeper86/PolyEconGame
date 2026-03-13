@@ -1,7 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ChartCard from '@/app/planets/components/ChartCard';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { educationLevelKeys } from '@/simulation/population/education';
@@ -181,6 +182,40 @@ type Props = {
     demography: FoodCohort[];
 };
 
+function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
+    const result: ChartRow[] = [];
+    for (let i = 0; i < rows.length; i += 2) {
+        const a = rows[i];
+        const b = rows[i + 1];
+        if (!b) {
+            result.push(a);
+            continue;
+        }
+        const merged: ChartRow = { age: a.age };
+        for (const key of rowKeys) {
+            const aPop = a[`${key}_pop`] ?? 0;
+            const bPop = b[`${key}_pop`] ?? 0;
+            const totalPop = aPop + bPop;
+            const aShare = a[`${key}_popShare`] ?? 0;
+            const bShare = b[`${key}_popShare`] ?? 0;
+            const totalShare = aShare + bShare;
+            const aAvgStock = a[`${key}_avgStock`] ?? 0;
+            const bAvgStock = b[`${key}_avgStock`] ?? 0;
+            const avgStock = totalPop > 0 ? (aAvgStock * aPop + bAvgStock * bPop) / totalPop : 0;
+            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+            const clampedRatio = Math.min(1, Math.max(0, ratio));
+            merged[`${key}_pop`] = totalPop;
+            merged[`${key}_popShare`] = totalShare;
+            merged[`${key}_avgStock`] = avgStock;
+            merged[`${key}_bufferRatio`] = ratio;
+            merged[`${key}_filled`] = totalShare * clampedRatio;
+            merged[`${key}_empty`] = totalShare * (1 - clampedRatio);
+        }
+        result.push(merged);
+    }
+    return result;
+}
+
 export default function FoodBufferChart({ demography }: Props): React.ReactElement {
     const [group, setGroup] = useState<GroupMode>('occupation');
     const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
@@ -188,6 +223,8 @@ export default function FoodBufferChart({ demography }: Props): React.ReactEleme
 
     const eduData: ChartRow[] = [];
     const occData: ChartRow[] = [];
+
+    const isVerySmall = useIsSmallScreen();
 
     for (let age = 0; age < demography.length; age++) {
         const cohort = demography[age];
@@ -267,7 +304,8 @@ export default function FoodBufferChart({ demography }: Props): React.ReactEleme
     const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
     const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
     const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
-    const data = group === 'education' ? eduData : occData;
+    const rawData = group === 'education' ? eduData : occData;
+    const data = isVerySmall ? mergePairs(rawData, keys) : rawData;
     const tooltip = makeTooltip(keys, labels, colors);
 
     if (hasData) {
@@ -284,60 +322,57 @@ export default function FoodBufferChart({ demography }: Props): React.ReactEleme
     }
     const yDomain = lastYDomainRef.current;
 
+    const tabs = (
+        <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
+            <TabsList className='h-7'>
+                <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
+                    By occupation
+                </TabsTrigger>
+                <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
+                    By education
+                </TabsTrigger>
+            </TabsList>
+        </Tabs>
+    );
+
     return (
-        <Card>
-            <CardHeader className='pb-2'>
-                <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-                    <CardTitle className='text-sm font-medium shrink-0'>Food buffers by age</CardTitle>
-                    <div className='flex flex-wrap items-center gap-2'>
-                        <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
-                            <TabsList className='h-7'>
-                                <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                                    By occupation
-                                </TabsTrigger>
-                                <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                                    By education
-                                </TabsTrigger>
-                            </TabsList>
-                        </Tabs>
-                        <SkillFilter selected={activeSkills} onChange={setActiveSkills} />
-                    </div>
-                </div>
-                <ColorLegend keys={keys} labels={labels} colors={colors} />
-            </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width='100%' minHeight={220} minWidth={300} style={{ marginLeft: '-10px' }}>
-                    <BarChart data={data} margin={{ top: 5, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
-                        <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                        <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
-                        <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        <Tooltip content={tooltip as any} />
-                        {keys.flatMap((key) => [
-                            <Bar
-                                key={`${key}_filled`}
-                                dataKey={`${key}_filled`}
-                                stackId='a'
-                                fill={colors[key]}
-                                fillOpacity={0.9}
-                                name={labels[key]}
-                                isAnimationActive={false}
-                            />,
-                            <Bar
-                                key={`${key}_empty`}
-                                dataKey={`${key}_empty`}
-                                stackId='a'
-                                fill={colors[key]}
-                                fillOpacity={0.2}
-                                shape={TopEdgeRect}
-                                name={`${labels[key]} (empty)`}
-                                legendType='none'
-                                isAnimationActive={false}
-                            />,
-                        ])}
-                    </BarChart>
-                </ResponsiveContainer>
-            </CardContent>
-        </Card>
+        <ChartCard
+            title='Food buffers'
+            primaryControls={tabs}
+            secondaryControls={<SkillFilter selected={activeSkills} onChange={setActiveSkills} />}
+        >
+            <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
+                <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
+                    <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
+                    <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
+                    <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {isVerySmall ? null : <Tooltip content={tooltip as any} />}
+                    {keys.flatMap((key) => [
+                        <Bar
+                            key={`${key}_filled`}
+                            dataKey={`${key}_filled`}
+                            stackId='a'
+                            fill={colors[key]}
+                            fillOpacity={0.9}
+                            name={labels[key]}
+                            isAnimationActive={false}
+                        />,
+                        <Bar
+                            key={`${key}_empty`}
+                            dataKey={`${key}_empty`}
+                            stackId='a'
+                            fill={colors[key]}
+                            fillOpacity={0.2}
+                            shape={TopEdgeRect}
+                            name={`${labels[key]} (empty)`}
+                            legendType='none'
+                            isAnimationActive={false}
+                        />,
+                    ])}
+                </BarChart>
+            </ResponsiveContainer>
+            <ColorLegend keys={keys} labels={labels} colors={colors} />
+        </ChartCard>
     );
 }

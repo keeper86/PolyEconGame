@@ -6,6 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const formatNumbers = (n: number): string => {
+    const extraShort = false;
     const abbreviations: [number, string][] = [
         [1_000_000_000_000, 'T'],
         [1_000_000_000, 'B'],
@@ -17,11 +18,11 @@ export const formatNumbers = (n: number): string => {
             if (value === 1_000 && n < 1000) {
                 continue;
             }
-            return `${(n / value).toFixed(1)}${suffix}`;
+            return `${(n / value).toFixed(extraShort ? 0 : 1)}${suffix}`;
         }
     }
     if (n < 100) {
-        return n.toPrecision(2);
+        return n.toPrecision(extraShort ? 1 : 2);
     }
-    return n.toFixed(1);
+    return n.toFixed(extraShort ? 0 : 1);
 };

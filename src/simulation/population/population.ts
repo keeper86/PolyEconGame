@@ -19,7 +19,7 @@ export type { EducationLevelType } from './education';
 
 export const MAX_AGE: number = 100;
 
-export const OCCUPATIONS = ['unoccupied', 'employed', 'education', 'unableToWork'] as const;
+export const OCCUPATIONS = ['education', 'unoccupied', 'employed', 'unableToWork'] as const;
 export type Occupation = (typeof OCCUPATIONS)[number];
 
 export const SKILL = ['novice', 'professional', 'expert'] as const;

@@ -12,7 +12,6 @@ const NAV_TABS = [
     { segment: 'overview', label: 'Overview' },
     { segment: 'demographics', label: 'Demographics' },
     { segment: 'economy', label: 'Economy' },
-    { segment: 'food', label: 'Food & Nutrition' },
 ] as const;
 
 export default function PlanetDetailLayout({ children }: { children: ReactNode }) {

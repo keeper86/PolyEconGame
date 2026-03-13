@@ -335,3 +335,98 @@ export const getPlanetFood = () =>
                 },
             };
         });
+
+// ---------------------------------------------------------------------------
+// Demographics (unified) — single query for the demographics accordion page
+// ---------------------------------------------------------------------------
+
+/**
+ * Unified per-cell demography used by the demographics accordion page.
+ *
+ * One entry per age index; each cell holds every field needed by all three
+ * accordion sections (population, wealth, food & nutrition) so the page
+ * only needs a single query.
+ */
+type UnifiedCategory = {
+    total: number;
+    // wealth
+    wealthMean: number;
+    // food
+    foodStock: number;
+    starvationLevel: number;
+};
+
+type UnifiedCohort = {
+    [occ: string]: { [edu: string]: { [skill: string]: UnifiedCategory } };
+};
+
+function buildUnifiedDemography(planet: Planet): UnifiedCohort[] {
+    return planet.population.demography.map((cohort) => {
+        if (!cohort) {
+            return {} as UnifiedCohort;
+        }
+        const out: UnifiedCohort = {};
+        for (const occ of OCCUPATIONS) {
+            out[occ] = {};
+            for (const edu of educationLevelKeys) {
+                out[occ][edu] = {};
+                for (const skill of SKILL) {
+                    const cat = cohort[occ][edu][skill];
+                    out[occ][edu][skill] = {
+                        total: cat.total,
+                        wealthMean: cat.wealth.mean,
+                        foodStock: cat.foodStock,
+                        starvationLevel: cat.starvationLevel,
+                    };
+                }
+            }
+        }
+        return out;
+    });
+}
+
+export const getPlanetDemographicsFull = () =>
+    procedure
+        .input(z.object({ planetId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                data: z
+                    .object({
+                        planetName: z.string(),
+                        /** Aggregated rows for the population pyramid (edu/occ totals only). */
+                        rows: z.array(
+                            z.object({
+                                age: z.number(),
+                                total: z.number(),
+                                edu: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+                                occ: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+                            }),
+                        ),
+                        /** Full per-cell demography for wealth & food charts. */
+                        demography: z.array(z.any()),
+                        priceLevel: z.number(),
+                        starvationLevel: z.number(),
+                    })
+                    .nullable(),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ tick }, { planet }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getPlanet(input.planetId),
+            ]);
+            if (!planet) {
+                return { tick, data: null };
+            }
+            return {
+                tick,
+                data: {
+                    planetName: planet.name,
+                    rows: buildDemographyRows(planet),
+                    demography: buildUnifiedDemography(planet),
+                    priceLevel: planet.priceLevel ?? 1,
+                    starvationLevel: computeGlobalStarvation(planet),
+                },
+            };
+        });
