@@ -5,12 +5,12 @@
  * Verifies that the endpoints return the expected shape and data.
  */
 
-import { describe, it, expect } from 'vitest';
-import { getUnauthenticatedCaller } from 'tests/vitest/setupTestcontainer';
+import { getCaller } from 'tests/vitest/setupTestcontainer';
+import { describe, expect, it } from 'vitest';
 
 describe('simulation tRPC controller', () => {
     it('getLatestPlanets returns empty result when no snapshots exist', async () => {
-        const caller = getUnauthenticatedCaller();
+        const caller = getCaller();
         const result = await caller.simulation.getLatestPlanetSummaries();
         expect(result).toBeDefined();
         expect(result.tick).toBe(0);
@@ -18,7 +18,7 @@ describe('simulation tRPC controller', () => {
     });
 
     it('getLatestAgents returns shape', async () => {
-        const caller = getUnauthenticatedCaller();
+        const caller = getCaller();
         const result = await caller.simulation.getLatestAgents();
 
         expect(result).toBeDefined();
