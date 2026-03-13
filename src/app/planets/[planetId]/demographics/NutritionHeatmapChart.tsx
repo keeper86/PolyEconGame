@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 import { educationLevelKeys } from '@/simulation/population/education';
@@ -18,7 +18,7 @@ const BANDS = [
     { key: 'severeStarvation', label: 'Severe', color: '#b91c1c' }, // strong red
     { key: 'seriousStarvation', label: 'Serious', color: '#ea580c' }, // orange
     { key: 'moderateStarvation', label: 'Moderate', color: '#f59e0b' }, // amber
-    { key: 'lightStarvation', label: 'Light', color: '#eab308' }, // yellow
+    { key: 'lightStarvation', label: 'Light', color: '#d9e70eff' }, // yellow
     { key: 'noStarvation', label: 'None', color: '#16a34a' }, // green
 ] as const;
 
@@ -47,19 +47,49 @@ const formatPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
 
 type ChartRow = Record<string, number>;
 
-// ─── TopEdgeRect — draws a segment with a dividing line at the top ─────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function TopEdgeRect(props: any) {
-    const { x, y, width, height, fill, fillOpacity } = props;
-    if (!width || !height || height <= 0) {
+// ─── SegmentedBar — renders band segments inside a single Recharts Bar ────────
+
+interface SegmentedBarProps {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    payload?: ChartRow;
+    groupKey: string;
+}
+
+function SegmentedBar({ x = 0, y = 0, width = 0, height = 0, payload, groupKey }: SegmentedBarProps) {
+    if (!payload || !width || !height || height <= 0) {
         return <g />;
     }
-    return (
-        <g>
-            <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} />
-            <line x1={x} x2={x + width} y1={y} y2={y} stroke='rgba(0,0,0,0.35)' strokeWidth={1.5} />
-        </g>
-    );
+    const total = payload[`${groupKey}_total`] ?? 0;
+    if (total <= 0) {
+        return <g />;
+    }
+
+    const elements: React.ReactNode[] = [];
+    let offsetFromBottom = 0;
+
+    for (let bi = 0; bi < BANDS.length; bi++) {
+        const b = BANDS[bi];
+        const value = payload[`${groupKey}_${b.key}`] ?? 0;
+        if (value <= 0) {
+            continue;
+        }
+        const h = height * (value / total);
+        const ry = y + height - offsetFromBottom - h;
+        const isTop =
+            bi === BANDS.length - 1 || BANDS.slice(bi + 1).every((nb) => (payload[`${groupKey}_${nb.key}`] ?? 0) <= 0);
+        elements.push(
+            <g key={b.key}>
+                <rect x={x} y={ry} width={width} height={h} fill={b.color} fillOpacity={0.88} />
+                {isTop && <line x1={x} x2={x + width} y1={ry} y2={ry} stroke='rgba(0,0,0,0.35)' strokeWidth={1.5} />}
+            </g>,
+        );
+        offsetFromBottom += h;
+    }
+
+    return <g>{elements}</g>;
 }
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
@@ -133,36 +163,14 @@ function makeTooltip(
 function BandLegend() {
     return (
         <div className='flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground mt-1'>
-            {BANDS.map((b) => (
-                <span key={b.key} className='flex items-center gap-0.5'>
-                    <span className='inline-block w-2.5 h-2.5 rounded-sm' style={{ backgroundColor: b.color }} />
-                    {b.label}
-                </span>
-            ))}
-        </div>
-    );
-}
-
-function GroupLegend({
-    keys,
-    labels,
-    colors,
-}: {
-    keys: readonly string[];
-    labels: Record<string, string>;
-    colors: Record<string, string>;
-}) {
-    return (
-        <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] mt-0.5'>
-            {keys.map((k) => (
-                <span key={k} className='flex items-center gap-1'>
-                    <span
-                        className='inline-block w-2.5 h-2.5 rounded-sm border'
-                        style={{ borderColor: colors[k], background: 'transparent' }}
-                    />
-                    {labels[k]}
-                </span>
-            ))}
+            {BANDS.slice()
+                .reverse()
+                .map((b) => (
+                    <span key={b.key} className='flex items-center gap-0.5'>
+                        <span className='inline-block w-2.5 h-2.5 rounded-sm' style={{ backgroundColor: b.color }} />
+                        {b.label}
+                    </span>
+                ))}
         </div>
     );
 }
@@ -177,7 +185,6 @@ type Props = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NutritionHeatmapChart({ rows, groupMode }: Props): React.ReactElement {
-    const lastYDomainRef = useRef<[number, number]>([0, 1]);
     const isVerySmall = useIsSmallScreen();
 
     const groupKeys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
@@ -186,110 +193,87 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
 
     // ── Build chart data ──────────────────────────────────────────────────────
     // For each age row we produce per group key:
-    //   ${gk}_${bandKey}       — band population (plain stacked bar)
-    //   ${gk}_${bandKey}_edge  — same for topmost band (rendered via TopEdgeRect)
-    //   ${gk}_total            — for tooltip
-    //   ${gk}_avgStarvation    — for tooltip
-    //   ${gk}_avgBuffer        — for tooltip
-    const data: ChartRow[] = [];
+    //   ${gk}_${bandKey}    — band population
+    //   ${gk}_total         — total pop (used as dataKey for the Bar + tooltip)
+    //   ${gk}_avgStarvation — for tooltip
+    //   ${gk}_avgBuffer     — for tooltip
+    const { data, totalPop, totalStarving, globalAvgStarvation, globalAvgBuffer, yDomain } = useMemo(() => {
+        const builtData: ChartRow[] = [];
 
-    for (const r of rows) {
-        const row: ChartRow = { age: r.age };
-        let ageTotalPop = 0;
+        for (const r of rows) {
+            const row: ChartRow = { age: r.age };
+            let ageTotalPop = 0;
 
-        for (let gi = 0; gi < groupKeys.length; gi++) {
-            const gk = groupKeys[gi];
-            const gv = r.groupValues[gi];
-            const gPop = gv[GV_POP];
-            const totalFood = gv[GV_FOOD];
-            const weightedStarv = gv[GV_STARV];
+            for (let gi = 0; gi < groupKeys.length; gi++) {
+                const gk = groupKeys[gi];
+                const gv = r.groupValues[gi];
+                const gPop = gv[GV_POP];
+                const totalFood = gv[GV_FOOD];
+                const weightedStarv = gv[GV_STARV];
 
-            const avgStarvation = gPop > 0 ? weightedStarv / gPop : 0;
-            const avgStock = gPop > 0 ? totalFood / gPop : 0;
-            const avgBuffer = FOOD_TARGET_PER_PERSON > 0 ? avgStock / FOOD_TARGET_PER_PERSON : 0;
+                const avgStarvation = gPop > 0 ? weightedStarv / gPop : 0;
+                const avgStock = gPop > 0 ? totalFood / gPop : 0;
+                const avgBuffer = FOOD_TARGET_PER_PERSON > 0 ? avgStock / FOOD_TARGET_PER_PERSON : 0;
 
-            // We don't have per-cell data anymore — classify the whole group by its avg starvation
-            // and assign all population to that single band.
-            const bandIdx = classifyBand(avgStarvation);
-            const bandPops: number[] = new Array(BANDS.length).fill(0);
-            bandPops[bandIdx] = gPop;
-
-            row[`${gk}_total`] = gPop;
-            row[`${gk}_avgStarvation`] = avgStarvation;
-            row[`${gk}_avgBuffer`] = avgBuffer;
-            ageTotalPop += gPop;
-
-            // Topmost non-zero band gets the TopEdgeRect treatment
-            let lastNonZeroIdx = -1;
-            for (let bi = BANDS.length - 1; bi >= 0; bi--) {
-                if (bandPops[bi] > 0) {
-                    lastNonZeroIdx = bi;
-                    break;
+                const bandIdx = classifyBand(avgStarvation);
+                for (let bi = 0; bi < BANDS.length; bi++) {
+                    row[`${gk}_${BANDS[bi].key}`] = bi === bandIdx ? gPop : 0;
                 }
+
+                row[`${gk}_total`] = gPop;
+                row[`${gk}_avgStarvation`] = avgStarvation;
+                row[`${gk}_avgBuffer`] = avgBuffer;
+                ageTotalPop += gPop;
             }
 
-            for (let bi = 0; bi < BANDS.length; bi++) {
-                const bk = BANDS[bi].key;
-                if (bi === lastNonZeroIdx) {
-                    row[`${gk}_${bk}`] = 0;
-                    row[`${gk}_${bk}_edge`] = bandPops[bi];
-                } else {
-                    row[`${gk}_${bk}`] = bandPops[bi];
-                    row[`${gk}_${bk}_edge`] = 0;
+            if (ageTotalPop === 0) {
+                continue;
+            }
+            builtData.push(row);
+        }
+
+        let maxY = 0;
+        let tp = 0;
+        let ts = 0;
+        let wStarv = 0;
+        let wBuffer = 0;
+
+        for (const row of builtData) {
+            let rowTotal = 0;
+            for (const gk of groupKeys) {
+                const pop = row[`${gk}_total`] ?? 0;
+                tp += pop;
+                rowTotal += pop;
+                wStarv += pop * (row[`${gk}_avgStarvation`] ?? 0);
+                wBuffer += pop * (row[`${gk}_avgBuffer`] ?? 0);
+                // Starving = bands 1–4 (severe, serious, moderate, light)
+                for (let bi = 1; bi <= 4; bi++) {
+                    ts += row[`${gk}_${BANDS[bi].key}`] ?? 0;
                 }
+            }
+            if (rowTotal > maxY) {
+                maxY = rowTotal;
             }
         }
 
-        if (ageTotalPop === 0) {
-            continue;
-        }
-        data.push(row);
-    }
+        return {
+            data: builtData,
+            totalPop: tp,
+            totalStarving: ts,
+            globalAvgStarvation: tp > 0 ? wStarv / tp : 0,
+            globalAvgBuffer: tp > 0 ? wBuffer / tp : 0,
+            yDomain: [0, maxY > 0 ? maxY : 1] as [number, number],
+        };
+    }, [rows, groupKeys]);
+
+    const tooltip = useMemo(
+        () => makeTooltip(groupKeys, groupLabels, groupColors),
+        [groupKeys, groupLabels, groupColors],
+    );
 
     if (data.length === 0) {
         return <div className='text-xs text-muted-foreground'>No nutrition data available</div>;
     }
-
-    // Y-axis domain
-    let maxY = 0;
-    for (const row of data) {
-        let rowTotal = 0;
-        for (const gk of groupKeys) {
-            rowTotal += row[`${gk}_total`] ?? 0;
-        }
-        if (rowTotal > maxY) {
-            maxY = rowTotal;
-        }
-    }
-    if (maxY > 0) {
-        lastYDomainRef.current = [0, maxY];
-    }
-    const yDomain = lastYDomainRef.current;
-
-    // Summary stats (global)
-    let totalPop = 0;
-    let totalStarving = 0;
-    let weightedStarvation = 0;
-    let weightedBuffer = 0;
-    for (const row of data) {
-        for (const gk of groupKeys) {
-            const pop = row[`${gk}_total`] ?? 0;
-            totalPop += pop;
-            weightedStarvation += pop * (row[`${gk}_avgStarvation`] ?? 0);
-            weightedBuffer += pop * (row[`${gk}_avgBuffer`] ?? 0);
-            totalStarving +=
-                (row[`${gk}_severeStarvation`] ?? 0) +
-                (row[`${gk}_severeStarvation_edge`] ?? 0) +
-                (row[`${gk}_moderateStarvation`] ?? 0) +
-                (row[`${gk}_moderateStarvation_edge`] ?? 0) +
-                (row[`${gk}_lightStarvation`] ?? 0) +
-                (row[`${gk}_lightStarvation_edge`] ?? 0);
-        }
-    }
-    const globalAvgStarvation = totalPop > 0 ? weightedStarvation / totalPop : 0;
-    const globalAvgBuffer = totalPop > 0 ? weightedBuffer / totalPop : 0;
-
-    const tooltip = makeTooltip(groupKeys, groupLabels, groupColors);
 
     return (
         <>
@@ -347,35 +331,21 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {isVerySmall ? null : <Tooltip content={tooltip as any} />}
 
-                    {groupKeys.flatMap((gk) =>
-                        BANDS.flatMap((b) => [
-                            <Bar
-                                key={`${gk}_${b.key}`}
-                                dataKey={`${gk}_${b.key}`}
-                                stackId='nutrition'
-                                fill={b.color}
-                                fillOpacity={0.88}
-                                name={b.label}
-                                legendType='none'
-                                isAnimationActive={false}
-                            />,
-                            <Bar
-                                key={`${gk}_${b.key}_edge`}
-                                dataKey={`${gk}_${b.key}_edge`}
-                                stackId='nutrition'
-                                fill={b.color}
-                                fillOpacity={0.88}
-                                name={`${b.label} (top)`}
-                                legendType='none'
-                                isAnimationActive={false}
-                            />,
-                        ]),
-                    )}
+                    {groupKeys.map((gk) => (
+                        <Bar
+                            key={gk}
+                            dataKey={`${gk}_total`}
+                            stackId='nutrition'
+                            legendType='none'
+                            isAnimationActive={false}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            shape={(props: any) => <SegmentedBar {...props} groupKey={gk} />}
+                        />
+                    ))}
                 </BarChart>
             </ResponsiveContainer>
 
             <BandLegend />
-            <GroupLegend keys={groupKeys} labels={groupLabels} colors={groupColors} />
         </>
     );
 }

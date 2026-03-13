@@ -13,10 +13,10 @@ type Props = {
 
 export default function DemographyFoodCharts({ rows, groupMode }: Props): React.ReactElement {
     return (
-        <ChartCard title='Food &amp; Nutrition'>
+        <>
             <FoodBufferChart rows={rows} groupMode={groupMode} />
             <div className='my-3 border-t' />
             <NutritionHeatmapChart rows={rows} groupMode={groupMode} />
-        </ChartCard>
+        </>
     );
 }

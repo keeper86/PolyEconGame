@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '@/app/planets/components/CohortFilter';
@@ -121,81 +121,62 @@ type Props = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function WealthDistributionChart({ rows, groupMode }: Props): React.ReactElement {
-    const lastYDomainRef = useRef<[number, number]>([0, 1]);
     const isVerySmall = useIsSmallScreen();
 
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
-    // Build chart rows from pre-aggregated AggRows
-    const rawData: ChartRow[] = rows
-        .map((r) => {
-            const row: ChartRow = { age: r.age };
-            let ageHasData = false;
-            for (let gi = 0; gi < keys.length; gi++) {
-                const key = keys[gi];
-                const gv = r.groupValues[gi];
-                const pop = gv[GV_POP];
-                const weightedWealth = gv[GV_WEALTH];
-                const mean = pop > 0 ? weightedWealth / pop : 0;
-                row[`${key}_pop`] = pop;
-                row[`${key}_mean`] = mean;
-                row[`${key}_bar`] = pop > 0 ? mean : 0;
-                if (pop > 0) {
-                    ageHasData = true;
+    const { data, yDomain } = useMemo(() => {
+        const rawData: ChartRow[] = rows
+            .map((r) => {
+                const row: ChartRow = { age: r.age };
+                let ageHasData = false;
+                for (let gi = 0; gi < keys.length; gi++) {
+                    const key = keys[gi];
+                    const gv = r.groupValues[gi];
+                    const pop = gv[GV_POP];
+                    const weightedWealth = gv[GV_WEALTH];
+                    const mean = pop > 0 ? weightedWealth : 0;
+                    row[`${key}_pop`] = pop;
+                    row[`${key}_mean`] = mean;
+                    row[`${key}_bar`] = pop > 0 ? mean : 0;
+                    if (pop > 0) {
+                        ageHasData = true;
+                    }
+                }
+                return ageHasData ? row : null;
+            })
+            .filter((r): r is ChartRow => r !== null);
+
+        const built = isVerySmall ? mergePairs(rawData, keys) : rawData;
+
+        let maxY = 0;
+
+        for (const row of built) {
+            for (const key of keys) {
+                const v = row[`${key}_bar`] ?? 0;
+                if (v > maxY) {
+                    maxY = v;
                 }
             }
-            return ageHasData ? row : null;
-        })
-        .filter((r): r is ChartRow => r !== null);
+        }
 
-    const data = isVerySmall ? mergePairs(rawData, keys) : rawData;
+        return {
+            data: built,
+            yDomain: [0, maxY > 0 ? maxY : 1] as [number, number],
+        };
+    }, [rows, keys, isVerySmall]);
+
+    const tooltip = useMemo(() => makeTooltip(keys, labels, colors), [keys, labels, colors]);
 
     const hasData = data.some((row) => keys.some((k) => (row[`${k}_bar`] ?? 0) > 0));
     if (!hasData) {
         return <div className='text-xs text-muted-foreground'>No wealth data available</div>;
     }
 
-    // Population-weighted global mean wealth
-    let totalPop = 0;
-    let totalWealth = 0;
-    for (const row of data) {
-        for (const key of keys) {
-            const pop = row[`${key}_pop`] ?? 0;
-            const mean = row[`${key}_mean`] ?? 0;
-            totalPop += pop;
-            totalWealth += mean * pop;
-        }
-    }
-    const globalMean = totalPop > 0 ? totalWealth / totalPop : 0;
-
-    // Y-axis domain
-    let maxY = 0;
-    for (const row of data) {
-        for (const key of keys) {
-            const v = row[`${key}_bar`] ?? 0;
-            if (v > maxY) {
-                maxY = v;
-            }
-        }
-    }
-    if (hasData) {
-        lastYDomainRef.current = [0, maxY > 0 ? maxY : 1];
-    }
-    const yDomain = lastYDomainRef.current;
-
-    const tooltip = makeTooltip(keys, labels, colors);
-
     return (
         <>
-            {/* Summary stats */}
-            <div className='flex gap-3 text-[10px] text-muted-foreground mb-2'>
-                <span>
-                    Global mean: <span className='font-medium'>{formatNumbers(globalMean)}</span>
-                </span>
-            </div>
-
             <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
                 <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
                     <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />

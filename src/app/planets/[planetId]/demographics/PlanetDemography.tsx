@@ -48,8 +48,7 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
     const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
 
     return (
-        <ChartCard title='Population'>
-            {/* Chart */}
+        <>
             <ResponsiveContainer width='100%' height={180}>
                 <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
@@ -84,7 +83,6 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
                     ))}
                 </BarChart>
             </ResponsiveContainer>
-            {/* Color legend */}
             <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] mt-1'>
                 {keys.map((key) => (
                     <span key={key} className='flex items-center gap-1'>
@@ -96,6 +94,6 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
                     </span>
                 ))}
             </div>
-        </ChartCard>
+        </>
     );
 }

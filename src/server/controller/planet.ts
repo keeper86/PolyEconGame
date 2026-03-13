@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { procedure, protectedProcedure } from '../trpcRoot';
 import { workerQueries } from '../../lib/workerQueries';
 import { computePopulationTotal, computeGlobalStarvation } from '../../simulation/snapshotRepository';
+import type { Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { Planet } from '../../simulation/planet/planet';
@@ -378,12 +379,9 @@ type AggRow = {
     ];
 };
 
-function buildAggRows(
-    planet: Planet,
-    groupMode: 'occupation' | 'education',
-    activeSkills: readonly string[],
-): AggRow[] {
+function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', activeSkills: readonly Skill[]): AggRow[] {
     const skillSet = new Set(activeSkills);
+
     const rows: AggRow[] = [];
 
     for (let age = 0; age < planet.population.demography.length; age++) {
@@ -392,7 +390,9 @@ function buildAggRows(
             continue;
         }
 
-        // Population pyramid totals (all skills — never filtered)
+        // Population pyramid totals — filtered to the activeSkills set.
+        // Previously this used ALL skills; now the pyramid matches the
+        // client's skill filtering so charts reflect the same subset.
         const edu: [number, number, number, number] = [0, 0, 0, 0];
         const occ: [number, number, number, number] = [0, 0, 0, 0];
         let total = 0;
@@ -402,7 +402,8 @@ function buildAggRows(
             for (let ei = 0; ei < educationLevelKeys.length; ei++) {
                 const e = educationLevelKeys[ei];
                 let cell = 0;
-                for (const skill of SKILL) {
+                // Only count the skills the caller requested.
+                for (const skill of activeSkills) {
                     cell += cohort[o][e][skill].total;
                 }
                 edu[ei] += cell;
@@ -467,7 +468,8 @@ function buildAggRows(
 }
 
 const groupModeSchema = z.enum(['occupation', 'education']);
-const skillsSchema = z.array(z.string()).min(1);
+const skillLevelSchema = z.enum(SKILL);
+const skillsSchema = z.array(skillLevelSchema).min(1);
 
 /** 4-tuple: [population, totalFoodStock, weightedStarvation, weightedWealth] */
 const groupValueTuple = z.tuple([z.number(), z.number(), z.number(), z.number()]);
@@ -480,7 +482,7 @@ export const getPlanetDemographicsFull = () =>
                 /** Which dimension to group by. Default: 'occupation'. */
                 groupMode: groupModeSchema.default('occupation'),
                 /** Skills to include in groupValues. Default: all three. */
-                activeSkills: skillsSchema.default(['novice', 'professional', 'expert']),
+                activeSkills: skillsSchema.default([...SKILL]),
             }),
         )
         .output(

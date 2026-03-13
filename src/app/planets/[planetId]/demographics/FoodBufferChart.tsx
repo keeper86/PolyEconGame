@@ -4,7 +4,7 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
-import React, { useRef } from 'react';
+import React, { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
@@ -14,18 +14,34 @@ import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP } from './demographicsTypes';
 
 type ChartRow = Record<string, number>;
 
-// ─── TopEdgeRect ──────────────────────────────────────────────────────────────
+// ─── FoodBufferBar — filled portion + faded empty portion in one shape ────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function TopEdgeRect(props: any) {
-    const { x, y, width, height, fill, fillOpacity } = props;
-    if (!width || !height || height <= 0) {
+interface FoodBufferBarProps {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    payload?: ChartRow;
+    groupKey: string;
+    color: string;
+}
+
+function FoodBufferBar({ x = 0, y = 0, width = 0, height = 0, payload, groupKey, color }: FoodBufferBarProps) {
+    if (!payload || !width || !height || height <= 0) {
         return <g />;
     }
+    const clampedRatio = Math.min(1, Math.max(0, payload[`${groupKey}_bufferRatio`] ?? 0));
+    const filledH = height * clampedRatio;
+    const emptyH = height - filledH;
     return (
         <g>
-            <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} />
-            <line x1={x} x2={x + width} y1={y} y2={y} stroke='#000' strokeWidth={1} />
+            {emptyH > 0 && (
+                <>
+                    <rect x={x} y={y} width={width} height={emptyH} fill={color} fillOpacity={0.2} />
+                    {clampedRatio < 0.95 && <line x1={x} x2={x + width} y1={y} y2={y} stroke='#000' strokeWidth={1} />}
+                </>
+            )}
+            {filledH > 0 && <rect x={x} y={y + emptyH} width={width} height={filledH} fill={color} fillOpacity={0.9} />}
         </g>
     );
 }
@@ -96,12 +112,9 @@ function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
             const bAvgStock = b[`${key}_avgStock`] ?? 0;
             const avgStock = totalPop > 0 ? (aAvgStock * aPop + bAvgStock * bPop) / totalPop : 0;
             const ratio = avgStock / FOOD_TARGET_PER_PERSON;
-            const clampedRatio = Math.min(1, Math.max(0, ratio));
             merged[`${key}_pop`] = totalPop;
             merged[`${key}_avgStock`] = avgStock;
             merged[`${key}_bufferRatio`] = ratio;
-            merged[`${key}_filled`] = totalPop * clampedRatio;
-            merged[`${key}_empty`] = totalPop * (1 - clampedRatio);
         }
         result.push(merged);
     }
@@ -141,58 +154,55 @@ type Props = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FoodBufferChart({ rows, groupMode }: Props): React.ReactElement {
-    const lastYDomainRef = useRef<[number, number]>([0, 1]);
     const isVerySmall = useIsSmallScreen();
 
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
-    // Build chart rows from pre-aggregated AggRows
-    const rawData: ChartRow[] = rows
-        .map((r) => {
-            const row: ChartRow = { age: r.age };
-            let ageHasData = false;
-            for (let gi = 0; gi < keys.length; gi++) {
-                const key = keys[gi];
-                const gv = r.groupValues[gi];
-                const pop = gv[GV_POP];
-                const totalFood = gv[GV_FOOD];
-                const avgStock = pop > 0 ? totalFood / pop : 0;
-                const ratio = avgStock / FOOD_TARGET_PER_PERSON;
-                const clampedRatio = Math.min(1, Math.max(0, ratio));
-                row[`${key}_pop`] = pop;
-                row[`${key}_avgStock`] = avgStock;
-                row[`${key}_bufferRatio`] = ratio;
-                row[`${key}_filled`] = pop * clampedRatio;
-                row[`${key}_empty`] = pop * (1 - clampedRatio);
-                if (pop > 0) {
-                    ageHasData = true;
+    const { data, yDomain } = useMemo(() => {
+        const rawData: ChartRow[] = rows
+            .map((r) => {
+                const row: ChartRow = { age: r.age };
+                let ageHasData = false;
+                for (let gi = 0; gi < keys.length; gi++) {
+                    const key = keys[gi];
+                    const gv = r.groupValues[gi];
+                    const pop = gv[GV_POP];
+                    const totalFood = gv[GV_FOOD];
+                    const avgStock = pop > 0 ? totalFood / pop : 0;
+                    const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+                    row[`${key}_pop`] = pop;
+                    row[`${key}_avgStock`] = avgStock;
+                    row[`${key}_bufferRatio`] = ratio;
+                    if (pop > 0) {
+                        ageHasData = true;
+                    }
+                }
+                return ageHasData ? row : null;
+            })
+            .filter((r): r is ChartRow => r !== null);
+
+        const built = isVerySmall ? mergePairs(rawData, keys) : rawData;
+
+        let maxY = 0;
+        for (const row of built) {
+            for (const key of keys) {
+                const pop = row[`${key}_pop`] ?? 0;
+                if (pop > maxY) {
+                    maxY = pop;
                 }
             }
-            return ageHasData ? row : null;
-        })
-        .filter((r): r is ChartRow => r !== null);
+        }
 
-    const data = isVerySmall ? mergePairs(rawData, keys) : rawData;
+        return { data: built, yDomain: [0, maxY > 0 ? maxY : 1] as [number, number] };
+    }, [rows, keys, isVerySmall]);
+
+    const tooltip = useMemo(() => makeTooltip(keys, labels, colors), [keys, labels, colors]);
 
     if (data.length === 0) {
         return <div className='text-xs text-muted-foreground'>No food data available</div>;
     }
-
-    let maxY = 0;
-    for (const row of data) {
-        for (const key of keys) {
-            const v = (row[`${key}_filled`] ?? 0) + (row[`${key}_empty`] ?? 0);
-            if (v > maxY) {
-                maxY = v;
-            }
-        }
-    }
-    lastYDomainRef.current = [0, maxY > 0 ? maxY : 1];
-    const yDomain = lastYDomainRef.current;
-
-    const tooltip = makeTooltip(keys, labels, colors);
 
     return (
         <>
@@ -203,28 +213,17 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
                     <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {isVerySmall ? null : <Tooltip content={tooltip as any} />}
-                    {keys.flatMap((key) => [
+                    {keys.map((key) => (
                         <Bar
-                            key={`${key}_filled`}
-                            dataKey={`${key}_filled`}
+                            key={key}
+                            dataKey={`${key}_pop`}
                             stackId='a'
-                            fill={colors[key]}
-                            fillOpacity={0.9}
                             name={labels[key]}
                             isAnimationActive={false}
-                        />,
-                        <Bar
-                            key={`${key}_empty`}
-                            dataKey={`${key}_empty`}
-                            stackId='a'
-                            fill={colors[key]}
-                            fillOpacity={0.2}
-                            shape={TopEdgeRect}
-                            name={`${labels[key]} (empty)`}
-                            legendType='none'
-                            isAnimationActive={false}
-                        />,
-                    ])}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            shape={(props: any) => <FoodBufferBar {...props} groupKey={key} color={colors[key]} />}
+                        />
+                    ))}
                 </BarChart>
             </ResponsiveContainer>
             <ColorLegend keys={keys} labels={labels} colors={colors} />
