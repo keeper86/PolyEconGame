@@ -65,8 +65,11 @@ export default function PlanetDemographicsPage() {
     // Open population section by default
     const [openSection, setOpenSection] = useState<string>('population');
 
-    if (!data?.data) {
+    if (!data) {
         return <div className='text-sm text-muted-foreground'>Loading demographics…</div>;
+    }
+    if (data.data === null) {
+        return <div className='text-sm text-muted-foreground'>Planet not found.</div>;
     }
 
     const { rows } = data.data;

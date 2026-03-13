@@ -73,7 +73,6 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
         <>
             <ResponsiveContainer width='100%' height={180}>
                 <BarChart data={finalChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                    const finalChartData = isVerySmall ? mergePairs(chartData, keys) : chartData;
                     <XAxis dataKey='age' tick={{ fontSize: 10 }} />
                     <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={(v) => formatNumbers(v)} />
                     <Tooltip

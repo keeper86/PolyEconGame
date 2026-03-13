@@ -290,8 +290,8 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                 rowTotal += pop;
                 wStarv += pop * (row[`${gk}_avgStarvation`] ?? 0);
                 wBuffer += pop * (row[`${gk}_avgBuffer`] ?? 0);
-                // Starving = bands 1–4 (severe, serious, moderate, light)
-                for (let bi = 1; bi <= 4; bi++) {
+                // Starving = bands 0–4 (fatal, severe, serious, moderate, light)
+                for (let bi = 0; bi <= 4; bi++) {
                     ts += row[`${gk}_${BANDS[bi].key}`] ?? 0;
                 }
             }

@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod';
-import { procedure, protectedProcedure } from '../trpcRoot';
+import { protectedProcedure } from '../trpcRoot';
 import { workerQueries } from '../../lib/workerQueries';
 import { computePopulationTotal, computeGlobalStarvation } from '../../simulation/snapshotRepository';
 import type { Skill } from '../../simulation/population/population';
@@ -26,7 +26,7 @@ import type { Planet } from '../../simulation/planet/planet';
  * and pre-computed population/starvation totals for the live chart point.
  */
 export const getPlanetOverview = () =>
-    procedure
+    protectedProcedure
         .input(z.object({ planetId: z.string() }))
         .output(
             z.object({
@@ -122,7 +122,7 @@ function buildDemographyRows(planet: Planet): DemographyRow[] {
 }
 
 export const getPlanetDemographics = () =>
-    procedure
+    protectedProcedure
         .input(z.object({ planetId: z.string() }))
         .output(
             z.object({
@@ -211,7 +211,7 @@ function buildSlimDemographyForEconomy(planet: Planet): SlimCohort[] {
 }
 
 export const getPlanetEconomy = () =>
-    procedure
+    protectedProcedure
         .input(z.object({ planetId: z.string() }))
         .output(
             z.object({
@@ -302,7 +302,7 @@ function buildFoodDemography(planet: Planet): FoodCohort[] {
 }
 
 export const getPlanetFood = () =>
-    procedure
+    protectedProcedure
         .input(z.object({ planetId: z.string() }))
         .output(
             z.object({
