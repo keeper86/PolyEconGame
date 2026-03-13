@@ -1,12 +1,13 @@
 'use client';
 
+import { useIsSmallScreen } from '@/hooks/useMobile';
 import React from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import ChartCard from '../../components/ChartCard';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+// ChartCard intentionally omitted (not used here)
+import { formatNumbers } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
-import { formatNumbers } from '@/lib/utils';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 
 type DemographyRow = {
@@ -27,6 +28,7 @@ function safeNumber(v: unknown): number {
 }
 
 export default function PlanetDemography({ rows, group }: Props): React.ReactElement {
+    const isVerySmall = useIsSmallScreen();
     if (!rows || rows.length === 0) {
         return <div className='text-sm text-muted-foreground'>No demography data</div>;
     }
@@ -43,15 +45,35 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
         return { ...base, ...eduEntries, ...occEntries };
     });
 
+    // Merge adjacent age rows when on very small screens to reduce visual clutter.
+    function mergePairs(rowsArr: Record<string, number>[], rowKeys: readonly string[]) {
+        const result: Record<string, number>[] = [];
+        for (let i = 0; i < rowsArr.length; i += 2) {
+            const a = rowsArr[i];
+            const b = rowsArr[i + 1];
+            if (!b) {
+                result.push(a);
+                continue;
+            }
+            const merged: Record<string, number> = { age: a.age };
+            for (const key of rowKeys) {
+                merged[key] = (a[key] ?? 0) + (b[key] ?? 0);
+            }
+            result.push(merged);
+        }
+        return result;
+    }
+
     const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
+    const finalChartData = isVerySmall ? mergePairs(chartData, keys) : chartData;
     const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
     const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
 
     return (
         <>
             <ResponsiveContainer width='100%' height={180}>
-                <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
+                <BarChart data={finalChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    const finalChartData = isVerySmall ? mergePairs(chartData, keys) : chartData;
                     <XAxis dataKey='age' tick={{ fontSize: 10 }} />
                     <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={(v) => formatNumbers(v)} />
                     <Tooltip

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
-import WealthDistributionChart from '../demographics/WealthDistributionChart';
 import BankPanel from './BankPanel';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
 import IntergenerationalTransferChart from './IntergenerationalTransferChart';

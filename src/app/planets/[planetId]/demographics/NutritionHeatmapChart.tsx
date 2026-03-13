@@ -59,6 +59,46 @@ interface SegmentedBarProps {
     groupKey: string;
 }
 
+// ─── mergePairs ─────────────────────────────────────────────────────────────
+
+function mergePairs(rows: ChartRow[], groupKeys: readonly string[]): ChartRow[] {
+    const result: ChartRow[] = [];
+    for (let i = 0; i < rows.length; i += 2) {
+        const a = rows[i];
+        const b = rows[i + 1];
+        if (!b) {
+            result.push(a);
+            continue;
+        }
+        const merged: ChartRow = { age: a.age };
+
+        for (const gk of groupKeys) {
+            const aTotal = a[`${gk}_total`] ?? 0;
+            const bTotal = b[`${gk}_total`] ?? 0;
+            const total = aTotal + bTotal;
+            merged[`${gk}_total`] = total;
+
+            const aAvgStarv = a[`${gk}_avgStarvation`] ?? 0;
+            const bAvgStarv = b[`${gk}_avgStarvation`] ?? 0;
+            merged[`${gk}_avgStarvation`] = total > 0 ? (aAvgStarv * aTotal + bAvgStarv * bTotal) / total : 0;
+
+            const aAvgBuffer = a[`${gk}_avgBuffer`] ?? 0;
+            const bAvgBuffer = b[`${gk}_avgBuffer`] ?? 0;
+            merged[`${gk}_avgBuffer`] = total > 0 ? (aAvgBuffer * aTotal + bAvgBuffer * bTotal) / total : 0;
+
+            // Sum band counts and any _edge counts if present
+            for (const band of BANDS) {
+                const key = band.key;
+                merged[`${gk}_${key}`] = (a[`${gk}_${key}`] ?? 0) + (b[`${gk}_${key}`] ?? 0);
+                merged[`${gk}_${key}_edge`] = (a[`${gk}_${key}_edge`] ?? 0) + (b[`${gk}_${key}_edge`] ?? 0);
+            }
+        }
+
+        result.push(merged);
+    }
+    return result;
+}
+
 function SegmentedBar({ x = 0, y = 0, width = 0, height = 0, payload, groupKey }: SegmentedBarProps) {
     if (!payload || !width || !height || height <= 0) {
         return <g />;
@@ -233,13 +273,16 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
             builtData.push(row);
         }
 
+        // Down-sample by merging adjacent age rows when on very small screens
+        const finalData = isVerySmall ? mergePairs(builtData, groupKeys) : builtData;
+
         let maxY = 0;
         let tp = 0;
         let ts = 0;
         let wStarv = 0;
         let wBuffer = 0;
 
-        for (const row of builtData) {
+        for (const row of finalData) {
             let rowTotal = 0;
             for (const gk of groupKeys) {
                 const pop = row[`${gk}_total`] ?? 0;
@@ -258,14 +301,14 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
         }
 
         return {
-            data: builtData,
+            data: finalData,
             totalPop: tp,
             totalStarving: ts,
             globalAvgStarvation: tp > 0 ? wStarv / tp : 0,
             globalAvgBuffer: tp > 0 ? wBuffer / tp : 0,
             yDomain: [0, maxY > 0 ? maxY : 1] as [number, number],
         };
-    }, [rows, groupKeys]);
+    }, [rows, groupKeys, isVerySmall]);
 
     const tooltip = useMemo(
         () => makeTooltip(groupKeys, groupLabels, groupColors),

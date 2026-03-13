@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import ChartCard from '../../components/ChartCard';
 import FoodBufferChart from './FoodBufferChart';
 import NutritionHeatmapChart from './NutritionHeatmapChart';
 import type { AggRow, GroupMode } from './demographicsTypes';

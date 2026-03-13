@@ -1,12 +1,12 @@
 'use client';
 
 import { useTRPC } from '@/lib/trpc';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
 
 const NAV_TABS = [
     { segment: 'overview', label: 'Overview' },
@@ -22,7 +22,7 @@ export default function PlanetDetailLayout({ children }: { children: ReactNode }
 
     // Only fetch the planet name (overview endpoint) so we have something for
     // the page title.  The sub-pages each fetch their own focused data.
-    const { data } = useSimulationQuery(trpc.simulation.getPlanetOverview.queryOptions({ planetId }));
+    const { data } = useQuery(trpc.simulation.getPlanetOverview.queryOptions({ planetId }));
 
     const planetName = data?.overview?.name ?? planetId;
     const base = `/planets/${encodeURIComponent(planetId)}`;
