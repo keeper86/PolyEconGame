@@ -31,7 +31,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
     title: 'Game',
-    description: 'Governance for Provenance',
+    description:
+        'Simulate and manage a workforce in a dynamic economic environment. Explore the impact of demographic changes, education levels, and economic policies on your planet’s economy.',
 };
 
 export default async function RootLayout({
@@ -63,7 +64,7 @@ export default async function RootLayout({
                                             <ModeToggle />
                                         </div>
                                     </header>
-                                    <main className='flex-1 p-0 sm:p-4 overflow-x-auto break-words'>{children}</main>
+                                    <main className='flex-1 p-2 sm:p-4 overflow-x-auto break-words'>{children}</main>
                                     <Footer />
                                 </SidebarInset>
                                 <BackToTopButton />

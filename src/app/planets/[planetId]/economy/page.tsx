@@ -1,11 +1,11 @@
 'use client';
 
-import { useTRPC } from '@/lib/trpc';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
 import BankPanel from './BankPanel';
-import WealthByAgeChart from './WealthByAgeChart';
-import WealthDistributionChart from './WealthDistributionChart';
+import FoodPriceHistoryChart from './FoodPriceHistoryChart';
 import IntergenerationalTransferChart from './IntergenerationalTransferChart';
 
 export default function PlanetEconomyPage() {
@@ -32,8 +32,14 @@ export default function PlanetEconomyPage() {
                 wagePerEdu={economy.wagePerEdu ?? undefined}
                 priceLevel={economy.priceLevel ?? undefined}
             />
-            <WealthByAgeChart demography={economy.demography} />
-            <WealthDistributionChart demography={economy.demography} />
+            <Card>
+                <CardHeader className='pb-2'>
+                    <CardTitle className='text-sm font-medium'>Food price &amp; starvation history</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <FoodPriceHistoryChart planetId={planetId} />
+                </CardContent>
+            </Card>
             <IntergenerationalTransferChart lastTransferMatrix={economy.lastTransferMatrix} />
         </div>
     );

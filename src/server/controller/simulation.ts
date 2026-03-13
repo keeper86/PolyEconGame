@@ -9,7 +9,7 @@
  */
 
 import { z } from 'zod';
-import { procedure } from '../trpcRoot';
+import { protectedProcedure } from '../trpcRoot';
 import {
     computePopulationTotal,
     computeAgentStorage,
@@ -25,7 +25,7 @@ import { workerQueries } from '../../lib/workerQueries';
 import type { Agent } from '../../simulation/planet/planet';
 
 export const getCurrentTick = () =>
-    procedure
+    protectedProcedure
         .input(z.void())
         .output(z.object({ tick: z.number() }))
         .query(async () => {
@@ -48,7 +48,7 @@ export type PlanetSummary = z.infer<typeof planetSummarySchema>;
 
 /** Latest snapshot for every planet (one row per planet). */
 export const getLatestPlanetSummaries = () =>
-    procedure
+    protectedProcedure
         .input(z.void())
         .output(
             z.object({
@@ -76,7 +76,7 @@ export const getLatestPlanetSummaries = () =>
 
 /** Latest snapshot for every agent (one row per agent). */
 export const getLatestAgents = () =>
-    procedure
+    protectedProcedure
         .input(z.void())
         .output(
             z.object({
@@ -115,7 +115,7 @@ export const getLatestAgents = () =>
  * Returns only the data needed for AgentSummaryCard — no full Agent blob.
  */
 export const getAgentListSummaries = () =>
-    procedure
+    protectedProcedure
         .input(z.void())
         .output(
             z.object({
@@ -149,7 +149,7 @@ export const getAgentListSummaries = () =>
  * Used on the /agents/[agentId] detail page.
  */
 export const getAgentDetail = () =>
-    procedure
+    protectedProcedure
         .input(
             z.object({
                 agentId: z.string(),
@@ -198,7 +198,7 @@ export const getAgentDetail = () =>
  * Used on the /agents/[agentId] page to show planet cards.
  */
 export const getAgentOverview = () =>
-    procedure
+    protectedProcedure
         .input(z.object({ agentId: z.string() }))
         .output(
             z.object({
@@ -260,7 +260,7 @@ export const getAgentOverview = () =>
  * wealth distribution, food buffers, and demographics.
  */
 export const getPlanetDetail = () =>
-    procedure
+    protectedProcedure
         .input(
             z.object({
                 planetId: z.string(),
@@ -293,7 +293,7 @@ export const getPlanetDetail = () =>
  * Used on the /agents/[agentId]/[planetId] detail page.
  */
 export const getAgentPlanetDetail = () =>
-    procedure
+    protectedProcedure
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
         .output(
             z.object({
@@ -333,7 +333,7 @@ export const getAgentPlanetDetail = () =>
  * Returns rows ordered tick ascending, ready for direct chart consumption.
  */
 export const getPlanetPopulationHistory = () =>
-    procedure
+    protectedProcedure
         .input(z.object({ planetId: z.string() }))
         .output(
             z.object({

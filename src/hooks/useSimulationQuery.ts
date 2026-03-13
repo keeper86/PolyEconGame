@@ -26,7 +26,7 @@
  *   );
  */
 
-import { useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
 
 export const SIMULATION_MAX_RETRIES = 3;
 export const SIMULATION_REFETCH_INTERVAL_MS = 1_000;
@@ -34,7 +34,7 @@ export const SIMULATION_REFETCH_INTERVAL_MS = 1_000;
 type SimulationQueryOptions<TData, TError> = Omit<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     UseQueryOptions<TData, TError, TData, any>,
-    'refetchInterval' | 'retry'
+    'refetchInterval' | 'retry' | 'placeholderData'
 > & {
     /** Override the polling interval (ms). Defaults to SIMULATION_REFETCH_INTERVAL_MS. */
     refetchIntervalMs?: number;
@@ -49,6 +49,10 @@ export function useSimulationQuery<TData, TError = Error>(
     return useQuery<TData, TError, TData, any>({
         ...rest,
         retry: SIMULATION_MAX_RETRIES,
+        // Keep the last successfully fetched data visible while a new fetch
+        // is in-flight — covers both regular polling ticks and query-key
+        // changes (e.g. switching group mode or skill filter).
+        placeholderData: keepPreviousData,
         refetchInterval: (query) =>
             query.state.fetchFailureCount > SIMULATION_MAX_RETRIES ? false : refetchIntervalMs,
     });
