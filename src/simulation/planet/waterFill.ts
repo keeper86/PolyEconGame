@@ -92,7 +92,7 @@ export function waterFill(
                 continue;
             }
 
-            const ageProd = ageProdByEdu[slot.jobEdu];
+            const ageProd = ageProdByEdu[workerEdu];
             const take = Math.min(Math.ceil((equilibrium - currentRatio) * slot.capacity), supply);
             if (take <= 0) {
                 continue;

@@ -86,6 +86,9 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 const jobEdu = eduLevel as EducationLevelType;
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
                 const scaledTarget = req * facility.scale * resourceEfficiencyScalar;
+                if (scaledTarget <= 0) {
+                    continue;
+                }
                 const bodies = ageProd[jobEdu] > 0 ? Math.ceil(scaledTarget / ageProd[jobEdu]) : 0;
                 const slot: WorkerSlot = {
                     facilityIdx: facilityIndex,

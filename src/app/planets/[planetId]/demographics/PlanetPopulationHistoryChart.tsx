@@ -125,7 +125,7 @@ function PlanetPopulationChartRecharts({
     );
 }
 
-export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
+export default function PlanetPopulationHistoryChart({ planetId }: Props): React.ReactElement {
     const trpc = useTRPC();
 
     const { data, isLoading } = useSimulationQuery(
@@ -141,14 +141,6 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         value: r.population,
         starvation: r.starvationLevel,
     }));
-
-    if (live) {
-        chartData.push({
-            year: live.tick / TICKS_PER_YEAR,
-            value: live.population,
-            starvation: live.starvationLevel,
-        });
-    }
 
     return <PlanetPopulationChartRecharts data={chartData} />;
 }

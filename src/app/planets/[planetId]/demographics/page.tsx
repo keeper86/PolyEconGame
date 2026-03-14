@@ -197,14 +197,7 @@ export default function PlanetDemographicsPage() {
                 <span className='text-sm text-muted-foreground'>{`Total population: ${formatNumbers(populationTotal)}`}</span>
             </span>
 
-            <PlanetPopulationHistoryChart
-                planetId={planetId}
-                live={{
-                    tick: data.tick,
-                    population: populationTotal,
-                    starvationLevel: data.data.starvationLevel,
-                }}
-            />
+            <PlanetPopulationHistoryChart planetId={planetId} />
 
             {/* ── Hoisted controls (shared across all sections) ──────────── */}
             <div className='flex flex-wrap items-center gap-2 mb-3'>
