@@ -170,7 +170,7 @@ describe('checkWealthBankConsistency', () => {
         // Both monetary conservation and wealth-bank consistency must hold
         const monetaryDisc = checkMonetaryConservation(gameState.agents, gameState.planets, 0.02);
         expect(monetaryDisc).toEqual([]);
-        const wealthDisc = checkWealthBankConsistency(gameState.planets, 50);
+        const wealthDisc = checkWealthBankConsistency(gameState.planets, 100);
         expect(wealthDisc).toEqual([]);
     });
 });

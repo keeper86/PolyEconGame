@@ -39,9 +39,10 @@ export const agriculturalProductionFacility: ProductionFacility = {
     lastTickResults: {
         overallEfficiency: 1,
         workerEfficiency: {},
-        workerEfficiencyOverall: 1,
         resourceEfficiency: {},
         overqualifiedWorkers: {},
+        exactUsedByEdu: {},
+        totalUsedByEdu: {},
     },
 };
 
@@ -54,9 +55,10 @@ export const waterExtractionFacility: ProductionFacility = {
     lastTickResults: {
         overallEfficiency: 1,
         workerEfficiency: {},
-        workerEfficiencyOverall: 1,
         resourceEfficiency: {},
         overqualifiedWorkers: {},
+        exactUsedByEdu: {},
+        totalUsedByEdu: {},
     },
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
@@ -83,9 +85,10 @@ export const ironExtractionFacility: ProductionFacility = {
     lastTickResults: {
         overallEfficiency: 1,
         workerEfficiency: {},
-        workerEfficiencyOverall: 1,
         resourceEfficiency: {},
         overqualifiedWorkers: {},
+        exactUsedByEdu: {},
+        totalUsedByEdu: {},
     },
     powerConsumptionPerTick: 0.8,
     workerRequirement: {

@@ -15,6 +15,7 @@
 import { GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
 import type { Cohort, PopulationCategory } from './population';
 import { forEachPopulationCohort } from './population';
+import { creditWealth } from '../financial/wealthOps';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -119,10 +120,7 @@ export function redistributeInheritance(demography: Cohort<PopulationCategory>[]
                 if (cat.total <= 0) {
                     return;
                 }
-                cat.wealth = {
-                    mean: cat.wealth.mean + perCapita,
-                    variance: cat.wealth.variance,
-                };
+                creditWealth(cat, perCapita);
             });
         }
     }

@@ -9,7 +9,6 @@ import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 const NAV_TABS = [
-    { segment: 'overview', label: 'Overview' },
     { segment: 'demographics', label: 'Demographics' },
     { segment: 'economy', label: 'Economy' },
 ] as const;

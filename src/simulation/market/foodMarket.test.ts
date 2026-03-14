@@ -41,9 +41,10 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
             lastTickResults: {
                 overallEfficiency: 1,
                 workerEfficiency: {},
-                workerEfficiencyOverall: 1,
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
             },
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },

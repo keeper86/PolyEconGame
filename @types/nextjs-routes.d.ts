@@ -16,6 +16,7 @@ declare module "nextjs-routes" {
     | StaticRoute<"/agents">
     | DynamicRoute<"/agents/[agentId]", { "agentId": string }>
     | DynamicRoute<"/agents/[agentId]/[planetId]", { "agentId": string; "planetId": string }>
+    | DynamicRoute<"/agents/[agentId]/[planetId]/production", { "agentId": string; "planetId": string }>
     | DynamicRoute<"/api/auth/[...nextauth]", { "nextauth": string[] }>
     | StaticRoute<"/api/ping">
     | DynamicRoute<"/api/public/[...trpc]", { "trpc": string[] }>
@@ -26,7 +27,6 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/planets/[planetId]", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/economy", { "planetId": string }>
-    | DynamicRoute<"/planets/[planetId]/overview", { "planetId": string }>
     | StaticRoute<"/pong">
     | StaticRoute<"/simulation">;
 

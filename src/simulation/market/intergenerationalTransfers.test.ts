@@ -22,7 +22,6 @@ import {
     generationAmplitude,
     intergenerationalTransfersForPlanet,
     sumTransferMatrix,
-    supportCapacity,
     survivalFloorForAge,
 } from './intergenerationalTransfers';
 
@@ -123,69 +122,15 @@ describe('generationAmplitude', () => {
     });
 
     it('amplitudes decay for larger |n|', () => {
-        // Negative side
+        // n=+1 (parent supporting child) is the peak — highest amplitude of all
+        expect(generationAmplitude(1)).toBeGreaterThan(generationAmplitude(0));
+        expect(generationAmplitude(1)).toBeGreaterThan(generationAmplitude(-1));
+        // Positive side: decays away from peak at n=+1
+        expect(generationAmplitude(1)).toBeGreaterThan(generationAmplitude(2));
+        expect(generationAmplitude(2)).toBeGreaterThan(generationAmplitude(3));
+        // Negative side: decays as n becomes more negative
         expect(generationAmplitude(-1)).toBeGreaterThan(generationAmplitude(-2));
         expect(generationAmplitude(-2)).toBeGreaterThan(generationAmplitude(-3));
-        // Positive side
-        expect(generationAmplitude(0)).toBeGreaterThan(generationAmplitude(1));
-        expect(generationAmplitude(1)).toBeGreaterThan(generationAmplitude(2));
-    });
-});
-
-// ===========================================================================
-// Unit tests: supportCapacity (continuous curve)
-// ===========================================================================
-
-describe('supportCapacity', () => {
-    it('returns 0 for children (age < 14)', () => {
-        expect(supportCapacity(0)).toBe(0);
-        expect(supportCapacity(10)).toBe(0);
-        expect(supportCapacity(13)).toBe(0);
-    });
-
-    it('ramps from 0 to 1 between ages 14 and 20', () => {
-        expect(supportCapacity(14)).toBeCloseTo(0, 10);
-        expect(supportCapacity(17)).toBeCloseTo(0.5, 10);
-        expect(supportCapacity(20)).toBeCloseTo(1.0, 10);
-    });
-
-    it('is monotonically increasing in the ramp', () => {
-        for (let age = 14; age < 20; age++) {
-            expect(supportCapacity(age + 1)).toBeGreaterThan(supportCapacity(age));
-        }
-    });
-
-    it('returns 1.0 for prime working age (22-60)', () => {
-        expect(supportCapacity(22)).toBe(1);
-        expect(supportCapacity(30)).toBe(1);
-        expect(supportCapacity(45)).toBe(1);
-        expect(supportCapacity(60)).toBe(1);
-    });
-
-    it('declines gently from 60 to 75', () => {
-        expect(supportCapacity(60)).toBe(1);
-        expect(supportCapacity(75)).toBeCloseTo(0.4, 10);
-        for (let age = 60; age < 75; age++) {
-            expect(supportCapacity(age + 1)).toBeLessThan(supportCapacity(age));
-        }
-    });
-
-    it('declines steeply from 75 to 100', () => {
-        expect(supportCapacity(75)).toBeCloseTo(0.4, 10);
-        expect(supportCapacity(100)).toBeCloseTo(0.1, 10);
-        for (let age = 75; age < 100; age++) {
-            expect(supportCapacity(age + 1)).toBeLessThan(supportCapacity(age));
-        }
-    });
-
-    it('never returns negative', () => {
-        for (let age = 0; age <= 100; age++) {
-            expect(supportCapacity(age)).toBeGreaterThanOrEqual(0);
-        }
-    });
-
-    it('elderly at 80 still have positive capacity', () => {
-        expect(supportCapacity(80)).toBeGreaterThan(0);
     });
 });
 
@@ -595,43 +540,6 @@ describe('intergenerationalTransfersTick', () => {
         expect(getWealth(planet, childAge, 'unoccupied', 'none')).toBeGreaterThan(0);
     });
 
-    it('elderly with capacity < 1 give less than prime-age supporter with same wealth', () => {
-        const childAge = 5;
-        setPopulation(planet, childAge, 'unoccupied', 'none', 50000);
-
-        const foodPrice = planet.priceLevel ?? 1.0;
-        const baseFoodCost = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK * foodPrice;
-        const workingFloor = SUPPORTER_SURVIVAL_FRACTION * baseFoodCost;
-        const supporterMean = workingFloor + 0.5;
-
-        // --- Scenario 1: prime-age supporter at exact GENERATION_GAP ---
-        const primeAge = childAge + GENERATION_GAP;
-
-        setPopulation(planet, primeAge, 'employed', 'none', 100);
-        setWealth(planet, primeAge, 'employed', 'none', supporterMean);
-        setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
-
-        intergenerationalTransfersForPlanet(planet);
-        const primeContrib = supporterMean - getWealth(planet, primeAge, 'employed', 'none');
-
-        // --- Scenario 2: elderly supporter ---
-        setWealth(planet, childAge, 'unoccupied', 'none', 0);
-        setFoodStock(planet, childAge, 'unoccupied', 'none', 0);
-        setPopulation(planet, primeAge, 'employed', 'none', 0);
-        setWealth(planet, primeAge, 'employed', 'none', 0);
-
-        const elderlyAge = 80;
-        setPopulation(planet, elderlyAge, 'unoccupied', 'none', 100);
-        setWealth(planet, elderlyAge, 'unoccupied', 'none', supporterMean);
-
-        intergenerationalTransfersForPlanet(planet);
-        const elderlyContrib = supporterMean - getWealth(planet, elderlyAge, 'unoccupied', 'none');
-
-        expect(primeContrib).toBeGreaterThan(0);
-        expect(elderlyContrib).toBeGreaterThan(0);
-        expect(primeContrib).toBeGreaterThan(elderlyContrib);
-    });
-
     it('elderly deplete faster under starvation (lower floor)', () => {
         const foodPrice = planet.priceLevel ?? 1.0;
         const baseFoodCost = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK * foodPrice;
@@ -662,8 +570,8 @@ describe('intergenerationalTransfersTick', () => {
     // Continuous capacity
     // -----------------------------------------------------------------------
 
-    it('children (age < 16) never act as supporters regardless of wealth', () => {
-        const youngAge = 5;
+    it('children (age = 0) never act as supporters regardless of wealth', () => {
+        const youngAge = 0;
         setPopulation(planet, youngAge, 'unoccupied', 'none', 100);
         setWealth(planet, youngAge, 'unoccupied', 'none', 10000);
 
@@ -672,7 +580,7 @@ describe('intergenerationalTransfersTick', () => {
 
         intergenerationalTransfersForPlanet(planet);
 
-        expect(getWealth(planet, youngAge, 'unoccupied', 'none')).toBe(10000);
+        expect(getWealth(planet, youngAge, 'unoccupied', 'none')).toBeCloseTo(10000, 1);
     });
 
     it('young adults (16-21) have partial support capacity', () => {

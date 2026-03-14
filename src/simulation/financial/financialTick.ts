@@ -4,6 +4,7 @@ import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
+import { creditWageIncome } from './wealthOps';
 
 /**
  * Default wage per education level per tick (currency units per worker).
@@ -82,28 +83,37 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         bank.householdDeposits += wageBill;
         assets.lastWageBill = wageBill;
 
-        let totalPopEmployedCount = 0;
-        for (let age = 0; age < demography.length; age++) {
-            for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    totalPopEmployedCount += demography[age].employed[edu][skill].total;
-                }
-            }
+        // Count only THIS agent's employed workers (from their workforce demography),
+        // so that wages are distributed only to workers employed by this agent.
+        // Using the global demography count would cause double-counting when multiple
+        // agents each distribute their own wage bill across all employed workers.
+        let totalAgentWorkerCount = 0;
+        for (const edu of educationLevelKeys) {
+            totalAgentWorkerCount += totalWorkersForEdu[edu];
         }
 
-        if (totalPopEmployedCount > 0) {
-            const perCapitaWage = wageBill / totalPopEmployedCount;
+        if (totalAgentWorkerCount > 0) {
+            const perCapitaWage = wageBill / totalAgentWorkerCount;
             for (let age = 0; age < demography.length; age++) {
                 for (const edu of educationLevelKeys) {
                     for (const skill of SKILL) {
+                        // Only update cohorts that have workers employed by this agent.
+                        const agentWorkers = workforce[age]?.[edu]?.[skill];
+                        if (!agentWorkers) {
+                            continue;
+                        }
+                        const activeWorkers = agentWorkers.active;
+                        const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
+                        const agentWorkersHere = activeWorkers + departingWorkers;
+                        if (agentWorkersHere <= 0) {
+                            continue;
+                        }
                         const cat = demography[age].employed[edu][skill];
                         if (cat.total <= 0) {
                             continue;
                         }
-                        cat.wealth = {
-                            mean: cat.wealth.mean + perCapitaWage,
-                            variance: cat.wealth.variance,
-                        };
+
+                        creditWageIncome(bank, cat, perCapitaWage, agentWorkersHere);
                     }
                 }
             }

@@ -63,11 +63,6 @@ type PlanetAssets = {
     productionFacilities: ProductionFacility[];
     storageFacility: StorageFacility;
     allocatedWorkers: Record<EducationLevelType, number>;
-    workerFeedback?: {
-        unusedWorkers: Record<EducationLevelType, number>;
-        unusedWorkerFraction: number;
-        overqualifiedMatrix?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
-    };
     deaths?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
     disabilities?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
     retirements?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
@@ -125,9 +120,9 @@ export default function AgentPlanetDetailPage() {
                     <WorkforceDemographyPanel
                         allocatedWorkers={assets.allocatedWorkers}
                         workforceDemography={assets.workforceDemography}
-                        unusedWorkers={assets.workerFeedback?.unusedWorkers}
-                        unusedWorkerFraction={assets.workerFeedback?.unusedWorkerFraction}
-                        overqualifiedMatrix={assets.workerFeedback?.overqualifiedMatrix}
+                        unusedWorkers={undefined}
+                        unusedWorkerFraction={undefined}
+                        overqualifiedMatrix={undefined}
                         deathsThisMonth={assets.deaths?.thisMonth}
                         deathsPrevMonth={assets.deaths?.prevMonth}
                         disabilitiesThisMonth={assets.disabilities?.thisMonth}

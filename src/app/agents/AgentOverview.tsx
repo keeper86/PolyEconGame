@@ -61,6 +61,7 @@ const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 /** Render the detailed last-tick results for a production facility. */
 function FacilityEfficiencyDetails({ results }: { results: LastTickResults }): React.ReactElement {
     const workerEntries = Object.entries(results.workerEfficiency) as [EducationLevelType, number][];
+    const workerEfficiencyOverall = workerEntries.length > 0 ? Math.min(...workerEntries.map(([, v]) => v)) : 1;
     const resourceEntries = Object.entries(results.resourceEfficiency);
     const overqualifiedEntries = Object.entries(results.overqualifiedWorkers) as [
         EducationLevelType,
@@ -76,8 +77,8 @@ function FacilityEfficiencyDetails({ results }: { results: LastTickResults }): R
             {workerEntries.length > 0 && (
                 <div>
                     <span className='text-muted-foreground'>Workers</span>{' '}
-                    <span className={`font-medium ${efficiencyColor(results.workerEfficiencyOverall)}`}>
-                        {pctStr(results.workerEfficiencyOverall)}
+                    <span className={`font-medium ${efficiencyColor(workerEfficiencyOverall)}`}>
+                        {pctStr(workerEfficiencyOverall)}
                     </span>
                     <div className='ml-3 flex flex-wrap gap-x-3'>
                         {workerEntries.map(([edu, eff]) => (
@@ -215,7 +216,7 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
         const allocatedWorkers: Record<string, number> = {} as Record<string, number>;
         const rawRequirement: Record<string, number> = {} as Record<string, number>;
         const unusedWorkers: Record<string, number> = {} as Record<string, number>;
-        let unusedWorkerFraction = 0;
+        const unusedWorkerFraction = 0;
         type OQMatrix = { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
         const overqualifiedMatrix: OQMatrix = {};
         const deathsThisMonth: Record<string, number> = {} as Record<string, number>;
@@ -252,16 +253,15 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                     }
                 }
             }
-            // Worker feedback data
-            const wf = assetsEntry.workerFeedback;
-            if (wf) {
-                for (const [k, v] of Object.entries(wf.unusedWorkers)) {
-                    unusedWorkers[k] = (unusedWorkers[k] || 0) + (v || 0);
-                }
-                unusedWorkerFraction = Math.max(unusedWorkerFraction, wf.unusedWorkerFraction);
-                // Merge overqualified matrix
-                if (wf.overqualifiedMatrix) {
-                    for (const [jobEdu, breakdown] of Object.entries(wf.overqualifiedMatrix)) {
+            // Worker feedback derived from lastTickResults
+            if (assetsEntry.productionFacilities) {
+                for (const facility of assetsEntry.productionFacilities) {
+                    const tick = facility.lastTickResults;
+                    if (!tick) {
+                        continue;
+                    }
+                    // Accumulate overqualified matrix from per-facility data
+                    for (const [jobEdu, breakdown] of Object.entries(tick.overqualifiedWorkers)) {
                         const je = jobEdu as EducationLevelType;
                         if (!breakdown) {
                             continue;

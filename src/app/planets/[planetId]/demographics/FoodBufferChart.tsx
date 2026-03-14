@@ -82,7 +82,7 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {(ratio * 100).toFixed(0)}% · {formatNumbers(avgStock)} t · {formatNumbers(pop)}
+                                {(ratio * 100).toFixed(0)}% · {formatNumbers(avgStock * 1000)} kg · {formatNumbers(pop)}
                             </span>
                         </div>
                     );

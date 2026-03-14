@@ -223,31 +223,6 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
 });
 
 /**
- * Production-feedback results persisted per tick so that
- * `updateAllocatedWorkers` (next tick) can adjust hiring targets.
- * Written by `productionTick`.
- */
-export type WorkforceTickResults = {
-    /**
-     * Workers left idle after all production facilities drew their
-     * requirements.  Can be negative when demand exceeds supply.
-     */
-    unusedWorkers: PerEducation;
-    /** Fraction of total hired workforce that was idle (0–1). */
-    unusedWorkerFraction: number;
-    /**
-     * Aggregated overqualified-worker matrix across all production
-     * facilities.  `[jobEdu][workerEdu]` = count of `workerEdu`
-     * workers filling `jobEdu` slots.
-     */
-    overqualifiedMatrix?: {
-        [jobEdu in EducationLevelType]?: {
-            [workerEdu in EducationLevelType]?: number;
-        };
-    };
-};
-
-/**
  * Per-agent food market pricing state.
  * Written by `updateAgentPricing` and `foodMarketTick`.
  */
@@ -301,13 +276,6 @@ export type AgentPlanetAssets = {
     // ----- Workforce -----
 
     allocatedWorkers: PerEducation;
-
-    /**
-     * Production-feedback results from the last tick (idle workers,
-     * overqualified matrix).  Used by `updateAllocatedWorkers`.
-     * `undefined` before the first production tick.
-     */
-    workerFeedback?: WorkforceTickResults;
 
     // ----- Demographic event tracking -----
 
