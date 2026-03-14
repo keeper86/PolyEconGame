@@ -16,6 +16,7 @@ import DemographyFoodCharts from './DemographyFoodCharts';
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { GroupMode } from './demographicsTypes';
+import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
 
 // ─── Skill selector constants ────────────────────────────────────────────────
 
@@ -75,15 +76,12 @@ export default function PlanetDemographicsPage() {
     const { rows } = data.data;
 
     // Labor summary (age > 14) — always from committed data via `rows`
-    const laborCounts = [0, 0, 0, 0];
-    let laborTotal = 0;
+    const populationCounts = [0, 0, 0, 0];
+    let populationTotal = 0;
     for (const row of rows) {
-        if (row.age <= 14) {
-            continue;
-        }
         for (let i = 0; i < 4; i++) {
-            laborCounts[i] += row.occ[i];
-            laborTotal += row.occ[i];
+            populationCounts[i] += row.occ[i];
+            populationTotal += row.occ[i];
         }
     }
 
@@ -160,9 +158,9 @@ export default function PlanetDemographicsPage() {
                     style={{ borderLeftColor: OCC_COLORS[occ], borderLeftWidth: 3 }}
                 >
                     <div className='text-muted-foreground text-[9px] leading-tight truncate'>{OCC_LABELS[occ]}</div>
-                    <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(laborCounts[i])}</div>
+                    <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(populationCounts[i])}</div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
-                        {laborTotal > 0 ? ((laborCounts[i] / laborTotal) * 100).toFixed(1) + '%' : '0%'}
+                        {populationTotal > 0 ? ((populationCounts[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
                     </div>
                 </div>
             ))}
@@ -177,9 +175,11 @@ export default function PlanetDemographicsPage() {
                 >
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
                         <p className='text-[11px] text-muted-foreground font-medium'>{OCC_LABELS[occ]}</p>
-                        <p className='text-lg font-semibold leading-tight'>{formatNumbers(laborCounts[i])}</p>
+                        <p className='text-lg font-semibold leading-tight'>{formatNumbers(populationCounts[i])}</p>
                         <p className='text-xs text-muted-foreground'>
-                            {laborTotal > 0 ? ((laborCounts[i] / laborTotal) * 100).toFixed(1) + '%' : '0%'}
+                            {populationTotal > 0
+                                ? ((populationCounts[i] / populationTotal) * 100).toFixed(1) + '%'
+                                : '0%'}
                         </p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
                             Ø age <span className='font-medium text-foreground'>{occMeanAge[i].toFixed(1)}</span>
@@ -192,6 +192,13 @@ export default function PlanetDemographicsPage() {
 
     return (
         <>
+            <span className='flex justify-between'>
+                <h4 className='text-sm font-semibold mb-2'>Population History</h4>
+                <span className='text-sm text-muted-foreground'>{`Total population: ${formatNumbers(populationTotal)}`}</span>
+            </span>
+
+            <PlanetPopulationHistoryChart planetId={planetId} />
+
             {/* ── Hoisted controls (shared across all sections) ──────────── */}
             <div className='flex flex-wrap items-center gap-2 mb-3'>
                 {groupTabs}
@@ -211,7 +218,7 @@ export default function PlanetDemographicsPage() {
             >
                 {/* ── Population ─────────────────────────────────────────── */}
                 <AccordionItem value='population'>
-                    <AccordionTrigger className='text-sm font-semibold py-2'>Population</AccordionTrigger>
+                    <AccordionTrigger className='text-sm font-semibold py-2'>Demography</AccordionTrigger>
                     <AccordionContent>
                         {occupationCards}
                         <PlanetDemography rows={rows} group={group} />

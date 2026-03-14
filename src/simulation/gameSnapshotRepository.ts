@@ -144,9 +144,11 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
  * tick ascending.
  */
 export async function getPlanetPopulationHistory(db: Knex, planetId: string): Promise<PlanetPopulationHistoryRow[]> {
-    return db('planet_population_history').where({ planet_id: planetId }).orderBy('tick', 'asc').select() as Promise<
-        PlanetPopulationHistoryRow[]
-    >;
+    return db('planet_population_history')
+        .where({ planet_id: planetId })
+        .orderBy('tick', 'desc')
+        .limit(100)
+        .select() as Promise<PlanetPopulationHistoryRow[]>;
 }
 
 /**

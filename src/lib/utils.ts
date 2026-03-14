@@ -5,7 +5,10 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-export const formatNumbers = (n: number): string => {
+export const formatNumbers = (n: number | null | undefined): string => {
+    if (n == null || !isFinite(n)) {
+        return '—';
+    }
     const extraShort = false;
     const abbreviations: [number, string][] = [
         [1_000_000_000_000, 'T'],

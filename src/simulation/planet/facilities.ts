@@ -80,12 +80,11 @@ export type LastTickResults = {
      *  E.g. { none: 0.8, primary: 1.0 } means "none"-level slots were 80% effective. */
     workerEfficiency: { [edu in EducationLevelType]?: number };
 
-    /** Combined worker efficiency (the minimum across all required edu levels). */
-    workerEfficiencyOverall: number;
-
     /** Resource availability per resource name (fraction available / required). */
     resourceEfficiency: { [resourceName: string]: number };
 
+    exactUsedByEdu: { [jobEdu in EducationLevelType]?: number }; // how many workers of each education level filled the job slots (e.g. 3 secondary-educated workers filled primary-level slots)
+    totalUsedByEdu: { [workerEdu in EducationLevelType]?: number }; // how many workers of each education level filled any job slots (e.g. 5 secondary-educated workers filled all slots, including secondary-level ones)
     /** Overqualified workers used per *job* education level, broken down by the
      *  actual education of the workers that filled those slots.
      *  E.g. `{ none: { primary: 2, secondary: 1 } }` means 2 primary-educated and

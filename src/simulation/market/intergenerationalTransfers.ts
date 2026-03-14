@@ -3,78 +3,12 @@
  *
  * Implements structured intergenerational transfers (Subsystem 5).
  *
- * ## Overview
- *
- * Any person with positive support capacity (working-age adults AND wealthy
- * elderly) shares wealth with dependents (children, low-wealth elderly,
- * disabled) using a unified asymmetric multi-modal Gaussian weight kernel
- * over age distance and education-agnostic aggregation.
- *
- * ## Design Principles
- *
- * 1. **No education matching** — transfers aggregate across education
- *    levels.  Dependents receive support regardless of their education.
- *
- * 2. **Unified asymmetric kernel** — a single multi-modal Gaussian
- *    kernel handles *all* support ties: same-age (spousal/peer, n=0),
- *    parent↔child (n=±1), grandparent↔grandchild (n=±2), etc.
- *    Each generation offset n carries an asymmetric amplitude that
- *    gives highest weight to children (n=−1), moderate weight to
- *    peers (n=0), and exponentially lower weight to older generations.
- *    This embeds starvation priorities directly into the transfer
- *    logic without ad-hoc special casing.
- *
- * 3. **Continuous support capacity** — replaces the binary supporter /
- *    dependent classification.  `supportCapacity(age)` returns a value
- *    in [0, 1] that ramps up from age 16→22, plateaus 22→60, gently
- *    declines 60→75, and drops steeply 75→maxAge.  This determines
- *    what fraction of effective surplus is available for transfer AND
- *    sets the survival floor (elderly get a lower floor, enabling
- *    emergent age-selective die-off under starvation).
- *
- * 4. **Frozen surplus snapshot** — supporter surplus is computed once
- *    and frozen before any transfers.  No iterative recomputation
- *    prevents circular flows within a phase.
- *
- * 5. **Inequality-sensitive capacity** — uses wealth variance to
- *    compute a transfer friction coefficient, reducing effective
- *    transfer capacity when within-cell inequality is high.
- *
- * ## Phase Order
- *
- *   Phase 0 — Snapshot:
- *     Compute per-age aggregate supporter surplus and dependent need.
- *     Freeze surplus pool.
- *
- *   Phase 2 — Survival transfers (unified kernel):
- *     All dependents (children, elderly, disabled, same-age peers).
- *     Use the asymmetric support weight kernel.
- *     Fill 1 tick consumption target.
- *
- *   Phase 3 — Buffer allocation (intentionally non-frozen):
- *     Recompute remaining surplus from live wealth (after Phase 2
- *     mutations) against the precautionary reserve floor.  This is NOT
- *     a frozen snapshot — it reflects how much supporters actually have
- *     left.  Allocates remaining surplus proportionally toward the full
- *     food buffer target.
- *
- *   Phase 4 — Write transfer matrix.
- *     Ensure exact wealth conservation.
- *
- * ## Tracking
- *
- * Full-resolution per-cell (age × education × occupation) net transfer
- * amounts are written to `population.lastTransferMatrix` so the
- * frontend can visualise them without re-running the simulation on the
- * client.  Positive = received, negative = given.  Global sum = 0.
- *
  * ## Invariants
  *
  * - Total wealth is conserved exactly (zero-sum transfers).
  * - No negative wealth.
  * - No transfer below the age-appropriate survival floor.
  * - Deterministic given state.
- * - No order dependence (weight-kernel proportional allocation).
  * - Complexity linear in demographic state size.
  */
 
@@ -103,6 +37,7 @@ import type {
     PopulationTransferMatrix,
 } from '../population/population';
 import { mergeGaussianMoments, OCCUPATIONS, SKILL } from '../population/population';
+import { distributeWealthChangeTracked } from '../financial/wealthOps';
 
 // Debug logging helper: set SIM_DEBUG=1 to enable general logs and
 // SIM_DEBUG_VERBOSE=1 to enable high-volume verbose logs (per-age / per-cell).
@@ -205,41 +140,6 @@ function aggregateFoodStock(
     return total;
 }
 
-/**
- * Distribute a per-capita wealth change across all skill levels for a
- * given (age, occ, edu) cell, proportionally by each skill's population.
- *
- * The `perCapita` is the amount per person to add (positive) or subtract
- * (negative) from `wealth.mean`.  If `floor` is provided, no skill cell's
- * mean drops below it.
- */
-function distributeWealthChange(
-    demography: Cohort<PopulationCategory>[],
-    age: number,
-    occ: Occupation,
-    edu: EducationLevelType,
-    perCapita: number,
-    floor?: number,
-): void {
-    for (const skill of SKILL) {
-        const cat = demography[age][occ][edu][skill];
-        if (cat.total <= 0) {
-            continue;
-        }
-        if (floor !== undefined) {
-            cat.wealth = {
-                mean: Math.max(floor, cat.wealth.mean + perCapita),
-                variance: cat.wealth.variance,
-            };
-        } else {
-            cat.wealth = {
-                mean: cat.wealth.mean + perCapita,
-                variance: cat.wealth.variance,
-            };
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Continuous support capacity
 // ---------------------------------------------------------------------------
@@ -261,19 +161,20 @@ function distributeWealthChange(
  * Elderly with capacity > 0 can still give — they just give less.
  */
 export function supportCapacity(age: number): number {
+    return 1;
     let res: number;
-    if (age < MIN_EMPLOYABLE_AGE) {
+    if (age < 10) {
         res = 0;
     } else if (age < 25) {
-        res = Math.min(1, (age - MIN_EMPLOYABLE_AGE) / 6); // linear ramp 0→1 over ages 16–21
+        res = Math.min(1, age / MIN_EMPLOYABLE_AGE); // linear ramp 0→1 over ages 16–21
     } else if (age <= 60) {
         res = 1;
     } else if (age <= 75) {
-        res = 1 - (0.6 * (age - 60)) / 15; // 1→0.4 over ages 61–75
+        res = 1 - (0.2 * (age - 60)) / 15; // 1→0.4 over ages 61–75
     } else if (age <= 100) {
-        res = 0.4 - (0.3 * (age - 75)) / 25; // 0.4→0.1 over ages 76–100
+        res = 0.8 - (0.2 * (age - 75)) / 25; // 0.4→0.1 over ages 76–100
     } else {
-        res = 0.1;
+        res = 0.5;
     }
     vlog('supportCapacity', { age, res });
     return res;
@@ -313,27 +214,32 @@ export function survivalFloorForAge(age: number, baseFoodCost: number): number {
 /**
  * Asymmetric amplitude for generation offset `n`.
  *
- * Encodes social support priorities directly into the kernel:
+ * Encodes social support priorities directly into the kernel.
+ * `ageDifference = supAge − depAge`, so **positive n means the supporter
+ * is older than the dependent** (the normal parent→child direction).
  *
- *   n = −1 (child):           amplitude = 1.0         (highest)
- *   n = −2 (grandchild):      amplitude = exp(−0.5) ≈ 0.607
- *   n =  0 (self/peer):       amplitude = exp(−0.5) ≈ 0.607
- *   n = +1 (parent):          amplitude = exp(−1.0) ≈ 0.368
- *   n = +2 (grandparent):     amplitude = exp(−1.5) ≈ 0.223
+ *   n = +1 (supporter is 1 gen older → parent supporting child):   amplitude = 1.0  (highest)
+ *   n = +2 (supporter is 2 gen older → grandparent supporting gc):  amplitude = exp(−0.5) ≈ 0.607
+ *   n =  0 (same age → peer support):                               amplitude = exp(−0.5) ≈ 0.607
+ *   n = −1 (supporter is 1 gen younger → child supporting parent):  amplitude = exp(−1.0) ≈ 0.368
+ *   n = −2 (supporter is 2 gen younger → gc supporting grandparent):amplitude = exp(−1.5) ≈ 0.223
  *
- * Negative n → younger generations: amplitude decays as exp(−(|n|−1)/2).
- * Zero and positive n → self/older: amplitude decays as exp(−(n+1)/2).
+ * Positive n → supporter is older (downward transfers, socially dominant):
+ *   amplitude = exp(−0.66 × (n − 1))   for n > 0
+ * Zero and negative n → same-age or upward transfers (less common):
+ *   amplitude = exp(−0.66 × (|n| + 1)) for n ≤ 0
  *
- * The half-rate decay (dividing exponent by 2) keeps children as top
- * priority but gives substantially more weight to peer support (n=0)
- * and upward support to parents (n=+1).  This protects reproductive
- * cohorts better during prolonged scarcity.
+ * This ensures children (depAge ≪ supAge → large positive n in the kernel
+ * at n = +1) receive the highest-weighted transfers, protecting reproductive
+ * cohorts during scarcity.
  */
 export function generationAmplitude(n: number): number {
-    if (n < 0) {
-        return Math.exp(-0.4 * (Math.abs(n) - 1));
+    if (n > 0) {
+        // Downward transfers: supporter older than dependent (parent→child direction)
+        return Math.exp(-0.66 * (n - 1));
     } else {
-        return Math.exp(-0.4 * (n + 1));
+        // Same-age or upward transfers: peer support or child supporting parent
+        return Math.exp(-0.66 * (Math.abs(n) + 1));
     }
 }
 
@@ -350,26 +256,29 @@ export function generationAmplitude(n: number): number {
  *
  *   w(Δ) = max_{n=−N}^{+N}  amplitude(n) × exp( − (Δ − n·G)² / (2σ²) )
  *
- * The `ageDifference` parameter is *signed*: positive means the supporter
- * is older than the dependent.  Because the amplitude depends on the sign
- * of n (not |Δ|), the kernel is intentionally **asymmetric** — a supporter
- * 25 years *older* than a dependent receives a different weight than one
- * 25 years *younger*.
+ * The `ageDifference` parameter is *signed*: `ageDifference = supAge − depAge`.
+ * **Positive** means the supporter is older than the dependent (the typical
+ * parent→child direction).  Because the amplitude depends on the sign of n,
+ * the kernel is intentionally **asymmetric** — a supporter 25 years *older*
+ * than a dependent (n≈+1, amplitude≈1.0) receives a higher weight than one
+ * 25 years *younger* (n≈−1, amplitude≈0.368).
  *
  * Peaks and their amplitudes (GENERATION_GAP = 25):
  *
- *   Δ = −25 (supporter is 25 y younger → child receiving from parent)
- *         n = −1, amplitude = 1.0
+ *   Δ = +25 (supporter is 25 y older → parent supporting child)
+ *         n = +1, amplitude = 1.0  (highest priority)
+ *   Δ = +50 (supporter is 50 y older → grandparent supporting gc)
+ *         n = +2, amplitude ≈ 0.607
  *   Δ =   0 (same age → peer support)
  *         n =  0, amplitude ≈ 0.607
- *   Δ = +25 (supporter is 25 y older → parent supporting child)
- *         n = +1, amplitude ≈ 0.368
+ *   Δ = −25 (supporter is 25 y younger → adult child supporting parent)
+ *         n = −1, amplitude ≈ 0.368
  *   …etc.
  *
  * **Note:** Because the function returns the *max* across all n, the
  * weight at any given Δ is dominated by the nearest peak.  The asymmetric
- * amplitudes mean that children receive more support than elderly when
- * multiple dependents compete for the same surplus.
+ * amplitudes mean that young dependents (children) receive more support
+ * than elderly when multiple dependents compete for the same surplus.
  */
 export function supportWeight(ageDifference: number): number {
     const sigma = SUPPORT_WEIGHT_SIGMA;
@@ -436,14 +345,16 @@ export function createZeroTransferMatrix(numAges: number): PopulationTransferMat
 /** Sum all cells of a transfer matrix (should be ~0 for a balanced system). */
 export function sumTransferMatrix(matrix: PopulationTransferMatrix): number {
     let total = 0;
+    let maxValue = 1e-10; // small value to prevent division by zero in case of an all-zero matrix
     for (let age = 0; age < matrix.length; age++) {
         for (const edu of educationLevelKeys) {
             for (const occ of OCCUPATIONS) {
                 total += matrix[age][edu][occ];
+                maxValue = Math.max(maxValue, Math.abs(matrix[age][edu][occ]));
             }
         }
     }
-    return total;
+    return total / maxValue;
 }
 
 export function intergenerationalTransfersForPlanet(planet: Planet): void {
@@ -457,7 +368,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
     const baseFoodCost = foodTargetPerPerson * foodPrice;
     const precautionaryReserve = PRECAUTIONARY_RESERVE_TICKS * FOOD_PER_PERSON_PER_TICK * foodPrice;
-    const oneTickFood = FOOD_PER_PERSON_PER_TICK;
+    const oneTickFood = FOOD_PER_PERSON_PER_TICK * 2;
 
     log('planet parameters', {
         numAges,
@@ -580,99 +491,6 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
         floors,
         capacities,
         oneTickFood,
-        foodPrice,
-    );
-
-    // ===================================================================
-    // Phase 3 — Buffer allocation (intentionally non-frozen)
-    // ===================================================================
-    // Recompute remaining surplus from *live* wealth after Phase 2
-    // mutations.  This is intentionally NOT a frozen snapshot: it reflects
-    // how much supporters actually have left after survival transfers.
-    // Uses the precautionary reserve as the floor (higher than survival).
-
-    const remainingBufferSurplus: SurplusSnapshot[] = new Array(numAges);
-    for (let age = 0; age < numAges; age++) {
-        const cap = capacities[age];
-        if (cap > 0) {
-            let total = 0;
-            let pop = 0;
-            const bufFloor = Math.max(floors[age], precautionaryReserve);
-            for (const occ of OCCUPATIONS) {
-                if (!SUPPORTER_OCCS.has(occ)) {
-                    continue;
-                }
-                for (const edu of educationLevelKeys) {
-                    const p = aggregatePopulation(demography, age, occ, edu);
-                    if (p <= 0) {
-                        continue;
-                    }
-                    const w = aggregateWealth(demography, age, occ, edu);
-                    total += effectiveSurplus(w.mean, w.variance, bufFloor, p) * cap;
-                    pop += p;
-                }
-            }
-            remainingBufferSurplus[age] = { totalSurplus: total, totalPop: pop };
-        } else {
-            remainingBufferSurplus[age] = { totalSurplus: 0, totalPop: 0 };
-        }
-    }
-
-    // Recompute buffer need: subtract what dependents can self-fund from
-    // wealth they already received in Phase 2.
-    const remainingBufferNeeds: DependentNeed[] = new Array(numAges);
-    for (let age = 0; age < numAges; age++) {
-        let totalNeed = 0;
-        let totalPop = 0;
-
-        const collectNeed = (occ: Occupation, edu: EducationLevelType) => {
-            const pop = aggregatePopulation(demography, age, occ, edu);
-            if (pop <= 0) {
-                return;
-            }
-            const foodStock = aggregateFoodStock(demography, age, occ, edu);
-            const w = aggregateWealth(demography, age, occ, edu);
-            const perCapitaFoodStock = foodStock / pop;
-            const bufGap = Math.max(0, foodTargetPerPerson - perCapitaFoodStock);
-            const costGap = bufGap * foodPrice;
-            const selfFund = Math.max(0, w.mean);
-            const externalNeed = Math.max(0, costGap - selfFund);
-            totalNeed += externalNeed * pop;
-            totalPop += pop;
-        };
-
-        if (isDependentAge(age)) {
-            for (const occ of OCCUPATIONS) {
-                for (const edu of educationLevelKeys) {
-                    collectNeed(occ, edu);
-                }
-            }
-        }
-        if (age > CHILD_MAX_AGE && age < ELDERLY_MIN_AGE) {
-            for (const edu of educationLevelKeys) {
-                collectNeed('unoccupied', edu);
-                collectNeed('unableToWork', edu);
-            }
-        }
-
-        remainingBufferNeeds[age] = { totalNeed, totalPop };
-    }
-
-    // Use precautionary reserve as floor for Phase 3
-    const bufferFloors = new Array<number>(numAges);
-    for (let age = 0; age < numAges; age++) {
-        bufferFloors[age] = Math.max(floors[age], precautionaryReserve);
-    }
-
-    executeVerticalTransfers(
-        demography,
-        remainingBufferSurplus,
-        remainingBufferNeeds,
-        transferMatrix,
-        numAges,
-        bufferFloors,
-        capacities,
-        foodTargetPerPerson,
         foodPrice,
     );
 
@@ -877,18 +695,21 @@ function debitSupporters(
         cellsCount: cells.length,
     });
 
+    let actuallyDebited = 0;
     for (const cell of cells) {
         const share = (cell.effSurplus / totalEffSurplus) * actualDebit;
         const perCapita = share / cell.pop;
-        distributeWealthChange(demography, age, cell.occ, cell.edu, -perCapita, floor);
-        // Track total wealth removed from this cell
+        // distributeWealthChangeTracked returns a negative aggregate for a debit
+        const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, -perCapita, floor);
+        // Record debit in transfer matrix (negative = given away)
         if (transferMatrix) {
-            transferMatrix[age][cell.edu][cell.occ] -= share;
+            transferMatrix[age][cell.edu][cell.occ] += actualAggregate; // actualAggregate is negative ✓
         }
+        actuallyDebited += -actualAggregate; // convert to positive amount removed
     }
 
-    vlog('debitSupporters done', { age, actualDebit });
-    return actualDebit;
+    vlog('debitSupporters done', { age, actualDebit: actuallyDebited });
+    return actuallyDebited; // always non-negative
 }
 
 /**
@@ -957,9 +778,9 @@ function creditDependents(
             const share = (cell.need / totalNeed) * amount;
             const perCapita = share / cell.pop;
             log('creditDependents allocate', { age, cell: { occ: cell.occ, edu: cell.edu }, share, perCapita });
-            distributeWealthChange(demography, age, cell.occ, cell.edu, perCapita);
+            const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, perCapita);
             if (transferMatrix) {
-                transferMatrix[age][cell.edu][cell.occ] += share;
+                transferMatrix[age][cell.edu][cell.occ] += actualAggregate;
             }
         }
     } else {
@@ -968,9 +789,9 @@ function creditDependents(
             const share = (cell.pop / totalPop) * amount;
             const perCapita = share / cell.pop;
             log('creditDependents fallback', { age, cell: { occ: cell.occ, edu: cell.edu }, share, perCapita });
-            distributeWealthChange(demography, age, cell.occ, cell.edu, perCapita);
+            const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, perCapita);
             if (transferMatrix) {
-                transferMatrix[age][cell.edu][cell.occ] += share;
+                transferMatrix[age][cell.edu][cell.occ] += actualAggregate;
             }
         }
     }

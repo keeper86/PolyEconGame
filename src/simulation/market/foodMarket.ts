@@ -27,6 +27,7 @@ import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import type { GaussianMoments, Occupation, Skill } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
+import { debitFoodPurchase } from '../financial/wealthOps';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -169,17 +170,17 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
     }
 
     // --- Step 6 & 7: Financial settlement + wealth update ---
-    // Compute how much households can actually pay, then scale both
-    // the bank debit and the per-capita wealth reduction consistently
-    // so that householdDeposits and population wealth stay in sync.
+    // Use centralised debitFoodPurchase so that householdDeposits is
+    // decremented by the *actual* wealth removed from each cell (after
+    // the Math.max(0,…) floor clamp), keeping the two values in sync.
     const bank = planet.bank;
-    const actualHouseholdDebit = Math.min(totalRevenue, bank.householdDeposits);
-    bank.householdDeposits -= actualHouseholdDebit;
 
     // Scale revenue proportionally if household deposits were insufficient
+    const actualHouseholdDebit = Math.min(totalRevenue, bank.householdDeposits);
     const revenueScale = totalRevenue > 0 ? actualHouseholdDebit / totalRevenue : 0;
 
     // Distribute purchased food to households and reduce wealth
+    let totalActualDebit = 0;
     if (totalFoodSold > 0 && aggregateDemand > 0) {
         const fillRatio = Math.min(1, totalFoodSold / aggregateDemand);
         // Effective average price paid, scaled by what households
@@ -198,18 +199,23 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
             const category = demography[record.age][record.occ][record.edu][record.skill];
             category.foodStock += quantityReceived;
 
-            category.wealth = {
-                mean: Math.max(0, category.wealth.mean - perPersonCost),
-                variance: category.wealth.variance,
-            };
+            // debitFoodPurchase tracks the actual amount removed (respecting
+            // the zero floor) and decrements householdDeposits accordingly.
+            totalActualDebit += debitFoodPurchase(bank, category, perPersonCost);
         }
     }
+
+    // Agent revenue: distribute the actual amount paid by households
+    // (totalActualDebit) to agents proportionally by their share of
+    // the total revenue.  This ensures monetary conservation: the
+    // total firm deposit increase equals the total household deposit decrease.
+    const agentRevenueScale = totalRevenue > 0 ? totalActualDebit / totalRevenue : 0;
 
     for (const offer of offers) {
         if (offer.sold <= 0) {
             continue;
         }
-        const agentRevenue = offer.revenue * revenueScale;
+        const agentRevenue = offer.revenue * agentRevenueScale;
         offer.agent.assets[planet.id].deposits += agentRevenue;
 
         // Remove sold food from the agent's storage

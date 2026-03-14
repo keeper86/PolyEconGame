@@ -1,14 +1,7 @@
 /**
  * workforce/laborMarketTick.ts
  *
- * Monthly pre-production labor-market logic:
- * 1. Voluntary quits — a small fraction of active workers enter the departing pipeline.
- * 2. Hiring — compares active headcount vs allocatedWorkers target per education level.
- *    If understaffed, hires the full gap instantly from the planet's unoccupied pool.
- *    Hired workers are placed into the age-resolved workforce at their exact age.
- * 3. Firing — if overstaffed, fires excess workers starting from the youngest age
- *    cohorts first (proxy for lowest tenure).
- *    Fired workers enter the departing pipeline (notice period).
+ * Monthly pre-production labor-market
  */
 
 import { NOTICE_PERIOD_MONTHS } from '../constants';
@@ -19,12 +12,6 @@ import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 import { hireFromPopulation } from './workforce';
 import { totalActiveForEdu } from './workforceAggregates';
 
-/**
- * Fraction of total hired workforce that may remain idle after all
- * facilities have drawn workers, before the system starts reducing
- * hiring targets.  5 % = a small buffer so that a handful of unassigned
- * workers don't immediately trigger downsizing.
- */
 export const ACCEPTABLE_IDLE_FRACTION = 0.05;
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void {

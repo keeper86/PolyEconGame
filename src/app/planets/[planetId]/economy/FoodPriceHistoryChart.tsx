@@ -40,6 +40,7 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
         }))
         .sort((a, b) => a.year - b.year);
 
+    const minYear = plotData.length > 0 ? plotData[0]?.year : 0;
     const maxYear = plotData.length > 0 ? plotData[plotData.length - 1]?.year : 0;
 
     // Append a live data point at the current tick so the chart extends
@@ -100,7 +101,7 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
                             dataKey='year'
                             type='number'
                             tick={{ fontSize: 11 }}
-                            domain={[0, maxYear]}
+                            domain={[minYear, maxYear]}
                             tickFormatter={(v) =>
                                 typeof v === 'number' ? (Number.isInteger(v) ? `Y${v}` : `Y${v.toFixed(1)}`) : String(v)
                             }

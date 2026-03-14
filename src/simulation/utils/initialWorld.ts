@@ -76,9 +76,10 @@ function makeProductionFacility(opts: {
         lastTickResults: {
             overallEfficiency: 1,
             workerEfficiency: {},
-            workerEfficiencyOverall: 1,
             resourceEfficiency: {},
             overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
         },
     };
 }

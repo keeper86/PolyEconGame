@@ -50,7 +50,7 @@ export const FOOD_PRICE_BETA = 0.001;
  * Minimum food price (prevents zero or negative prices).
  */
 export const FOOD_PRICE_FLOOR = 0.01;
-export const FOOD_PRICE_CEIL = 10000.0;
+export const FOOD_PRICE_CEIL = 1000000.0;
 
 /**
  * Initial food price per unit (currency units per ton of agricultural product).
@@ -131,7 +131,7 @@ export const ELDERLY_MIN_AGE = 67;
  * Supporters keep at least this much before transferring to dependents.
  * E.g. 60 × FOOD_PER_PERSON_PER_TICK × price ≈ 2 months food budget.
  */
-export const PRECAUTIONARY_RESERVE_TICKS = 60;
+export const PRECAUTIONARY_RESERVE_TICKS = 30;
 
 /**
  * Fraction of the food buffer target that a supporter must retain for

@@ -140,9 +140,6 @@ describe('productionTick (basic)', () => {
         const oq = recorded!.lastTickResults?.overqualifiedWorkers;
         expect(oq).toBeDefined();
         expect(oq!.none && oq!.none!.primary).toBeGreaterThanOrEqual(1);
-        // aggregated at agent level too
-        expect(agent.assets.p.workerFeedback?.overqualifiedMatrix).toBeDefined();
-        expect(agent.assets.p.workerFeedback!.overqualifiedMatrix!.none!.primary).toBeGreaterThanOrEqual(1);
     });
 
     it('scales production down when one input resource is scarce', () => {
@@ -203,7 +200,7 @@ describe('productionTick (basic)', () => {
         expect(stored).toBeLessThan(1000);
     });
 
-    it('records unused workers and unusedWorkerFraction', () => {
+    it('records unused workers via lastTickResults.totalUsedByEdu', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -232,10 +229,10 @@ describe('productionTick (basic)', () => {
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
         productionTick(gs.agents, planet);
 
-        // one worker should remain unused
-        const feedback = agent.assets.p.workerFeedback;
-        expect(feedback).toBeDefined();
-        expect(feedback!.unusedWorkers.secondary).toBeGreaterThanOrEqual(1);
-        expect(feedback!.unusedWorkerFraction).toBeGreaterThanOrEqual(0);
+        // Only 1 slot needed — totalUsedByEdu.secondary should be ≤ 1 (the slot capacity)
+        const used = facility.lastTickResults?.totalUsedByEdu?.secondary ?? 0;
+        expect(used).toBeLessThanOrEqual(1);
+        // Efficiency should still be 1 (slot was filled)
+        expect(facility.lastTickResults?.overallEfficiency).toBe(1);
     });
 });

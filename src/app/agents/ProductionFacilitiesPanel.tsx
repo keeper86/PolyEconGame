@@ -24,6 +24,7 @@ const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 /** Render the detailed last-tick results for a production facility. */
 function FacilityEfficiencyDetails({ results }: { results: LastTickResults }): React.ReactElement {
     const workerEntries = Object.entries(results.workerEfficiency) as [EducationLevelType, number][];
+    const workerEfficiencyOverall = workerEntries.length > 0 ? Math.min(...workerEntries.map(([, v]) => v)) : 1;
     const resourceEntries = Object.entries(results.resourceEfficiency);
     const overqualifiedEntries = Object.entries(results.overqualifiedWorkers) as [
         EducationLevelType,
@@ -39,8 +40,8 @@ function FacilityEfficiencyDetails({ results }: { results: LastTickResults }): R
             {workerEntries.length > 0 && (
                 <div>
                     <span className='text-muted-foreground'>Workers</span>{' '}
-                    <span className={`font-medium ${efficiencyColor(results.workerEfficiencyOverall)}`}>
-                        {pctStr(results.workerEfficiencyOverall)}
+                    <span className={`font-medium ${efficiencyColor(workerEfficiencyOverall)}`}>
+                        {pctStr(workerEfficiencyOverall)}
                     </span>
                     <div className='ml-3 flex flex-wrap gap-x-3'>
                         {workerEntries.map(([edu, eff]) => (
