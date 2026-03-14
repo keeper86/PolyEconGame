@@ -1,11 +1,10 @@
-import type { Environment } from '../planet/planet';
+import type { Environment, Planet } from '../planet/planet';
 
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
 import type { InheritanceRecord } from './inheritance';
 import { redistributeInheritance } from './inheritance';
-import type { Population } from './population';
 import { forEachPopulationCohort, transferPopulation } from './population';
 
 export const mortalityProbability = (age: number) => {
@@ -89,12 +88,9 @@ export const computeMortalityProbabilityPerTick = (
     );
 };
 
-export function applyMortality(
-    population: Population,
-    environment: Environment,
-    workforceEvents: WorkforceEventAccumulator,
-): void {
-    const environmentalMortality = computeEnvironmentalMortality(environment);
+export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAccumulator): void {
+    const environmentalMortality = computeEnvironmentalMortality(planet.environment);
+    const population = planet.population;
 
     // Collect inheritance records per source age
     const inheritanceByAge = new Map<number, number>();
@@ -124,7 +120,7 @@ export function applyMortality(
                 dead = stochasticRound(category.total * mortalityPerTick);
             }
 
-            const result = transferPopulation(population, { age, occ, edu, skill }, undefined, dead);
+            const result = transferPopulation(planet, { age, occ, edu, skill }, undefined, dead);
             if (result.count !== dead) {
                 console.warn(
                     `Mortality transfer mismatch at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected ${dead} deaths, but actually transferred ${result.count}.`,

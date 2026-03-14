@@ -1,7 +1,8 @@
 import { stochasticRound } from '../utils/stochasticRound';
-import type { Occupation, Population } from './population';
+import type { Occupation } from './population';
 import { forEachPopulationCohort, transferPopulation } from './population';
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
+import type { Planet } from '../planet/planet';
 
 const RETIREMENT_SOURCE_OCCUPATIONS: Occupation[] = ['unoccupied', 'education'] as const;
 
@@ -23,7 +24,8 @@ export function perTickRetirement(age: number): number {
     return convertAnnualToPerTick(annualProb);
 }
 
-export function applyRetirement(population: Population): void {
+export function applyRetirement(planet: Planet): void {
+    const population = planet.population;
     population.demography.forEach((cohort, age) => {
         const prob = perTickRetirement(age);
         if (prob <= 0) {
@@ -38,7 +40,7 @@ export function applyRetirement(population: Population): void {
 
             const toRetire = stochasticRound(category.total * prob);
             const retired = transferPopulation(
-                population,
+                planet,
                 { age, occ, edu, skill },
                 { age, occ: 'unableToWork', edu, skill },
                 toRetire,

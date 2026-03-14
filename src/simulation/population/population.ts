@@ -2,6 +2,8 @@ import { stochasticRound } from '../utils/stochasticRound';
 import { type WorkforceCohort } from '../workforce/workforce';
 import type { EducationLevelType } from './education';
 import { educationLevelKeys } from './education';
+import type { Planet } from '../planet/planet';
+import { mergeWealthInto, destroyWealthOnDeath } from '../financial/wealthOps';
 
 export { educationLevels } from './education';
 export const forEachOccupiedPopulation = <T>(
@@ -19,7 +21,7 @@ export type { EducationLevelType } from './education';
 
 export const MAX_AGE: number = 100;
 
-export const OCCUPATIONS = ['education', 'unoccupied', 'employed', 'unableToWork'] as const;
+export const OCCUPATIONS = ['education', 'employed', 'unoccupied', 'unableToWork'] as const;
 export type Occupation = (typeof OCCUPATIONS)[number];
 
 export const SKILL = ['novice', 'professional', 'expert'] as const;
@@ -155,7 +157,8 @@ export function mergePopulationCategory(dst: PopulationCategory, src: Population
     if (count <= 0) {
         return;
     }
-    dst.wealth = mergeGaussianMoments(dst.total, dst.wealth, count, src.wealth);
+    // Zero-sum wealth transfer: householdDeposits unchanged.
+    mergeWealthInto(dst, src, count);
     const srcFoodPer = src.total > 0 ? stochasticRound(src.foodStock / src.total) : 0;
     dst.foodStock += srcFoodPer * count;
 
@@ -169,11 +172,13 @@ export type TransferResult = {
 };
 
 export const transferPopulation = (
-    population: Population,
+    planet: Planet,
     from: PopulationCategoryIndex,
     to: PopulationCategoryIndex | undefined,
     count: number,
 ): TransferResult => {
+    const population = planet.population;
+    const bank = planet.bank;
     if (count <= 0) {
         return { count: 0, inheritedWealth: 0 };
     }
@@ -188,12 +193,8 @@ export const transferPopulation = (
 
     let inheritedWealth = 0;
     if (toCategory && to) {
-        toCategory.wealth = mergeGaussianMoments(
-            toCategory.total,
-            toCategory.wealth,
-            transferMaximum,
-            fromCategory.wealth,
-        );
+        // Zero-sum wealth transfer between cells — householdDeposits unchanged.
+        mergeWealthInto(toCategory, fromCategory, transferMaximum);
         const srcFoodPer = fromCategory.total > 0 ? stochasticRound(fromCategory.foodStock / fromCategory.total) : 0;
         toCategory.foodStock += srcFoodPer * transferMaximum;
 
@@ -206,10 +207,11 @@ export const transferPopulation = (
         fromCategory.foodStock -= foodStockTransfer;
     } else {
         // Death: decrement source and orphan the wealth for inheritance.
+        // destroyWealthOnDeath adjusts householdDeposits for the negative-wealth
+        // case and returns the positive wealth available for inheritance redistribution.
+        inheritedWealth = destroyWealthOnDeath(bank, fromCategory, transferMaximum);
         fromCategory.total -= transferMaximum;
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
-
-        inheritedWealth = transferMaximum * Math.max(0, fromCategory.wealth.mean);
         // Food stock of the dead is destroyed (perishable).
         fromCategory.foodStock -= fromCategory.foodStock * fraction;
     }

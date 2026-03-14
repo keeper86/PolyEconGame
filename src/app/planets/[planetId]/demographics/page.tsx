@@ -1,22 +1,24 @@
 'use client';
 
-import { useTRPC } from '@/lib/trpc';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useParams } from 'next/navigation';
-import PlanetDemography from './PlanetDemography';
-import { formatNumbers } from '@/lib/utils';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
-import type { Skill } from '@/simulation/population/population';
-import { OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
-import { useIsSmallScreen } from '@/hooks/useMobile';
 import { Card, CardContent } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import WealthDistributionChart from './WealthDistributionChart';
-import DemographyFoodCharts from './DemographyFoodCharts';
-import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
+import type { Skill } from '@/simulation/population/population';
+import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import { educationLevelKeys } from '@/simulation/population/education';
+import { useParams } from 'next/navigation';
+import { useState } from 'react';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import type { GroupMode } from './demographicsTypes';
+import { GV_POP, GV_WEALTH } from './demographicsTypes';
+import FoodBufferChart from './FoodBufferChart';
+import NutritionHeatmapChart from './NutritionHeatmapChart';
+import PlanetDemography from './PlanetDemography';
 import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
+import WealthDistributionChart from './WealthDistributionChart';
 
 // ─── Skill selector constants ────────────────────────────────────────────────
 
@@ -52,9 +54,6 @@ export default function PlanetDemographicsPage() {
         });
     };
 
-    // keepPreviousData (set in useSimulationQuery) keeps the last snapshot
-    // visible while a new fetch is in-flight — no extra pending/committed
-    // state needed.
     const { data } = useSimulationQuery(
         trpc.simulation.getPlanetDemographicsFull.queryOptions({
             planetId,
@@ -62,9 +61,6 @@ export default function PlanetDemographicsPage() {
             activeSkills: [...activeSkills],
         }),
     );
-
-    // Open population section by default
-    const [openSection, setOpenSection] = useState<string>('population');
 
     if (!data) {
         return <div className='text-sm text-muted-foreground'>Loading demographics…</div>;
@@ -75,29 +71,32 @@ export default function PlanetDemographicsPage() {
 
     const { rows } = data.data;
 
-    // Labor summary (age > 14) — always from committed data via `rows`
-    const populationCounts = [0, 0, 0, 0];
-    let populationTotal = 0;
+    // Per-group wealth: summed across all ages from groupValues
+    // groupValues[i] = [pop, foodStock, weightedStarvation, weightedWealth]
+    const groupKeys = group === 'occupation' ? OCCUPATIONS : educationLevelKeys;
+    const groupColors: Record<string, string> = group === 'occupation' ? OCC_COLORS : EDU_COLORS;
+    const groupLabels: Record<string, string> = group === 'occupation' ? OCC_LABELS : EDU_LABELS;
+
+    // Group-aware population counts and mean age — derived from groupValues so
+    // they reflect the active groupMode (occupation or education) and skill filter.
+    const groupPop = [0, 0, 0, 0];
+    const groupAgeWeightedSum = [0, 0, 0, 0];
+    const wealthWeightedSum = [0, 0, 0, 0];
     for (const row of rows) {
         for (let i = 0; i < 4; i++) {
-            populationCounts[i] += row.occ[i];
-            populationTotal += row.occ[i];
+            const gv = row.groupValues[i];
+            groupPop[i] += gv[GV_POP];
+            if (row.age > 14) {
+                groupAgeWeightedSum[i] += row.age * gv[GV_POP];
+            }
+            wealthWeightedSum[i] += gv[GV_WEALTH];
         }
     }
-
-    // Per-occupation mean age (working population, age > 14)
-    const occMeanAge = OCCUPATIONS.map((_, i) => {
-        let wSum = 0;
-        let count = 0;
-        for (const row of rows) {
-            if (row.age <= 14) {
-                continue;
-            }
-            wSum += row.age * row.occ[i];
-            count += row.occ[i];
-        }
-        return count > 0 ? wSum / count : 0;
-    });
+    const populationTotal = groupPop.reduce((s, v) => s + v, 0);
+    const groupMeanAge = groupPop.map((pop, i) => (pop > 0 ? groupAgeWeightedSum[i] / pop : 0));
+    const totalWealth = wealthWeightedSum.reduce((s, v) => s + v, 0);
+    const wealthMean = groupPop.map((pop, i) => (pop > 0 ? wealthWeightedSum[i] / pop : 0));
+    const wealthShare = wealthWeightedSum.map((w) => (totalWealth > 0 ? (w / totalWealth) * 100 : 0));
 
     // ── Shared controls ──────────────────────────────────────────────────────
     const allSkillsSelected = SKILL.every((s) => activeSkills.has(s));
@@ -151,38 +150,75 @@ export default function PlanetDemographicsPage() {
     // ── Occupation summary cards ─────────────────────────────────────────────
     const occupationCards = isSmallScreen ? (
         <div className='flex gap-1 mb-2'>
-            {OCCUPATIONS.map((occ, i) => (
+            {groupKeys.map((key, i) => (
                 <div
-                    key={occ}
+                    key={key}
                     className='flex-1 px-1.5 py-1 border rounded text-xs'
-                    style={{ borderLeftColor: OCC_COLORS[occ], borderLeftWidth: 3 }}
+                    style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
                 >
-                    <div className='text-muted-foreground text-[9px] leading-tight truncate'>{OCC_LABELS[occ]}</div>
-                    <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(populationCounts[i])}</div>
+                    <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
+                    <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(groupPop[i])}</div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
-                        {populationTotal > 0 ? ((populationCounts[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
+                        {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
                     </div>
                 </div>
             ))}
         </div>
     ) : (
         <div className='flex gap-2 mb-3'>
-            {OCCUPATIONS.map((occ, i) => (
+            {groupKeys.map((key, i) => (
                 <Card
-                    key={occ}
+                    key={key}
                     className='flex-1 overflow-hidden'
-                    style={{ borderLeftColor: OCC_COLORS[occ], borderLeftWidth: 3 }}
+                    style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
                 >
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
-                        <p className='text-[11px] text-muted-foreground font-medium'>{OCC_LABELS[occ]}</p>
-                        <p className='text-lg font-semibold leading-tight'>{formatNumbers(populationCounts[i])}</p>
+                        <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
+                        <p className='text-lg font-semibold leading-tight'>{formatNumbers(groupPop[i])}</p>
                         <p className='text-xs text-muted-foreground'>
-                            {populationTotal > 0
-                                ? ((populationCounts[i] / populationTotal) * 100).toFixed(1) + '%'
-                                : '0%'}
+                            {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
                         </p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
-                            Ø age <span className='font-medium text-foreground'>{occMeanAge[i].toFixed(1)}</span>
+                            Ø age <span className='font-medium text-foreground'>{groupMeanAge[i].toFixed(1)}</span>
+                        </p>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+
+    // ── Wealth summary cards ─────────────────────────────────────────────
+    const wealthCards = isSmallScreen ? (
+        <div className='flex gap-1 mb-2'>
+            {groupKeys.map((key, i) => (
+                <div
+                    key={key}
+                    className='flex-1 px-1.5 py-1 border rounded text-xs'
+                    style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                >
+                    <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
+                    <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(wealthMean[i])}</div>
+                    <div className='text-[9px] text-muted-foreground leading-tight'>
+                        {wealthShare[i].toFixed(1)}% of wealth
+                    </div>
+                </div>
+            ))}
+        </div>
+    ) : (
+        <div className='flex gap-2 mb-3'>
+            {groupKeys.map((key, i) => (
+                <Card
+                    key={key}
+                    className='flex-1 overflow-hidden'
+                    style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                >
+                    <CardContent className='px-3 py-2.5 space-y-0.5'>
+                        <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
+                        <p className='text-lg font-semibold leading-tight'>{formatNumbers(wealthMean[i])}</p>
+                        <p className='text-xs text-muted-foreground'>Ø wealth / person</p>
+                        <p className='text-[11px] text-muted-foreground pt-1'>
+                            Wealth share{' '}
+                            <span className='font-medium text-foreground'>{wealthShare[i].toFixed(1)}%</span>
                         </p>
                     </CardContent>
                 </Card>
@@ -192,12 +228,16 @@ export default function PlanetDemographicsPage() {
 
     return (
         <>
-            <span className='flex justify-between'>
-                <h4 className='text-sm font-semibold mb-2'>Population History</h4>
+            <span className='flex justify-between mb-2'>
+                <h4 className='text-sm font-semibold '>Population History</h4>
                 <span className='text-sm text-muted-foreground'>{`Total population: ${formatNumbers(populationTotal)}`}</span>
             </span>
 
             <PlanetPopulationHistoryChart planetId={planetId} />
+
+            <div className='my-3 border-t' />
+
+            <h4 className='text-sm font-semibold mb-2'>Detailed Demographics</h4>
 
             {/* ── Hoisted controls (shared across all sections) ──────────── */}
             <div className='flex flex-wrap items-center gap-2 mb-3'>
@@ -205,42 +245,36 @@ export default function PlanetDemographicsPage() {
                 {skillFilter}
             </div>
 
-            <Accordion
-                type='single'
-                collapsible={false}
-                value={openSection}
-                onValueChange={(v) => {
-                    if (v) {
-                        setOpenSection(v);
-                    }
-                }}
-                className='w-full'
-            >
-                {/* ── Population ─────────────────────────────────────────── */}
-                <AccordionItem value='population'>
-                    <AccordionTrigger className='text-sm font-semibold py-2'>Demography</AccordionTrigger>
-                    <AccordionContent>
-                        {occupationCards}
-                        <PlanetDemography rows={rows} group={group} />
-                    </AccordionContent>
-                </AccordionItem>
+            {/* ── Population ─────────────────────────────────────────── */}
 
-                {/* ── Wealth ─────────────────────────────────────────────── */}
-                <AccordionItem value='wealth'>
-                    <AccordionTrigger className='text-sm font-semibold py-2'>Wealth</AccordionTrigger>
-                    <AccordionContent>
-                        {openSection === 'wealth' && <WealthDistributionChart rows={rows} groupMode={group} />}
-                    </AccordionContent>
-                </AccordionItem>
+            <div className='my-3 border-t' />
+            <h4 className='text-sm font-semibold mb-2' id='population'>
+                Overview
+            </h4>
+            {occupationCards}
+            <PlanetDemography rows={rows} group={group} />
 
-                {/* ── Food & Nutrition ───────────────────────────────────── */}
-                <AccordionItem value='food' className='border-b-0'>
-                    <AccordionTrigger className='text-sm font-semibold py-2'>Food &amp; Nutrition</AccordionTrigger>
-                    <AccordionContent>
-                        {openSection === 'food' && <DemographyFoodCharts rows={rows} groupMode={group} />}
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+            <div className='my-3 border-t' />
+
+            <span className='flex justify-between mb-2'>
+                <h4 className='text-sm font-semibold' id='wealth'>
+                    Wealth distribution
+                </h4>
+                <span className='text-xs text-muted-foreground'>{`Total wealth: ${formatNumbers(totalWealth)}`}</span>
+            </span>
+            {wealthCards}
+            <WealthDistributionChart rows={rows} groupMode={group} />
+
+            <div className='my-3 border-t' />
+            <h4 className='text-sm font-semibold mb-2' id='nutrition'>
+                Nutrition heatmap
+            </h4>
+            <NutritionHeatmapChart rows={rows} groupMode={group} />
+
+            <h4 className='text-sm font-semibold mb-2' id='food'>
+                Food Buffer
+            </h4>
+            <FoodBufferChart rows={rows} groupMode={group} />
         </>
     );
 }

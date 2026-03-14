@@ -1,7 +1,7 @@
 'use client';
 
 import { useTRPC } from '@/lib/trpc';
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
+import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useSession } from 'next-auth/react';
 
@@ -13,7 +13,7 @@ export default function TickDisplay() {
     const tick = data?.tick ?? 0;
 
     const mapTickToDate = (tick: number): string => {
-        const year = Math.floor(tick / TICKS_PER_YEAR) + 2200;
+        const year = Math.floor(tick / TICKS_PER_YEAR) + START_YEAR;
         const monthsIntoYear = Math.floor((tick % TICKS_PER_YEAR) / TICKS_PER_MONTH);
         const daysIntoMonth = tick % TICKS_PER_MONTH;
 

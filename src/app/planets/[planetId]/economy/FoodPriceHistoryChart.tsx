@@ -40,9 +40,6 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
         }))
         .sort((a, b) => a.year - b.year);
 
-    const minYear = plotData.length > 0 ? plotData[0]?.year : 0;
-    const maxYear = plotData.length > 0 ? plotData[plotData.length - 1]?.year : 0;
-
     // Append a live data point at the current tick so the chart extends
     // to "now" instead of stopping at the last yearly snapshot.
     if (live) {
@@ -54,6 +51,27 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
     }
 
     const lastRow = plotData[plotData.length - 1];
+
+    // Compute explicit log-scale ticks to avoid Recharts generating duplicate
+    // floating-point tick values (which causes React key collisions).
+    const logTicks = (() => {
+        const prices = plotData.map((d) => d.foodPrice).filter((v) => v > 0);
+        if (prices.length === 0) {
+            return undefined;
+        }
+        const minP = Math.min(...prices);
+        const maxP = Math.max(...prices);
+        if (minP === maxP) {
+            return [minP];
+        }
+        const minExp = Math.floor(Math.log10(minP));
+        const maxExp = Math.ceil(Math.log10(maxP));
+        const result: number[] = [];
+        for (let e = minExp; e <= maxExp; e++) {
+            result.push(Math.pow(10, e));
+        }
+        return result;
+    })();
 
     const formatPrice = (v: number): string => {
         if (!Number.isFinite(v)) {
@@ -101,7 +119,7 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
                             dataKey='year'
                             type='number'
                             tick={{ fontSize: 11 }}
-                            domain={[minYear, maxYear]}
+                            domain={['dataMin', 'dataMax']}
                             tickFormatter={(v) =>
                                 typeof v === 'number' ? (Number.isInteger(v) ? `Y${v}` : `Y${v.toFixed(1)}`) : String(v)
                             }
@@ -111,6 +129,8 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
                             type='number'
                             scale='log'
                             domain={['auto', 'auto']}
+                            allowDataOverflow
+                            ticks={logTicks}
                             tick={{ fontSize: 11 }}
                             tickFormatter={(v) => (typeof v === 'number' ? formatPrice(v) : String(v))}
                         />

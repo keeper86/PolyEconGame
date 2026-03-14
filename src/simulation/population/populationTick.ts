@@ -7,7 +7,6 @@ import { applyDisability } from './disability';
 import { populationBirthsTick } from './fertility';
 import { applyMortality } from './mortality';
 import { consumeFood } from './nutrition';
-import type { Population } from './population';
 import { applyRetirement } from './retirement';
 
 /**
@@ -25,16 +24,15 @@ export function populationTick(planet: Planet, workforceEvents: WorkforceEventAc
         return; // no population, skip
     }
 
-    applyMortality(population, planet.environment, workforceEvents);
-    applyDisability(population, planet.environment, workforceEvents);
-    applyRetirement(population); // no workforceEvents required, this applies only to education/unoccupied
+    applyMortality(planet, workforceEvents);
+    applyDisability(planet, workforceEvents);
+    applyRetirement(planet);
 
     // After applying mortality/disability/retirement so workforceEvents are still consistent with population
     consumeFood(population);
     populationBirthsTick(population, fertileWomen, planet.environment.pollution);
 }
 
-export function populationAdvanceYearTick(population: Population): void {
-    const { totalInCohort } = calculateDemographicStats(population);
-    populationAdvanceYear(population, totalInCohort);
+export function populationAdvanceYearTick(planet: Planet): void {
+    populationAdvanceYear(planet);
 }

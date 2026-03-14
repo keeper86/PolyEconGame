@@ -3,92 +3,81 @@
  *
  * Year-boundary logic: shifts every cohort up by one age year and applies
  * education-progression / dropout transitions.
+ *
+ * All moves go through `transferPopulation` — the single authoritative API
+ * that keeps `summedPopulation`, food stock, wealth moments, and
+ * `bank.householdDeposits` consistent in one place.
  */
 
+import type { Planet } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { EducationLevelType } from './education';
 import { ageDropoutProbabilityForEducation, educationGraduationProbabilityForAge, educationLevels } from './education';
-import type { Cohort, Occupation, Population, PopulationCategory, Skill } from './population';
-import { MAX_AGE, createEmptyPopulationCohort, forEachPopulationCohort, mergePopulationCategory } from './population';
+import type { Skill } from './population';
+import {
+    MAX_AGE,
+    OCCUPATIONS,
+    SKILL,
+    forEachPopulationCohort,
+    transferPopulation,
+} from './population';
+import { educationLevelKeys } from './education';
 
-type CategoryWithIndex = {
-    occ: Occupation;
-    edu: EducationLevelType;
-    skill: Skill;
-    cat: PopulationCategory;
-};
 /**
- * Advance the population by one year: shift every cohort to age + 1 and
- * process education graduation / dropout transitions.
+ * Advance the population by one year: shift every cohort from age A to A+1,
+ * apply education graduation / dropout transitions, and clear cohort 0 for
+ * the coming year's births.
  *
- * Cohort 0 is left empty — it will be filled over the coming year by
- * per-tick births.
- *
- * People at MAX_AGE are carried forward (they remain at MAX_AGE).
- * Per-tick mortality already handles killing them.
- *
+ * Rules:
+ * - People at MAX_AGE stay at MAX_AGE (per-tick mortality handles them).
+ * - Processing is descending (MAX_AGE-1 → 0) to avoid aliasing: the
+ *   destination slot (A+1) has already been fully written and vacated as a
+ *   source before we read age A, so no temporary copies are needed.
+ * - Every move goes through `transferPopulation` so that `summedPopulation`,
+ *   wealth moments and `bank.householdDeposits` all stay in sync.
  */
-export const populationAdvanceYear = (population: Population, totalInCohort: number[]): void => {
-    const demo = population.demography;
+export const populationAdvanceYear = (planet: Planet): void => {
+    const demo = planet.population.demography;
 
-    const maxAgeSnapshot: CategoryWithIndex[] = [];
-    forEachPopulationCohort(demo[MAX_AGE], (category, occ, edu, skill) => {
-        if (category.total > 0) {
-            // Shallow-copy so the later zero-reset of slot MAX_AGE doesn't corrupt.
-            maxAgeSnapshot.push({ occ, edu, skill, cat: { ...category, wealth: { ...category.wealth } } });
-        }
-    });
-
-    // --- Descending shift: age MAX_AGE-1 down to 0 ---
-    // Processing descending means slot k+1 is written BEFORE slot k is read as
-    // a source for any subsequent step — there is no aliasing.
+    // Descending loop: write age+1 before reading age, so there is no aliasing.
     for (let age = MAX_AGE - 1; age >= 0; age--) {
-        const total = totalInCohort[age];
         const targetAge = age + 1;
 
-        if (!total || total === 0) {
-            // Source is empty: zero-reset target slot so last year's data is gone.
-            resetCohortInPlace(demo[targetAge]);
-            // Still need to restore carried-forward MAX_AGE people even when
-            // age MAX_AGE-1 is empty.
-            if (targetAge === MAX_AGE) {
-                for (const { occ, edu, skill, cat } of maxAgeSnapshot) {
-                    mergePopulationCategory(demo[MAX_AGE][occ][edu][skill], cat, cat.total);
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    const count = demo[age][occ][edu][skill].total;
+                    if (count <= 0) {
+                        continue;
+                    }
+
+                    if (occ === 'education') {
+                        applyEducationTransition(planet, age, targetAge, edu, skill);
+                    } else {
+                        // Plain cohort shift — zero-sum wealth move, no bank change.
+                        transferPopulation(
+                            planet,
+                            { age, occ, edu, skill },
+                            { age: targetAge, occ, edu, skill },
+                            count,
+                        );
+                    }
                 }
-            }
-            continue;
-        }
-
-        // Collect non-empty source cells.
-        const srcCells: CategoryWithIndex[] = [];
-        forEachPopulationCohort(demo[age], (category, occ, edu, skill) => {
-            if (category.total > 0) {
-                srcCells.push({ occ, edu, skill, cat: { ...category, wealth: { ...category.wealth } } });
-            }
-        });
-
-        // Zero-reset the target slot.  Its previous contents have already been
-        // processed (we go descending, so targetAge was already shifted up).
-        resetCohortInPlace(demo[targetAge]);
-
-        // Merge carry-forward MAX_AGE people into slot MAX_AGE when targetAge === MAX_AGE.
-        if (targetAge === MAX_AGE) {
-            for (const { occ, edu, skill, cat } of maxAgeSnapshot) {
-                mergePopulationCategory(demo[MAX_AGE][occ][edu][skill], cat, cat.total);
-            }
-        }
-
-        // Write source cells into target.
-        for (const { occ, edu, skill, cat } of srcCells) {
-            if (occ === 'education') {
-                processEducationAging(demo, targetAge, age, cat, edu, skill);
-            } else {
-                mergePopulationCategory(demo[targetAge][occ][edu][skill], cat, cat.total);
             }
         }
     }
 
-    demo[0] = createEmptyPopulationCohort();
+    // Cohort 0 is now empty (all people were just moved to age 1).
+    // Explicitly verify and leave it clean for per-tick births.
+    // (transferPopulation already cleared the totals; this is a safety guard.)
+    forEachPopulationCohort(demo[0], (cat) => {
+        if (cat.total !== 0) {
+            console.warn('[populationAdvanceYear] age-0 cohort not empty after shift — forcing zero');
+            cat.total = 0;
+            cat.wealth = { mean: 0, variance: 0 };
+            cat.foodStock = 0;
+        }
+    });
 };
 
 // ---------------------------------------------------------------------------
@@ -96,50 +85,24 @@ export const populationAdvanceYear = (population: Population, totalInCohort: num
 // ---------------------------------------------------------------------------
 
 /**
- * Zero-reset every leaf PopulationCategory cell of a cohort in-place,
- * without allocating any new objects.
- */
-function resetCohortInPlace(cohort: Cohort<PopulationCategory>): void {
-    forEachPopulationCohort(cohort, (cat) => {
-        cat.total = 0;
-        cat.wealth.mean = 0;
-        cat.wealth.variance = 0;
-        cat.foodStock = 0;
-        cat.starvationLevel = 0;
-        cat.deaths.countThisTick = 0;
-        cat.deaths.countThisMonth = 0;
-        cat.deaths.countLastMonth = 0;
-        cat.disabilities.countThisTick = 0;
-        cat.disabilities.countThisMonth = 0;
-        cat.disabilities.countLastMonth = 0;
-        cat.retirements.countThisTick = 0;
-        cat.retirements.countThisMonth = 0;
-        cat.retirements.countLastMonth = 0;
-    });
-}
-
-// ---------------------------------------------------------------------------
-// Education graduation / dropout transitions
-// ---------------------------------------------------------------------------
-
-/**
- * Handle education-related transitions during the yearly age shift.
+ * Apply education graduation and dropout transitions for a single
+ * (age, edu, skill) cell moving from `sourceAge` to `targetAge`.
  *
- * People in the 'education' occupation may:
- * 1. Graduate and transition to the next education level (still in education),
- * 2. Graduate but voluntarily drop out (become unoccupied),
- * 3. Remain at the current education level, or
- * 4. Drop out due to age (become unoccupied, or stay in education if < 6).
+ * All sub-moves use `transferPopulation` so wealth / summedPopulation /
+ * householdDeposits stay consistent.
  */
-function processEducationAging(
-    newDemography: Cohort<PopulationCategory>[],
-    targetAge: number,
+function applyEducationTransition(
+    planet: Planet,
     sourceAge: number,
-    category: PopulationCategory,
+    targetAge: number,
     edu: EducationLevelType,
     skill: Skill,
 ): void {
-    const count = category.total;
+    const count = planet.population.demography[sourceAge].education[edu][skill].total;
+    if (count <= 0) {
+        return;
+    }
+
     const gradProb = educationGraduationProbabilityForAge(sourceAge, edu);
     const graduates = stochasticRound(count * gradProb);
     const stay = count - graduates;
@@ -154,17 +117,27 @@ function processEducationAging(
         const transitioners = stochasticRound(graduates * transitionProbability);
         const voluntaryDropouts = graduates - transitioners;
 
-        // Transitioners continue education at the next level
+        // Transitioners continue education at the next level.
         if (transitioners > 0) {
-            mergePopulationCategory(newDemography[targetAge].education[nextEdu][skill], category, transitioners);
+            transferPopulation(
+                planet,
+                { age: sourceAge, occ: 'education', edu, skill },
+                { age: targetAge, occ: 'education', edu: nextEdu, skill },
+                transitioners,
+            );
         }
-        // Voluntary dropouts become unoccupied at the graduated level
+        // Voluntary dropouts enter the unoccupied pool at the graduated level.
         if (voluntaryDropouts > 0) {
-            mergePopulationCategory(newDemography[targetAge].unoccupied[nextEdu][skill], category, voluntaryDropouts);
+            transferPopulation(
+                planet,
+                { age: sourceAge, occ: 'education', edu, skill },
+                { age: targetAge, occ: 'unoccupied', edu: nextEdu, skill },
+                voluntaryDropouts,
+            );
         }
     }
 
-    // --- Non-graduates (stayers) ---
+    // --- Non-graduates (stayers and dropouts) ---
     if (stay > 0) {
         const dropOutProb = ageDropoutProbabilityForEducation(sourceAge, edu);
         const dropouts = Math.ceil(stay * dropOutProb);
@@ -172,15 +145,30 @@ function processEducationAging(
 
         if (dropouts > 0) {
             if (sourceAge < 6) {
-                // Very young children who "drop out" stay in education at same level
-                mergePopulationCategory(newDemography[targetAge].education[edu][skill], category, dropouts);
+                // Very young children who "drop out" stay in education at the same level.
+                transferPopulation(
+                    planet,
+                    { age: sourceAge, occ: 'education', edu, skill },
+                    { age: targetAge, occ: 'education', edu, skill },
+                    dropouts,
+                );
             } else {
-                // Older dropouts become unoccupied
-                mergePopulationCategory(newDemography[targetAge].unoccupied[edu][skill], category, dropouts);
+                // Older dropouts become unoccupied.
+                transferPopulation(
+                    planet,
+                    { age: sourceAge, occ: 'education', edu, skill },
+                    { age: targetAge, occ: 'unoccupied', edu, skill },
+                    dropouts,
+                );
             }
         }
         if (remainers > 0) {
-            mergePopulationCategory(newDemography[targetAge].education[edu][skill], category, remainers);
+            transferPopulation(
+                planet,
+                { age: sourceAge, occ: 'education', edu, skill },
+                { age: targetAge, occ: 'education', edu, skill },
+                remainers,
+            );
         }
     }
 }

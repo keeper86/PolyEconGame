@@ -118,6 +118,19 @@ type Props = {
     groupMode: GroupMode;
 };
 
+// ─── Empty placeholder ────────────────────────────────────────────────────────
+
+function EmptyChart({ height = 180 }: { height?: number }) {
+    return (
+        <div
+            className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
+            style={{ height }}
+        >
+            No data
+        </div>
+    );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function WealthDistributionChart({ rows, groupMode }: Props): React.ReactElement {
@@ -172,7 +185,7 @@ export default function WealthDistributionChart({ rows, groupMode }: Props): Rea
 
     const hasData = data.some((row) => keys.some((k) => (row[`${k}_bar`] ?? 0) > 0));
     if (!hasData) {
-        return <div className='text-xs text-muted-foreground'>No wealth data available</div>;
+        return <EmptyChart />;
     }
 
     return (
@@ -202,7 +215,6 @@ export default function WealthDistributionChart({ rows, groupMode }: Props): Rea
                     ))}
                 </BarChart>
             </ResponsiveContainer>
-            <ColorLegend keys={keys} labels={labels} colors={colors} />
         </>
     );
 }

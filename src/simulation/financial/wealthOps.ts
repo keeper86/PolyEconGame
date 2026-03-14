@@ -36,7 +36,7 @@
 
 import type { Bank } from '../planet/planet';
 import type { Cohort, PopulationCategory } from '../population/population';
-import { SKILL } from '../population/population';
+import { mergeGaussianMoments, SKILL } from '../population/population';
 import type { EducationLevelType } from '../population/education';
 import type { Occupation } from '../population/population';
 
@@ -79,12 +79,10 @@ export function creditWageIncome(
         variance: cat.wealth.variance,
     };
 
-    // Keep householdDeposits in sync — NOT done here.
-    // The caller (preProductionFinancialTick) already does
-    // bank.householdDeposits += wageBill once for the entire agent.
-    // That single bulk increment is correct because:
-    //   Σ(perWorkerWage * agentWorkersInCell) across all cells = wageBill
-    // So we don't touch householdDeposits here to avoid double-counting.
+    // Keep householdDeposits in sync with the per-cell wealth change.
+    // Each call increments by the exact aggregate for this cell; summing
+    // over all cells for one agent equals the agent's wageBill.
+    bank.householdDeposits += aggregateDelta;
 
     return aggregateDelta;
 }
@@ -214,4 +212,83 @@ export function distributeWealthChangeTracked(
         };
     }
     return actualAggregate;
+}
+
+// ---------------------------------------------------------------------------
+// 4. Population-transfer wealth helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Merge `count` people from `src` into `dst`, updating both the Gaussian
+ * wealth moments of `dst` AND `bank.householdDeposits` by the exact
+ * aggregate wealth carried by the transferred people.
+ *
+ * Use this whenever people move between population categories (occupational
+ * transitions, retirement, disability, education graduation) so that the
+ * per-capita mean of `dst` is updated correctly AND `householdDeposits`
+ * stays consistent.
+ *
+ * This is a zero-sum operation on aggregate wealth: `src` is not modified
+ * here — the caller must also decrement `src.total` (and optionally
+ * `src.wealth.mean` if the per-capita wealth of those who leave differs
+ * from the cell mean, but in our model we assume they carry the same mean).
+ *
+ * Because the per-capita mean of the *leaving* sub-group equals `src.wealth.mean`
+ * (we model the departure as representative), the aggregate wealth leaving
+ * the source is `count * src.wealth.mean`.  The source cell's per-capita mean
+ * is unchanged after the departure, but its aggregate drops by that amount.
+ * The destination gains `count * src.wealth.mean` in aggregate, and
+ * `householdDeposits` is unchanged (zero-sum).  Therefore this function
+ * does NOT touch `householdDeposits`.
+ *
+ * @param dst   Destination population category (mutated).
+ * @param src   Source population category (read-only here; caller adjusts total).
+ * @param count Number of people transferred.
+ */
+export function mergeWealthInto(dst: PopulationCategory, src: PopulationCategory, count: number): void {
+    if (count <= 0) {
+        return;
+    }
+    dst.wealth = mergeGaussianMoments(dst.total, dst.wealth, count, src.wealth);
+}
+
+/**
+ * Destroy the monetary wealth of `count` people who are removed from
+ * `cat` with no destination (i.e. deaths where `inheritedWealth = 0`
+ * because the deceased had non-positive wealth).
+ *
+ * When people with **positive** wealth die, the caller is responsible for
+ * calling `redistributeInheritance` which re-credits that wealth to living
+ * people via `creditWealth` — a zero-sum operation that leaves
+ * `householdDeposits` unchanged.
+ *
+ * When people with **negative or zero** wealth die, their absence shrinks
+ * aggregate wealth: total drops by `count` while `mean` stays the same,
+ * so `Σ(total × mean)` changes by `count × mean` (which is ≤ 0).
+ * We must decrement `householdDeposits` by the same amount (negative delta
+ * means `householdDeposits` actually *increases* to match the now less-negative
+ * population sum).
+ *
+ * @param bank   Planet bank (householdDeposits adjusted by `count × mean` when mean < 0).
+ * @param cat    Population category losing people.
+ * @param count  Number of people dying (must be ≤ cat.total).
+ * @returns      Aggregate wealth orphaned for redistribution (= count × max(0, mean)).
+ */
+export function destroyWealthOnDeath(bank: Bank, cat: PopulationCategory, count: number): number {
+    if (count <= 0 || cat.total <= 0) {
+        return 0;
+    }
+    const mean = cat.wealth.mean;
+    // Wealth orphaned for inheritance redistribution (only positive wealth).
+    const inheritedWealth = count * Math.max(0, mean);
+    // For negative mean: aggregate wealth increases when people are removed,
+    // so householdDeposits must increase by the same delta (delta = count * |mean|).
+    // For positive mean: wealth will be redistributed by inheritanceRedistribution
+    // (zero-sum), so householdDeposits is unchanged here.
+    if (mean < 0) {
+        // count * mean is negative; removing count people with negative wealth
+        // makes total wealth less negative → householdDeposits must increase.
+        bank.householdDeposits -= count * mean; // double-negative → positive increment
+    }
+    return inheritedWealth;
 }

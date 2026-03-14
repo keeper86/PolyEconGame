@@ -1,3 +1,4 @@
+export const START_YEAR = 2200;
 export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently

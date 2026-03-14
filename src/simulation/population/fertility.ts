@@ -107,7 +107,14 @@ export function computeBirthsThisTick(
  */
 export function applyBirths(population: Population, birthsThisTick: number): void {
     if (birthsThisTick > 0) {
-        population.demography[0].education.none.novice.total += birthsThisTick;
+        const cat = population.demography[0].education.none.novice;
+        const prevTotal = cat.total;
+        const newTotal = prevTotal + birthsThisTick;
+        // Newborns arrive with zero wealth.  Preserve existing aggregate wealth
+        // (prevTotal × mean) by scaling the mean down — do NOT touch
+        // bank.householdDeposits because no money entered or left the system.
+        cat.wealth.mean = prevTotal > 0 ? (prevTotal * cat.wealth.mean) / newTotal : 0;
+        cat.total = newTotal;
     }
 }
 

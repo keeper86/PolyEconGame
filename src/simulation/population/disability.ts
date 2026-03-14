@@ -1,5 +1,4 @@
-import type { Environment } from '../planet/planet';
-import type { Population } from './population';
+import type { Environment, Planet } from '../planet/planet';
 import { forEachPopulationCohort, transferPopulation } from './population';
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 import { stochasticRound } from '../utils/stochasticRound';
@@ -78,12 +77,9 @@ export function computeTotalDisabilityProbability(
     return convertAnnualToPerTick(probPerYear);
 }
 
-export function applyDisability(
-    population: Population,
-    environment: Environment,
-    workforceEvents: WorkforceEventAccumulator,
-): void {
-    const environmentalDisability = computeEnvironmentalDisability(environment);
+export function applyDisability(planet: Planet, workforceEvents: WorkforceEventAccumulator): void {
+    const environmentalDisability = computeEnvironmentalDisability(planet.environment);
+    const population = planet.population;
 
     population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -105,7 +101,7 @@ export function applyDisability(
             }
 
             const moved = transferPopulation(
-                population,
+                planet,
                 { age, occ, edu, skill },
                 { age, occ: 'unableToWork', edu, skill },
                 disabilityEvents,

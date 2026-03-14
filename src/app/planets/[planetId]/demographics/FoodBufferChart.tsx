@@ -151,6 +151,19 @@ type Props = {
     groupMode: GroupMode;
 };
 
+// ─── Empty placeholder ────────────────────────────────────────────────────────
+
+function EmptyChart({ height = 180 }: { height?: number }) {
+    return (
+        <div
+            className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
+            style={{ height }}
+        >
+            No data
+        </div>
+    );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FoodBufferChart({ rows, groupMode }: Props): React.ReactElement {
@@ -201,7 +214,7 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
     const tooltip = useMemo(() => makeTooltip(keys, labels, colors), [keys, labels, colors]);
 
     if (data.length === 0) {
-        return <div className='text-xs text-muted-foreground'>No food data available</div>;
+        return <EmptyChart />;
     }
 
     return (
@@ -226,7 +239,6 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
                     ))}
                 </BarChart>
             </ResponsiveContainer>
-            <ColorLegend keys={keys} labels={labels} colors={colors} />
         </>
     );
 }

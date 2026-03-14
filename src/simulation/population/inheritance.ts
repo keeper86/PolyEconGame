@@ -105,8 +105,29 @@ export function redistributeInheritance(demography: Cohort<PopulationCategory>[]
         }
 
         if (totalWeight <= 0) {
-            // No living heirs found — wealth is truly orphaned.
-            // This should be extremely rare (near-extinction scenario).
+            // No heirs found in the Gaussian kernel range (e.g. deceased
+            // was very young and their expected heirs are at negative ages).
+            // Fall back to uniform population-proportional distribution
+            // across ALL living people so no wealth is destroyed.
+            let totalPop = 0;
+            for (let age = 0; age < demography.length; age++) {
+                forEachPopulationCohort(demography[age], (cat) => {
+                    totalPop += cat.total;
+                });
+            }
+            if (totalPop <= 0) {
+                // Genuine near-extinction: no one alive to inherit.
+                continue;
+            }
+            const perCapita = record.amount / totalPop;
+            for (let age = 0; age < demography.length; age++) {
+                forEachPopulationCohort(demography[age], (cat) => {
+                    if (cat.total <= 0) {
+                        return;
+                    }
+                    creditWealth(cat, perCapita);
+                });
+            }
             continue;
         }
 

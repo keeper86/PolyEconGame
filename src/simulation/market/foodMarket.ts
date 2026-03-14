@@ -175,25 +175,18 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
     // the Math.max(0,…) floor clamp), keeping the two values in sync.
     const bank = planet.bank;
 
-    // Scale revenue proportionally if household deposits were insufficient
-    const actualHouseholdDebit = Math.min(totalRevenue, bank.householdDeposits);
-    const revenueScale = totalRevenue > 0 ? actualHouseholdDebit / totalRevenue : 0;
-
     // Distribute purchased food to households and reduce wealth
     let totalActualDebit = 0;
     if (totalFoodSold > 0 && aggregateDemand > 0) {
         const fillRatio = Math.min(1, totalFoodSold / aggregateDemand);
-        // Effective average price paid, scaled by what households
-        // could actually afford via the bank.
         const avgPricePaid = totalRevenue / totalFoodSold;
-        const effectiveAvgPrice = avgPricePaid * revenueScale;
 
         for (const record of demandRecords) {
             const quantityReceived = record.effectiveDemand * fillRatio;
             if (quantityReceived <= 0) {
                 continue;
             }
-            const cost = quantityReceived * effectiveAvgPrice;
+            const cost = quantityReceived * avgPricePaid;
             const perPersonCost = cost / record.population;
 
             const category = demography[record.age][record.occ][record.edu][record.skill];

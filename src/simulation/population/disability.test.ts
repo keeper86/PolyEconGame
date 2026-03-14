@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { educationLevelKeys } from './education';
 import { forEachPopulationCohort, SKILL } from './population';
-import { makePopulation, makeEnvironment } from '../utils/testHelper';
+import { makePlanet, makeEnvironment } from '../utils/testHelper';
 import {
     ageDependentBaseDisabilityProb,
     computeEnvironmentalDisability,
@@ -77,57 +77,51 @@ describe('computeEnvironmentalDisability', () => {
 
 describe('applyDisability (population-level)', () => {
     it('moves people from non-employed occupations to unableToWork', () => {
-        const pop = makePopulation();
-        // Place people at age 30 in unoccupied and education slots — use large numbers for statistical stability
-        pop.demography[30].unoccupied.none.novice.total = 100000;
-        pop.demography[30].education.primary.novice.total = 100000;
+        const planet = makePlanet();
+        planet.population.demography[30].unoccupied.none.novice.total = 100000;
+        planet.population.demography[30].education.primary.novice.total = 100000;
 
-        const env = makeEnvironment({
+        planet.environment = makeEnvironment({
             pollution: { air: 80, water: 80, soil: 80 },
         });
-        applyDisability(pop, env, createWorkforceEventAccumulator());
+        applyDisability(planet, createWorkforceEventAccumulator());
 
-        // Some should have moved to unableToWork
-        expect(pop.demography[30].unoccupied.none.novice.total).toBeLessThan(100000);
-        expect(pop.demography[30].unableToWork.none.novice.total).toBeGreaterThan(0);
-        expect(pop.demography[30].education.primary.novice.total).toBeLessThan(100000);
-        expect(pop.demography[30].unableToWork.primary.novice.total).toBeGreaterThan(0);
+        expect(planet.population.demography[30].unoccupied.none.novice.total).toBeLessThan(100000);
+        expect(planet.population.demography[30].unableToWork.none.novice.total).toBeGreaterThan(0);
+        expect(planet.population.demography[30].education.primary.novice.total).toBeLessThan(100000);
+        expect(planet.population.demography[30].unableToWork.primary.novice.total).toBeGreaterThan(0);
     });
 
     it('applies workforce event counts for employed population', () => {
-        const pop = makePopulation();
-        pop.demography[30].employed.none.novice.total = 1000;
+        const planet = makePlanet();
+        planet.population.demography[30].employed.none.novice.total = 1000;
 
         const accumulator = createWorkforceEventAccumulator();
         accumulator[30].none.novice.disabilities = 50;
 
-        const env = makeEnvironment();
-        applyDisability(pop, env, accumulator);
+        applyDisability(planet, accumulator);
 
-        // 50 employed should have transitioned to unableToWork via workforce events
-        expect(pop.demography[30].employed.none.novice.total).toBe(950);
-        expect(pop.demography[30].unableToWork.none.novice.total).toBe(50);
+        expect(planet.population.demography[30].employed.none.novice.total).toBe(950);
+        expect(planet.population.demography[30].unableToWork.none.novice.total).toBe(50);
     });
 
     it('does not move people already unableToWork', () => {
-        const pop = makePopulation();
-        pop.demography[30].unableToWork.none.novice.total = 100;
+        const planet = makePlanet();
+        planet.population.demography[30].unableToWork.none.novice.total = 100;
 
-        const env = makeEnvironment();
-        applyDisability(pop, env, createWorkforceEventAccumulator());
+        applyDisability(planet, createWorkforceEventAccumulator());
 
-        // unableToWork is not a source occupation, count should stay the same
-        expect(pop.demography[30].unableToWork.none.novice.total).toBe(100);
+        expect(planet.population.demography[30].unableToWork.none.novice.total).toBe(100);
     });
 
     it('does nothing when population is empty', () => {
-        const pop = makePopulation();
-        const env = makeEnvironment({
+        const planet = makePlanet();
+        planet.environment = makeEnvironment({
             pollution: { air: 50, water: 50, soil: 50 },
         });
-        applyDisability(pop, env, createWorkforceEventAccumulator());
+        applyDisability(planet, createWorkforceEventAccumulator());
 
-        for (const cohort of pop.demography) {
+        for (const cohort of planet.population.demography) {
             for (const edu of educationLevelKeys) {
                 for (const skill of SKILL) {
                     expect(cohort.unableToWork[edu][skill].total).toBe(0);
@@ -137,72 +131,66 @@ describe('applyDisability (population-level)', () => {
     });
 
     it('preserves total headcount (no people created or destroyed)', () => {
-        const pop = makePopulation();
-        pop.demography[40].employed.none.novice.total = 1000;
-        pop.demography[40].employed.none.professional.total = 500;
-        pop.demography[40].education.primary.novice.total = 200;
+        const planet = makePlanet();
+        planet.population.demography[40].employed.none.novice.total = 1000;
+        planet.population.demography[40].employed.none.professional.total = 500;
+        planet.population.demography[40].education.primary.novice.total = 200;
         const totalBefore = 1000 + 500 + 200;
 
-        const env = makeEnvironment({
+        planet.environment = makeEnvironment({
             pollution: { air: 25, water: 10, soil: 5 },
         });
-        applyDisability(pop, env, createWorkforceEventAccumulator());
+        applyDisability(planet, createWorkforceEventAccumulator());
 
         let totalAfter = 0;
-        forEachPopulationCohort(pop.demography[40], (cat) => {
+        forEachPopulationCohort(planet.population.demography[40], (cat) => {
             totalAfter += cat.total;
         });
         expect(totalAfter).toBe(totalBefore);
     });
 
     it('starvation increases disability transitions for non-employed', () => {
-        const popNoStarv = makePopulation();
-        popNoStarv.demography[30].unoccupied.none.novice.total = 100000;
+        const planetNoStarv = makePlanet();
+        planetNoStarv.population.demography[30].unoccupied.none.novice.total = 100000;
 
-        const popStarved = makePopulation();
-        popStarved.demography[30].unoccupied.none.novice.total = 100000;
-        popStarved.demography[30].unoccupied.none.novice.starvationLevel = 1;
+        const planetStarved = makePlanet();
+        planetStarved.population.demography[30].unoccupied.none.novice.total = 100000;
+        planetStarved.population.demography[30].unoccupied.none.novice.starvationLevel = 1;
 
-        // With clean environment, disability comes only from base + starvation
-        const env = makeEnvironment();
-        applyDisability(popNoStarv, env, createWorkforceEventAccumulator());
-        applyDisability(popStarved, env, createWorkforceEventAccumulator());
+        applyDisability(planetNoStarv, createWorkforceEventAccumulator());
+        applyDisability(planetStarved, createWorkforceEventAccumulator());
 
-        // Full starvation should produce more disability than no starvation
-        expect(popStarved.demography[30].unableToWork.none.novice.total).toBeGreaterThan(
-            popNoStarv.demography[30].unableToWork.none.novice.total,
+        expect(planetStarved.population.demography[30].unableToWork.none.novice.total).toBeGreaterThan(
+            planetNoStarv.population.demography[30].unableToWork.none.novice.total,
         );
     });
 
     it('STARVATION_DISABILITY_COEFFICIENT is small relative to max pollution disability', () => {
-        // Max pollution term is capped at 0.5; coefficient should be well below that
         expect(STARVATION_DISABILITY_COEFFICIENT).toBeLessThan(0.5);
         expect(STARVATION_DISABILITY_COEFFICIENT).toBeGreaterThan(0);
     });
 
     it('records disability events in countThisMonth for non-employed', () => {
-        const pop = makePopulation();
-        pop.demography[50].unoccupied.none.novice.total = 100000;
+        const planet = makePlanet();
+        planet.population.demography[50].unoccupied.none.novice.total = 100000;
 
-        const env = makeEnvironment({
+        planet.environment = makeEnvironment({
             pollution: { air: 80, water: 80, soil: 80 },
         });
-        applyDisability(pop, env, createWorkforceEventAccumulator());
+        applyDisability(planet, createWorkforceEventAccumulator());
 
-        // The source cell should have recorded disability transitions
-        expect(pop.demography[50].unoccupied.none.novice.disabilities.countThisMonth).toBeGreaterThan(0);
+        expect(planet.population.demography[50].unoccupied.none.novice.disabilities.countThisMonth).toBeGreaterThan(0);
     });
 
     it('records disability events in countThisMonth for employed via workforce events', () => {
-        const pop = makePopulation();
-        pop.demography[50].employed.none.novice.total = 1000;
+        const planet = makePlanet();
+        planet.population.demography[50].employed.none.novice.total = 1000;
 
         const accumulator = createWorkforceEventAccumulator();
         accumulator[50].none.novice.disabilities = 30;
 
-        const env = makeEnvironment();
-        applyDisability(pop, env, accumulator);
+        applyDisability(planet, accumulator);
 
-        expect(pop.demography[50].employed.none.novice.disabilities.countThisMonth).toBe(30);
+        expect(planet.population.demography[50].employed.none.novice.disabilities.countThisMonth).toBe(30);
     });
 });
