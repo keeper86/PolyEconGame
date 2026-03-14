@@ -86,9 +86,9 @@ export default function PlanetDemographicsPage() {
         for (let i = 0; i < 4; i++) {
             const gv = row.groupValues[i];
             groupPop[i] += gv[GV_POP];
-            if (row.age > 14) {
-                groupAgeWeightedSum[i] += row.age * gv[GV_POP];
-            }
+
+            groupAgeWeightedSum[i] += row.age * gv[GV_POP];
+
             wealthWeightedSum[i] += gv[GV_WEALTH];
         }
     }
