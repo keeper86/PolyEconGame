@@ -70,8 +70,7 @@ type CardDef = {
 };
 
 function buildCards(m: MarketSnapshot): CardDef[] {
-    const supply2demand =
-        m.totalDemand > 0 ? formatNumbers((m.totalSupply / m.totalDemand) * 100) + '%' : '—';
+    const supply2demand = m.totalDemand > 0 ? formatNumbers((m.totalSupply / m.totalDemand) * 100) + '%' : '—';
     const soldPct = m.totalSupply > 0 ? formatNumbers((m.totalSold / m.totalSupply) * 100) + '%' : '—';
 
     return [

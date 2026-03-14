@@ -60,29 +60,6 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
     };
 }
 
-// ─── ColorLegend ─────────────────────────────────────────────────────────────
-
-function ColorLegend({
-    keys,
-    labels,
-    colors,
-}: {
-    keys: readonly string[];
-    labels: Record<string, string>;
-    colors: Record<string, string>;
-}) {
-    return (
-        <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] mb-1'>
-            {keys.map((key) => (
-                <span key={key} className='flex items-center gap-1'>
-                    <span className='inline-block w-2.5 h-2.5 rounded-sm' style={{ background: colors[key] }} />
-                    {labels[key]}
-                </span>
-            ))}
-        </div>
-    );
-}
-
 // ─── mergePairs (condense adjacent age rows on very small screens) ─────────────
 
 function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {

@@ -14,13 +14,7 @@ import { stochasticRound } from '../utils/stochasticRound';
 import type { EducationLevelType } from './education';
 import { ageDropoutProbabilityForEducation, educationGraduationProbabilityForAge, educationLevels } from './education';
 import type { Skill } from './population';
-import {
-    MAX_AGE,
-    OCCUPATIONS,
-    SKILL,
-    forEachPopulationCohort,
-    transferPopulation,
-} from './population';
+import { MAX_AGE, OCCUPATIONS, SKILL, forEachPopulationCohort, transferPopulation } from './population';
 import { educationLevelKeys } from './education';
 
 /**

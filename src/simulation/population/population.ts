@@ -198,6 +198,10 @@ export const transferPopulation = (
         const srcFoodPer = fromCategory.total > 0 ? stochasticRound(fromCategory.foodStock / fromCategory.total) : 0;
         toCategory.foodStock += srcFoodPer * transferMaximum;
 
+        toCategory.starvationLevel =
+            (toCategory.total * toCategory.starvationLevel + transferMaximum * fromCategory.starvationLevel) /
+            (toCategory.total + transferMaximum);
+
         toCategory.total += transferMaximum;
         fromCategory.total -= transferMaximum;
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;

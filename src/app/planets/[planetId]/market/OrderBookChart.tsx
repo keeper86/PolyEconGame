@@ -237,9 +237,7 @@ export default function OrderBookChart({ offers, totalDemand, clearingPrice }: P
                     <span className='inline-block w-5 border-t-2 border-dashed border-amber-500' />
                     Clearing price
                 </span>
-                {totalDemand > 0 && (
-                    <span className='text-violet-400'>Demand: {formatNumbers(totalDemand)} t</span>
-                )}
+                {totalDemand > 0 && <span className='text-violet-400'>Demand: {formatNumbers(totalDemand)} t</span>}
             </div>
         </div>
     );
