@@ -14,7 +14,10 @@ import { computePopulationTotal, computeGlobalStarvation } from '../../simulatio
 import type { Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { educationLevelKeys } from '../../simulation/population/education';
-import type { Planet } from '../../simulation/planet/planet';
+import type { Agent, Planet } from '../../simulation/planet/planet';
+import { agriculturalProductResourceType } from '../../simulation/planet/facilities';
+import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../../simulation/constants';
+import { expectedPurchaseQuantity } from '../../simulation/market/foodMarket';
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -533,6 +536,180 @@ export const getPlanetDemographicsFull = () =>
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
                     priceLevel: planet.priceLevel ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
+                },
+            };
+        });
+
+// ---------------------------------------------------------------------------
+// Food Market
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-agent offer entry for the market page.
+ */
+type AgentOfferEntry = {
+    agentId: string;
+    agentName: string;
+    offerPrice: number;
+    offerQuantity: number;
+    lastSold: number;
+    sellThrough: number; // [0,1] — lastSold / offerQuantity
+    lastRevenue: number;
+};
+
+/**
+ * Compute aggregate household demand for food using the same mean-field
+ * logic as foodMarketTick — without actually clearing anything.
+ */
+function computeAggregateDemand(planet: Planet, referencePrice: number): number {
+    const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+    let demand = 0;
+
+    planet.population.demography.forEach((cohort) => {
+        if (!cohort) {
+            return;
+        }
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                for (const skill of SKILL) {
+                    const cat = cohort[occ][edu][skill];
+                    const pop = cat.total;
+                    if (pop <= 0) {
+                        continue;
+                    }
+                    const foodStockPerPerson = cat.foodStock / pop;
+                    const desiredPurchasePerPerson = Math.max(0, foodTargetPerPerson - foodStockPerPerson);
+                    const effectiveDemandPerPerson = expectedPurchaseQuantity(
+                        cat.wealth.mean,
+                        cat.wealth.variance,
+                        referencePrice,
+                        desiredPurchasePerPerson,
+                    );
+                    demand += effectiveDemandPerPerson * pop;
+                }
+            }
+        }
+    });
+
+    return demand;
+}
+
+/**
+ * Collect per-agent offer summaries for all food-producing agents on a planet.
+ */
+function buildAgentOffers(agents: Agent[], planetId: string): AgentOfferEntry[] {
+    const entries: AgentOfferEntry[] = [];
+
+    for (const agent of agents) {
+        const assets = agent.assets[planetId];
+        if (!assets) {
+            continue;
+        }
+
+        const hasFoodProduction = assets.productionFacilities.some((f) =>
+            f.produces.some((p) => p.resource.name === agriculturalProductResourceType.name),
+        );
+        if (!hasFoodProduction) {
+            continue;
+        }
+
+        const fm = assets.foodMarket ?? {};
+        const offerPrice = fm.offerPrice ?? INITIAL_FOOD_PRICE;
+        const offerQuantity = fm.offerQuantity ?? 0;
+        const lastSold = fm.lastSold ?? 0;
+        const lastRevenue = fm.lastRevenue ?? 0;
+        const sellThrough = offerQuantity > 0 ? Math.min(1, lastSold / offerQuantity) : 0;
+
+        entries.push({
+            agentId: agent.id,
+            agentName: agent.name,
+            offerPrice,
+            offerQuantity,
+            lastSold,
+            sellThrough,
+            lastRevenue,
+        });
+    }
+
+    // Sort by price ascending (merit order)
+    entries.sort((a, b) => a.offerPrice - b.offerPrice);
+    return entries;
+}
+
+export const getPlanetFoodMarket = () =>
+    protectedProcedure
+        .input(z.object({ planetId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                market: z
+                    .object({
+                        planetName: z.string(),
+                        clearingPrice: z.number(),
+                        starvationLevel: z.number(),
+                        populationTotal: z.number(),
+                        /** Aggregate household demand (tons this tick). */
+                        totalDemand: z.number(),
+                        /** Sum of all agent offer quantities (tons). */
+                        totalSupply: z.number(),
+                        /** Total food sold last clearing (tons). Derived from agent lastSold. */
+                        totalSold: z.number(),
+                        /** Fill ratio: totalSold / totalDemand. */
+                        fillRatio: z.number(),
+                        /** Per-agent offers, sorted price ascending (merit order). */
+                        offers: z.array(
+                            z.object({
+                                agentId: z.string(),
+                                agentName: z.string(),
+                                offerPrice: z.number(),
+                                offerQuantity: z.number(),
+                                lastSold: z.number(),
+                                sellThrough: z.number(),
+                                lastRevenue: z.number(),
+                            }),
+                        ),
+                    })
+                    .nullable(),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ tick }, { planet }, { agents }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getPlanet(input.planetId),
+                workerQueries.getAgentsByPlanet(input.planetId),
+            ]);
+
+            if (!planet) {
+                return { tick, market: null };
+            }
+
+            const clearingPrice = planet.priceLevel ?? INITIAL_FOOD_PRICE;
+            const offers = buildAgentOffers(agents, input.planetId);
+
+            const totalSupply = offers.reduce((s, o) => s + o.offerQuantity, 0);
+            const totalSold = offers.reduce((s, o) => s + o.lastSold, 0);
+
+            // Reference price for demand formation: quantity-weighted average offer price
+            const refPrice =
+                totalSupply > 0
+                    ? offers.reduce((s, o) => s + o.offerPrice * o.offerQuantity, 0) / totalSupply
+                    : clearingPrice;
+
+            const totalDemand = computeAggregateDemand(planet, refPrice);
+            const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
+
+            return {
+                tick,
+                market: {
+                    planetName: planet.name,
+                    clearingPrice,
+                    starvationLevel: computeGlobalStarvation(planet),
+                    populationTotal: computePopulationTotal(planet),
+                    totalDemand,
+                    totalSupply,
+                    totalSold,
+                    fillRatio,
+                    offers,
                 },
             };
         });
