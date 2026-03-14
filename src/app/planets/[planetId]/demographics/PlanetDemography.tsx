@@ -27,15 +27,26 @@ function safeNumber(v: unknown): number {
     return Number.isFinite(n) ? n : 0;
 }
 
+function EmptyChart({ height = 180 }: { height?: number }) {
+    return (
+        <div
+            className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
+            style={{ height }}
+        >
+            No data
+        </div>
+    );
+}
+
 export default function PlanetDemography({ rows, group }: Props): React.ReactElement {
     const isVerySmall = useIsSmallScreen();
     if (!rows || rows.length === 0) {
-        return <div className='text-sm text-muted-foreground'>No demography data</div>;
+        return <EmptyChart />;
     }
 
     const overallTotal = rows.reduce((s, r) => s + r.total, 0);
     if (overallTotal === 0) {
-        return <div className='text-sm text-muted-foreground'>No demography data</div>;
+        return <EmptyChart />;
     }
 
     const chartData = rows.map((r) => {
@@ -104,17 +115,6 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
                     ))}
                 </BarChart>
             </ResponsiveContainer>
-            <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] mt-1'>
-                {keys.map((key) => (
-                    <span key={key} className='flex items-center gap-1'>
-                        <span
-                            className='inline-block w-2.5 h-2.5 rounded-sm'
-                            style={{ background: colors[key as keyof typeof colors] }}
-                        />
-                        {labels[key as keyof typeof labels]}
-                    </span>
-                ))}
-            </div>
         </>
     );
 }

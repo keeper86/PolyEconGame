@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { TICKS_PER_YEAR } from '../constants';
-import { makePopulationCohort, makePopulation, makeWorkforceCohort } from '../utils/testHelper';
+import { makePopulationCohort, makePlanet, makeWorkforceCohort } from '../utils/testHelper';
 
 import {
     createEmptyPopulationCohort,
@@ -135,11 +135,11 @@ describe('nullWorkforceCategory', () => {
 
 describe('transferPopulation', () => {
     it('moves population from source to destination', () => {
-        const pop = makePopulation();
-        pop.demography[25].unoccupied.none.novice.total = 100;
+        const planet = makePlanet();
+        planet.population.demography[25].unoccupied.none.novice.total = 100;
 
         const result = transferPopulation(
-            pop,
+            planet,
             { age: 25, occ: 'unoccupied', edu: 'none', skill: 'novice' },
             { age: 25, occ: 'employed', edu: 'none', skill: 'novice' },
             40,
@@ -147,33 +147,33 @@ describe('transferPopulation', () => {
 
         expect(result.count).toBe(40);
         expect(result.inheritedWealth).toBe(0);
-        expect(pop.demography[25].unoccupied.none.novice.total).toBe(60);
-        expect(pop.demography[25].employed.none.novice.total).toBe(40);
+        expect(planet.population.demography[25].unoccupied.none.novice.total).toBe(60);
+        expect(planet.population.demography[25].employed.none.novice.total).toBe(40);
     });
 
     it('caps transfer at available population', () => {
-        const pop = makePopulation();
-        pop.demography[30].employed.primary.novice.total = 10;
+        const planet = makePlanet();
+        planet.population.demography[30].employed.primary.novice.total = 10;
 
         const result = transferPopulation(
-            pop,
+            planet,
             { age: 30, occ: 'employed', edu: 'primary', skill: 'novice' },
             { age: 30, occ: 'unoccupied', edu: 'primary', skill: 'novice' },
             100,
         );
 
         expect(result.count).toBe(10);
-        expect(pop.demography[30].employed.primary.novice.total).toBe(0);
-        expect(pop.demography[30].unoccupied.primary.novice.total).toBe(10);
+        expect(planet.population.demography[30].employed.primary.novice.total).toBe(0);
+        expect(planet.population.demography[30].unoccupied.primary.novice.total).toBe(10);
     });
 
     it('returns count 0 for zero or negative count', () => {
-        const pop = makePopulation();
-        pop.demography[20].unoccupied.none.novice.total = 50;
+        const planet = makePlanet();
+        planet.population.demography[20].unoccupied.none.novice.total = 50;
 
         expect(
             transferPopulation(
-                pop,
+                planet,
                 { age: 20, occ: 'unoccupied', edu: 'none', skill: 'novice' },
                 { age: 20, occ: 'employed', edu: 'none', skill: 'novice' },
                 0,
@@ -182,38 +182,38 @@ describe('transferPopulation', () => {
 
         expect(
             transferPopulation(
-                pop,
+                planet,
                 { age: 20, occ: 'unoccupied', edu: 'none', skill: 'novice' },
                 { age: 20, occ: 'employed', edu: 'none', skill: 'novice' },
                 -5,
             ).count,
         ).toBe(0);
 
-        expect(pop.demography[20].unoccupied.none.novice.total).toBe(50);
+        expect(planet.population.demography[20].unoccupied.none.novice.total).toBe(50);
     });
 
     it('destroys population when destination is undefined (deaths)', () => {
-        const pop = makePopulation();
-        pop.demography[50].employed.secondary.expert.total = 100;
+        const planet = makePlanet();
+        planet.population.demography[50].employed.secondary.expert.total = 100;
 
         const result = transferPopulation(
-            pop,
+            planet,
             { age: 50, occ: 'employed', edu: 'secondary', skill: 'expert' },
             undefined,
             30,
         );
 
         expect(result.count).toBe(30);
-        expect(pop.demography[50].employed.secondary.expert.total).toBe(70);
+        expect(planet.population.demography[50].employed.secondary.expert.total).toBe(70);
     });
 
     it('returns inherited wealth on death (to=undefined)', () => {
-        const pop = makePopulation();
-        pop.demography[50].employed.secondary.expert.total = 100;
-        pop.demography[50].employed.secondary.expert.wealth = { mean: 50, variance: 10 };
+        const planet = makePlanet();
+        planet.population.demography[50].employed.secondary.expert.total = 100;
+        planet.population.demography[50].employed.secondary.expert.wealth = { mean: 50, variance: 10 };
 
         const result = transferPopulation(
-            pop,
+            planet,
             { age: 50, occ: 'employed', edu: 'secondary', skill: 'expert' },
             undefined,
             30,
@@ -223,39 +223,39 @@ describe('transferPopulation', () => {
         // 30 people × 50 mean wealth = 1500 inherited
         expect(result.inheritedWealth).toBeCloseTo(1500, 5);
         // Remaining population still has same per-capita wealth
-        expect(pop.demography[50].employed.secondary.expert.wealth.mean).toBeCloseTo(50, 5);
+        expect(planet.population.demography[50].employed.secondary.expert.wealth.mean).toBeCloseTo(50, 5);
     });
 
     it('transfers across different ages', () => {
-        const pop = makePopulation();
-        pop.demography[20].unoccupied.none.novice.total = 50;
+        const planet = makePlanet();
+        planet.population.demography[20].unoccupied.none.novice.total = 50;
 
         const result = transferPopulation(
-            pop,
+            planet,
             { age: 20, occ: 'unoccupied', edu: 'none', skill: 'novice' },
             { age: 21, occ: 'unoccupied', edu: 'none', skill: 'novice' },
             30,
         );
 
         expect(result.count).toBe(30);
-        expect(pop.demography[20].unoccupied.none.novice.total).toBe(20);
-        expect(pop.demography[21].unoccupied.none.novice.total).toBe(30);
+        expect(planet.population.demography[20].unoccupied.none.novice.total).toBe(20);
+        expect(planet.population.demography[21].unoccupied.none.novice.total).toBe(30);
     });
 
     it('transfers wealth proportionally', () => {
-        const pop = makePopulation();
-        const src = pop.demography[30].employed.none.novice;
+        const planet = makePlanet();
+        const src = planet.population.demography[30].employed.none.novice;
         src.total = 100;
         src.wealth = { mean: 1000, variance: 100 };
 
         transferPopulation(
-            pop,
+            planet,
             { age: 30, occ: 'employed', edu: 'none', skill: 'novice' },
             { age: 30, occ: 'unoccupied', edu: 'none', skill: 'novice' },
             50,
         );
 
-        const dst = pop.demography[30].unoccupied.none.novice;
+        const dst = planet.population.demography[30].unoccupied.none.novice;
         // Source wealth moments are unchanged (same distribution, fewer people)
         expect(src.wealth.mean).toBeCloseTo(1000, 0);
         expect(src.wealth.variance).toBeCloseTo(100, 0);
@@ -267,13 +267,13 @@ describe('transferPopulation', () => {
     });
 
     it('transfers foodStock proportionally', () => {
-        const pop = makePopulation();
-        const src = pop.demography[25].unoccupied.primary.novice;
+        const planet = makePlanet();
+        const src = planet.population.demography[25].unoccupied.primary.novice;
         src.total = 200;
         src.foodStock = 1000;
 
         transferPopulation(
-            pop,
+            planet,
             { age: 25, occ: 'unoccupied', edu: 'primary', skill: 'novice' },
             { age: 25, occ: 'employed', edu: 'primary', skill: 'novice' },
             100,
@@ -282,22 +282,22 @@ describe('transferPopulation', () => {
         // Transferring 100 out of 200 → fraction = 0.5
         // foodStockTransfer = 1000 * 0.5 = 500
         expect(src.foodStock).toBeCloseTo(500, 0);
-        expect(pop.demography[25].employed.primary.novice.foodStock).toBeCloseTo(500, 0);
+        expect(planet.population.demography[25].employed.primary.novice.foodStock).toBeCloseTo(500, 0);
     });
 
     it('conserves total across transfer', () => {
-        const pop = makePopulation();
-        pop.demography[40].unoccupied.tertiary.professional.total = 500;
+        const planet = makePlanet();
+        planet.population.demography[40].unoccupied.tertiary.professional.total = 500;
 
         transferPopulation(
-            pop,
+            planet,
             { age: 40, occ: 'unoccupied', edu: 'tertiary', skill: 'professional' },
             { age: 40, occ: 'employed', edu: 'tertiary', skill: 'professional' },
             200,
         );
 
-        const srcTotal = pop.demography[40].unoccupied.tertiary.professional.total;
-        const dstTotal = pop.demography[40].employed.tertiary.professional.total;
+        const srcTotal = planet.population.demography[40].unoccupied.tertiary.professional.total;
+        const dstTotal = planet.population.demography[40].employed.tertiary.professional.total;
         expect(srcTotal + dstTotal).toBe(500);
     });
 });

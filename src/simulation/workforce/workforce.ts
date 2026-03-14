@@ -151,7 +151,7 @@ export function hireFromPopulation(
         const actual = allocatedBuckets[i];
         if (actual > 0) {
             transferPopulation(
-                planet.population,
+                planet,
                 { age, occ: 'unoccupied', edu, skill },
                 { age, occ: 'employed', edu, skill },
                 actual,

@@ -9,7 +9,9 @@ export const formatNumbers = (n: number | null | undefined): string => {
     if (n == null || !isFinite(n)) {
         return '—';
     }
-    const extraShort = false;
+
+    let currentNumber = n;
+    let currentSuffix = '';
     const abbreviations: [number, string][] = [
         [1_000_000_000_000, 'T'],
         [1_000_000_000, 'B'],
@@ -18,14 +20,16 @@ export const formatNumbers = (n: number | null | undefined): string => {
     ];
     for (const [value, suffix] of abbreviations) {
         if (Math.abs(n) * 10 >= value) {
-            if (value === 1_000 && n < 1000) {
-                continue;
-            }
-            return `${(n / value).toFixed(extraShort ? 0 : 1)}${suffix}`;
+            currentSuffix = suffix;
+            currentNumber = n / value;
+            break;
         }
     }
-    if (n < 100) {
-        return n.toPrecision(extraShort ? 1 : 2);
-    }
-    return n.toFixed(extraShort ? 0 : 1);
+
+    // how to map this number to
+    // x.xx or xx.x
+    const leadingWithZero = Math.trunc(currentNumber) === 0;
+    const formatted = currentNumber.toPrecision(leadingWithZero ? 2 : 3);
+    //delete 0 from the end and the dot if it's the last character
+    return formatted.replace(/\.?0+$/, '') + currentSuffix;
 };

@@ -223,6 +223,19 @@ type Props = {
     groupMode: GroupMode;
 };
 
+// ─── Empty placeholder ────────────────────────────────────────────────────────
+
+function EmptyChart({ height = 200 }: { height?: number }) {
+    return (
+        <div
+            className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
+            style={{ height }}
+        >
+            No data
+        </div>
+    );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NutritionHeatmapChart({ rows, groupMode }: Props): React.ReactElement {
@@ -252,7 +265,7 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                 const totalFood = gv[GV_FOOD];
                 const weightedStarv = gv[GV_STARV];
 
-                const avgStarvation = gPop > 0 ? weightedStarv / gPop : 0;
+                const avgStarvation = gPop > 0 && weightedStarv > 0 ? weightedStarv / gPop : 0;
                 const avgStock = gPop > 0 ? totalFood / gPop : 0;
                 const avgBuffer = FOOD_TARGET_PER_PERSON > 0 ? avgStock / FOOD_TARGET_PER_PERSON : 0;
 
@@ -316,7 +329,7 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
     );
 
     if (data.length === 0) {
-        return <div className='text-xs text-muted-foreground'>No nutrition data available</div>;
+        return <EmptyChart />;
     }
 
     const starvingPct = totalPop > 0 ? totalStarving / totalPop : 0;

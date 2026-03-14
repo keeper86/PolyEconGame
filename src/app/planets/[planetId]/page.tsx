@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
-export default function PlanetDetailPage({ params }: { params: { planetId: string } }) {
+export default async function PlanetDetailPage(props: { params: Promise<{ planetId: string }> }) {
+    const params = await props.params;
     redirect(`/planets/${encodeURIComponent(params.planetId)}/demographics`);
 }

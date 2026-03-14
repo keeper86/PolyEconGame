@@ -200,31 +200,82 @@ export function checkMonetaryConservation(
  *
  * @param tolerance  Absolute tolerance (default 1.0 monetary units).
  */
-export function checkWealthBankConsistency(planets: Map<string, Planet>, tolerance = 1.0): string[] {
-    const discrepancies: string[] = [];
+export type WealthBankDiscrepancy = {
+    planetId: string;
+    planetName: string;
+    householdDeposits: number;
+    populationWealth: number;
+    diff: number;
+    totalPopulation: number;
+    /** diff per capita — convenient for comparing across planet sizes */
+    diffPerCapita: number;
+};
+
+/**
+ * @param tolerance  Relative tolerance to total of householdDeposits, tolerance = 0.0001 means 0.01% of householdDeposits (or absolute 0 if householdDeposits=0).
+ */
+export function checkWealthBankConsistency(planets: Map<string, Planet>, tolerance = 0.0001): WealthBankDiscrepancy[] {
+    const discrepancies: WealthBankDiscrepancy[] = [];
 
     for (const [planetId, planet] of planets) {
         const bank = planet.bank;
         const demography = planet.population.demography;
 
+        if (bank.householdDeposits < 0) {
+            console.warn(
+                `[checkWealthBankConsistency] planet=${planetId} has negative householdDeposits=${bank.householdDeposits.toFixed(4)}`,
+            );
+            discrepancies.push({
+                planetId,
+                planetName: planet.name,
+                householdDeposits: bank.householdDeposits,
+                populationWealth: NaN,
+                diff: NaN,
+                totalPopulation: NaN,
+                diffPerCapita: NaN,
+            });
+            continue;
+        }
+
         // Sum total population wealth: Σ (category.total × category.wealth.mean)
         let totalWealth = 0;
+        let totalPopulation = 0;
         for (const cohort of demography) {
             forEachPopulationCohort(cohort, (cat) => {
                 if (cat.total > 0) {
                     totalWealth += cat.total * cat.wealth.mean;
+                    totalPopulation += cat.total;
                 }
             });
         }
 
-        const diff = Math.abs(bank.householdDeposits - totalWealth);
-        if (diff > tolerance) {
-            discrepancies.push(
-                `planet=${planetId}: wealth/bank divergence: ` +
-                    `householdDeposits=${bank.householdDeposits.toFixed(4)}, ` +
-                    `populationWealth=${totalWealth.toFixed(4)}, ` +
-                    `diff=${diff.toFixed(4)}`,
+        if (totalWealth < 0) {
+            discrepancies.push({
+                planetId,
+                planetName: planet.name,
+                householdDeposits: bank.householdDeposits,
+                populationWealth: totalWealth,
+                diff: NaN,
+                totalPopulation,
+                diffPerCapita: NaN,
+            });
+            console.warn(
+                `[checkWealthBankConsistency] planet=${planetId} has negative totalPopulationWealth=${totalWealth.toFixed(4)}`,
             );
+            continue;
+        }
+
+        const diff = (bank.householdDeposits - totalWealth) / bank.householdDeposits;
+        if (diff > tolerance) {
+            discrepancies.push({
+                planetId,
+                planetName: planet.name,
+                householdDeposits: bank.householdDeposits,
+                populationWealth: totalWealth,
+                diff,
+                totalPopulation,
+                diffPerCapita: totalPopulation > 0 ? diff / totalPopulation : 0,
+            });
         }
     }
 

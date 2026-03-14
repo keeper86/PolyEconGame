@@ -3,7 +3,7 @@
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import { TICKS_PER_YEAR } from '@/simulation/constants';
+import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
 import React from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -16,13 +16,24 @@ type Props = {
     };
 };
 
+function EmptyChart({ height = 200 }: { height?: number }) {
+    return (
+        <div
+            className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
+            style={{ height }}
+        >
+            No data
+        </div>
+    );
+}
+
 function PlanetPopulationChartRecharts({
     data,
 }: {
     data: { year: number; value: number; starvation?: number }[];
 }): React.ReactElement {
     if (!data || data.length === 0) {
-        return <div className='text-sm text-gray-500'>No data</div>;
+        return <EmptyChart />;
     }
 
     const hasStarvation = data.some((d) => d.starvation !== undefined && d.starvation !== null);
@@ -62,8 +73,8 @@ function PlanetPopulationChartRecharts({
                     tickFormatter={(v) =>
                         typeof v === 'number'
                             ? Number.isInteger(v)
-                                ? `y${v + 2200}`
-                                : `y${(v + 2200).toFixed(1)}`
+                                ? `y${v + START_YEAR}`
+                                : `y${(v + START_YEAR).toFixed(1)}`
                             : String(v)
                     }
                 />
@@ -133,7 +144,7 @@ export default function PlanetPopulationHistoryChart({ planetId }: Props): React
     );
 
     if (isLoading) {
-        return <div className='text-xs text-muted-foreground'>Loading population history…</div>;
+        return <EmptyChart />;
     }
 
     const chartData = (data?.history ?? []).map((r) => ({

@@ -80,7 +80,8 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         }
 
         assets.deposits -= wageBill;
-        bank.householdDeposits += wageBill;
+        // householdDeposits is now updated inside creditWageIncome, per cell,
+        // so no bulk increment here.
         assets.lastWageBill = wageBill;
 
         // Count only THIS agent's employed workers (from their workforce demography),

@@ -59,7 +59,7 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                         // Non-retired departing → unoccupied
                         if (departingAtAge + firedAtAge > 0) {
                             const moved = transferPopulation(
-                                planet.population,
+                                planet,
                                 { age, occ: 'employed', edu, skill },
                                 { age, occ: 'unoccupied', edu, skill },
                                 departingAtAge + firedAtAge,
@@ -76,7 +76,7 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                         // Retired departing → unableToWork
                         if (retiredAtAge > 0) {
                             const moved = transferPopulation(
-                                planet.population,
+                                planet,
                                 { age, occ: 'employed', edu, skill },
                                 { age, occ: 'unableToWork', edu, skill },
                                 retiredAtAge,
