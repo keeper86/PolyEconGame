@@ -143,7 +143,7 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
     let efficiencyN = 0;
     const storageTotals: Record<string, number> = {};
     let totalWorkers = 0;
-    let unusedWorkerFraction = 0;
+    const unusedWorkerFraction = 0;
 
     for (const assets of Object.values(a.assets ?? {})) {
         const facs = assets.productionFacilities ?? [];
@@ -167,7 +167,6 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
                 totalWorkers += (v as number) ?? 0;
             }
         }
-        unusedWorkerFraction = Math.max(unusedWorkerFraction, assets.workerFeedback?.unusedWorkerFraction ?? 0);
     }
 
     const topResources = Object.entries(storageTotals)
@@ -275,7 +274,7 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         deposits: assets.deposits,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,
-        unusedWorkerFraction: assets.workerFeedback?.unusedWorkerFraction ?? 0,
+        unusedWorkerFraction: 0,
         topResources,
     };
 };

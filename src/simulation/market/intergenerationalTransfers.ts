@@ -231,8 +231,8 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const survivalNeeds = computeDependentNeeds(foodTargetPerPerson);
     const remaining = survivalSurplusSnapshot.map((s) => s.totalSurplus);
 
-    for (const [age, dependendNeed] of survivalNeeds.entries()) {
-        const need = dependendNeed.totalNeed;
+    for (const [age, dependentNeed] of survivalNeeds.entries()) {
+        const need = dependentNeed.totalNeed;
         if (need <= 0) {
             continue;
         }

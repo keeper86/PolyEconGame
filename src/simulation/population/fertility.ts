@@ -75,7 +75,7 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
         // Newborns arrive with a small food stock gifted by their "neighbors" to get them started.
-        cat.foodStock += 10 * FOOD_PER_PERSON_PER_TICK;
+        cat.foodStock += birthsThisTick * 10 * FOOD_PER_PERSON_PER_TICK;
     }
 }
 

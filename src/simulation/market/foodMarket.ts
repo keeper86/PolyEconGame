@@ -46,24 +46,6 @@ interface TradeRecord {
     quantity: number;
 }
 
-// ---------------------------------------------------------------------------
-// Exported helper (used by tests & external demand-estimation callers)
-// ---------------------------------------------------------------------------
-
-/**
- * Compute the effective food demand quantity for a cohort-cell, applying the
- * liquidity constraint: a household cannot spend more than it has.
- *
- * Uses a mean-field approximation (all members have exactly `meanWealth`).
- * This is exact when `wealthVariance = 0` and is a sound first-order
- * approximation otherwise.
- *
- * @param meanWealth       Per-capita mean wealth of the cell.
- * @param _wealthVariance  (Reserved) per-capita wealth variance — not used yet.
- * @param foodPrice        Reference price per ton.
- * @param desiredPurchase  Tons the cell wants to buy before the liquidity cap.
- * @returns Effective demand in tons (≥ 0).
- */
 export function expectedPurchaseQuantity(
     meanWealth: number,
     index: PopulationCategoryIndex,
@@ -286,28 +268,8 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
 
         const tradePrice = ask.askPrice;
 
-        try {
-            trades.push({ price: tradePrice, quantity: tradeQty });
-        } catch (e) {
-            // Defensive diagnostics: if an Array operation throws a RangeError
-            // we'll log the surrounding state and break out of matching to
-            // avoid crashing the worker. This should help identify the root
-            // cause in production runs.
-            if (e instanceof RangeError) {
-                console.error('foodMarketTick: RangeError pushing to trades', {
-                    tradesLength: trades.length,
-                    bidIdx,
-                    askIdx,
-                    bidOrdersLength: bidOrders.length,
-                    askOrdersLength: askOrders.length,
-                    bidRemaining,
-                    askRemaining,
-                    tradeQty,
-                });
-                break;
-            }
-            throw e;
-        }
+        trades.push({ price: tradePrice, quantity: tradeQty });
+
         ask.filled += tradeQty;
         ask.revenue += tradeQty * tradePrice;
 
@@ -346,6 +308,39 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
     const totalFoodSold = trades.reduce((s, t) => s + t.quantity, 0);
     const totalRevenue = trades.reduce((s, t) => s + t.price * t.quantity, 0);
 
+    // Reconstruct per-bid realized costs by allocating trade quantities across
+    // filled bids in bid order. This mirrors the matching sequence: each
+    // trade's quantity is assigned to bids with remaining filled volume so
+    // that bidCosts[i] = sum(fillQty × askPrice) for bid i.
+    const bidCosts: number[] = new Array(bidOrders.length).fill(0);
+    {
+        let currentBidIndex = 0;
+        // Advance to the first bid that actually received a fill.
+        while (currentBidIndex < bidOrders.length && bidFilled[currentBidIndex] <= 0) {
+            currentBidIndex++;
+        }
+        let remainingForBid = currentBidIndex < bidOrders.length ? bidFilled[currentBidIndex] : 0;
+        for (const trade of trades) {
+            let remainingTradeQty = trade.quantity;
+            while (remainingTradeQty > 0 && currentBidIndex < bidOrders.length) {
+                if (remainingForBid <= 0) {
+                    currentBidIndex++;
+                    while (currentBidIndex < bidOrders.length && bidFilled[currentBidIndex] <= 0) {
+                        currentBidIndex++;
+                    }
+                    if (currentBidIndex >= bidOrders.length) {
+                        break;
+                    }
+                    remainingForBid = bidFilled[currentBidIndex];
+                }
+                const alloc = Math.min(remainingTradeQty, remainingForBid);
+                bidCosts[currentBidIndex] += alloc * trade.price;
+                remainingTradeQty -= alloc;
+                remainingForBid -= alloc;
+            }
+        }
+    }
+
     // 6a. Household settlement — distribute food and debit wealth
     let totalActualDebit = 0;
     for (let i = 0; i < bidOrders.length; i++) {
@@ -357,14 +352,9 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
         const record = bidOrders[i];
         const category = demography[record.age][record.occ][record.edu][record.skill];
 
-        // Determine the weighted-average price paid by this bid
-        // We charge the bid at the average ask price of the fills it received.
-        // Since each bid was filled at successive ask prices (seller-price
-        // convention), we use the overall VWAP as a practical simplification —
-        // this keeps settlement O(n) and remains money-conserving when scaled.
-        const avgAskPrice = totalFoodSold > 0 ? totalRevenue / totalFoodSold : 0;
-        const cost = filled * avgAskPrice;
-        const perPersonCost = cost / record.population;
+        // Charge each bid based on the actual prices of its matched units.
+        const totalCostForBid = bidCosts[i];
+        const perPersonCost = record.population > 0 ? totalCostForBid / record.population : 0;
 
         category.foodStock += filled;
         totalActualDebit += debitFoodPurchase(planet.bank, category, perPersonCost);
