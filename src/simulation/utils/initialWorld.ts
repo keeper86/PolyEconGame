@@ -521,7 +521,8 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
             tertiary: 1.0,
         },
 
-        priceLevel: 1.0,
+        marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+        lastMarketResult: {},
 
         resources: {
             [arableLandResourceType.name]: earthArableLandClaims,
@@ -774,7 +775,8 @@ function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             tertiary: 1.0,
         },
 
-        priceLevel: 1.0,
+        marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+        lastMarketResult: {},
 
         resources: {
             [arableLandResourceType.name]: acArableLandClaims,

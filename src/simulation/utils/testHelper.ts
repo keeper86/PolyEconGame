@@ -426,6 +426,8 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         bank: makeBank(),
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
+        marketPrices: {},
+        lastMarketResult: {},
         ...overrides,
     };
 }

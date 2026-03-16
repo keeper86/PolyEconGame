@@ -12,6 +12,9 @@ import { describe, it, expect } from 'vitest';
 import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeFood } from './nutrition';
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
 import { makePopulation } from '../utils/testHelper';
+import { agriculturalProductResourceType } from '../planet/facilities';
+
+const FOOD = agriculturalProductResourceType.name;
 
 describe('updateStarvationLevel', () => {
     it('returns 0 when fully fed and not starving', () => {
@@ -107,14 +110,14 @@ describe('consumeFood (per-category model)', () => {
 
         // Place people and give them enough food
         pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.foodStock = 5;
+        pop.demography[30].unoccupied.none.novice.inventory = { [FOOD]: 5 };
         pop.demography[30].unoccupied.none.novice.starvationLevel = 0.5;
 
         consumeFood(pop);
 
         const cat = pop.demography[30].unoccupied.none.novice;
-        // foodStock should be reduced by consumption
-        expect(cat.foodStock).toBeCloseTo(5 - perTickDemand, 10);
+        // inventory should be reduced by consumption
+        expect(cat.inventory[FOOD] ?? 0).toBeCloseTo(5 - perTickDemand, 10);
         // starvation level should recover (was 0.5, now well-fed)
         expect(cat.starvationLevel).toBeLessThan(0.5);
     });
@@ -124,14 +127,14 @@ describe('consumeFood (per-category model)', () => {
         const populationCount = 360;
 
         pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.foodStock = 0.2; // less than demand
+        pop.demography[30].unoccupied.none.novice.inventory = { [FOOD]: 0.2 }; // less than demand
         pop.demography[30].unoccupied.none.novice.starvationLevel = 0;
 
         consumeFood(pop);
 
         const cat = pop.demography[30].unoccupied.none.novice;
-        // foodStock should be drained
-        expect(cat.foodStock).toBeCloseTo(0, 10);
+        // inventory should be drained
+        expect(cat.inventory[FOOD] ?? 0).toBeCloseTo(0, 10);
         // starvation should increase from 0
         expect(cat.starvationLevel).toBeGreaterThan(0);
     });
@@ -148,13 +151,13 @@ describe('consumeFood (per-category model)', () => {
     it('handles zero food stock gracefully', () => {
         const pop = makePopulation();
         pop.demography[20].unoccupied.none.novice.total = 100;
-        pop.demography[20].unoccupied.none.novice.foodStock = 0;
+        pop.demography[20].unoccupied.none.novice.inventory[FOOD] = 0;
         pop.demography[20].unoccupied.none.novice.starvationLevel = 0;
 
         consumeFood(pop);
 
         const cat = pop.demography[20].unoccupied.none.novice;
-        expect(cat.foodStock).toBe(0);
+        expect(cat.inventory[FOOD] ?? 0).toBe(0);
         // starvation should increase since no food
         expect(cat.starvationLevel).toBeGreaterThan(0);
     });

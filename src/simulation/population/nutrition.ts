@@ -30,6 +30,7 @@
  */
 
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
+import { agriculturalProductResourceType } from '../planet/facilities';
 import { forEachPopulationCohort, type Population } from './population';
 
 // ---------------------------------------------------------------------------
@@ -73,9 +74,10 @@ export function consumeFood(population: Population) {
                 return; // skip empty cells
             }
             const foodDemand = category.total * FOOD_PER_PERSON_PER_TICK;
-            const foodConsumed = Math.min(category.foodStock, foodDemand);
+            const foodStock = category.inventory[agriculturalProductResourceType.name] ?? 0;
+            const foodConsumed = Math.min(foodStock, foodDemand);
             const nutritionalFactor = foodConsumed / foodDemand;
-            category.foodStock -= foodConsumed;
+            category.inventory[agriculturalProductResourceType.name] = foodStock - foodConsumed;
             category.starvationLevel = updateStarvationLevel(category.starvationLevel, nutritionalFactor);
         });
     });

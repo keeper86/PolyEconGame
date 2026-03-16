@@ -17,6 +17,8 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import type { Occupation, Skill, PopulationCategory, Cohort } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL, createEmptyPopulationCohort } from '@/simulation/population/population';
 
+const FOOD = 'Agricultural Product';
+
 // ---- Replicate chart constants ----
 const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
@@ -95,7 +97,7 @@ function computeChartData(
                         continue;
                     }
 
-                    const stock = cat.foodStock;
+                    const stock = cat.inventory[FOOD] ?? 0;
                     const bufferRatio = FOOD_TARGET_PER_PERSON > 0 ? stock / (FOOD_TARGET_PER_PERSON * cat.total) : 0;
 
                     totalPop += cat.total;
@@ -158,7 +160,7 @@ function makePopulation(
 ): { demography: Cohort<PopulationCategory>[] } {
     const demography = Array.from({ length: Math.max(age + 1, 1) }, () => createEmptyPopulationCohort());
     demography[age][occ][edu][skill].total = total;
-    demography[age][occ][edu][skill].foodStock = foodStock;
+    demography[age][occ][edu][skill].inventory = { [FOOD]: foodStock };
     demography[age][occ][edu][skill].starvationLevel = starvationLevel;
     return { demography };
 }
@@ -235,12 +237,12 @@ describe('NutritionHeatmapChart — two-tier classification', () => {
 
         // Half the population: S=0, 200% buffer → should be fullBuffer
         demography[30].employed.primary.novice.total = 500;
-        demography[30].employed.primary.novice.foodStock = 500 * FOOD_TARGET_PER_PERSON * 2;
+        demography[30].employed.primary.novice.inventory = { [FOOD]: 500 * FOOD_TARGET_PER_PERSON * 2 };
         demography[30].employed.primary.novice.starvationLevel = 0;
 
         // Other half: S=0.1 (recovering), 50% buffer → should be lightStarvation
         demography[30].unoccupied.none.novice.total = 500;
-        demography[30].unoccupied.none.novice.foodStock = 500 * FOOD_TARGET_PER_PERSON * 0.5;
+        demography[30].unoccupied.none.novice.inventory = { [FOOD]: 500 * FOOD_TARGET_PER_PERSON * 0.5 };
         demography[30].unoccupied.none.novice.starvationLevel = 0.1;
 
         const data = computeChartData(demography);
@@ -258,7 +260,7 @@ describe('NutritionHeatmapChart — two-tier classification', () => {
     it('handles zero-population ages correctly', () => {
         const demography = Array.from({ length: 31 }, () => createEmptyPopulationCohort());
         demography[30].employed.primary.novice.total = 100;
-        demography[30].employed.primary.novice.foodStock = 100 * FOOD_TARGET_PER_PERSON;
+        demography[30].employed.primary.novice.inventory = { [FOOD]: 100 * FOOD_TARGET_PER_PERSON };
         demography[30].employed.primary.novice.starvationLevel = 0;
 
         const data = computeChartData(demography);

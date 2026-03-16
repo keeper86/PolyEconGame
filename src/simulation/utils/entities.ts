@@ -240,21 +240,10 @@ export const earth: Planet = {
         tertiary: 1.0,
     },
 
-    priceLevel: 1.0,
+    marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+    lastMarketResult: {},
 
     resources: {
-        [ironOreDepositResourceType.name]: [
-            {
-                id: 'earth-iron',
-                type: ironOreDepositResourceType,
-                quantity: 5000000,
-                regenerationRate: 0,
-                maximumCapacity: 5000000,
-                claimAgentId: earthGovernment.id,
-                tenantAgentId: testCompany.id,
-                tenantCostInCoins: 0,
-            },
-        ],
         [waterSourceResourceType.name]: [
             {
                 id: 'earth-water',
@@ -392,7 +381,8 @@ export const alphaCentauri: Planet = {
         tertiary: 1.0,
     },
 
-    priceLevel: 1.0,
+    marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+    lastMarketResult: {},
 
     resources: {
         [waterSourceResourceType.name]: [

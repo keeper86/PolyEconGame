@@ -190,15 +190,20 @@ export type Planet = {
      */
     wagePerEdu?: Partial<Record<EducationLevelType, number>>;
     /**
-     * Current price level P (nominal price per unit of physical output).
-     * Initialized to 1.0; updated each post-production financial tick.
+     * Per-resource VWAP price levels (currency / unit).
+     * Keys are resource names.  Updated each market tick.
+     * @example { 'Agricultural Product': 1.25 }
      */
-    priceLevel?: number;
+    marketPrices: {
+        [resourceName: string]: number;
+    };
     /**
-     * Snapshot of the most recent food market clearing result.
-     * Written by `foodMarketTick`; consumed by the UI for charting.
+     * Snapshot of the most recent market clearing results, one per resource.
+     * Written by `marketTick`; consumed by the UI for charting.
      */
-    lastFoodMarketResult?: FoodMarketResult;
+    lastMarketResult: {
+        [resourceName: string]: MarketResult;
+    };
 };
 
 // ---------------------------------------------------------------------------
@@ -228,48 +233,70 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
 });
 
 /**
- * Per-agent food market pricing state.
- * Written by `updateAgentPricing` and `foodMarketTick`.
+ * Per-resource offer state for one resource on one planet, stored inside
+ * `AgentMarketOffers.sell`.
+ * Written by `updateAgentPricing` and `marketTick`.
  */
-export type FoodMarketState = {
+export type AgentMarketOfferState = {
+    /** The resource being offered. */
+    resource: Resource;
     /**
-     * Current food offer price set by this agent (currency/ton).
+     * Current offer price set by this agent (currency / unit).
      * Human-controllable: players can override this value.
      */
     offerPrice?: number;
     /**
-     * Quantity of food offered for sale this tick (tons).
+     * Quantity offered for sale this tick (units).
      * Drawn from the agent's storage facility.
      */
     offerQuantity?: number;
-
-    /** Food actually sold during the last market clearing tick (tons). */
+    /** Units actually sold during the last market clearing tick. */
     lastSold?: number;
-    lastRevenue?: number; // in currency units, for price adjustment logic
-
+    /** Revenue earned during the last market clearing tick (currency units). */
+    lastRevenue?: number;
+    /** Tâtonnement price-direction hint (−1 / 0 / +1). */
     priceDirection?: number;
 };
 
 /**
- * Aggregate result snapshot of a single food market clearing tick.
+ * All market offers posted by one agent on one planet.
+ * Keyed by resource name so offer lookup is O(1).
+ */
+export type AgentMarketOffers = {
+    sell: {
+        [resourceName: string]: AgentMarketOfferState;
+    };
+};
+
+/**
+ * Aggregate result snapshot of a single market clearing tick for one resource.
  *
  * Stored on the planet so that the UI can build charts without
  * re-running the market simulation.
  */
-export type FoodMarketResult = {
-    /** Volume-weighted average price of all executed trades (currency/ton). */
+export type MarketResult = {
+    /** The resource this result refers to. */
+    resourceName: string;
+    /** Volume-weighted average price of all executed trades (currency/unit). */
     clearingPrice: number;
-    /** Total tons of food traded this tick. */
+    /** Total units traded this tick. */
     totalVolume: number;
-    /** Total household effective demand entering the order book (tons). */
+    /** Total household effective demand entering the order book (units). */
     totalDemand: number;
-    /** Total supply offered by all agents this tick (tons). */
+    /** Total supply offered by all agents this tick (units). */
     totalSupply: number;
-    /** Demand that could not be filled (tons). */
+    /** Demand that could not be filled (units). */
     unfilledDemand: number;
-    /** Supply that was not sold (tons). */
+    /** Supply that was not sold (units). */
     unsoldSupply: number;
 };
+
+// ---------------------------------------------------------------------------
+// Backward-compatible alias so existing UI / server code compiles without
+// changes.  Remove once all call-sites have been updated.
+// ---------------------------------------------------------------------------
+/** @deprecated Use `MarketResult` instead. */
+export type FoodMarketResult = MarketResult;
 
 // ---------------------------------------------------------------------------
 // AgentPlanetAssets
@@ -294,10 +321,8 @@ export type AgentPlanetAssets = {
      */
     lastWageBill?: number;
 
-    // ----- Food market state -----
-
-    /** Per-agent food market pricing & history. */
-    foodMarket?: FoodMarketState;
+    /** ----- Market offers (sell-side) for this agent on this planet. */
+    market?: AgentMarketOffers;
 
     // ----- Workforce -----
 

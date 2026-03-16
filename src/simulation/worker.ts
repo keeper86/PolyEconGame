@@ -32,6 +32,7 @@ import { createInitialGameState } from './utils/initialWorld';
 // is emitted as a separate chunk by esbuild and cannot be resolved at runtime
 // inside the standalone production image.
 import knexConfig from '../../knexfile.js';
+import { agriculturalProductResourceType } from './planet/facilities';
 
 export type InboundMessage =
     | { type: 'ping' }
@@ -246,7 +247,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     planet_id: planet.id,
                     population: computePopulationTotal(planet),
                     starvation_level: clampTiny(computeGlobalStarvation(planet)),
-                    food_price: clampTiny(planet.priceLevel ?? 0),
+                    food_price: clampTiny(planet.marketPrices[agriculturalProductResourceType.name] ?? 0),
                 }));
                 await insertPlanetPopulationHistory(db, populationRows);
 

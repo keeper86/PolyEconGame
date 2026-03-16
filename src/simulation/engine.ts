@@ -2,7 +2,7 @@ import { isMonthBoundary, isYearBoundary } from './constants';
 import { postProductionFinancialTick, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { updateAgentPricing } from './market/agentPricing';
-import { foodMarketTick } from './market/foodMarket';
+import { marketTick } from './market/market';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
@@ -58,7 +58,7 @@ export function advanceTick(gameState: GameState) {
 
         intergenerationalTransfersForPlanet(planet);
 
-        foodMarketTick(planetAgents, planet);
+        marketTick(planetAgents, planet);
 
         postProductionFinancialTick(planetAgents, planet);
 

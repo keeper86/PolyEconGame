@@ -8,21 +8,22 @@
  * require data spanning many ticks.
  */
 
+import { agriculturalProductResourceType } from '@/simulation/planet/facilities';
 import { z } from 'zod';
-import { protectedProcedure } from '../trpcRoot';
+import { workerQueries } from '../../lib/workerQueries';
+import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
+import type { Agent } from '../../simulation/planet/planet';
 import {
-    computePopulationTotal,
-    computeAgentStorage,
-    computeAgentProduction,
     computeAgentConsumption,
+    computeAgentProduction,
+    computeAgentStorage,
+    computePopulationTotal,
     summariseAgentBlob,
     summarisePlanetAssets,
     type AgentPlanetSummary,
 } from '../../simulation/snapshotRepository';
-import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
 import { db } from '../db';
-import { workerQueries } from '../../lib/workerQueries';
-import type { Agent } from '../../simulation/planet/planet';
+import { protectedProcedure } from '../trpcRoot';
 
 export const getCurrentTick = () =>
     protectedProcedure
@@ -68,7 +69,7 @@ export const getLatestPlanetSummaries = () =>
                         equity: p.bank.equity,
                         deposits: p.bank.deposits,
                     },
-                    foodPrice: p.priceLevel ?? 1,
+                    foodPrice: p.marketPrices[agriculturalProductResourceType.name] ?? 1,
                     name: p.name,
                 })),
             };

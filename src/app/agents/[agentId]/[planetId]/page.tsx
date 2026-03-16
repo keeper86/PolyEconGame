@@ -6,7 +6,11 @@ import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
 import type { WorkforceDemography } from '@/app/agents/workforce-summary';
 import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
-import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facilities';
+import {
+    agriculturalProductResourceType,
+    type ProductionFacility,
+    type StorageFacility,
+} from '@/simulation/planet/facilities';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { ArrowLeft } from 'lucide-react';
@@ -70,12 +74,16 @@ type PlanetAssets = {
     deposits: number;
     loans?: number;
     lastWageBill?: number;
-    foodMarket?: {
-        offerPrice?: number;
-        offerQuantity?: number;
-        lastSold?: number;
-        lastRevenue?: number;
-        priceDirection?: number;
+    market?: {
+        sell: {
+            [resourceName: string]: {
+                offerPrice?: number;
+                offerQuantity?: number;
+                lastSold?: number;
+                lastRevenue?: number;
+                priceDirection?: number;
+            };
+        };
     };
 };
 
@@ -139,7 +147,7 @@ export default function AgentPlanetDetailPage() {
                         deposits={assets.deposits ?? 0}
                         loans={assets.loans ?? 0}
                         lastWageBill={assets.lastWageBill ?? 0}
-                        foodMarket={assets.foodMarket}
+                        foodMarket={assets.market?.sell[agriculturalProductResourceType.name]}
                     />
                 </div>
             ) : isLoading ? (

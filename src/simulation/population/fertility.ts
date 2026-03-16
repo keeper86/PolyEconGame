@@ -1,4 +1,5 @@
 import { FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
+import { agriculturalProductResourceType } from '../planet/facilities';
 import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import { STARVATION_ACUTE_POWER } from './mortality';
@@ -75,7 +76,8 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
         // Newborns arrive with a small food stock gifted by their "neighbors" to get them started.
-        cat.foodStock += birthsThisTick * 10 * FOOD_PER_PERSON_PER_TICK;
+        cat.inventory[agriculturalProductResourceType.name] =
+            (cat.inventory[agriculturalProductResourceType.name] ?? 0) + birthsThisTick * 10 * FOOD_PER_PERSON_PER_TICK;
     }
 }
 
