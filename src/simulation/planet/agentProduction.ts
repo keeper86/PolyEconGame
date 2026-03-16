@@ -1,4 +1,3 @@
-
 import { agriculturalProductResourceType, queryStorageFacility } from './facilities';
 import type { Agent, Planet } from './planet';
 import type { ProductionFacility } from './facilities';
