@@ -5,9 +5,13 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+const EPSILON = 1e-4;
 export const formatNumbers = (n: number | null | undefined): string => {
     if (n == null || !isFinite(n)) {
         return '—';
+    }
+    if (Math.abs(n) < EPSILON) {
+        return '0';
     }
 
     let currentNumber = n;
@@ -19,6 +23,9 @@ export const formatNumbers = (n: number | null | undefined): string => {
         [1_000, 'k'],
     ];
     for (const [value, suffix] of abbreviations) {
+        if (Math.abs(n) < 1000) {
+            break;
+        }
         if (Math.abs(n) * 10 >= value) {
             currentSuffix = suffix;
             currentNumber = n / value;

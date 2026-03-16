@@ -194,8 +194,31 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
         return <EmptyChart />;
     }
 
+    const colorLegend = (
+        <div className='flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground'>
+            {keys.map((key) => (
+                <div key={key} className='flex items-center gap-1'>
+                    <span
+                        className='inline-block w-2 h-2 rounded-sm flex-shrink-0'
+                        style={{ background: colors[key] }}
+                    />
+                    <span style={{ color: colors[key] }} className='font-medium'>
+                        {labels[key]}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <>
+            <span className='mb-2 flex justify-between items-center'>
+                <h4 className='text-sm font-semibold mb-2' id='food'>
+                    Food Buffer
+                </h4>
+                {colorLegend}
+            </span>
+
             <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
                 <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
                     <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />

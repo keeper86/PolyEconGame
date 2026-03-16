@@ -9,7 +9,6 @@ import {
     transferPopulation,
     reducePopulationCohort,
     forEachPopulationCohort,
-    forEachPopulationCohortWithOccupation,
     mergeGaussianMoments,
     OCCUPATIONS,
     SKILL,
@@ -382,20 +381,6 @@ describe('forEachPopulationCohort', () => {
             }
         });
         expect(found).toBe(true);
-    });
-});
-
-describe('forEachPopulationCohortWithOccupation', () => {
-    it('provides occupation in callback', () => {
-        const cohort = makePopulationCohort();
-        const occs = new Set<string>();
-        forEachPopulationCohortWithOccupation(cohort, (_cat, occ) => {
-            occs.add(occ);
-        });
-        expect(occs.size).toBe(OCCUPATIONS.length);
-        for (const occ of OCCUPATIONS) {
-            expect(occs.has(occ)).toBe(true);
-        }
     });
 });
 

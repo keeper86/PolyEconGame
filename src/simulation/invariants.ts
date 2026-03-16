@@ -214,7 +214,26 @@ export type WealthBankDiscrepancy = {
 /**
  * @param tolerance  Relative tolerance to total of householdDeposits, tolerance = 0.0001 means 0.01% of householdDeposits (or absolute 0 if householdDeposits=0).
  */
-export function checkWealthBankConsistency(planets: Map<string, Planet>, tolerance = 0.0001): WealthBankDiscrepancy[] {
+export function checkWealthBankConsistency(planets: Map<string, Planet>, tolerance?: number): WealthBankDiscrepancy[];
+export function checkWealthBankConsistency(
+    planets: Map<string, Planet>,
+    name: string,
+    tolerance?: number,
+): WealthBankDiscrepancy[];
+export function checkWealthBankConsistency(
+    planets: Map<string, Planet>,
+    nameOrTolerance: string | number = 'checkWealthBankConsistency',
+    maybeTolerance = 0.0001,
+): WealthBankDiscrepancy[] {
+    let name: string;
+    let tolerance: number;
+    if (typeof nameOrTolerance === 'string') {
+        name = nameOrTolerance;
+        tolerance = maybeTolerance;
+    } else {
+        name = 'checkWealthBankConsistency';
+        tolerance = nameOrTolerance;
+    }
     const discrepancies: WealthBankDiscrepancy[] = [];
 
     for (const [planetId, planet] of planets) {
@@ -223,7 +242,7 @@ export function checkWealthBankConsistency(planets: Map<string, Planet>, toleran
 
         if (bank.householdDeposits < 0) {
             console.warn(
-                `[checkWealthBankConsistency] planet=${planetId} has negative householdDeposits=${bank.householdDeposits.toFixed(4)}`,
+                `[checkWealthBankConsistency] ${name} planet=${planetId} has negative householdDeposits=${bank.householdDeposits.toFixed(4)}`,
             );
             discrepancies.push({
                 planetId,
@@ -242,6 +261,23 @@ export function checkWealthBankConsistency(planets: Map<string, Planet>, toleran
         let totalPopulation = 0;
         for (const cohort of demography) {
             forEachPopulationCohort(cohort, (cat) => {
+                if (Number.isNaN(cat.wealth.mean) || Number.isNaN(cat.wealth.variance)) {
+                    discrepancies.push({
+                        planetId,
+                        planetName: planet.name,
+                        householdDeposits: bank.householdDeposits,
+                        populationWealth: NaN,
+                        diff: NaN,
+                        totalPopulation: NaN,
+                        diffPerCapita: NaN,
+                    });
+                    console.warn(
+                        `[checkWealthBankConsistency] ${name} planet=${planetId} has NaN wealth moments in population category, cat=${JSON.stringify(
+                            cat,
+                        )}`,
+                    );
+                    return;
+                }
                 if (cat.total > 0) {
                     totalWealth += cat.total * cat.wealth.mean;
                     totalPopulation += cat.total;
@@ -260,8 +296,31 @@ export function checkWealthBankConsistency(planets: Map<string, Planet>, toleran
                 diffPerCapita: NaN,
             });
             console.warn(
-                `[checkWealthBankConsistency] planet=${planetId} has negative totalPopulationWealth=${totalWealth.toFixed(4)}`,
+                `[checkWealthBankConsistency] ${name} planet=${planetId} has negative totalPopulationWealth=${totalWealth.toFixed(4)}`,
             );
+            continue;
+        }
+
+        if (totalPopulation === 0) {
+            continue;
+        }
+
+        // Guard against division by zero: householdDeposits === 0 would yield NaN.
+        if (bank.householdDeposits === 0) {
+            if (totalWealth === 0) {
+                // Both are zero — consistent, nothing to report.
+                continue;
+            }
+            // Deposits are zero but wealth is non-zero — always a discrepancy.
+            discrepancies.push({
+                planetId,
+                planetName: planet.name,
+                householdDeposits: 0,
+                populationWealth: totalWealth,
+                diff: 1,
+                totalPopulation,
+                diffPerCapita: totalPopulation > 0 ? totalWealth / totalPopulation : 0,
+            });
             continue;
         }
 
