@@ -11,6 +11,8 @@ export type MarketSnapshot = {
     totalSupply: number;
     totalSold: number;
     fillRatio: number;
+    unfilledDemand: number;
+    unsoldSupply: number;
     starvationLevel: number;
     populationTotal: number;
 };
@@ -97,6 +99,18 @@ function buildCards(m: MarketSnapshot): CardDef[] {
             value: formatNumbers(m.fillRatio * 100) + '%',
             sub: `${soldPct} of supply sold · ${fillRatioLabel(m.fillRatio)}`,
             accentColor: fillRatioColor(m.fillRatio),
+        },
+        {
+            label: 'Unfilled demand',
+            value: formatNumbers(m.unfilledDemand),
+            sub: 'tons of bids with no matching ask',
+            accentColor: m.unfilledDemand > 0 ? '#f97316' : '#22c55e',
+        },
+        {
+            label: 'Unsold supply',
+            value: formatNumbers(m.unsoldSupply),
+            sub: 'tons of asks below any bid',
+            accentColor: m.unsoldSupply > 0 ? '#94a3b8' : '#22c55e',
         },
         {
             label: 'Starvation',

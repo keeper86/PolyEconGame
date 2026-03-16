@@ -85,7 +85,8 @@ export default function PlanetFoodMarketPage() {
                     <CardTitle className='text-xs font-medium text-muted-foreground'>
                         {market.offers.length} active seller{market.offers.length !== 1 ? 's' : ''}
                         {' · '}supply {market.totalSupply.toFixed(1)} t{' · '}sold {market.totalSold.toFixed(1)} t
-                        {' · '}demand {market.totalDemand.toFixed(1)} t
+                        {' · '}demand {market.totalDemand.toFixed(1)} t{' · '}unfilled{' '}
+                        {market.unfilledDemand.toFixed(1)} t
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

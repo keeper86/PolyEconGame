@@ -189,26 +189,32 @@ export const transferPopulation = (
     if (transferMaximum <= 0) {
         return { count: 0, inheritedWealth: 0 };
     }
-    const fraction = transferMaximum / fromCategory.total;
 
     let inheritedWealth = 0;
     if (toCategory && to) {
         // Zero-sum wealth transfer between cells — householdDeposits unchanged.
         mergeWealthInto(toCategory, fromCategory, transferMaximum);
-        const srcFoodPer = fromCategory.total > 0 ? stochasticRound(fromCategory.foodStock / fromCategory.total) : 0;
-        toCategory.foodStock += srcFoodPer * transferMaximum;
+        const foodTransfer =
+            fromCategory.total > 0
+                ? stochasticRound((transferMaximum * fromCategory.foodStock) / fromCategory.total)
+                : 0;
+        toCategory.foodStock += foodTransfer;
+        fromCategory.foodStock -= foodTransfer;
 
-        toCategory.starvationLevel =
-            (toCategory.total * toCategory.starvationLevel + transferMaximum * fromCategory.starvationLevel) /
-            (toCategory.total + transferMaximum);
+        //toCategory.starvationLevel =
+        //    (toCategory.total * toCategory.starvationLevel + transferMaximum * fromCategory.starvationLevel) /
+        //    (toCategory.total + transferMaximum);
 
         toCategory.total += transferMaximum;
         fromCategory.total -= transferMaximum;
+
+        if (fromCategory.total === 0) {
+            fromCategory.starvationLevel = 0;
+            fromCategory.foodStock = 0;
+            fromCategory.wealth = { mean: 0, variance: 0 };
+        }
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
         population.summedPopulation[to.occ][to.edu][to.skill].total += transferMaximum;
-
-        const foodStockTransfer = fromCategory.foodStock * fraction;
-        fromCategory.foodStock -= foodStockTransfer;
     } else {
         // Death: decrement source and orphan the wealth for inheritance.
         // destroyWealthOnDeath adjusts householdDeposits for the negative-wealth
@@ -216,8 +222,7 @@ export const transferPopulation = (
         inheritedWealth = destroyWealthOnDeath(bank, fromCategory, transferMaximum);
         fromCategory.total -= transferMaximum;
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
-        // Food stock of the dead is destroyed (perishable).
-        fromCategory.foodStock -= fromCategory.foodStock * fraction;
+        // Food stock of the dead is taken by "neighbors"
     }
 
     return { count: transferMaximum, inheritedWealth };
@@ -261,15 +266,6 @@ export const populationSumFunction = (a: PopulationCategory, b: PopulationCatego
 });
 
 export const forEachPopulationCohort = (
-    cohort: Cohort<PopulationCategory>,
-    forEachFunction: (category: PopulationCategory, occ: Occupation, edu: EducationLevelType, skill: Skill) => void,
-): void => {
-    for (const occ of OCCUPATIONS) {
-        forEachOccupiedPopulation(cohort[occ], (category, edu, skill) => forEachFunction(category, occ, edu, skill));
-    }
-};
-
-export const forEachPopulationCohortWithOccupation = (
     cohort: Cohort<PopulationCategory>,
     forEachFunction: (category: PopulationCategory, occ: Occupation, edu: EducationLevelType, skill: Skill) => void,
 ): void => {

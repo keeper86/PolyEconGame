@@ -1,31 +1,8 @@
-/**
- * market/foodMarket.ts
- *
- * Implements the food market clearing mechanism (Subsystems 1 & 2).
- *
- * **Per-agent offer model:**  Each food-producing agent posts an offer
- * (price, quantity) via `updateAgentPricing`.  Households form demand
- * and buy from the cheapest offers first (merit-order dispatch).
- *
- * Per tick:
- * 1. Collect per-agent offers from storage facilities.
- * 2. Household consumption: each cohort-class depletes its foodStock.
- * 3. Demand formation: households compute desiredPurchase (buffer replenishment).
- * 4. Liquidity constraint: affordableQuantity = meanWealth / offerPrice.
- * 5. Merit-order clearing: match demand against offers cheapest-first.
- * 6. Financial settlement: household deposits decrease, agent deposits increase.
- * 7. Compute volume-weighted average price for the price level.
- * 8. Update starvation level based on actual foodStock.
- *
- * Revenue flows directly to the agent whose offer was filled (not
- * proportional distribution).
- */
-
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
 import { agriculturalProductResourceType, removeFromStorageFacility } from '../planet/facilities';
-import type { Agent, Planet } from '../planet/planet';
+import type { Agent, FoodMarketResult, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
-import type { GaussianMoments, Occupation, Skill } from '../population/population';
+import type { GaussianMoments, Occupation, PopulationCategoryIndex, Skill } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
 import { debitFoodPurchase } from '../financial/wealthOps';
 
@@ -33,54 +10,93 @@ import { debitFoodPurchase } from '../financial/wealthOps';
 // Types
 // ---------------------------------------------------------------------------
 
-/** Per-cohort-class demand record used during market clearing. */
-interface DemandRecord {
+/** A household cohort-cell's bid order on the food market. */
+interface BidOrder {
     age: number;
     edu: EducationLevelType;
     occ: Occupation;
     skill: Skill;
     population: number;
-    effectiveDemand: number; // total tons demanded by this cell
+    /** Reservation price (currency / ton). */
+    bidPrice: number;
+    /** Quantity demanded (tons). */
+    quantity: number;
+    /** Wealth moments for settlement. */
     wealthMoments: GaussianMoments;
 }
 
-/** A single agent's offer on the market. */
-interface MarketOffer {
+/** A food-producing agent's ask order on the food market. */
+interface AskOrder {
     agent: Agent;
-    price: number; // currency per ton
-    quantity: number; // tons available
-    sold: number; // tons sold so far (accumulated during clearing)
-    revenue: number; // revenue accumulated during clearing
+    /** Ask price (currency / ton). */
+    askPrice: number;
+    /** Quantity offered (tons). */
+    quantity: number;
+    /** Filled so far during matching (tons). */
+    filled: number;
+    /** Revenue accumulated during matching (currency). */
+    revenue: number;
+}
+
+/** An executed trade record. */
+interface TradeRecord {
+    /** Trade price = ask price (seller-price convention). */
+    price: number;
+    /** Tons traded. */
+    quantity: number;
 }
 
 // ---------------------------------------------------------------------------
-// Truncated expectation under lognormal wealth distribution
+// Exported helper (used by tests & external demand-estimation callers)
 // ---------------------------------------------------------------------------
 
 /**
- * Compute the expected purchase quantity for a cohort-class under the
- * assumption that wealth is lognormally distributed.
+ * Compute the effective food demand quantity for a cohort-cell, applying the
+ * liquidity constraint: a household cannot spend more than it has.
  *
- * E[min(w / price, desiredPurchase)] where w ~ LogNormal(μ_ln, σ_ln²)
+ * Uses a mean-field approximation (all members have exactly `meanWealth`).
+ * This is exact when `wealthVariance = 0` and is a sound first-order
+ * approximation otherwise.
  *
- * For the initial implementation we use a simpler mean-field approximation:
- * all members of the cohort-class have exactly meanWealth.  This is exact
- * when wealthVariance = 0 and a reasonable first-order approximation
- * otherwise.
- *
- * TODO: Replace with closed-form truncated lognormal expectation when
- *       variance tracking is well-calibrated.
+ * @param meanWealth       Per-capita mean wealth of the cell.
+ * @param _wealthVariance  (Reserved) per-capita wealth variance — not used yet.
+ * @param foodPrice        Reference price per ton.
+ * @param desiredPurchase  Tons the cell wants to buy before the liquidity cap.
+ * @returns Effective demand in tons (≥ 0).
  */
 export function expectedPurchaseQuantity(
     meanWealth: number,
-    _wealthVariance: number,
+    index: PopulationCategoryIndex,
     foodPrice: number,
     desiredPurchase: number,
 ): number {
-    if (foodPrice <= 0 || desiredPurchase <= 0) {
+    // Defensive guards: reject non-finite inputs early. Comparisons with NaN
+    // are always false, so NaN would slip through the original checks and
+    // produce NaN outputs that later break the matching loop.
+    if (!Number.isFinite(foodPrice) || !Number.isFinite(desiredPurchase) || foodPrice <= 0 || desiredPurchase <= 0) {
+        console.log('warn: invalid inputs to expectedPurchaseQuantity', {
+            meanWealth,
+            index,
+            foodPrice,
+            desiredPurchase,
+        });
         return 0;
     }
+    if (!Number.isFinite(meanWealth) || meanWealth < 0) {
+        console.log('warn: invalid meanWealth in expectedPurchaseQuantity', { meanWealth, index });
+        return 0;
+    }
+
     const affordableQuantity = meanWealth / foodPrice;
+    if (!Number.isFinite(affordableQuantity)) {
+        console.log('warn: non-finite affordableQuantity in expectedPurchaseQuantity', {
+            meanWealth,
+            foodPrice,
+            affordableQuantity,
+        });
+        return 0;
+    }
+
     return Math.min(desiredPurchase, Math.max(0, affordableQuantity));
 }
 
@@ -89,31 +105,38 @@ export function expectedPurchaseQuantity(
 // ---------------------------------------------------------------------------
 
 /**
- * Execute the food market clearing for all planets.
+ * Execute the food market clearing for a single planet.
  *
- * Must be called AFTER `updateAgentPricing` (so offers are set) and
+ * Must be called AFTER `updateAgentPricing` (so agent offers are set) and
  * AFTER intergenerational transfers (so dependents have wealth to spend).
  */
 export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void {
-    // --- Step 0: Collect per-agent offers ---
-    const offers = collectOffers(agents, planet);
+    // ------------------------------------------------------------------
+    // Step 1: Collect ask orders from food-producing agents
+    // ------------------------------------------------------------------
+    const askOrders = collectAskOrders(agents, planet);
+    const totalSupply = askOrders.reduce((s, a) => s + a.quantity, 0);
 
+    for (const ask of askOrders) {
+        const fm = ask.agent.assets[planet.id]?.foodMarket;
+        if (fm) {
+            fm.lastSold = 0;
+            fm.lastRevenue = 0;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Steps 2–3: Form bid orders from household cohort-cells
+    // ------------------------------------------------------------------
+    // Use planet.priceLevel as reference price (the VWAP from the last cleared
+    // tick).  This is a stable, bias-free anchor for demand formation and
+    // avoids distortion from very high-priced asks that are unlikely to trade.
+    const referencePrice = planet.priceLevel ?? INITIAL_FOOD_PRICE;
+    const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
     const demography = planet.population.demography;
 
-    // --- Step 2/3/4: Demand formation with liquidity constraint ---
-    const demandRecords: DemandRecord[] = [];
-    let aggregateDemand = 0;
-    // Each household aims to hold `FOOD_BUFFER_TARGET_TICKS` worth of
-    // consumption. The previous implementation multiplied this by 2,
-    // effectively causing agents to target a 60‑day buffer even though
-    // the constant is documented and used elsewhere as a 30‑day target.
-    // That led to persistent hoarding and very large apparent buffer
-    // percentages (e.g. 400%+) in the UI.  Use the single-target value
-    // here so demand formation aligns with the rest of the model.
-    const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
-
-    // Use the volume-weighted average price from offers for demand formation
-    const referencePrice = computeReferencePrice(offers, planet.priceLevel ?? 0.01);
+    const bidOrders: BidOrder[] = [];
+    let totalDemand = 0;
 
     demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -121,133 +144,287 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
             if (pop <= 0) {
                 return;
             }
-            const fb = category;
-            const wm = category.wealth;
 
-            const foodStockPerPerson = fb.foodStock / pop;
-            const desiredPurchasePerPerson = Math.max(0, foodTargetPerPerson - foodStockPerPerson);
+            const wm = category.wealth;
+            if (wm.mean < 0 || !Number.isFinite(wm.mean)) {
+                throw new Error(
+                    `Invalid mean wealth for cohort category: age=${age} occ=${occ} edu=${edu} skill=${skill} meanWealth=${wm.mean}`,
+                );
+            }
+            const foodStockPerPerson = category.foodStock / pop;
+            const desiredPerPerson = Math.max(0, foodTargetPerPerson - foodStockPerPerson);
+            if (desiredPerPerson <= 0) {
+                return;
+            }
+
+            // Liquidity constraint: how much can the cell actually afford?
             const effectiveDemandPerPerson = expectedPurchaseQuantity(
                 wm.mean,
-                wm.variance,
+                { occ, edu, skill, age },
                 referencePrice,
-                desiredPurchasePerPerson,
+                desiredPerPerson,
             );
             const effectiveDemandTotal = effectiveDemandPerPerson * pop;
-
-            if (effectiveDemandTotal > 0) {
-                demandRecords.push({
+            // Guard against NaN/Infinity slipping through — skip invalid demand
+            // that would otherwise produce NaNs in matching and cause
+            // infinite loops.
+            if (!Number.isFinite(effectiveDemandTotal) || effectiveDemandTotal < 0) {
+                console.log('warn: non-finite effectiveDemandTotal in foodMarketTick', {
                     age,
                     edu,
                     occ,
                     skill,
-                    population: pop,
-                    effectiveDemand: effectiveDemandTotal,
-                    wealthMoments: wm,
+                    effectiveDemandPerPerson,
+                    effectiveDemandTotal,
                 });
-                aggregateDemand += effectiveDemandTotal;
+                return;
             }
+
+            // Reservation price: the cell is willing to spend its entire per-capita
+            // wealth to fill the desired buffer — wealthier cells bid higher.
+            // Guard against zero desiredPerPerson (already checked above) and
+            // zero wealth (bid price = 0, which will never be matched against a
+            // positive ask, correctly preventing purchase).
+            const bidPrice = desiredPerPerson > 0 ? wm.mean / desiredPerPerson : 0;
+
+            bidOrders.push({
+                age,
+                edu,
+                occ,
+                skill,
+                population: pop,
+                bidPrice,
+                quantity: effectiveDemandTotal,
+                wealthMoments: wm,
+            });
+            totalDemand += effectiveDemandTotal;
         }),
     );
 
-    // --- Step 5: Merit-order clearing (cheapest offers first) ---
-    // Sort offers by price ascending
-    offers.sort((a, b) => a.price - b.price);
+    // ------------------------------------------------------------------
+    // Step 4: Build sorted order books
+    //   bidBook  → descending  (highest reservation price first)
+    //   askBook  → ascending   (lowest ask first)
+    // ------------------------------------------------------------------
+    bidOrders.sort((a, b) => b.bidPrice - a.bidPrice);
+    askOrders.sort((a, b) => a.askPrice - b.askPrice);
 
-    let remainingDemand = aggregateDemand;
-    let totalRevenue = 0;
-    let totalFoodSold = 0;
+    // ------------------------------------------------------------------
+    // Step 5: Price-priority matching
+    //   Trade while highestBid >= lowestAsk.
+    //   Trade price = ask price (seller-price convention).
+    // ------------------------------------------------------------------
 
-    for (const offer of offers) {
-        if (remainingDemand <= 0) {
+    // Minimum meaningful trade quantity (tons).  Remaining quantities below
+    // this threshold are treated as fully exhausted to prevent infinite loops
+    // from IEEE 754 floating-point drift where subtraction never quite reaches
+    // exactly 0 (e.g. 1e-14 remaining after many small fills).
+    const QUANTITY_EPSILON = 1e-9;
+
+    const trades: TradeRecord[] = [];
+
+    // Working indices into the sorted books
+    let bidIdx = 0;
+    let askIdx = 0;
+
+    // Mutable remaining quantities for the current head order on each side
+    let bidRemaining = bidOrders.length > 0 ? bidOrders[0].quantity : 0;
+    let askRemaining = askOrders.length > 0 ? askOrders[0].quantity : 0;
+
+    // Per-bid fill tracking (parallel array indexed by bidIdx).
+    // Use map so we derive the tracking array from the actual bids array
+    // (defensive against invalid numeric `length` values that would make
+    // `new Array(len)` throw a RangeError).
+    const bidFilled: number[] = bidOrders.map(() => 0);
+
+    while (bidIdx < bidOrders.length && askIdx < askOrders.length) {
+        const bid = bidOrders[bidIdx];
+        const ask = askOrders[askIdx];
+
+        // Defensive: if remaining quantities become non-finite break out
+        // to avoid an infinite loop that repeatedly pushes into `trades`.
+        if (!Number.isFinite(bidRemaining) || !Number.isFinite(askRemaining)) {
+            console.warn('foodMarketTick: non-finite remaining quantities', {
+                bidIdx,
+                askIdx,
+                bidOrdersLength: bidOrders.length,
+                askOrdersLength: askOrders.length,
+                bidRemaining,
+                askRemaining,
+            });
             break;
         }
-        const filledQuantity = Math.min(offer.quantity, remainingDemand);
-        offer.sold = filledQuantity;
-        offer.revenue = filledQuantity * offer.price;
-        remainingDemand -= filledQuantity;
-        totalRevenue += offer.revenue;
-        totalFoodSold += filledQuantity;
-    }
 
-    // --- Step 6 & 7: Financial settlement + wealth update ---
-    // Use centralised debitFoodPurchase so that householdDeposits is
-    // decremented by the *actual* wealth removed from each cell (after
-    // the Math.max(0,…) floor clamp), keeping the two values in sync.
-    const bank = planet.bank;
-
-    // Distribute purchased food to households and reduce wealth
-    let totalActualDebit = 0;
-    if (totalFoodSold > 0 && aggregateDemand > 0) {
-        const fillRatio = Math.min(1, totalFoodSold / aggregateDemand);
-        const avgPricePaid = totalRevenue / totalFoodSold;
-
-        for (const record of demandRecords) {
-            const quantityReceived = record.effectiveDemand * fillRatio;
-            if (quantityReceived <= 0) {
-                continue;
-            }
-            const cost = quantityReceived * avgPricePaid;
-            const perPersonCost = cost / record.population;
-
-            const category = demography[record.age][record.occ][record.edu][record.skill];
-            category.foodStock += quantityReceived;
-
-            // debitFoodPurchase tracks the actual amount removed (respecting
-            // the zero floor) and decrements householdDeposits accordingly.
-            totalActualDebit += debitFoodPurchase(bank, category, perPersonCost);
+        if (bid.bidPrice < ask.askPrice) {
+            break; // No more profitable matches
         }
-    }
 
-    // Agent revenue: distribute the actual amount paid by households
-    // (totalActualDebit) to agents proportionally by their share of
-    // the total revenue.  This ensures monetary conservation: the
-    // total firm deposit increase equals the total household deposit decrease.
-    const agentRevenueScale = totalRevenue > 0 ? totalActualDebit / totalRevenue : 0;
+        const tradeQty = Math.min(bidRemaining, askRemaining);
 
-    for (const offer of offers) {
-        if (offer.sold <= 0) {
+        if (!Number.isFinite(tradeQty)) {
+            console.warn('foodMarketTick: invalid tradeQty computed', {
+                bidIdx,
+                askIdx,
+                bidRemaining,
+                askRemaining,
+                tradeQty,
+            });
+            break;
+        }
+
+        // Skip dust quantities — advance the exhausted side and continue
+        if (tradeQty < QUANTITY_EPSILON) {
+            if (bidRemaining <= askRemaining) {
+                bidIdx++;
+                bidRemaining = bidIdx < bidOrders.length ? bidOrders[bidIdx].quantity : 0;
+            } else {
+                askIdx++;
+                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity : 0;
+            }
             continue;
         }
-        const agentRevenue = offer.revenue * agentRevenueScale;
-        offer.agent.assets[planet.id].deposits += agentRevenue;
 
-        // Remove sold food from the agent's storage
-        removeFromStorageFacility(
-            offer.agent.assets[planet.id]?.storageFacility,
-            agriculturalProductResourceType.name,
-            offer.sold,
-        );
+        const tradePrice = ask.askPrice;
 
-        // Record lastSold for the pricing AI
-        const assets = offer.agent.assets[planet.id];
-        if (assets) {
-            if (!assets.foodMarket) {
-                assets.foodMarket = {};
+        try {
+            trades.push({ price: tradePrice, quantity: tradeQty });
+        } catch (e) {
+            // Defensive diagnostics: if an Array operation throws a RangeError
+            // we'll log the surrounding state and break out of matching to
+            // avoid crashing the worker. This should help identify the root
+            // cause in production runs.
+            if (e instanceof RangeError) {
+                console.error('foodMarketTick: RangeError pushing to trades', {
+                    tradesLength: trades.length,
+                    bidIdx,
+                    askIdx,
+                    bidOrdersLength: bidOrders.length,
+                    askOrdersLength: askOrders.length,
+                    bidRemaining,
+                    askRemaining,
+                    tradeQty,
+                });
+                break;
             }
-            assets.foodMarket.lastSold = offer.sold;
+            throw e;
+        }
+        ask.filled += tradeQty;
+        ask.revenue += tradeQty * tradePrice;
+
+        // Defensive guard: ensure we don't accidentally expand `bidFilled`
+        // to an invalid length (which can throw RangeError). If this
+        // condition fires something has gone wrong with the matching
+        // indices; break out to avoid crashing the worker and surface a
+        // useful debug message.
+        if (bidIdx < 0 || bidIdx >= bidFilled.length) {
+            console.warn('foodMarketTick: bidIdx out of range', {
+                bidIdx,
+                bidOrdersLength: bidOrders.length,
+                bidFilledLength: bidFilled.length,
+            });
+            break;
+        }
+
+        bidFilled[bidIdx] += tradeQty;
+
+        bidRemaining -= tradeQty;
+        askRemaining -= tradeQty;
+
+        if (bidRemaining < QUANTITY_EPSILON) {
+            bidIdx++;
+            bidRemaining = bidIdx < bidOrders.length ? bidOrders[bidIdx].quantity : 0;
+        }
+        if (askRemaining < QUANTITY_EPSILON) {
+            askIdx++;
+            askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity : 0;
         }
     }
 
-    // Record lastSold = 0 for agents that had offers but sold nothing
-    for (const offer of offers) {
-        if (offer.sold <= 0) {
-            const assets = offer.agent.assets[planet.id];
-            if (assets) {
-                if (!assets.foodMarket) {
-                    assets.foodMarket = {};
-                }
-                if (assets.foodMarket.lastSold === undefined) {
-                    assets.foodMarket.lastSold = 0;
-                }
-            }
+    // ------------------------------------------------------------------
+    // Step 6: Settlement
+    // ------------------------------------------------------------------
+    const totalFoodSold = trades.reduce((s, t) => s + t.quantity, 0);
+    const totalRevenue = trades.reduce((s, t) => s + t.price * t.quantity, 0);
+
+    // 6a. Household settlement — distribute food and debit wealth
+    let totalActualDebit = 0;
+    for (let i = 0; i < bidOrders.length; i++) {
+        const filled = bidFilled[i];
+        if (filled <= 0) {
+            continue;
         }
+
+        const record = bidOrders[i];
+        const category = demography[record.age][record.occ][record.edu][record.skill];
+
+        // Determine the weighted-average price paid by this bid
+        // We charge the bid at the average ask price of the fills it received.
+        // Since each bid was filled at successive ask prices (seller-price
+        // convention), we use the overall VWAP as a practical simplification —
+        // this keeps settlement O(n) and remains money-conserving when scaled.
+        const avgAskPrice = totalFoodSold > 0 ? totalRevenue / totalFoodSold : 0;
+        const cost = filled * avgAskPrice;
+        const perPersonCost = cost / record.population;
+
+        category.foodStock += filled;
+        totalActualDebit += debitFoodPurchase(planet.bank, category, perPersonCost);
     }
 
-    // --- Step 8: Update volume-weighted average price ---
+    // 6b. Agent settlement — credit revenue and remove inventory
+    const agentRevenueScale = totalRevenue > 0 ? totalActualDebit / totalRevenue : 0;
+
+    for (const ask of askOrders) {
+        const assets = ask.agent.assets[planet.id];
+        if (!assets) {
+            continue;
+        }
+
+        // Ensure foodMarket state exists
+        if (!assets.foodMarket) {
+            assets.foodMarket = {};
+        }
+
+        if (ask.filled <= 0) {
+            // lastSold was already reset to 0 at tick start — nothing to do.
+            continue;
+        }
+
+        // Scale agent revenue so that total agent credits = total household debits
+        // (monetary conservation even under the per-capita wealth floor clamp).
+        const scaledRevenue = ask.revenue * agentRevenueScale;
+        assets.deposits += scaledRevenue;
+
+        // Remove sold food from agent storage
+        removeFromStorageFacility(assets.storageFacility, agriculturalProductResourceType.name, ask.filled);
+
+        // Persist for pricing AI
+        assets.foodMarket.lastSold = ask.filled;
+        assets.foodMarket.lastRevenue = scaledRevenue;
+    }
+
+    // ------------------------------------------------------------------
+    // Step 7: Update planet price level (VWAP of all trades)
+    // ------------------------------------------------------------------
     if (totalFoodSold > 0) {
         planet.priceLevel = totalRevenue / totalFoodSold;
     }
-    // If nothing was sold, keep the previous price (or initial)
+    // If nothing was sold, keep the previous price (or initial default).
+
+    // ------------------------------------------------------------------
+    // Step 8: Persist market result snapshot
+    // ------------------------------------------------------------------
+    const unsoldSupply = askOrders.reduce((s, a) => s + (a.quantity - a.filled), 0);
+    const unfilledDemand = Math.max(0, totalDemand - totalFoodSold);
+
+    const result: FoodMarketResult = {
+        clearingPrice: totalFoodSold > 0 ? totalRevenue / totalFoodSold : (planet.priceLevel ?? INITIAL_FOOD_PRICE),
+        totalVolume: totalFoodSold,
+        totalDemand,
+        totalSupply,
+        unfilledDemand,
+        unsoldSupply,
+    };
+    planet.lastFoodMarketResult = result;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,15 +432,14 @@ export function foodMarketTick(agents: Map<string, Agent>, planet: Planet): void
 // ---------------------------------------------------------------------------
 
 /**
- * Collect per-agent food offers from all agents on a planet.
+ * Collect ask orders from all food-producing agents on the planet.
  *
- * Each food-producing agent's `foodOfferPrice` and `foodOfferQuantity`
- * (set by `updateAgentPricing`) become an offer.  If pricing has not
- * been run yet, the agent bootstraps with INITIAL_FOOD_PRICE and its
- * full storage quantity.
+ * The offer price and quantity are set by `updateAgentPricing`.
+ * If pricing has not been run yet the agent bootstraps with
+ * `INITIAL_FOOD_PRICE` and its full storage quantity.
  */
-function collectOffers(agents: Map<string, Agent>, planet: Planet): MarketOffer[] {
-    const offers: MarketOffer[] = [];
+function collectAskOrders(agents: Map<string, Agent>, planet: Planet): AskOrder[] {
+    const orders: AskOrder[] = [];
 
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -271,7 +447,6 @@ function collectOffers(agents: Map<string, Agent>, planet: Planet): MarketOffer[
             return;
         }
 
-        // Check if agent produces food
         const hasFoodProduction = assets.productionFacilities.some((f) =>
             f.produces.some((p) => p.resource.name === agriculturalProductResourceType.name),
         );
@@ -282,41 +457,21 @@ function collectOffers(agents: Map<string, Agent>, planet: Planet): MarketOffer[
         const price = assets.foodMarket?.offerPrice ?? INITIAL_FOOD_PRICE;
         const quantity = assets.foodMarket?.offerQuantity ?? 0;
 
-        if (quantity > 0) {
-            offers.push({
-                agent,
-                price,
-                quantity,
-                sold: 0,
-                revenue: 0,
-            });
-        }
-
-        // Record the food currently in storage as "produced" for the pricing AI
-        // (This captures both newly produced and carried-over inventory)
+        // Ensure the foodMarket state object exists for later writes
         if (!assets.foodMarket) {
             assets.foodMarket = {};
         }
+
+        if (quantity > 0) {
+            orders.push({
+                agent,
+                askPrice: price,
+                quantity,
+                filled: 0,
+                revenue: 0,
+            });
+        }
     });
 
-    return offers;
-}
-
-/**
- * Compute a reference price for household demand formation.
- *
- * Uses the quantity-weighted average of offer prices.  Falls back to
- * the last known market price if there are no offers.
- */
-function computeReferencePrice(offers: MarketOffer[], fallbackPrice: number): number {
-    let totalQty = 0;
-    let weightedPrice = 0;
-    for (const offer of offers) {
-        weightedPrice += offer.price * offer.quantity;
-        totalQty += offer.quantity;
-    }
-    if (totalQty > 0) {
-        return weightedPrice / totalQty;
-    }
-    return fallbackPrice;
+    return orders;
 }

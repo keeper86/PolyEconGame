@@ -34,6 +34,11 @@ function logWealthDivergence(
                 ` totalPopulation=${Math.round(d.totalPopulation)}`,
         );
     }
+    if (discrepancies.length > 0) {
+        console.log('waiting...', discrepancies);
+
+        while (true) {}
+    }
 }
 
 export function advanceTick(gameState: GameState) {
@@ -49,7 +54,11 @@ export function advanceTick(gameState: GameState) {
 
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(planetAgents, planet, `${planet.name} before workforce tick`);
-            logWealthDivergence('BEFOREpopulationTick', gameState.tick, checkWealthBankConsistency(planetMap));
+            logWealthDivergence(
+                'BEFOREpopulationTick',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'BEFOREpopulationTick'),
+            );
         }
 
         const workforceEvents = workforceDemographicTick(planetAgents, planet);
@@ -57,7 +66,11 @@ export function advanceTick(gameState: GameState) {
 
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'after');
-            logWealthDivergence('populationTick', gameState.tick, checkWealthBankConsistency(planetMap));
+            logWealthDivergence(
+                'populationTick',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'populationTick'),
+            );
         }
 
         if (isMonthBoundary(gameState.tick)) {
@@ -65,38 +78,81 @@ export function advanceTick(gameState: GameState) {
             hireWorkforce(planetAgents, planet);
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'othermonth');
-                logWealthDivergence('hireWorkforce', gameState.tick, checkWealthBankConsistency(planetMap));
+                logWealthDivergence(
+                    'hireWorkforce',
+                    gameState.tick,
+                    checkWealthBankConsistency(planetMap, 'hireWorkforce'),
+                );
             }
         }
 
         preProductionFinancialTick(planetAgents, planet);
 
         if (process.env.SIM_DEBUG) {
-            logWealthDivergence('preProductionFinancialTick', gameState.tick, checkWealthBankConsistency(planetMap));
+            logWealthDivergence(
+                'preProductionFinancialTick',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'preProductionFinancialTick'),
+            );
         }
 
         productionTick(planetAgents, planet);
 
-        updateAgentPricing(planetAgents, planet);
+        if (process.env.SIM_DEBUG) {
+            logWealthDivergence(
+                'after productionTick',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'after productionTick'),
+            );
+        }
 
-        updateAgentProductionScale(planetAgents, planet);
+        updateAgentPricing(planetAgents, planet);
+        if (process.env.SIM_DEBUG) {
+            logWealthDivergence(
+                'updateAgentPricing',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'updateAgentPricing'),
+            );
+        }
+
+        //updateAgentProductionScale(planetAgents, planet);
+
+        if (process.env.SIM_DEBUG) {
+            logWealthDivergence(
+                '   updateAgentProductionScale',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'updateAgentProductionScale'),
+            );
+        }
 
         intergenerationalTransfersForPlanet(planet);
 
         if (process.env.SIM_DEBUG) {
-            logWealthDivergence('intergenerationalTransfers', gameState.tick, checkWealthBankConsistency(planetMap));
+            logWealthDivergence(
+                'intergenerationalTransfers',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'intergenerationalTransfers'),
+            );
         }
 
         foodMarketTick(planetAgents, planet);
 
         if (process.env.SIM_DEBUG) {
-            logWealthDivergence('foodMarketTick', gameState.tick, checkWealthBankConsistency(planetMap));
+            logWealthDivergence(
+                'foodMarketTick',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'foodMarketTick'),
+            );
         }
 
         postProductionFinancialTick(planetAgents, planet);
 
         if (process.env.SIM_DEBUG) {
-            logWealthDivergence('postProductionFinancialTick', gameState.tick, checkWealthBankConsistency(planetMap));
+            logWealthDivergence(
+                'postProductionFinancialTick',
+                gameState.tick,
+                checkWealthBankConsistency(planetMap, 'postProductionFinancialTick'),
+            );
         }
 
         if (isMonthBoundary(gameState.tick)) {
@@ -105,7 +161,7 @@ export function advanceTick(gameState: GameState) {
                 logWealthDivergence(
                     'postProductionLaborMarketTick',
                     gameState.tick,
-                    checkWealthBankConsistency(planetMap),
+                    checkWealthBankConsistency(planetMap, 'postProductionLaborMarketTick'),
                 );
             }
         }
@@ -118,12 +174,16 @@ export function advanceTick(gameState: GameState) {
             workforceAdvanceYearTick(planetAgents, planet);
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'afterYear');
-                logWealthDivergence('populationAdvanceYearTick', gameState.tick, checkWealthBankConsistency(planetMap));
+                logWealthDivergence(
+                    'populationAdvanceYearTick',
+                    gameState.tick,
+                    checkWealthBankConsistency(planetMap, 'populationAdvanceYearTick'),
+                );
             }
         }
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(planetAgents, planet, `${planet.name} end of tick`);
-            logWealthDivergence('end of tick', gameState.tick, checkWealthBankConsistency(planetMap));
+            logWealthDivergence('end of tick', gameState.tick, checkWealthBankConsistency(planetMap, 'end of tick'));
         }
     });
 }

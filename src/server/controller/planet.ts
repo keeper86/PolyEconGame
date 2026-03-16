@@ -16,8 +16,7 @@ import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { agriculturalProductResourceType } from '../../simulation/planet/facilities';
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../../simulation/constants';
-import { expectedPurchaseQuantity } from '../../simulation/market/foodMarket';
+import { INITIAL_FOOD_PRICE } from '../../simulation/constants';
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -558,43 +557,6 @@ type AgentOfferEntry = {
 };
 
 /**
- * Compute aggregate household demand for food using the same mean-field
- * logic as foodMarketTick — without actually clearing anything.
- */
-function computeAggregateDemand(planet: Planet, referencePrice: number): number {
-    const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
-    let demand = 0;
-
-    planet.population.demography.forEach((cohort) => {
-        if (!cohort) {
-            return;
-        }
-        for (const occ of OCCUPATIONS) {
-            for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    const pop = cat.total;
-                    if (pop <= 0) {
-                        continue;
-                    }
-                    const foodStockPerPerson = cat.foodStock / pop;
-                    const desiredPurchasePerPerson = Math.max(0, foodTargetPerPerson - foodStockPerPerson);
-                    const effectiveDemandPerPerson = expectedPurchaseQuantity(
-                        cat.wealth.mean,
-                        cat.wealth.variance,
-                        referencePrice,
-                        desiredPurchasePerPerson,
-                    );
-                    demand += effectiveDemandPerPerson * pop;
-                }
-            }
-        }
-    });
-
-    return demand;
-}
-
-/**
  * Collect per-agent offer summaries for all food-producing agents on a planet.
  */
 function buildAgentOffers(agents: Agent[], planetId: string): AgentOfferEntry[] {
@@ -645,17 +607,22 @@ export const getPlanetFoodMarket = () =>
                 market: z
                     .object({
                         planetName: z.string(),
+                        /** VWAP of all executed trades this tick (from lastFoodMarketResult). */
                         clearingPrice: z.number(),
                         starvationLevel: z.number(),
                         populationTotal: z.number(),
-                        /** Aggregate household demand (tons this tick). */
+                        /** Total bid-order demand that entered the exchange (tons). */
                         totalDemand: z.number(),
-                        /** Sum of all agent offer quantities (tons). */
+                        /** Sum of all agent ask-order quantities (tons). */
                         totalSupply: z.number(),
-                        /** Total food sold last clearing (tons). Derived from agent lastSold. */
+                        /** Total food actually traded this tick (tons). */
                         totalSold: z.number(),
                         /** Fill ratio: totalSold / totalDemand. */
                         fillRatio: z.number(),
+                        /** Demand that found no matching ask (tons). */
+                        unfilledDemand: z.number(),
+                        /** Supply that found no matching bid (tons). */
+                        unsoldSupply: z.number(),
                         /** Per-agent offers, sorted price ascending (merit order). */
                         offers: z.array(
                             z.object({
@@ -683,20 +650,19 @@ export const getPlanetFoodMarket = () =>
                 return { tick, market: null };
             }
 
-            const clearingPrice = planet.priceLevel ?? INITIAL_FOOD_PRICE;
-            const offers = buildAgentOffers(agents, input.planetId);
-
-            const totalSupply = offers.reduce((s, o) => s + o.offerQuantity, 0);
-            const totalSold = offers.reduce((s, o) => s + o.lastSold, 0);
-
-            // Reference price for demand formation: quantity-weighted average offer price
-            const refPrice =
-                totalSupply > 0
-                    ? offers.reduce((s, o) => s + o.offerPrice * o.offerQuantity, 0) / totalSupply
-                    : clearingPrice;
-
-            const totalDemand = computeAggregateDemand(planet, refPrice);
+            // Read authoritative numbers directly from the last clearing snapshot.
+            // This ensures what the UI shows is exactly what the exchange produced —
+            // no re-estimation, no divergence.
+            const result = planet.lastFoodMarketResult;
+            const clearingPrice = result?.clearingPrice ?? planet.priceLevel ?? INITIAL_FOOD_PRICE;
+            const totalDemand = result?.totalDemand ?? 0;
+            const totalSupply = result?.totalSupply ?? 0;
+            const totalSold = result?.totalVolume ?? 0;
+            const unfilledDemand = result?.unfilledDemand ?? 0;
+            const unsoldSupply = result?.unsoldSupply ?? 0;
             const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
+
+            const offers = buildAgentOffers(agents, input.planetId);
 
             return {
                 tick,
@@ -709,6 +675,8 @@ export const getPlanetFoodMarket = () =>
                     totalSupply,
                     totalSold,
                     fillRatio,
+                    unfilledDemand,
+                    unsoldSupply,
                     offers,
                 },
             };

@@ -201,7 +201,7 @@ function makeTooltip(
 
 // ─── Legends ─────────────────────────────────────────────────────────────────
 
-function BandLegend() {
+export function BandLegend() {
     return (
         <div className='flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground mt-1'>
             {BANDS.slice()
@@ -398,7 +398,12 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
 
     return (
         <>
-            {summaryCards}
+            <span className='mb-2 flex justify-between items-center'>
+                <h4 className='text-sm font-semibold mb-2' id='food'>
+                    Nutrition heatmap
+                </h4>
+                <BandLegend />
+            </span>
 
             <ResponsiveContainer width='100%' minHeight={200} minWidth={290}>
                 <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
@@ -422,7 +427,7 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                 </BarChart>
             </ResponsiveContainer>
 
-            <BandLegend />
+            {summaryCards}
         </>
     );
 }

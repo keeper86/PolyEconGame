@@ -29,21 +29,10 @@ export function totalDepartingForEdu(workforce: WorkforceCohort<WorkforceCategor
             for (const d of workforce[age][edu][skill].voluntaryDeparting) {
                 total += d;
             }
-        }
-    }
-    return total;
-}
-
-/** Sum all fired-departing workers across all ages, skill levels, and pipeline slots for a given edu. */
-export function totalDepartingFiredForEdu(
-    workforce: WorkforceCohort<WorkforceCategory>[],
-    edu: EducationLevelType,
-): number {
-    let total = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            const cat = workforce[age][edu][skill];
-            for (const d of cat.departingFired) {
+            for (const d of workforce[age][edu][skill].departingFired) {
+                total += d;
+            }
+            for (const d of workforce[age][edu][skill].departingRetired) {
                 total += d;
             }
         }

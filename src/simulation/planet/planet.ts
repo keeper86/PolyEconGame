@@ -194,6 +194,11 @@ export type Planet = {
      * Initialized to 1.0; updated each post-production financial tick.
      */
     priceLevel?: number;
+    /**
+     * Snapshot of the most recent food market clearing result.
+     * Written by `foodMarketTick`; consumed by the UI for charting.
+     */
+    lastFoodMarketResult?: FoodMarketResult;
 };
 
 // ---------------------------------------------------------------------------
@@ -243,6 +248,27 @@ export type FoodMarketState = {
     lastRevenue?: number; // in currency units, for price adjustment logic
 
     priceDirection?: number;
+};
+
+/**
+ * Aggregate result snapshot of a single food market clearing tick.
+ *
+ * Stored on the planet so that the UI can build charts without
+ * re-running the market simulation.
+ */
+export type FoodMarketResult = {
+    /** Volume-weighted average price of all executed trades (currency/ton). */
+    clearingPrice: number;
+    /** Total tons of food traded this tick. */
+    totalVolume: number;
+    /** Total household effective demand entering the order book (tons). */
+    totalDemand: number;
+    /** Total supply offered by all agents this tick (tons). */
+    totalSupply: number;
+    /** Demand that could not be filled (tons). */
+    unfilledDemand: number;
+    /** Supply that was not sold (tons). */
+    unsoldSupply: number;
 };
 
 // ---------------------------------------------------------------------------

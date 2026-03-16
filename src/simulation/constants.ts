@@ -128,31 +128,12 @@ export const CHILD_MAX_AGE = 25;
 export const ELDERLY_MIN_AGE = 67;
 
 /**
- * Precautionary reserve as a multiple of per-tick consumption cost.
- * Supporters keep at least this much before transferring to dependents.
- * E.g. 60 × FOOD_PER_PERSON_PER_TICK × price ≈ 2 months food budget.
- */
-export const PRECAUTIONARY_RESERVE_TICKS = 30;
-
-/**
- * Fraction of the food buffer target that a supporter must retain for
- * their own survival before transferring anything.  A supporter with
- * foodStock below this fraction × foodTarget cannot afford to give away
- * food money without risking starvation / disability.
- *
- * Set to ~55 %: physiologically sustainable, but clearly under-fed.
- * Low starvation levels (< 0.4) are sustainable in the mortality model,
- * higher values lead to death or disability.
- */
-export const SUPPORTER_SURVIVAL_FRACTION = 0.1;
-
-/**
  * Standard deviation (in years) for the Gaussian support weight kernel.
  * The kernel peaks at n × GENERATION_GAP and has non-trivial weight within
  * approximately ±2σ of each peak.  A value of 8 means meaningful support
  * reaches relatives ≈ 9–41 years from each generational peak.
  */
-export const SUPPORT_WEIGHT_SIGMA = 4;
+export const SUPPORT_WEIGHT_SIGMA = 6;
 
 /**
  * Number of generational harmonics in the multi-modal support kernel.

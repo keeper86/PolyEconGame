@@ -1,6 +1,7 @@
-import { TICKS_PER_YEAR } from '../constants';
+import { FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
 import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
+import { STARVATION_ACUTE_POWER } from './mortality';
 import type { Population } from './population';
 import { forEachPopulationCohort } from './population';
 
@@ -52,7 +53,7 @@ export function computeBirthsThisTick(
     const fertReduction = fertReductionFromPollution(pollution);
     // Nonlinear starvation suppression: S^1.5 gives steeper drop under severe famine
     const lifetimeFertilityAdjusted =
-        LIFETIME_FERTILITY * (1 - Math.pow(starvationLevel, 1.5)) * (1 - 0.5 * fertReduction);
+        LIFETIME_FERTILITY * (1 - 0.75 * Math.pow(starvationLevel, STARVATION_ACUTE_POWER)) * (1 - 0.5 * fertReduction);
 
     const birthsPerYear = (lifetimeFertilityAdjusted * fertileWomen) / (END_FERTILE_AGE - START_FERTILE_AGE + 1);
 
@@ -73,6 +74,8 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         cat.wealth.mean = prevTotal > 0 ? (prevTotal * cat.wealth.mean) / newTotal : 0;
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
+        // Newborns arrive with a small food stock gifted by their "neighbors" to get them started.
+        cat.foodStock += 10 * FOOD_PER_PERSON_PER_TICK;
     }
 }
 

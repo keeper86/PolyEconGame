@@ -260,20 +260,14 @@ export default function PlanetDemographicsPage() {
                 <h4 className='text-sm font-semibold' id='wealth'>
                     Wealth distribution
                 </h4>
-                <span className='text-xs text-muted-foreground'>{`Total wealth: ${formatNumbers(totalWealth)}`}</span>
+                <span className='text-xs text-muted-foreground'>{`Total (per capita): ${formatNumbers(totalWealth)} (${formatNumbers(totalWealth / populationTotal)})`}</span>
             </span>
             {wealthCards}
             <WealthDistributionChart rows={rows} groupMode={group} />
 
             <div className='my-3 border-t' />
-            <h4 className='text-sm font-semibold mb-2' id='nutrition'>
-                Nutrition heatmap
-            </h4>
-            <NutritionHeatmapChart rows={rows} groupMode={group} />
 
-            <h4 className='text-sm font-semibold mb-2' id='food'>
-                Food Buffer
-            </h4>
+            <NutritionHeatmapChart rows={rows} groupMode={group} />
             <FoodBufferChart rows={rows} groupMode={group} />
         </>
     );

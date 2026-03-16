@@ -47,17 +47,10 @@ describe('computeBirthsThisTick', () => {
         expect(starved).toBeLessThan(normal);
     });
 
-    it('severe starvation (S=1) eliminates births entirely', () => {
-        // fertilityFactor = 1 - 1^1.5 = 0, so births must be 0
-        expect(computeBirthsThisTick(100000, 1, { air: 0, water: 0, soil: 0 })).toBe(0);
-    });
-
-    it('moderate starvation (S=0.5) reduces births more than linear model would', () => {
-        // nonlinear: factor = 1 - 0.5^1.5 ≈ 1 - 0.354 = 0.646
-        // old linear: factor = 1 - 0.5*0.5 = 0.75 — so nonlinear gives fewer births
-        const moderateStarved = computeBirthsThisTick(100000, 0.5, { air: 0, water: 0, soil: 0 });
+    it('starvation (S=1) reduces births by 75%', () => {
+        const moderateStarved = computeBirthsThisTick(100000, 1, { air: 0, water: 0, soil: 0 });
         const normal = computeBirthsThisTick(100000, 0, { air: 0, water: 0, soil: 0 });
-        expect(moderateStarved).toBeLessThan(normal * 0.75); // stricter than old linear
+        expect(moderateStarved).toBeLessThan(normal * 0.3); // stricter than old linear
     });
 
     it('pollution reduces births', () => {
