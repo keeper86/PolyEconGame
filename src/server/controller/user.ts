@@ -235,6 +235,13 @@ export const createAgent = () => {
 
             const agentId = createAgentSlug(agentName);
 
+            if (agentId.length === 0) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'Agent name must contain at least one letter or digit',
+                });
+            }
+
             logger.info(
                 { component: 'create-agent' },
                 `Creating agent '${input.agentName}' (${agentId}) on planet '${input.planetId}' for user ${userId}`,
