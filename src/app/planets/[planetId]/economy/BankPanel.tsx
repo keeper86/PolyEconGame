@@ -76,16 +76,8 @@ export default function BankPanel({ bank, wagePerEdu, priceLevel }: Props): Reac
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
                     />
-                    <Stat
-                        label='Money supply'
-                        value={formatNumbers(bank.deposits)}
-                        icon={<TrendingUp className='h-3 w-3' />}
-                    />
-                    <Stat
-                        label='Firm deposits'
-                        value={formatNumbers(bank.deposits - bank.householdDeposits)}
-                        icon={<Wallet className='h-3 w-3' />}
-                    />
+                    <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
+
                     <Stat
                         label='Household deposits'
                         value={formatNumbers(bank.householdDeposits)}
@@ -97,11 +89,12 @@ export default function BankPanel({ bank, wagePerEdu, priceLevel }: Props): Reac
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />
-                    <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
+                    <Stat
+                        label='Firm deposits'
+                        value={formatNumbers(bank.deposits - bank.householdDeposits)}
+                        icon={<Wallet className='h-3 w-3' />}
+                    />
                     <Stat label='Deposit rate' value={pct(bank.depositRate)} icon={<Percent className='h-3 w-3' />} />
-                    {priceLevel !== undefined && (
-                        <Stat label='Price level' value={priceLevel.toFixed(4)} icon={<Coins className='h-3 w-3' />} />
-                    )}
                 </div>
             ) : (
                 <div className='text-xs text-muted-foreground'>Bank not yet initialised (no financial tick run).</div>
@@ -125,15 +118,6 @@ export default function BankPanel({ bank, wagePerEdu, priceLevel }: Props): Reac
                     })}
                 </div>
             </div>
-            {/* Debug: raw bank object (dev only) */}
-            {process.env.NODE_ENV === 'development' && bank ? (
-                <details className='text-xs text-muted-foreground mt-2'>
-                    <summary className='cursor-pointer'>Raw bank snapshot</summary>
-                    <pre className='mt-2 overflow-auto max-h-48 p-2 bg-gray-50 text-[11px]'>
-                        {JSON.stringify(bank, null, 2)}
-                    </pre>
-                </details>
-            ) : null}
         </div>
     );
 }

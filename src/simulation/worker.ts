@@ -27,6 +27,7 @@ import type { WorkerErrorResponse, WorkerQueryMessage, WorkerSuccessResponse } f
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { createInitialGameState } from './utils/initialWorld';
+import { makeAgentPlanetAssets } from './utils/testHelper';
 // Static import so esbuild can inline knexfile.js (and its dotenv/dotenv-expand
 // dependencies) directly into the bundle.  A dynamic import() of a local file
 // is emitted as a separate chunk by esbuild and cannot be resolved at runtime
@@ -37,6 +38,7 @@ import { agriculturalProductResourceType } from './planet/facilities';
 export type InboundMessage =
     | { type: 'ping' }
     | { type: 'createShip'; from: string; to: string; cargo: { metal: number; energy: number }; eta?: number }
+    | { type: 'createAgent'; requestId: string; agentId: string; agentName: string; planetId: string }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -52,6 +54,8 @@ export type OutboundMessage =
           available?: { metal: number; energy: number };
           from?: string;
       }
+    | { type: 'agentCreated'; requestId: string; agentId: string }
+    | { type: 'agentCreationFailed'; requestId: string; reason: string }
     // Sent by the manager to notify connected clients that the worker was restarted
     // (useful for client-side UI reset/hot-reload logic).
     | { type: 'workerRestarted'; reason?: string }
@@ -408,6 +412,69 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 setTimeout(() => process.exit(0), 50);
             } catch (_e) {
                 process.exit(0);
+            }
+            return;
+        }
+
+        if (msg.type === 'createAgent') {
+            const { requestId, agentId, agentName, planetId } = msg;
+            try {
+                if (state.agents.has(agentId)) {
+                    safePostMessage({ type: 'agentCreationFailed', requestId, reason: 'Agent ID already exists' });
+                    return;
+                }
+                if (!state.planets.has(planetId)) {
+                    safePostMessage({
+                        type: 'agentCreationFailed',
+                        requestId,
+                        reason: `Planet '${planetId}' not found`,
+                    });
+                    return;
+                }
+                if (agentName.trim().length === 0) {
+                    safePostMessage({
+                        type: 'agentCreationFailed',
+                        requestId,
+                        reason: 'Agent name cannot be empty',
+                    });
+                    return;
+                }
+                let nameConflict = false;
+                state.agents.forEach((a) => {
+                    if (a.name === agentName) {
+                        nameConflict = true;
+                    }
+                });
+                if (nameConflict) {
+                    safePostMessage({
+                        type: 'agentCreationFailed',
+                        requestId,
+                        reason: `Agent name '${agentName}' already exists`,
+                    });
+                    return;
+                }
+                const newAgent = {
+                    id: agentId,
+                    name: agentName,
+                    associatedPlanetId: planetId,
+                    transportShips: [],
+                    assets: {
+                        [planetId]: makeAgentPlanetAssets(planetId, {
+                            deposits: 10_000,
+                        }),
+                    },
+                };
+                state.agents.set(agentId, newAgent);
+                currentSnapshot = toImmutableGameState(state);
+                console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
+                safePostMessage({ type: 'agentCreated', requestId, agentId });
+            } catch (err) {
+                console.error('[worker] Failed to create agent:', err);
+                safePostMessage({
+                    type: 'agentCreationFailed',
+                    requestId,
+                    reason: err instanceof Error ? err.message : String(err),
+                });
             }
             return;
         }

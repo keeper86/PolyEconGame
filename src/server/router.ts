@@ -21,7 +21,7 @@ import {
     getPlanetFoodMarket,
 } from './controller/planet';
 
-import { getUser, getUsers, updateUser } from './controller/user';
+import { getUser, getUsers, updateUser, getUserIdFromSession, createAgent } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
 const simulationRouter = trpcRoot.router({
@@ -47,6 +47,8 @@ const protectedAppRouter = trpcRoot.router({
     getUsers: getUsers(),
     getUser: getUser(),
     updateUser: updateUser(),
+    getUserIdFromSession: getUserIdFromSession(),
+    createAgent: createAgent(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

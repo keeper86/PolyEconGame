@@ -155,6 +155,74 @@ export const workerQueries = {
 };
 
 // ---------------------------------------------------------------------------
+// Worker commands (fire + await response, not query-protocol)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ask the worker to create a new player agent.
+ * Returns the assigned agentId on success, throws on failure.
+ */
+export function workerCreateAgent(opts: {
+    agentId: string;
+    agentName: string;
+    planetId: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    ensureListener();
+
+    const { agentId, agentName, planetId, timeoutMs = DEFAULT_TIMEOUT_MS } = opts;
+    const requestId = randomUUID();
+
+    return new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            getPending().delete(requestId);
+            reject(new Error(`createAgent timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+
+        getPending().set(requestId, {
+            resolve: resolve as (value: unknown) => void,
+            reject,
+            timer,
+        });
+
+        // Listen for the specific agentCreated / agentCreationFailed responses.
+        // We re-use the existing message listener but need to intercept these
+        // non-query-protocol messages.  Register a one-time handler:
+        const unsubscribe = onWorkerMessage((msg: OutboundMessage) => {
+            if (msg.type !== 'agentCreated' && msg.type !== 'agentCreationFailed') {
+                return;
+            }
+            if ((msg as { requestId?: string }).requestId !== requestId) {
+                return;
+            }
+
+            unsubscribe();
+            const entry = getPending().get(requestId);
+            if (!entry) {
+                return;
+            }
+            getPending().delete(requestId);
+            clearTimeout(entry.timer);
+
+            if (msg.type === 'agentCreated') {
+                entry.resolve(msg.agentId);
+            } else {
+                entry.reject(new Error(msg.reason));
+            }
+        });
+
+        try {
+            sendToWorker({ type: 'createAgent', requestId, agentId, agentName, planetId });
+        } catch (err) {
+            unsubscribe();
+            getPending().delete(requestId);
+            clearTimeout(timer);
+            reject(err);
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Cleanup helper (useful in tests)
 // ---------------------------------------------------------------------------
 

@@ -1,9 +1,11 @@
 import { TRPCError } from '@trpc/server';
 import type { UserData } from '@/types/db_schemas';
 import z from 'zod';
+import { randomUUID } from 'node:crypto';
 import { db } from '../db';
 import { logger } from '../logger';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
+import { workerCreateAgent } from '@/lib/workerQueries';
 
 const userId = z.object({
     userId: z.string(),
@@ -18,7 +20,9 @@ const userData = z.object({
     hasAssessmentPublished: z.boolean().optional(),
     avatar: z.string().max(bytesToBase64Chars(MAX_SIZE_BYTES_AVATAR), 'Avatar image (base64) is too large').optional(),
 });
-export const userSummary = userId.merge(userData);
+export const userSummary = userId.merge(userData).extend({
+    agentId: z.string().nullable().optional(),
+});
 export type UserSummary = z.infer<typeof userSummary>;
 
 export const getUsers = () => {
@@ -87,6 +91,7 @@ export const getUser = () => {
                 displayName: row.display_name || undefined,
                 hasAssessmentPublished: row.has_assessment_published,
                 avatar: row.avatar ? row.avatar.toString('base64') : undefined,
+                agentId: row.agent_id ?? null,
             };
 
             logger.debug(
@@ -162,5 +167,57 @@ export const getUserIdFromSession = () => {
             const userId = getUserIdFromContext(ctx);
             logger.debug({ component: 'getUserIdFromPat' }, `Retrieved user ID from PAT: ${userId}`);
             return { userId };
+        });
+};
+
+export const createAgent = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentName: z.string().min(1).max(64),
+                planetId: z.string().min(1),
+            }),
+        )
+        .output(z.object({ agentId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            // Check if user already has an agent
+            const existing = await db('user_data').where({ user_id: userId }).first();
+            if (!existing) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (existing.agent_id) {
+                throw new TRPCError({ code: 'CONFLICT', message: 'User already has an agent' });
+            }
+
+            const agentName = input.agentName.trim();
+            if (agentName.length === 0) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Agent name cannot be empty' });
+            }
+            if (agentName.length > 64) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Agent name cannot exceed 64 characters' });
+            }
+
+            const agentId = agentName.toLowerCase().replace(/\s+/g, '-');
+
+            logger.info(
+                { component: 'create-agent' },
+                `Creating agent '${input.agentName}' (${agentId}) on planet '${input.planetId}' for user ${userId}`,
+            );
+
+            // Create the agent in the live simulation worker
+            const createdId = await workerCreateAgent({
+                agentId,
+                agentName: input.agentName,
+                planetId: input.planetId,
+            });
+
+            // Persist the association in the database
+            await db('user_data').where({ user_id: userId }).update({ agent_id: createdId });
+
+            logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
+
+            return { agentId: createdId };
         });
 };
