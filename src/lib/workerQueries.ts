@@ -176,7 +176,7 @@ export function workerCreateAgent(opts: {
     return new Promise<string>((resolve, reject) => {
         // Forward-declared so the timeout handler can unsubscribe the one-time
         // listener even when the timer fires before the worker responds.
-        let unsubscribeListener: (() => void) | undefined;
+        let unsubscribeListener: (() => void) | undefined = undefined;
 
         const timer = setTimeout(() => {
             unsubscribeListener?.();

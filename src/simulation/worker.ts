@@ -167,6 +167,62 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     }
 
     // -----------------------------------------------------------------
+    // Action queue — collects user-driven state mutations between ticks
+    // -----------------------------------------------------------------
+
+    /**
+     * A validated, ready-to-apply mutation that was received from a client
+     * while the tick loop was running.  Each entry already passed all
+     * validation checks; it just hasn't been applied to `state` yet.
+     */
+    type PendingAction = {
+        type: 'createAgent';
+        requestId: string;
+        agentId: string;
+        agentName: string;
+        planetId: string;
+    };
+
+    const pendingActions: PendingAction[] = [];
+
+    /**
+     * Apply every queued action to `state` in FIFO order.
+     * Called once per tick, right before `advanceTick`, so the snapshot
+     * is only updated in the normal post-tick path rather than ad-hoc.
+     */
+    function drainActionQueue(): void {
+        if (pendingActions.length === 0) {
+            return;
+        }
+
+        const actions = pendingActions.splice(0);
+        for (const action of actions) {
+            try {
+                switch (action.type) {
+                    case 'createAgent': {
+                        const { requestId, agentId, agentName, planetId } = action;
+                        const newAgent = makeAgent(agentId, planetId, agentName);
+                        state.agents.set(agentId, newAgent);
+                        console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
+                        safePostMessage({ type: 'agentCreated', requestId, agentId });
+                        break;
+                    }
+                    // Future action types go here
+                }
+            } catch (err) {
+                console.error(`[worker] Failed to apply pending action '${action.type}':`, err);
+                if ('requestId' in action) {
+                    safePostMessage({
+                        type: 'agentCreationFailed',
+                        requestId: (action as { requestId: string }).requestId,
+                        reason: err instanceof Error ? err.message : String(err),
+                    });
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------
     // Tick loop (recursive setTimeout to avoid drift / overlap)
     // -----------------------------------------------------------------
 
@@ -280,6 +336,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             const start = Date.now();
             state.tick += 1;
+
+            // Apply all queued user-driven state mutations before advancing
+            // the tick, so they take effect as part of this tick's snapshot.
+            drainActionQueue();
 
             try {
                 advanceTick(state);
@@ -418,54 +478,44 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
         if (msg.type === 'createAgent') {
             const { requestId, agentId, agentName, planetId } = msg;
-            try {
-                if (state.agents.has(agentId)) {
-                    safePostMessage({ type: 'agentCreationFailed', requestId, reason: 'Agent ID already exists' });
-                    return;
-                }
-                if (!state.planets.has(planetId)) {
-                    safePostMessage({
-                        type: 'agentCreationFailed',
-                        requestId,
-                        reason: `Planet '${planetId}' not found`,
-                    });
-                    return;
-                }
-                if (agentName.trim().length === 0) {
-                    safePostMessage({
-                        type: 'agentCreationFailed',
-                        requestId,
-                        reason: 'Agent name cannot be empty',
-                    });
-                    return;
-                }
-                let nameConflict = false;
-                state.agents.forEach((a) => {
-                    if (a.name === agentName) {
-                        nameConflict = true;
-                    }
-                });
-                if (nameConflict) {
-                    safePostMessage({
-                        type: 'agentCreationFailed',
-                        requestId,
-                        reason: `Agent name '${agentName}' already exists`,
-                    });
-                    return;
-                }
-                const newAgent = makeAgent(agentId, planetId, agentName);
-                state.agents.set(agentId, newAgent);
-                currentSnapshot = toImmutableGameState(state);
-                console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
-                safePostMessage({ type: 'agentCreated', requestId, agentId });
-            } catch (err) {
-                console.error('[worker] Failed to create agent:', err);
+            // Validate eagerly so clients get immediate feedback on bad input.
+            if (state.agents.has(agentId)) {
+                safePostMessage({ type: 'agentCreationFailed', requestId, reason: 'Agent ID already exists' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
                 safePostMessage({
                     type: 'agentCreationFailed',
                     requestId,
-                    reason: err instanceof Error ? err.message : String(err),
+                    reason: `Planet '${planetId}' not found`,
                 });
+                return;
             }
+            if (agentName.trim().length === 0) {
+                safePostMessage({
+                    type: 'agentCreationFailed',
+                    requestId,
+                    reason: 'Agent name cannot be empty',
+                });
+                return;
+            }
+            let nameConflict = false;
+            state.agents.forEach((a) => {
+                if (a.name === agentName) {
+                    nameConflict = true;
+                }
+            });
+            if (nameConflict) {
+                safePostMessage({
+                    type: 'agentCreationFailed',
+                    requestId,
+                    reason: `Agent name '${agentName}' already exists`,
+                });
+                return;
+            }
+            // Enqueue the validated action — it will be applied to state
+            // (and the snapshot updated) at the start of the next tick.
+            pendingActions.push({ type: 'createAgent', requestId, agentId, agentName, planetId });
             return;
         }
 
