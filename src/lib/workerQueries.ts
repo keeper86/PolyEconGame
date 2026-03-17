@@ -174,7 +174,12 @@ export function workerCreateAgent(opts: {
     const requestId = randomUUID();
 
     return new Promise<string>((resolve, reject) => {
+        // Forward-declared so the timeout handler can unsubscribe the one-time
+        // listener even when the timer fires before the worker responds.
+        let unsubscribeListener: (() => void) | undefined;
+
         const timer = setTimeout(() => {
+            unsubscribeListener?.();
             getPending().delete(requestId);
             reject(new Error(`createAgent timed out after ${timeoutMs}ms`));
         }, timeoutMs);
@@ -210,6 +215,7 @@ export function workerCreateAgent(opts: {
                 entry.reject(new Error(msg.reason));
             }
         });
+        unsubscribeListener = unsubscribe;
 
         try {
             sendToWorker({ type: 'createAgent', requestId, agentId, agentName, planetId });
