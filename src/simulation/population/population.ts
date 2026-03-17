@@ -218,9 +218,9 @@ export const transferPopulation = (
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
         population.summedPopulation[to.occ][to.edu][to.skill].total += transferMaximum;
     } else {
-        // Death: decrement source and orphan the wealth for inheritance.
-        // destroyWealthOnDeath adjusts householdDeposits for the negative-wealth
-        // case and returns the positive wealth available for inheritance redistribution.
+        // Death: decrement source and remove the wealth from this category,
+        // returning the positive wealth available for inheritance redistribution
+        // (handling negative-wealth cases inside destroyWealthOnDeath).
         inheritedWealth = destroyWealthOnDeath(fromCategory, transferMaximum);
         fromCategory.total -= transferMaximum;
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;

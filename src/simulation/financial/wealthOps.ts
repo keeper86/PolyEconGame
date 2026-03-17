@@ -162,7 +162,6 @@ export function mergeWealthInto(dst: PopulationCategory, src: PopulationCategory
 }
 
 /**
- * @param bank   Planet bank (householdDeposits adjusted by `count × mean` when mean < 0).
  * @param cat    Population category losing people.
  * @param count  Number of people dying (must be ≤ cat.total).
  * @returns      Aggregate wealth orphaned for redistribution (= count × max(0, mean)).

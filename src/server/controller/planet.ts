@@ -293,7 +293,7 @@ function buildFoodDemography(planet: Planet): FoodCohort[] {
                     const cat = cohort[occ][edu][skill];
                     slimCohort[occ][edu][skill] = {
                         total: cat.total,
-                        foodStock: cat.inventory['Agricultural Product'] ?? 0,
+                        foodStock: cat.inventory[agriculturalProductResourceType.name] ?? 0,
                         starvationLevel: cat.starvationLevel,
                     };
                 }
@@ -333,7 +333,7 @@ export const getPlanetFood = () =>
                 food: {
                     planetName: planet.name,
                     demography: buildFoodDemography(planet),
-                    priceLevel: planet.marketPrices['Agricultural Product'] ?? 1,
+                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
                 },
             };
@@ -453,7 +453,7 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                             continue;
                         }
                         gPop += cat.total;
-                        gFoodStock += cat.inventory['Agricultural Product'] ?? 0;
+                        gFoodStock += cat.inventory[agriculturalProductResourceType.name] ?? 0;
                         gWeightedStarvation += cat.total * cat.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                     }
@@ -533,7 +533,7 @@ export const getPlanetDemographicsFull = () =>
                     planetName: planet.name,
                     groupMode: input.groupMode,
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
-                    priceLevel: planet.marketPrices['Agricultural Product'] ?? 1,
+                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
                 },
             };
@@ -653,9 +653,11 @@ export const getPlanetFoodMarket = () =>
             // Read authoritative numbers directly from the last clearing snapshot.
             // This ensures what the UI shows is exactly what the exchange produced —
             // no re-estimation, no divergence.
-            const result = planet.lastMarketResult['Agricultural Product'];
+            const result = planet.lastMarketResult[agriculturalProductResourceType.name];
             const clearingPrice =
-                result?.clearingPrice ?? planet.marketPrices['Agricultural Product'] ?? INITIAL_FOOD_PRICE;
+                result?.clearingPrice ??
+                planet.marketPrices[agriculturalProductResourceType.name] ??
+                INITIAL_FOOD_PRICE;
             const totalDemand = result?.totalDemand ?? 0;
             const totalSupply = result?.totalSupply ?? 0;
             const totalSold = result?.totalVolume ?? 0;
