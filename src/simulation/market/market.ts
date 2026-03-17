@@ -64,7 +64,7 @@ type DemandRule = (params: {
     inventoryPerPerson: number;
     referencePrice: number;
 }) => {
-    /** Total desired purchase quantity (>= 0). */
+    /** Per-person desired purchase quantity (>= 0). */
     quantity: number;
     /** Reservation price (currency / unit). */
     reservationPrice: number;
@@ -129,8 +129,8 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
         }
     }
 
-    // Determine all resources to process (union of ask-side resources and
-    // demand-rule resources that have active supply).
+    // Determine all resources to process (currently, resources that have
+    // active ask orders in the order book).
     const resourcesToClear = new Set<string>(askBooks.keys());
 
     // ------------------------------------------------------------------
@@ -187,7 +187,6 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
         const bidCosts = reconstructBidCosts(trades, bidFilled);
 
         // Household settlement
-        const resource = askOrders[0].resource;
         const totalActualDebit = settleHouseholds(planet, resourceName, bidOrders, bidFilled, bidCosts);
 
         // Agent settlement
@@ -208,7 +207,7 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
                 totalFoodSold > 0
                     ? totalRevenue / totalFoodSold
                     : (planet.marketPrices[resourceName] ??
-                      (resource.name === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1)),
+                      (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1)),
             totalVolume: totalFoodSold,
             totalDemand,
             totalSupply,
