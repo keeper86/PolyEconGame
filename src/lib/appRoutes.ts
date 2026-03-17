@@ -1,13 +1,12 @@
 import { type LucideIcon, FileText, FlaskConical, Gamepad, Globe, Home, User, Users } from 'lucide-react';
 
 import type { Route } from 'nextjs-routes';
-import type { JSX } from 'react';
 import type { IconType } from 'react-icons';
 
 export type RouteMetadata = {
     path: Exclude<Route['pathname'], `/api/${string}`>; // Exclude API routes
     label: string;
-    icon?: LucideIcon | IconType | JSX.Element;
+    icon?: LucideIcon | IconType;
     isPublic?: boolean;
     description?: string;
     isMainNav?: boolean;

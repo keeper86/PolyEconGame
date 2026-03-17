@@ -2,8 +2,24 @@
 // This setup will run before each test. You can add global configuration here, like
 // setting up mocks for shared modules, configuring testing utilities, etc.
 import '@testing-library/jest-dom';
-import { beforeEach } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import { seedRng } from '../../src/simulation/utils/stochasticRound';
+
+// Mock next/navigation so components using useRouter/usePathname etc. don't
+// throw "invariant expected app router to be mounted" in the jsdom environment.
+vi.mock('next/navigation', () => ({
+    useRouter: () => ({
+        push: vi.fn(),
+        replace: vi.fn(),
+        prefetch: vi.fn(),
+        back: vi.fn(),
+        forward: vi.fn(),
+        refresh: vi.fn(),
+    }),
+    usePathname: () => '/',
+    useSearchParams: () => new URLSearchParams(),
+    useParams: () => ({}),
+}));
 
 // Seed the stochastic rounding PRNG before each test to ensure deterministic
 // behaviour across all simulation tests.

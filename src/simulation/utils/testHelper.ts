@@ -385,10 +385,10 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
 /**
  * Create an Agent with assets on one planet (default 'p').
  */
-export function makeAgent(id = 'agent-1', planetId = 'p', overrides?: Partial<Agent>): Agent {
+export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', overrides?: Partial<Agent>): Agent {
     return {
         id,
-        name: id,
+        name,
         associatedPlanetId: planetId,
         transportShips: [],
         assets: {

@@ -1,11 +1,10 @@
-import { TRPCError } from '@trpc/server';
+import { workerCreateAgent } from '@/lib/workerQueries';
 import type { UserData } from '@/types/db_schemas';
+import { TRPCError } from '@trpc/server';
 import z from 'zod';
-import { randomUUID } from 'node:crypto';
 import { db } from '../db';
 import { logger } from '../logger';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
-import { workerCreateAgent } from '@/lib/workerQueries';
 
 const userId = z.object({
     userId: z.string(),
@@ -170,6 +169,41 @@ export const getUserIdFromSession = () => {
         });
 };
 
+function createAgentSlug(name: string): string {
+    const normalized = name.normalize('NFKD').toLowerCase();
+
+    const chars: string[] = [];
+    let lastWasDash = false;
+
+    for (const ch of normalized) {
+        if (ch >= 'a' && ch <= 'z') {
+            chars.push(ch);
+            lastWasDash = false;
+            continue;
+        }
+
+        if (ch >= '0' && ch <= '9') {
+            chars.push(ch);
+            lastWasDash = false;
+            continue;
+        }
+
+        if (ch === ' ' || ch === '-' || ch === '_') {
+            if (!lastWasDash && chars.length > 0) {
+                chars.push('-');
+                lastWasDash = true;
+            }
+        }
+    }
+
+    // remove trailing dash
+    if (chars[chars.length - 1] === '-') {
+        chars.pop();
+    }
+
+    return chars.join('');
+}
+
 export const createAgent = () => {
     return protectedProcedure
         .input(
@@ -199,7 +233,7 @@ export const createAgent = () => {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Agent name cannot exceed 64 characters' });
             }
 
-            const agentId = agentName.toLowerCase().replace(/\s+/g, '-');
+            const agentId = createAgentSlug(agentName);
 
             logger.info(
                 { component: 'create-agent' },
@@ -209,7 +243,7 @@ export const createAgent = () => {
             // Create the agent in the live simulation worker
             const createdId = await workerCreateAgent({
                 agentId,
-                agentName: input.agentName,
+                agentName,
                 planetId: input.planetId,
             });
 

@@ -12,22 +12,22 @@
  */
 
 import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
+import { advanceTick, seedRng } from './engine';
 import {
     getLatestGameSnapshot,
     insertGameSnapshot,
     insertPlanetPopulationHistory,
     pruneGameSnapshots,
 } from './gameSnapshotRepository';
-import { computePopulationTotal, computeGlobalStarvation } from './snapshotRepository';
-import { advanceTick, seedRng } from './engine';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { GameState } from './planet/planet';
 import { type TransportShip } from './planet/planet';
 import type { WorkerErrorResponse, WorkerQueryMessage, WorkerSuccessResponse } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
+import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
-import { makeAgentPlanetAssets } from './utils/testHelper';
+import { makeAgent } from './utils/testHelper';
 // Static import so esbuild can inline knexfile.js (and its dotenv/dotenv-expand
 // dependencies) directly into the bundle.  A dynamic import() of a local file
 // is emitted as a separate chunk by esbuild and cannot be resolved at runtime
@@ -453,17 +453,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     });
                     return;
                 }
-                const newAgent = {
-                    id: agentId,
-                    name: agentName,
-                    associatedPlanetId: planetId,
-                    transportShips: [],
-                    assets: {
-                        [planetId]: makeAgentPlanetAssets(planetId, {
-                            deposits: 10_000,
-                        }),
-                    },
-                };
+                const newAgent = makeAgent(agentId, planetId, agentName);
                 state.agents.set(agentId, newAgent);
                 currentSnapshot = toImmutableGameState(state);
                 console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);

@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
-import { Coins, Landmark, Percent, Scale, TrendingDown, TrendingUp, Wallet, Users } from 'lucide-react';
-import type { Bank } from '@/simulation/planet/planet';
+import { formatNumbers } from '@/lib/utils';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
+import type { Bank } from '@/simulation/planet/planet';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
-import { formatNumbers } from '@/lib/utils';
+import { Coins, Landmark, Percent, Scale, TrendingDown, Users, Wallet } from 'lucide-react';
+import React from 'react';
 const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 
 /* ------------------------------------------------------------------ */
