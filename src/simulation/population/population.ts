@@ -95,8 +95,12 @@ export type PopulationCategory = {
     total: number;
     // Gaussian moments of per-capita monetary wealth for this category
     wealth: GaussianMoments;
-    // total food stock for this category (not per capita)
-    foodStock: number;
+    /**
+     * Per-resource household inventory (total for this category, not per capita).
+     * Keyed by resource name, e.g. `inventory['Agricultural Product']`.
+     * Previously the single field `foodStock` lived here directly.
+     */
+    inventory: { [resourceName: string]: number };
     // category-bound starvation level (0 to 1)
     starvationLevel: number;
     deaths: DeathStats;
@@ -118,7 +122,7 @@ export type Population = {
 export const nullPopulationCategory = (): PopulationCategory => ({
     total: 0,
     wealth: { mean: 0, variance: 0 },
-    foodStock: 0,
+    inventory: {},
     starvationLevel: 0,
     deaths: { type: 'death', countThisTick: 0, countThisMonth: 0, countLastMonth: 0 },
     disabilities: { type: 'disability', countThisTick: 0, countThisMonth: 0, countLastMonth: 0 },
@@ -159,8 +163,10 @@ export function mergePopulationCategory(dst: PopulationCategory, src: Population
     }
     // Zero-sum wealth transfer: householdDeposits unchanged.
     mergeWealthInto(dst, src, count);
-    const srcFoodPer = src.total > 0 ? stochasticRound(src.foodStock / src.total) : 0;
-    dst.foodStock += srcFoodPer * count;
+    for (const [resourceName, totalStock] of Object.entries(src.inventory)) {
+        const srcStockPer = src.total > 0 ? stochasticRound(totalStock / src.total) : 0;
+        dst.inventory[resourceName] = (dst.inventory[resourceName] ?? 0) + srcStockPer * count;
+    }
 
     dst.total += count;
 }
@@ -178,7 +184,6 @@ export const transferPopulation = (
     count: number,
 ): TransferResult => {
     const population = planet.population;
-    const bank = planet.bank;
     if (count <= 0) {
         return { count: 0, inheritedWealth: 0 };
     }
@@ -194,32 +199,29 @@ export const transferPopulation = (
     if (toCategory && to) {
         // Zero-sum wealth transfer between cells — householdDeposits unchanged.
         mergeWealthInto(toCategory, fromCategory, transferMaximum);
-        const foodTransfer =
-            fromCategory.total > 0
-                ? stochasticRound((transferMaximum * fromCategory.foodStock) / fromCategory.total)
-                : 0;
-        toCategory.foodStock += foodTransfer;
-        fromCategory.foodStock -= foodTransfer;
-
-        //toCategory.starvationLevel =
-        //    (toCategory.total * toCategory.starvationLevel + transferMaximum * fromCategory.starvationLevel) /
-        //    (toCategory.total + transferMaximum);
+        // Transfer proportional inventory of all resources
+        for (const [resourceName, totalStock] of Object.entries(fromCategory.inventory)) {
+            const inventoryTransfer =
+                fromCategory.total > 0 ? stochasticRound((transferMaximum * totalStock) / fromCategory.total) : 0;
+            toCategory.inventory[resourceName] = (toCategory.inventory[resourceName] ?? 0) + inventoryTransfer;
+            fromCategory.inventory[resourceName] = totalStock - inventoryTransfer;
+        }
 
         toCategory.total += transferMaximum;
         fromCategory.total -= transferMaximum;
 
         if (fromCategory.total === 0) {
             fromCategory.starvationLevel = 0;
-            fromCategory.foodStock = 0;
+            fromCategory.inventory = {};
             fromCategory.wealth = { mean: 0, variance: 0 };
         }
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
         population.summedPopulation[to.occ][to.edu][to.skill].total += transferMaximum;
     } else {
-        // Death: decrement source and orphan the wealth for inheritance.
-        // destroyWealthOnDeath adjusts householdDeposits for the negative-wealth
-        // case and returns the positive wealth available for inheritance redistribution.
-        inheritedWealth = destroyWealthOnDeath(bank, fromCategory, transferMaximum);
+        // Death: decrement source and remove the wealth from this category,
+        // returning the positive wealth available for inheritance redistribution
+        // (handling negative-wealth cases inside destroyWealthOnDeath).
+        inheritedWealth = destroyWealthOnDeath(fromCategory, transferMaximum);
         fromCategory.total -= transferMaximum;
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
         // Food stock of the dead is taken by "neighbors"
@@ -240,30 +242,37 @@ export const reducePopulationCohort = (cohort: Cohort<PopulationCategory>): Popu
     return total;
 };
 
-export const populationSumFunction = (a: PopulationCategory, b: PopulationCategory): PopulationCategory => ({
-    total: a.total + b.total,
-    wealth: mergeGaussianMoments(a.total, a.wealth, b.total, b.wealth),
-    foodStock: a.foodStock + b.foodStock,
-    starvationLevel: Math.min(1, (a.total * a.starvationLevel + b.total * b.starvationLevel) / (a.total + b.total)),
-    deaths: {
-        type: 'death',
-        countThisTick: a.deaths.countThisTick + b.deaths.countThisTick,
-        countThisMonth: a.deaths.countThisMonth + b.deaths.countThisMonth,
-        countLastMonth: a.deaths.countLastMonth + b.deaths.countLastMonth,
-    },
-    disabilities: {
-        type: 'disability',
-        countThisTick: a.disabilities.countThisTick + b.disabilities.countThisTick,
-        countThisMonth: a.disabilities.countThisMonth + b.disabilities.countThisMonth,
-        countLastMonth: a.disabilities.countLastMonth + b.disabilities.countLastMonth,
-    },
-    retirements: {
-        type: 'retirement',
-        countThisTick: a.retirements.countThisTick + b.retirements.countThisTick,
-        countThisMonth: a.retirements.countThisMonth + b.retirements.countThisMonth,
-        countLastMonth: a.retirements.countLastMonth + b.retirements.countLastMonth,
-    },
-});
+export const populationSumFunction = (a: PopulationCategory, b: PopulationCategory): PopulationCategory => {
+    // Merge inventory: sum all resource quantities from both categories
+    const inventory: { [resourceName: string]: number } = { ...a.inventory };
+    for (const [name, qty] of Object.entries(b.inventory)) {
+        inventory[name] = (inventory[name] ?? 0) + qty;
+    }
+    return {
+        total: a.total + b.total,
+        wealth: mergeGaussianMoments(a.total, a.wealth, b.total, b.wealth),
+        inventory,
+        starvationLevel: Math.min(1, (a.total * a.starvationLevel + b.total * b.starvationLevel) / (a.total + b.total)),
+        deaths: {
+            type: 'death',
+            countThisTick: a.deaths.countThisTick + b.deaths.countThisTick,
+            countThisMonth: a.deaths.countThisMonth + b.deaths.countThisMonth,
+            countLastMonth: a.deaths.countLastMonth + b.deaths.countLastMonth,
+        },
+        disabilities: {
+            type: 'disability',
+            countThisTick: a.disabilities.countThisTick + b.disabilities.countThisTick,
+            countThisMonth: a.disabilities.countThisMonth + b.disabilities.countThisMonth,
+            countLastMonth: a.disabilities.countLastMonth + b.disabilities.countLastMonth,
+        },
+        retirements: {
+            type: 'retirement',
+            countThisTick: a.retirements.countThisTick + b.retirements.countThisTick,
+            countThisMonth: a.retirements.countThisMonth + b.retirements.countThisMonth,
+            countLastMonth: a.retirements.countLastMonth + b.retirements.countLastMonth,
+        },
+    };
+};
 
 export const forEachPopulationCohort = (
     cohort: Cohort<PopulationCategory>,

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
 
-import { postProductionFinancialTick, preProductionFinancialTick } from './financialTick';
+import { automaticLoanRepayment, preProductionFinancialTick } from './financialTick';
 import { hireFromPopulation } from '../workforce/workforce';
 
 describe('per-agent loan bookkeeping', () => {
@@ -44,7 +44,7 @@ describe('per-agent loan bookkeeping', () => {
         agent.assets[planet.id]!.loans = 50;
 
         // postProduction should trigger repayment even when cNom == 0
-        postProductionFinancialTick(agentMap(agent), planet);
+        automaticLoanRepayment(agentMap(agent), planet);
 
         expect(agent.assets[planet.id]?.loans).toBe(0);
         expect(planet.bank!.loans).toBe(0);

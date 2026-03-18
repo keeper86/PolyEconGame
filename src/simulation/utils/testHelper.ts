@@ -292,7 +292,7 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         powerConsumptionPerTick: 0,
         workerRequirement: {},
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
-        capacity: { volume: 1e9, mass: 1e9 },
+        capacity: { volume: 1e3, mass: 1e3 },
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         ...overrides,
@@ -385,12 +385,15 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
 /**
  * Create an Agent with assets on one planet (default 'p').
  */
-export function makeAgent(id = 'agent-1', planetId = 'p', overrides?: Partial<Agent>): Agent {
+export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', overrides?: Partial<Agent>): Agent {
     return {
         id,
-        name: id,
+        name,
         associatedPlanetId: planetId,
         transportShips: [],
+        automated: true,
+        automateWorkerAllocation: true,
+        automatePricing: true,
         assets: {
             [planetId]: makeAgentPlanetAssets(planetId),
         },
@@ -426,6 +429,8 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         bank: makeBank(),
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
+        marketPrices: {},
+        lastMarketResult: {},
         ...overrides,
     };
 }

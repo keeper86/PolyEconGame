@@ -265,11 +265,11 @@ describe('transferPopulation', () => {
         expect(dst.wealth.variance).toBeCloseTo(100, 0);
     });
 
-    it('transfers foodStock proportionally', () => {
+    it('transfers inventory proportionally', () => {
         const planet = makePlanet();
         const src = planet.population.demography[25].unoccupied.primary.novice;
         src.total = 200;
-        src.foodStock = 1000;
+        src.inventory = { 'Agricultural Product': 1000 };
 
         transferPopulation(
             planet,
@@ -279,9 +279,11 @@ describe('transferPopulation', () => {
         );
 
         // Transferring 100 out of 200 → fraction = 0.5
-        // foodStockTransfer = 1000 * 0.5 = 500
-        expect(src.foodStock).toBeCloseTo(500, 0);
-        expect(planet.population.demography[25].employed.primary.novice.foodStock).toBeCloseTo(500, 0);
+        // inventoryTransfer = 1000 * 0.5 = 500
+        expect(src.inventory['Agricultural Product'] ?? 0).toBeCloseTo(500, 0);
+        expect(
+            planet.population.demography[25].employed.primary.novice.inventory['Agricultural Product'] ?? 0,
+        ).toBeCloseTo(500, 0);
     });
 
     it('conserves total across transfer', () => {

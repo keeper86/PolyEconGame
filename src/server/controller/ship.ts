@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { procedure } from '../trpcRoot';
-import { startWorker, sendToWorker } from '../../simulation/workerManager';
+import { startWorker, sendToWorker } from '../../simulation/workerClient/manager';
 
 export const ship = () => {
     return procedure

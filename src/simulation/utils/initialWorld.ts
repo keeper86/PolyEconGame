@@ -46,7 +46,7 @@ import { makeWorkforceDemography } from './testHelper';
 // Factory helpers
 // ============================================================================
 
-function makeProductionFacility(opts: {
+export function makeProductionFacility(opts: {
     planetId: string;
     id: string;
     name: string;
@@ -84,7 +84,7 @@ function makeProductionFacility(opts: {
     };
 }
 
-function makeStorage(opts: {
+export function makeStorage(opts: {
     planetId: string;
     id: string;
     name: string;
@@ -111,7 +111,7 @@ function makeStorage(opts: {
 }
 
 /** Build a water-extraction facility for a given planet/agent. */
-function makeWaterExtraction(planetId: string, agentId: string, scale: number): ProductionFacility {
+export function makeWaterExtraction(planetId: string, agentId: string, scale: number): ProductionFacility {
     return makeProductionFacility({
         planetId,
         id: `${agentId}-water-extraction`,
@@ -126,7 +126,7 @@ function makeWaterExtraction(planetId: string, agentId: string, scale: number): 
 }
 
 /** Build an agricultural-production facility for a given planet/agent. */
-function makeAgriculturalProduction(planetId: string, agentId: string, scale: number): ProductionFacility {
+export function makeAgriculturalProduction(planetId: string, agentId: string, scale: number): ProductionFacility {
     return makeProductionFacility({
         planetId,
         id: `${agentId}-agricultural`,
@@ -144,7 +144,7 @@ function makeAgriculturalProduction(planetId: string, agentId: string, scale: nu
 }
 
 /** Build an iron-extraction facility for a given planet/agent. */
-function makeIronExtraction(planetId: string, agentId: string, scale: number): ProductionFacility {
+export function makeIronExtraction(planetId: string, agentId: string, scale: number): ProductionFacility {
     return makeProductionFacility({
         planetId,
         id: `${agentId}-iron-extraction`,
@@ -158,7 +158,7 @@ function makeIronExtraction(planetId: string, agentId: string, scale: number): P
     });
 }
 
-function makeAgentPlanetAssets(
+export function makeAgentPlanetAssets(
     planetId: string,
     facilities: ProductionFacility[],
     storage: StorageFacility,
@@ -185,7 +185,7 @@ type ResourceClaimEntry = ResourceQuantity & ResourceClaim;
 // Earth setup
 // ============================================================================
 
-const EARTH_ID = 'earth';
+export const EARTH_ID = 'earth';
 
 // ---------------------------------------------------------------------------
 // Resource claims — Government owns all, tenants assigned below
@@ -373,6 +373,9 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
             name: spec.name,
             associatedPlanetId: EARTH_ID,
             transportShips: [],
+            automated: true,
+            automateWorkerAllocation: true,
+            automatePricing: true,
             assets: {
                 [EARTH_ID]: makeAgentPlanetAssets(
                     EARTH_ID,
@@ -426,6 +429,9 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: spec.id,
                 name: spec.name,
                 associatedPlanetId: EARTH_ID,
+                automated: true,
+                automateWorkerAllocation: true,
+                automatePricing: true,
                 transportShips: [],
                 assets: {
                     [EARTH_ID]: makeAgentPlanetAssets(EARTH_ID, [ironProd], agentStorage, [], [ironClaimId]),
@@ -482,6 +488,9 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
         name: 'Earth Government',
         associatedPlanetId: EARTH_ID,
         transportShips: [],
+        automated: true,
+        automateWorkerAllocation: true,
+        automatePricing: true,
         assets: {
             [EARTH_ID]: makeAgentPlanetAssets(
                 EARTH_ID,
@@ -521,7 +530,8 @@ function buildEarth(): { planet: Planet; agents: Agent[] } {
             tertiary: 1.0,
         },
 
-        priceLevel: 1.0,
+        marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+        lastMarketResult: {},
 
         resources: {
             [arableLandResourceType.name]: earthArableLandClaims,
@@ -683,6 +693,9 @@ function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             name: spec.name,
             associatedPlanetId: AC_ID,
             transportShips: [],
+            automated: true,
+            automateWorkerAllocation: true,
+            automatePricing: true,
             assets: {
                 [AC_ID]: makeAgentPlanetAssets(
                     AC_ID,
@@ -738,6 +751,9 @@ function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         name: 'Alpha Centauri Government',
         associatedPlanetId: AC_ID,
         transportShips: [],
+        automated: true,
+        automateWorkerAllocation: true,
+        automatePricing: true,
         assets: {
             [AC_ID]: makeAgentPlanetAssets(
                 AC_ID,
@@ -774,7 +790,8 @@ function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             tertiary: 1.0,
         },
 
-        priceLevel: 1.0,
+        marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+        lastMarketResult: {},
 
         resources: {
             [arableLandResourceType.name]: acArableLandClaims,

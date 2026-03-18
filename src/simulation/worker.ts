@@ -12,61 +12,31 @@
  */
 
 import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
+import { advanceTick, seedRng } from './engine';
 import {
     getLatestGameSnapshot,
     insertGameSnapshot,
     insertPlanetPopulationHistory,
     pruneGameSnapshots,
 } from './gameSnapshotRepository';
-import { computePopulationTotal, computeGlobalStarvation } from './snapshotRepository';
-import { advanceTick, seedRng } from './engine';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
-import type { GameState } from './planet/planet';
-import { type TransportShip } from './planet/planet';
-import type { WorkerErrorResponse, WorkerQueryMessage, WorkerSuccessResponse } from './queries';
+import type { Agent, GameState } from './planet/planet';
+import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
+import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
-// Static import so esbuild can inline knexfile.js (and its dotenv/dotenv-expand
-// dependencies) directly into the bundle.  A dynamic import() of a local file
-// is emitted as a separate chunk by esbuild and cannot be resolved at runtime
-// inside the standalone production image.
 import knexConfig from '../../knexfile.js';
+import { computeLoanConditions } from './financial/loanConditions';
+import { agriculturalProductResourceType, arableLandResourceType, waterSourceResourceType } from './planet/facilities';
+import { makeAgent } from './utils/testHelper';
+import { collapseUntenantedClaims } from './utils/entities';
+import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from './utils/initialWorld';
+export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
+import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 
-export type InboundMessage =
-    | { type: 'ping' }
-    | { type: 'createShip'; from: string; to: string; cargo: { metal: number; energy: number }; eta?: number }
-    | { type: 'shutdown' }
-    | WorkerQueryMessage;
-
-export type OutboundMessage =
-    | { type: 'pong'; tick: number }
-    | { type: 'tick'; tick: number; elapsedMs: number }
-    | { type: 'shipArrived'; shipId: string; to: string; cargo: { metal: number; energy: number }; tick: number }
-    | { type: 'shipCreated'; ship: TransportShip; tick: number }
-    | {
-          type: 'shipCreationFailed';
-          reason: string;
-          requested: { metal: number; energy: number };
-          available?: { metal: number; energy: number };
-          from?: string;
-      }
-    // Sent by the manager to notify connected clients that the worker was restarted
-    // (useful for client-side UI reset/hot-reload logic).
-    | { type: 'workerRestarted'; reason?: string }
-    // Query protocol responses
-    | WorkerSuccessResponse
-    | WorkerErrorResponse;
-
-// ---------------------------------------------------------------------------
-// Default export — entry point called by Piscina
-// ---------------------------------------------------------------------------
-
-/** Task payload sent by the manager via `pool.run()`. */
 interface TaskPayload {
     command: string;
-    /** Dedicated MessagePort for custom messages (queries, pings, etc.).
-     *  Transferred from the main thread via the Piscina `transferList`. */
     port?: MessagePort;
 }
 
@@ -162,6 +132,318 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     }
 
     // -----------------------------------------------------------------
+    // Action queue — collects user-driven state mutations between ticks
+    // -----------------------------------------------------------------
+
+    const pendingActions: PendingAction[] = [];
+
+    /**
+     * Apply every queued action to `state` in FIFO order.
+     * Called once per tick, right before `advanceTick`, so the snapshot
+     * is only updated in the normal post-tick path rather than ad-hoc.
+     */
+    function drainActionQueue(): void {
+        if (pendingActions.length === 0) {
+            return;
+        }
+
+        const actions = pendingActions.splice(0);
+        for (const action of actions) {
+            try {
+                switch (action.type) {
+                    case 'createAgent': {
+                        const { requestId, agentId, agentName, planetId } = action;
+
+                        const newAgent: Agent = makeAgent(agentId, planetId, agentName);
+                        newAgent.automated = false; // explicitly mark user-created agents as non-automated
+                        newAgent.automateWorkerAllocation = false; // start with manual control
+                        newAgent.automatePricing = false; // start with manual control
+                        state.agents.set(agentId, newAgent);
+                        console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
+                        safePostMessage({ type: 'agentCreated', requestId, agentId });
+                        break;
+                    }
+                    case 'requestLoan': {
+                        const { requestId, agentId, planetId, amount } = action;
+                        const agent = state.agents.get(agentId);
+                        const planet = state.planets.get(planetId);
+                        if (!agent || !planet) {
+                            safePostMessage({
+                                type: 'loanDenied',
+                                requestId,
+                                reason: 'Agent or planet not found',
+                            });
+                            break;
+                        }
+                        // Re-check credit conditions at application time to guard
+                        // against race conditions (e.g. conditions changed between
+                        // getLoanConditions query and the actual request).
+                        const conditions = computeLoanConditions(agent, planet);
+                        if (amount <= 0 || amount > conditions.maxLoanAmount) {
+                            safePostMessage({
+                                type: 'loanDenied',
+                                requestId,
+                                reason: `Requested amount ${amount} exceeds approved limit ${conditions.maxLoanAmount}`,
+                            });
+                            break;
+                        }
+                        // TODO: unify with automatic loan for wages and move to wealthOps
+                        const assets = agent.assets[planetId];
+                        assets.deposits += amount;
+                        assets.loans += amount;
+                        planet.bank.loans += amount;
+                        planet.bank.deposits += amount;
+                        planet.bank.equity = planet.bank.deposits - planet.bank.loans;
+                        console.log(`[worker] Loan of ${amount} granted to agent '${agentId}' on planet '${planetId}'`);
+                        safePostMessage({ type: 'loanGranted', requestId, agentId, amount });
+                        break;
+                    }
+                    case 'setAutomation': {
+                        const { requestId, agentId, automateWorkerAllocation, automatePricing } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        agent.automateWorkerAllocation = automateWorkerAllocation;
+                        agent.automatePricing = automatePricing;
+                        console.log(
+                            `[worker] Automation updated for agent '${agentId}': ` +
+                                `workerAllocation=${automateWorkerAllocation}, pricing=${automatePricing}`,
+                        );
+                        safePostMessage({ type: 'automationSet', requestId, agentId });
+                        break;
+                    }
+                    case 'setWorkerAllocationTargets': {
+                        const { requestId, agentId, planetId, targets } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'workerAllocationFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'workerAllocationFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        // Merge provided targets into allocatedWorkers (missing levels stay unchanged)
+                        for (const [edu, count] of Object.entries(targets)) {
+                            if (typeof count === 'number' && count >= 0) {
+                                (assets.allocatedWorkers as Record<string, number>)[edu] = count;
+                            }
+                        }
+                        console.log(
+                            `[worker] Worker allocation targets updated for agent '${agentId}' on '${planetId}'`,
+                        );
+                        safePostMessage({ type: 'workerAllocationSet', requestId, agentId });
+                        break;
+                    }
+                    case 'setSellOffers': {
+                        const { requestId, agentId, planetId, offers } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'sellOffersFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'sellOffersFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        if (!assets.market) {
+                            assets.market = { sell: {} };
+                        }
+                        for (const [resourceName, update] of Object.entries(offers)) {
+                            if (!assets.market.sell[resourceName]) {
+                                // Find resource reference from production facilities
+                                let resource = null;
+                                outerLoop: for (const facility of assets.productionFacilities) {
+                                    for (const p of facility.produces) {
+                                        if (p.resource.name === resourceName) {
+                                            resource = p.resource;
+                                            break outerLoop;
+                                        }
+                                    }
+                                }
+                                if (!resource) {
+                                    // Skip resources this agent does not produce
+                                    continue;
+                                }
+                                assets.market.sell[resourceName] = { resource };
+                            }
+                            const offer = assets.market.sell[resourceName];
+                            if (update.offerPrice !== undefined && update.offerPrice > 0) {
+                                offer.offerPrice = update.offerPrice;
+                            }
+                            if (update.offerQuantity !== undefined && update.offerQuantity >= 0) {
+                                offer.offerQuantity = update.offerQuantity;
+                            }
+                        }
+                        console.log(`[worker] Sell offers updated for agent '${agentId}' on '${planetId}'`);
+                        safePostMessage({ type: 'sellOffersSet', requestId, agentId });
+                        break;
+                    }
+                    case 'claimResources': {
+                        const { requestId, agentId, planetId, arableLandQuantity, waterSourceQuantity } = action;
+                        const agent = state.agents.get(agentId);
+                        const planet = state.planets.get(planetId);
+                        if (!agent || !planet) {
+                            safePostMessage({
+                                type: 'resourcesClaimFailed',
+                                requestId,
+                                reason: 'Agent or planet not found',
+                            });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'resourcesClaimFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+
+                        // Collapse all untenanted arable land into one pool
+                        const arablePool = collapseUntenantedClaims(
+                            planet,
+                            arableLandResourceType.name,
+                            `${planetId}-arable-unclaimed`,
+                        );
+                        if (!arablePool || arablePool.quantity < arableLandQuantity) {
+                            safePostMessage({
+                                type: 'resourcesClaimFailed',
+                                requestId,
+                                reason: `Not enough untenanted arable land — requested ${arableLandQuantity}, available ${arablePool?.quantity ?? 0}`,
+                            });
+                            break;
+                        }
+
+                        // Collapse all untenanted water sources into one pool
+                        const waterPool = collapseUntenantedClaims(
+                            planet,
+                            waterSourceResourceType.name,
+                            `${planetId}-water-unclaimed`,
+                        );
+                        if (!waterPool || waterPool.quantity < waterSourceQuantity) {
+                            safePostMessage({
+                                type: 'resourcesClaimFailed',
+                                requestId,
+                                reason: `Not enough untenanted water sources — requested ${waterSourceQuantity}, available ${waterPool?.quantity ?? 0}`,
+                            });
+                            break;
+                        }
+
+                        // Create new claim IDs for this agent
+                        const arableClaimId = `${planetId}-arable-${agentId}`;
+                        const waterClaimId = `${planetId}-water-${agentId}`;
+
+                        // Split arable land off the pool
+                        const arableRatio = arableLandQuantity / arablePool.maximumCapacity;
+                        const newArableClaim = {
+                            id: arableClaimId,
+                            type: arableLandResourceType,
+                            quantity: arableLandQuantity,
+                            regenerationRate: arablePool.regenerationRate * arableRatio,
+                            maximumCapacity: arableLandQuantity,
+                            claimAgentId: arablePool.claimAgentId,
+                            tenantAgentId: agentId,
+                            tenantCostInCoins: Math.floor(arableLandQuantity * 0.01),
+                        };
+                        arablePool.quantity -= arableLandQuantity;
+                        arablePool.regenerationRate -= newArableClaim.regenerationRate;
+                        arablePool.maximumCapacity -= arableLandQuantity;
+                        planet.resources[arableLandResourceType.name].push(newArableClaim);
+
+                        // Split water source off the pool
+                        const waterRatio = waterSourceQuantity / waterPool.maximumCapacity;
+                        const newWaterClaim = {
+                            id: waterClaimId,
+                            type: waterSourceResourceType,
+                            quantity: waterSourceQuantity,
+                            regenerationRate: waterPool.regenerationRate * waterRatio,
+                            maximumCapacity: waterSourceQuantity,
+                            claimAgentId: waterPool.claimAgentId,
+                            tenantAgentId: agentId,
+                            tenantCostInCoins: Math.floor(waterSourceQuantity * 0.005),
+                        };
+                        waterPool.quantity -= waterSourceQuantity;
+                        waterPool.regenerationRate -= newWaterClaim.regenerationRate;
+                        waterPool.maximumCapacity -= waterSourceQuantity;
+                        planet.resources[waterSourceResourceType.name].push(newWaterClaim);
+
+                        // Register the tenancy on the agent's assets
+                        assets.resourceTenancies.push(arableClaimId, waterClaimId);
+
+                        // Add the government claim owner's claim list if it exists
+                        const govAgent = arablePool.claimAgentId ? state.agents.get(arablePool.claimAgentId) : null;
+                        if (govAgent) {
+                            const govAssets = govAgent.assets[planetId];
+                            if (govAssets) {
+                                govAssets.resourceClaims.push(arableClaimId, waterClaimId);
+                            }
+                        }
+
+                        // Build production facilities if the agent doesn't already have them
+                        const hasWaterFacility = assets.productionFacilities.some((f) =>
+                            f.needs.some((n) => n.resource.name === waterSourceResourceType.name),
+                        );
+                        const hasAgriFacility = assets.productionFacilities.some((f) =>
+                            f.needs.some((n) => n.resource.name === arableLandResourceType.name),
+                        );
+
+                        const waterScale = waterSourceQuantity / 1000;
+                        const agriScale = arableLandQuantity / 1000;
+
+                        if (!hasWaterFacility) {
+                            const waterFacility = makeWaterExtraction(planetId, agentId, waterScale);
+                            assets.productionFacilities.push(waterFacility);
+                        }
+                        if (!hasAgriFacility) {
+                            const agriFacility = makeAgriculturalProduction(planetId, agentId, agriScale);
+                            assets.productionFacilities.push(agriFacility);
+                        }
+
+                        // Build storage if the agent doesn't have one yet
+                        if (!assets.storageFacility) {
+                            assets.storageFacility = makeStorage({
+                                planetId,
+                                id: `${agentId}-storage`,
+                                name: `${agentId} Storage`,
+                            });
+                        }
+
+                        console.log(
+                            `[worker] Agent '${agentId}' claimed ${arableLandQuantity} arable land and ` +
+                                `${waterSourceQuantity} water source on planet '${planetId}'`,
+                        );
+                        safePostMessage({ type: 'resourcesClaimed', requestId, agentId, arableClaimId, waterClaimId });
+                        break;
+                    }
+                }
+            } catch (err) {
+                console.error(`[worker] Failed to apply pending action '${action.type}':`, err);
+                if ('requestId' in action) {
+                    safePostMessage({
+                        type: 'agentCreationFailed',
+                        requestId: (action as { requestId: string }).requestId,
+                        reason: err instanceof Error ? err.message : String(err),
+                    });
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------
     // Tick loop (recursive setTimeout to avoid drift / overlap)
     // -----------------------------------------------------------------
 
@@ -246,7 +528,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     planet_id: planet.id,
                     population: computePopulationTotal(planet),
                     starvation_level: clampTiny(computeGlobalStarvation(planet)),
-                    food_price: clampTiny(planet.priceLevel ?? 0),
+                    food_price: clampTiny(planet.marketPrices[agriculturalProductResourceType.name] ?? 0),
                 }));
                 await insertPlanetPopulationHistory(db, populationRows);
 
@@ -275,6 +557,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             const start = Date.now();
             state.tick += 1;
+
+            // Apply all queued user-driven state mutations before advancing
+            // the tick, so they take effect as part of this tick's snapshot.
+            drainActionQueue();
 
             try {
                 advanceTick(state);
@@ -366,6 +652,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     data = { agents };
                     break;
                 }
+                case 'getLoanConditions': {
+                    const agentRecord = snap.agents.get(msg.agentId);
+                    const planetRecord = snap.planets.get(msg.planetId);
+                    if (!agentRecord || !planetRecord) {
+                        data = { conditions: null };
+                    } else {
+                        data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data) };
+                    }
+                    break;
+                }
                 default: {
                     const _exhaustive: never = msg;
                     throw new Error(`Unknown query type: ${(_exhaustive as { type: string }).type}`);
@@ -408,6 +704,145 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             } catch (_e) {
                 process.exit(0);
             }
+            return;
+        }
+
+        if (msg.type === 'createAgent') {
+            const { requestId, agentId, agentName, planetId } = msg;
+            // Validate eagerly so clients get immediate feedback on bad input.
+            if (state.agents.has(agentId)) {
+                safePostMessage({ type: 'agentCreationFailed', requestId, reason: 'Agent ID already exists' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'agentCreationFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            if (agentName.trim().length === 0) {
+                safePostMessage({
+                    type: 'agentCreationFailed',
+                    requestId,
+                    reason: 'Agent name cannot be empty',
+                });
+                return;
+            }
+            let nameConflict = false;
+            state.agents.forEach((a) => {
+                if (a.name === agentName) {
+                    nameConflict = true;
+                }
+            });
+            if (nameConflict) {
+                safePostMessage({
+                    type: 'agentCreationFailed',
+                    requestId,
+                    reason: `Agent name '${agentName}' already exists`,
+                });
+                return;
+            }
+            // Enqueue the validated action — it will be applied to state
+            // (and the snapshot updated) at the start of the next tick.
+            pendingActions.push({ type: 'createAgent', requestId, agentId, agentName, planetId });
+            return;
+        }
+
+        if (msg.type === 'requestLoan') {
+            const { requestId, agentId, planetId, amount } = msg;
+            // Validate eagerly
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'loanDenied', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'loanDenied', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            if (typeof amount !== 'number' || amount <= 0) {
+                safePostMessage({ type: 'loanDenied', requestId, reason: 'Loan amount must be a positive number' });
+                return;
+            }
+            pendingActions.push({ type: 'requestLoan', requestId, agentId, planetId, amount });
+            return;
+        }
+
+        if (msg.type === 'setAutomation') {
+            const { requestId, agentId, automateWorkerAllocation, automatePricing } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            pendingActions.push({
+                type: 'setAutomation',
+                requestId,
+                agentId,
+                automateWorkerAllocation,
+                automatePricing,
+            });
+            return;
+        }
+
+        if (msg.type === 'setWorkerAllocationTargets') {
+            const { requestId, agentId, planetId, targets } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'workerAllocationFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'workerAllocationFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'setWorkerAllocationTargets', requestId, agentId, planetId, targets });
+            return;
+        }
+
+        if (msg.type === 'setSellOffers') {
+            const { requestId, agentId, planetId, offers } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'sellOffersFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'sellOffersFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'setSellOffers', requestId, agentId, planetId, offers });
+            return;
+        }
+
+        if (msg.type === 'claimResources') {
+            const { requestId, agentId, planetId, arableLandQuantity, waterSourceQuantity } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'resourcesClaimFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'resourcesClaimFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            if (arableLandQuantity <= 0 || waterSourceQuantity <= 0) {
+                safePostMessage({
+                    type: 'resourcesClaimFailed',
+                    requestId,
+                    reason: 'arableLandQuantity and waterSourceQuantity must be positive',
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'claimResources',
+                requestId,
+                agentId,
+                planetId,
+                arableLandQuantity,
+                waterSourceQuantity,
+            });
             return;
         }
 

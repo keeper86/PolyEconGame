@@ -11,10 +11,11 @@
  * Adding a new query type:
  *   1. Add a new member to `WorkerQuery` and `WorkerQueryResult`.
  *   2. Implement the handler in worker.ts `handleQuery()`.
- *   3. Add a typed client method in `lib/workerQueries.ts`.
+ *   3. Add a typed client method in `workerClient/queries.ts`.
  */
 
 import type { Planet, Agent } from './planet/planet';
+import type { LoanConditions } from './financial/loanConditions';
 
 // ---------------------------------------------------------------------------
 // Query shapes (main → worker)
@@ -27,7 +28,8 @@ export type WorkerQuery =
     | { type: 'getAllPlanets' }
     | { type: 'getAgent'; agentId: string }
     | { type: 'getAllAgents' }
-    | { type: 'getAgentsByPlanet'; planetId: string };
+    | { type: 'getAgentsByPlanet'; planetId: string }
+    | { type: 'getLoanConditions'; agentId: string; planetId: string };
 
 // ---------------------------------------------------------------------------
 // Result shapes (worker → main), keyed by query type
@@ -43,6 +45,7 @@ export interface WorkerQueryResult {
     getAgent: { agent: Agent | null };
     getAllAgents: { tick: number; agents: Agent[] };
     getAgentsByPlanet: { agents: Agent[] };
+    getLoanConditions: { conditions: LoanConditions | null };
 }
 
 // ---------------------------------------------------------------------------

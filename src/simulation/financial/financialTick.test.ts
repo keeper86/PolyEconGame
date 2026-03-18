@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, Planet } from '../planet/planet';
-import { DEFAULT_WAGE_PER_EDU, postProductionFinancialTick, preProductionFinancialTick } from './financialTick';
+import { DEFAULT_WAGE_PER_EDU, automaticLoanRepayment, preProductionFinancialTick } from './financialTick';
 
 import { SKILL } from '../population/population';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
@@ -124,7 +124,7 @@ describe('postProductionFinancialTick', () => {
         agent.assets[planet.id]!.loans = 50;
         // No workforce: cNom = 0, so we go through the early-return path which still repays
 
-        postProductionFinancialTick(agentMap(agent), planet);
+        automaticLoanRepayment(agentMap(agent), planet);
 
         expect(planet.bank!.loans).toBe(0);
         expect(agent.assets[planet.id]?.deposits).toBe(0);
@@ -151,7 +151,7 @@ describe('postProductionFinancialTick', () => {
         expect(totalWealthBefore).toBeGreaterThan(0);
 
         // Post-production now only handles loan repayment —
-        postProductionFinancialTick(agentMap(agent), planet);
+        automaticLoanRepayment(agentMap(agent), planet);
 
         let totalWealthAfter = 0;
         for (let age = 0; age < demography.length; age++) {
@@ -178,7 +178,7 @@ describe('postProductionFinancialTick', () => {
 
         // Post-production: handles loan repayment
         const _depositsBefore = agent.assets[planet.id]?.deposits ?? 0;
-        postProductionFinancialTick(agentMap(agent), planet);
+        automaticLoanRepayment(agentMap(agent), planet);
 
         // Agent should have received some revenue (>=0 after loan repayment)
         expect(agent.assets[planet.id]?.deposits ?? 0).toBeGreaterThanOrEqual(0);
@@ -189,7 +189,7 @@ describe('postProductionFinancialTick', () => {
         planet.bank!.deposits = 50;
         agent.assets[planet.id]!.deposits = 50;
 
-        postProductionFinancialTick(agentMap(agent), planet);
+        automaticLoanRepayment(agentMap(agent), planet);
 
         expect(planet.bank!.equity).toBeGreaterThanOrEqual(0);
     });
@@ -233,7 +233,7 @@ describe('money conservation', () => {
         expect(loansAfterA).toBe(hired);
 
         // Step B: post-production (loan repayment)
-        postProductionFinancialTick(agentMap(agent), planet);
+        automaticLoanRepayment(agentMap(agent), planet);
         const loansAfterB = planet.bank!.loans;
 
         // Loans should be reduced (at least partially) by repayment

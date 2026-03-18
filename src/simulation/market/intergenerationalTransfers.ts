@@ -3,10 +3,12 @@ import {
     FOOD_PER_PERSON_PER_TICK,
     GENERATION_GAP,
     GENERATION_KERNEL_N,
+    INITIAL_FOOD_PRICE,
     MIN_EMPLOYABLE_AGE,
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
+import { agriculturalProductResourceType } from '../planet/facilities';
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -43,6 +45,7 @@ interface DependentNeed {
 interface CellAggregate {
     pop: number;
     wealth: GaussianMoments;
+    /** Total food stock (Agricultural Product) across all skill sub-cells. */
     foodStock: number;
 }
 
@@ -79,7 +82,7 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             const cell = ageCells[occ][edu];
             cell.wealth = mergeGaussianMoments(cell.pop, cell.wealth, n, cat.wealth);
             cell.pop += n;
-            cell.foodStock += cat.foodStock;
+            cell.foodStock += cat.inventory[agriculturalProductResourceType.name] ?? 0;
         });
 
         cache[age] = ageCells;
@@ -163,7 +166,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
     // Price level converts physical food units into wealth (currency) units.
     // Defaults to 1.0 when not yet set.
-    const foodPrice = planet.priceLevel ?? 1.0;
+    const foodPrice = planet.marketPrices[agriculturalProductResourceType.name] ?? INITIAL_FOOD_PRICE;
 
     const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
     const baseFoodCost = foodTargetPerPerson * foodPrice;

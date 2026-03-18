@@ -8,21 +8,32 @@
  * require data spanning many ticks.
  */
 
+import { agriculturalProductResourceType } from '@/simulation/planet/facilities';
 import { z } from 'zod';
-import { protectedProcedure } from '../trpcRoot';
+import { workerQueries } from '../../simulation/workerClient/queries';
+import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
+import type { Agent } from '../../simulation/planet/planet';
 import {
-    computePopulationTotal,
-    computeAgentStorage,
-    computeAgentProduction,
     computeAgentConsumption,
+    computeAgentProduction,
+    computeAgentStorage,
+    computePopulationTotal,
     summariseAgentBlob,
     summarisePlanetAssets,
     type AgentPlanetSummary,
 } from '../../simulation/snapshotRepository';
-import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
 import { db } from '../db';
-import { workerQueries } from '../../lib/workerQueries';
-import type { Agent } from '../../simulation/planet/planet';
+import { protectedProcedure } from '../trpcRoot';
+
+const loanConditionsSchema = z.object({
+    maxLoanAmount: z.number(),
+    annualInterestRate: z.number(),
+    existingDiscretionaryLoans: z.number(),
+    monthlyWageBill: z.number(),
+    monthlyRevenue: z.number(),
+    monthlyNetCashFlow: z.number(),
+    isNewAgent: z.boolean(),
+});
 
 export const getCurrentTick = () =>
     protectedProcedure
@@ -68,7 +79,7 @@ export const getLatestPlanetSummaries = () =>
                         equity: p.bank.equity,
                         deposits: p.bank.deposits,
                     },
-                    foodPrice: p.priceLevel ?? 1,
+                    foodPrice: p.marketPrices[agriculturalProductResourceType.name] ?? 1,
                     name: p.name,
                 })),
             };
@@ -321,6 +332,8 @@ export const getAgentPlanetDetail = () =>
                     agentId: agent.id,
                     agentName: agent.name,
                     planetId: input.planetId,
+                    automateWorkerAllocation: agent.automateWorkerAllocation ?? false,
+                    automatePricing: agent.automatePricing ?? false,
                     assets,
                 },
             };
@@ -359,4 +372,17 @@ export const getPlanetPopulationHistory = () =>
                     foodPrice: r.food_price ?? 0,
                 })),
             };
+        });
+
+/**
+ * Return the credit conditions the planet bank would offer the requesting
+ * agent right now.  Read-only — does not modify any state.
+ */
+export const getLoanConditions = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(z.object({ conditions: loanConditionsSchema.nullable() }))
+        .query(async ({ input }) => {
+            const { conditions } = await workerQueries.getLoanConditions(input.agentId, input.planetId);
+            return { conditions: conditions ?? null };
         });
