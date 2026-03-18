@@ -20,7 +20,7 @@ export default function AgentDetailPage() {
 
     const tick = data?.tick ?? 0;
     const overview = data?.overview;
-    const isOwner = myAgentId === agentId;
+    const isOwner = myAgentId.agentId === agentId;
 
     return (
         <Page

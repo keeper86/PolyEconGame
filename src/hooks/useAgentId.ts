@@ -15,13 +15,21 @@ import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 
-export function useAgentId(): string | null {
+export type UseAgentIdResult = {
+    agentId: string | null;
+    isLoading: boolean;
+};
+
+export function useAgentId(): UseAgentIdResult {
     const { status } = useSession();
     const trpc = useTRPC();
 
-    const { data } = useQuery(
+    const { data, isLoading } = useQuery(
         trpc.getUser.queryOptions({ userId: undefined }, { enabled: status === 'authenticated' }),
     );
 
-    return data?.agentId ?? null;
+    return {
+        agentId: data?.agentId ?? null,
+        isLoading: status === 'loading' || (status === 'authenticated' && isLoading),
+    };
 }

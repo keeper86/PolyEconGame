@@ -5,6 +5,7 @@ import { Piscina } from 'piscina';
 import { spawnSync } from 'node:child_process';
 
 import type { InboundMessage, OutboundMessage } from '../worker';
+import { rejectAllPending } from './pendingRequests';
 
 export type MessageHandler = (msg: OutboundMessage) => void;
 
@@ -181,6 +182,7 @@ export async function stopWorker(): Promise<void> {
     if (!p) {
         return;
     }
+    rejectAllPending('Worker stopped');
     setPool(null);
     if (port) {
         port.close();
@@ -194,6 +196,7 @@ export async function restartWorker(): Promise<void> {
     const existing = getPool();
     const existingPort = getPort();
     if (existing) {
+        rejectAllPending('Worker restarting');
         setPool(null);
         if (existingPort) {
             existingPort.close();

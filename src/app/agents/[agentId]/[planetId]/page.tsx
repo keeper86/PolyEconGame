@@ -115,10 +115,10 @@ export default function AgentPlanetDetailPage() {
     const assets = detail?.assets;
 
     // Wait until agentId has resolved before checking ownership
-    const isOwnAgent = myAgentId === agentId;
+    const isOwnAgent = myAgentId.agentId === agentId;
 
-    // Access denied – show an in-game style message once agentId has loaded
-    if (myAgentId !== null && !isOwnAgent) {
+    // Access denied – show an in-game style message once the session and user data have loaded
+    if (!myAgentId.isLoading && !isOwnAgent) {
         return (
             <Page
                 title='Restricted Area'
@@ -215,14 +215,16 @@ export default function AgentPlanetDetailPage() {
                     />
 
                     {/* Borrowing panel — only visible to the agent's owner */}
-                    <LoanPanel agentId={agentId} planetId={planetId} />
+                    {isOwnAgent && <LoanPanel agentId={agentId} planetId={planetId} />}
 
                     {/* Automation controls — only visible to the agent's owner */}
-                    <AutomationPanel
-                        agentId={agentId}
-                        automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
-                        automatePricing={detail?.automatePricing ?? false}
-                    />
+                    {isOwnAgent && (
+                        <AutomationPanel
+                            agentId={agentId}
+                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                            automatePricing={detail?.automatePricing ?? false}
+                        />
+                    )}
                 </div>
             ) : isLoading ? (
                 <div className='text-sm text-muted-foreground'>Loading planet assets…</div>

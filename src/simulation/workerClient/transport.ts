@@ -3,29 +3,16 @@ import { sendToWorker, onWorkerMessage } from './manager';
 import type { InboundMessage, OutboundMessage } from './messages';
 import type { CommandSpec } from './commandSpec';
 import type { WorkerQuery, WorkerQueryResult, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
-
-interface PendingRequest<T = unknown> {
-    resolve: (value: T) => void;
-    reject: (reason: unknown) => void;
-    timer: ReturnType<typeof setTimeout>;
-}
+import { getPending } from './pendingRequests';
+export { rejectAllPending } from './pendingRequests';
 
 // globalThis-backed singletons prevent duplicate state when Turbopack
 // re-evaluates this module in development.
-const GLOBAL_KEY_PENDING = Symbol.for('__polyecon_workerQueries_pending__');
 const GLOBAL_KEY_LISTENER = Symbol.for('__polyecon_workerQueries_listener__');
 
 const g = globalThis as unknown as {
-    [GLOBAL_KEY_PENDING]?: Map<string, PendingRequest>;
     [GLOBAL_KEY_LISTENER]?: boolean;
 };
-
-function getPending(): Map<string, PendingRequest> {
-    if (!g[GLOBAL_KEY_PENDING]) {
-        g[GLOBAL_KEY_PENDING] = new Map<string, PendingRequest>();
-    }
-    return g[GLOBAL_KEY_PENDING];
-}
 
 export const DEFAULT_TIMEOUT_MS = 5_000;
 
@@ -149,13 +136,4 @@ export function sendCommandSpec<
             reject(err);
         }
     });
-}
-
-export function rejectAllPending(reason = 'Worker shut down'): void {
-    const p = getPending();
-    for (const [id, entry] of p) {
-        clearTimeout(entry.timer);
-        entry.reject(new Error(reason));
-        p.delete(id);
-    }
 }
