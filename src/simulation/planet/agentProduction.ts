@@ -30,9 +30,12 @@ function updateProductionScaleForAgent(agent: Agent, planet: Planet): void {
         return;
     }
 
-    // We need a demand signal.
-    const lastSold = assets.foodMarket?.lastSold;
-    if (lastSold === undefined) {
+    // We need a demand signal: use the most-sold resource's lastSold across all offers.
+    const lastSold = Object.values(assets.market?.sell ?? {}).reduce(
+        (max, offer) => Math.max(max, offer.lastSold ?? 0),
+        0,
+    );
+    if (lastSold === 0 && !assets.market?.sell) {
         return;
     }
 

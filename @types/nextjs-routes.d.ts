@@ -16,7 +16,6 @@ declare module "nextjs-routes" {
     | StaticRoute<"/agents">
     | DynamicRoute<"/agents/[agentId]", { "agentId": string }>
     | DynamicRoute<"/agents/[agentId]/[planetId]", { "agentId": string; "planetId": string }>
-    | DynamicRoute<"/agents/[agentId]/[planetId]/production", { "agentId": string; "planetId": string }>
     | DynamicRoute<"/api/auth/[...nextauth]", { "nextauth": string[] }>
     | StaticRoute<"/api/ping">
     | DynamicRoute<"/api/public/[...trpc]", { "trpc": string[] }>

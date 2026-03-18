@@ -107,6 +107,30 @@ export const PRICE_ADJUST_SENSITIVITY = 0.01;
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
 // ---------------------------------------------------------------------------
+// Bank credit / loan origination constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Maximum loan amount available to a brand-new agent with no prior history.
+ * Serves as the baseline "starter loan" for bootstrapping a new company.
+ */
+export const STARTER_LOAN_AMOUNT = 1_000_000;
+
+/**
+ * Multiplier applied to projected monthly net cash flow to determine the
+ * credit limit for established agents.
+ * E.g. 6 means the bank lends up to 6 months of projected net cash flow.
+ */
+export const LOAN_CASH_FLOW_MONTHS = 6;
+
+/**
+ * Number of ticks in a month used for cash-flow projection in loan decisions.
+ * Matches TICKS_PER_MONTH; kept as a separate constant for clarity in the
+ * credit-conditions calculation.
+ */
+export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;
+
+// ---------------------------------------------------------------------------
 // Intergenerational transfer constants
 // ---------------------------------------------------------------------------
 

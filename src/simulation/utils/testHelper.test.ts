@@ -42,15 +42,15 @@ describe('makePopulationCategory', () => {
         const cat = makePopulationCategory();
         expect(cat.total).toBe(0);
         expect(cat.wealth.mean).toBe(0);
-        expect(cat.foodStock).toBe(0);
+        expect(Object.keys(cat.inventory)).toHaveLength(0);
         expect(cat.starvationLevel).toBe(0);
         expect(cat.deaths.countThisMonth).toBe(0);
     });
 
     it('applies overrides', () => {
-        const cat = makePopulationCategory({ total: 100, foodStock: 50 });
+        const cat = makePopulationCategory({ total: 100, inventory: { 'Agricultural Product': 50 } });
         expect(cat.total).toBe(100);
-        expect(cat.foodStock).toBe(50);
+        expect(cat.inventory['Agricultural Product']).toBe(50);
     });
 });
 
@@ -275,7 +275,7 @@ describe('makeStorageFacility', () => {
     it('creates empty storage', () => {
         const sf = makeStorageFacility();
         expect(sf.planetId).toBe('p');
-        expect(sf.capacity.volume).toBe(1e9);
+        expect(sf.capacity.volume).toBe(1e3);
         expect(Object.keys(sf.currentInStorage)).toHaveLength(0);
     });
 });

@@ -1,5 +1,13 @@
-import { TRPCError } from '@trpc/server';
+import {
+    workerCreateAgent,
+    workerRequestLoan,
+    workerSetAutomation,
+    workerSetWorkerAllocationTargets,
+    workerSetSellOffers,
+    workerClaimResources,
+} from '@/simulation/workerClient/commands';
 import type { UserData } from '@/types/db_schemas';
+import { TRPCError } from '@trpc/server';
 import z from 'zod';
 import { db } from '../db';
 import { logger } from '../logger';
@@ -18,7 +26,9 @@ const userData = z.object({
     hasAssessmentPublished: z.boolean().optional(),
     avatar: z.string().max(bytesToBase64Chars(MAX_SIZE_BYTES_AVATAR), 'Avatar image (base64) is too large').optional(),
 });
-export const userSummary = userId.merge(userData);
+export const userSummary = userId.merge(userData).extend({
+    agentId: z.string().nullable().optional(),
+});
 export type UserSummary = z.infer<typeof userSummary>;
 
 export const getUsers = () => {
@@ -87,6 +97,7 @@ export const getUser = () => {
                 displayName: row.display_name || undefined,
                 hasAssessmentPublished: row.has_assessment_published,
                 avatar: row.avatar ? row.avatar.toString('base64') : undefined,
+                agentId: row.agent_id ?? null,
             };
 
             logger.debug(
@@ -162,5 +173,356 @@ export const getUserIdFromSession = () => {
             const userId = getUserIdFromContext(ctx);
             logger.debug({ component: 'getUserIdFromPat' }, `Retrieved user ID from PAT: ${userId}`);
             return { userId };
+        });
+};
+
+function createAgentSlug(name: string): string {
+    const normalized = name.normalize('NFKD').toLowerCase();
+
+    const chars: string[] = [];
+    let lastWasDash = false;
+
+    for (const ch of normalized) {
+        if (ch >= 'a' && ch <= 'z') {
+            chars.push(ch);
+            lastWasDash = false;
+            continue;
+        }
+
+        if (ch >= '0' && ch <= '9') {
+            chars.push(ch);
+            lastWasDash = false;
+            continue;
+        }
+
+        if (ch === ' ' || ch === '-' || ch === '_') {
+            if (!lastWasDash && chars.length > 0) {
+                chars.push('-');
+                lastWasDash = true;
+            }
+        }
+    }
+
+    // remove trailing dash
+    if (chars[chars.length - 1] === '-') {
+        chars.pop();
+    }
+
+    return chars.join('');
+}
+
+export const createAgent = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentName: z.string().min(1).max(64),
+                planetId: z.string().min(1),
+            }),
+        )
+        .output(z.object({ agentId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            // Check if user already has an agent
+            const existing = await db('user_data').where({ user_id: userId }).first();
+            if (!existing) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (existing.agent_id) {
+                throw new TRPCError({ code: 'CONFLICT', message: 'User already has an agent' });
+            }
+
+            const agentName = input.agentName.trim();
+            if (agentName.length === 0) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Agent name cannot be empty' });
+            }
+            if (agentName.length > 64) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Agent name cannot exceed 64 characters' });
+            }
+
+            const agentId = createAgentSlug(agentName);
+
+            if (agentId.length === 0) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'Agent name must contain at least one letter or digit',
+                });
+            }
+
+            logger.info(
+                { component: 'create-agent' },
+                `Creating agent '${input.agentName}' (${agentId}) on planet '${input.planetId}' for user ${userId}`,
+            );
+
+            // Create the agent in the live simulation worker
+            const createdId = await workerCreateAgent({
+                agentId,
+                agentName,
+                planetId: input.planetId,
+            });
+
+            // Persist the association in the database
+            await db('user_data').where({ user_id: userId }).update({ agent_id: createdId });
+
+            logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
+
+            return { agentId: createdId };
+        });
+};
+
+/**
+ * Request a discretionary loan from the planet's bank.
+ *
+ * The amount is validated against the credit conditions computed by the
+ * worker.  On success the loan is applied within the next tick via the
+ * pending-action queue.
+ */
+export const requestLoan = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                amount: z.number().int().positive(),
+            }),
+        )
+        .output(z.object({ grantedAmount: z.number() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            // Verify the requesting user actually owns this agent
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'You do not own this agent',
+                });
+            }
+
+            logger.info(
+                { component: 'request-loan' },
+                `User ${userId} requesting loan of ${input.amount} for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            const grantedAmount = await workerRequestLoan({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                amount: input.amount,
+            });
+
+            logger.info({ component: 'request-loan' }, `Loan of ${grantedAmount} granted to agent ${input.agentId}`);
+
+            return { grantedAmount };
+        });
+};
+
+/**
+ * Toggle automatic worker allocation and/or automatic pricing for the
+ * user's agent.  Both flags are applied atomically on the next simulation
+ * tick via the pending-action queue.
+ */
+export const setAutomation = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                automateWorkerAllocation: z.boolean(),
+                automatePricing: z.boolean(),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            // Verify the requesting user actually owns this agent
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'set-automation' },
+                `User ${userId} setting automation for agent ${input.agentId}: ` +
+                    `workerAllocation=${input.automateWorkerAllocation}, pricing=${input.automatePricing}`,
+            );
+
+            await workerSetAutomation({
+                agentId: input.agentId,
+                automateWorkerAllocation: input.automateWorkerAllocation,
+                automatePricing: input.automatePricing,
+            });
+        });
+};
+
+/**
+ * Set manual workforce allocation targets for the user's agent on a specific
+ * planet.  Only meaningful when `automateWorkerAllocation` is false.
+ *
+ * The targets are written directly into `assets.allocatedWorkers` so that
+ * the next `hireWorkforce` tick will hire/fire to match them.
+ */
+export const setWorkerAllocationTargets = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                /** Desired headcount per education level. */
+                targets: z.object({
+                    none: z.number().int().min(0),
+                    primary: z.number().int().min(0),
+                    secondary: z.number().int().min(0),
+                    tertiary: z.number().int().min(0),
+                }),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'set-worker-allocation' },
+                `User ${userId} setting worker targets for agent ${input.agentId} on planet ${input.planetId}: ` +
+                    JSON.stringify(input.targets),
+            );
+
+            await workerSetWorkerAllocationTargets({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                targets: input.targets,
+            });
+        });
+};
+
+/**
+ * Set manual sell-offer price and/or quantity for one or more resources
+ * produced by the user's agent on a specific planet.
+ * Only meaningful when `automatePricing` is false.
+ */
+export const setSellOffers = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                offers: z.record(
+                    z.string(),
+                    z.object({
+                        /** Price per unit (currency). Must be > 0. */
+                        offerPrice: z.number().positive().optional(),
+                        /** Units to offer for sale this tick. 0 = withdraw offer. */
+                        offerQuantity: z.number().min(0).optional(),
+                    }),
+                ),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'set-sell-offers' },
+                `User ${userId} setting sell offers for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            await workerSetSellOffers({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                offers: input.offers,
+            });
+        });
+};
+
+/**
+ * Claim a slice of untenanted arable land and a water source on the given
+ * planet for the user's agent and equip it with the matching production
+ * facilities (water extraction + agricultural production).
+ *
+ * Under the hood the worker collapses all unclaimed resource blocks into a
+ * single pool and splits off the requested quantities.  The minimum
+ * meaningful chunk is 1 000 units for each resource (scale = 1 facility).
+ *
+ * The caller must already own an agent and must not have existing tenancies
+ * for these resource types (the worker will simply add new ones alongside
+ * any that already exist).
+ */
+export const claimResources = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                /**
+                 * How much arable land to claim (units).
+                 * Must be a positive multiple of 1 000 (= one facility scale).
+                 */
+                arableLandQuantity: z.number().int().min(1000),
+                /**
+                 * How much water source to claim (units).
+                 * Must be a positive multiple of 1 000.
+                 */
+                waterSourceQuantity: z.number().int().min(1000),
+            }),
+        )
+        .output(
+            z.object({
+                arableClaimId: z.string(),
+                waterClaimId: z.string(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            // Verify the requesting user actually owns this agent
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'claim-resources' },
+                `User ${userId} claiming ${input.arableLandQuantity} arable land and ` +
+                    `${input.waterSourceQuantity} water source on planet ${input.planetId} ` +
+                    `for agent ${input.agentId}`,
+            );
+
+            const result = await workerClaimResources({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                arableLandQuantity: input.arableLandQuantity,
+                waterSourceQuantity: input.waterSourceQuantity,
+            });
+
+            logger.info(
+                { component: 'claim-resources' },
+                `Agent ${input.agentId} claimed arable=${result.arableClaimId}, water=${result.waterClaimId}`,
+            );
+
+            return result;
         });
 };

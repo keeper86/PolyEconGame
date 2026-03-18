@@ -20,27 +20,6 @@ Install [nvm](https://github.com/nvm-sh/nvm) and use it to install the node vers
 
 Install [docker](https://docs.docker.com/engine/install/)
 
-Troubleshooting tips:
-
-- To stop and remove all running containers (brute-force cleanup):
-
-```sh
-    docker stop $(docker ps -a -q)
-    docker rm $(docker ps -a -q)
-```
-
-- If you encounter permission issues with Docker and must run Docker commands as root, see:
-  [How to fix Docker permission denied](https://stackoverflow.com/questions/48957195/how-to-fix-docker-permission-denied)
-
-- If not already happened start the Docker daemon and enable it (should not be necessary):
-
-```sh
-    sudo systemctl start docker
-    sudo systemctl enable docker
-```
-
-- You may need a [Docker account](https://hub.docker.com/) for pulling images, but usually not for public images.
-
 ## Production
 
 ### Initial Setup
@@ -228,3 +207,24 @@ This project uses strict TypeScript for all application and API code. Key type c
 - Limiting Docker resources on Windows: Configure WSL2 limits in `%USERPROFILE%\.wslconfig` (e.g., `memory`, `processors`). Details: https://dev.to/sarahcssiqueira/limiting-docker-memory-usage-on-windows-5c45
 - Limiting Docker resources on Linux: Adjust resource limits in Docker settings (Docker Desktop or native daemon settings) as needed.
 - Compose limits: Per\-service memory limits are configured in `docker-compose.development.yaml` under `deploy.resources.limits.memory`.
+
+Troubleshooting tips:
+
+- To stop and remove all running containers (brute-force cleanup):
+
+```sh
+    docker stop $(docker ps -a -q)
+    docker rm $(docker ps -a -q)
+```
+
+- If you encounter permission issues with Docker and must run Docker commands as root, see:
+  [How to fix Docker permission denied](https://stackoverflow.com/questions/48957195/how-to-fix-docker-permission-denied)
+
+- If not already happened start the Docker daemon and enable it (should not be necessary):
+
+```sh
+    sudo systemctl start docker
+    sudo systemctl enable docker
+```
+
+- You may need a [Docker account](https://hub.docker.com/) for pulling images, but usually not for public images.

@@ -11,6 +11,7 @@ import {
     getPlanetDetail,
     getPlanetPopulationHistory,
     getCurrentTick,
+    getLoanConditions,
 } from './controller/simulation';
 import {
     getPlanetOverview,
@@ -21,7 +22,18 @@ import {
     getPlanetFoodMarket,
 } from './controller/planet';
 
-import { getUser, getUsers, updateUser } from './controller/user';
+import {
+    getUser,
+    getUsers,
+    updateUser,
+    getUserIdFromSession,
+    createAgent,
+    requestLoan,
+    setAutomation,
+    setWorkerAllocationTargets,
+    setSellOffers,
+    claimResources,
+} from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
 const simulationRouter = trpcRoot.router({
@@ -34,6 +46,7 @@ const simulationRouter = trpcRoot.router({
     getAgentPlanetDetail: getAgentPlanetDetail(),
     getPlanetDetail: getPlanetDetail(),
     getPlanetPopulationHistory: getPlanetPopulationHistory(),
+    getLoanConditions: getLoanConditions(),
     getPlanetOverview: getPlanetOverview(),
     getPlanetDemographics: getPlanetDemographics(),
     getPlanetEconomy: getPlanetEconomy(),
@@ -47,6 +60,13 @@ const protectedAppRouter = trpcRoot.router({
     getUsers: getUsers(),
     getUser: getUser(),
     updateUser: updateUser(),
+    getUserIdFromSession: getUserIdFromSession(),
+    createAgent: createAgent(),
+    requestLoan: requestLoan(),
+    setAutomation: setAutomation(),
+    setWorkerAllocationTargets: setWorkerAllocationTargets(),
+    setSellOffers: setSellOffers(),
+    claimResources: claimResources(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

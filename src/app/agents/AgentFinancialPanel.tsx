@@ -12,7 +12,7 @@ import {
     TrendingUp,
 } from 'lucide-react';
 import { RETAINED_EARNINGS_THRESHOLD } from '@/simulation/constants';
-import type { FoodMarketState } from '@/simulation/planet/planet';
+import type { AgentMarketOfferState } from '@/simulation/planet/planet';
 import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
@@ -27,7 +27,7 @@ type Props = {
     /** Actual wage bill computed by the last pre-production financial tick. */
     lastWageBill: number;
     /** Per-agent food market pricing & history. */
-    foodMarket?: FoodMarketState;
+    foodMarket?: Partial<AgentMarketOfferState>;
 };
 
 /* ------------------------------------------------------------------ */

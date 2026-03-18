@@ -1,15 +1,24 @@
 'use client';
 
 import AgentFinancialPanel from '@/app/agents/AgentFinancialPanel';
+import AutomationPanel from '@/app/agents/AutomationPanel';
+import LoanPanel from '@/app/agents/LoanPanel';
 import ProductionFacilitiesPanel from '@/app/agents/ProductionFacilitiesPanel';
+import SellOffersPanel from '@/app/agents/SellOffersPanel';
+import WorkerAllocationPanel from '@/app/agents/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
 import type { WorkforceDemography } from '@/app/agents/workforce-summary';
 import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
-import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facilities';
+import {
+    agriculturalProductResourceType,
+    type ProductionFacility,
+    type StorageFacility,
+} from '@/simulation/planet/facilities';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { ArrowLeft } from 'lucide-react';
+import { useAgentId } from '@/hooks/useAgentId';
+import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { route } from 'nextjs-routes';
@@ -70,12 +79,16 @@ type PlanetAssets = {
     deposits: number;
     loans?: number;
     lastWageBill?: number;
-    foodMarket?: {
-        offerPrice?: number;
-        offerQuantity?: number;
-        lastSold?: number;
-        lastRevenue?: number;
-        priceDirection?: number;
+    market?: {
+        sell: {
+            [resourceName: string]: {
+                offerPrice?: number;
+                offerQuantity?: number;
+                lastSold?: number;
+                lastRevenue?: number;
+                priceDirection?: number;
+            };
+        };
     };
 };
 
@@ -84,6 +97,7 @@ export default function AgentPlanetDetailPage() {
     const agentId = params.agentId;
     const planetId = params.planetId;
     const trpc = useTRPC();
+    const myAgentId = useAgentId();
 
     const { data, isLoading } = useSimulationQuery(
         trpc.simulation.getAgentPlanetDetail.queryOptions({ agentId, planetId }),
@@ -94,9 +108,47 @@ export default function AgentPlanetDetailPage() {
         agentId: string;
         agentName: string;
         planetId: string;
+        automateWorkerAllocation: boolean;
+        automatePricing: boolean;
         assets: PlanetAssets;
     } | null;
     const assets = detail?.assets;
+
+    // Wait until agentId has resolved before checking ownership
+    const isOwnAgent = myAgentId === agentId;
+
+    // Access denied – show an in-game style message once agentId has loaded
+    if (myAgentId !== null && !isOwnAgent) {
+        return (
+            <Page
+                title='Restricted Area'
+                headerComponent={
+                    <Link
+                        href={route({ pathname: '/agents/[agentId]', query: { agentId } })}
+                        className='inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors'
+                    >
+                        <ArrowLeft className='h-4 w-4' />
+                        Back
+                    </Link>
+                }
+            >
+                <div className='flex flex-col items-center justify-center gap-4 py-16 text-center'>
+                    <ShieldAlert className='h-12 w-12 text-muted-foreground' />
+                    <h2 className='text-xl font-semibold'>Classified Operations</h2>
+                    <p className='text-sm text-muted-foreground max-w-sm'>
+                        You do not have clearance to view the internal operations of this company. Only the
+                        company&apos;s owner can access these facilities.
+                    </p>
+                    <Link
+                        href={route({ pathname: '/agents/[agentId]', query: { agentId } })}
+                        className='text-sm underline underline-offset-4 text-muted-foreground hover:text-foreground transition-colors'
+                    >
+                        View public company profile
+                    </Link>
+                </div>
+            </Page>
+        );
+    }
 
     return (
         <Page
@@ -131,6 +183,26 @@ export default function AgentPlanetDetailPage() {
                         retirementsPrevMonth={assets.retirements?.prevMonth}
                     />
 
+                    {/* Manual workforce allocation — only visible to the agent's owner */}
+                    {isOwnAgent && (
+                        <WorkerAllocationPanel
+                            agentId={agentId}
+                            planetId={planetId}
+                            allocatedWorkers={assets.allocatedWorkers ?? {}}
+                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                        />
+                    )}
+
+                    {/* Manual sell offers — only visible to the agent's owner */}
+                    {isOwnAgent && (
+                        <SellOffersPanel
+                            agentId={agentId}
+                            planetId={planetId}
+                            sellOffers={assets.market?.sell ?? {}}
+                            automatePricing={detail?.automatePricing ?? false}
+                        />
+                    )}
+
                     {/* Storage */}
                     {assets.storageFacility && <StorageOverview storage={assets.storageFacility} />}
 
@@ -139,7 +211,17 @@ export default function AgentPlanetDetailPage() {
                         deposits={assets.deposits ?? 0}
                         loans={assets.loans ?? 0}
                         lastWageBill={assets.lastWageBill ?? 0}
-                        foodMarket={assets.foodMarket}
+                        foodMarket={assets.market?.sell[agriculturalProductResourceType.name]}
+                    />
+
+                    {/* Borrowing panel — only visible to the agent's owner */}
+                    <LoanPanel agentId={agentId} planetId={planetId} />
+
+                    {/* Automation controls — only visible to the agent's owner */}
+                    <AutomationPanel
+                        agentId={agentId}
+                        automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                        automatePricing={detail?.automatePricing ?? false}
                     />
                 </div>
             ) : isLoading ? (

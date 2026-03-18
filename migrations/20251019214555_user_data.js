@@ -8,6 +8,8 @@ exports.up = function (knex) {
         table.string('email').notNullable();
         table.boolean('has_assessment_published').notNullable().index().defaultTo(false);
         table.string('display_name').nullable();
+        table.string('agent_id').nullable().unique().defaultTo(null);
+        table.binary('avatar').nullable().defaultTo(null);
     });
 };
 

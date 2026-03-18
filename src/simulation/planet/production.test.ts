@@ -51,6 +51,8 @@ describe('productionTick (basic)', () => {
 
         productionTick(gameState.agents, planet);
 
+        console.log(facility.lastTickResults);
+
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
         // ironExtractionFacility produces 1000 * scale(1) * overallEfficiency (should be 1)
         expect(storedIron).toBeGreaterThanOrEqual(1000);

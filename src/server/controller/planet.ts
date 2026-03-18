@@ -9,7 +9,7 @@
 
 import { z } from 'zod';
 import { protectedProcedure } from '../trpcRoot';
-import { workerQueries } from '../../lib/workerQueries';
+import { workerQueries } from '../../simulation/workerClient/queries';
 import { computePopulationTotal, computeGlobalStarvation } from '../../simulation/snapshotRepository';
 import type { Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
@@ -246,7 +246,7 @@ export const getPlanetEconomy = () =>
                     planetName: planet.name,
                     bank: planet.bank,
                     wagePerEdu: (planet.wagePerEdu as Record<string, number> | null) ?? null,
-                    priceLevel: planet.priceLevel ?? null,
+                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? null,
                     demography: buildSlimDemographyForEconomy(planet),
                     lastTransferMatrix: planet.population.lastTransferMatrix,
                 },
@@ -293,7 +293,7 @@ function buildFoodDemography(planet: Planet): FoodCohort[] {
                     const cat = cohort[occ][edu][skill];
                     slimCohort[occ][edu][skill] = {
                         total: cat.total,
-                        foodStock: cat.foodStock,
+                        foodStock: cat.inventory[agriculturalProductResourceType.name] ?? 0,
                         starvationLevel: cat.starvationLevel,
                     };
                 }
@@ -333,7 +333,7 @@ export const getPlanetFood = () =>
                 food: {
                     planetName: planet.name,
                     demography: buildFoodDemography(planet),
-                    priceLevel: planet.priceLevel ?? 1,
+                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
                 },
             };
@@ -453,7 +453,7 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                             continue;
                         }
                         gPop += cat.total;
-                        gFoodStock += cat.foodStock;
+                        gFoodStock += cat.inventory[agriculturalProductResourceType.name] ?? 0;
                         gWeightedStarvation += cat.total * cat.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                     }
@@ -533,7 +533,7 @@ export const getPlanetDemographicsFull = () =>
                     planetName: planet.name,
                     groupMode: input.groupMode,
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
-                    priceLevel: planet.priceLevel ?? 1,
+                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
                 },
             };
@@ -575,11 +575,11 @@ function buildAgentOffers(agents: Agent[], planetId: string): AgentOfferEntry[] 
             continue;
         }
 
-        const fm = assets.foodMarket ?? {};
-        const offerPrice = fm.offerPrice ?? INITIAL_FOOD_PRICE;
-        const offerQuantity = fm.offerQuantity ?? 0;
-        const lastSold = fm.lastSold ?? 0;
-        const lastRevenue = fm.lastRevenue ?? 0;
+        const fm = assets.market?.sell[agriculturalProductResourceType.name];
+        const offerPrice = fm?.offerPrice ?? INITIAL_FOOD_PRICE;
+        const offerQuantity = fm?.offerQuantity ?? 0;
+        const lastSold = fm?.lastSold ?? 0;
+        const lastRevenue = fm?.lastRevenue ?? 0;
         const sellThrough = offerQuantity > 0 ? Math.min(1, lastSold / offerQuantity) : 0;
 
         entries.push({
@@ -653,8 +653,11 @@ export const getPlanetFoodMarket = () =>
             // Read authoritative numbers directly from the last clearing snapshot.
             // This ensures what the UI shows is exactly what the exchange produced —
             // no re-estimation, no divergence.
-            const result = planet.lastFoodMarketResult;
-            const clearingPrice = result?.clearingPrice ?? planet.priceLevel ?? INITIAL_FOOD_PRICE;
+            const result = planet.lastMarketResult[agriculturalProductResourceType.name];
+            const clearingPrice =
+                result?.clearingPrice ??
+                planet.marketPrices[agriculturalProductResourceType.name] ??
+                INITIAL_FOOD_PRICE;
             const totalDemand = result?.totalDemand ?? 0;
             const totalSupply = result?.totalSupply ?? 0;
             const totalSold = result?.totalVolume ?? 0;

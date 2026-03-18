@@ -5,6 +5,7 @@ import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useAgentId } from '@/hooks/useAgentId';
 import { ArrowLeft, Globe, Ship, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -13,11 +14,13 @@ export default function AgentDetailPage() {
     const params = useParams<'/agents/[agentId]'>();
     const agentId = params.agentId;
     const trpc = useTRPC();
+    const myAgentId = useAgentId();
 
     const { data, isLoading } = useSimulationQuery(trpc.simulation.getAgentOverview.queryOptions({ agentId }));
 
     const tick = data?.tick ?? 0;
     const overview = data?.overview;
+    const isOwner = myAgentId === agentId;
 
     return (
         <Page
@@ -71,6 +74,7 @@ export default function AgentDetailPage() {
                                     agentId={overview.agentId}
                                     planet={p}
                                     isHomePlanet={p.planetId === overview.associatedPlanetId}
+                                    isOwner={isOwner}
                                 />
                             ))}
                         </div>

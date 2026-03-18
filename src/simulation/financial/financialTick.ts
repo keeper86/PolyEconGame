@@ -137,7 +137,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
  * Called after the food market tick and wealth diffusion, as the final
  * financial reconciliation step.
  */
-export function postProductionFinancialTick(agents: Map<string, Agent>, planet: Planet): void {
+export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
 
     if (bank.loans <= 0) {
@@ -145,6 +145,9 @@ export function postProductionFinancialTick(agents: Map<string, Agent>, planet: 
     }
 
     agents.forEach((agent) => {
+        if (!agent.automated) {
+            return;
+        }
         const assets = agent.assets[planet.id];
         if (!assets?.workforceDemography) {
             return;

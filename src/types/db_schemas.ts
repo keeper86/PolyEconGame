@@ -52,5 +52,6 @@ export type UserData = {
     email: string;
     has_assessment_published: boolean;
     display_name: string | null;
+    agent_id: string | null;
     avatar: Buffer | null;
 };

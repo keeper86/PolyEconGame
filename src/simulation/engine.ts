@@ -1,8 +1,8 @@
 import { isMonthBoundary, isYearBoundary } from './constants';
-import { postProductionFinancialTick, preProductionFinancialTick } from './financial/financialTick';
+import { automaticLoanRepayment, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
-import { updateAgentPricing } from './market/agentPricing';
-import { foodMarketTick } from './market/foodMarket';
+import { automaticPricing } from './market/automaticPricing';
+import { marketTick } from './market/market';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
@@ -10,7 +10,7 @@ import { productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
-import { updateAllocatedWorkers } from './workforce/allocatedWorkers';
+import { automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
@@ -41,7 +41,7 @@ export function advanceTick(gameState: GameState) {
         }
 
         if (isMonthBoundary(gameState.tick)) {
-            updateAllocatedWorkers(planetAgents, planet);
+            automaticWorkerAllocation(planetAgents, planet);
             hireWorkforce(planetAgents, planet);
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'othermonth');
@@ -52,15 +52,15 @@ export function advanceTick(gameState: GameState) {
 
         productionTick(planetAgents, planet);
 
-        updateAgentPricing(planetAgents, planet);
+        automaticPricing(planetAgents, planet);
 
         //updateAgentProductionScale(planetAgents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 
-        foodMarketTick(planetAgents, planet);
+        marketTick(planetAgents, planet);
 
-        postProductionFinancialTick(planetAgents, planet);
+        automaticLoanRepayment(planetAgents, planet);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(planetAgents, planet);

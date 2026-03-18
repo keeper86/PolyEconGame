@@ -22,6 +22,9 @@ import logo from '../../../public/logo.png';
 import { Separator } from '../ui/separator';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const mainLogo = (
+        <Image src={logo} alt='Game Logo' width={120} height={120} className='rounded-lg border border-black' />
+    );
     return (
         <Sidebar variant='inset' {...props}>
             <SidebarHeader>
@@ -30,13 +33,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <SidebarMenuButton size='lg' className='' asChild>
                             <Link href={APP_ROUTES.root.path} className='flex items-center gap-2'>
                                 <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground'>
-                                    <Image
-                                        src={logo}
-                                        alt='Game Logo'
-                                        width={120}
-                                        height={120}
-                                        className='rounded-lg border border-black'
-                                    />
+                                    {mainLogo}
                                 </div>
                                 <span className='truncate font-bold text-[26px] leading-tight'>Game</span>
                             </Link>
