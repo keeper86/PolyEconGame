@@ -15,8 +15,8 @@
  */
 
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import type { ProductionFacility, StorageFacility } from '../planet/facilities';
-import { agriculturalProductResourceType } from '../planet/facilities';
+import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import { agriculturalProductResourceType } from '../planet/resources';
 import {
     createEmptyDemographicEventCounters,
     type Agent,

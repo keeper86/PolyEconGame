@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Image Mapper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #1a1a2e; color: #eee; display: flex; height: 100vh; overflow: hidden; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #16213e; padding: 12px;
+    display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+  }
+  #sidebar h2 { font-size: 13px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .name-item {
+    padding: 8px 10px; border-radius: 6px; background: #0f3460;
+    cursor: grab; font-size: 13px; border: 2px solid transparent;
+    user-select: none;
+  }
+  .name-item.assigned { background: #1a4a1a; border-color: #4caf50; color: #aaa; text-decoration: line-through; }
+  .name-item.dragging { opacity: 0.4; }
+
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  #toolbar {
+    padding: 10px 16px; background: #0f3460; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  #toolbar button {
+    padding: 6px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: bold;
+  }
+  #btn-export { background: #4caf50; color: #fff; }
+  #btn-clear { background: #e53935; color: #fff; }
+  #btn-auto { background: #ff9800; color: #fff; }
+  #progress { color: #aaa; font-size: 13px; }
+
+  #grid {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+  }
+
+  .img-card {
+    background: #16213e; border-radius: 8px; overflow: hidden;
+    border: 2px solid #333; transition: border-color 0.2s;
+    display: flex; flex-direction: column;
+  }
+  .img-card.mapped { border-color: #4caf50; }
+  .img-card.drag-over { border-color: #ff9800; background: #1a2a1a; }
+
+  .img-card img { width: 300px; height: 200px; display: block; background: #0a0a1a; }
+
+  .img-card .label {
+    padding: 6px 8px; font-size: 11px; color: #aaa; word-break: break-all;
+    background: #0a0a1a; min-height: 28px;
+  }
+  .img-card .assignment {
+    padding: 4px 8px 8px; font-size: 12px; font-weight: bold; color: #4caf50;
+    background: #0a0a1a; min-height: 32px; display: flex; align-items: center; gap: 4px;
+  }
+  .img-card .assignment .clear-btn {
+    margin-left: auto; cursor: pointer; color: #e53935; font-weight: bold; font-size: 14px; line-height: 1;
+    padding: 0 4px;
+  }
+
+  #section-tabs { display: flex; gap: 8px; padding: 10px 16px 0; background: #16213e; }
+  .tab { padding: 6px 16px; border-radius: 5px 5px 0 0; cursor: pointer; font-size: 13px; background: #0f3460; }
+  .tab.active { background: #1a1a2e; font-weight: bold; color: #fff; }
+
+  #output-area {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    align-items: center; justify-content: center; z-index: 100;
+  }
+  #output-area.visible { display: flex; }
+  #output-box {
+    background: #16213e; border-radius: 10px; padding: 20px; width: 800px; max-height: 80vh;
+    overflow-y: auto; position: relative;
+  }
+  #output-box pre { font-size: 12px; color: #4caf50; white-space: pre-wrap; }
+  #output-box .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 20px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2 id="sidebar-title">Names</h2>
+  <div id="name-list"></div>
+</div>
+
+<div id="main">
+  <div id="section-tabs">
+    <div class="tab active" data-section="facilities">🏭 Facilities (40)</div>
+    <div class="tab" data-section="products">📦 Products (67)</div>
+  </div>
+  <div id="toolbar">
+    <button id="btn-export">⬇ Export rename script</button>
+    <button id="btn-clear">✖ Clear all</button>
+    <span id="progress"></span>
+  </div>
+  <div id="grid"></div>
+</div>
+
+<div id="output-area">
+  <div id="output-box">
+    <span class="close" id="close-output">✖</span>
+    <pre id="output-content"></pre>
+  </div>
+</div>
+
+<script>
+const SECTIONS = {
+  facilities: {
+    names: [
+      "Coal Mine","Oil Well","Natural Gas Well","Logging Camp","Stone Quarry",
+      "Bauxite Mine","Copper Mine","Rare Earth Mine","Sand Mine","Limestone Quarry",
+      "Clay Mine","Iron Smelter","Phosphate Mine","Potash Mine","Aluminum Smelter",
+      "Copper Smelter","Oil Refinery","Sawmill","Cement Plant","Concrete Plant",
+      "Brick Factory","Glass Factory","Fertilizer Plant","Pesticide Plant","Pharmaceutical Plant",
+      "Food Processing Plant","Beverage Plant","Paper Mill","Cotton Farm","Textile Mill",
+      "Clothing Factory","Furniture Factory","Electronics Component Factory","Consumer Electronics Factory",
+      "Machinery Factory","Vehicle Factory","Agricultural Facility","Water Extraction Facility",
+      "Iron Extraction Facility","Coal Power Plant"
+    ],
+    imageDir: "facilities",
+    images: [
+      "Gemini_Generated_Image_3ig36z3ig36z3ig3_00.png","Gemini_Generated_Image_3ig36z3ig36z3ig3_01.png",
+      "Gemini_Generated_Image_3ig36z3ig36z3ig3_02.png","Gemini_Generated_Image_3ig36z3ig36z3ig3_03.png",
+      "Gemini_Generated_Image_3vrvyo3vrvyo3vrv_00.png","Gemini_Generated_Image_3vrvyo3vrvyo3vrv_01.png",
+      "Gemini_Generated_Image_3vrvyo3vrvyo3vrv_02.png","Gemini_Generated_Image_3vrvyo3vrvyo3vrv_03.png",
+      "Gemini_Generated_Image_88f6oo88f6oo88f6_00.png","Gemini_Generated_Image_88f6oo88f6oo88f6_01.png",
+      "Gemini_Generated_Image_88f6oo88f6oo88f6_02.png","Gemini_Generated_Image_88f6oo88f6oo88f6_03.png",
+      "Gemini_Generated_Image_8z3dbn8z3dbn8z3d_00.png","Gemini_Generated_Image_8z3dbn8z3dbn8z3d_01.png",
+      "Gemini_Generated_Image_8z3dbn8z3dbn8z3d_02.png","Gemini_Generated_Image_8z3dbn8z3dbn8z3d_03.png",
+      "Gemini_Generated_Image_d07c51d07c51d07c_00.png","Gemini_Generated_Image_d07c51d07c51d07c_01.png",
+      "Gemini_Generated_Image_d07c51d07c51d07c_02.png","Gemini_Generated_Image_d07c51d07c51d07c_03.png",
+      "Gemini_Generated_Image_ngmq17ngmq17ngmq_00.png","Gemini_Generated_Image_ngmq17ngmq17ngmq_01.png",
+      "Gemini_Generated_Image_ngmq17ngmq17ngmq_02.png","Gemini_Generated_Image_ngmq17ngmq17ngmq_03.png",
+      "Gemini_Generated_Image_pn6hqxpn6hqxpn6h_00.png","Gemini_Generated_Image_pn6hqxpn6hqxpn6h_01.png",
+      "Gemini_Generated_Image_pn6hqxpn6hqxpn6h_02.png","Gemini_Generated_Image_pn6hqxpn6hqxpn6h_03.png",
+      "Gemini_Generated_Image_tci80itci80itci8_00.png","Gemini_Generated_Image_tci80itci80itci8_01.png",
+      "Gemini_Generated_Image_tci80itci80itci8_02.png","Gemini_Generated_Image_tci80itci80itci8_03.png",
+      "Gemini_Generated_Image_uem5x1uem5x1uem5_00.png","Gemini_Generated_Image_uem5x1uem5x1uem5_01.png",
+      "Gemini_Generated_Image_uem5x1uem5x1uem5_02.png","Gemini_Generated_Image_uem5x1uem5x1uem5_03.png",
+      "Gemini_Generated_Image_xwd0ynxwd0ynxwd0_00.png","Gemini_Generated_Image_xwd0ynxwd0ynxwd0_01.png",
+      "Gemini_Generated_Image_xwd0ynxwd0ynxwd0_02.png","Gemini_Generated_Image_xwd0ynxwd0ynxwd0_03.png"
+    ]
+  },
+  products: {
+    names: [
+      "Iron Ore","Water","Agricultural Product","Coal","Crude Oil","Natural Gas","Logs","Stone",
+      "Bauxite","Copper Ore","Rare Earth Ore","Sand","Limestone","Clay","Steel","Aluminum","Copper",
+      "Plastic","Chemical","Gasoline","Diesel","Jet Fuel","Lubricant","Asphalt","Lumber","Cement",
+      "Concrete","Brick","Glass","Phosphate Rock","Potash","Fertilizer","Pesticide","Pharmaceutical",
+      "Processed Food","Beverage","Paper","Cotton","Fabric","Clothing","Furniture","Electronic Component",
+      "Consumer Electronics","Machinery","Vehicle",
+      "Coal Deposit","Oil Reservoir","Natural Gas Field","Forest","Stone Quarry",
+      "Bauxite Deposit","Copper Deposit","Rare Earth Deposit","Sand Deposit","Limestone Deposit",
+      "Clay Deposit","Iron Ore Deposit","Arable Land","Water Source","Phosphate Rock Deposit","Potash Deposit"
+    ],
+    imageDir: "products",
+    images: [
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_00.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_01.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_02.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_03.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_04.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_05.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_06.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_07.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_08.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_09.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_10.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_11.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_12.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_13.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_14.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_15.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_16.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_17.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_18.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_19.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_20.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_21.png",
+      "Gemini_Generated_Image_4gdzxl4gdzxl4gdz_22.png","Gemini_Generated_Image_4gdzxl4gdzxl4gdz_23.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_00.png","Gemini_Generated_Image_eldnqneldnqneldn_01.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_02.png","Gemini_Generated_Image_eldnqneldnqneldn_03.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_04.png","Gemini_Generated_Image_eldnqneldnqneldn_05.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_06.png","Gemini_Generated_Image_eldnqneldnqneldn_07.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_08.png","Gemini_Generated_Image_eldnqneldnqneldn_09.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_10.png","Gemini_Generated_Image_eldnqneldnqneldn_11.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_12.png","Gemini_Generated_Image_eldnqneldnqneldn_13.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_14.png","Gemini_Generated_Image_eldnqneldnqneldn_15.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_16.png","Gemini_Generated_Image_eldnqneldnqneldn_17.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_18.png","Gemini_Generated_Image_eldnqneldnqneldn_19.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_20.png","Gemini_Generated_Image_eldnqneldnqneldn_21.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_22.png","Gemini_Generated_Image_eldnqneldnqneldn_23.png",
+      "Gemini_Generated_Image_eldnqneldnqneldn_24.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_00.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_01.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_02.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_03.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_04.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_05.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_06.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_07.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_08.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_09.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_10.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_11.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_12.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_13.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_14.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_15.png",
+      "Gemini_Generated_Image_g4tqvng4tqvng4tq_16.png","Gemini_Generated_Image_g4tqvng4tqvng4tq_17.png"
+    ]
+  }
+};
+
+function toFileName(name) {
+  return name.toLowerCase().replace(/\s+/g, '_') + '.png';
+}
+
+const state = {
+  section: 'facilities',
+  mappings: { facilities: {}, products: {} }
+};
+
+// Persist to localStorage
+function save() {
+  localStorage.setItem('imgMapper', JSON.stringify(state.mappings));
+}
+function load() {
+  const saved = localStorage.getItem('imgMapper');
+  if (saved) state.mappings = JSON.parse(saved);
+}
+
+load();
+
+let draggedName = null;
+
+function renderSidebar() {
+  const sec = SECTIONS[state.section];
+  const assigned = Object.values(state.mappings[state.section]);
+  document.getElementById('sidebar-title').textContent = state.section === 'facilities' ? '🏭 Facility Names' : '📦 Product / Resource Names';
+  const list = document.getElementById('name-list');
+  list.innerHTML = '';
+  sec.names.forEach(name => {
+    const el = document.createElement('div');
+    el.className = 'name-item' + (assigned.includes(name) ? ' assigned' : '');
+    el.textContent = name;
+    el.draggable = true;
+    el.addEventListener('dragstart', e => {
+      draggedName = name;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    list.appendChild(el);
+  });
+}
+
+function renderGrid() {
+  const sec = SECTIONS[state.section];
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  sec.images.forEach(img => {
+    const mapped = state.mappings[state.section][img];
+    const card = document.createElement('div');
+    card.className = 'img-card' + (mapped ? ' mapped' : '');
+    card.innerHTML = `
+      <img src="${sec.imageDir}/${img}" alt="${img}" />
+      <div class="label">${img.replace('Gemini_Generated_Image_', '').replace('.png','')}</div>
+      <div class="assignment">
+        ${mapped ? `<span>${mapped}</span><span class="clear-btn" data-img="${img}">✖</span>` : '<span style="color:#555">drag name here</span>'}
+      </div>
+    `;
+    card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if (draggedName) {
+        // Remove old mapping for this name
+        const existing = state.mappings[state.section];
+        for (const k in existing) {
+          if (existing[k] === draggedName) delete existing[k];
+        }
+        existing[img] = draggedName;
+        save();
+        render();
+      }
+    });
+    grid.appendChild(card);
+  });
+
+  grid.addEventListener('click', e => {
+    const btn = e.target.closest('.clear-btn');
+    if (btn) {
+      const img = btn.dataset.img;
+      delete state.mappings[state.section][img];
+      save();
+      render();
+    }
+  });
+
+  updateProgress();
+}
+
+function updateProgress() {
+  const sec = SECTIONS[state.section];
+  const count = Object.keys(state.mappings[state.section]).length;
+  document.getElementById('progress').textContent = `${count} / ${sec.images.length} mapped`;
+}
+
+function render() {
+  renderSidebar();
+  renderGrid();
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    state.section = tab.dataset.section;
+    render();
+  });
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (confirm('Clear all mappings for this section?')) {
+    state.mappings[state.section] = {};
+    save();
+    render();
+  }
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const lines = ['#!/usr/bin/env zsh', '# Auto-generated rename script', ''];
+
+  for (const section of ['facilities', 'products']) {
+    const sec = SECTIONS[section];
+    const dir = `public/images/${section}`;
+    lines.push(`# --- ${section} ---`);
+    for (const [img, name] of Object.entries(state.mappings[section])) {
+      const newName = toFileName(name);
+      if (img !== newName) {
+        lines.push(`mv "${dir}/${img}" "${dir}/${newName}"`);
+      }
+    }
+    lines.push('');
+  }
+
+  const unmapped = [];
+  for (const section of ['facilities', 'products']) {
+    const sec = SECTIONS[section];
+    const mapped = Object.keys(state.mappings[section]);
+    const missing = sec.images.filter(i => !mapped.includes(i));
+    if (missing.length) unmapped.push(`# UNMAPPED in ${section}: ${missing.length} images`);
+    const unassigned = sec.names.filter(n => !Object.values(state.mappings[section]).includes(n));
+    if (unassigned.length) unmapped.push(`# UNASSIGNED names in ${section}: ${unassigned.join(', ')}`);
+  }
+  if (unmapped.length) lines.push(...unmapped);
+
+  document.getElementById('output-content').textContent = lines.join('\n');
+  document.getElementById('output-area').classList.add('visible');
+});
+
+document.getElementById('close-output').addEventListener('click', () => {
+  document.getElementById('output-area').classList.remove('visible');
+});
+
+render();
+</script>
+</body>
+</html>

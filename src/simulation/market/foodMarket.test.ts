@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
-import { agriculturalProductResourceType, putIntoStorageFacility } from '../planet/facilities';
+import { putIntoStorageFacility } from '../planet/storage';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
+import { agriculturalProductResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Helpers

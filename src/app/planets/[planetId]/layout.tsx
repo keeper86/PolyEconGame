@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 const NAV_TABS = [
     { segment: 'demographics', label: 'Demographics' },
     { segment: 'economy', label: 'Economy' },
-    { segment: 'market', label: 'Food Market' },
+    { segment: 'market', label: 'Market' },
 ] as const;
 
 export default function PlanetDetailLayout({ children }: { children: ReactNode }) {

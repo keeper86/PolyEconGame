@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { advanceTick, seedRng } from './engine';
 import { environmentTick } from './planet/environment';
-import type { ProductionFacility, Resource } from './planet/facilities';
-import { agriculturalProductResourceType, putIntoStorageFacility, queryStorageFacility } from './planet/facilities';
-import type { Agent, Planet } from './planet/planet';
+
+import type { Agent, Planet, Resource } from './planet/planet';
 import { productionTick } from './planet/production';
 import type { EducationLevelType } from './population/education';
 import { populationTick } from './population/populationTick';
@@ -21,6 +20,9 @@ import {
     totalPopulation,
 } from './utils/testHelper';
 import { createWorkforceEventAccumulator } from './workforce/workforceDemographicTick';
+import { agriculturalProductResourceType } from './planet/resources';
+import type { ProductionFacility } from './planet/storage';
+import { putIntoStorageFacility, queryStorageFacility } from './planet/storage';
 
 /**
  * Sets up actual hired workers in the agent's workforceDemography for a planet.
@@ -109,7 +111,7 @@ describe('engine basic behavior', () => {
 
         const neededResource: Resource = {
             name: 'Needed Resource',
-            type: 'solid',
+            form: 'solid',
             volumePerQuantity: 1,
             massPerQuantity: 1,
         };
@@ -150,7 +152,7 @@ describe('engine basic behavior', () => {
 
         const neededResource: Resource = {
             name: 'Needed Resource',
-            type: 'solid',
+            form: 'solid',
             volumePerQuantity: 1,
             massPerQuantity: 1,
         };

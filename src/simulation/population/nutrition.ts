@@ -30,7 +30,7 @@
  */
 
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
-import { agriculturalProductResourceType } from '../planet/facilities';
+import { agriculturalProductResourceType } from '../planet/resources';
 import { forEachPopulationCohort, type Population } from './population';
 
 // ---------------------------------------------------------------------------

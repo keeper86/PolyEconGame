@@ -22,15 +22,14 @@
  */
 
 import { TICKS_PER_YEAR } from '../constants';
-import type { ProductionFacility, Resource, StorageFacility } from '../planet/facilities';
+import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import type { Resource } from '../planet/planet';
+import { agriculturalProductResourceType, ironOreResourceType, waterResourceType } from '../planet/resources';
 import {
-    agriculturalProductResourceType,
     arableLandResourceType,
     ironOreDepositResourceType,
-    ironOreResourceType,
-    waterResourceType,
     waterSourceResourceType,
-} from '../planet/facilities';
+} from '../planet/landBoundResources';
 import {
     createEmptyDemographicEventCounters,
     type Agent,
@@ -39,8 +38,8 @@ import {
     type Planet,
 } from '../planet/planet';
 import type { ResourceClaim, ResourceQuantity } from '../planet/planet';
-import { createPopulation } from './entities';
 import { makeWorkforceDemography } from './testHelper';
+import { type Population, MAX_AGE, createEmptyPopulationCohort } from '../population/population';
 
 // ============================================================================
 // Factory helpers
@@ -873,4 +872,78 @@ export function createInitialGameState(): GameState {
         ]),
         agents: new Map(allAgents.map((a) => [a.id, a])),
     };
+}
+function addTo(
+    pop: Population,
+    age: number,
+    occ: 'unoccupied' | 'employed' | 'education' | 'unableToWork',
+    edu: 'none' | 'primary' | 'secondary' | 'tertiary',
+    count: number,
+): void {
+    pop.demography[age][occ][edu].novice.total += count;
+}
+
+export function createPopulation(total: number): Population {
+    // Distribute total across ages using a stable population assumption
+    // (for simplicity, we use a uniform distribution 0‑maxAge)
+    const perAge = Math.floor(total / (MAX_AGE + 1));
+    // Create empty cohorts for ages 0..maxAge
+    // New model: demography[age][occ][edu][skill] → PopulationCategory
+    const pop: Population = {
+        demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
+        summedPopulation: createEmptyPopulationCohort(),
+        lastTransferMatrix: [],
+    };
+    const remainder = total - perAge * (MAX_AGE + 1);
+
+    for (let age = 0; age <= MAX_AGE; age++) {
+        const ageCount = perAge + (age < remainder ? 1 : 0);
+        if (ageCount <= 0) {
+            continue;
+        }
+
+        if (age === 0) {
+            // empty, start of a year, so newborns will be added in the next tick's births step
+        } else if (age < 15) {
+            // Children: mostly in education
+            const noneEdu = Math.floor(ageCount * 0.8);
+            addTo(pop, age, 'education', 'none', noneEdu);
+            addTo(pop, age, 'education', 'primary', ageCount - noneEdu);
+        } else if (age < 25) {
+            // Youth: mix of education and unoccupied
+            const primaryEdu = Math.floor(ageCount * 0.2);
+            const secondaryEdu = Math.floor(ageCount * 0.6);
+            const tertiaryEdu = Math.floor(ageCount * 0.05);
+            const unoccupied = ageCount - (primaryEdu + secondaryEdu + tertiaryEdu);
+            addTo(pop, age, 'education', 'primary', primaryEdu);
+            addTo(pop, age, 'education', 'secondary', secondaryEdu);
+            addTo(pop, age, 'education', 'tertiary', tertiaryEdu);
+            addTo(pop, age, 'unoccupied', 'primary', unoccupied);
+        } else if (age < 45) {
+            // Young adults – simplified: all unoccupied (no one is employed yet at init)
+            const primaryUnocc = Math.floor(ageCount * 0.3);
+            const secondaryUnocc = Math.floor(ageCount * 0.4);
+            const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
+            addTo(pop, age, 'unoccupied', 'primary', primaryUnocc);
+            addTo(pop, age, 'unoccupied', 'secondary', secondaryUnocc);
+            addTo(pop, age, 'unoccupied', 'tertiary', tertiaryUnocc);
+        } else if (age < 65) {
+            // Older adults
+            const primaryUnocc = Math.floor(ageCount * 0.4);
+            const secondaryUnocc = Math.floor(ageCount * 0.4);
+            const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
+            addTo(pop, age, 'unoccupied', 'primary', primaryUnocc);
+            addTo(pop, age, 'unoccupied', 'secondary', secondaryUnocc);
+            addTo(pop, age, 'unoccupied', 'tertiary', tertiaryUnocc);
+        } else {
+            // Seniors
+            const primaryUnocc = Math.floor(ageCount * 0.45);
+            const secondaryUnocc = Math.floor(ageCount * 0.27);
+            const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
+            addTo(pop, age, 'unableToWork', 'primary', primaryUnocc);
+            addTo(pop, age, 'unableToWork', 'secondary', secondaryUnocc);
+            addTo(pop, age, 'unableToWork', 'tertiary', tertiaryUnocc);
+        }
+    }
+    return pop;
 }

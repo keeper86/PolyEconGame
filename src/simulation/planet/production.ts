@@ -5,7 +5,7 @@ import { SKILL } from '../population/population';
 import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { stochasticRound } from '../utils/stochasticRound';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
-import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facilities';
+import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './storage';
 import type { Agent, Planet } from './planet';
 import { waterFill } from './waterFill';
 import type { WorkerSlot } from './waterFill';
@@ -58,7 +58,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             const resourceEfficiencyMap: Record<string, number> = {};
             const efficiencies = facility.needs.map((need) => {
                 const required = need.quantity * facility.scale;
-                if (need.resource.type === 'landBoundResource') {
+                if (need.resource.form === 'landBoundResource') {
                     const eff = Math.min(1, queryClaimedResource(planet, agent, need.resource) / required);
                     resourceEfficiencyMap[need.resource.name] = eff;
                     return eff;
@@ -151,7 +151,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
             facility.needs.forEach((need) => {
                 const consumed = Math.ceil(need.quantity * facility.scale * overallEfficiency);
-                if (need.resource.type === 'landBoundResource') {
+                if (need.resource.form === 'landBoundResource') {
                     const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
                     if (extracted < consumed) {
                         console.warn(

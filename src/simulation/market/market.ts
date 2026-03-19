@@ -1,12 +1,12 @@
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
-import { removeFromStorageFacility } from '../planet/facilities';
+import { removeFromStorageFacility } from '../planet/storage';
 import type { Agent, MarketResult, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import type { GaussianMoments, Occupation, Skill } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
-import type { Resource } from '../planet/facilities';
-import { agriculturalProductResourceType } from '../planet/facilities';
+import type { Resource } from '../planet/planet';
+import { agriculturalProductResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Internal order-book types

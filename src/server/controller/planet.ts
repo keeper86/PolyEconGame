@@ -15,8 +15,8 @@ import type { Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { Agent, Planet } from '../../simulation/planet/planet';
-import { agriculturalProductResourceType } from '../../simulation/planet/facilities';
 import { INITIAL_FOOD_PRICE } from '../../simulation/constants';
+import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 
 // ---------------------------------------------------------------------------
 // Overview

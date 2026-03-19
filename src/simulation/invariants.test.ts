@@ -8,8 +8,9 @@
 import { describe, it, expect } from 'vitest';
 import { checkMonetaryConservation, checkWealthBankConsistency } from './invariants';
 import { advanceTick, seedRng } from './engine';
-import { agriculturalProductResourceType, putIntoStorageFacility } from './planet/facilities';
+import { putIntoStorageFacility } from './planet/storage';
 import { makeProductionFacility, makeWorld } from './utils/testHelper';
+import { agriculturalProductResourceType } from './planet/resources';
 
 describe('checkMonetaryConservation', () => {
     it('reports no violation when all balances are zero', () => {
