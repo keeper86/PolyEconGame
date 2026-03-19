@@ -7,14 +7,11 @@ import ProductionFacilitiesPanel from '@/app/agents/ProductionFacilitiesPanel';
 import SellOffersPanel from '@/app/agents/SellOffersPanel';
 import WorkerAllocationPanel from '@/app/agents/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
+import BuildFacilityDialog from '@/app/agents/BuildFacilityDialog';
 import type { WorkforceDemography } from '@/app/agents/workforce-summary';
 import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
-import {
-    agriculturalProductResourceType,
-    type ProductionFacility,
-    type StorageFacility,
-} from '@/simulation/planet/facilities';
+import { type ProductionFacility, type StorageFacility } from '@/simulation/planet/storage';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useAgentId } from '@/hooks/useAgentId';
@@ -23,6 +20,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { route } from 'nextjs-routes';
 import React from 'react';
+import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 
 /* ------------------------------------------------------------------ */
 /*  Storage table                                                      */
@@ -166,7 +164,10 @@ export default function AgentPlanetDetailPage() {
             {!isLoading && tick > 0 && assets ? (
                 <div className='space-y-6'>
                     {/* Production facilities */}
-                    <ProductionFacilitiesPanel facilities={assets.productionFacilities ?? []} />
+                    <div className='space-y-2'>
+                        <ProductionFacilitiesPanel facilities={assets.productionFacilities ?? []} />
+                        {isOwnAgent && <BuildFacilityDialog />}
+                    </div>
 
                     {/* Workforce demography */}
                     <WorkforceDemographyPanel

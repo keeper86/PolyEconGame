@@ -8,7 +8,7 @@ import {
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
-import { agriculturalProductResourceType } from '../planet/facilities';
+import { agriculturalProductResourceType } from '../planet/resources';
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import type {

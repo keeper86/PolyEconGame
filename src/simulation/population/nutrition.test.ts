@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest';
 import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeFood } from './nutrition';
 import { FOOD_PER_PERSON_PER_TICK } from '../constants';
 import { makePopulation } from '../utils/testHelper';
-import { agriculturalProductResourceType } from '../planet/facilities';
+import { agriculturalProductResourceType } from '../planet/resources';
 
 const FOOD = agriculturalProductResourceType.name;
 

@@ -29,7 +29,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
 import type { Planet } from '../planet/planet';
-import { agriculturalProductResourceType } from '../planet/facilities';
+
 import { educationLevelKeys } from '../population/education';
 import { OCCUPATIONS, SKILL } from '../population/population';
 import { makePlanet } from '../utils/testHelper';
@@ -40,6 +40,7 @@ import {
     sumTransferMatrix,
     supportWeight,
 } from './intergenerationalTransfers';
+import { agriculturalProductResourceType } from '../planet/resources';
 
 const FOOD = agriculturalProductResourceType.name;
 

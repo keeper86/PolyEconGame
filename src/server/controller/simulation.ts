@@ -8,7 +8,6 @@
  * require data spanning many ticks.
  */
 
-import { agriculturalProductResourceType } from '@/simulation/planet/facilities';
 import { z } from 'zod';
 import { workerQueries } from '../../simulation/workerClient/queries';
 import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
@@ -24,6 +23,7 @@ import {
 } from '../../simulation/snapshotRepository';
 import { db } from '../db';
 import { protectedProcedure } from '../trpcRoot';
+import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 
 const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),

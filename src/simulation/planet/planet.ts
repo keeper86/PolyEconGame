@@ -1,6 +1,6 @@
 import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
-import type { ProductionFacility, Resource, ResourceType, StorageFacility } from './facilities';
+import type { ProductionFacility, StorageFacility } from './storage';
 
 /**
  * Single combined central + commercial bank per planet.
@@ -356,3 +356,15 @@ export interface GameState {
     planets: Map<string, Planet>;
     agents: Map<string, Agent>;
 }
+
+export type ResourceProcessLevel = 'source' | 'raw' | 'refined' | 'manufactured' | 'consumerGood';
+
+export type Resource = {
+    name: string;
+    // solids, liquids, frozenGoods and gases count quantity in tons, persons/pieces count quantity in pieces and
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource';
+    level: ResourceProcessLevel; // raw, refined, manufactured, consumerGood
+    volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
+    massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
+};
+export type ResourceType = Resource['form'];

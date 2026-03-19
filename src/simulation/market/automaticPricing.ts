@@ -1,6 +1,6 @@
 import { INITIAL_FOOD_PRICE, PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '../constants';
 import type { Agent, AgentMarketOfferState, Planet } from '../planet/planet';
-import { queryStorageFacility } from '../planet/facilities';
+import { queryStorageFacility } from '../planet/storage';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {

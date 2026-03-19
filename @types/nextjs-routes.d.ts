@@ -22,11 +22,13 @@ declare module "nextjs-routes" {
     | StaticRoute<"/api/public/openapi.json">
     | DynamicRoute<"/api/trpc/[trpc]", { "trpc": string }>
     | StaticRoute<"/imprint">
+    | StaticRoute<"/mapAssets">
     | StaticRoute<"/planets">
     | DynamicRoute<"/planets/[planetId]", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/economy", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/market", { "planetId": string }>
+    | DynamicRoute<"/planets/[planetId]/market/[resourceName]", { "planetId": string; "resourceName": string }>
     | StaticRoute<"/pong">
     | StaticRoute<"/simulation">;
 

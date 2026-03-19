@@ -2,9 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
 import { productionTick } from './production';
 
-import { ironOreDepositResourceType, ironOreResourceType } from './facilities';
 import type { GameState } from './planet';
 import { makePlanetWithPopulation, makeAgent, makeProductionFacility, agentMap } from '../utils/testHelper';
+import { ironOreDepositResourceType } from './landBoundResources';
+import { ironOreResourceType } from './resources';
 
 // test helpers create fresh objects; no deep clone needed
 

@@ -28,7 +28,8 @@ import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepos
 import { createInitialGameState } from './utils/initialWorld';
 import knexConfig from '../../knexfile.js';
 import { computeLoanConditions } from './financial/loanConditions';
-import { agriculturalProductResourceType, arableLandResourceType, waterSourceResourceType } from './planet/facilities';
+import { agriculturalProductResourceType } from './planet/resources';
+import { arableLandResourceType, waterSourceResourceType } from './planet/landBoundResources';
 import { makeAgent } from './utils/testHelper';
 import { collapseUntenantedClaims } from './utils/entities';
 import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from './utils/initialWorld';

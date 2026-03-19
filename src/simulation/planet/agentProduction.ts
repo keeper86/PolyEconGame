@@ -1,6 +1,7 @@
-import { agriculturalProductResourceType, queryStorageFacility } from './facilities';
+import { queryStorageFacility } from './storage';
+import { agriculturalProductResourceType } from './resources';
 import type { Agent, Planet } from './planet';
-import type { ProductionFacility } from './facilities';
+import type { ProductionFacility } from './storage';
 
 export const INVENTORY_TARGET_TICKS = 60;
 

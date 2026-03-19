@@ -1,5 +1,5 @@
 import { FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
-import { agriculturalProductResourceType } from '../planet/facilities';
+import { agriculturalProductResourceType } from '../planet/resources';
 import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import { STARVATION_ACUTE_POWER } from './mortality';
