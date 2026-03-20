@@ -112,13 +112,15 @@ function createPool(): { pool: Piscina; port: MessagePort } {
     // MessageChannel for all custom communication with the worker.
     const { port1, port2 } = new MessageChannel();
 
+    const tickIntervalMs = process.env.TICK_INTERVAL_MS ? parseInt(process.env.TICK_INTERVAL_MS, 10) : 0;
+
     const p = new Piscina({
         filename: workerPath,
         minThreads: 1,
         maxThreads: 1,
         idleTimeout: Infinity,
         atomics: 'disabled',
-        workerData: { tickIntervalMs: 0 },
+        workerData: { tickIntervalMs },
         ...(execArgv ? { execArgv } : {}),
     });
 

@@ -1,16 +1,3 @@
-/**
- * simulation/worker.ts
- *
- * Runs inside a Piscina worker thread.
- * Owns the authoritative GameState and advances it on every tick.
- * Communicates with the main process via a dedicated MessagePort (not
- * parentPort, which is owned by Piscina's internal task protocol).
- *
- * Exports a default function that Piscina calls to start the simulation.
- * The function returns a Promise that never resolves (the loop runs until
- * the thread is terminated).
- */
-
 import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
 import { advanceTick, seedRng } from './engine';
 import {
