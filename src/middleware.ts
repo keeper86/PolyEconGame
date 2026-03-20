@@ -23,9 +23,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (!token) {
-        const signInUrl = new URL('/api/auth/signin', request.url);
-        signInUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
-        return NextResponse.redirect(signInUrl);
+        return NextResponse.redirect(new URL('/', request.url));
     }
 
     return NextResponse.next();

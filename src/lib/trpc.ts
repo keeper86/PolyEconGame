@@ -54,6 +54,10 @@ export const trpcClient = createTRPCProxyClient<AppRouter>({
                     const subscription = next(op).subscribe({
                         next: (value) => observer.next?.(value),
                         error: (err: TRPCClientError<AppRouter>) => {
+                            if (err.data?.httpStatus === 401) {
+                                window.location.href = '/';
+                                return;
+                            }
                             const message = getErrorMessage(err);
                             const status = err.data?.httpStatus ?? 'Unknown';
                             const title = `Network Error (${status}: ${prettifyHTTPStatus(err.data?.code)})`;
