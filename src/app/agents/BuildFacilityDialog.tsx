@@ -1,19 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import Image from 'next/image';
-import { PlusCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { facilityImage, productImage } from '@/lib/mapResource';
 import {
     FACILITY_LEVELS,
@@ -22,7 +13,9 @@ import {
     type FacilityCatalogEntry,
 } from '@/simulation/planet/facilityCatalog';
 import type { ProductionFacility } from '@/simulation/planet/storage';
-import { Separator } from '@/components/ui/separator';
+import { PlusCircle } from 'lucide-react';
+import Image from 'next/image';
+import React, { useMemo, useState } from 'react';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -124,8 +117,6 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
 export default function BuildFacilityDialog(): React.ReactElement {
     const [open, setOpen] = useState(false);
 
-    const totalFacilities = FACILITY_LEVELS.reduce((sum, level) => sum + facilitiesByLevel[level].length, 0);
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -137,9 +128,6 @@ export default function BuildFacilityDialog(): React.ReactElement {
             <DialogContent className='max-w-4xl max-h-[85vh] flex flex-col p-3 sm:p-6'>
                 <DialogHeader>
                     <DialogTitle>Build a New Facility</DialogTitle>
-                    <DialogDescription>
-                        Browse {totalFacilities} available facility types across all production levels.
-                    </DialogDescription>
                 </DialogHeader>
 
                 <Tabs defaultValue='raw' className='flex-1 overflow-hidden flex flex-col'>
@@ -169,13 +157,10 @@ export default function BuildFacilityDialog(): React.ReactElement {
                             >
                                 <div className='flex flex-col gap-3 rounded-lg border border-border bg-card p-2 md:p-4'>
                                     {facilitiesByLevel[level].map((entry) => (
-                                        <>
-                                            <FacilityCard
-                                                key={entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name}
-                                                entry={entry}
-                                            />
+                                        <React.Fragment key={entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name}>
+                                            <FacilityCard entry={entry} />
                                             <Separator className='my-3' />
-                                        </>
+                                        </React.Fragment>
                                     ))}
                                 </div>
                             </TabsContent>

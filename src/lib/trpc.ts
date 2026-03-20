@@ -54,7 +54,7 @@ export const trpcClient = createTRPCProxyClient<AppRouter>({
                     const subscription = next(op).subscribe({
                         next: (value) => observer.next?.(value),
                         error: (err: TRPCClientError<AppRouter>) => {
-                            if (err.data?.httpStatus === 401) {
+                            if (err.data?.httpStatus === 401 && window.location.pathname !== '/') {
                                 window.location.href = '/';
                                 return;
                             }
