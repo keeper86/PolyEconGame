@@ -29,7 +29,7 @@
 import { keepPreviousData, useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
 
 export const SIMULATION_MAX_RETRIES = 3;
-export const SIMULATION_REFETCH_INTERVAL_MS = 1_000;
+export const SIMULATION_REFETCH_INTERVAL_MS = 900;
 
 type SimulationQueryOptions<TData, TError> = Omit<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

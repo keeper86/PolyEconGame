@@ -1,22 +1,25 @@
-import Link from 'next/link';
-import { APP_ROUTES } from '@/lib/appRoutes';
 import { Page } from '@/components/client/Page';
+import { APP_ROUTES } from '@/lib/appRoutes';
+import Link from 'next/link';
+import { MortalityStarvationChart } from './charts/MortalityStarvationChart';
+import { StarvationDynamicsChart } from './charts/StarvationDynamicsChart';
 
 const TOC = [
+    { id: 'overview', label: '0. Overview & Time Units' },
     { id: 'environment', label: '1. Environment Tick' },
-    { id: 'labor-market', label: '2. Labor Market Tick' },
+    { id: 'workforce-demographic', label: '2. Workforce Demographic Tick' },
     { id: 'population', label: '3. Population Tick' },
-    { id: 'production', label: '4. Production Tick' },
-    { id: 'financial', label: '5. Financial Tick' },
-    { id: 'pricing', label: '6. Agent Pricing' },
-    { id: 'food-market', label: '7. Food Market' },
+    { id: 'workforce-hire', label: '4. Hire / Fire (monthly)' },
+    { id: 'financial-pre', label: '5. Pre-Production Financial Tick' },
+    { id: 'production', label: '6. Production Tick' },
+    { id: 'pricing', label: '7. Agent Pricing (Tâtonnement)' },
     { id: 'transfers', label: '8. Intergenerational Transfers' },
-    { id: 'wealth-diffusion', label: '9. Wealth Diffusion' },
-    { id: 'labor-market-month', label: '10. Labor Market Month Tick' },
-    { id: 'population-year', label: '11. Population Year Tick' },
-    { id: 'labor-market-year', label: '12. Labor Market Year Tick' },
-    { id: 'tick-order', label: '13. Tick Ordering Summary' },
-    { id: 'module-map', label: '14. Module Map' },
+    { id: 'market', label: '9. Market Clearing' },
+    { id: 'financial-post', label: '10. Post-Production Financial Tick' },
+    { id: 'labor-month', label: '11. Labor Market Month Tick' },
+    { id: 'population-year', label: '12. Population Year Tick' },
+    { id: 'labor-year', label: '13. Workforce Year Tick' },
+    { id: 'tick-order', label: '14. Tick Ordering Summary' },
 ] as const;
 
 export default function SimulationPage() {
@@ -47,121 +50,109 @@ export default function SimulationPage() {
                 </nav>
 
                 {/* ---------------------------------------------------------------- */}
+                {/* 0. OVERVIEW                                                       */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='overview'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>0. Overview &amp; Time Units</h2>
+                    <p>
+                        The simulation runs on a single global <code>GameState</code> that holds a list of{' '}
+                        <strong>planets</strong> and a map of <strong>agents</strong>. Each agent can operate on
+                        multiple planets simultaneously; all per-planet state (workforce, storage, market orders) is
+                        held inside <code>agent.assets[planetId]</code>.
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`TICKS_PER_MONTH = 30
+TICKS_PER_YEAR  = 360   (= 30 × 12)
+FOOD_PER_PERSON_PER_TICK = 1 / 360   (1 ton / person / year)`}
+                    </pre>
+                    <p>
+                        Every tick the top-level <code>advanceTick</code> function iterates over all planets and applies
+                        every subsystem in a fixed order. Month-boundary and year-boundary steps run conditionally only
+                        when <code>tick % 30 === 0</code> and <code>tick % 360 === 0</code> respectively.
+                    </p>
+                    <p>
+                        Education levels used throughout are: <code>none</code>, <code>primary</code>,{' '}
+                        <code>secondary</code>, <code>tertiary</code>. Population cells are indexed by{' '}
+                        <code>[age][occupation][education][skill]</code>, where occupations are <code>unoccupied</code>,{' '}
+                        <code>employed</code>, <code>education</code>, <code>unableToWork</code>.
+                    </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
                 {/* 1. ENVIRONMENT TICK                                               */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='environment'>
                     <h2 className='text-2xl font-bold mt-8 mb-3'>1. Environment Tick (every tick)</h2>
                     <p>
                         The environment subsystem models planetary pollution levels and renewable resource regeneration.
-                        It runs first in each tick, before production is evaluated, so that freshly regenerated
-                        resources are available to facilities in the same tick.
+                        It runs first in each tick so that freshly regenerated resources are available to facilities in
+                        the same tick.
                     </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>1.1 Pollution Regeneration</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>1.1 Pollution Decay</h3>
                     <p>
-                        Each planet tracks three pollution indices — air, water, and soil — each on a scale of{' '}
-                        <em>[0, &infin;)</em> (higher = more polluted). At every tick the natural environment removes a
-                        portion of each index via a <strong>combined constant + proportional decay</strong>:
+                        Each planet tracks three pollution indices — air, water, and soil. At every tick the natural
+                        environment removes a portion via a <strong>combined constant + proportional decay</strong>:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`P(t+1) = max(0, P(t) − c − r · P(t))
        = max(0, P(t) · (1 − r) − c)
 
-where
   P(t)  pollution index at tick t
-  c     constant regeneration (index-points per tick, from regenerationRates.*.constant)
-  r     fractional regeneration rate per tick (from regenerationRates.*.percentage)`}
+  c     constant regeneration (from regenerationRates.*.constant)
+  r     fractional rate per tick (from regenerationRates.*.percentage)`}
                     </pre>
-                    <p>
-                        The constants encode qualitative differences in how fast each medium self-cleans. Soil
-                        regenerates an order of magnitude more slowly than air or water, reflecting real-world
-                        remediation timescales (~100 years from heavy contamination).
-                    </p>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>1.2 Renewable Resource Regeneration</h3>
                     <p>
-                        Each planet holds a set of <em>resource claims</em>. Claims with a positive{' '}
-                        <code>regenerationRate</code> (in units per year) are renewable. Every tick the stored quantity
-                        grows up to the claim&apos;s <code>maximumCapacity</code>:
+                        Resource claims with a positive <code>regenerationRate</code> grow up to{' '}
+                        <code>maximumCapacity</code> each tick:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`Q(t+1) = Q(t) + min(R, C − Q(t))
-
-where
-  Q(t)  current stored quantity
-  R     regeneration rate per tick (annual rate expressed per tick)
-  C     maximumCapacity`}
+                        {`Q(t+1) = Q(t) + min(regenerationRate, maximumCapacity − Q(t))`}
                     </pre>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 2. LABOR MARKET TICK                                              */}
+                {/* 2. WORKFORCE DEMOGRAPHIC TICK                                     */}
                 {/* ---------------------------------------------------------------- */}
-                <section id='labor-market'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>2. Labor Market Tick (every tick)</h2>
+                <section id='workforce-demographic'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>2. Workforce Demographic Tick (every tick)</h2>
                     <p>
-                        The labor market links each agent&apos;s workforce demand (captured in{' '}
-                        <code>allocatedWorkers</code>) to the planet&apos;s available population. Workers are
-                        categorized by education level: <em>none, primary, secondary, tertiary, quaternary</em>.
+                        The workforce demographic tick runs <em>before</em> the population tick. It applies mortality,
+                        disability and retirement directly to active workforce cells and accumulates the counts in a{' '}
+                        <code>WorkforceEventAccumulator</code> so that <code>populationTick</code> can reconcile the
+                        population demography consistently.
                     </p>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>2.1 Voluntary Quits</h3>
                     <p>
-                        A small, constant fraction of every active workforce cohort voluntarily quits each tick and
-                        enters a 12-month notice pipeline:
+                        A small fraction of every active workforce cohort voluntarily quits each tick and enters the
+                        3-month notice pipeline at slot <code>NOTICE_PERIOD_MONTHS − 1</code>:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`Q = floor(A · q)
-
-where
-  A   number of active workers in the cohort
-  q   VOLUNTARY_QUIT_RATE_PER_TICK = 0.0001 (fraction per tick)`}
+                        {`quitters = stochasticRound(active × VOLUNTARY_QUIT_RATE_PER_TICK = 0.0003)
+→ voluntaryDeparting[NOTICE_PERIOD_MONTHS − 1]  (slot furthest from release)`}
                     </pre>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>2.2 Hiring</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>2.2 Retirement (per-tick, active workers)</h3>
                     <p>
-                        If the active headcount for an education level falls below the agent&apos;s target, the system
-                        hires the full gap instantly from the planet&apos;s unoccupied population pool:
+                        Workers at or above <code>RETIREMENT_AGE = 67</code> retire with a per-tick probability derived
+                        from an annual rate that ramps from 10 % at age 67 to 100 % at age 82:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`gap = allocatedWorkers[edu] − totalActive[edu]
-if gap > 0:
-    hire min(gap, unoccupied[edu]) workers at tenure year 0
-
-Age moments (mean μ, variance σ²) of newly hired workers are tracked via
-the parallel-axis (König–Huygens) formula when merging with existing tenure-0
-workers:
-
-μ_new  = (n₁ · μ₁ + n₂ · μ₂) / (n₁ + n₂)
-σ²_new = (n₁ · (σ₁² + (μ₁ − μ_new)²) + n₂ · (σ₂² + (μ₂ − μ_new)²)) / (n₁ + n₂)`}
+                        {`annualProb(age) = min(1, 0.10 + (age − 67) × 0.90 / 15)
+perTickProb     = 1 − (1 − annualProb)^(1/360)
+retirees        = stochasticRound(active × perTickProb)
+→ departingRetired[NOTICE_PERIOD_MONTHS − 1]`}
                     </pre>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>2.3 Firing</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>2.3 Workforce Mortality &amp; Disability</h3>
                     <p>
-                        When overstaffed, the system fires excess workers beginning from the lowest eligible tenure
-                        year. Workers in tenure years 0 and 1 (probation) are protected from lay-offs. Fired workers
-                        enter the 12-month departing pipeline:
+                        The same per-tick mortality and disability probabilities used in the population tick (§3) are
+                        applied to active workforce cells. Deaths and disabilities are counted in the accumulator so the
+                        population tick removes exactly the same people from the corresponding demography cells.
                     </p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`surplus = totalActive[edu] − allocatedWorkers[edu]
-if surplus > 0:
-    fire workers starting from tenure year MIN_TENURE_FOR_FIRING = 2,
-    ascending, until surplus workers have entered the departing pipeline`}
-                    </pre>
-
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>2.4 Worker Allocation Targets</h3>
-                    <p>
-                        Before the labor market tick, the system re-computes each agent&apos;s{' '}
-                        <code>allocatedWorkers</code> target by summing scaled worker requirements across all production
-                        facilities on a planet. To prevent runaway hiring, targets are reduced when the idle-worker
-                        fraction exceeds <code>ACCEPTABLE_IDLE_FRACTION = 5%</code>:
-                    </p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`demand[edu] = Σ_f (workerRequirement_f[edu] · scale_f)   for all facilities f
-
-if idleFraction > ACCEPTABLE_IDLE_FRACTION:
-    target[edu] = demand[edu] · (1 − idleFraction)`}
-                    </pre>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
@@ -171,341 +162,259 @@ if idleFraction > ACCEPTABLE_IDLE_FRACTION:
                     <h2 className='text-2xl font-bold mt-8 mb-3'>3. Population Tick (every tick)</h2>
                     <p>
                         The population subsystem maintains a full age-structured demography: a cohort array indexed by
-                        age (0–100), each cell broken down by education level × occupation. The per-tick update applies
-                        mortality, disability, starvation dynamics, and births.
+                        age (0–100), each cell broken down by occupation × education × skill. The per-tick update
+                        applies mortality, disability, retirement of non-workers, food consumption, and births.
                     </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.1 Food Consumption and Starvation</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.1 Mortality</h3>
                     <p>
-                        Each person consumes <code>FOOD_PER_PERSON_PER_TICK = 1/360</code> tons of food per tick
-                        (equivalent to 1 ton/person/year). Food intake equals available supply — there is no guaranteed
-                        over-consumption. Starvation results purely from supply-demand imbalance.
-                    </p>
-                    <p>
-                        <code>starvationLevel</code> (S ∈ [0, 1]) is a <strong>physiological malnutrition index</strong>{' '}
-                        — it is <em>not</em> an instantaneous food gap. S responds gradually to food deficit or surplus,
-                        so recovery lag emerges automatically without any extra state variables:
+                        Mortality has three additive annual components: age-dependent base, environmental (pollution +
+                        disasters), and starvation. The starvation term splits into a linear base amplification and an
+                        acute S⁴ term that captures extreme famine lethality:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`foodConsumed      = min(available, population × FOOD_PER_PERSON_PER_TICK)
-nutritionalFactor = foodConsumed / (population × FOOD_PER_PERSON_PER_TICK)
-foodShortfall     = clamp(1 − nutritionalFactor, 0, 1)
+                        {`m_base(age)    per-year lookup table (~72 year life expectancy)
 
-α = 1 / STARVATION_ADJUST_TICKS   (= 1/30, ~one month time-constant)
-S(t+1) = clamp(S(t) + α × (foodShortfall − S(t)), 0, 1)
+m_env         = air×0.006 + water×0.00002 + soil×0.00001
+              + earthquakes×0.0005 + floods×0.00005 + storms×0.000015
 
-During famine  → S rises gradually towards the shortfall
-After famine   → S decays gradually towards 0
-Recovery speed is emergent — no instant demographic snap-back`}
+m_starvation_base = m_base(age) × S          (amplifies baseline)
+m_acute           = S⁴                       (direct famine deaths)
+  S=0   → 0,   S=0.5 → 0.0625,   S=1 → 1.0
+
+m_annual = m_base(age) × (1 + S) + m_env + m_acute
+m_tick   = 1 − (1 − m_annual)^(1/360)
+deaths   = stochasticRound(cohort × min(0.8, m_tick))`}
+                    </pre>
+                    <p className='mt-2 text-sm text-muted-foreground'>
+                        Annual mortality contribution of each starvation component for a representative mid-life cohort
+                        (base rate 1 %/yr):
+                    </p>
+                    <MortalityStarvationChart />
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.2 Food Consumption &amp; Starvation</h3>
+                    <p>
+                        Each population cell maintains its own food <code>inventory</code> (replenished by the market).
+                        Consumption is drawn from the personal buffer; if it runs dry the deficit raises the cell-level
+                        starvation index S:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`foodConsumed      = min(foodStock, total × FOOD_PER_PERSON_PER_TICK)
+nutritionalFactor = foodConsumed / (total × FOOD_PER_PERSON_PER_TICK)
+shortfall         = clamp(1 − nutritionalFactor, 0, 1)
+
+α = 1 / STARVATION_ADJUST_TICKS  (= 1/30, ~one-month time-constant)
+S(t+1) = S(t) + α × (shortfall − S(t))`}
+                    </pre>
+                    <p className='mt-2 text-sm text-muted-foreground'>
+                        S over 120 ticks: total famine then recovery (red), chronic 50 % supply (blue), full supply
+                        (green).
+                    </p>
+                    <StarvationDynamicsChart />
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.3 Disability</h3>
+                    <p>
+                        At each tick a fraction of employed workers transitions to <code>unableToWork</code>. The annual
+                        disability probability combines age, pollution, natural disasters, and starvation:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`d_pollution  = min(0.5, air×0.0001 + water×0.0001 + soil×0.00002)
+d_disasters  = min(0.3, earthquakes×0.00005 + floods×0.000005 + storms×0.0000015)
+d_starvation = 0.05 × S²
+d_age:  age<15→0.001  |  15–49→0.0005  |  50–59→0.005  |  60–69→0.01
+        70–90 → 0.01 + (age−70)/20 × 0.32  (ramp to 0.33)  |  >90→0.33
+
+d_tick = 1 − (1 − (d_pollution + d_disasters + d_starvation + d_age))^(1/360)`}
                     </pre>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.2 Mortality Model</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.4 Retirement (non-workers)</h3>
                     <p>
-                        Mortality is applied independently to each age cohort. Starvation affects mortality{' '}
-                        <strong>only via base amplification</strong> — it does not appear as a separate additive term,
-                        preventing double counting. The S² (convex) scaling captures the real-world observation that
-                        mild food insecurity raises morbidity modestly while severe famine causes extreme mortality:
+                        <code>unoccupied</code> and <code>education</code> cells also retire at the same per-tick
+                        probability (§2.2). They transition directly to <code>unableToWork</code> without a notice
+                        pipeline.
+                    </p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.5 Births</h3>
+                    <p>
+                        Births are computed from fertile women (ages 18–45, assumed 50 % of each cohort), adjusted for
+                        starvation and pollution:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`m_base(age)      from lookup table (per 1 000, calibrated to ~72 year life expectancy)
+                        {`LIFETIME_FERTILITY = 3.0
+pollutionReduction = min(1, air×0.01 + water×0.002 + soil×0.0005)
 
-m_pollution      = air · 0.006 + water · 0.00002 + soil · 0.00001  (annual)
-m_disasters      = earthquakes · 0.0005 + floods · 0.00005 + storms · 0.000015  (annual)
+LF_adj = 3.0 × (1 − 0.75 × S⁴) × (1 − 0.5 × pollutionReduction)
 
-m_base_starvation(age) = m_base(age) · (1 + S² × 9)
-  S = 0   → 1×   base mortality  (fully fed)
-  S = 0.5 → 3.25× base mortality (moderate famine)
-  S = 0.9 → 8.29× base mortality (severe famine)
-  S = 1   → 10×  base mortality  (total famine)
-
-m_combined  = min(1, m_base_starvation(age) + m_pollution + m_disasters)
-
-Annual → per-tick conversion (avoids cohort oscillation):
-  p_tick = 1 − (1 − m_annual)^(1 / TICKS_PER_YEAR)
-
-survivors = floor(cohort_total · (1 − p_tick))
-deaths are distributed proportionally across education × occupation cells
-(Hamilton largest-remainder method)`}
+birthsPerYear = LF_adj × fertileWomen / (45 − 18 + 1)
+birthsPerTick = stochasticRound(birthsPerYear / 360)`}
                     </pre>
+                    <p className='mt-2 text-sm text-muted-foreground'>
+                        Effective TFR and per-woman annual births as a function of S (no pollution):
+                    </p>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 4. HIRE / FIRE (monthly)                                          */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='workforce-hire'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>4. Worker Allocation &amp; Hire/Fire (monthly)</h2>
                     <p>
-                        Because S itself adjusts gradually (see §3.1), mortality also rises and falls gradually after a
-                        famine event — no instant demographic snap-back occurs.
+                        Hiring and firing happen only at month boundaries (<code>tick % 30 === 0</code>) to prevent
+                        excessive workforce churn from tick-level noise.
                     </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.3 Births (Fertility Model)</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>4.1 Allocation Target</h3>
                     <p>
-                        Births are distributed uniformly across ticks. The model uses a simplified cohort fertility
-                        applied to the number of women in fertile age (18–45), assumed to be 50 % of each age cohort:
+                        Automated agents recompute <code>allocatedWorkers</code> by inspecting the last production
+                        tick&apos;s results:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`TFR_base = 2.66   (slightly above replacement to buffer child mortality)
-pollutionFertReduction = min(1, air · 0.01 + water · 0.002 + soil · 0.0005)
+                        {`deficit     = max(0, totalRequirement[edu] − exactUsed[edu])
+target[edu] = ceil((totalUsed[edu] + deficit) × (1 + ACCEPTABLE_IDLE_FRACTION))
 
-fertilityFactor = 1 − S^1.5   (nonlinear: near-collapse at high S, gentle at low S)
-TFR_adj  = TFR_base · fertilityFactor · (1 − 0.5 · pollutionFertReduction)
-
-fertileWomen = 0.5 · Σ_{age=18}^{45} cohort_total(age)
-
-birthsPerYear = floor(TFR_adj · fertileWomen / (45 − 18 + 1))
-birthsPerTick = floor(birthsPerYear / TICKS_PER_YEAR)`}
+ACCEPTABLE_IDLE_FRACTION = 0.05   (5 % idle buffer above exact demand)`}
                     </pre>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>3.4 Disability Transitions</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>4.2 Hiring</h3>
                     <p>
-                        At each tick, a fraction of non-disabled workers transitions to <code>unableToWork</code> due to
-                        age-related disability, pollution, natural disasters, or starvation. Chronic famine thus
-                        produces long-term workforce degradation even after food supply recovers (via S inertia):
+                        If active headcount falls below the target, workers are hired from the planet&apos;s{' '}
+                        <code>unoccupied</code> pool. New workers are placed at their exact population age (not
+                        aggregated as moments):
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`d_pollution  = min(0.5, air · 0.0001 + water · 0.0001 + soil · 0.00002)
-d_disasters  = min(0.3, earthquakes · 0.00005 + floods · 0.000005 + storms · 0.0000015)
-d_starvation = 0.05 × S²   (small coefficient keeps this below the pollution cap)
-d_age(age):
-    age < 15         → 0.001
-    15 ≤ age < 50    → 0.0005
-    50 ≤ age < 60    → 0.005
-    60 ≤ age < 70    → 0.01
-    70 ≤ age ≤ 90    → 0.01 + (age − 70) / 20 · 0.32  (linear ramp to 0.33)
-    age > 90         → 0.33
+                        {`gap = target[edu] − currentActive[edu]
+if gap > 0:
+    hire min(gap, unoccupied[edu]) workers
+    workforce[exact age][edu][skill].active += count`}
+                    </pre>
 
-d_total = d_pollution + d_disasters + d_starvation + d_age(age)
-d_tick  = 1 − (1 − d_total)^(1/360)      (annual → per-tick)
-disabled = floor(occupiedWorkers · d_tick)`}
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>4.3 Firing</h3>
+                    <p>
+                        When overstaffed beyond the 5 % buffer, workers are fired youngest-age-first (lowest tenure
+                        proxy) and enter the 3-month <code>departingFired</code> pipeline:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`surplus = currentActive − target
+if surplus > currentActive × 0.05:
+    fire age 0 upward until surplus removed
+    → departingFired[NOTICE_PERIOD_MONTHS − 1]   (NOTICE_PERIOD_MONTHS = 3)`}
                     </pre>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 4. PRODUCTION TICK                                                */}
+                {/* 5. PRE-PRODUCTION FINANCIAL TICK                                  */}
                 {/* ---------------------------------------------------------------- */}
-                <section id='production'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>4. Production Tick (every tick)</h2>
+                <section id='financial-pre'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>5. Pre-Production Financial Tick (every tick)</h2>
                     <p>
-                        Each agent&apos;s production facilities are evaluated every tick. Facility output scales
-                        linearly with a composite <em>overall efficiency</em> that is the minimum of worker efficiency
-                        and resource efficiency.
+                        The financial subsystem implements a <strong>double-entry monetary system</strong> with a single
+                        planetary bank. Money is created exclusively via loan issuance and destroyed via repayment.
                     </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>4.1 Age-Dependent Productivity</h3>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.1 Balance Sheet Invariant</h3>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`bank.deposits = Σ agent.deposits + bank.householdDeposits
+bank.equity   = bank.deposits − bank.loans`}
+                    </pre>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.2 Wage Payment</h3>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`1. wageBill = Σ_edu (active[edu] + departing[edu]) × wage[edu]
+   DEFAULT_WAGE_PER_EDU = 1.0  (overridable via planet.wagePerEdu)
+
+2. Working-capital loan if deposits < wageBill (MONEY CREATION):
+     shortfall        = wageBill − deposits
+     bank.loans       += shortfall
+     bank.deposits    += shortfall
+     agent.deposits   += shortfall
+
+3. Pay wages (firm → household sub-accounts):
+     agent.deposits         −= wageBill
+     bank.householdDeposits += wageBill   (distributed per workforce cell)`}
+                    </pre>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 6. PRODUCTION TICK                                                */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='production'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>6. Production Tick (every tick)</h2>
                     <p>
-                        The effective number of workers is adjusted by an age-productivity multiplier that peaks for
-                        workers aged 30–50 and declines for younger or older workers:
+                        Each agent&apos;s production facilities are evaluated every tick. The worker allocation problem
+                        is solved by a <strong>water-fill (communicating vessels) algorithm</strong> that maximises the
+                        minimum fill ratio across all worker slots, with upward cascading for overqualified workers.
+                    </p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>6.1 Age-Dependent Productivity</h3>
+                    <p>
+                        The effective headcount of each education level is adjusted by a mean-age multiplier. Departing
+                        workers contribute at <code>DEPARTING_EFFICIENCY = 0.5</code>:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`φ_age(μ):
     μ ≤ 18        → 0.80
-    18 < μ < 30   → 0.80 + (μ − 18) · 0.20 / 12    (linear ramp to 1.00)
+    18 < μ < 30   → 0.80 + (μ−18) × 0.20/12
     30 ≤ μ ≤ 50   → 1.00
-    50 < μ < 65   → 1.00 − (μ − 50) · 0.15 / 15    (linear decay to 0.85)
-    μ ≥ 65        → max(0.70, 0.85 − (μ − 65) · 0.15 / 15)
+    50 < μ < 65   → 1.00 − (μ−50) × 0.15/15
+    μ ≥ 65        → max(0.70, 0.85 − (μ−65) × 0.15/15)
 
-where μ is the mean age of the workforce cohort at a given education level`}
+μ = weighted mean age across all workforce cells for that education level`}
                     </pre>
+                    <p className='mt-2 text-sm text-muted-foreground'>
+                        Age-productivity multiplier across the full age range:
+                    </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>4.2 Experience (Tenure) Productivity</h3>
-                    <p>A separate tenure multiplier rewards long-serving workers:</p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`φ_exp(y):
-    y ≤ 0    → 1.0
-    0 < y < 10 → 1.0 + y · 0.5 / 10   (linear from 1.0 to 1.5)
-    y ≥ 10   → 1.5
-
-where y is the tenure in years of the cohort`}
-                    </pre>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>6.2 Water-Fill Worker Allocation</h3>
                     <p>
-                        The combined productivity multiplier for each education level is the weighted average across
-                        tenure cohorts:
+                        Workers are distributed across job-education slots by a water-fill algorithm. Each worker tier
+                        (lowest education first) raises all reachable under-filled slots to a common equilibrium fill
+                        ratio before moving to the next tier. Higher-education workers can fill lower slots
+                        (overqualification):
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`φ_age_weighted[edu]  = (Σ_y n_y · φ_age(μ_y)) / (Σ_y n_y)
-φ_exp_weighted[edu]  = (Σ_y n_y · φ_exp(y))    / (Σ_y n_y)
-φ_combined[edu]      = φ_age_weighted[edu] · φ_exp_weighted[edu]`}
+                        {`For each workerEdu in [none, primary, secondary, tertiary]:
+  reachable = slots where jobEduIdx ≤ workerEduIdx AND slot not full
+  sort reachable by current fill ratio ascending
+  find equilibrium ratio that exhausts supply or fills all reachable slots
+  assign workers to raise each slot to the equilibrium ratio
+
+workerEfficiency[slot] = effectiveAssigned / (requirement × scale)`}
                     </pre>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>4.3 Worker Allocation (Two-Pass)</h3>
-                    <p>
-                        Worker requirements are filled in two passes to prevent higher-education workers from being
-                        consumed before lower slots are matched:
-                    </p>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>6.3 Resource Efficiency &amp; Output</h3>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`Pass 1 (exact match):
-  For each job-education slot jobEdu:
-    bodiesNeeded = ceil(effectiveTarget / φ_combined[jobEdu])
-    take = min(bodiesNeeded, remainingWorkers[jobEdu])
-    effectiveFilled += take · φ_combined[jobEdu]
+                        {`resourceEfficiency[r] = min(1, available_r / (need_r × scale))
+overallEfficiency     = min(workerEfficiencyOverall, min over r of resourceEfficiency[r])
 
-Pass 2 (upward cascade — overqualification):
-  For each unsatisfied slot jobEdu:
-    Walk up through higher education levels candidateEdu > jobEdu:
-      bodiesNeeded = ceil(remaining_gap / φ_combined[candidateEdu])
-      take = min(bodiesNeeded, remainingWorkers[candidateEdu])
-      effectiveFilled += take · φ_combined[candidateEdu]
-
-workerEfficiency[jobEdu] = min(1, effectiveFilled / (requirement · scale))`}
-                    </pre>
-
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>4.4 Overall Efficiency and Output</h3>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`resourceEfficiency[r] = min(1, available_r / (need_r · scale))
-workerEfficiencyOverall = min over all required jobEdu of workerEfficiency[jobEdu]
-overallEfficiency = min(workerEfficiencyOverall, min over r of resourceEfficiency[r])
-
-output = floor(nominalOutput · scale · overallEfficiency)
-input consumed = ceil(nominalInput · scale · overallEfficiency)
-pollution added = pollutionPerTick · scale · overallEfficiency`}
+produced = stochasticRound(nominalOutput × scale × overallEfficiency)
+consumed = ceil(nominalInput × scale × overallEfficiency)
+pollution += pollutionPerTick × scale × overallEfficiency`}
                     </pre>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 5. FINANCIAL TICK                                                 */}
-                {/* ---------------------------------------------------------------- */}
-                <section id='financial'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>5. Financial Tick (every tick, two phases)</h2>
-                    <p>
-                        The financial subsystem implements a minimal <strong>double-entry monetary system</strong> built
-                        around a single planetary bank. Money is created exclusively via loan issuance and destroyed
-                        exclusively via loan repayment — there is no exogenous money supply. The tick is split into two
-                        phases that bracket the production tick.
-                    </p>
-
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.1 Balance Sheet</h3>
-                    <p>
-                        Each planet carries a <code>Bank</code> that tracks the aggregate monetary position. The
-                        fundamental invariant maintained after every sub-step is:
-                    </p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`bank.deposits = Σ agent.deposits + bank.householdDeposits
-
-where
-  bank.loans             total outstanding working-capital loans (bank asset)
-  bank.deposits          total money supply (bank liability)
-  bank.householdDeposits money held by households (subset of deposits)
-  Σ agent.deposits       money held by firms (subset of deposits)
-  bank.equity            = bank.deposits − bank.loans (always 0 in the current model)`}
-                    </pre>
-
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.2 Phase A — Pre-Production (wages & loans)</h3>
-                    <p>
-                        Runs after the labor market tick and before the production tick. For each agent on each planet:
-                    </p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`1. Wage bill calculation:
-     wageBill = Σ_edu (activeWorkers[edu] + departingWorkers[edu]) × wage[edu]
-
-     wage[edu] = planet.wagePerEdu[edu] ?? DEFAULT_WAGE_PER_EDU (= 1.0)
-
-2. Working-capital loan (MONEY CREATION):
-     if agent.deposits < wageBill:
-         shortfall = wageBill − agent.deposits
-         bank.loans    += shortfall   (bank asset ↑)
-         bank.deposits += shortfall   (money supply ↑)
-         agent.deposits += shortfall  (firm account ↑)
-
-3. Wage payment (INTERNAL TRANSFER: firm → household):
-     agent.deposits         −= wageBill
-     bank.householdDeposits += wageBill
-     bank.deposits unchanged — money moves between sub-accounts
-
-4. Wealth moment update:
-     For each tenure cohort and each age-education-occupation cell,
-     mean wealth is increased by the per-worker wage.`}
-                    </pre>
-
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>
-                        5.3 Phase B — Post-Production (consumption & repayment)
-                    </h3>
-                    <p>Runs after the production tick. For each planet:</p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`1. Household consumption:
-     For each employed person (age × edu × occupation):
-         c = min(C_INC × wage[edu] + C_WEALTH × wealth, wealth)
-
-     Parameters:
-         C_INC    = 1.0  (marginal propensity to consume from income)
-         C_WEALTH = 0.0  (marginal propensity to consume from wealth)
-     → With these defaults, workers spend exactly their wage each tick.
-
-     C_nom = Σ c × count   (aggregate nominal consumption)
-     bank.householdDeposits −= C_nom
-
-2. Revenue distribution (INTERNAL TRANSFER: household → firm):
-     Each firm receives revenue proportional to its share of active workers:
-         revenue_i = C_nom × (workers_i / Σ workers)
-         agent_i.deposits += revenue_i
-     bank.deposits unchanged — money moves between sub-accounts.
-
-3. Loan repayment (MONEY DESTRUCTION):
-     Each firm repays up to its full deposit balance:
-         repayment = min(bank.loans, agent.deposits)
-         agent.deposits −= repayment
-         bank.loans     −= repayment  (bank asset ↓)
-         bank.deposits  −= repayment  (money supply ↓)`}
-                    </pre>
-
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>5.4 The Perfect Circle</h3>
-                    <p>
-                        With the current parameters (C_INC&nbsp;=&nbsp;1, C_WEALTH&nbsp;=&nbsp;0), money flows in a
-                        closed circle each tick: the bank creates a loan equal to the wage bill, wages flow to
-                        households, households consume everything, revenue returns to firms, and firms immediately repay
-                        the loan. After each tick the net bank position returns to approximately zero. Non-zero
-                        end-of-tick balances appear only during transient phases (e.g.&nbsp;when the workforce is still
-                        growing after initialization) and decay to zero once the labor market stabilizes.
-                    </p>
-                    <p className='mt-2'>
-                        This behaviour is intentional for the minimal first implementation. Setting C_WEALTH&nbsp;&gt;
-                        &nbsp;0 or introducing interest rates (loanRate, depositRate) in future iterations will break
-                        the circle and produce meaningful intra-tick bank balances, wealth accumulation, and price-level
-                        dynamics.
-                    </p>
-                </section>
-
-                {/* ---------------------------------------------------------------- */}
-                {/* 6. AGENT PRICING                                                  */}
+                {/* 7. AGENT PRICING (TÂTONNEMENT)                                   */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='pricing'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>6. Agent Pricing (every tick)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>7. Agent Pricing — Tâtonnement (every tick)</h2>
                     <p>
-                        After production, each food-producing agent sets its offer price and quantity for the upcoming
-                        market clearing step. The pricing algorithm uses a simple inventory-based heuristic:
+                        After production, each automated agent sets its offer price for every resource it produces. The
+                        algorithm is a <strong>gradient-descent tâtonnement</strong> that adjusts price based on the
+                        previous tick&apos;s sell-through ratio. The offer quantity equals the full current inventory.
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`foodOfferQuantity = min(storage[food], desiredSalesTarget)
-foodOfferPrice    = basePrice · adjustment(inventoryRatio)
+                        {`TARGET_SELL_THROUGH = 0.90   (aim to sell 90 % of offer per tick)
+ADJUSTMENT_SPEED    = 0.20
 
-where
-  inventoryRatio = storage[food] / lastFoodProduced
-  adjustment     raises price when inventory is low, lowers when high`}
+sellThrough  = lastSold / offerQuantity
+excessDemand = sellThrough − TARGET_SELL_THROUGH
+factor       = clamp(1 + 0.20 × excessDemand, 0.95, 1.05)
+newPrice     = clamp(price × factor, 0.01, 1_000_000)
+
+offerQuantity = current storage inventory for this resource`}
                     </pre>
-                    <p className='mt-2'>
-                        Agents that produce no food skip this step. The resulting per-agent offers are consumed by the
-                        food market clearing step.
-                    </p>
-                </section>
-
-                {/* ---------------------------------------------------------------- */}
-                {/* 7. FOOD MARKET                                                    */}
-                {/* ---------------------------------------------------------------- */}
-                <section id='food-market'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>7. Food Market Clearing (every tick)</h2>
-                    <p>
-                        The food market matches household demand with agent supply using a merit-order dispatch
-                        mechanism. Agents are sorted by offer price (cheapest first), and households purchase food until
-                        demand is satisfied or supply is exhausted.
-                    </p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`totalDemand = Σ (FOOD_PER_PERSON_PER_TICK · population[age][edu][occ])
-
-For each agent (sorted by foodOfferPrice ascending):
-    sold = min(agent.foodOfferQuantity, remainingDemand)
-    revenue = sold · agent.foodOfferPrice
-    remainingDemand -= sold
-
-householdFoodBuffers[age][edu][occ] += allocated food per capita
-foodPrice = volume-weighted average of clearing prices`}
-                    </pre>
-                    <p className='mt-2'>
-                        Each household cell maintains a <code>foodStock</code> buffer. Food that is not consumed in the
-                        current tick persists in the buffer. The volume-weighted average price is recorded as the
-                        planet-level <code>foodPrice</code> for use by other subsystems.
+                    <p className='mt-2 text-sm text-muted-foreground'>
+                        Price evolution from 1.0 for three sell-through scenarios over 80 ticks:
                     </p>
                 </section>
 
@@ -515,320 +424,241 @@ foodPrice = volume-weighted average of clearing prices`}
                 <section id='transfers'>
                     <h2 className='text-2xl font-bold mt-8 mb-3'>8. Intergenerational Transfers (every tick)</h2>
                     <p>
-                        Family support flows redistribute wealth between age groups. Working-age adults transfer a
-                        fraction of their income to dependent children and elderly household members:
+                        Family support flows redistribute food inventory (and the wealth used to buy it) between age
+                        groups via a multi-modal Gaussian support kernel. Transfers run <em>before</em> market clearing
+                        so dependents arrive at the market with their supporters&apos; wealth.
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`For each planet:
-  1. Compute per-cell net income (wages − consumption)
-  2. Working-age cells with positive income contribute a fraction to:
-     - Children (age < MIN_EMPLOYABLE_AGE)
-     - Elderly (age > retirementAge)
-  3. Transfers flow from high-income cells to low-income cells
-     within the same education lineage
+                        {`Kernel peaks at k × GENERATION_GAP for k = 1, 2
+  GENERATION_GAP = 25 years,  SUPPORT_WEIGHT_SIGMA = 6 years
 
-Global invariant: Σ all transfers = 0 (zero-sum)`}
+weight(supporter_age → dependent_age) ∝
+    Σ_{k=1}^{2} exp(−(dependent_age − supporter_age − k×25)² / (2×6²))
+
+For each supporter with food surplus:
+  transfer food to dependents proportional to weight × need × population
+
+Global invariant: Σ all transfers = 0   (purely redistributive, zero-sum)`}
+                    </pre>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 9. MARKET CLEARING                                                */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='market'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>9. Market Clearing (every tick)</h2>
+                    <p>
+                        The market is a general <strong>price-priority order book</strong> that clears any number of
+                        resources. Currently food (agricultural product) is the only traded good; further goods can be
+                        added by registering a demand rule. Multiple competing agents each post independent ask orders
+                        so market outcomes are driven by competitive pricing.
+                    </p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>9.1 Ask Orders (Agents)</h3>
+                    <p>
+                        Each agent with a registered sell offer contributes an ask at its current offer price (set by
+                        the pricing step above) and its full current inventory as quantity.
+                    </p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>9.2 Bid Orders (Households)</h3>
+                    <p>
+                        Household demand is generated from population demography. Each cohort cell bids to fill its food
+                        buffer to a 30-day target, limited by per-capita wealth:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`FOOD_BUFFER_TARGET_TICKS = 30
+foodTargetPerPerson = 30 × FOOD_PER_PERSON_PER_TICK
+
+desiredQty    = max(0, foodTargetPerPerson − inventoryPerPerson)
+affordableQty = wealthMeanPerPerson / referencePrice
+bidQty        = min(desiredQty, affordableQty) × population
+reservPrice   = wealthMeanPerPerson / desiredQty   (willing to spend all wealth)`}
+                    </pre>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>9.3 Matching &amp; Settlement</h3>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`1. Sort bids  descending  by reservationPrice
+2. Sort asks  ascending   by askPrice
+3. Walk bids; for each bid fill from cheapest asks where askPrice ≤ bidPrice
+4. Trade price = ask price  (seller-price convention)
+5. VWAP → planet.marketPrices[resource]
+
+Settlement:
+  household inventory[resource] += allocated quantity
+  household wealth              −= cost
+  agent.deposits                += revenue`}
+                    </pre>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
+                {/* 10. POST-PRODUCTION FINANCIAL TICK                                */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='financial-post'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>10. Post-Production Financial Tick (every tick)</h2>
+                    <p>
+                        After market clearing, automated agents repay outstanding loans using a{' '}
+                        <strong>retained-earnings threshold</strong> so that firms always keep a working-capital buffer
+                        before repaying:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`RETAINED_EARNINGS_THRESHOLD = 1.5
+
+retainedThreshold = lastWageBill × 1.5
+excessDeposits    = max(0, deposits − retainedThreshold)
+repayment         = min(agentLoan, excessDeposits, bank.loans)
+
+agent.deposits −= repayment
+agent.loans    −= repayment
+bank.loans     −= repayment   (MONEY DESTRUCTION)
+bank.deposits  −= repayment`}
                     </pre>
                     <p className='mt-2'>
-                        The transfer matrix (<code>lastTransferMatrix</code>) is stored on the planet for observability
-                        and frontend visualization.
+                        Because revenue is distributed competitively via the order book rather than through a single
+                        wage-bill cycle, the money supply does <strong>not</strong> return to zero after each tick.
+                        Persistent bank balances and inter-agent wealth divergence accumulate naturally as agents
+                        differentiate in profitability.
                     </p>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 9. WEALTH DIFFUSION                                               */}
+                {/* 11. LABOR MARKET MONTH TICK                                       */}
                 {/* ---------------------------------------------------------------- */}
-                <section id='wealth-diffusion'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>9. Wealth Diffusion (every tick)</h2>
+                <section id='labor-month'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>11. Labor Market Month Tick (every 30 ticks)</h2>
                     <p>
-                        A low-temperature variance smoothing step that gradually reduces extreme wealth inequality
-                        within each age × education × occupation cell. This models informal wealth-sharing mechanisms
-                        and prevents numerical divergence of wealth moments:
+                        At every month boundary the three departure pipelines are advanced by one slot. Workers at slot
+                        0 (soonest to leave) are released:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`For each cell (age, edu, occ) with population > 1:
-  variance_new = variance · (1 − diffusionRate)
+                        {`voluntaryDeparting[0] + departingFired[0]  → population unoccupied
+departingRetired[0]                        → population unableToWork
 
-where diffusionRate is a small constant per tick`}
+Shift pipelines:
+  [m] ← [m+1]  for m = 0 … NOTICE_PERIOD_MONTHS−2
+  [NOTICE_PERIOD_MONTHS−1] ← 0`}
                     </pre>
-                    <p className='mt-2'>
-                        Wealth diffusion preserves the mean wealth of each cell while reducing variance. This ensures
-                        that the wealth distribution remains well-behaved over long simulation runs without affecting
-                        aggregate household deposit totals.
-                    </p>
-                </section>
-
-                {/* ---------------------------------------------------------------- */}
-                {/* 10. LABOR MARKET MONTH TICK                                       */}
-                {/* ---------------------------------------------------------------- */}
-                <section id='labor-market-month'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>10. Labor Market Month Tick (every 30 ticks)</h2>
                     <p>
-                        At every month boundary the departing and retiring pipelines are advanced by one slot. Workers
-                        in slot 0 (soonest to leave) are released from the workforce entirely:
+                        This step also rotates the per-agent death and disability event counters (<code>thisMonth</code>{' '}
+                        → <code>prevMonth</code>) for observability in the frontend.
                     </p>
-                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`For each tenure cohort c and education level edu:
-
-  1. Release slot 0 of the departing pipeline:
-       departing[edu][0] workers return to planet's unoccupied pool
-       (fired subset: departingFired[edu][0] — tracked for statistics only)
-
-  2. Release slot 0 of the retiring pipeline:
-       retiring[edu][0] workers move to 'unableToWork' in the population
-
-  3. Shift all remaining slots down by 1:
-       departing[edu][m] ← departing[edu][m+1]  for m = 0 … NOTICE_PERIOD_MONTHS−2
-       departing[edu][NOTICE_PERIOD_MONTHS−1] ← 0
-       (same for departingFired and retiring)`}
-                    </pre>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 11. POPULATION YEAR TICK                                          */}
+                {/* 12. POPULATION YEAR TICK                                          */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='population-year'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>11. Population Year Tick (every 360 ticks)</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>12. Population Year Tick (every 360 ticks)</h2>
+                    <p>Once per year the entire population ages by one year and education transitions are applied.</p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>12.1 Aging</h3>
                     <p>
-                        Once per year the entire population ages by one year and education transitions are applied. The
-                        per-tick mortality has already removed deaths; this step only handles cohort shifting and
-                        school/work transitions.
+                        Every cohort at age <em>a</em> is moved to <em>a + 1</em> via a descending loop to avoid
+                        aliasing. Cohort 0 is cleared and will be repopulated over the coming year by per-tick births.
                     </p>
 
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>11.1 Aging</h3>
-                    <p>
-                        Every cohort at age <em>a</em> moves to <em>a + 1</em>. Cohort 0 (newborns) is reset to zero and
-                        will be refilled over the coming year by per-tick births.
-                    </p>
-
-                    <h3 className='text-xl font-semibold mt-6 mb-2'>11.2 Education Graduation and Dropout</h3>
-                    <p>
-                        For individuals in the <code>education</code> occupation, graduation and dropout probabilities
-                        are evaluated:
-                    </p>
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>12.2 Education Graduation and Dropout</h3>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`Graduation probability at age a for education level L:
-  if a < graduationAge_L:
-      P_grad(a, L) = graduationPreAgeProbability_L ^ (graduationAge_L − a)
-  else:
-      P_grad(a, L) = graduationProbability_L
+                        {`P_grad(a, L):
+  a < graduationAge_L → graduationPreAgeProbability_L ^ (graduationAge_L − a)
+  else                → graduationProbability_L
 
-graduates = floor(count · P_grad(a, L))
+graduates     = floor(count × P_grad)
+transitioners = floor(graduates × transitionProbability_L)  → next level
+dropouts      = graduates − transitioners                    → unoccupied
 
-Of the graduates:
-  transitioners = floor(graduates · transitionProbability_L) → advance to next level
-  voluntaryDropouts = graduates − transitioners              → become unoccupied
+P_dropout(a, L):
+  a < graduationAge + spread → genericDropoutProbability_L
+  a = graduationAge + spread → 0.5
+  a > graduationAge + spread → 0.95
 
-Of those who do NOT graduate (stay students):
-  P_dropout(a, L):
-      if a < graduationAge_L + spread:  genericDropoutProbability_L  (low)
-      if a = graduationAge_L + spread:  0.5
-      if a > graduationAge_L + spread:  0.95
-  dropouts = ceil(stayers · P_dropout(a, L)) → become unoccupied
-  remainers = stayers − dropouts              → stay in education
-
-Education level parameters:
-  Level        graduationAge  P_grad   P_transition  P_dropout_generic
-  none               9          0.90       0.95           0.01
-  primary           17          0.75       0.40           0.02
-  secondary         22          0.50       0.30           0.06
-  tertiary          27          0.10       0.00           0.10
-  quaternary       100          0.00       —              1.00`}
+Level parameters  (type / graduationAge / P_grad / P_transition / P_dropout):
+  none       9    0.90   0.95   0.00
+  primary   17    0.75   0.40   0.00
+  secondary 22    0.50   0.30   0.06
+  tertiary  27    0.10   0.00   0.10`}
                     </pre>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 12. LABOR MARKET YEAR TICK                                        */}
+                {/* 13. WORKFORCE YEAR TICK                                           */}
                 {/* ---------------------------------------------------------------- */}
-                <section id='labor-market-year'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>12. Labor Market Year Tick (every 360 ticks)</h2>
+                <section id='labor-year'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>13. Workforce Year Tick (every 360 ticks)</h2>
                     <p>
-                        Once per year, tenure advances by one year for all active and departing workers. Additionally,
-                        workers whose mean age has reached or exceeded the retirement threshold (RETIREMENT_AGE = 67
-                        years) are transitioned into the retiring pipeline.
+                        Once per year the entire workforce cohort array ages by one year, mirroring the population year
+                        tick. Workers at <code>MAX_AGE</code> are carried forward until they die or retire:
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                        {`Tenure advance:
-  workforceDemography[MAX_TENURE_YEARS] += workforceDemography[MAX_TENURE_YEARS-1]
-  for y = MAX_TENURE_YEARS-1 down to 1:
-      workforceDemography[y] ← workforceDemography[y-1]
-  workforceDemography[0] ← empty cohort
-
-Retirement (per tenure cohort c, education level edu):
-  Uses Gaussian CDF approximation (Abramowitz & Stegun 26.2.17) to estimate
-  the fraction of the cohort above RETIREMENT_AGE given age moments (μ, σ²):
-
-      z = (RETIREMENT_AGE − μ) / √σ²
-      retireFraction = 1 − Φ(z)     (fraction of cohort above retirement age)
-      retirees = floor(active[edu] · retireFraction)
-
-  Retirees enter the retiring pipeline at slot NOTICE_PERIOD_MONTHS−1.
-  Age moments are updated to reflect the remaining (younger) workers.`}
+                        {`snapshot workforce[MAX_AGE]
+for age = MAX_AGE down to 1:
+    workforce[age] ← workforce[age − 1]
+    if age === MAX_AGE: merge snapshot into workforce[MAX_AGE]
+workforce[0] ← empty cohort`}
                     </pre>
-                    <p>
-                        Using moments rather than an explicit age distribution allows the system to scale to large
-                        populations while retaining a statistically sound representation of workforce aging.
-                    </p>
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
-                {/* 13. TICK ORDERING SUMMARY                                         */}
+                {/* 14. TICK ORDERING SUMMARY                                         */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='tick-order'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>13. Tick Ordering Summary</h2>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>14. Tick Ordering Summary</h2>
                     <p>Within each tick the subsystems execute in the following order:</p>
                     <ol className='list-decimal list-inside space-y-1'>
                         <li>
-                            <code>environmentTick</code> — pollution decay, renewable resource regeneration
+                            <code>environmentTick</code> — pollution decay, resource regeneration
                         </li>
                         <li>
-                            <code>updateAllocatedWorkers</code> — recompute workforce demand targets
+                            <code>workforceDemographicTick</code> — quits, retirement, mortality &amp; disability of
+                            active workers (produces event accumulator)
                         </li>
                         <li>
-                            <code>preProductionLaborMarketTick</code> — voluntary quits, hiring, firing (monthly)
+                            <code>populationTick</code> — applies workforce events to demography, plus disability /
+                            retirement of non-workers, food consumption, births
                         </li>
                         <li>
-                            <code>preProductionFinancialTick</code> — wage-bill loans (money creation), wage payment
+                            <em>(month boundary)</em> <code>automaticWorkerAllocation</code> — recompute demand targets
+                            from last tick results
                         </li>
                         <li>
-                            <code>populationTick</code> — mortality, births, starvation, disability
+                            <em>(month boundary)</em> <code>hireWorkforce</code> — hire / fire to meet targets
                         </li>
                         <li>
-                            <code>productionTick</code> — facility output, resource consumption, pollution generation
+                            <code>preProductionFinancialTick</code> — working-capital loans, wage payment
                         </li>
                         <li>
-                            <code>updateAgentPricing</code> — each food producer sets offer price and quantity
+                            <code>productionTick</code> — water-fill allocation, output, resource consumption, pollution
                         </li>
                         <li>
-                            <code>foodMarketTick</code> — demand calculation, merit-order dispatch, settlement
+                            <code>automaticPricing</code> — tâtonnement price update per resource per agent
                         </li>
                         <li>
-                            <code>intergenerationalTransfersTick</code> — family support flows between age groups
+                            <code>intergenerationalTransfersForPlanet</code> — Gaussian food/wealth redistribution
                         </li>
                         <li>
-                            <code>wealthDiffusionTick</code> — low-temperature variance smoothing
+                            <code>marketTick</code> — price-priority order-book clearing for all resources
                         </li>
                         <li>
-                            <code>postProductionFinancialTick</code> — loan repayment, reconciliation (money
-                            destruction)
+                            <code>automaticLoanRepayment</code> — retained-earnings loan repayment (money destruction)
                         </li>
                         <li>
-                            <em>(month boundary only)</em> <code>postProductionLaborMarketTick</code> — notice pipeline
-                            advance
+                            <em>(month boundary)</em> <code>postProductionLaborMarketTick</code> — notice pipeline
+                            advance, population transfer of released workers
                         </li>
                         <li>
-                            <em>(year boundary only)</em> <code>populationAdvanceYearTick</code> — aging, education
+                            <em>(year boundary)</em> <code>populationAdvanceYearTick</code> — aging, education
                             transitions
                         </li>
                         <li>
-                            <em>(year boundary only)</em> <code>laborMarketYearTick</code> — tenure advance, retirement
+                            <em>(year boundary)</em> <code>workforceAdvanceYearTick</code> — workforce cohort aging
                         </li>
                     </ol>
                     <p className='mt-4'>
-                        This ordering ensures that environmental regeneration is visible to production within the same
-                        tick, that wages are paid before production runs, that the food market clears after production,
-                        and that population deaths computed in <code>populationTick</code> are reflected
-                        deterministically in workforce counts before the next tick begins. When <code>SIM_DEBUG=1</code>{' '}
-                        is set, a single end-of-tick invariant check validates population-workforce consistency and
-                        age-moment accuracy.
+                        Workforce demographic events (step 2) precede the population tick (step 3) so that deaths and
+                        disabilities are removed from both the workforce and the demography consistently in the same
+                        tick. Hiring and firing are monthly to prevent tick-level oscillation. The financial bracket
+                        (steps 6 and 11) ensures wages are paid before production and loan repayment happens after
+                        market revenue is received.
                     </p>
-                </section>
-
-                {/* ---------------------------------------------------------------- */}
-                {/* 14. MODULE MAP                                                    */}
-                {/* ---------------------------------------------------------------- */}
-                <section id='module-map'>
-                    <h2 className='text-2xl font-bold mt-8 mb-3'>14. Module Map</h2>
-                    <p>
-                        The simulation source code is organized into the following directories under{' '}
-                        <code>src/simulation/</code>:
-                    </p>
-                    <table className='w-full text-sm border-collapse mt-4'>
-                        <thead>
-                            <tr className='border-b'>
-                                <th className='text-left p-2'>Directory / File</th>
-                                <th className='text-left p-2'>Responsibility</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>engine.ts</code>
-                                </td>
-                                <td className='p-2'>
-                                    Top-level <code>advanceTick</code> orchestrator
-                                </td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>environment.ts</code>
-                                </td>
-                                <td className='p-2'>Pollution regeneration, resource regeneration</td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>population/</code>
-                                </td>
-                                <td className='p-2'>
-                                    Demographics, nutrition, mortality, fertility, disability, aging, retirement
-                                </td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>workforce/</code>
-                                </td>
-                                <td className='p-2'>
-                                    Labor market, allocation, workforce sync, starvation, tenure management
-                                </td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>production.ts</code>
-                                </td>
-                                <td className='p-2'>Facility output, resource consumption, worker utilization</td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>financial/</code>
-                                </td>
-                                <td className='p-2'>
-                                    Loans, deposits, wage payments, loan repayment, balance-sheet invariants
-                                </td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>market/</code>
-                                </td>
-                                <td className='p-2'>
-                                    Food market clearing, agent pricing, intergenerational transfers, wealth diffusion
-                                </td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>invariants.ts</code>
-                                </td>
-                                <td className='p-2'>
-                                    Population-workforce consistency, age-moment checks, financial invariants
-                                </td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>testUtils/</code>
-                                </td>
-                                <td className='p-2'>
-                                    Centralized test fixtures, WorldBuilder for composable test setup
-                                </td>
-                            </tr>
-                            <tr className='border-b'>
-                                <td className='p-2'>
-                                    <code>debug/</code>
-                                </td>
-                                <td className='p-2'>
-                                    Experiment runners and debug scripts (e.g. <code>runInvariants.ts</code>)
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </section>
 
                 <hr className='my-8' />
