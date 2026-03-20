@@ -1,15 +1,6 @@
-/**
- * src/app/api/ping/route.ts
- *
- * Test endpoint that sends a { type: "ping" } message to the simulation worker
- * and returns the worker's current tick in the response.
- *
- * Example:  GET /api/ping  →  { "type": "pong", "tick": 5 }
- */
-
 import { NextResponse } from 'next/server';
-import { sendToWorker, onWorkerMessage } from '../../../simulation/workerManager';
 import type { OutboundMessage } from '../../../simulation/worker';
+import { onWorkerMessage, sendToWorker } from '@/simulation/workerClient/manager';
 
 const TIMEOUT_MS = 5000;
 

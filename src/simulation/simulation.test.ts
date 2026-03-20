@@ -118,7 +118,7 @@ describe.skip('WorkerManager', () => {
     it(
         'startWorker spawns exactly one worker and stopWorker terminates it',
         async () => {
-            const { startWorker, stopWorker, onWorkerMessage } = await import('./workerManager');
+            const { startWorker, stopWorker, onWorkerMessage } = await import('./workerClient/manager');
 
             // Reset module state by re-requiring (jest isolates modules per test file)
             startWorker();

@@ -1,4 +1,4 @@
-import { type LucideIcon, FileText, FlaskConical, Gamepad, Globe, Home, User, Users } from 'lucide-react';
+import { type LucideIcon, FileText, FlaskConical, Gamepad, Globe, Home, User } from 'lucide-react';
 
 import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
@@ -42,13 +42,6 @@ export const APP_ROUTES = {
         icon: Gamepad,
         isPublic: true,
         description: 'Classic pong game',
-    },
-    agents: {
-        path: '/agents',
-        label: 'Agents',
-        icon: Users,
-        isMainNav: true,
-        description: 'Agent overview with storage, production and consumption charts',
     },
     planets: {
         path: '/planets',
