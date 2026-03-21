@@ -35,7 +35,12 @@ function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: number }
         return <Globe width={size} height={size} />;
     }
     return (
-        <Image src={src} alt={planetId} width={size} height={size} className='rounded-full object-cover' unoptimized />
+        <span
+            className='rounded-full overflow-hidden shrink-0 inline-block relative'
+            style={{ width: size, height: size }}
+        >
+            <Image src={src} alt={planetId} fill className='object-cover' unoptimized />
+        </span>
     );
 }
 
