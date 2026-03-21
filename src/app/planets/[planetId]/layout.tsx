@@ -4,9 +4,20 @@ import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+
+const PLANET_LARGE_IMAGES: Record<string, string> = {
+    earth: '/images/planets/earth_large.webp',
+    gune: '/images/planets/gune_large.webp',
+    icedonia: '/images/planets/icedonia_large.webp',
+    pandara: '/images/planets/pandara_large.webp',
+    paradies: '/images/planets/paradies_large.webp',
+    suerte: '/images/planets/suerte_large.webp',
+    centauri: '/images/planets/centauri_large.webp',
+};
 
 const NAV_TABS = [
     { segment: 'demographics', label: 'Demographics' },
@@ -27,8 +38,20 @@ export default function PlanetDetailLayout({ children }: { children: ReactNode }
     const planetName = data?.overview?.name ?? planetId;
     const base = `/planets/${encodeURIComponent(planetId)}`;
 
+    const watermarkSrc = PLANET_LARGE_IMAGES[planetId];
+
     return (
-        <div className='max-w-6xl mx-auto py-2 sm:px-4 sm:py-6 space-y-4 sm:space-y-6'>
+        <div className='planet-watermark-context relative isolate overflow-hidden min-h-[480px] sm:min-h-[600px] max-w-6xl mx-auto py-2 sm:px-4 sm:py-6 space-y-4 sm:space-y-6'>
+            {watermarkSrc && (
+                <Image
+                    src={watermarkSrc}
+                    alt=''
+                    width={900}
+                    height={900}
+                    className='absolute top-0 right-0 -z-10 pointer-events-none select-none w-96 h-96 sm:w-[480px] sm:h-[480px] object-contain opacity-50'
+                    unoptimized
+                />
+            )}
             {/* Header */}
             <div className='flex items-center justify-between'>
                 <h1 className='text-3xl font-bold'>{planetName}</h1>

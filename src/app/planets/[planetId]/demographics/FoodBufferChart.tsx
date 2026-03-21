@@ -5,7 +5,8 @@ import { formatNumbers } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP } from './demographicsTypes';
@@ -219,26 +220,31 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
                 {colorLegend}
             </span>
 
-            <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
-                <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
-                    <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                    <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
-                    <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {isVerySmall ? null : <Tooltip content={tooltip as any} />}
-                    {keys.map((key) => (
-                        <Bar
-                            key={key}
-                            dataKey={`${key}_pop`}
-                            stackId='a'
-                            name={labels[key]}
-                            isAnimationActive={false}
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            shape={(props: any) => <FoodBufferBar {...props} groupKey={key} color={colors[key]} />}
-                        />
-                    ))}
-                </BarChart>
-            </ResponsiveContainer>
+            <Card>
+                <CardContent className='px-3 pt-3 pb-2'>
+                    <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
+                        <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
+                            <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
+                            <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                            {isVerySmall ? null : <Tooltip content={tooltip as any} />}
+                            {keys.map((key) => (
+                                <Bar
+                                    key={key}
+                                    dataKey={`${key}_pop`}
+                                    stackId='a'
+                                    name={labels[key]}
+                                    isAnimationActive={false}
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    shape={(props: any) => (
+                                        <FoodBufferBar {...props} groupKey={key} color={colors[key]} />
+                                    )}
+                                />
+                            ))}
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
         </>
     );
 }

@@ -1,17 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import {
-    ResponsiveContainer,
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ReferenceLine,
-} from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ReferenceLine } from 'recharts';
 import { CHILD_MAX_AGE, ELDERLY_MIN_AGE } from '@/simulation/constants';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
@@ -166,7 +156,6 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             </div>
             <ResponsiveContainer width='100%' height={240}>
                 <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} stackOffset='sign'>
-                    <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                     <XAxis dataKey='age' tick={{ fontSize: 10 }} />
                     <YAxis
                         width={40}

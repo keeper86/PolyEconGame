@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
@@ -405,27 +405,30 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                 <BandLegend />
             </span>
 
-            <ResponsiveContainer width='100%' minHeight={200} minWidth={290}>
-                <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
-                    <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                    <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                    <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {isVerySmall ? null : <Tooltip content={tooltip as any} />}
+            <Card>
+                <CardContent className='px-3 pt-3 pb-2'>
+                    <ResponsiveContainer width='100%' minHeight={200} minWidth={290}>
+                        <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
+                            <XAxis dataKey='age' tick={{ fontSize: 10 }} />
+                            <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                            {isVerySmall ? null : <Tooltip content={tooltip as any} />}
 
-                    {groupKeys.map((gk) => (
-                        <Bar
-                            key={gk}
-                            dataKey={`${gk}_total`}
-                            stackId='nutrition'
-                            legendType='none'
-                            isAnimationActive={false}
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            shape={(props: any) => <SegmentedBar {...props} groupKey={gk} />}
-                        />
-                    ))}
-                </BarChart>
-            </ResponsiveContainer>
+                            {groupKeys.map((gk) => (
+                                <Bar
+                                    key={gk}
+                                    dataKey={`${gk}_total`}
+                                    stackId='nutrition'
+                                    legendType='none'
+                                    isAnimationActive={false}
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    shape={(props: any) => <SegmentedBar {...props} groupKey={gk} />}
+                                />
+                            ))}
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
 
             {summaryCards}
         </>

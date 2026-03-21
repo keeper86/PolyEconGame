@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
-import { useTRPC } from '@/lib/trpc';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import { useTRPC } from '@/lib/trpc';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
+import React from 'react';
+import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type Props = {
     planetId: string;
@@ -114,7 +114,6 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
                                 <stop offset='95%' stopColor='#ef4444' stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
                         <XAxis
                             dataKey='year'
                             type='number'

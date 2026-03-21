@@ -137,3 +137,12 @@ html {
         @apply bg-background text-foreground;
     }
 }
+
+@layer utilities {
+    .planet-watermark-context {
+        --card: oklch(1 0 0 / 75%);
+    }
+    .dark .planet-watermark-context {
+        --card: oklch(0.205 0 0 / 75%);
+    }
+}

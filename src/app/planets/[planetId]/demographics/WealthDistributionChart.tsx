@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import { Card, CardContent } from '@/components/ui/card';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '@/app/planets/components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
@@ -166,32 +167,33 @@ export default function WealthDistributionChart({ rows, groupMode }: Props): Rea
     }
 
     return (
-        <>
-            <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
-                <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
-                    <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                    <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
-                    <YAxis
-                        width={48}
-                        tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => formatNumbers(v)}
-                        domain={yDomain}
-                    />
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {isVerySmall ? null : <Tooltip content={tooltip as any} />}
-                    {keys.map((key) => (
-                        <Bar
-                            key={key}
-                            dataKey={`${key}_bar`}
-                            stackId='a'
-                            fill={colors[key]}
-                            fillOpacity={0.85}
-                            name={labels[key]}
-                            isAnimationActive={false}
+        <Card>
+            <CardContent className='px-3 pt-3 pb-2'>
+                <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
+                    <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
+                        <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
+                        <YAxis
+                            width={48}
+                            tick={{ fontSize: 10 }}
+                            tickFormatter={(v) => formatNumbers(v)}
+                            domain={yDomain}
                         />
-                    ))}
-                </BarChart>
-            </ResponsiveContainer>
-        </>
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {isVerySmall ? null : <Tooltip content={tooltip as any} />}
+                        {keys.map((key) => (
+                            <Bar
+                                key={key}
+                                dataKey={`${key}_bar`}
+                                stackId='a'
+                                fill={colors[key]}
+                                fillOpacity={0.85}
+                                name={labels[key]}
+                                isAnimationActive={false}
+                            />
+                        ))}
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
     );
 }
