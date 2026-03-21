@@ -29,7 +29,7 @@ const PLANET_SUB_PAGES = [
     { segment: 'market', label: 'Market' },
 ] as const;
 
-function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: number }) {
+export function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: number }) {
     const src = PLANET_ICONS[planetId];
     if (!src) {
         return <Globe width={size} height={size} />;

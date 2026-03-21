@@ -1,24 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { useTRPC } from '@/lib/trpc';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Gamepad2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { PlanetIcon } from './PlanetsNavEntry';
 
 export function JoinGameDialog() {
     const trpc = useTRPC();
@@ -81,9 +73,6 @@ export function JoinGameDialog() {
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>Join the Game</DialogTitle>
-                        <DialogDescription>
-                            Found your own company and start participating in the planetary economy.
-                        </DialogDescription>
                     </DialogHeader>
 
                     <div className='grid gap-4 py-4'>
@@ -115,7 +104,10 @@ export function JoinGameDialog() {
                                 <SelectContent>
                                     {planetsQuery.data?.planets.map((p) => (
                                         <SelectItem key={p.planetId} value={p.planetId}>
-                                            {p.name}
+                                            <span className='flex items-center gap-2'>
+                                                <PlanetIcon planetId={p.planetId} size={20} />
+                                                {p.name}
+                                            </span>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
