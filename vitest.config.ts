@@ -22,6 +22,7 @@ export default defineConfig({
         exclude: [
             'src/server/**',
             'src/simulation/snapshotCompression.test.ts',
+            'src/simulation/gameSnapshotRepository.test.ts',
             'src/simulation/workerBundle.test.ts',
             '**/node_modules/**',
             '**/dist/**',
