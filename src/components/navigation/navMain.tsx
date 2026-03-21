@@ -10,6 +10,7 @@ import Link from 'next/link';
 import React from 'react';
 import type { ElementType, JSX } from 'react';
 import { JoinGameDialog } from './JoinGameDialog';
+import { PlanetsNavEntry } from './PlanetsNavEntry';
 
 function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.Element {
     const { isSub } = opts || {};
@@ -127,6 +128,7 @@ export function NavMain() {
                     return null;
                 })}
                 <CompanyNavEntry />
+                <PlanetsNavEntry />
             </SidebarMenu>
         </nav>
     );
