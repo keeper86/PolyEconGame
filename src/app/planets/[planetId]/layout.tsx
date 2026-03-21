@@ -2,6 +2,7 @@
 
 import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
+import { AC_ID } from '@/simulation/utils/initialWorld';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -16,7 +17,7 @@ const PLANET_LARGE_IMAGES: Record<string, string> = {
     pandara: '/images/planets/pandara_large.webp',
     paradies: '/images/planets/paradies_large.webp',
     suerte: '/images/planets/suerte_large.webp',
-    centauri: '/images/planets/centauri_large.webp',
+    [AC_ID]: '/images/planets/centauri_large.webp',
 };
 
 const NAV_TABS = [
@@ -39,6 +40,7 @@ export default function PlanetDetailLayout({ children }: { children: ReactNode }
     const base = `/planets/${encodeURIComponent(planetId)}`;
 
     const watermarkSrc = PLANET_LARGE_IMAGES[planetId];
+    console.log(planetId, watermarkSrc);
 
     return (
         <div className='planet-watermark-context relative isolate overflow-hidden min-h-[480px] sm:min-h-[600px] max-w-6xl mx-auto py-2 sm:px-4 sm:py-6 space-y-4 sm:space-y-6'>
