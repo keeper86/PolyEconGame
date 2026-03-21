@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../ui/sidebar';
 import { JoinGameDialog } from './JoinGameDialog';
+import { Separator } from '../ui/separator';
 
 export function CompanyNavEntry() {
     const { status } = useSession();
@@ -32,9 +33,8 @@ export function CompanyNavEntry() {
     if (!agentId) {
         return (
             <SidebarMenuItem>
-                <div className='px-2 py-1'>
-                    <JoinGameDialog />
-                </div>
+                <Separator className='my-4' />
+                <JoinGameDialog />
             </SidebarMenuItem>
         );
     }

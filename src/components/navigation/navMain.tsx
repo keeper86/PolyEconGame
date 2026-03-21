@@ -72,8 +72,8 @@ export function NavMain() {
                     }
                     return null;
                 })}
-                <CompanyNavEntry />
                 <PlanetsNavEntry />
+                <CompanyNavEntry />
             </SidebarMenu>
         </nav>
     );
