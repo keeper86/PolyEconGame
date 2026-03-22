@@ -45,6 +45,29 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
+    // Pre-compute the break-even input price ceiling for each traded input resource.
+    // For each unit of input, the maximum rational price equals the revenue it contributes
+    // to the facility's output: Σ(output_qty × output_price) / input_qty.
+    // When a resource is used across multiple facilities, we take the highest ceiling
+    // (the agent values it at whatever facility extracts the most value from it).
+    const inputValueCeiling = new Map<string, number>();
+    for (const facility of assets.productionFacilities) {
+        const outputRevenuePerScale = facility.produces.reduce(
+            (sum, p) => sum + p.quantity * (planet.marketPrices[p.resource.name] ?? INITIAL_FOOD_PRICE),
+            0,
+        );
+        for (const { resource, quantity } of facility.needs) {
+            if (resource.form === 'landBoundResource' || quantity <= 0) {
+                continue;
+            }
+            const ceiling = outputRevenuePerScale / quantity;
+            const existing = inputValueCeiling.get(resource.name) ?? 0;
+            if (ceiling > existing) {
+                inputValueCeiling.set(resource.name, ceiling);
+            }
+        }
+    }
+
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
@@ -78,7 +101,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             const bid = assets.market.buy[resource.name];
             bid.resource = resource;
 
-            adjustBidPrice(bid, shortfall, planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE);
+            const marketPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
+            const ceiling = inputValueCeiling.get(resource.name);
+            adjustBidPrice(bid, shortfall, marketPrice, ceiling);
         }
     }
 }
@@ -116,8 +141,16 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
  * Update the bid price and quantity for a single input-resource bid.
  * When there is a shortfall the agent bids at the current market price,
  * scaling up slightly when the shortfall is large (urgency premium).
+ * The bid price is capped at the break-even input value derived from
+ * the output price, preventing agents from paying more for an input than
+ * the output it enables is worth.
  */
-function adjustBidPrice(bid: AgentMarketBidState, shortfall: number, marketPrice: number): void {
+function adjustBidPrice(
+    bid: AgentMarketBidState,
+    shortfall: number,
+    marketPrice: number,
+    breakEvenCeiling?: number,
+): void {
     bid.bidQuantity = shortfall;
 
     if (shortfall <= 0) {
@@ -126,7 +159,7 @@ function adjustBidPrice(bid: AgentMarketBidState, shortfall: number, marketPrice
     }
 
     if (bid.bidPrice === undefined) {
-        bid.bidPrice = marketPrice;
+        bid.bidPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
         return;
     }
 
@@ -139,6 +172,6 @@ function adjustBidPrice(bid: AgentMarketBidState, shortfall: number, marketPrice
     factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(1, factor));
 
     const priceFloor = 0.01;
-    const priceCeil = 1000000;
+    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : 1000000;
     bid.bidPrice = Math.min(priceCeil, Math.max(priceFloor, bid.bidPrice * factor));
 }

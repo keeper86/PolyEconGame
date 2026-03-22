@@ -164,6 +164,7 @@ describe('automaticPricing — buy side', () => {
 
     it('bootstraps bidPrice from market price on first tick', () => {
         planet.marketPrices[COAL] = 2.0;
+        planet.marketPrices[steelResourceType.name] = 8.0; // ceiling = (50×8)/100 = 4.0 — non-binding
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
@@ -173,6 +174,7 @@ describe('automaticPricing — buy side', () => {
 
     it('uses INITIAL_FOOD_PRICE as fallback when no market price is set', () => {
         delete planet.marketPrices[COAL];
+        planet.marketPrices[steelResourceType.name] = 4.0; // ceiling = (50×4)/100 = 2.0 — non-binding
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
@@ -182,6 +184,7 @@ describe('automaticPricing — buy side', () => {
 
     it('uses planet.marketPrices as initial bid price when available', () => {
         planet.marketPrices[COAL] = 3.5;
+        planet.marketPrices[steelResourceType.name] = 10.0; // ceiling = (50×10)/100 = 5.0 — non-binding
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
@@ -211,6 +214,57 @@ describe('automaticPricing — buy side', () => {
 
         expect(buyer.assets.p.market?.buy).toBeUndefined();
     });
+
+    it('bootstraps bid price no higher than the break-even ceiling', () => {
+        // Steel facility: 100 coal → 50 steel
+        // With steel market price 4.0, break-even for coal = (50 × 4) / 100 = 2.0
+        planet.marketPrices[COAL] = 3.0;
+        planet.marketPrices[steelResourceType.name] = 4.0;
+
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        expect(bid.bidPrice).toBeLessThanOrEqual(2.0);
+    });
+
+    it('bid price does not exceed the break-even ceiling after repeated unfilled ticks', () => {
+        // Steel at price 6.0 → ceiling = (50 × 6) / 100 = 3.0
+        planet.marketPrices[COAL] = 1.0;
+        planet.marketPrices[steelResourceType.name] = 6.0;
+
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+
+        for (let i = 0; i < 200; i++) {
+            buyer.assets.p.market!.buy[COAL]!.lastBought = 0;
+            automaticPricing(agentMap(buyer), planet);
+        }
+
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        expect(bid.bidPrice).toBeLessThanOrEqual(3.0 + 1e-9);
+    });
+
+    it('break-even ceiling uses sum of all facility outputs for the same input', () => {
+        // Two facilities both need coal; their combined output value raises the ceiling
+        // Facility A: 100 coal → 50 steel (price 4.0) → per-coal value = 2.0
+        // Facility B: 200 coal → 100 steel (price 4.0) → per-coal value = 2.0  (same ratio)
+        // Each facility computes its own ceiling; agent takes the max → still 2.0
+        planet.marketPrices[COAL] = 1.0;
+        planet.marketPrices[steelResourceType.name] = 4.0;
+
+        const buyer = makeSteelProducer();
+        buyer.assets.p.productionFacilities.push({
+            ...buyer.assets.p.productionFacilities[0],
+            id: 'steel-fac-2',
+            needs: [{ resource: coalResourceType, quantity: 200 }],
+            produces: [{ resource: steelResourceType, quantity: 100 }],
+        });
+        automaticPricing(agentMap(buyer), planet);
+
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        expect(bid.bidPrice).toBeLessThanOrEqual(2.0 + 1e-9);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -223,6 +277,8 @@ describe('marketTick — agent buying', () => {
     beforeEach(() => {
         planet = makePlanetWithPopulation({ none: 100 }).planet;
         planet.marketPrices[COAL] = 1.0;
+        // Steel at 4.0 → ceiling for coal = (50×4)/100 = 2.0, above the coal ask price of 1.0
+        planet.marketPrices[steelResourceType.name] = 4.0;
     });
 
     it('agent with buy order purchases coal from a selling agent when bid ≥ ask', () => {
