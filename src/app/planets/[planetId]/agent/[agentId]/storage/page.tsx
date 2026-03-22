@@ -16,7 +16,7 @@ export default function StoragePage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetName={planetId} />
+                <NoAssetsMessage planetName={planetId} agentId={agentId} />
             ) : !isLoading && assets?.storageFacility ? (
                 <StorageOverview storage={assets.storageFacility} />
             ) : (
