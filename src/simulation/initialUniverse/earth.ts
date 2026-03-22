@@ -259,7 +259,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         makeClaim({
             id: govArableId,
             type: arableLandResourceType,
-            quantity: 2_000_000,
+            quantity: 2_000_000_000,
             claimAgentId: GOV,
             tenantAgentId: GOV,
         }),
@@ -268,7 +268,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         makeClaim({
             id: govWaterId,
             type: waterSourceResourceType,
-            quantity: 2_000_000,
+            quantity: 2_000_000_000,
             claimAgentId: GOV,
             tenantAgentId: GOV,
         }),
