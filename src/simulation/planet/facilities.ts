@@ -697,10 +697,10 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
     scale: 1,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 10000,
-        primary: 20000,
-        secondary: 5000,
-        tertiary: 100,
+        none: 1000,
+        primary: 2000,
+        secondary: 500,
+        tertiary: 10,
     },
     pollutionPerTick: {
         air: 0.00005,
@@ -992,9 +992,9 @@ export const agriculturalProductionFacility = (planetId: string, id: string): Pr
     scale: 1,
     powerConsumptionPerTick: 1,
     workerRequirement: {
-        none: 20000,
-        primary: 50000,
-        secondary: 35000,
+        none: 2000,
+        primary: 5000,
+        secondary: 3500,
         tertiary: 100,
     },
     pollutionPerTick: {
@@ -1006,7 +1006,7 @@ export const agriculturalProductionFacility = (planetId: string, id: string): Pr
         { resource: waterResourceType, quantity: 1000 },
         { resource: arableLandResourceType, quantity: 1000 },
     ],
-    produces: [{ resource: agriculturalProductResourceType, quantity: 1000 }],
+    produces: [{ resource: agriculturalProductResourceType, quantity: 10000 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
 

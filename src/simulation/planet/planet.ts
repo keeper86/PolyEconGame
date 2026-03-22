@@ -259,12 +259,38 @@ export type AgentMarketOfferState = {
 };
 
 /**
+ * Per-resource bid state for one resource on one planet, stored inside
+ * `AgentMarketOffers.buy`.
+ * Written by `automaticPricing` and settled by `marketTick`.
+ */
+export type AgentMarketBidState = {
+    /** The resource being sought. */
+    resource: Resource;
+    /**
+     * Maximum price this agent is willing to pay (currency / unit).
+     * Human-controllable: players can override this value.
+     */
+    bidPrice?: number;
+    /**
+     * Quantity demanded this tick (units).
+     */
+    bidQuantity?: number;
+    /** Units actually purchased during the last market clearing tick. */
+    lastBought?: number;
+    /** Total expenditure during the last market clearing tick (currency units). */
+    lastSpent?: number;
+};
+
+/**
  * All market offers posted by one agent on one planet.
  * Keyed by resource name so offer lookup is O(1).
  */
 export type AgentMarketOffers = {
     sell: {
         [resourceName: string]: AgentMarketOfferState;
+    };
+    buy: {
+        [resourceName: string]: AgentMarketBidState;
     };
 };
 

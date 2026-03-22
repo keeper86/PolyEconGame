@@ -1,6 +1,6 @@
 import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
-import { removeFromStorageFacility } from '../planet/storage';
-import type { Agent, MarketResult, Planet } from '../planet/planet';
+import { putIntoStorageFacility, removeFromStorageFacility } from '../planet/storage';
+import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import type { GaussianMoments, Occupation, Skill } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
@@ -25,6 +25,20 @@ interface BidOrder {
     quantity: number;
     /** Wealth moments for settlement. */
     wealthMoments: GaussianMoments;
+}
+
+/** A buying agent's bid order on a single resource's market. */
+interface AgentBidOrder {
+    agent: Agent;
+    resource: Resource;
+    /** Maximum price this agent will pay (currency / unit). */
+    bidPrice: number;
+    /** Quantity demanded (units). */
+    quantity: number;
+    /** Filled so far during matching (units). */
+    filled: number;
+    /** Total cost accumulated during matching (currency). */
+    cost: number;
 }
 
 /** A selling agent's ask order on a single resource's market. */
@@ -118,7 +132,7 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     // ------------------------------------------------------------------
     const askBooks = collectAgentOffers(agents, planet);
 
-    // Reset lastSold / lastRevenue at tick start
+    // Reset sell feedback counters at tick start
     for (const orders of askBooks.values()) {
         for (const ask of orders) {
             const offer = ask.agent.assets[planet.id]?.market?.sell[ask.resource.name];
@@ -129,27 +143,40 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
         }
     }
 
-    // Determine all resources to process (currently, resources that have
-    // active ask orders in the order book).
+    // Reset buy feedback counters at tick start
+    resetAgentBuyCounters(agents, planet);
+
+    // Determine all resources to process.
     const resourcesToClear = new Set<string>(askBooks.keys());
+
+    // Also include resources where agents have buy orders but no ask yet,
+    // so shortfall is recorded even when no supply is available.
+    const agentBidBooks = collectAgentBids(agents, planet);
+    for (const agentBidBook of agentBidBooks.values()) {
+        for (const bid of agentBidBook) {
+            resourcesToClear.add(bid.resource.name);
+        }
+    }
 
     // ------------------------------------------------------------------
     // Step 2: Build bid orders from household demography for each resource
     // ------------------------------------------------------------------
-    const bidBooks = buildPopulationDemand(planet, resourcesToClear);
+    const householdBidBooks = buildPopulationDemand(planet, resourcesToClear);
 
     // ------------------------------------------------------------------
-    // Step 3: Per-resource clearing
+    // Step 4: Per-resource clearing
     // ------------------------------------------------------------------
     for (const resourceName of resourcesToClear) {
         const askOrders = askBooks.get(resourceName) ?? [];
-        const bidOrders = bidBooks.get(resourceName) ?? [];
+        const householdBids = householdBidBooks.get(resourceName) ?? [];
+        const agentBids = agentBidBooks.get(resourceName) ?? [];
 
         const totalSupply = askOrders.reduce((s, a) => s + a.quantity, 0);
-        const totalDemand = bidOrders.reduce((s, b) => s + b.quantity, 0);
+        const householdDemand = householdBids.reduce((s, b) => s + b.quantity, 0);
+        const agentDemand = agentBids.reduce((s, b) => s + b.quantity, 0);
+        const totalDemand = householdDemand + agentDemand;
 
-        if (askOrders.length === 0 || bidOrders.length === 0) {
-            // No trades possible — persist zero-volume result and move on.
+        if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
             const referencePrice =
                 planet.marketPrices[resourceName] ??
                 (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1);
@@ -166,55 +193,58 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
             continue;
         }
 
-        // ------------------------------------------------------------------
-        // Sort order books
-        // ------------------------------------------------------------------
-        bidOrders.sort((a, b) => b.bidPrice - a.bidPrice);
         askOrders.sort((a, b) => a.askPrice - b.askPrice);
 
         // ------------------------------------------------------------------
-        // Price-priority matching
+        // Household clearing pass
         // ------------------------------------------------------------------
-        const { trades, bidFilled } = clearOrderBook(bidOrders, askOrders);
+        householdBids.sort((a, b) => b.bidPrice - a.bidPrice);
+        const { trades: householdTrades, bidFilled: householdBidFilled } = clearOrderBook(householdBids, askOrders);
+
+        const householdVolume = householdTrades.reduce((s, t) => s + t.quantity, 0);
+        const householdRevenue = householdTrades.reduce((s, t) => s + t.price * t.quantity, 0);
+
+        const bidCosts = reconstructBidCosts(householdTrades, householdBidFilled);
+        const totalActualDebit = settleHouseholds(planet, resourceName, householdBids, householdBidFilled, bidCosts);
+        settleAgentSellers(planet, askOrders, householdRevenue, totalActualDebit);
 
         // ------------------------------------------------------------------
-        // Settlement
+        // Agent buyer clearing pass (against the same ask book, remaining qty)
         // ------------------------------------------------------------------
-        const totalFoodSold = trades.reduce((s, t) => s + t.quantity, 0);
-        const totalRevenue = trades.reduce((s, t) => s + t.price * t.quantity, 0);
+        agentBids.sort((a, b) => b.bidPrice - a.bidPrice);
+        const { agentTrades } = clearAgentBids(agentBids, askOrders);
 
-        // Reconstruct per-bid realized costs
-        const bidCosts = reconstructBidCosts(trades, bidFilled);
+        const agentVolume = agentTrades.reduce((s, t) => s + t.quantity, 0);
+        const agentRevenue = agentTrades.reduce((s, t) => s + t.price * t.quantity, 0);
 
-        // Household settlement
-        const totalActualDebit = settleHouseholds(planet, resourceName, bidOrders, bidFilled, bidCosts);
+        settleAgentBuyers(planet, agentBids);
+        settleAgentSellers(planet, askOrders, agentRevenue, agentRevenue);
 
-        // Agent settlement
-        settleAgents(planet, askOrders, totalRevenue, totalActualDebit);
-
-        // Update VWAP price
-        if (totalFoodSold > 0) {
-            planet.marketPrices[resourceName] = totalRevenue / totalFoodSold;
+        // ------------------------------------------------------------------
+        // VWAP update
+        // ------------------------------------------------------------------
+        const totalVolume = householdVolume + agentVolume;
+        const totalRevenue = householdRevenue + agentRevenue;
+        if (totalVolume > 0) {
+            planet.marketPrices[resourceName] = totalRevenue / totalVolume;
         }
 
-        // Persist result
         const unsoldSupply = askOrders.reduce((s, a) => s + (a.quantity - a.filled), 0);
-        const unfilledDemand = Math.max(0, totalDemand - totalFoodSold);
+        const unfilledDemand = Math.max(0, totalDemand - totalVolume);
 
-        const result: MarketResult = {
+        const referencePrice =
+            planet.marketPrices[resourceName] ??
+            (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1);
+
+        planet.lastMarketResult[resourceName] = {
             resourceName,
-            clearingPrice:
-                totalFoodSold > 0
-                    ? totalRevenue / totalFoodSold
-                    : (planet.marketPrices[resourceName] ??
-                      (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1)),
-            totalVolume: totalFoodSold,
+            clearingPrice: totalVolume > 0 ? totalRevenue / totalVolume : referencePrice,
+            totalVolume,
             totalDemand,
             totalSupply,
             unfilledDemand,
             unsoldSupply,
         };
-        planet.lastMarketResult[resourceName] = result;
     }
 }
 
@@ -491,10 +521,15 @@ function settleHouseholds(
 }
 
 // ---------------------------------------------------------------------------
-// Settlement — agents
+// Settlement — selling agents
 // ---------------------------------------------------------------------------
 
-function settleAgents(planet: Planet, askOrders: AskOrder[], totalRevenue: number, totalActualDebit: number): void {
+function settleAgentSellers(
+    planet: Planet,
+    askOrders: AskOrder[],
+    totalRevenue: number,
+    totalActualDebit: number,
+): void {
     const agentRevenueScale = totalRevenue > 0 ? totalActualDebit / totalRevenue : 0;
 
     for (const ask of askOrders) {
@@ -504,7 +539,7 @@ function settleAgents(planet: Planet, askOrders: AskOrder[], totalRevenue: numbe
         }
 
         if (!assets.market) {
-            assets.market = { sell: {} };
+            assets.market = { sell: {}, buy: {} };
         }
 
         if (ask.filled <= 0) {
@@ -518,8 +553,145 @@ function settleAgents(planet: Planet, askOrders: AskOrder[], totalRevenue: numbe
 
         const offer = assets.market.sell[ask.resource.name];
         if (offer) {
-            offer.lastSold = ask.filled;
-            offer.lastRevenue = scaledRevenue;
+            offer.lastSold = (offer.lastSold ?? 0) + ask.filled;
+            offer.lastRevenue = (offer.lastRevenue ?? 0) + scaledRevenue;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Collect agent buy orders → Map<resourceName, AgentBidOrder[]>
+// ---------------------------------------------------------------------------
+
+function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Map<string, AgentBidOrder[]> {
+    const books = new Map<string, AgentBidOrder[]>();
+
+    agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets?.market?.buy) {
+            return;
+        }
+
+        for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
+            const qty = bid.bidQuantity ?? 0;
+            if (qty <= 0) {
+                continue;
+            }
+            let book = books.get(resourceName);
+            if (!book) {
+                book = [];
+                books.set(resourceName, book);
+            }
+            book.push({
+                agent,
+                resource: bid.resource,
+                bidPrice: bid.bidPrice ?? INITIAL_FOOD_PRICE,
+                quantity: qty,
+                filled: 0,
+                cost: 0,
+            });
+        }
+    });
+
+    return books;
+}
+
+// ---------------------------------------------------------------------------
+// Reset agent buy feedback counters at tick start
+// ---------------------------------------------------------------------------
+
+function resetAgentBuyCounters(agents: Map<string, Agent>, planet: Planet): void {
+    agents.forEach((agent) => {
+        const market = agent.assets[planet.id]?.market;
+        if (!market?.buy) {
+            return;
+        }
+        for (const bid of Object.values(market.buy)) {
+            bid.lastBought = 0;
+            bid.lastSpent = 0;
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Price-priority matching for agent buy orders
+// ---------------------------------------------------------------------------
+
+interface AgentClearResult {
+    agentTrades: TradeRecord[];
+}
+
+function clearAgentBids(agentBids: AgentBidOrder[], askOrders: AskOrder[]): AgentClearResult {
+    const agentTrades: TradeRecord[] = [];
+
+    let askIdx = 0;
+    let askRemaining = askOrders.length > 0 ? askOrders[0].quantity - askOrders[0].filled : 0;
+
+    for (const bid of agentBids) {
+        let bidRemaining = bid.quantity;
+
+        while (bidRemaining > QUANTITY_EPSILON && askIdx < askOrders.length) {
+            const ask = askOrders[askIdx];
+            const effectiveAskRemaining = ask.quantity - ask.filled;
+
+            if (effectiveAskRemaining < QUANTITY_EPSILON) {
+                askIdx++;
+                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
+                continue;
+            }
+
+            if (bid.bidPrice < ask.askPrice) {
+                break;
+            }
+
+            const tradeQty = Math.min(bidRemaining, askRemaining);
+            if (tradeQty < QUANTITY_EPSILON) {
+                break;
+            }
+
+            const tradePrice = ask.askPrice;
+            agentTrades.push({ price: tradePrice, quantity: tradeQty });
+
+            ask.filled += tradeQty;
+            ask.revenue += tradeQty * tradePrice;
+            bid.filled += tradeQty;
+            bid.cost += tradeQty * tradePrice;
+
+            bidRemaining -= tradeQty;
+            askRemaining -= tradeQty;
+
+            if (askRemaining < QUANTITY_EPSILON) {
+                askIdx++;
+                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
+            }
+        }
+    }
+
+    return { agentTrades };
+}
+
+// ---------------------------------------------------------------------------
+// Settlement — buying agents
+// ---------------------------------------------------------------------------
+
+function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): void {
+    for (const bid of agentBids) {
+        if (bid.filled <= 0) {
+            continue;
+        }
+
+        const assets = bid.agent.assets[planet.id];
+        if (!assets) {
+            continue;
+        }
+
+        assets.deposits -= bid.cost;
+        putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
+
+        const buyState = assets.market?.buy[bid.resource.name];
+        if (buyState) {
+            buyState.lastBought = (buyState.lastBought ?? 0) + bid.filled;
+            buyState.lastSpent = (buyState.lastSpent ?? 0) + bid.cost;
         }
     }
 }
