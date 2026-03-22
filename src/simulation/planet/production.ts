@@ -166,7 +166,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             planet.environment.pollution.soil += facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
 
             facility.produces.forEach((output) => {
-                const produced = stochasticRound(output.quantity * facility.scale * overallEfficiency);
+                const produced = Math.floor(output.quantity * facility.scale * overallEfficiency);
                 if (produced <= 0) {
                     return;
                 }

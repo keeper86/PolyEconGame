@@ -192,7 +192,7 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeCloseTo(3.5);
     });
 
-    it('raises bid price when previous tick was unfilled', () => {
+    it('holds bid price when nothing was bought last tick (no supply signal)', () => {
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
@@ -201,8 +201,23 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        const secondBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        expect(secondBidPrice).toBeGreaterThanOrEqual(firstBidPrice);
+        expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeCloseTo(firstBidPrice);
+    });
+
+    it('raises bid price when previous tick was partially filled', () => {
+        // Steel at 8.0 → ceiling = (50 × 8) / 100 = 4.0, well above coal price of 2.0
+        planet.marketPrices[steelResourceType.name] = 8.0;
+
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+        const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        const firstBidQty = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
+
+        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidQty / 2;
+
+        automaticPricing(agentMap(buyer), planet);
+
+        expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeGreaterThan(firstBidPrice);
     });
 
     it('skips buy-order creation when agent.automated is false and automatePricing is false', () => {
@@ -228,7 +243,7 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeLessThanOrEqual(2.0);
     });
 
-    it('bid price does not exceed the break-even ceiling after repeated unfilled ticks', () => {
+    it('bid price does not exceed the break-even ceiling after repeated partially-filled ticks', () => {
         // Steel at price 6.0 → ceiling = (50 × 6) / 100 = 3.0
         planet.marketPrices[COAL] = 1.0;
         planet.marketPrices[steelResourceType.name] = 6.0;
@@ -237,7 +252,8 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         for (let i = 0; i < 200; i++) {
-            buyer.assets.p.market!.buy[COAL]!.lastBought = 0;
+            const demanded = buyer.assets.p.market!.buy[COAL]!.bidQuantity ?? 1;
+            buyer.assets.p.market!.buy[COAL]!.lastBought = demanded / 2;
             automaticPricing(agentMap(buyer), planet);
         }
 
@@ -460,6 +476,79 @@ describe('marketTick — agent buying', () => {
         marketTick(agentMap(seller, buyer), planet);
 
         expect(buyer.assets.p.deposits).toBeLessThanOrEqual(depositsBefore);
+    });
+
+    it('seller is credited exactly once when both households and an agent buy from them', () => {
+        const coalSeller = makeCoalSeller(3000, 1.0);
+        const sellerDepositsBefore = coalSeller.assets.p.deposits;
+
+        const buyer = makeSteelProducer();
+        buyer.assets.p.deposits = 1_000_000;
+        automaticPricing(agentMap(buyer), planet);
+
+        marketTick(agentMap(coalSeller, buyer), planet);
+
+        const offer = coalSeller.assets.p.market!.sell[COAL]!;
+        const totalSold = offer.lastSold ?? 0;
+        const totalRevenue = offer.lastRevenue ?? 0;
+        const depositsEarned = coalSeller.assets.p.deposits - sellerDepositsBefore;
+
+        expect(totalRevenue).toBeCloseTo(depositsEarned, 5);
+        expect(totalRevenue).toBeCloseTo(totalSold * 1.0, 5);
+    });
+
+    it('agent buyer with insufficient deposits cannot go negative', () => {
+        const seller = makeCoalSeller(3000, 1.0);
+
+        const buyer = makeSteelProducer();
+        buyer.assets.p.deposits = 5;
+        automaticPricing(agentMap(buyer), planet);
+
+        marketTick(agentMap(seller, buyer), planet);
+
+        expect(buyer.assets.p.deposits).toBeGreaterThanOrEqual(0);
+        const coalBought = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        expect(coalBought).toBeLessThanOrEqual(5);
+    });
+
+    it('fill rate in second tick uses previous demand (bidQuantity), not current shortfall', () => {
+        const buyer = makeSteelProducer();
+        buyer.assets.p.deposits = 1_000_000;
+        automaticPricing(agentMap(buyer), planet);
+
+        const firstBidQuantity = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
+
+        // First tick: only partial fill — half of demand is filled
+        const partialSeller = makeCoalSeller(Math.floor(firstBidQuantity / 2), 1.0, 'partial-seller');
+        marketTick(agentMap(partialSeller, buyer), planet);
+
+        // automaticPricing after first tick computes the adjusted bid price using
+        // lastBought (=firstBidQuantity/2) vs previousDemand (=firstBidQuantity).
+        // Fill rate = 0.5 → price should rise.
+        automaticPricing(agentMap(buyer), planet);
+        const priceAfterFirstTick = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        expect(priceAfterFirstTick).toBeGreaterThan(1.0);
+
+        // After automaticPricing, bidQuantity reflects the remaining shortfall,
+        // which is smaller than firstBidQuantity (some stock was accumulated).
+        const secondBidQuantity = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
+        expect(secondBidQuantity).toBeLessThan(firstBidQuantity);
+
+        // Second tick: half of the (now smaller) shortfall is filled.
+        // If the fill rate had been computed from secondBidQuantity (the NEW shortfall)
+        // instead of from firstBidQuantity (the OLD demand), lastBought ≈ secondBidQuantity/2
+        // would give fillRate ≈ 0.5 relative to the new qty, but the price baseline
+        // is already priceAfterFirstTick. With the fix, the rate is computed from
+        // the bid.bidQuantity that was set in the PREVIOUS automaticPricing call
+        // (= secondBidQuantity), not from the shortfall recalculated inside adjustBidPrice.
+        const seller2 = makeCoalSeller(Math.floor(secondBidQuantity / 2), 1.0, 'seller2');
+        marketTick(agentMap(seller2, buyer), planet);
+
+        automaticPricing(agentMap(buyer), planet);
+        const priceAfterSecondTick = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+
+        // Fill deficit persists → price keeps rising tick over tick
+        expect(priceAfterSecondTick).toBeGreaterThan(priceAfterFirstTick);
     });
 
     it('food market (household demand) is unaffected when an unrelated agent buys coal', () => {

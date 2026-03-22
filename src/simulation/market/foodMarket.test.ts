@@ -417,4 +417,26 @@ describe('updateAgentPricing', () => {
 
         expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeGreaterThanOrEqual(0.01);
     });
+
+    it('does not raise price when agent has nothing to offer and last sold is from a prior tick', () => {
+        putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
+        // Simulate: previously sold 1550 units, but current stock is empty → offerQuantity becomes 0
+        setFoodOffer(foodAgent, 0.73, 0, 1550);
+
+        automaticPricing(agentMap(foodAgent), planet);
+
+        // sell-through = 1550/1550 = 1.0 (sold everything last tick) → price may rise slightly
+        // but must NOT rocket to 1 000 000 by treating denominator as 1
+        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeLessThanOrEqual(0.73 * 1.05 + 1e-9);
+    });
+
+    it('does not raise price when agent has nothing to offer and also sold nothing', () => {
+        putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
+        setFoodOffer(foodAgent, 2.0, 0, 0);
+
+        automaticPricing(agentMap(foodAgent), planet);
+
+        // sell-through = 0/1 = 0 → excess demand negative → price should fall
+        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeLessThan(2.0);
+    });
 });

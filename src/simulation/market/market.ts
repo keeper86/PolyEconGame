@@ -212,13 +212,26 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
         // Agent buyer clearing pass (against the same ask book, remaining qty)
         // ------------------------------------------------------------------
         agentBids.sort((a, b) => b.bidPrice - a.bidPrice);
+
+        // Snapshot cumulative ask state before the agent pass so that
+        // settleAgentSellers receives only the agent-pass deltas.
+        const askFilledBeforeAgentPass = askOrders.map((a) => a.filled);
+        const askRevenueBeforeAgentPass = askOrders.map((a) => a.revenue);
+
         const { agentTrades } = clearAgentBids(agentBids, askOrders);
 
         const agentVolume = agentTrades.reduce((s, t) => s + t.quantity, 0);
         const agentRevenue = agentTrades.reduce((s, t) => s + t.price * t.quantity, 0);
 
-        settleAgentBuyers(planet, agentBids);
-        settleAgentSellers(planet, askOrders, agentRevenue, agentRevenue);
+        settleAgentBuyers(planet, agentBids, askOrders, askFilledBeforeAgentPass, askRevenueBeforeAgentPass);
+        settleAgentSellers(
+            planet,
+            askOrders,
+            agentRevenue,
+            agentRevenue,
+            askFilledBeforeAgentPass,
+            askRevenueBeforeAgentPass,
+        );
 
         // ------------------------------------------------------------------
         // VWAP update
@@ -529,10 +542,13 @@ function settleAgentSellers(
     askOrders: AskOrder[],
     totalRevenue: number,
     totalActualDebit: number,
+    filledBaseline?: number[],
+    revenueBaseline?: number[],
 ): void {
     const agentRevenueScale = totalRevenue > 0 ? totalActualDebit / totalRevenue : 0;
 
-    for (const ask of askOrders) {
+    for (let i = 0; i < askOrders.length; i++) {
+        const ask = askOrders[i];
         const assets = ask.agent.assets[planet.id];
         if (!assets) {
             continue;
@@ -542,18 +558,21 @@ function settleAgentSellers(
             assets.market = { sell: {}, buy: {} };
         }
 
-        if (ask.filled <= 0) {
+        const filledDelta = ask.filled - (filledBaseline?.[i] ?? 0);
+        const revenueDelta = ask.revenue - (revenueBaseline?.[i] ?? 0);
+
+        if (filledDelta <= 0) {
             continue;
         }
 
-        const scaledRevenue = ask.revenue * agentRevenueScale;
+        const scaledRevenue = revenueDelta * agentRevenueScale;
         assets.deposits += scaledRevenue;
 
-        removeFromStorageFacility(assets.storageFacility, ask.resource.name, ask.filled);
+        removeFromStorageFacility(assets.storageFacility, ask.resource.name, filledDelta);
 
         const offer = assets.market.sell[ask.resource.name];
         if (offer) {
-            offer.lastSold = (offer.lastSold ?? 0) + ask.filled;
+            offer.lastSold = (offer.lastSold ?? 0) + filledDelta;
             offer.lastRevenue = (offer.lastRevenue ?? 0) + scaledRevenue;
         }
     }
@@ -674,7 +693,13 @@ function clearAgentBids(agentBids: AgentBidOrder[], askOrders: AskOrder[]): Agen
 // Settlement — buying agents
 // ---------------------------------------------------------------------------
 
-function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): void {
+function settleAgentBuyers(
+    planet: Planet,
+    agentBids: AgentBidOrder[],
+    askOrders: AskOrder[],
+    askFilledBaseline: number[],
+    askRevenueBaseline: number[],
+): void {
     for (const bid of agentBids) {
         if (bid.filled <= 0) {
             continue;
@@ -685,13 +710,65 @@ function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): void {
             continue;
         }
 
-        assets.deposits -= bid.cost;
-        putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
+        let settledFilled = bid.filled;
+        let settledCost = bid.cost;
+
+        if (settledCost > assets.deposits) {
+            if (assets.deposits <= 0) {
+                settledFilled = 0;
+                settledCost = 0;
+            } else {
+                const scale = assets.deposits / settledCost;
+                settledFilled *= scale;
+                settledCost = assets.deposits;
+            }
+        }
+
+        if (settledFilled <= 0) {
+            rollbackAskDeltas(askOrders, askFilledBaseline, askRevenueBaseline, bid.filled, bid.cost);
+            bid.filled = 0;
+            bid.cost = 0;
+            continue;
+        }
+
+        if (settledFilled < bid.filled) {
+            const cancelledFilled = bid.filled - settledFilled;
+            const cancelledCost = bid.cost - settledCost;
+            rollbackAskDeltas(askOrders, askFilledBaseline, askRevenueBaseline, cancelledFilled, cancelledCost);
+            bid.filled = settledFilled;
+            bid.cost = settledCost;
+        }
+
+        assets.deposits -= settledCost;
+        putIntoStorageFacility(assets.storageFacility, bid.resource, settledFilled);
 
         const buyState = assets.market?.buy[bid.resource.name];
         if (buyState) {
-            buyState.lastBought = (buyState.lastBought ?? 0) + bid.filled;
-            buyState.lastSpent = (buyState.lastSpent ?? 0) + bid.cost;
+            buyState.lastBought = (buyState.lastBought ?? 0) + settledFilled;
+            buyState.lastSpent = (buyState.lastSpent ?? 0) + settledCost;
         }
     }
+}
+
+function rollbackAskDeltas(
+    askOrders: AskOrder[],
+    filledBaseline: number[],
+    revenueBaseline: number[],
+    cancelledFilled: number,
+    cancelledCost: number,
+): void {
+    let remaining = cancelledFilled;
+    for (let i = askOrders.length - 1; i >= 0 && remaining > QUANTITY_EPSILON; i--) {
+        const delteFilled = askOrders[i].filled - filledBaseline[i];
+        if (delteFilled <= 0) {
+            continue;
+        }
+        const rollback = Math.min(remaining, delteFilled);
+        const revenueFraction = delteFilled > 0 ? rollback / delteFilled : 0;
+        const deltaRevenue = askOrders[i].revenue - revenueBaseline[i];
+        askOrders[i].filled -= rollback;
+        askOrders[i].revenue -= deltaRevenue * revenueFraction;
+        remaining -= rollback;
+    }
+    void cancelledCost;
 }

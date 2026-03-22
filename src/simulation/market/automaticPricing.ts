@@ -126,7 +126,13 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
-    const offered = Math.max(1, offer.offerQuantity ?? 1);
+    // When the agent has nothing to offer this tick, divide by lastSold if it
+    // was positive (all of it sold → full sell-through, push price up) or treat
+    // sell-through as 0 when nothing was sold either (no signal → push down).
+    // Using a fabricated denominator of 1 would make stale lastSold values from
+    // prior ticks produce wildly inflated sell-through ratios and drive the price
+    // to the maximum cap even while the agent sits idle at the market price floor.
+    const offered = newOfferQuantity > 0 ? newOfferQuantity : sold > 0 ? sold : 1;
     const sellThrough = sold / offered;
     const excessDemand = sellThrough - TARGET_SELL_THROUGH;
     let factor = 1 + ADJUSTMENT_SPEED * excessDemand;
@@ -151,6 +157,7 @@ function adjustBidPrice(
     marketPrice: number,
     breakEvenCeiling?: number,
 ): void {
+    const previousDemand = bid.bidQuantity;
     bid.bidQuantity = shortfall;
 
     if (shortfall <= 0) {
@@ -164,7 +171,12 @@ function adjustBidPrice(
     }
 
     const lastBought = bid.lastBought ?? 0;
-    const lastDemanded = bid.bidQuantity > 0 ? shortfall : 1;
+
+    if (lastBought === 0) {
+        return;
+    }
+
+    const lastDemanded = previousDemand ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
     const fillDeficit = Math.max(0, 1 - fillRate);
