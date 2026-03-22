@@ -2,47 +2,21 @@
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
-import { usePlanetId, replacePlanetInPath } from '@/hooks/usePlanetId';
+import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { AC_ID } from '@/simulation/utils/initialWorld';
 import { ChevronRight, Globe } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-const PLANET_ICONS: Record<string, string> = {
-    earth: '/images/planets/earth.webp',
-    gune: '/images/planets/gune.webp',
-    icedonia: '/images/planets/icedonia.webp',
-    pandara: '/images/planets/pandara.webp',
-    paradies: '/images/planets/paradies.webp',
-    suerte: '/images/planets/suerte.webp',
-    [AC_ID]: '/images/planets/centauri.webp',
-};
+import { PlanetIcon } from '../client/PlanetIcon';
 
 const PLANET_SUB_PAGES = [
     { segment: 'demographics', label: 'Demographics' },
     { segment: 'economy', label: 'Economy' },
     { segment: 'market', label: 'Market' },
 ] as const;
-
-export function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: number }) {
-    const src = PLANET_ICONS[planetId];
-    if (!src) {
-        return <Globe width={size} height={size} />;
-    }
-    return (
-        <span
-            className='rounded-full overflow-hidden shrink-0 inline-block relative'
-            style={{ width: size, height: size }}
-        >
-            <Image src={src} alt={planetId} fill className='object-cover' unoptimized />
-        </span>
-    );
-}
 
 function ActivePlanetSubNav({ planetId, disabled }: { planetId: string | null; disabled: boolean }) {
     const pathname = usePathname();

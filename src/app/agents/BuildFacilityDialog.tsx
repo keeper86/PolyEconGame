@@ -34,7 +34,6 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
                     alt={facility.name}
                     width={300}
                     height={200}
-                    unoptimized
                     className='object-contain'
                     onError={(e) => {
                         (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -66,7 +65,6 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
                                         alt={resource.name}
                                         width={64}
                                         height={64}
-                                        unoptimized
                                         className='object-contain flex-shrink-0'
                                         onError={(e) => {
                                             (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -93,7 +91,6 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
                                         alt={resource.name}
                                         width={64}
                                         height={64}
-                                        unoptimized
                                         className='object-contain flex-shrink-0'
                                         onError={(e) => {
                                             (e.currentTarget as HTMLImageElement).style.display = 'none';

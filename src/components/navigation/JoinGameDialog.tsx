@@ -10,7 +10,7 @@ import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Gamepad2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { PlanetIcon } from './PlanetsNavEntry';
+import { PlanetIcon } from '../client/PlanetIcon';
 
 export function JoinGameDialog() {
     const trpc = useTRPC();
