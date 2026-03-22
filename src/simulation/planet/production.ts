@@ -53,7 +53,28 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         // Resource efficiency is facility-local. Pre-compute it so the slot
         // capacities fed into waterFill already reflect resource constraints.
+        //
+        // For stored resources shared by multiple facilities we must allocate
+        // the available stock proportionally; otherwise the first facility to
+        // run in the production loop would deplete storage and leave later
+        // facilities with nothing despite their efficiency being computed from
+        // the full pre-consumption stock.
         type FacilityMeta = { resourceEfficiencyScalar: number; resourceEfficiencyMap: Record<string, number> };
+
+        const totalStorageDemand = new Map<string, number>();
+        for (const facility of assets.productionFacilities) {
+            for (const need of facility.needs) {
+                if (need.resource.form === 'landBoundResource') {
+                    continue;
+                }
+                const required = need.quantity * facility.scale;
+                totalStorageDemand.set(
+                    need.resource.name,
+                    (totalStorageDemand.get(need.resource.name) ?? 0) + required,
+                );
+            }
+        }
+
         const facilityMeta: FacilityMeta[] = assets.productionFacilities.map((facility) => {
             const resourceEfficiencyMap: Record<string, number> = {};
             const efficiencies = facility.needs.map((need) => {
@@ -63,7 +84,10 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                     resourceEfficiencyMap[need.resource.name] = eff;
                     return eff;
                 }
-                const eff = Math.min(1, queryStorageFacility(assets.storageFacility, need.resource.name) / required);
+                const available = queryStorageFacility(assets.storageFacility, need.resource.name);
+                const totalDemand = totalStorageDemand.get(need.resource.name) ?? required;
+                const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
+                const eff = required > 0 ? Math.min(1, fairShare / required) : 1;
                 resourceEfficiencyMap[need.resource.name] = eff;
                 return eff;
             });
@@ -150,7 +174,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             });
 
             facility.needs.forEach((need) => {
-                const consumed = Math.ceil(need.quantity * facility.scale * overallEfficiency);
+                const consumed = Math.floor(need.quantity * facility.scale * overallEfficiency);
                 if (need.resource.form === 'landBoundResource') {
                     const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
                     if (extracted < consumed) {

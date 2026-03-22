@@ -30,9 +30,26 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         assets.market.buy = {};
     }
 
+    // Pre-compute the total input buffer the agent wants to keep for each
+    // stored resource across all facilities.  Sell offers must not exceed
+    // inventory minus this reserved amount, otherwise the agent sells inputs
+    // it still needs for its own production next tick.
+    const inputReserve = new Map<string, number>();
+    for (const facility of assets.productionFacilities) {
+        for (const { resource, quantity } of facility.needs) {
+            if (resource.form === 'landBoundResource') {
+                continue;
+            }
+            const target = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+            inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
+        }
+    }
+
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
+            const reserved = inputReserve.get(resource.name) ?? 0;
+            const sellableQty = Math.max(0, inventoryQty - reserved);
 
             if (!assets.market.sell[resource.name]) {
                 assets.market.sell[resource.name] = { resource };
@@ -42,7 +59,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             offer.resource = resource;
 
             const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
-            adjustOfferPrice(offer, inventoryQty, initialPrice);
+            adjustOfferPrice(offer, sellableQty, initialPrice);
         }
 
         for (const { resource, quantity } of facility.needs) {
