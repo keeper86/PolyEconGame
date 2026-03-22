@@ -1,12 +1,13 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
+import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/_component/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/_component/WorkforceDemographyPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 
 export default function WorkforcePage() {
-    const { agentId, planetId, detail, assets, isLoading, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
         <AgentAccessGuard
@@ -15,7 +16,9 @@ export default function WorkforcePage() {
             isLoading={myAgentId.isLoading}
             isOwnAgent={isOwnAgent}
         >
-            {!isLoading && assets ? (
+            {hasNoAssets ? (
+                <NoAssetsMessage planetId={planetId} />
+            ) : !isLoading && assets ? (
                 <div className='space-y-6'>
                     <WorkforceDemographyPanel
                         allocatedWorkers={assets.allocatedWorkers}

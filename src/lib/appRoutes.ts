@@ -2,6 +2,7 @@ import {
     type LucideIcon,
     BarChart2,
     Bot,
+    EuroIcon,
     FileText,
     FlaskConical,
     Gamepad,
@@ -172,5 +173,5 @@ export const AGENT_SUB_PAGES: AgentSubPage[] = [
     { segment: 'workforce', label: 'Workforce', icon: Users },
     { segment: 'market', label: 'Market', icon: BarChart2 },
     { segment: 'storage', label: 'Storage', icon: Warehouse },
-    { segment: 'financial', label: 'Financial', icon: Bot },
+    { segment: 'financial', label: 'Financial', icon: EuroIcon },
 ];

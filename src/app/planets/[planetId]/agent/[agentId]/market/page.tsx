@@ -1,11 +1,12 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
+import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import SellOffersPanel from '@/app/planets/[planetId]/agent/_component/SellOffersPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 
 export default function MarketPage() {
-    const { agentId, planetId, detail, assets, isLoading, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
         <AgentAccessGuard
@@ -14,7 +15,9 @@ export default function MarketPage() {
             isLoading={myAgentId.isLoading}
             isOwnAgent={isOwnAgent}
         >
-            {!isLoading && assets ? (
+            {hasNoAssets ? (
+                <NoAssetsMessage planetId={planetId} />
+            ) : !isLoading && assets ? (
                 <SellOffersPanel
                     agentId={agentId}
                     planetId={planetId}

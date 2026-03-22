@@ -4,11 +4,12 @@ import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/Agen
 import AgentFinancialPanel from '@/app/planets/[planetId]/agent/_component/AgentFinancialPanel';
 import AutomationPanel from '@/app/planets/[planetId]/agent/_component/AutomationPanel';
 import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
+import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 
 export default function FinancialPage() {
-    const { agentId, detail, assets, isLoading, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
         <AgentAccessGuard
@@ -17,7 +18,9 @@ export default function FinancialPage() {
             isLoading={myAgentId.isLoading}
             isOwnAgent={isOwnAgent}
         >
-            {!isLoading && assets ? (
+            {hasNoAssets ? (
+                <NoAssetsMessage planetId={planetId} />
+            ) : !isLoading && assets ? (
                 <div className='space-y-6'>
                     <AgentFinancialPanel
                         deposits={assets.deposits ?? 0}

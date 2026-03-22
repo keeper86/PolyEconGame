@@ -2,11 +2,12 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import BuildFacilityDialog from '@/app/planets/[planetId]/agent/_component/BuildFacilityDialog';
+import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import ProductionFacilitiesPanel from '@/app/planets/[planetId]/agent/_component/ProductionFacilitiesPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 
 export default function ProductionPage() {
-    const { agentId, detail, assets, isLoading, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
         <AgentAccessGuard
@@ -15,7 +16,9 @@ export default function ProductionPage() {
             isLoading={myAgentId.isLoading}
             isOwnAgent={isOwnAgent}
         >
-            {!isLoading && assets ? (
+            {hasNoAssets ? (
+                <NoAssetsMessage planetId={planetId} />
+            ) : !isLoading && assets ? (
                 <div className='space-y-4'>
                     <ProductionFacilitiesPanel facilities={assets.productionFacilities ?? []} />
                     <BuildFacilityDialog />

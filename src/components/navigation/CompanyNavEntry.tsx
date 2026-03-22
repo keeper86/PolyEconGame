@@ -1,34 +1,38 @@
 import { useTRPC } from '@/lib/trpc';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@radix-ui/react-collapsible';
 import { useQuery } from '@tanstack/react-query';
-import { Building2, ChevronRight } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { route } from 'nextjs-routes';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../ui/sidebar';
 import { JoinGameDialog } from './JoinGameDialog';
 import { Separator } from '../ui/separator';
+import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
+import { usePlanetId } from '@/hooks/usePlanetId';
 
 export function CompanyNavEntry() {
     const { status } = useSession();
     const trpc = useTRPC();
-    const [open, setOpen] = useState(false);
+    const pathname = usePathname();
+    const activePlanetId = usePlanetId();
     const { isMobile, setOpenMobile } = useSidebar();
 
     const userQuery = useQuery(
         trpc.getUser.queryOptions({ userId: undefined }, { enabled: status === 'authenticated' }),
     );
 
+    const agentId = userQuery.data?.agentId;
+
     const agentQuery = useQuery(
         trpc.simulation.getAgentListSummaries.queryOptions(undefined, {
-            enabled: status === 'authenticated' && !!userQuery.data?.agentId,
+            enabled: status === 'authenticated' && !!agentId,
         }),
     );
 
     if (status !== 'authenticated') {
         return null;
     }
-
-    const agentId = userQuery.data?.agentId;
 
     if (!agentId) {
         return (
@@ -48,26 +52,65 @@ export function CompanyNavEntry() {
         }
     };
 
+    if (!activePlanetId) {
+        return (
+            <>
+                <Separator className='my-4' />
+                <SidebarMenuButton asChild size='default' className='text-md w-full' onClick={handleClick}>
+                    <Link href={route({ pathname: '/agents/[agentId]', query: { agentId } })}>
+                        <Building2 width={20} height={20} />
+                        <span>{companyName}</span>
+                    </Link>
+                </SidebarMenuButton>
+            </>
+        );
+    }
+
     return (
         <>
-            <SidebarMenuButton size='default' className='text-md w-full'>
-                <Building2 width={20} height={20} />
-                <span>{companyName}</span>
+            <Separator className='my-4' />
+            <SidebarMenuButton asChild size='default' className='text-md w-full' onClick={handleClick}>
+                <Link
+                    href={route({
+                        pathname: `/planets/${encodeURIComponent(activePlanetId)}/agent/[agentId]` as never,
+                        query: { agentId },
+                    })}
+                >
+                    <Building2 width={20} height={20} />
+                    <span>{companyName}</span>
+                </Link>
             </SidebarMenuButton>
 
             <SidebarMenu className='pl-2 pt-1'>
-                {
-                    <SidebarMenuItem key={'workforce'}>
-                        <SidebarMenuButton
-                            asChild
-                            size='sm'
-                            className='font-normal text-muted-foreground'
-                            onClick={handleClick}
-                        >
-                            <span>Workforce</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                }
+                {AGENT_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
+                    const href =
+                        `/planets/${encodeURIComponent(activePlanetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as never;
+                    const isActive = !!href && (pathname === href || pathname.startsWith(`${href}/`));
+                    return (
+                        <SidebarMenuItem key={segment}>
+                            <SidebarMenuButton
+                                asChild={!!href}
+                                size='sm'
+                                className='font-normal text-muted-foreground'
+                                isActive={isActive}
+                                disabled={!href}
+                                onClick={handleClick}
+                            >
+                                {href ? (
+                                    <Link href={href} aria-disabled={!href}>
+                                        <Icon width={14} height={14} />
+                                        {label}
+                                    </Link>
+                                ) : (
+                                    <span className='flex items-center gap-2 text-muted-foreground'>
+                                        <Icon width={14} height={14} />
+                                        {label}
+                                    </span>
+                                )}
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    );
+                })}
             </SidebarMenu>
         </>
     );
