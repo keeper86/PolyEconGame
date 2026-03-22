@@ -5,7 +5,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { ChevronRight, Globe } from 'lucide-react';
+import { ChevronRight, EuroIcon, Globe, ShoppingCart, Users } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -13,9 +13,9 @@ import { useState } from 'react';
 import { PlanetIcon } from '../client/PlanetIcon';
 
 const PLANET_SUB_PAGES = [
-    { segment: 'demographics', label: 'Demographics' },
-    { segment: 'economy', label: 'Economy' },
-    { segment: 'market', label: 'Market' },
+    { segment: 'demographics', label: 'Demographics', icon: Users },
+    { segment: 'economy', label: 'Economy', icon: EuroIcon },
+    { segment: 'market', label: 'Market', icon: ShoppingCart },
 ] as const;
 
 function ActivePlanetSubNav({ planetId, disabled }: { planetId: string | null; disabled: boolean }) {
@@ -30,7 +30,7 @@ function ActivePlanetSubNav({ planetId, disabled }: { planetId: string | null; d
 
     return (
         <SidebarMenu className='pl-2 pt-1'>
-            {PLANET_SUB_PAGES.map(({ segment, label }) => {
+            {PLANET_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
                 const href = planetId ? `/planets/${encodeURIComponent(planetId)}/${segment}` : null;
                 const isActive = !!href && (pathname === href || pathname.startsWith(`${href}/`));
                 return (
@@ -44,9 +44,15 @@ function ActivePlanetSubNav({ planetId, disabled }: { planetId: string | null; d
                             onClick={handleClick}
                         >
                             {!disabled && href ? (
-                                <Link href={href as unknown as '/'}>{label}</Link>
+                                <Link href={href as unknown as '/'}>
+                                    <Icon width={14} height={14} />
+                                    {label}
+                                </Link>
                             ) : (
-                                <span>{label}</span>
+                                <span className='flex  gap-2'>
+                                    <Icon width={14} height={14} />
+                                    {label}
+                                </span>
                             )}
                         </SidebarMenuButton>
                     </SidebarMenuItem>

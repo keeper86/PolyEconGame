@@ -52,27 +52,15 @@ export function CompanyNavEntry() {
         }
     };
 
-    if (!activePlanetId) {
-        return (
-            <>
-                <Separator className='my-4' />
-                <SidebarMenuButton asChild size='default' className='text-md w-full' onClick={handleClick}>
-                    <Link href={route({ pathname: '/agents/[agentId]', query: { agentId } })}>
-                        <Building2 width={20} height={20} />
-                        <span>{companyName}</span>
-                    </Link>
-                </SidebarMenuButton>
-            </>
-        );
-    }
-
     return (
         <>
             <Separator className='my-4' />
             <SidebarMenuButton asChild size='default' className='text-md w-full' onClick={handleClick}>
                 <Link
                     href={route({
-                        pathname: `/planets/${encodeURIComponent(activePlanetId)}/agent/[agentId]` as never,
+                        pathname: activePlanetId
+                            ? (`/planets/${encodeURIComponent(activePlanetId)}/agent/[agentId]` as never)
+                            : '/agents/[agentId]',
                         query: { agentId },
                     })}
                 >
@@ -80,11 +68,11 @@ export function CompanyNavEntry() {
                     <span>{companyName}</span>
                 </Link>
             </SidebarMenuButton>
-
             <SidebarMenu className='pl-2 pt-1'>
                 {AGENT_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
-                    const href =
-                        `/planets/${encodeURIComponent(activePlanetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as never;
+                    const href = activePlanetId
+                        ? (`/planets/${encodeURIComponent(activePlanetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as never)
+                        : null;
                     const isActive = !!href && (pathname === href || pathname.startsWith(`${href}/`));
                     return (
                         <SidebarMenuItem key={segment}>

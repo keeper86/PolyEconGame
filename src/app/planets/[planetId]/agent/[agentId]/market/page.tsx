@@ -16,7 +16,7 @@ export default function MarketPage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetId={planetId} />
+                <NoAssetsMessage planetName={planetId} agentId={agentId} />
             ) : !isLoading && assets ? (
                 <SellOffersPanel
                     agentId={agentId}

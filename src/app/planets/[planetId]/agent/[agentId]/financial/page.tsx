@@ -19,7 +19,7 @@ export default function FinancialPage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetId={planetId} />
+                <NoAssetsMessage planetName={planetId} agentId={agentId} />
             ) : !isLoading && assets ? (
                 <div className='space-y-6'>
                     <AgentFinancialPanel

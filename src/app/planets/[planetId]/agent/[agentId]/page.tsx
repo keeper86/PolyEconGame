@@ -34,7 +34,7 @@ export default function AgentPlanetOverviewPage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetId={planetId} />
+                <NoAssetsMessage planetName={planetId} agentId={agentId} />
             ) : !isLoading && assets ? (
                 <div className='space-y-6'>
                     <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
