@@ -1,95 +1,120 @@
 'use client';
 
-import PlanetAssetCard from '@/app/agents/PlanetAssetCard';
-import { Page } from '@/components/client/Page';
+import { useAgentId } from '@/hooks/useAgentId';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useAgentId } from '@/hooks/useAgentId';
-import { ArrowLeft, Globe, Ship, Wallet } from 'lucide-react';
-import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { Building2, Globe, Package, Ship, Wallet } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import PlanetAssetCard from '@/app/planets/[planetId]/agent/_component/PlanetAssetCard';
+import { Badge } from '@/components/ui/badge';
 
-export default function AgentDetailPage() {
-    const params = useParams<'/agents/[agentId]'>();
-    const agentId = params.agentId;
+function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: React.ElementType }) {
+    return (
+        <div className='rounded-lg border p-4 flex items-start gap-3'>
+            <Icon className='h-5 w-5 text-muted-foreground mt-0.5 shrink-0' />
+            <div className='space-y-0.5'>
+                <p className='text-xs text-muted-foreground'>{label}</p>
+                <p className='text-lg font-semibold tabular-nums'>{value}</p>
+            </div>
+        </div>
+    );
+}
+
+export default function AgentPublicProfilePage() {
+    const { agentId } = useParams<'/agents/[agentId]'>();
     const trpc = useTRPC();
-    const myAgentId = useAgentId();
+    const myAgent = useAgentId();
 
-    const { data, isLoading } = useSimulationQuery(trpc.simulation.getAgentOverview.queryOptions({ agentId }));
+    const overviewQuery = useQuery(trpc.simulation.getAgentOverview.queryOptions({ agentId }));
 
-    const tick = data?.tick ?? 0;
-    const overview = data?.overview;
-    const isOwner = myAgentId.agentId === agentId;
+    const overview = overviewQuery.data?.overview;
+    const isOwner = !myAgent.isLoading && myAgent.agentId === agentId;
+
+    if (overviewQuery.isLoading) {
+        return <div className='text-sm text-muted-foreground'>Loading…</div>;
+    }
+
+    if (!overview) {
+        return (
+            <div className='flex flex-col items-center justify-center gap-2 py-16 text-center'>
+                <Building2 className='h-10 w-10 text-muted-foreground' />
+                <p className='text-sm text-muted-foreground'>Company not found.</p>
+            </div>
+        );
+    }
 
     return (
-        <Page
-            title={overview?.name ?? 'Agent'}
-            headerComponent={
-                <Link
-                    href={'/agents' as never}
-                    className='inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors'
-                >
-                    <ArrowLeft className='h-4 w-4' />
-                    All agents
-                </Link>
-            }
-        >
-            {!isLoading && tick > 0 && overview ? (
-                <div className='space-y-6'>
-                    {/* Top-level agent stats */}
-                    <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                <Wallet className='h-3.5 w-3.5' />
-                                Balance
-                            </div>
-                            <div className='text-lg font-semibold tabular-nums'>{formatNumbers(overview.balance)}</div>
-                        </div>
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                <Globe className='h-3.5 w-3.5' />
-                                Home planet
-                            </div>
-                            <div className='text-lg font-semibold'>{overview.associatedPlanetId}</div>
-                        </div>
-                        <div className='space-y-1'>
-                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                <Ship className='h-3.5 w-3.5' />
-                                Transport ships
-                            </div>
-                            <div className='text-lg font-semibold tabular-nums'>{overview.shipCount}</div>
-                        </div>
-                    </div>
-
-                    {/* Planet asset cards */}
-                    <div>
-                        <h2 className='text-sm font-medium text-muted-foreground mb-3'>
-                            Assets by planet ({overview.planets.length})
-                        </h2>
-                        <div className='flex flex-wrap gap-3'>
-                            {overview.planets.map((p) => (
-                                <PlanetAssetCard
-                                    key={p.planetId}
-                                    agentId={overview.agentId}
-                                    planet={p}
-                                    isHomePlanet={p.planetId === overview.associatedPlanetId}
-                                    isOwner={isOwner}
-                                />
-                            ))}
-                        </div>
+        <div className='space-y-8'>
+            <div className='flex items-center gap-3'>
+                <Building2 className='h-7 w-7 text-muted-foreground' />
+                <div>
+                    <h1 className='text-2xl font-bold'>{overview.name}</h1>
+                    <div className='flex items-center gap-2 mt-1'>
+                        <Badge variant='outline' className='gap-1 text-xs'>
+                            <Globe className='h-3 w-3' />
+                            {overview.associatedPlanetId}
+                        </Badge>
+                        {isOwner && (
+                            <Badge variant='secondary' className='text-xs'>
+                                Your Company
+                            </Badge>
+                        )}
                     </div>
                 </div>
-            ) : isLoading ? (
-                <div className='text-sm text-muted-foreground'>Loading agent data…</div>
-            ) : (
-                <div className='text-sm text-muted-foreground'>
-                    Agent not found.{' '}
-                    <Link href={'/agents' as never} className='underline'>
-                        Back to agents
+            </div>
+
+            {isOwner && (
+                <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>
+                    <StatCard label='Balance' value={formatNumbers(overview.balance)} icon={Wallet} />
+                    <StatCard label='Ships' value={String(overview.shipCount)} icon={Ship} />
+                    <StatCard label='Active Planets' value={String(overview.planets.length)} icon={Globe} />
+                </div>
+            )}
+
+            {overview.planets.length > 0 && (
+                <div className='space-y-3'>
+                    <h2 className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>
+                        {isOwner ? 'Your Assets by Planet' : 'Known Operations'}
+                    </h2>
+                    <div className='flex flex-wrap gap-3'>
+                        {overview.planets.map((planet) => (
+                            <PlanetAssetCard
+                                key={planet.planetId}
+                                agentId={agentId}
+                                planet={planet}
+                                isHomePlanet={planet.planetId === overview.associatedPlanetId}
+                                isOwner={isOwner}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {!isOwner && (
+                <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                    <Package className='h-4 w-4 shrink-0' />
+                    <span>Detailed financial and operational data is classified.</span>
+                </div>
+            )}
+
+            {isOwner && overview.planets.length === 0 && (
+                <div className='rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground'>
+                    You have no planetary assets yet. Select a planet to start building.
+                </div>
+            )}
+
+            {isOwner && (
+                <div className='pt-2'>
+                    <Link
+                        href={`/planets` as unknown as '/'}
+                        className='text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors'
+                    >
+                        Browse planets
                     </Link>
                 </div>
             )}
-        </Page>
+        </div>
     );
 }

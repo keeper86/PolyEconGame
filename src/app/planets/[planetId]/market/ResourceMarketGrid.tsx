@@ -56,7 +56,6 @@ export default function ResourceMarketGrid({ planetId: _planetId, onSelect }: Pr
                                     alt={resource.name}
                                     width={64}
                                     height={64}
-                                    unoptimized
                                     className='object-contain'
                                     onError={(e) => {
                                         (e.currentTarget as HTMLImageElement).style.display = 'none';

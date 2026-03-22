@@ -2,11 +2,9 @@ import Footer from '@/app/Footer';
 import TickDisplay from '@/components/client/TickDisplay';
 import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
-import BreadcrumbsClientWrapper from '@/components/navigation/BreadcrumbsClientWrapper';
 import { ThemeProvider } from '@/components/themeProvider';
 import ThemeWrapper from '@/components/themeWrapper';
 import BackToTopButton from '@/components/ui/BackToTopButton';
-import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Metadata } from 'next';
 import { getServerSession } from 'next-auth';
@@ -54,8 +52,6 @@ export default async function RootLayout({
                                     <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
                                         <div className='flex items-center gap-2 '>
                                             <SidebarTrigger className='-ml-1' />
-                                            <Separator orientation='vertical' className='mr-2 h-4' />
-                                            <BreadcrumbsClientWrapper />
                                         </div>
                                         <div className='flex items-center gap-2'>
                                             <span className='text-sm text-muted-foreground flex items-center gap-1'>

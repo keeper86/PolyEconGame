@@ -4,7 +4,7 @@ import { getPublicRoutes } from './lib/appRoutes';
 
 export async function middleware(request: NextRequest) {
     const token = await getToken({ req: request });
-    const publicPaths = ['/api/', '/_next', '/favicon.ico', '/benchmarks'];
+    const publicPaths = ['/api/', '/_next', '/favicon.ico', '/benchmarks', '/images'];
 
     const isPublicPath =
         getPublicRoutes().includes(request.nextUrl.pathname) ||
@@ -29,7 +29,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
 }
 
-// Configure the paths this middleware runs on
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+    matcher: ['/((?!_next/static|_next/image|favicon.ico|images).*)'],
 };

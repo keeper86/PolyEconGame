@@ -8,36 +8,17 @@ import { NavMain } from './navMain';
 import { SidebarProvider } from '../ui/sidebar';
 import { NavSecondary } from './navSecondary';
 
+const MOCK_SESSION: Session = {
+    type: 'next-auth',
+    accessToken: 'mock-access-token',
+    user: { id: 'test-user', name: 'Test User', email: 'test@example.com' },
+    expires: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+};
+
 describe('NavMain', () => {
-    it('renders the Planets collapsible entry', () => {
-        const mockSession: Session = {
-            type: 'next-auth',
-            accessToken: 'mock-access-token',
-            user: { id: 'test-user', name: 'Test User', email: 'test@example.com' },
-            expires: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
-        };
-
-        render(
-            <AppProviders session={mockSession}>
-                <SidebarProvider>
-                    <NavMain />
-                </SidebarProvider>
-            </AppProviders>,
-        );
-
-        expect(screen.getByText('Planets')).toBeInTheDocument();
-    });
-
     it('renders all main navigation routes from APP_ROUTES and their icons', () => {
-        const mockSession: Session = {
-            type: 'next-auth',
-            accessToken: 'mock-access-token',
-            user: { id: 'test-user', name: 'Test User', email: 'test@example.com' },
-            expires: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
-        };
-
         render(
-            <AppProviders session={mockSession}>
+            <AppProviders session={MOCK_SESSION}>
                 <SidebarProvider>
                     <NavMain />
                 </SidebarProvider>

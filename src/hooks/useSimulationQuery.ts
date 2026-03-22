@@ -27,6 +27,7 @@
  */
 
 import { keepPreviousData, useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 
 export const SIMULATION_MAX_RETRIES = 3;
 export const SIMULATION_REFETCH_INTERVAL_MS = 900;
@@ -43,6 +44,7 @@ type SimulationQueryOptions<TData, TError> = Omit<
 export function useSimulationQuery<TData, TError = Error>(
     options: SimulationQueryOptions<TData, TError>,
 ): UseQueryResult<TData, TError> {
+    const loggedIn = useSession().status === 'authenticated';
     const { refetchIntervalMs = SIMULATION_REFETCH_INTERVAL_MS, ...rest } = options;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,5 +57,6 @@ export function useSimulationQuery<TData, TError = Error>(
         placeholderData: keepPreviousData,
         refetchInterval: (query) =>
             query.state.fetchFailureCount > SIMULATION_MAX_RETRIES ? false : refetchIntervalMs,
+        enabled: loggedIn && !!options.queryKey,
     });
 }

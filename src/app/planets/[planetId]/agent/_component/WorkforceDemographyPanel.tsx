@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Users } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card';
 import { computeSummary } from './workforce-summary';
 import type { WorkforceDemography } from './workforce-summary';
 import { WorkforceSkeleton } from './WorkforceSkeleton';

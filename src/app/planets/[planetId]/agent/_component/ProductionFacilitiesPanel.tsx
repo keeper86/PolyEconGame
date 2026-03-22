@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { ProductionFacility, LastTickResults } from '../../simulation/planet/storage';
+import type { ProductionFacility, LastTickResults } from '../../../../../simulation/planet/storage';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
 

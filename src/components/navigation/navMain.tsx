@@ -2,15 +2,13 @@
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import type { RouteMetadata } from '@/lib/appRoutes';
 import { APP_ROUTES, isRoute, isRouteManifest } from '@/lib/appRoutes';
-import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
-import { Building2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import React from 'react';
 import type { ElementType, JSX } from 'react';
-import { JoinGameDialog } from './JoinGameDialog';
+import React from 'react';
 import { PlanetsNavEntry } from './PlanetsNavEntry';
+import { CompanyNavEntry } from './CompanyNavEntry';
+import { Separator } from '../ui/separator';
 
 function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.Element {
     const { isSub } = opts || {};
@@ -38,58 +36,6 @@ function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.E
                         ? React.createElement(route.icon as ElementType, { width: 16, height: 16 })
                         : null}
                     <span>{route.label}</span>
-                </Link>
-            </SidebarMenuButton>
-        </SidebarMenuItem>
-    );
-}
-
-function CompanyNavEntry() {
-    const { status } = useSession();
-    const trpc = useTRPC();
-    const { isMobile, setOpenMobile } = useSidebar();
-
-    const userQuery = useQuery(
-        trpc.getUser.queryOptions({ userId: undefined }, { enabled: status === 'authenticated' }),
-    );
-
-    const agentQuery = useQuery(
-        trpc.simulation.getAgentListSummaries.queryOptions(undefined, {
-            enabled: status === 'authenticated' && !!userQuery.data?.agentId,
-        }),
-    );
-
-    if (status !== 'authenticated') {
-        return null;
-    }
-
-    const agentId = userQuery.data?.agentId;
-
-    if (!agentId) {
-        return (
-            <SidebarMenuItem>
-                <div className='px-2 py-1'>
-                    <JoinGameDialog />
-                </div>
-            </SidebarMenuItem>
-        );
-    }
-
-    const agent = agentQuery.data?.agents.find((a) => a.agentId === agentId);
-    const companyName = agent?.name ?? 'My Company';
-
-    const handleClick = () => {
-        if (isMobile) {
-            setOpenMobile(false);
-        }
-    };
-
-    return (
-        <SidebarMenuItem>
-            <SidebarMenuButton asChild size='default' className='text-md' onClick={handleClick}>
-                <Link href={`/agents/${agentId}` as unknown as '/'}>
-                    <Building2 width={16} height={16} />
-                    <span>{companyName}</span>
                 </Link>
             </SidebarMenuButton>
         </SidebarMenuItem>
@@ -127,8 +73,9 @@ export function NavMain() {
                     }
                     return null;
                 })}
-                <CompanyNavEntry />
                 <PlanetsNavEntry />
+                <Separator className='my-4' />
+                <CompanyNavEntry />
             </SidebarMenu>
         </nav>
     );
