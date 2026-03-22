@@ -5,7 +5,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recha
 
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';

@@ -11,7 +11,7 @@ import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
 import FoodBufferChart from './FoodBufferChart';

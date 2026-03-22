@@ -7,7 +7,7 @@ import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../components/CohortFilter';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP } from './demographicsTypes';
 

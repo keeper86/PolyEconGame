@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '../../components/ui/skeleton';
+import { Skeleton } from '../../../../../components/ui/skeleton';
 
 /**
  * Placeholder skeleton that reserves the same vertical space as the loaded

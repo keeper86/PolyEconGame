@@ -1,14 +1,14 @@
 'use client';
 
-import AgentFinancialPanel from '@/app/agents/AgentFinancialPanel';
-import AutomationPanel from '@/app/agents/AutomationPanel';
-import LoanPanel from '@/app/agents/LoanPanel';
-import ProductionFacilitiesPanel from '@/app/agents/ProductionFacilitiesPanel';
-import SellOffersPanel from '@/app/agents/SellOffersPanel';
-import WorkerAllocationPanel from '@/app/agents/WorkerAllocationPanel';
-import WorkforceDemographyPanel from '@/app/agents/WorkforceDemographyPanel';
-import BuildFacilityDialog from '@/app/agents/BuildFacilityDialog';
-import type { WorkforceDemography } from '@/app/agents/workforce-summary';
+import AgentFinancialPanel from '@/app/planets/[planetId]/agent/_component/AgentFinancialPanel';
+import AutomationPanel from '@/app/planets/[planetId]/agent/_component/AutomationPanel';
+import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
+import ProductionFacilitiesPanel from '@/app/planets/[planetId]/agent/_component/ProductionFacilitiesPanel';
+import SellOffersPanel from '@/app/planets/[planetId]/agent/_component/SellOffersPanel';
+import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/_component/WorkerAllocationPanel';
+import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/_component/WorkforceDemographyPanel';
+import BuildFacilityDialog from '@/app/planets/[planetId]/agent/_component/BuildFacilityDialog';
+import type { WorkforceDemography } from '@/app/planets/[planetId]/agent/_component/workforce-summary';
 import { Page } from '@/components/client/Page';
 import { useTRPC } from '@/lib/trpc';
 import { type ProductionFacility, type StorageFacility } from '@/simulation/planet/storage';
