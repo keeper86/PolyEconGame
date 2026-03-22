@@ -8,11 +8,10 @@ import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } f
 
 type Props = {
     planetId: string;
-    /** Live values from the already-fetched planet food data (current tick). */
+    /** Live values from the already-fetched market data (current tick). */
     live?: {
         tick: number;
         foodPrice: number;
-        starvationLevel: number;
     };
 };
 
@@ -43,10 +42,11 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
     // Append a live data point at the current tick so the chart extends
     // to "now" instead of stopping at the last yearly snapshot.
     if (live) {
+        const lastHistoryRow = plotData[plotData.length - 1];
         plotData.push({
             year: live.tick / TICKS_PER_YEAR,
             foodPrice: live.foodPrice,
-            starvationPct: live.starvationLevel * 100,
+            starvationPct: lastHistoryRow?.starvationPct ?? 0,
         });
     }
 

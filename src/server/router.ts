@@ -19,7 +19,7 @@ import {
     getPlanetEconomy,
     getPlanetFood,
     getPlanetDemographicsFull,
-    getPlanetFoodMarket,
+    getPlanetMarket,
 } from './controller/planet';
 
 import {
@@ -52,7 +52,7 @@ const simulationRouter = trpcRoot.router({
     getPlanetEconomy: getPlanetEconomy(),
     getPlanetFood: getPlanetFood(),
     getPlanetDemographicsFull: getPlanetDemographicsFull(),
-    getPlanetFoodMarket: getPlanetFoodMarket(),
+    getPlanetMarket: getPlanetMarket(),
     // historical endpoints removed
 });
 

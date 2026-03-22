@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { route } from 'nextjs-routes';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../ui/sidebar';
 import { JoinGameDialog } from './JoinGameDialog';
-import { Separator } from '../ui/separator';
 import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { usePlanetId } from '@/hooks/usePlanetId';
 
@@ -37,7 +36,6 @@ export function CompanyNavEntry() {
     if (!agentId) {
         return (
             <SidebarMenuItem>
-                <Separator className='my-4' />
                 <JoinGameDialog />
             </SidebarMenuItem>
         );
