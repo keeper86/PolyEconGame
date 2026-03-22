@@ -17,7 +17,7 @@ export default function ProductionPage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetName={planetId} />
+                <NoAssetsMessage planetName={planetId} agentId={agentId} />
             ) : !isLoading && assets ? (
                 <div className='space-y-4'>
                     <ProductionFacilitiesPanel facilities={assets.productionFacilities ?? []} />
