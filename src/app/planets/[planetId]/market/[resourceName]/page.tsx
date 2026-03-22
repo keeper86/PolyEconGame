@@ -10,7 +10,7 @@ import { ArrowLeft, Construction } from 'lucide-react';
 import MarketSummaryCards from '../MarketSummaryCards';
 import OrderBookChart from '../OrderBookChart';
 import OfferTable from '../OfferTable';
-import FoodPriceHistoryChart from '../../economy/FoodPriceHistoryChart';
+import FoodPriceHistoryChart from './FoodPriceHistoryChart';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 

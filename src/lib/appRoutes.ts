@@ -1,4 +1,16 @@
-import { type LucideIcon, FileText, FlaskConical, Gamepad, Home, User } from 'lucide-react';
+import {
+    type LucideIcon,
+    BarChart2,
+    Bot,
+    FileText,
+    FlaskConical,
+    Gamepad,
+    Home,
+    Package,
+    User,
+    Users,
+    Warehouse,
+} from 'lucide-react';
 
 import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
@@ -148,3 +160,17 @@ export function getBreadcrumbData(pathname: string): Array<{ path: string; label
     });
     return breadcrumbs;
 }
+
+export type AgentSubPage = {
+    segment: string;
+    label: string;
+    icon: LucideIcon;
+};
+
+export const AGENT_SUB_PAGES: AgentSubPage[] = [
+    { segment: 'production', label: 'Production', icon: Package },
+    { segment: 'workforce', label: 'Workforce', icon: Users },
+    { segment: 'market', label: 'Market', icon: BarChart2 },
+    { segment: 'storage', label: 'Storage', icon: Warehouse },
+    { segment: 'financial', label: 'Financial', icon: Bot },
+];

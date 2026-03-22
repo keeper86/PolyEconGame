@@ -4,6 +4,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { useTRPC } from '@/lib/trpc';
 import { ChevronRight, Globe } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -18,15 +19,47 @@ const PLANET_SUB_PAGES = [
     { segment: 'market', label: 'Market' },
 ] as const;
 
+const AGENT_ROUTE_PATTERN = /^\/planets\/([^/]+)\/agent\/([^/]+)/;
+
 function ActivePlanetSubNav({ planetId, disabled }: { planetId: string | null; disabled: boolean }) {
     const pathname = usePathname();
     const { isMobile, setOpenMobile } = useSidebar();
+
+    const agentMatch = AGENT_ROUTE_PATTERN.exec(pathname);
+    const agentId = agentMatch?.[2] ?? null;
 
     const handleClick = () => {
         if (isMobile) {
             setOpenMobile(false);
         }
     };
+
+    if (agentId && planetId) {
+        return (
+            <SidebarMenu className='pl-2 pt-1'>
+                {AGENT_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
+                    const href = `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/${segment}`;
+                    const isActive = pathname === href || pathname.startsWith(`${href}/`);
+                    return (
+                        <SidebarMenuItem key={segment}>
+                            <SidebarMenuButton
+                                asChild
+                                size='sm'
+                                className='font-normal text-muted-foreground'
+                                isActive={isActive}
+                                onClick={handleClick}
+                            >
+                                <Link href={href as unknown as '/'}>
+                                    <Icon width={14} height={14} />
+                                    {label}
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    );
+                })}
+            </SidebarMenu>
+        );
+    }
 
     return (
         <SidebarMenu className='pl-2 pt-1'>

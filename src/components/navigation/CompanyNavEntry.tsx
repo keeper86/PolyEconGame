@@ -49,35 +49,26 @@ export function CompanyNavEntry() {
     };
 
     return (
-        <Collapsible open={open} onOpenChange={setOpen}>
-            <CollapsibleTrigger asChild>
-                <SidebarMenuButton size='default' className='text-md w-full'>
-                    <Building2 width={16} height={16} />
-                    <span>{companyName}</span>
-                    <ChevronRight
-                        width={14}
-                        height={14}
-                        className='ml-auto transition-transform duration-200 data-[state=open]:rotate-90'
-                        data-state={open ? 'open' : 'closed'}
-                    />
-                </SidebarMenuButton>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-                <SidebarMenu className='pl-2 pt-1'>
-                    {
-                        <SidebarMenuItem key={'workforce'}>
-                            <SidebarMenuButton
-                                asChild
-                                size='sm'
-                                className='font-normal text-muted-foreground'
-                                onClick={handleClick}
-                            >
-                                <span>Economy</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    }
-                </SidebarMenu>
-            </CollapsibleContent>
-        </Collapsible>
+        <>
+            <SidebarMenuButton size='default' className='text-md w-full'>
+                <Building2 width={20} height={20} />
+                <span>{companyName}</span>
+            </SidebarMenuButton>
+
+            <SidebarMenu className='pl-2 pt-1'>
+                {
+                    <SidebarMenuItem key={'workforce'}>
+                        <SidebarMenuButton
+                            asChild
+                            size='sm'
+                            className='font-normal text-muted-foreground'
+                            onClick={handleClick}
+                        >
+                            <span>Workforce</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                }
+            </SidebarMenu>
+        </>
     );
 }

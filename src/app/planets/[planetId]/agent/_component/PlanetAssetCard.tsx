@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { route } from 'nextjs-routes';
 import { Building2, ChevronRight, Globe, Lock, Package, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatNumbers } from '@/lib/utils';
@@ -76,10 +75,7 @@ export default function PlanetAssetCard({
 }: Props): React.ReactElement {
     return (
         <Link
-            href={route({
-                pathname: '/agents/[agentId]/[planetId]',
-                query: { agentId, planetId: p.planetId },
-            })}
+            href={`/planets/${encodeURIComponent(p.planetId)}/agent/${encodeURIComponent(agentId)}` as unknown as '/'}
             className='block'
         >
             <div

@@ -1,10 +1,11 @@
 'use client';
 
+import { PlanetIcon } from '@/components/client/PlanetIcon';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { formatNumbers } from '@/lib/utils';
 import type { PlanetSummary } from '@/server/controller/simulation';
-import { ChevronRight, Globe, Landmark, Users, Wheat } from 'lucide-react';
+import { ChevronRight, Landmark, Users, Wheat } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 
@@ -23,9 +24,8 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                 <CardHeader className='pb-3'>
                     <div className='flex items-center justify-between'>
                         <div className='flex items-center gap-3'>
-                            <div className='flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary'>
-                                <Globe className='h-5 w-5' />
-                            </div>
+                            <PlanetIcon planetId={planetId} />
+
                             <div>
                                 <h3 className='text-lg font-semibold leading-none'>{name}</h3>
                                 <div className='mt-1 text-xs text-muted-foreground'>{planetId}</div>
