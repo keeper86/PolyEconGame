@@ -13,6 +13,7 @@ import OfferTable from '../OfferTable';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { formatNumbers } from '@/lib/utils';
 
 const FOOD_RESOURCE_NAME = agriculturalProductResourceType.name;
 
@@ -101,10 +102,10 @@ function ResourceMarketContent({
                 <CardHeader className='pb-1'>
                     <CardTitle className='text-xs font-medium text-muted-foreground'>
                         {market.offers.length} active seller{market.offers.length !== 1 ? 's' : ''}
-                        {' · '}supply {market.totalSupply.toFixed(1)}
-                        {' · '}sold {market.totalSold.toFixed(1)}
-                        {' · '}demand {market.totalDemand.toFixed(1)}
-                        {' · '}unfilled {market.unfilledDemand.toFixed(1)}
+                        {' · '}supply {formatNumbers(market.totalSupply)}
+                        {' · '}sold {formatNumbers(market.totalSold)}
+                        {' · '}demand {formatNumbers(market.totalDemand)}
+                        {' · '}unfilled {formatNumbers(market.unfilledDemand)}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

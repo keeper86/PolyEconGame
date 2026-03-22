@@ -16,6 +16,7 @@ import type { ProductionFacility } from '@/simulation/planet/storage';
 import { PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import React, { useMemo, useState } from 'react';
+import { formatNumbers } from '@/lib/utils';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -42,7 +43,7 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
 
                 <div className='min-w-0 flex-1'>
                     <p className='text-xs text-muted-foreground mt-0.5'>
-                        {totalWorkers.toLocaleString()} workers ·{' '}
+                        {formatNumbers(totalWorkers)} workers ·{' '}
                         {facility.powerConsumptionPerTick > 0
                             ? `${facility.powerConsumptionPerTick} MW`
                             : 'produces power'}
@@ -70,7 +71,7 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
                                             (e.currentTarget as HTMLImageElement).style.display = 'none';
                                         }}
                                     />
-                                    {resource.name} ×{quantity.toLocaleString()}
+                                    {resource.name} ×{formatNumbers(quantity)}
                                 </span>
                             ))}
                         </div>
@@ -96,7 +97,7 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
                                             (e.currentTarget as HTMLImageElement).style.display = 'none';
                                         }}
                                     />
-                                    {resource.name} ×{quantity.toLocaleString()}
+                                    {resource.name} ×{formatNumbers(quantity)}
                                 </span>
                             ))}
                         </div>

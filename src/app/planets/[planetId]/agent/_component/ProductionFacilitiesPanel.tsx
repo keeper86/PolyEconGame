@@ -4,6 +4,7 @@ import React from 'react';
 import type { ProductionFacility, LastTickResults } from '../../../../../simulation/planet/storage';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
+import { formatNumbers } from '@/lib/utils';
 
 // (colours reserved if we later make a chart here)
 
@@ -144,7 +145,7 @@ export default function ProductionFacilitiesPanel({
                                                 Required total:{' '}
                                                 {Object.entries(f.workerRequirement || {})
                                                     .filter(([, v]) => v && v > 0)
-                                                    .map(([k, v]) => `${k}: ${(v! * f.scale).toLocaleString()}`)
+                                                    .map(([k, v]) => `${k}: ${formatNumbers(v! * f.scale)}`)
                                                     .join(', ')}
                                             </div>
                                         )}
