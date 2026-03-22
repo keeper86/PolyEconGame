@@ -53,8 +53,7 @@ export function CompanyNavEntry() {
     };
 
     return (
-        <>
-            <Separator className='my-4' />
+        <SidebarMenuItem>
             <SidebarMenuButton asChild size='default' className='text-md w-full' onClick={handleClick}>
                 <Link
                     href={route({
@@ -100,6 +99,6 @@ export function CompanyNavEntry() {
                     );
                 })}
             </SidebarMenu>
-        </>
+        </SidebarMenuItem>
     );
 }

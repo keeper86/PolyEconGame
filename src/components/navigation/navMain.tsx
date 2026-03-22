@@ -8,6 +8,7 @@ import type { ElementType, JSX } from 'react';
 import React from 'react';
 import { PlanetsNavEntry } from './PlanetsNavEntry';
 import { CompanyNavEntry } from './CompanyNavEntry';
+import { Separator } from '../ui/separator';
 
 function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.Element {
     const { isSub } = opts || {};
@@ -73,6 +74,7 @@ export function NavMain() {
                     return null;
                 })}
                 <PlanetsNavEntry />
+                <Separator className='my-4' />
                 <CompanyNavEntry />
             </SidebarMenu>
         </nav>
