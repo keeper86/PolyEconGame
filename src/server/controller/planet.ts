@@ -33,18 +33,8 @@ export const getPlanetOverview = () =>
         .output(
             z.object({
                 tick: z.number(),
-                overview: z
-                    .object({
-                        id: z.string(),
-                        name: z.string(),
-                        position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
-                        populationTotal: z.number(),
-                        starvationLevel: z.number(),
-                        resources: z.record(z.string(), z.any()),
-                        infrastructure: z.any(),
-                        environment: z.any(),
-                    })
-                    .nullable(),
+                name: z.string(),
+                populationTotal: z.number(),
             }),
         )
         .query(async ({ input }) => {
@@ -52,21 +42,10 @@ export const getPlanetOverview = () =>
                 workerQueries.getCurrentTick(),
                 workerQueries.getPlanet(input.planetId),
             ]);
-            if (!planet) {
-                return { tick, overview: null };
-            }
             return {
                 tick,
-                overview: {
-                    id: planet.id,
-                    name: planet.name,
-                    position: planet.position,
-                    populationTotal: computePopulationTotal(planet),
-                    starvationLevel: computeGlobalStarvation(planet),
-                    resources: planet.resources,
-                    infrastructure: planet.infrastructure,
-                    environment: planet.environment,
-                },
+                name: planet?.name ?? input.planetId,
+                populationTotal: planet ? computePopulationTotal(planet) : 0,
             };
         });
 
