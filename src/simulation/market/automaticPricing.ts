@@ -119,7 +119,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             bid.resource = resource;
 
             const marketPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
-            const ceiling = Math.min(inputValueCeiling.get(resource.name) ?? Infinity, marketPrice);
+            const ceiling = inputValueCeiling.get(resource.name);
             adjustBidPrice(bid, shortfall, marketPrice, ceiling);
         }
     }
