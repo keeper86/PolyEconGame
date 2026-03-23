@@ -24,9 +24,9 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         description: 'No formal education. Attending Elementary school.',
         graduationAge: 9,
         graduationPreAgeProbability: 0.1, // graduation = starting primary school at age 5,6,7
-        graduationProbability: 0.9,
+        graduationProbability: 0.85,
         genericDropoutProbability: 0,
-        transitionProbability: 0.95,
+        transitionProbability: 0.9,
     },
     primary: {
         name: 'Primary',

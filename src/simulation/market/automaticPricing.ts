@@ -166,15 +166,15 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
-    if (newOfferQuantity === 0 && sold === 0) {
+    // When the agent has no stock this tick (supply-constrained), treat it as
+    // full sell-through: the good is scarce and the price should rise.
+    if (newOfferQuantity === 0) {
+        const factor = sellThroughFactor(1);
+        offer.offerPrice = Math.min(FOOD_PRICE_CEIL, Math.max(FOOD_PRICE_FLOOR, price * factor));
         return;
     }
 
-    // When the agent has nothing to offer this tick, divide by lastSold if it
-    // was positive (all of it sold → full sell-through, push price up) or treat
-    // sell-through as 0 when nothing was sold either (no signal → push down).
-    const offered = newOfferQuantity > 0 ? newOfferQuantity : sold > 0 ? sold : 1;
-    const sellThrough = sold / offered;
+    const sellThrough = sold / newOfferQuantity;
     const factor = sellThroughFactor(sellThrough);
 
     const priceCeil = FOOD_PRICE_CEIL;

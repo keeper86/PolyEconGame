@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
+import {
+    FOOD_BUFFER_TARGET_TICKS,
+    FOOD_PER_PERSON_PER_TICK,
+    INITIAL_FOOD_PRICE,
+    PRICE_ADJUST_MAX_UP,
+} from '../constants';
 import { putIntoStorageFacility } from '../planet/storage';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { forEachPopulationCohort, SKILL } from '../population/population';
@@ -423,23 +428,22 @@ describe('updateAgentPricing', () => {
 
     it('does not raise price when agent has nothing to offer and last sold is from a prior tick', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
-        // Simulate: previously sold 1550 units, but current stock is empty → offerQuantity becomes 0
+        // Simulate: previously sold 1550 units, but current stock is empty → supply-constrained
         setFoodOffer(foodAgent, 0.73, 0, 1550);
 
         automaticPricing(agentMap(foodAgent), planet);
 
-        // sell-through = 1550/1550 = 1.0 (sold everything last tick) → price may rise slightly
-        // but must NOT rocket to 1 000 000 by treating denominator as 1
-        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeLessThanOrEqual(0.73 * 1.05 + 1e-9);
+        // supply = 0 → treated as full shortage → price rises by PRICE_ADJUST_MAX_UP
+        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeCloseTo(0.73 * PRICE_ADJUST_MAX_UP);
     });
 
-    it('does not raise price when agent has nothing to offer and also sold nothing', () => {
+    it('raises price when agent has no stock and also sold nothing (intermittent production)', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
         setFoodOffer(foodAgent, 2.0, 0, 0);
 
         automaticPricing(agentMap(foodAgent), planet);
 
-        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBe(2.0);
+        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeCloseTo(2.0 * PRICE_ADJUST_MAX_UP);
     });
 });
 

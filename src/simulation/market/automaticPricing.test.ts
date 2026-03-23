@@ -184,13 +184,13 @@ describe('automaticPricing — offer price tâtonnement', () => {
         expect(newPrice).toBeCloseTo(FOOD_PRICE_FLOOR * PRICE_ADJUST_MAX_UP);
     });
 
-    it('does not adjust price when agent has nothing to offer and sold nothing', () => {
+    it('raises price when agent has no stock (supply-constrained, intermittent production)', () => {
         const PRICE = 10;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE, 0, 0);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBe(PRICE);
+        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_UP);
     });
 
     it('does not exceed FOOD_PRICE_CEIL', () => {
