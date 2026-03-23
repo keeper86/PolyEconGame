@@ -1,4 +1,4 @@
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
+import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE, TICKS_PER_YEAR } from '../constants';
 import { putIntoStorageFacility, removeFromStorageFacility } from '../planet/storage';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
@@ -6,7 +6,15 @@ import type { GaussianMoments, Occupation, Skill } from '../population/populatio
 import { forEachPopulationCohort } from '../population/population';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import type { Resource } from '../planet/planet';
-import { agriculturalProductResourceType } from '../planet/resources';
+import {
+    agriculturalProductResourceType,
+    beverageResourceType,
+    clothingResourceType,
+    consumerElectronicsResourceType,
+    furnitureResourceType,
+    pharmaceuticalResourceType,
+    processedFoodResourceType,
+} from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Internal order-book types
@@ -119,6 +127,58 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
     return { quantity: effectiveQty, reservationPrice };
 });
 
+// ------------------------------------------------------------------
+// Generic discretionary consumer-good demand rule factory.
+//
+// Households spend a fixed income share on each consumer good,
+// capped by a per-person yearly quantity target.  Unlike food, there
+// is no survival buffer: demand stops when wealth drops to zero.
+//
+// incomeSharePerTick  - fraction of per-capita wealth spent per tick
+// yearlyQtyPerPerson  - physical cap on how much one person buys/year
+// ------------------------------------------------------------------
+function makeConsumerGoodRule(incomeSharePerTick: number, yearlyQtyPerPerson: number): DemandRule {
+    const qtyPerTick = yearlyQtyPerPerson / TICKS_PER_YEAR;
+
+    return ({ wealthMeanPerPerson, referencePrice }) => {
+        if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+        if (!Number.isFinite(wealthMeanPerPerson) || wealthMeanPerPerson <= 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+
+        const budgetPerTick = wealthMeanPerPerson * incomeSharePerTick;
+        const affordableQty = budgetPerTick / referencePrice;
+        const effectiveQty = Math.min(qtyPerTick, affordableQty);
+
+        if (effectiveQty <= 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+
+        const reservationPrice = budgetPerTick / effectiveQty;
+        return { quantity: effectiveQty, reservationPrice };
+    };
+}
+
+// Processed Food: secondary staple, strong demand (~0.5 t/person/year).
+demandRules.set(processedFoodResourceType.name, makeConsumerGoodRule(0.003, 0.5));
+
+// Beverages: moderate demand (~0.2 t/person/year).
+demandRules.set(beverageResourceType.name, makeConsumerGoodRule(0.001, 0.2));
+
+// Clothing: ~10 items/person/year (each ~0.001 t → 0.01 t/year).
+demandRules.set(clothingResourceType.name, makeConsumerGoodRule(0.002, 0.01));
+
+// Pharmaceuticals: low physical volume but steady demand.
+demandRules.set(pharmaceuticalResourceType.name, makeConsumerGoodRule(0.001, 0.001));
+
+// Furniture: durable good, slow turnover (~0.02 pieces/person/year).
+demandRules.set(furnitureResourceType.name, makeConsumerGoodRule(0.001, 0.02));
+
+// Consumer Electronics: ~0.1 pieces/person/year.
+demandRules.set(consumerElectronicsResourceType.name, makeConsumerGoodRule(0.002, 0.1));
+
 /**
  * Execute the spot market for every resource that has active ask orders
  * or a registered demand rule on a single planet.
@@ -181,6 +241,8 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
                 planet.marketPrices[resourceName] ??
                 (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1);
 
+            const populationBids = binHouseholdBids(householdBids, [], []);
+
             planet.lastMarketResult[resourceName] = {
                 resourceName,
                 clearingPrice: referencePrice,
@@ -189,6 +251,7 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
                 totalSupply,
                 unfilledDemand: totalDemand,
                 unsoldSupply: totalSupply,
+                populationBids,
             };
             continue;
         }
@@ -249,6 +312,8 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
             planet.marketPrices[resourceName] ??
             (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1);
 
+        const populationBids = binHouseholdBids(householdBids, householdBidFilled, bidCosts);
+
         planet.lastMarketResult[resourceName] = {
             resourceName,
             clearingPrice: totalVolume > 0 ? totalRevenue / totalVolume : referencePrice,
@@ -257,8 +322,57 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
             totalSupply,
             unfilledDemand,
             unsoldSupply,
+            populationBids,
         };
     }
+}
+
+// ---------------------------------------------------------------------------
+// Helper to aggregate population bids for UI display
+// ---------------------------------------------------------------------------
+
+function binHouseholdBids(bids: BidOrder[], filled: number[], costs: number[]) {
+    if (bids.length === 0) {
+        return [];
+    }
+    let totalQty = 0;
+    for (const b of bids) {
+        totalQty += b.quantity;
+    }
+    if (totalQty === 0) {
+        return [];
+    }
+
+    // Divide into approx 10 bins based on quantity
+    const binSize = totalQty / 10;
+    const bins = [];
+
+    let runningQty = 0;
+    let group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
+    let binTarget = binSize;
+
+    for (let i = 0; i < bids.length; i++) {
+        const b = bids[i];
+        group.quantity += b.quantity;
+        group.filled += filled[i] ?? 0;
+        group.cost += costs[i] ?? 0;
+        group.priceSum += b.bidPrice * b.quantity;
+        runningQty += b.quantity;
+
+        if (runningQty >= binTarget || i === bids.length - 1) {
+            if (group.quantity > 0) {
+                bins.push({
+                    bidPrice: group.priceSum / group.quantity,
+                    quantity: group.quantity,
+                    filled: group.filled,
+                    cost: group.cost,
+                });
+            }
+            binTarget += binSize;
+            group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
+        }
+    }
+    return bins;
 }
 
 // ---------------------------------------------------------------------------

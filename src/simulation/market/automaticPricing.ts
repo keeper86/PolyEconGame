@@ -138,6 +138,12 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
     let factor = 1 + ADJUSTMENT_SPEED * excessDemand;
     factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(PRICE_ADJUST_MAX_DOWN, factor));
 
+    if (newOfferQuantity === 0 && sold === 0) {
+        // When the agent has nothing to offer and sold nothing, it likely means it is not active in the market this tick.
+        // In this case, we do not want to adjust the price at all, as there is no new information to incorporate.
+        return;
+    }
+
     const priceCeil = 1000000;
     const priceFloor = 0.01;
     offer.offerPrice = Math.min(priceCeil, Math.max(priceFloor, price * factor));

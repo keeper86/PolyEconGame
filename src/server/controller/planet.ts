@@ -598,6 +598,65 @@ const agentOfferSchema = z.object({
     lastRevenue: z.number(),
 });
 
+type AgentBidEntry = {
+    agentId: string;
+    agentName: string;
+    bidPrice: number;
+    bidQuantity: number;
+    lastBought: number;
+    fillRatio: number;
+    lastSpent: number;
+};
+
+function buildAgentBids(agents: Agent[], planetId: string, resourceName: string): AgentBidEntry[] {
+    const entries: AgentBidEntry[] = [];
+
+    for (const agent of agents) {
+        const assets = agent.assets[planetId];
+        if (!assets) {
+            continue;
+        }
+
+        const bid = assets.market?.buy[resourceName];
+        if (!bid) {
+            continue;
+        }
+
+        const bidPrice = bid.bidPrice ?? 0;
+        const bidQuantity = bid.bidQuantity ?? 0;
+        const lastBought = bid.lastBought ?? 0;
+        const lastSpent = bid.lastSpent ?? 0;
+        const fillRatio = bidQuantity > 0 ? Math.min(1, lastBought / bidQuantity) : 0;
+
+        if (bidQuantity <= 0 && lastBought <= 0) {
+            continue;
+        }
+
+        entries.push({
+            agentId: agent.id,
+            agentName: agent.name,
+            bidPrice,
+            bidQuantity,
+            lastBought,
+            fillRatio,
+            lastSpent,
+        });
+    }
+
+    entries.sort((a, b) => b.bidPrice - a.bidPrice);
+    return entries;
+}
+
+const agentBidSchema = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    bidPrice: z.number(),
+    bidQuantity: z.number(),
+    lastBought: z.number(),
+    fillRatio: z.number(),
+    lastSpent: z.number(),
+});
+
 const marketSnapshotSchema = z.object({
     planetName: z.string(),
     resourceName: z.string(),
@@ -609,6 +668,20 @@ const marketSnapshotSchema = z.object({
     unfilledDemand: z.number(),
     unsoldSupply: z.number(),
     offers: z.array(agentOfferSchema),
+    bids: z.array(agentBidSchema),
+    populationBids: z
+        .array(
+            z.object({
+                bidPrice: z.number(),
+                bidQuantity: z.number(),
+                lastBought: z.number(),
+                fillRatio: z.number(),
+                lastSpent: z.number(),
+            }),
+        )
+        .optional(),
+    populationDemand: z.number(),
+    agentDemand: z.number(),
 });
 
 export type PlanetMarketSnapshot = z.infer<typeof marketSnapshotSchema>;
@@ -643,6 +716,30 @@ export const getPlanetMarket = () =>
             const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
 
             const offers = buildAgentOffers(agents, input.planetId, input.resourceName);
+            const bids = buildAgentBids(agents, input.planetId, input.resourceName);
+            const agentDemand = bids.reduce((s, b) => s + b.bidQuantity, 0);
+            const populationDemand = Math.max(0, totalDemand - agentDemand);
+
+            const populationBids: {
+                bidPrice: number;
+                bidQuantity: number;
+                lastBought: number;
+                fillRatio: number;
+                lastSpent: number;
+            }[] = [];
+            if (result?.populationBids) {
+                result.populationBids.forEach((bin) => {
+                    const fillRatio = bin.quantity > 0 ? Math.min(1, bin.filled / bin.quantity) : 0;
+                    populationBids.push({
+                        bidPrice: bin.bidPrice,
+                        bidQuantity: bin.quantity,
+                        lastBought: bin.filled,
+                        fillRatio,
+                        lastSpent: bin.cost,
+                    });
+                });
+                populationBids.sort((a, b) => b.bidPrice - a.bidPrice);
+            }
 
             return {
                 tick,
@@ -657,6 +754,10 @@ export const getPlanetMarket = () =>
                     unfilledDemand,
                     unsoldSupply,
                     offers,
+                    bids,
+                    populationBids,
+                    populationDemand,
+                    agentDemand,
                 },
             };
         });

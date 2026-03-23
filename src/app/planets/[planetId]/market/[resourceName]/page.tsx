@@ -10,6 +10,8 @@ import { ArrowLeft } from 'lucide-react';
 import MarketSummaryCards from '../MarketSummaryCards';
 import OrderBookChart from '../OrderBookChart';
 import OfferTable from '../OfferTable';
+import BidTable from '../BidTable';
+import PopulationDemandChart from '../PopulationDemandChart';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
@@ -110,6 +112,39 @@ function ResourceMarketContent({
                 </CardHeader>
                 <CardContent>
                     <OfferTable offers={market.offers} clearingPrice={market.clearingPrice} />
+                </CardContent>
+            </Card>
+
+            <div className='my-3 border-t' />
+
+            <h4 className='text-sm font-semibold mb-1'>Agent demand</h4>
+            <p className='text-xs text-muted-foreground mb-2'>
+                Per-buyer breakdown from the last market-clearing tick, sorted highest bid first.
+            </p>
+            <Card>
+                <CardHeader className='pb-1'>
+                    <CardTitle className='text-xs font-medium text-muted-foreground'>
+                        {market.bids.length} active buyer{market.bids.length !== 1 ? 's' : ''}
+                        {' · '}agent demand {formatNumbers(market.agentDemand)}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <BidTable bids={market.bids} />
+                </CardContent>
+            </Card>
+
+            <div className='my-3 border-t' />
+
+            <h4 className='text-sm font-semibold mb-1'>Population demand</h4>
+            <p className='text-xs text-muted-foreground mb-2'>Aggregated household demand segments.</p>
+            <Card>
+                <CardHeader className='pb-1'>
+                    <CardTitle className='text-xs font-medium text-muted-foreground'>
+                        population demand {formatNumbers(market.populationDemand)}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className='pt-3'>
+                    <PopulationDemandChart bids={market.populationBids || []} />
                 </CardContent>
             </Card>
         </>

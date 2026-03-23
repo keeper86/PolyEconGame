@@ -315,6 +315,13 @@ export type MarketResult = {
     unfilledDemand: number;
     /** Supply that was not sold (units). */
     unsoldSupply: number;
+    /** Binned population demand (so we can display it in the UI) */
+    populationBids?: {
+        bidPrice: number;
+        quantity: number;
+        filled: number;
+        cost: number;
+    }[];
 };
 
 // ---------------------------------------------------------------------------

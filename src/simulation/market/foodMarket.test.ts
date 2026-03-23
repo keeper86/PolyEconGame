@@ -436,7 +436,6 @@ describe('updateAgentPricing', () => {
 
         automaticPricing(agentMap(foodAgent), planet);
 
-        // sell-through = 0/1 = 0 → excess demand negative → price should fall
-        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeLessThan(2.0);
+        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBe(2.0);
     });
 });
