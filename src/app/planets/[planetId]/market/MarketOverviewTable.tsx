@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Card, CardHeader } from '@/components/ui/card';
 
 type Props = {
     planetId: string;
@@ -105,78 +106,73 @@ export default function MarketOverviewTable({ planetId, onSelect }: Props): Reac
                 const label = RESOURCE_LEVEL_LABELS[level as keyof typeof RESOURCE_LEVEL_LABELS] ?? level;
 
                 return (
-                    <section key={level}>
-                        <h4 className='text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2'>
-                            {label}
-                        </h4>
-                        <div className='rounded-md border overflow-x-auto'>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className='w-40 min-w-32'>Resource</TableHead>
-                                        <TableHead className='text-right'>Price</TableHead>
-                                        <TableHead className='text-right hidden sm:table-cell'>Production</TableHead>
-                                        <TableHead className='text-right hidden md:table-cell'>Supply</TableHead>
-                                        <TableHead className='text-right hidden md:table-cell'>Demand</TableHead>
-                                        <TableHead className='text-right'>Sold</TableHead>
-                                        <TableHead className='text-right hidden sm:table-cell'>Fill</TableHead>
+                    <Card key={level} className='border'>
+                        <CardHeader className='bg-transparent border-b'>{label}</CardHeader>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className='w-40 min-w-32'>Resource</TableHead>
+                                    <TableHead className='text-right'>Price</TableHead>
+                                    <TableHead className='text-right hidden sm:table-cell'>Production</TableHead>
+                                    <TableHead className='text-right hidden md:table-cell'>Supply</TableHead>
+                                    <TableHead className='text-right hidden md:table-cell'>Demand</TableHead>
+                                    <TableHead className='text-right'>Sold</TableHead>
+                                    <TableHead className='text-right hidden sm:table-cell'>Fill</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {levelRows.map((row) => (
+                                    <TableRow
+                                        key={row.resourceName}
+                                        className='cursor-pointer hover:bg-accent'
+                                        onClick={() => onSelect(row.resourceName)}
+                                    >
+                                        <TableCell className='font-medium'>
+                                            <div className='flex items-center gap-2'>
+                                                <Image
+                                                    src={productImage(row.resourceName)}
+                                                    alt={row.resourceName}
+                                                    width={24}
+                                                    height={24}
+                                                    className='object-contain flex-shrink-0'
+                                                    onError={(e) => {
+                                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                                    }}
+                                                />
+                                                <span className='text-xs leading-tight'>{row.resourceName}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className='text-right tabular-nums'>
+                                            {formatNumbers(row.clearingPrice)}
+                                        </TableCell>
+                                        <TableCell className='text-right tabular-nums hidden sm:table-cell'>
+                                            {formatNumbers(row.totalProduction)}
+                                        </TableCell>
+                                        <TableCell className='text-right tabular-nums hidden md:table-cell'>
+                                            {formatNumbers(row.totalSupply)}
+                                        </TableCell>
+                                        <TableCell className='text-right tabular-nums hidden md:table-cell'>
+                                            {formatNumbers(row.totalDemand)}
+                                        </TableCell>
+                                        <TableCell className='text-right tabular-nums'>
+                                            {formatNumbers(row.totalSold)}
+                                        </TableCell>
+                                        <TableCell className='text-right hidden sm:table-cell'>
+                                            {(() => {
+                                                const status = classifyMarket(row);
+                                                const { label, className } = STATUS_CONFIG[status];
+                                                return (
+                                                    <Badge variant='outline' className={cn('text-xs', className)}>
+                                                        {label}
+                                                    </Badge>
+                                                );
+                                            })()}
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {levelRows.map((row) => (
-                                        <TableRow
-                                            key={row.resourceName}
-                                            className='cursor-pointer hover:bg-accent'
-                                            onClick={() => onSelect(row.resourceName)}
-                                        >
-                                            <TableCell className='font-medium'>
-                                                <div className='flex items-center gap-2'>
-                                                    <Image
-                                                        src={productImage(row.resourceName)}
-                                                        alt={row.resourceName}
-                                                        width={24}
-                                                        height={24}
-                                                        className='object-contain flex-shrink-0'
-                                                        onError={(e) => {
-                                                            (e.currentTarget as HTMLImageElement).style.display =
-                                                                'none';
-                                                        }}
-                                                    />
-                                                    <span className='text-xs leading-tight'>{row.resourceName}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className='text-right tabular-nums'>
-                                                {formatNumbers(row.clearingPrice)}
-                                            </TableCell>
-                                            <TableCell className='text-right tabular-nums hidden sm:table-cell'>
-                                                {formatNumbers(row.totalProduction)}
-                                            </TableCell>
-                                            <TableCell className='text-right tabular-nums hidden md:table-cell'>
-                                                {formatNumbers(row.totalSupply)}
-                                            </TableCell>
-                                            <TableCell className='text-right tabular-nums hidden md:table-cell'>
-                                                {formatNumbers(row.totalDemand)}
-                                            </TableCell>
-                                            <TableCell className='text-right tabular-nums'>
-                                                {formatNumbers(row.totalSold)}
-                                            </TableCell>
-                                            <TableCell className='text-right hidden sm:table-cell'>
-                                                {(() => {
-                                                    const status = classifyMarket(row);
-                                                    const { label, className } = STATUS_CONFIG[status];
-                                                    return (
-                                                        <Badge variant='outline' className={cn('text-xs', className)}>
-                                                            {label}
-                                                        </Badge>
-                                                    );
-                                                })()}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </section>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </Card>
                 );
             })}
         </div>

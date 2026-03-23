@@ -747,6 +747,77 @@ export const getPlanetMarket = () =>
         });
 
 // ---------------------------------------------------------------------------
+// Claims overview (land-bound resources)
+// ---------------------------------------------------------------------------
+
+const claimResourceSummarySchema = z.object({
+    resourceName: z.string(),
+    totalCapacity: z.number(),
+    tenantedCapacity: z.number(),
+    availableCapacity: z.number(),
+    totalClaims: z.number(),
+    tenantedClaims: z.number(),
+    renewable: z.boolean(),
+});
+
+export type ClaimResourceSummary = z.infer<typeof claimResourceSummarySchema>;
+
+export const getPlanetClaims = () =>
+    protectedProcedure
+        .input(z.object({ planetId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                governmentId: z.string(),
+                resources: z.array(claimResourceSummarySchema),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ tick }, { planet }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getPlanet(input.planetId),
+            ]);
+
+            if (!planet) {
+                return { tick, governmentId: '', resources: [] };
+            }
+
+            const summaries: ClaimResourceSummary[] = Object.entries(planet.resources)
+                .filter(([, claims]) => claims.length > 0 && claims[0]?.type.form === 'landBoundResource')
+                .map(([resourceName, claims]) => {
+                    let tenantedCapacity = 0;
+                    let tenantedClaims = 0;
+                    let totalCapacity = 0;
+                    let isRenewable = false;
+
+                    for (const claim of claims) {
+                        totalCapacity += claim.maximumCapacity;
+                        if (claim.regenerationRate > 0) {
+                            isRenewable = true;
+                        }
+                        const isTenanted = claim.tenantAgentId !== null && claim.tenantAgentId !== claim.claimAgentId;
+                        if (isTenanted) {
+                            tenantedCapacity += claim.maximumCapacity;
+                            tenantedClaims += 1;
+                        }
+                    }
+
+                    return {
+                        resourceName,
+                        totalCapacity,
+                        tenantedCapacity,
+                        availableCapacity: totalCapacity - tenantedCapacity,
+                        totalClaims: claims.length,
+                        tenantedClaims,
+                        renewable: isRenewable,
+                    };
+                })
+                .sort((a, b) => a.resourceName.localeCompare(b.resourceName));
+
+            return { tick, governmentId: planet.governmentId, resources: summaries };
+        });
+
+// ---------------------------------------------------------------------------
 // Market overview (all resources)
 // ---------------------------------------------------------------------------
 
