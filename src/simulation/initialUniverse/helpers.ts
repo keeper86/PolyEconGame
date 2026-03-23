@@ -176,23 +176,29 @@ export function createPopulation(total: number): Population {
             addTo(pop, age, 'education', 'tertiary', tertiaryEdu);
             addTo(pop, age, 'unoccupied', 'primary', unoccupied);
         } else if (age < 45) {
-            const primaryUnocc = Math.floor(ageCount * 0.3);
-            const secondaryUnocc = Math.floor(ageCount * 0.4);
-            const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
+            const noneUnocc = Math.floor(ageCount * 0.1);
+            const primaryUnocc = Math.floor(ageCount * 0.27);
+            const secondaryUnocc = Math.floor(ageCount * 0.36);
+            const tertiaryUnocc = ageCount - noneUnocc - primaryUnocc - secondaryUnocc;
+            addTo(pop, age, 'unoccupied', 'none', noneUnocc);
             addTo(pop, age, 'unoccupied', 'primary', primaryUnocc);
             addTo(pop, age, 'unoccupied', 'secondary', secondaryUnocc);
             addTo(pop, age, 'unoccupied', 'tertiary', tertiaryUnocc);
         } else if (age < 65) {
-            const primaryUnocc = Math.floor(ageCount * 0.4);
-            const secondaryUnocc = Math.floor(ageCount * 0.4);
-            const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
+            const noneUnocc = Math.floor(ageCount * 0.1);
+            const primaryUnocc = Math.floor(ageCount * 0.36);
+            const secondaryUnocc = Math.floor(ageCount * 0.36);
+            const tertiaryUnocc = ageCount - noneUnocc - primaryUnocc - secondaryUnocc;
+            addTo(pop, age, 'unoccupied', 'none', noneUnocc);
             addTo(pop, age, 'unoccupied', 'primary', primaryUnocc);
             addTo(pop, age, 'unoccupied', 'secondary', secondaryUnocc);
             addTo(pop, age, 'unoccupied', 'tertiary', tertiaryUnocc);
         } else {
-            const primaryUnocc = Math.floor(ageCount * 0.45);
-            const secondaryUnocc = Math.floor(ageCount * 0.27);
-            const tertiaryUnocc = ageCount - primaryUnocc - secondaryUnocc;
+            const noneUnable = Math.floor(ageCount * 0.1);
+            const primaryUnocc = Math.floor(ageCount * 0.41);
+            const secondaryUnocc = Math.floor(ageCount * 0.24);
+            const tertiaryUnocc = ageCount - noneUnable - primaryUnocc - secondaryUnocc;
+            addTo(pop, age, 'unableToWork', 'none', noneUnable);
             addTo(pop, age, 'unableToWork', 'primary', primaryUnocc);
             addTo(pop, age, 'unableToWork', 'secondary', secondaryUnocc);
             addTo(pop, age, 'unableToWork', 'tertiary', tertiaryUnocc);
