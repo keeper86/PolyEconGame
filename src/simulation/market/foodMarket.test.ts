@@ -7,13 +7,14 @@ import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
-import { agriculturalProductResourceType } from '../planet/resources';
+import { agriculturalProductResourceType, clothingResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 const FOOD = agriculturalProductResourceType.name;
+const CLOTHING = clothingResourceType.name;
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
     return makeGS(planet, agents, 1);
@@ -74,6 +75,7 @@ function setFoodOffer(agent: Agent, offerPrice: number, offerQuantity?: number, 
                 lastSold,
             },
         },
+        buy: {},
     };
 }
 
@@ -437,5 +439,147 @@ describe('updateAgentPricing', () => {
         automaticPricing(agentMap(foodAgent), planet);
 
         expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBe(2.0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Food-scarcity suppression of discretionary demand
+// ---------------------------------------------------------------------------
+
+describe('discretionary demand suppression under food scarcity', () => {
+    // Wealth is intentionally small so the budget (not the physical yearly cap)
+    // is the binding constraint, making scarcity suppression observable.
+    const WEALTH_PER_PERSON = 0.02;
+
+    function makeClothingAgent(id = 'clothing-agent'): Agent {
+        const agent = makeAgent(id);
+        putIntoStorageFacility(agent.assets.p.storageFacility, clothingResourceType, 1e6);
+        agent.assets.p.market = {
+            sell: {
+                [CLOTHING]: {
+                    resource: clothingResourceType,
+                    offerPrice: 1.0,
+                    offerQuantity: 1e6,
+                },
+            },
+            buy: {},
+        };
+        return agent;
+    }
+
+    function setFoodInventoryPerPerson(planet: Planet, foodPerPerson: number): void {
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    cat.inventory[FOOD] = foodPerPerson * cat.total;
+                }
+            }),
+        );
+    }
+
+    function totalClothingBought(planet: Planet): number {
+        let total = 0;
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                total += cat.inventory[CLOTHING] ?? 0;
+            }),
+        );
+        return total;
+    }
+
+    it('full food buffer → normal discretionary demand for clothing', () => {
+        const planet = makePlanetWithPopulation({ none: 500 }).planet;
+        const clothingAgent = makeClothingAgent();
+
+        const totalPop = planet.population.demography.reduce((s, cohort) => {
+            let n = 0;
+            forEachPopulationCohort(cohort, (cat) => {
+                n += cat.total;
+            });
+            return s + n;
+        }, 0);
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    cat.wealth = { mean: WEALTH_PER_PERSON, variance: 0 };
+                }
+            }),
+        );
+        planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
+        planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
+
+        const fullFoodBuffer = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        setFoodInventoryPerPerson(planet, fullFoodBuffer);
+
+        marketTick(agentMap(clothingAgent), planet);
+
+        expect(totalClothingBought(planet)).toBeGreaterThan(0);
+    });
+
+    it('empty food buffer → zero discretionary demand for clothing', () => {
+        const planet = makePlanetWithPopulation({ none: 500 }).planet;
+        const clothingAgent = makeClothingAgent();
+
+        const totalPop = planet.population.demography.reduce((s, cohort) => {
+            let n = 0;
+            forEachPopulationCohort(cohort, (cat) => {
+                n += cat.total;
+            });
+            return s + n;
+        }, 0);
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    cat.wealth = { mean: WEALTH_PER_PERSON, variance: 0 };
+                }
+            }),
+        );
+        planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
+        planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
+
+        setFoodInventoryPerPerson(planet, 0);
+
+        marketTick(agentMap(clothingAgent), planet);
+
+        expect(totalClothingBought(planet)).toBe(0);
+    });
+
+    it('partial food buffer → discretionary demand is proportionally reduced', () => {
+        const fullFoodBuffer = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+
+        function runWithFoodLevel(foodPerPerson: number): number {
+            const planet = makePlanetWithPopulation({ none: 500 }).planet;
+            const clothingAgent = makeClothingAgent();
+
+            const totalPop = planet.population.demography.reduce((s, cohort) => {
+                let n = 0;
+                forEachPopulationCohort(cohort, (cat) => {
+                    n += cat.total;
+                });
+                return s + n;
+            }, 0);
+            planet.population.demography.forEach((cohort) =>
+                forEachPopulationCohort(cohort, (cat) => {
+                    if (cat.total > 0) {
+                        cat.wealth = { mean: WEALTH_PER_PERSON, variance: 0 };
+                    }
+                }),
+            );
+            planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
+            planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
+
+            setFoodInventoryPerPerson(planet, foodPerPerson);
+
+            marketTick(agentMap(clothingAgent), planet);
+            return totalClothingBought(planet);
+        }
+
+        const clothingWithNoFood = runWithFoodLevel(0);
+        const clothingWithHalfFood = runWithFoodLevel(fullFoodBuffer * 0.5);
+        const clothingWithFullFood = runWithFoodLevel(fullFoodBuffer);
+
+        expect(clothingWithNoFood).toBe(0);
+        expect(clothingWithHalfFood).toBeGreaterThan(clothingWithNoFood);
+        expect(clothingWithFullFood).toBeGreaterThan(clothingWithHalfFood);
     });
 });

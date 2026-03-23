@@ -1,12 +1,13 @@
-import { INITIAL_FOOD_PRICE, PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '../constants';
+import {
+    FOOD_PRICE_CEIL,
+    FOOD_PRICE_FLOOR,
+    INITIAL_FOOD_PRICE,
+    INPUT_BUFFER_TARGET_TICKS,
+    PRICE_ADJUST_MAX_DOWN,
+    PRICE_ADJUST_MAX_UP,
+} from '../constants';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
 import { queryStorageFacility } from '../planet/storage';
-
-/**
- * Number of ticks of input stock the agent wants to maintain as a buffer.
- * E.g. 30 means the agent tries to keep 30 ticks' worth of each required input.
- */
-const INPUT_BUFFER_TARGET_TICKS = 30;
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -50,12 +51,28 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     // to the facility's output: Σ(output_qty × output_price) / input_qty.
     // When a resource is used across multiple facilities, we take the highest ceiling
     // (the agent values it at whatever facility extracts the most value from it).
+    //
+    // For outputs without a market price yet, we fall back to the total input cost per
+    // output unit (break-even floor). This prevents the ceiling from collapsing to
+    // INITIAL_FOOD_PRICE when a downstream product has never been traded.
     const inputValueCeiling = new Map<string, number>();
     for (const facility of assets.productionFacilities) {
-        const outputRevenuePerScale = facility.produces.reduce(
-            (sum, p) => sum + p.quantity * (planet.marketPrices[p.resource.name] ?? INITIAL_FOOD_PRICE),
-            0,
-        );
+        const tradedInputCostPerScale = facility.needs.reduce((sum, { resource, quantity }) => {
+            if (resource.form === 'landBoundResource') {
+                return sum;
+            }
+            return sum + quantity * (planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE);
+        }, 0);
+        const totalOutputQty = facility.produces.reduce((sum, p) => sum + p.quantity, 0);
+        const inputCostFallbackPerOutputUnit =
+            totalOutputQty > 0 ? tradedInputCostPerScale / totalOutputQty : INITIAL_FOOD_PRICE;
+
+        const outputRevenuePerScale = facility.produces.reduce((sum, p) => {
+            const knownPrice = planet.marketPrices[p.resource.name];
+            const price = knownPrice ?? inputCostFallbackPerOutputUnit;
+            return sum + p.quantity * price;
+        }, 0);
+
         for (const { resource, quantity } of facility.needs) {
             if (resource.form === 'landBoundResource' || quantity <= 0) {
                 continue;
@@ -144,8 +161,8 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
-    const priceCeil = 1000000;
-    const priceFloor = 0.01;
+    const priceCeil = FOOD_PRICE_CEIL;
+    const priceFloor = FOOD_PRICE_FLOOR;
     offer.offerPrice = Math.min(priceCeil, Math.max(priceFloor, price * factor));
 }
 
@@ -177,11 +194,6 @@ function adjustBidPrice(
     }
 
     const lastBought = bid.lastBought ?? 0;
-
-    if (lastBought === 0) {
-        return;
-    }
-
     const lastDemanded = previousDemand ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
@@ -189,7 +201,7 @@ function adjustBidPrice(
     let factor = 1 + ADJUSTMENT_SPEED * fillDeficit;
     factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(1, factor));
 
-    const priceFloor = 0.01;
-    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : 1000000;
+    const priceFloor = FOOD_PRICE_FLOOR;
+    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : FOOD_PRICE_CEIL;
     bid.bidPrice = Math.min(priceCeil, Math.max(priceFloor, bid.bidPrice * factor));
 }

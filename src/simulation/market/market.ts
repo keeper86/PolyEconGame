@@ -78,6 +78,10 @@ interface TradeRecord {
 /**
  * A demand rule maps a resource to a function that returns the desired
  * per-person quantity for a given cohort cell.
+ *
+ * foodScarcityFactor ∈ [0, 1]:
+ *   0 → food buffer is full, no suppression of discretionary spending.
+ *   1 → food buffer is empty, all wealth is diverted to food.
  */
 type DemandRule = (params: {
     resource: Resource;
@@ -85,6 +89,7 @@ type DemandRule = (params: {
     wealthMeanPerPerson: number;
     inventoryPerPerson: number;
     referencePrice: number;
+    foodScarcityFactor: number;
 }) => {
     /** Per-person desired purchase quantity (>= 0). */
     quantity: number;
@@ -134,13 +139,16 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
 // capped by a per-person yearly quantity target.  Unlike food, there
 // is no survival buffer: demand stops when wealth drops to zero.
 //
+// When food is scarce (foodScarcityFactor > 0), the discretionary
+// budget is suppressed proportionally, diverting wealth to food first.
+//
 // incomeSharePerTick  - fraction of per-capita wealth spent per tick
 // yearlyQtyPerPerson  - physical cap on how much one person buys/year
 // ------------------------------------------------------------------
 function makeConsumerGoodRule(incomeSharePerTick: number, yearlyQtyPerPerson: number): DemandRule {
     const qtyPerTick = yearlyQtyPerPerson / TICKS_PER_YEAR;
 
-    return ({ wealthMeanPerPerson, referencePrice }) => {
+    return ({ wealthMeanPerPerson, referencePrice, foodScarcityFactor }) => {
         if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
@@ -148,15 +156,15 @@ function makeConsumerGoodRule(incomeSharePerTick: number, yearlyQtyPerPerson: nu
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const budgetPerTick = wealthMeanPerPerson * incomeSharePerTick;
-        const affordableQty = budgetPerTick / referencePrice;
+        const discretionaryBudget = wealthMeanPerPerson * incomeSharePerTick * (1 - foodScarcityFactor);
+        const affordableQty = discretionaryBudget / referencePrice;
         const effectiveQty = Math.min(qtyPerTick, affordableQty);
 
         if (effectiveQty <= 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const reservationPrice = budgetPerTick / effectiveQty;
+        const reservationPrice = discretionaryBudget / effectiveQty;
         return { quantity: effectiveQty, reservationPrice };
     };
 }
@@ -196,7 +204,7 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const orders of askBooks.values()) {
         for (const ask of orders) {
             const offer = ask.agent.assets[planet.id]?.market?.sell[ask.resource.name];
-            if (offer) {
+            if (offer !== undefined) {
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
             }
@@ -391,6 +399,8 @@ function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<str
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
             const qty = offer.offerQuantity ?? 0;
             if (qty <= 0) {
+                offer.lastSold = 0;
+                offer.lastRevenue = 0;
                 continue;
             }
             let book = books.get(resourceName);
@@ -444,12 +454,19 @@ function buildPopulationDemand(planet: Planet, resources: Set<string>): Map<stri
 
                 const inventoryPerPerson = (category.inventory[resourceName] ?? 0) / pop;
 
+                const foodInventoryPerPerson =
+                    resourceName === agriculturalProductResourceType.name
+                        ? inventoryPerPerson
+                        : (category.inventory[agriculturalProductResourceType.name] ?? 0) / pop;
+                const foodScarcityFactor = Math.max(0, Math.min(1, 1 - foodInventoryPerPerson / foodTargetPerPerson));
+
                 const { quantity: qtyPerPerson, reservationPrice } = rule({
                     resource: { name: resourceName } as Resource,
                     population: pop,
                     wealthMeanPerPerson: wm.mean,
                     inventoryPerPerson,
                     referencePrice,
+                    foodScarcityFactor,
                 });
 
                 const totalQty = qtyPerPerson * pop;

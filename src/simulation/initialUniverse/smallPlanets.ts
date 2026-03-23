@@ -1,4 +1,4 @@
-import { agriculturalProductResourceType } from '../planet/resources';
+import { initialMarketPrices } from './initialMarketPrices';
 import {
     arableLandResourceType,
     coalDepositResourceType,
@@ -37,7 +37,6 @@ interface AgriSpec {
     name: string;
     arableLand: number;
     waterSource: number;
-    wealth: number;
 }
 
 interface SmallPlanetSpec {
@@ -133,7 +132,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                     name: `${company.name} Storage`,
                 }),
                 tenancies: [arableId, waterId],
-                wealth: company.wealth,
             }),
         );
     }
@@ -197,7 +195,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         governmentId: govId,
         bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0, depositRate: 0 },
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
-        marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+        marketPrices: { ...initialMarketPrices },
         lastMarketResult: {},
         resources: {
             [arableLandResourceType.name]: arableClaims,
@@ -243,7 +241,6 @@ function buildGuneIndustrialAgents(): Agent[] {
         facilities: [l1, l2],
         storage: makeStorage({ planetId: 'gune', id: 'gune-timber-storage', name: 'Gune Timber Storage' }),
         tenancies: [forestId],
-        wealth: 5e7,
     });
 
     const fp1 = foodProcessingPlant('gune', 'gune-foods-plant');
@@ -256,7 +253,6 @@ function buildGuneIndustrialAgents(): Agent[] {
         planetId: 'gune',
         facilities: [fp1],
         storage: makeStorage({ planetId: 'gune', id: 'gune-food-storage', name: 'Gune Foods Storage' }),
-        wealth: 3e7,
     });
 
     return [timberAgent, foodAgent];
@@ -296,7 +292,6 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
             facilities: [c1, c2],
             storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-polar-storage', name: 'Polar Energy Storage' }),
             tenancies: [coalId],
-            wealth: 6e7,
         }),
     ];
 }
@@ -334,7 +329,6 @@ function buildPandaraIndustrialAgents(): Agent[] {
         facilities: [i1, i2],
         storage: makeStorage({ planetId: 'pandara', id: 'pandara-steel-storage', name: 'Pandara Steel Storage' }),
         tenancies: [ironId],
-        wealth: 3e8,
     });
 
     const fp1 = foodProcessingPlant('pandara', 'pandara-food-plant');
@@ -350,7 +344,6 @@ function buildPandaraIndustrialAgents(): Agent[] {
         planetId: 'pandara',
         facilities: [fp1, bev1],
         storage: makeStorage({ planetId: 'pandara', id: 'pandara-food-storage', name: 'Pandara Food Storage' }),
-        wealth: 1.5e8,
     });
 
     return [steelAgent, foodAgent];
@@ -394,7 +387,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
             name: 'Paradies Refinery Storage',
         }),
         tenancies: [oilId],
-        wealth: 4e8,
     });
 
     const sandId = 'paradies-sand-glass-works';
@@ -420,7 +412,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
         facilities: [gl1],
         storage: makeStorage({ planetId: 'paradies', id: 'paradies-glass-storage', name: 'Paradies Glass Storage' }),
         tenancies: [sandId],
-        wealth: 2e8,
     });
 
     return [refineryAgent, glassAgent];
@@ -459,7 +450,6 @@ function buildSuerteIndustrialAgents(): Agent[] {
         facilities: [cm1, cs1],
         storage: makeStorage({ planetId: 'suerte', id: 'suerte-copper-storage', name: 'Suerte Copper Storage' }),
         tenancies: [copperId],
-        wealth: 2.5e8,
     });
 
     const cem1 = cementPlant('suerte', 'suerte-cement-plant');
@@ -472,7 +462,6 @@ function buildSuerteIndustrialAgents(): Agent[] {
         planetId: 'suerte',
         facilities: [cem1],
         storage: makeStorage({ planetId: 'suerte', id: 'suerte-cement-storage', name: 'Suerte Cement Storage' }),
-        wealth: 1e8,
     });
 
     return [copperAgent, cementAgent];
@@ -500,7 +489,6 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
                     name: 'Gune Valley Crops',
                     arableLand: 4000,
                     waterSource: 4000,
-                    wealth: 8e6,
                 },
             ],
             industrialAgents: buildGuneIndustrialAgents(),
@@ -540,7 +528,6 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
                     name: 'Frost Agriculture',
                     arableLand: 3000,
                     waterSource: 3000,
-                    wealth: 5e6,
                 },
             ],
             industrialAgents: buildIcedoniaIndustrialAgents(),
@@ -576,28 +563,24 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
                     name: 'River Farms Pandara',
                     arableLand: 25000,
                     waterSource: 25000,
-                    wealth: 8e7,
                 },
                 {
                     id: 'pandara-sunleaf',
                     name: 'Sunleaf Agriculture',
                     arableLand: 20000,
                     waterSource: 20000,
-                    wealth: 6e7,
                 },
                 {
                     id: 'pandara-crop-union',
                     name: 'Pandara Crop Union',
                     arableLand: 15000,
                     waterSource: 15000,
-                    wealth: 4e7,
                 },
                 {
                     id: 'pandara-harvest-guild',
                     name: 'Harvest Guild Pandara',
                     arableLand: 10000,
                     waterSource: 10000,
-                    wealth: 3e7,
                 },
             ],
             industrialAgents: buildPandaraIndustrialAgents(),
@@ -637,21 +620,18 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
                     name: 'Blossom Agriculture',
                     arableLand: 15000,
                     waterSource: 15000,
-                    wealth: 3e7,
                 },
                 {
                     id: 'paradies-golden-fields',
                     name: 'Golden Fields Paradies',
                     arableLand: 10000,
                     waterSource: 10000,
-                    wealth: 2e7,
                 },
                 {
                     id: 'paradies-sun-harvest',
                     name: 'Paradies Sun Harvest',
                     arableLand: 8000,
                     waterSource: 8000,
-                    wealth: 1.5e7,
                 },
             ],
             industrialAgents: buildParadiesIndustrialAgents(),
@@ -691,28 +671,24 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
                     name: 'Lucky Harvest',
                     arableLand: 25000,
                     waterSource: 25000,
-                    wealth: 7e7,
                 },
                 {
                     id: 'suerte-fortune-farms',
                     name: 'Fortune Farms',
                     arableLand: 20000,
                     waterSource: 20000,
-                    wealth: 5e7,
                 },
                 {
                     id: 'suerte-oasis-ag',
                     name: 'Oasis Agriculture',
                     arableLand: 15000,
                     waterSource: 15000,
-                    wealth: 3e7,
                 },
                 {
                     id: 'suerte-sunrise-crops',
                     name: 'Sunrise Crops',
                     arableLand: 10000,
                     waterSource: 10000,
-                    wealth: 2e7,
                 },
             ],
             industrialAgents: buildSuerteIndustrialAgents(),

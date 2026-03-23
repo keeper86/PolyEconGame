@@ -1,4 +1,4 @@
-import { agriculturalProductResourceType } from '../planet/resources';
+import { initialMarketPrices } from './initialMarketPrices';
 import {
     arableLandResourceType,
     coalDepositResourceType,
@@ -33,13 +33,11 @@ interface AgriSpec {
     name: string;
     arableLand: number;
     waterSource: number;
-    wealth: number;
 }
 
 interface IndustrialSpec {
     id: string;
     name: string;
-    wealth: number;
 }
 
 const agriSpecs: AgriSpec[] = [
@@ -135,7 +133,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                 facilities: [waterFacility, agriFacility],
                 storage: makeStorage({ planetId: AC_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
                 tenancies: [arableId, waterId],
-                wealth: spec.wealth,
             }),
         );
     }
@@ -171,7 +168,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             facilities: [ci1, ci2],
             storage: makeStorage({ planetId: AC_ID, id: 'colony-iron-storage', name: 'Colony Iron Storage' }),
             tenancies: [ironId],
-            wealth: colonyIron.wealth,
         }),
     );
 
@@ -204,7 +200,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             facilities: [ec1, ec2],
             storage: makeStorage({ planetId: AC_ID, id: 'energy-corp-storage', name: 'AC Energy Storage' }),
             tenancies: [coalId],
-            wealth: energyCorp.wealth,
         }),
     );
 
@@ -220,7 +215,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [fp1],
             storage: makeStorage({ planetId: AC_ID, id: 'ac-food-proc-storage', name: 'AC Food Processing Storage' }),
-            wealth: foodProc.wealth,
         }),
     );
 
@@ -236,7 +230,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [ph1],
             storage: makeStorage({ planetId: AC_ID, id: 'ac-pharma-colony-storage', name: 'Colony Pharma Storage' }),
-            wealth: pharmaColony.wealth,
         }),
     );
 
@@ -289,7 +282,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         governmentId: GOV,
         bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0, depositRate: 0 },
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
-        marketPrices: { [agriculturalProductResourceType.name]: 1.0 },
+        marketPrices: { ...initialMarketPrices },
         lastMarketResult: {},
         resources: {
             [arableLandResourceType.name]: arableClaims,
