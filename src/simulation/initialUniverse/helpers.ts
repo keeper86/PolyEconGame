@@ -54,6 +54,7 @@ export function makeProductionFacility(opts: {
             overqualifiedWorkers: {},
             exactUsedByEdu: {},
             totalUsedByEdu: {},
+            lastProduced: {},
         },
     };
 }

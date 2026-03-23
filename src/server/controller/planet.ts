@@ -842,10 +842,8 @@ function computePlanetProduction(agents: Agent[], planetId: string): Record<stri
             continue;
         }
         for (const fac of assets.productionFacilities ?? []) {
-            const eff = fac.lastTickResults?.overallEfficiency ?? 0;
-            for (const p of fac.produces ?? []) {
-                const qty = Math.floor((p.quantity ?? 0) * fac.scale * eff);
-                production[p.resource.name] = (production[p.resource.name] ?? 0) + qty;
+            for (const [resourceName, qty] of Object.entries(fac.lastTickResults?.lastProduced ?? {})) {
+                production[resourceName] = (production[resourceName] ?? 0) + qty;
             }
         }
     }

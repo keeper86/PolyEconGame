@@ -81,10 +81,8 @@ export const computeAgentProduction = (agent: Agent): Record<string, number> => 
     const production: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
         for (const fac of planetAssets.productionFacilities ?? []) {
-            const eff = fac.lastTickResults?.overallEfficiency ?? 0;
-            for (const p of fac.produces ?? []) {
-                const qty = Math.floor((p.quantity ?? 0) * fac.scale * eff);
-                production[p.resource.name] = (production[p.resource.name] || 0) + qty;
+            for (const [resourceName, qty] of Object.entries(fac.lastTickResults?.lastProduced ?? {})) {
+                production[resourceName] = (production[resourceName] || 0) + qty;
             }
         }
     }

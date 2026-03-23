@@ -45,6 +45,7 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
                 overqualifiedWorkers: {},
                 exactUsedByEdu: {},
                 totalUsedByEdu: {},
+                lastProduced: {},
             },
         },
     ];
@@ -122,6 +123,7 @@ describe('automaticPricing — buy side', () => {
                     overqualifiedWorkers: {},
                     exactUsedByEdu: {},
                     totalUsedByEdu: {},
+                    lastProduced: {},
                 },
             },
         ];

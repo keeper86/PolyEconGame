@@ -336,6 +336,7 @@ export function makeProductionFacility(
             workerEfficiency: {},
             exactUsedByEdu: {},
             totalUsedByEdu: {},
+            lastProduced: {},
         },
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,

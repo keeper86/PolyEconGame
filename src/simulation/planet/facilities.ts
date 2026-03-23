@@ -72,6 +72,7 @@ const zeroLastTicksResults = {
     overqualifiedWorkers: {},
     exactUsedByEdu: {},
     totalUsedByEdu: {},
+    lastProduced: {},
 };
 
 const defaultPollutionPerTick = {

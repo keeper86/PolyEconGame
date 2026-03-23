@@ -156,6 +156,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 overqualifiedWorkers,
                 totalUsedByEdu,
                 exactUsedByEdu,
+                lastProduced: {},
             };
 
             if (overallEfficiency <= 0) {
@@ -171,6 +172,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 if (produced <= 0) {
                     return;
                 }
+                facility.lastTickResults.lastProduced[output.resource.name] = produced;
                 putIntoStorageFacility(assets.storageFacility, output.resource, produced);
             });
 
