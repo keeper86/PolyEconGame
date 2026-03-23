@@ -299,6 +299,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 100_000_000,
             claimAgentId: GOV,
             tenantAgentId: GOV,
+            renewable: true,
         }),
     );
     waterClaims.push(
@@ -308,6 +309,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 100_000_000,
             claimAgentId: GOV,
             tenantAgentId: GOV,
+            renewable: true,
         }),
     );
 
@@ -324,6 +326,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.arableLand * 0.001),
+                renewable: true,
             }),
         );
         waterClaims.push(
@@ -334,6 +337,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.waterSource * 0.0005),
+                renewable: true,
             }),
         );
 

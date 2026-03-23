@@ -171,7 +171,13 @@ export default function ResourceMarketPage() {
                 </button>
                 {resourceName && (
                     <div className='relative h-6 w-6'>
-                        <Image src={productImage(resourceName)} alt={resourceName} fill className='object-contain' />
+                        <Image
+                            src={productImage(resourceName)}
+                            sizes='(max-width: 80px) 100vw, (max-width: 80px) 50vw,(max-width: 80px) 33vw'
+                            alt={resourceName}
+                            fill
+                            className='object-contain'
+                        />
                     </div>
                 )}
                 {resourceName && <h2 className='text-base font-semibold'>{resourceName} Market</h2>}
