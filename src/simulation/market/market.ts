@@ -233,7 +233,14 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
         const askOrders = askBooks.get(resourceName) ?? [];
         // Household bids are built here, after all higher-priority goods have
         // already been settled, so wealth reflects remaining purchasing power.
-        const householdBids = buildPopulationDemandForResource(planet, resourceName);
+        // Sort descending by bid price so that:
+        //   1. binHouseholdBids produces deciles in price order (highest first),
+        //   2. householdTrades from clearUnifiedBids are emitted in the same
+        //      order as the householdBidFilled array, making reconstructBidCosts
+        //      correctly attribute trade costs to each cohort.
+        const householdBids = buildPopulationDemandForResource(planet, resourceName).sort(
+            (a, b) => b.bidPrice - a.bidPrice,
+        );
         const agentBids = agentBidBooks.get(resourceName) ?? [];
 
         const totalSupply = askOrders.reduce((s, a) => s + a.quantity, 0);

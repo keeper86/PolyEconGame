@@ -337,8 +337,8 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             }),
         );
 
-        const agriScale = Math.max(1, Math.round(spec.arableLand / 5_000));
-        const waterScale = Math.max(1, Math.round(spec.waterSource / 5_000));
+        const agriScale = Math.max(1, Math.round(spec.arableLand / 2_000));
+        const waterScale = Math.max(1, Math.round(spec.waterSource / 2_000));
         const isCottonFarmer = spec.id === 'cotton-world' || spec.id === 'textile-fields';
 
         const facilities = isCottonFarmer
@@ -466,11 +466,11 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         );
 
         const oilFacility = oilWell(EARTH_ID, `${spec.id}-oil`);
-        oilFacility.scale = Math.max(1, Math.round(spec.oil / 10_000_000));
+        oilFacility.scale = Math.max(1, Math.round(spec.oil / 10_000_00));
         oilFacility.maxScale = oilFacility.scale;
 
         const gasFacility = naturalGasWell(EARTH_ID, `${spec.id}-gas`);
-        gasFacility.scale = Math.max(1, Math.round(spec.gas / 10_000_000));
+        gasFacility.scale = Math.max(1, Math.round(spec.gas / 10_000_00));
         gasFacility.maxScale = gasFacility.scale;
 
         agents.push(
@@ -1205,8 +1205,8 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     // --- Oil refineries (buy crude oil from market) ---
     for (const spec of refineryMfgSpecs) {
         const refinery = oilRefinery(EARTH_ID, `${spec.id}-refinery`);
-        refinery.scale = 200;
-        refinery.maxScale = 200;
+        refinery.scale = 2000;
+        refinery.maxScale = 2000;
 
         agents.push(
             makeAgent({
@@ -1818,11 +1818,11 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
 
     // --- Earth Government agent ---
     const govWaterFacility = waterExtractionFacility(EARTH_ID, 'earth-gov-water');
-    govWaterFacility.scale = 2000;
-    govWaterFacility.maxScale = 2000;
+    govWaterFacility.scale = 6000;
+    govWaterFacility.maxScale = 6000;
     const govAgriFacility = agriculturalProductionFacility(EARTH_ID, 'earth-gov-agri');
-    govAgriFacility.scale = 2000;
-    govAgriFacility.maxScale = 2000;
+    govAgriFacility.scale = 6000;
+    govAgriFacility.maxScale = 6000;
 
     const govStorage = makeStorage({ planetId: EARTH_ID, id: 'earth-gov-storage', name: 'Gov. Central Storage' });
     const govAgent = makeAgent({

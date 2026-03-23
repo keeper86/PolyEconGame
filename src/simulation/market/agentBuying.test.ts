@@ -192,7 +192,10 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeCloseTo(3.5);
     });
 
-    it('holds bid price when nothing was bought last tick (no supply signal)', () => {
+    it('raises bid price when nothing was bought last tick (unfilled demand → bid up)', () => {
+        // Steel at 8.0 → ceiling = (50 × 8) / 100 = 4.0, well above coal price of 2.0
+        planet.marketPrices[steelResourceType.name] = 8.0;
+
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
@@ -201,7 +204,23 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeCloseTo(firstBidPrice);
+        expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeGreaterThan(firstBidPrice);
+    });
+
+    it('lowers bid price when fully filled last tick (abundant supply → bid down)', () => {
+        // Steel at 8.0 → ceiling = (50 × 8) / 100 = 4.0, well above coal price of 2.0
+        planet.marketPrices[steelResourceType.name] = 8.0;
+
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+        const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        const firstBidQty = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
+
+        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidQty;
+
+        automaticPricing(agentMap(buyer), planet);
+
+        expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeLessThan(firstBidPrice);
     });
 
     it('raises bid price when previous tick was partially filled', () => {

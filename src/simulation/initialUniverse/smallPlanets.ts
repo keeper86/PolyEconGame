@@ -482,8 +482,8 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             totalWater: 40000,
             govAgriScale: 10,
             agriCompanies: [
-                { id: 'gune-harvest-co', name: 'Gune Harvest Co', arableLand: 8000, waterSource: 8000, wealth: 2e7 },
-                { id: 'gune-soil-works', name: 'Gune Soil Works', arableLand: 5000, waterSource: 5000, wealth: 1e7 },
+                { id: 'gune-harvest-co', name: 'Gune Harvest Co', arableLand: 8000, waterSource: 8000 },
+                { id: 'gune-soil-works', name: 'Gune Soil Works', arableLand: 5000, waterSource: 5000 },
                 {
                     id: 'gune-valley-crops',
                     name: 'Gune Valley Crops',
@@ -522,7 +522,7 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             totalWater: 60000,
             govAgriScale: 5,
             agriCompanies: [
-                { id: 'icedonia-polar-farms', name: 'Polar Farms', arableLand: 5000, waterSource: 5000, wealth: 8e6 },
+                { id: 'icedonia-polar-farms', name: 'Polar Farms', arableLand: 5000, waterSource: 5000 },
                 {
                     id: 'icedonia-frost-ag',
                     name: 'Frost Agriculture',
@@ -557,7 +557,7 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             totalWater: 150000,
             govAgriScale: 50,
             agriCompanies: [
-                { id: 'pandara-green-delta', name: 'Green Delta', arableLand: 30000, waterSource: 30000, wealth: 1e8 },
+                { id: 'pandara-green-delta', name: 'Green Delta', arableLand: 30000, waterSource: 30000 },
                 {
                     id: 'pandara-river-farms',
                     name: 'River Farms Pandara',
@@ -614,7 +614,7 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             totalWater: 70000,
             govAgriScale: 15,
             agriCompanies: [
-                { id: 'paradies-eden-farms', name: 'Eden Farms', arableLand: 20000, waterSource: 20000, wealth: 5e7 },
+                { id: 'paradies-eden-farms', name: 'Eden Farms', arableLand: 20000, waterSource: 20000 },
                 {
                     id: 'paradies-blossom-ag',
                     name: 'Blossom Agriculture',

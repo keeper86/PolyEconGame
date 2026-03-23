@@ -130,7 +130,30 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 // ---------------------------------------------------------------------------
 
 const TARGET_SELL_THROUGH = 0.9;
-const ADJUSTMENT_SPEED = 0.2;
+
+/**
+ * Map sell-through ∈ [0, 1] onto a price-adjustment factor using two linear
+ * segments that each span the full configured range:
+ *
+ *   sellThrough = 0             → PRICE_ADJUST_MAX_DOWN   (max price cut)
+ *   sellThrough = TARGET        → 1.0                     (no change)
+ *   sellThrough = 1             → PRICE_ADJUST_MAX_UP     (max price rise)
+ *
+ * The single-segment formula `1 + speed * (sellThrough - TARGET)` only ever
+ * reaches a factor of ~1.02 at full sell-through (= 1 + speed * 0.1), making
+ * the PRICE_ADJUST_MAX_UP cap unreachable and creating a strong downward bias
+ * once a price has been pushed to the floor.
+ */
+function sellThroughFactor(sellThrough: number): number {
+    const clamped = Math.max(0, Math.min(1, sellThrough));
+    if (clamped >= TARGET_SELL_THROUGH) {
+        const t = (clamped - TARGET_SELL_THROUGH) / (1 - TARGET_SELL_THROUGH);
+        return 1 + t * (PRICE_ADJUST_MAX_UP - 1);
+    } else {
+        const t = clamped / TARGET_SELL_THROUGH;
+        return PRICE_ADJUST_MAX_DOWN + t * (1 - PRICE_ADJUST_MAX_DOWN);
+    }
+}
 
 function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number, initialPrice: number): void {
     offer.offerQuantity = newOfferQuantity;
@@ -143,23 +166,16 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
+    if (newOfferQuantity === 0 && sold === 0) {
+        return;
+    }
+
     // When the agent has nothing to offer this tick, divide by lastSold if it
     // was positive (all of it sold → full sell-through, push price up) or treat
     // sell-through as 0 when nothing was sold either (no signal → push down).
-    // Using a fabricated denominator of 1 would make stale lastSold values from
-    // prior ticks produce wildly inflated sell-through ratios and drive the price
-    // to the maximum cap even while the agent sits idle at the market price floor.
     const offered = newOfferQuantity > 0 ? newOfferQuantity : sold > 0 ? sold : 1;
     const sellThrough = sold / offered;
-    const excessDemand = sellThrough - TARGET_SELL_THROUGH;
-    let factor = 1 + ADJUSTMENT_SPEED * excessDemand;
-    factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(PRICE_ADJUST_MAX_DOWN, factor));
-
-    if (newOfferQuantity === 0 && sold === 0) {
-        // When the agent has nothing to offer and sold nothing, it likely means it is not active in the market this tick.
-        // In this case, we do not want to adjust the price at all, as there is no new information to incorporate.
-        return;
-    }
+    const factor = sellThroughFactor(sellThrough);
 
     const priceCeil = FOOD_PRICE_CEIL;
     const priceFloor = FOOD_PRICE_FLOOR;
@@ -167,13 +183,26 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
 }
 
 /**
- * Update the bid price and quantity for a single input-resource bid.
- * When there is a shortfall the agent bids at the current market price,
- * scaling up slightly when the shortfall is large (urgency premium).
- * The bid price is capped at the break-even input value derived from
- * the output price, preventing agents from paying more for an input than
- * the output it enables is worth.
+ * Map fill rate ∈ [0, 1] onto a price-adjustment factor using two linear
+ * segments symmetric to sellThroughFactor:
+ *
+ *   fillRate = 0              → PRICE_ADJUST_MAX_UP   (max price rise — can't get anything)
+ *   fillRate = TARGET         → 1.0                   (no change)
+ *   fillRate = 1              → PRICE_ADJUST_MAX_DOWN (max price cut — always fully filled)
  */
+const TARGET_FILL_RATE = 0.9;
+
+function fillRateFactor(fillRate: number): number {
+    const clamped = Math.max(0, Math.min(1, fillRate));
+    if (clamped >= TARGET_FILL_RATE) {
+        const t = (clamped - TARGET_FILL_RATE) / (1 - TARGET_FILL_RATE);
+        return 1 + t * (PRICE_ADJUST_MAX_DOWN - 1);
+    } else {
+        const t = clamped / TARGET_FILL_RATE;
+        return PRICE_ADJUST_MAX_UP + t * (1 - PRICE_ADJUST_MAX_UP);
+    }
+}
+
 function adjustBidPrice(
     bid: AgentMarketBidState,
     shortfall: number,
@@ -197,9 +226,7 @@ function adjustBidPrice(
     const lastDemanded = previousDemand ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
-    const fillDeficit = Math.max(0, 1 - fillRate);
-    let factor = 1 + ADJUSTMENT_SPEED * fillDeficit;
-    factor = Math.min(PRICE_ADJUST_MAX_UP, Math.max(1, factor));
+    const factor = fillRateFactor(fillRate);
 
     const priceFloor = FOOD_PRICE_FLOOR;
     const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : FOOD_PRICE_CEIL;

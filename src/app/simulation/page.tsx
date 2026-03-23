@@ -453,11 +453,14 @@ bidQuantity = shortfall`}
 On first tick:
   bidPrice = min(marketPrice, breakEvenCeiling)
 
-On subsequent ticks:
-  fillRate   = lastBought / shortfall
-  fillDeficit = max(0, 1 − fillRate)
-  factor      = clamp(1 + 0.20 × fillDeficit, 1.0, 1.05)
-  bidPrice    = clamp(bidPrice × factor, 0.01, breakEvenCeiling)`}
+On subsequent ticks (symmetric two-segment tâtonnement, TARGET_FILL_RATE = 0.90):
+  fillRate = lastBought / previousDemand
+
+  fillRate = 0   → factor = PRICE_ADJUST_MAX_UP   (1.05)  — couldn't buy anything, bid up
+  fillRate = 0.9 → factor = 1.0                           — at target, no change
+  fillRate = 1   → factor = PRICE_ADJUST_MAX_DOWN (0.95)  — always fully filled, bid down
+
+  bidPrice = clamp(bidPrice × factor, 0.01, breakEvenCeiling)`}
                     </pre>
                     <p className='mt-2'>
                         Without this ceiling, agents with access to cheap credit can keep outbidding the market until

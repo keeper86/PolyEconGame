@@ -41,19 +41,19 @@ interface IndustrialSpec {
 }
 
 const agriSpecs: AgriSpec[] = [
-    { id: 'ac-frontier-farms', name: 'Frontier Farms AC', arableLand: 15000, waterSource: 15000, wealth: 5e7 },
-    { id: 'ac-nova-ag', name: 'Nova Agriculture', arableLand: 10000, waterSource: 10000, wealth: 3e7 },
-    { id: 'ac-colony-co', name: 'Colony Co-op', arableLand: 5000, waterSource: 5000, wealth: 1e7 },
-    { id: 'ac-hydro-farms', name: 'AC Hydro Farms', arableLand: 8000, waterSource: 8000, wealth: 2e7 },
-    { id: 'ac-pioneer-ag', name: 'Pioneer Agriculture', arableLand: 6000, waterSource: 6000, wealth: 1.5e7 },
-    { id: 'ac-stardust-crops', name: 'Stardust Crops Ltd', arableLand: 4000, waterSource: 4000, wealth: 1.2e7 },
+    { id: 'ac-frontier-farms', name: 'Frontier Farms AC', arableLand: 15000, waterSource: 15000 },
+    { id: 'ac-nova-ag', name: 'Nova Agriculture', arableLand: 10000, waterSource: 10000 },
+    { id: 'ac-colony-co', name: 'Colony Co-op', arableLand: 5000, waterSource: 5000 },
+    { id: 'ac-hydro-farms', name: 'AC Hydro Farms', arableLand: 8000, waterSource: 8000 },
+    { id: 'ac-pioneer-ag', name: 'Pioneer Agriculture', arableLand: 6000, waterSource: 6000 },
+    { id: 'ac-stardust-crops', name: 'Stardust Crops Ltd', arableLand: 4000, waterSource: 4000 },
 ];
 
 const industrialSpecs: IndustrialSpec[] = [
-    { id: 'ac-colony-iron', name: 'Colony Iron Works', wealth: 1.5e8 },
-    { id: 'ac-energy-corp', name: 'AC Energy Corp', wealth: 1e8 },
-    { id: 'ac-food-proc', name: 'AC Food Processing', wealth: 8e7 },
-    { id: 'ac-pharma-colony', name: 'Colony Pharma', wealth: 1.2e8 },
+    { id: 'ac-colony-iron', name: 'Colony Iron Works' },
+    { id: 'ac-energy-corp', name: 'AC Energy Corp' },
+    { id: 'ac-food-proc', name: 'AC Food Processing' },
+    { id: 'ac-pharma-colony', name: 'Colony Pharma' },
 ];
 
 export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {

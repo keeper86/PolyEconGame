@@ -1,4 +1,4 @@
-import { TICKS_PER_YEAR } from '../constants';
+import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
 import type { ProductionFacility, StorageFacility } from '../planet/storage';
 import type { Resource } from '../planet/planet';
 import {
@@ -8,9 +8,15 @@ import {
     type ResourceClaim,
     type ResourceQuantity,
 } from '../planet/planet';
-import { type Population, MAX_AGE, createEmptyPopulationCohort } from '../population/population';
+import {
+    type Population,
+    MAX_AGE,
+    createEmptyPopulationCohort,
+    forEachPopulationCohort,
+} from '../population/population';
 import { makeWorkforceDemography } from '../utils/testHelper';
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
+import { agriculturalProductResourceType } from '../planet/resources';
 
 export type ResourceClaimEntry = ResourceQuantity & ResourceClaim;
 
@@ -191,6 +197,16 @@ export function createPopulation(total: number): Population {
             addTo(pop, age, 'unableToWork', 'tertiary', tertiaryUnocc);
         }
     }
+
+    const foodBufferPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+    for (const cohort of pop.demography) {
+        forEachPopulationCohort(cohort, (category) => {
+            if (category.total > 0) {
+                category.inventory[agriculturalProductResourceType.name] = 3 * category.total * foodBufferPerPerson;
+            }
+        });
+    }
+
     return pop;
 }
 

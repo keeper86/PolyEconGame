@@ -573,6 +573,10 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
         const lastRevenue = offer.lastRevenue ?? 0;
         const sellThrough = offerQuantity > 0 ? Math.min(1, lastSold / offerQuantity) : 0;
 
+        if (offerQuantity <= 0 && lastSold <= 0) {
+            continue;
+        }
+
         entries.push({
             agentId: agent.id,
             agentName: agent.name,
