@@ -136,8 +136,9 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             const { resourceEfficiencyMap } = facilityMeta[fi];
             const facilityResult = byFacility.get(fi);
 
+            const hasWorkerRequirements = Object.values(facility.workerRequirement).some((v) => v && v > 0);
             const workerEfficiency = facilityResult?.workerEfficiency ?? {};
-            const workerEfficiencyOverall = facilityResult?.workerEfficiencyOverall ?? 1;
+            const workerEfficiencyOverall = facilityResult?.workerEfficiencyOverall ?? (hasWorkerRequirements ? 0 : 1);
             const totalUsedByEdu = facilityResult?.totalUsedByEdu ?? { none: 0, primary: 0, secondary: 0, tertiary: 0 };
             const exactUsedByEdu = facilityResult?.exactUsedByEdu ?? { none: 0, primary: 0, secondary: 0, tertiary: 0 };
             const overqualifiedWorkers = facilityResult?.overqualifiedWorkers ?? {};

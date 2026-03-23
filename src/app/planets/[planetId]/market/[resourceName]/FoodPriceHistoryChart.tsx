@@ -3,7 +3,7 @@
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type Props = {
@@ -27,10 +27,6 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
         trpc.simulation.getPlanetPopulationHistory.queryOptions({ planetId }),
     );
 
-    if (isLoading) {
-        return <div className='text-xs text-muted-foreground'>Loading price history…</div>;
-    }
-
     const plotData = (data?.history ?? [])
         .map((r) => ({
             year: r.tick / TICKS_PER_YEAR,
@@ -38,6 +34,26 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
             starvationPct: r.starvationLevel * 100,
         }))
         .sort((a, b) => a.year - b.year);
+
+    const [minData, maxData] = useMemo(
+        () => [Math.min(...plotData.map((d) => d.foodPrice)), Math.max(...plotData.map((d) => d.foodPrice))],
+        [plotData],
+    );
+
+    const withLogScale = useMemo(() => {
+        if (minData <= 0) {
+            return false;
+        }
+        if (!Number.isFinite(minData) || !Number.isFinite(maxData)) {
+            return false;
+        }
+        // Use log scale if the price range is at least 3 orders of magnitude.
+        return maxData / minData >= 10;
+    }, [minData, maxData]);
+
+    if (isLoading) {
+        return <div className='text-xs text-muted-foreground'>Loading price history…</div>;
+    }
 
     // Append a live data point at the current tick so the chart extends
     // to "now" instead of stopping at the last yearly snapshot.
@@ -126,10 +142,10 @@ export default function FoodPriceHistoryChart({ planetId, live }: Props): React.
                         <YAxis
                             yAxisId='left'
                             type='number'
-                            scale='log'
+                            scale={withLogScale ? 'log' : 'linear'}
                             domain={['auto', 'auto']}
                             allowDataOverflow
-                            ticks={logTicks}
+                            ticks={withLogScale ? logTicks : undefined}
                             tick={{ fontSize: 11 }}
                             tickFormatter={(v) => (typeof v === 'number' ? formatPrice(v) : String(v))}
                         />

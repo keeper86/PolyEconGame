@@ -48,7 +48,7 @@ export function makeProductionFacility(opts: {
         needs: opts.needs,
         produces: opts.produces,
         lastTickResults: {
-            overallEfficiency: 1,
+            overallEfficiency: 0,
             workerEfficiency: {},
             resourceEfficiency: {},
             overqualifiedWorkers: {},
