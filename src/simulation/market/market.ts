@@ -22,10 +22,7 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     }
 }
 
-function buildResourceOrder(
-    askBooks: Map<string, unknown>,
-    agentBidBooks: Map<string, unknown>,
-): string[] {
+function buildResourceOrder(askBooks: Map<string, unknown>, agentBidBooks: Map<string, unknown>): string[] {
     const agentOnlyResources = new Set<string>([...askBooks.keys(), ...agentBidBooks.keys()]);
     for (const name of householdDemandPriority) {
         agentOnlyResources.delete(name);
