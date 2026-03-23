@@ -15,7 +15,6 @@ import {
     pharmaceuticalResourceType,
     processedFoodResourceType,
 } from '../planet/resources';
-
 // ---------------------------------------------------------------------------
 // Internal order-book types
 // ---------------------------------------------------------------------------
@@ -76,12 +75,11 @@ interface TradeRecord {
 // ---------------------------------------------------------------------------
 
 /**
- * A demand rule maps a resource to a function that returns the desired
- * per-person quantity for a given cohort cell.
- *
- * foodScarcityFactor ∈ [0, 1]:
- *   0 → food buffer is full, no suppression of discretionary spending.
- *   1 → food buffer is empty, all wealth is diverted to food.
+ * A demand rule returns the desired per-person purchase quantity and
+ * reservation price for a cohort cell, given its *current* (post-prior-
+ * settlement) wealth.  Because markets are cleared sequentially in
+ * priority order and wealth is debited before moving to the next resource,
+ * each rule sees only the wealth the cohort still has available.
  */
 type DemandRule = (params: {
     resource: Resource;
@@ -89,7 +87,6 @@ type DemandRule = (params: {
     wealthMeanPerPerson: number;
     inventoryPerPerson: number;
     referencePrice: number;
-    foodScarcityFactor: number;
 }) => {
     /** Per-person desired purchase quantity (>= 0). */
     quantity: number;
@@ -97,11 +94,10 @@ type DemandRule = (params: {
     reservationPrice: number;
 };
 
-/** Registry of demand rules keyed by resource name. */
 const demandRules = new Map<string, DemandRule>();
 
 // ------------------------------------------------------------------
-// Food (Agricultural Product) demand rule
+// Food (Agricultural Product) — survival priority 1
 // ------------------------------------------------------------------
 const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
 
@@ -110,7 +106,6 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
     if (desiredPerPerson <= 0) {
         return { quantity: 0, reservationPrice: 0 };
     }
-
     if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
         return { quantity: 0, reservationPrice: 0 };
     }
@@ -118,7 +113,6 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
         return { quantity: 0, reservationPrice: 0 };
     }
 
-    // Liquidity constraint: can't spend more than total wealth on food.
     const affordableQty = wealthMeanPerPerson / referencePrice;
     const effectiveQty = Math.min(desiredPerPerson, Math.max(0, affordableQty));
 
@@ -126,9 +120,7 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
         return { quantity: 0, reservationPrice: 0 };
     }
 
-    // Reservation price: willing to spend entire per-capita wealth to reach buffer.
     const reservationPrice = desiredPerPerson > 0 ? wealthMeanPerPerson / desiredPerPerson : 0;
-
     return { quantity: effectiveQty, reservationPrice };
 });
 
@@ -136,19 +128,17 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
 // Generic discretionary consumer-good demand rule factory.
 //
 // Households spend a fixed income share on each consumer good,
-// capped by a per-person yearly quantity target.  Unlike food, there
-// is no survival buffer: demand stops when wealth drops to zero.
+// capped by a per-person yearly quantity target.  Wealth passed in
+// already reflects spending on higher-priority goods settled earlier
+// this tick, so no scarcity suppression factor is needed.
 //
-// When food is scarce (foodScarcityFactor > 0), the discretionary
-// budget is suppressed proportionally, diverting wealth to food first.
-//
-// incomeSharePerTick  - fraction of per-capita wealth spent per tick
+// incomeSharePerTick  - fraction of remaining per-capita wealth spent
 // yearlyQtyPerPerson  - physical cap on how much one person buys/year
 // ------------------------------------------------------------------
 function makeConsumerGoodRule(incomeSharePerTick: number, yearlyQtyPerPerson: number): DemandRule {
     const qtyPerTick = yearlyQtyPerPerson / TICKS_PER_YEAR;
 
-    return ({ wealthMeanPerPerson, referencePrice, foodScarcityFactor }) => {
+    return ({ wealthMeanPerPerson, referencePrice }) => {
         if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
@@ -156,16 +146,15 @@ function makeConsumerGoodRule(incomeSharePerTick: number, yearlyQtyPerPerson: nu
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const discretionaryBudget = wealthMeanPerPerson * incomeSharePerTick * (1 - foodScarcityFactor);
-        const affordableQty = discretionaryBudget / referencePrice;
+        const budget = wealthMeanPerPerson * incomeSharePerTick;
+        const affordableQty = budget / referencePrice;
         const effectiveQty = Math.min(qtyPerTick, affordableQty);
 
         if (effectiveQty <= 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const reservationPrice = discretionaryBudget / effectiveQty;
-        return { quantity: effectiveQty, reservationPrice };
+        return { quantity: effectiveQty, reservationPrice: budget / effectiveQty };
     };
 }
 
@@ -188,19 +177,36 @@ demandRules.set(furnitureResourceType.name, makeConsumerGoodRule(0.001, 0.02));
 demandRules.set(consumerElectronicsResourceType.name, makeConsumerGoodRule(0.002, 0.1));
 
 /**
+ * Priority order for sequential household settlement.
+ * Food is cleared and settled first; household wealth is debited before
+ * discretionary bids are generated, so no cohort can over-commit.
+ * Resources not in this list (agent-only markets) are cleared afterwards.
+ */
+const householdDemandPriority: string[] = [
+    agriculturalProductResourceType.name,
+    processedFoodResourceType.name,
+    pharmaceuticalResourceType.name,
+    beverageResourceType.name,
+    clothingResourceType.name,
+    furnitureResourceType.name,
+    consumerElectronicsResourceType.name,
+];
+
+/**
  * Execute the spot market for every resource that has active ask orders
  * or a registered demand rule on a single planet.
+ *
+ * Household markets are cleared in priority order (food first).  Each
+ * resource is fully settled — wealth debited from cohorts — before bids
+ * for the next resource are generated.  This ensures no cohort can
+ * over-commit wealth across multiple goods.
  *
  * Must be called AFTER `updateAgentPricing` (so agent offers are set) and
  * AFTER intergenerational transfers (so dependents have wealth to spend).
  */
 export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
-    // ------------------------------------------------------------------
-    // Step 1: Collect ask orders, grouped by resource
-    // ------------------------------------------------------------------
     const askBooks = collectAgentOffers(agents, planet);
 
-    // Reset sell feedback counters at tick start
     for (const orders of askBooks.values()) {
         for (const ask of orders) {
             const offer = ask.agent.assets[planet.id]?.market?.sell[ask.resource.name];
@@ -211,32 +217,23 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
         }
     }
 
-    // Reset buy feedback counters at tick start
     resetAgentBuyCounters(agents, planet);
 
-    // Determine all resources to process.
-    const resourcesToClear = new Set<string>(askBooks.keys());
-
-    // Also include resources where agents have buy orders but no ask yet,
-    // so shortfall is recorded even when no supply is available.
     const agentBidBooks = collectAgentBids(agents, planet);
-    for (const agentBidBook of agentBidBooks.values()) {
-        for (const bid of agentBidBook) {
-            resourcesToClear.add(bid.resource.name);
-        }
+
+    // All resources that need a market result: household-priority goods first,
+    // then any remaining agent-only markets.
+    const agentOnlyResources = new Set<string>([...askBooks.keys(), ...agentBidBooks.keys()]);
+    for (const name of householdDemandPriority) {
+        agentOnlyResources.delete(name);
     }
+    const resourceOrder: string[] = [...householdDemandPriority, ...agentOnlyResources];
 
-    // ------------------------------------------------------------------
-    // Step 2: Build bid orders from household demography for each resource
-    // ------------------------------------------------------------------
-    const householdBidBooks = buildPopulationDemand(planet, resourcesToClear);
-
-    // ------------------------------------------------------------------
-    // Step 4: Per-resource clearing
-    // ------------------------------------------------------------------
-    for (const resourceName of resourcesToClear) {
+    for (const resourceName of resourceOrder) {
         const askOrders = askBooks.get(resourceName) ?? [];
-        const householdBids = householdBidBooks.get(resourceName) ?? [];
+        // Household bids are built here, after all higher-priority goods have
+        // already been settled, so wealth reflects remaining purchasing power.
+        const householdBids = buildPopulationDemandForResource(planet, resourceName);
         const agentBids = agentBidBooks.get(resourceName) ?? [];
 
         const totalSupply = askOrders.reduce((s, a) => s + a.quantity, 0);
@@ -249,8 +246,6 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
                 planet.marketPrices[resourceName] ??
                 (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1);
 
-            const populationBids = binHouseholdBids(householdBids, [], []);
-
             planet.lastMarketResult[resourceName] = {
                 resourceName,
                 clearingPrice: referencePrice,
@@ -259,54 +254,37 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
                 totalSupply,
                 unfilledDemand: totalDemand,
                 unsoldSupply: totalSupply,
-                populationBids,
+                populationBids: binHouseholdBids(householdBids, [], []),
             };
             continue;
         }
 
         askOrders.sort((a, b) => a.askPrice - b.askPrice);
 
-        // ------------------------------------------------------------------
-        // Household clearing pass
-        // ------------------------------------------------------------------
-        householdBids.sort((a, b) => b.bidPrice - a.bidPrice);
-        const { trades: householdTrades, bidFilled: householdBidFilled } = clearOrderBook(householdBids, askOrders);
+        const askFilledBaseline = askOrders.map((a) => a.filled);
+        const askRevenueBaseline = askOrders.map((a) => a.revenue);
 
-        const householdVolume = householdTrades.reduce((s, t) => s + t.quantity, 0);
-        const householdRevenue = householdTrades.reduce((s, t) => s + t.price * t.quantity, 0);
-
-        const bidCosts = reconstructBidCosts(householdTrades, householdBidFilled);
-        const totalActualDebit = settleHouseholds(planet, resourceName, householdBids, householdBidFilled, bidCosts);
-        settleAgentSellers(planet, askOrders, householdRevenue, totalActualDebit);
-
-        // ------------------------------------------------------------------
-        // Agent buyer clearing pass (against the same ask book, remaining qty)
-        // ------------------------------------------------------------------
-        agentBids.sort((a, b) => b.bidPrice - a.bidPrice);
-
-        // Snapshot cumulative ask state before the agent pass so that
-        // settleAgentSellers receives only the agent-pass deltas.
-        const askFilledBeforeAgentPass = askOrders.map((a) => a.filled);
-        const askRevenueBeforeAgentPass = askOrders.map((a) => a.revenue);
-
-        const { agentTrades } = clearAgentBids(agentBids, askOrders);
-
-        const agentVolume = agentTrades.reduce((s, t) => s + t.quantity, 0);
-        const agentRevenue = agentTrades.reduce((s, t) => s + t.price * t.quantity, 0);
-
-        settleAgentBuyers(planet, agentBids, askOrders, askFilledBeforeAgentPass, askRevenueBeforeAgentPass);
-        settleAgentSellers(
-            planet,
+        const { householdBidFilled, householdTrades, agentTrades } = clearUnifiedBids(
+            householdBids,
+            agentBids,
             askOrders,
-            agentRevenue,
-            agentRevenue,
-            askFilledBeforeAgentPass,
-            askRevenueBeforeAgentPass,
         );
 
-        // ------------------------------------------------------------------
-        // VWAP update
-        // ------------------------------------------------------------------
+        const householdVolume = householdTrades.reduce((s: number, t: TradeRecord) => s + t.quantity, 0);
+        const householdRevenue = householdTrades.reduce((s: number, t: TradeRecord) => s + t.price * t.quantity, 0);
+        const agentVolume = agentTrades.reduce((s: number, t: TradeRecord) => s + t.quantity, 0);
+        const agentRevenue = agentTrades.reduce((s: number, t: TradeRecord) => s + t.price * t.quantity, 0);
+
+        const bidCosts = reconstructBidCosts(householdTrades, householdBidFilled);
+
+        // Household bids are sized to remaining wealth, so settlement is
+        // exact — no post-hoc scaling needed.
+        settleHouseholds(planet, resourceName, householdBids, householdBidFilled, bidCosts);
+
+        settleAgentBuyers(planet, agentBids, askOrders, askFilledBaseline, askRevenueBaseline);
+
+        settleAgentSellers(planet, askOrders, askFilledBaseline, askRevenueBaseline);
+
         const totalVolume = householdVolume + agentVolume;
         const totalRevenue = householdRevenue + agentRevenue;
         if (totalVolume > 0) {
@@ -320,8 +298,6 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
             planet.marketPrices[resourceName] ??
             (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1);
 
-        const populationBids = binHouseholdBids(householdBids, householdBidFilled, bidCosts);
-
         planet.lastMarketResult[resourceName] = {
             resourceName,
             clearingPrice: totalVolume > 0 ? totalRevenue / totalVolume : referencePrice,
@@ -330,7 +306,7 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
             totalSupply,
             unfilledDemand,
             unsoldSupply,
-            populationBids,
+            populationBids: binHouseholdBids(householdBids, householdBidFilled, bidCosts),
         };
     }
 }
@@ -351,7 +327,6 @@ function binHouseholdBids(bids: BidOrder[], filled: number[], costs: number[]) {
         return [];
     }
 
-    // Divide into approx 10 bins based on quantity
     const binSize = totalQty / 10;
     const bins = [];
 
@@ -423,90 +398,75 @@ function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<str
 }
 
 // ---------------------------------------------------------------------------
-// Build population demand → Map<resourceName, BidOrder[]>
+// Build population demand for a single resource, using current cohort wealth
 // ---------------------------------------------------------------------------
 
-function buildPopulationDemand(planet: Planet, resources: Set<string>): Map<string, BidOrder[]> {
-    const books = new Map<string, BidOrder[]>();
+function buildPopulationDemandForResource(planet: Planet, resourceName: string): BidOrder[] {
+    const rule = demandRules.get(resourceName);
+    if (!rule) {
+        return [];
+    }
 
-    for (const resourceName of resources) {
-        const rule = demandRules.get(resourceName);
-        if (!rule) {
-            continue;
-        }
+    const referencePrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
+    const bidOrders: BidOrder[] = [];
 
-        const referencePrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
-        const bidOrders: BidOrder[] = [];
+    planet.population.demography.forEach((cohort, age) =>
+        forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+            const pop = category.total;
+            if (pop <= 0) {
+                return;
+            }
 
-        planet.population.demography.forEach((cohort, age) =>
-            forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
-                const pop = category.total;
-                if (pop <= 0) {
-                    return;
-                }
+            const wm = category.wealth;
+            if (wm.mean < 0 || !Number.isFinite(wm.mean)) {
+                throw new Error(
+                    `Invalid mean wealth for cohort category: age=${age} occ=${occ} edu=${edu} skill=${skill} meanWealth=${wm.mean}`,
+                );
+            }
 
-                const wm = category.wealth;
-                if (wm.mean < 0 || !Number.isFinite(wm.mean)) {
-                    throw new Error(
-                        `Invalid mean wealth for cohort category: age=${age} occ=${occ} edu=${edu} skill=${skill} meanWealth=${wm.mean}`,
-                    );
-                }
+            const inventoryPerPerson = (category.inventory[resourceName] ?? 0) / pop;
 
-                const inventoryPerPerson = (category.inventory[resourceName] ?? 0) / pop;
+            const { quantity: qtyPerPerson, reservationPrice } = rule({
+                resource: { name: resourceName } as Resource,
+                population: pop,
+                wealthMeanPerPerson: wm.mean,
+                inventoryPerPerson,
+                referencePrice,
+            });
 
-                const foodInventoryPerPerson =
-                    resourceName === agriculturalProductResourceType.name
-                        ? inventoryPerPerson
-                        : (category.inventory[agriculturalProductResourceType.name] ?? 0) / pop;
-                const foodScarcityFactor = Math.max(0, Math.min(1, 1 - foodInventoryPerPerson / foodTargetPerPerson));
+            const totalQty = qtyPerPerson * pop;
 
-                const { quantity: qtyPerPerson, reservationPrice } = rule({
-                    resource: { name: resourceName } as Resource,
-                    population: pop,
-                    wealthMeanPerPerson: wm.mean,
-                    inventoryPerPerson,
-                    referencePrice,
-                    foodScarcityFactor,
-                });
-
-                const totalQty = qtyPerPerson * pop;
-
-                if (!Number.isFinite(totalQty) || totalQty < 0) {
-                    console.log('warn: non-finite totalQty in buildPopulationDemand', {
-                        age,
-                        edu,
-                        occ,
-                        skill,
-                        resourceName,
-                        qtyPerPerson,
-                        totalQty,
-                    });
-                    return;
-                }
-
-                if (totalQty <= 0) {
-                    return;
-                }
-
-                bidOrders.push({
+            if (!Number.isFinite(totalQty) || totalQty < 0) {
+                console.log('warn: non-finite totalQty in buildPopulationDemandForResource', {
                     age,
                     edu,
                     occ,
                     skill,
-                    population: pop,
-                    bidPrice: reservationPrice,
-                    quantity: totalQty,
-                    wealthMoments: wm,
+                    resourceName,
+                    qtyPerPerson,
+                    totalQty,
                 });
-            }),
-        );
+                return;
+            }
 
-        if (bidOrders.length > 0) {
-            books.set(resourceName, bidOrders);
-        }
-    }
+            if (totalQty <= 0) {
+                return;
+            }
 
-    return books;
+            bidOrders.push({
+                age,
+                edu,
+                occ,
+                skill,
+                population: pop,
+                bidPrice: reservationPrice,
+                quantity: totalQty,
+                wealthMoments: wm,
+            });
+        }),
+    );
+
+    return bidOrders;
 }
 
 // ---------------------------------------------------------------------------
@@ -517,83 +477,82 @@ function buildPopulationDemand(planet: Planet, resources: Set<string>): Map<stri
  *  order side is treated as exhausted (IEEE 754 drift guard). */
 const QUANTITY_EPSILON = 1e-9;
 
-interface ClearResult {
-    trades: TradeRecord[];
-    /** Fill amount per bid order (parallel array indexed by bid index). */
-    bidFilled: number[];
+interface UnifiedClearResult {
+    householdTrades: TradeRecord[];
+    agentTrades: TradeRecord[];
+    /** Fill amount per household bid order (parallel array). */
+    householdBidFilled: number[];
 }
 
-function clearOrderBook(bidOrders: BidOrder[], askOrders: AskOrder[]): ClearResult {
-    const trades: TradeRecord[] = [];
-    const bidFilled: number[] = bidOrders.map(() => 0);
+type MergedBid =
+    | { kind: 'household'; index: number; bidPrice: number; quantity: number }
+    | { kind: 'agent'; order: AgentBidOrder; bidPrice: number; quantity: number };
 
-    let bidIdx = 0;
+function clearUnifiedBids(
+    householdBids: BidOrder[],
+    agentBids: AgentBidOrder[],
+    askOrders: AskOrder[],
+): UnifiedClearResult {
+    const householdTrades: TradeRecord[] = [];
+    const agentTrades: TradeRecord[] = [];
+    const householdBidFilled: number[] = householdBids.map(() => 0);
+
+    const merged: MergedBid[] = [
+        ...householdBids.map(
+            (b, i): MergedBid => ({ kind: 'household', index: i, bidPrice: b.bidPrice, quantity: b.quantity }),
+        ),
+        ...agentBids.map((b): MergedBid => ({ kind: 'agent', order: b, bidPrice: b.bidPrice, quantity: b.quantity })),
+    ];
+    merged.sort((a, b) => b.bidPrice - a.bidPrice);
+
     let askIdx = 0;
-    let bidRemaining = bidOrders.length > 0 ? bidOrders[0].quantity : 0;
-    let askRemaining = askOrders.length > 0 ? askOrders[0].quantity : 0;
+    let askRemaining = askOrders.length > 0 ? askOrders[0].quantity - askOrders[0].filled : 0;
 
-    while (bidIdx < bidOrders.length && askIdx < askOrders.length) {
-        const bid = bidOrders[bidIdx];
-        const ask = askOrders[askIdx];
+    for (const bid of merged) {
+        let bidRemaining = bid.quantity;
 
-        if (!Number.isFinite(bidRemaining) || !Number.isFinite(askRemaining)) {
-            console.warn('clearOrderBook: non-finite remaining quantities', {
-                bidIdx,
-                askIdx,
-                bidRemaining,
-                askRemaining,
-            });
-            break;
-        }
+        while (bidRemaining > QUANTITY_EPSILON && askIdx < askOrders.length) {
+            const ask = askOrders[askIdx];
+            const effectiveAskRemaining = ask.quantity - ask.filled;
 
-        if (bid.bidPrice < ask.askPrice) {
-            break; // No more profitable matches
-        }
-
-        const tradeQty = Math.min(bidRemaining, askRemaining);
-
-        if (!Number.isFinite(tradeQty)) {
-            console.warn('clearOrderBook: invalid tradeQty computed', { bidIdx, askIdx, bidRemaining, askRemaining });
-            break;
-        }
-
-        if (tradeQty < QUANTITY_EPSILON) {
-            if (bidRemaining <= askRemaining) {
-                bidIdx++;
-                bidRemaining = bidIdx < bidOrders.length ? bidOrders[bidIdx].quantity : 0;
-            } else {
+            if (effectiveAskRemaining < QUANTITY_EPSILON) {
                 askIdx++;
-                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity : 0;
+                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
+                continue;
             }
-            continue;
-        }
 
-        const tradePrice = ask.askPrice;
-        trades.push({ price: tradePrice, quantity: tradeQty });
+            if (bid.bidPrice < ask.askPrice) {
+                break;
+            }
 
-        ask.filled += tradeQty;
-        ask.revenue += tradeQty * tradePrice;
+            const tradeQty = Math.min(bidRemaining, askRemaining);
+            if (tradeQty < QUANTITY_EPSILON) {
+                break;
+            }
 
-        if (bidIdx < 0 || bidIdx >= bidFilled.length) {
-            console.warn('clearOrderBook: bidIdx out of range', { bidIdx, bidFilledLength: bidFilled.length });
-            break;
-        }
+            const tradePrice = ask.askPrice;
+            ask.filled += tradeQty;
+            ask.revenue += tradeQty * tradePrice;
+            bidRemaining -= tradeQty;
+            askRemaining -= tradeQty;
 
-        bidFilled[bidIdx] += tradeQty;
-        bidRemaining -= tradeQty;
-        askRemaining -= tradeQty;
+            if (bid.kind === 'household') {
+                householdTrades.push({ price: tradePrice, quantity: tradeQty });
+                householdBidFilled[bid.index] += tradeQty;
+            } else {
+                agentTrades.push({ price: tradePrice, quantity: tradeQty });
+                bid.order.filled += tradeQty;
+                bid.order.cost += tradeQty * tradePrice;
+            }
 
-        if (bidRemaining < QUANTITY_EPSILON) {
-            bidIdx++;
-            bidRemaining = bidIdx < bidOrders.length ? bidOrders[bidIdx].quantity : 0;
-        }
-        if (askRemaining < QUANTITY_EPSILON) {
-            askIdx++;
-            askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity : 0;
+            if (askRemaining < QUANTITY_EPSILON) {
+                askIdx++;
+                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
+            }
         }
     }
 
-    return { trades, bidFilled };
+    return { householdTrades, agentTrades, householdBidFilled };
 }
 
 // ---------------------------------------------------------------------------
@@ -671,13 +630,9 @@ function settleHouseholds(
 function settleAgentSellers(
     planet: Planet,
     askOrders: AskOrder[],
-    totalRevenue: number,
-    totalActualDebit: number,
-    filledBaseline?: number[],
-    revenueBaseline?: number[],
+    filledBaseline: number[],
+    revenueBaseline: number[],
 ): void {
-    const agentRevenueScale = totalRevenue > 0 ? totalActualDebit / totalRevenue : 0;
-
     for (let i = 0; i < askOrders.length; i++) {
         const ask = askOrders[i];
         const assets = ask.agent.assets[planet.id];
@@ -689,22 +644,20 @@ function settleAgentSellers(
             assets.market = { sell: {}, buy: {} };
         }
 
-        const filledDelta = ask.filled - (filledBaseline?.[i] ?? 0);
-        const revenueDelta = ask.revenue - (revenueBaseline?.[i] ?? 0);
-
+        const filledDelta = ask.filled - filledBaseline[i];
         if (filledDelta <= 0) {
             continue;
         }
 
-        const scaledRevenue = revenueDelta * agentRevenueScale;
-        assets.deposits += scaledRevenue;
+        const revenueDelta = ask.revenue - revenueBaseline[i];
 
+        assets.deposits += revenueDelta;
         removeFromStorageFacility(assets.storageFacility, ask.resource.name, filledDelta);
 
         const offer = assets.market.sell[ask.resource.name];
         if (offer) {
             offer.lastSold = (offer.lastSold ?? 0) + filledDelta;
-            offer.lastRevenue = (offer.lastRevenue ?? 0) + scaledRevenue;
+            offer.lastRevenue = (offer.lastRevenue ?? 0) + revenueDelta;
         }
     }
 }
@@ -761,63 +714,6 @@ function resetAgentBuyCounters(agents: Map<string, Agent>, planet: Planet): void
             bid.lastSpent = 0;
         }
     });
-}
-
-// ---------------------------------------------------------------------------
-// Price-priority matching for agent buy orders
-// ---------------------------------------------------------------------------
-
-interface AgentClearResult {
-    agentTrades: TradeRecord[];
-}
-
-function clearAgentBids(agentBids: AgentBidOrder[], askOrders: AskOrder[]): AgentClearResult {
-    const agentTrades: TradeRecord[] = [];
-
-    let askIdx = 0;
-    let askRemaining = askOrders.length > 0 ? askOrders[0].quantity - askOrders[0].filled : 0;
-
-    for (const bid of agentBids) {
-        let bidRemaining = bid.quantity;
-
-        while (bidRemaining > QUANTITY_EPSILON && askIdx < askOrders.length) {
-            const ask = askOrders[askIdx];
-            const effectiveAskRemaining = ask.quantity - ask.filled;
-
-            if (effectiveAskRemaining < QUANTITY_EPSILON) {
-                askIdx++;
-                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
-                continue;
-            }
-
-            if (bid.bidPrice < ask.askPrice) {
-                break;
-            }
-
-            const tradeQty = Math.min(bidRemaining, askRemaining);
-            if (tradeQty < QUANTITY_EPSILON) {
-                break;
-            }
-
-            const tradePrice = ask.askPrice;
-            agentTrades.push({ price: tradePrice, quantity: tradeQty });
-
-            ask.filled += tradeQty;
-            ask.revenue += tradeQty * tradePrice;
-            bid.filled += tradeQty;
-            bid.cost += tradeQty * tradePrice;
-
-            bidRemaining -= tradeQty;
-            askRemaining -= tradeQty;
-
-            if (askRemaining < QUANTITY_EPSILON) {
-                askIdx++;
-                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
-            }
-        }
-    }
-
-    return { agentTrades };
 }
 
 // ---------------------------------------------------------------------------
