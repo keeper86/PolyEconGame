@@ -6,6 +6,7 @@ import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
+import { settleAgentBuyers } from './settlement';
 import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
@@ -642,5 +643,73 @@ describe('marketTick — agent buying', () => {
         const householdFoodAfter = planet.population.demography[14].unoccupied.none.novice.inventory[FOOD] ?? 0;
 
         expect(householdFoodAfter).toBeGreaterThanOrEqual(householdFoodBefore);
+    });
+
+    it('buyer only pays for what was stored and bid is zeroed out when storage is full at settlement', () => {
+        const seller = makeCoalSeller(3000, 1.0);
+        const buyer = makeSteelProducer();
+        buyer.assets.p.deposits = 1_000_000;
+
+        const coalResource = coalResourceType;
+        buyer.assets.p.storageFacility = makeStorageFacility({
+            planetId: 'p',
+            id: 'storage-p',
+            capacity: { volume: 1e9, mass: 50 * coalResource.massPerQuantity },
+        });
+
+        buyer.assets.p.market = {
+            sell: {},
+            buy: {
+                [COAL]: {
+                    resource: coalResourceType,
+                    bidPrice: 5.0,
+                    bidQuantity: 100,
+                },
+            },
+        };
+
+        const depositsBefore = buyer.assets.p.deposits;
+        marketTick(agentMap(seller, buyer), planet);
+
+        const coalReceived = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        const depositsSpent = depositsBefore - buyer.assets.p.deposits;
+
+        expect(coalReceived).toBeCloseTo(50, 1);
+        expect(depositsSpent).toBeCloseTo(coalReceived * 1.0, 5);
+        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(0);
+        expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);
+    });
+
+    it('settlement zeros out bid and sets storageFullWarning when goods arrive but storage is already full', () => {
+        const buyer = makeSteelProducer();
+        buyer.assets.p.deposits = 1_000_000;
+        buyer.assets.p.storageFacility = makeStorageFacility({
+            planetId: 'p',
+            id: 'storage-p',
+            capacity: { volume: 0, mass: 0 },
+        });
+        buyer.assets.p.market = {
+            sell: {},
+            buy: { [COAL]: { resource: coalResourceType, bidPrice: 5.0, bidQuantity: 100 } },
+        };
+
+        const depositsBefore = buyer.assets.p.deposits;
+
+        settleAgentBuyers(planet, [
+            {
+                agent: buyer,
+                resource: coalResourceType,
+                bidPrice: 5.0,
+                quantity: 100,
+                filled: 100,
+                cost: 500,
+                remainingDeposits: depositsBefore,
+            },
+        ]);
+
+        expect(buyer.assets.p.deposits).toBe(depositsBefore);
+        expect(buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0).toBe(0);
+        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(0);
+        expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);
     });
 });

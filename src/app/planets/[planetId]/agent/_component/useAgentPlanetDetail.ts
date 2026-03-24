@@ -35,6 +35,7 @@ export type AgentPlanetAssets = {
                 bidQuantity?: number;
                 lastBought?: number;
                 lastSpent?: number;
+                storageFullWarning?: boolean;
             };
         };
     };

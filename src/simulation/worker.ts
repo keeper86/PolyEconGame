@@ -252,7 +252,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         }
                         for (const [resourceName, update] of Object.entries(offers)) {
                             if (!assets.market.sell[resourceName]) {
-                                // Find resource reference from production facilities
                                 let resource = null;
                                 outerLoop: for (const facility of assets.productionFacilities) {
                                     for (const p of facility.produces) {
@@ -263,7 +262,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                                     }
                                 }
                                 if (!resource) {
-                                    // Skip resources this agent does not produce
+                                    resource = assets.storageFacility.currentInStorage[resourceName]?.resource ?? null;
+                                }
+                                if (!resource) {
                                     continue;
                                 }
                                 assets.market.sell[resourceName] = { resource };

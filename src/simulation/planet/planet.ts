@@ -279,6 +279,11 @@ export type AgentMarketBidState = {
     lastBought?: number;
     /** Total expenditure during the last market clearing tick (currency units). */
     lastSpent?: number;
+    /**
+     * Set to true when the bid was suppressed because storage had no room for
+     * the resource. Cleared each tick when there is capacity available.
+     */
+    storageFullWarning?: boolean;
 };
 
 /**

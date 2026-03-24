@@ -2,9 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ShoppingCart } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
@@ -16,6 +19,7 @@ export type BuyBidEntry = {
     bidQuantity?: number;
     lastBought?: number;
     lastSpent?: number;
+    storageFullWarning?: boolean;
 };
 
 type LocalBid = {
@@ -28,6 +32,7 @@ type Props = {
     planetId: string;
     productionFacilities: ProductionFacility[];
     buyBids: Record<string, BuyBidEntry>;
+    deposits: number;
     automatePricing: boolean;
 };
 
@@ -68,6 +73,7 @@ export default function BuyBidsPanel({
     planetId,
     productionFacilities,
     buyBids,
+    deposits,
     automatePricing,
 }: Props): React.ReactElement {
     const trpc = useTRPC();
@@ -136,146 +142,179 @@ export default function BuyBidsPanel({
         mutation.mutate({ agentId, planetId, bids });
     };
 
+    const totalBidCost = inputResources.reduce((sum, { name }) => {
+        const snap = buyBids[name];
+        const price = snap?.bidPrice ?? 0;
+        const qty = snap?.bidQuantity ?? 0;
+        return sum + price * qty;
+    }, 0);
+
+    const depositsInsufficient = totalBidCost > 0 && deposits < totalBidCost;
+    const anyStorageFull = inputResources.some(({ name }) => buyBids[name]?.storageFullWarning);
+
     return (
-        <div className='border rounded-md p-3 space-y-3'>
-            <button
-                type='button'
-                className='w-full flex items-center justify-between gap-2 cursor-pointer'
-                onClick={() => setExpanded((v) => !v)}
-            >
-                <div className='flex items-center gap-2'>
-                    <ShoppingCart className='h-4 w-4 text-muted-foreground' />
-                    <span className='text-sm font-semibold'>Buy Bids</span>
-                    {automatePricing && (
-                        <span className='text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded px-1.5 py-0.5 font-medium'>
-                            AI managed
-                        </span>
-                    )}
-                </div>
-                {expanded ? (
-                    <ChevronUp className='h-4 w-4 text-muted-foreground' />
-                ) : (
-                    <ChevronDown className='h-4 w-4 text-muted-foreground' />
-                )}
-            </button>
+        <Collapsible open={expanded} onOpenChange={setExpanded}>
+            <Card>
+                <CardHeader className='p-3 pb-0'>
+                    <CollapsibleTrigger className='w-full flex items-center justify-between gap-2'>
+                        <div className='flex items-center gap-2'>
+                            <ShoppingCart className='h-4 w-4 text-muted-foreground' />
+                            <span className='text-sm font-semibold'>Buy Bids</span>
+                            {automatePricing && (
+                                <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
+                                    AI managed
+                                </Badge>
+                            )}
+                            {depositsInsufficient && (
+                                <Badge variant='destructive' className='text-[10px] px-1.5 py-0'>
+                                    Insufficient funds
+                                </Badge>
+                            )}
+                            {anyStorageFull && (
+                                <Badge variant='destructive' className='text-[10px] px-1.5 py-0'>
+                                    Storage full
+                                </Badge>
+                            )}
+                        </div>
+                        <span className='text-muted-foreground text-xs'>{expanded ? '▲' : '▼'}</span>
+                    </CollapsibleTrigger>
+                </CardHeader>
 
-            {expanded && (
-                <div className='space-y-4'>
-                    {automatePricing ? (
+                <CollapsibleContent>
+                    <CardContent className='p-3 pt-3 space-y-4'>
                         <p className='text-xs text-muted-foreground'>
-                            Automatic pricing is enabled. The AI places buy bids each tick based on facility input
-                            shortfalls. Disable automation in the Automation Controls panel to set bids manually.
+                            {automatePricing
+                                ? 'Automatic pricing is enabled. The AI places buy bids each tick based on facility input shortfalls. Disable automation in the Automation Controls panel to set bids manually.'
+                                : 'Set the maximum bid price (per unit) and how many units to demand from the market each tick. Leave a field blank to keep the current value.'}
                         </p>
-                    ) : (
-                        <p className='text-xs text-muted-foreground'>
-                            Set the maximum bid price (per unit) and how many units to demand from the market each tick.
-                            Leave a field blank to keep the current value.
-                        </p>
-                    )}
 
-                    {inputResources.length === 0 ? (
-                        <p className='text-xs text-muted-foreground'>
-                            No production facilities yet. Build a facility to see its input resources here.
-                        </p>
-                    ) : (
-                        <div className='space-y-4'>
-                            {inputResources.map(({ name: resource }) => {
-                                const snap = buyBids[resource];
-                                const lo = localBids[resource] ?? { bidPrice: '', bidQuantity: '' };
-                                return (
-                                    <div key={resource} className='space-y-2'>
-                                        <div className='flex items-center justify-between gap-2'>
-                                            <span className='text-xs font-semibold'>{resource}</span>
-                                            <div className='flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums'>
-                                                {snap?.lastBought !== undefined && (
-                                                    <span>Bought last tick: {formatNumbers(snap.lastBought)}</span>
-                                                )}
-                                                {snap?.lastSpent !== undefined && (
-                                                    <span>Spent: {formatNumbers(snap.lastSpent)}</span>
-                                                )}
+                        {depositsInsufficient && (
+                            <Alert variant='destructive'>
+                                <AlertCircle className='h-4 w-4' />
+                                <AlertDescription className='text-xs'>
+                                    Current deposits ({formatNumbers(deposits)}) are below the total bid cost (
+                                    {formatNumbers(totalBidCost)}). Bids that cannot be fully funded will not clear. Top
+                                    up your deposits or reduce bid quantities.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
+                        {inputResources.length === 0 ? (
+                            <p className='text-xs text-muted-foreground'>
+                                No production facilities yet. Build a facility to see its input resources here.
+                            </p>
+                        ) : (
+                            <div className='space-y-4'>
+                                {inputResources.map(({ name: resource }) => {
+                                    const snap = buyBids[resource];
+                                    const lo = localBids[resource] ?? { bidPrice: '', bidQuantity: '' };
+                                    return (
+                                        <div key={resource} className='space-y-2'>
+                                            <div className='flex items-center justify-between gap-2'>
+                                                <div className='flex items-center gap-2'>
+                                                    <span className='text-xs font-semibold'>{resource}</span>
+                                                    {snap?.storageFullWarning && (
+                                                        <Badge
+                                                            variant='destructive'
+                                                            className='text-[10px] px-1.5 py-0'
+                                                        >
+                                                            Storage full — bid excluded
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <div className='flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums'>
+                                                    {snap?.lastBought !== undefined && (
+                                                        <span>Bought last tick: {formatNumbers(snap.lastBought)}</span>
+                                                    )}
+                                                    {snap?.lastSpent !== undefined && (
+                                                        <span>Spent: {formatNumbers(snap.lastSpent)}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className='grid grid-cols-2 gap-3'>
+                                                <div className='space-y-1'>
+                                                    <Label
+                                                        htmlFor={`bid-price-${resource}`}
+                                                        className='text-[11px] text-muted-foreground'
+                                                    >
+                                                        Max price / unit
+                                                    </Label>
+                                                    <Input
+                                                        id={`bid-price-${resource}`}
+                                                        type='number'
+                                                        min={0.01}
+                                                        step='any'
+                                                        placeholder={
+                                                            snap?.bidPrice !== undefined
+                                                                ? snap.bidPrice.toFixed(2)
+                                                                : 'e.g. 1.50'
+                                                        }
+                                                        value={lo.bidPrice}
+                                                        disabled={automatePricing || mutation.isPending}
+                                                        onChange={(e) =>
+                                                            handleChange(resource, 'bidPrice', e.target.value)
+                                                        }
+                                                        className='h-8 text-sm tabular-nums'
+                                                    />
+                                                </div>
+                                                <div className='space-y-1'>
+                                                    <Label
+                                                        htmlFor={`bid-qty-${resource}`}
+                                                        className='text-[11px] text-muted-foreground'
+                                                    >
+                                                        Quantity to demand
+                                                    </Label>
+                                                    <Input
+                                                        id={`bid-qty-${resource}`}
+                                                        type='number'
+                                                        min={0}
+                                                        step={1}
+                                                        placeholder={
+                                                            snap?.bidQuantity !== undefined
+                                                                ? String(Math.round(snap.bidQuantity))
+                                                                : 'e.g. 100'
+                                                        }
+                                                        value={lo.bidQuantity}
+                                                        disabled={automatePricing || mutation.isPending}
+                                                        onChange={(e) =>
+                                                            handleChange(resource, 'bidQuantity', e.target.value)
+                                                        }
+                                                        className='h-8 text-sm tabular-nums'
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
-                                        <div className='grid grid-cols-2 gap-3'>
-                                            <div className='space-y-1'>
-                                                <Label
-                                                    htmlFor={`bid-price-${resource}`}
-                                                    className='text-[11px] text-muted-foreground'
-                                                >
-                                                    Max price / unit
-                                                </Label>
-                                                <Input
-                                                    id={`bid-price-${resource}`}
-                                                    type='number'
-                                                    min={0.01}
-                                                    step='any'
-                                                    placeholder={
-                                                        snap?.bidPrice !== undefined
-                                                            ? snap.bidPrice.toFixed(2)
-                                                            : 'e.g. 1.50'
-                                                    }
-                                                    value={lo.bidPrice}
-                                                    disabled={automatePricing || mutation.isPending}
-                                                    onChange={(e) => handleChange(resource, 'bidPrice', e.target.value)}
-                                                    className='h-8 text-sm tabular-nums'
-                                                />
-                                            </div>
-                                            <div className='space-y-1'>
-                                                <Label
-                                                    htmlFor={`bid-qty-${resource}`}
-                                                    className='text-[11px] text-muted-foreground'
-                                                >
-                                                    Quantity to demand
-                                                </Label>
-                                                <Input
-                                                    id={`bid-qty-${resource}`}
-                                                    type='number'
-                                                    min={0}
-                                                    step={1}
-                                                    placeholder={
-                                                        snap?.bidQuantity !== undefined
-                                                            ? String(Math.round(snap.bidQuantity))
-                                                            : 'e.g. 100'
-                                                    }
-                                                    value={lo.bidQuantity}
-                                                    disabled={automatePricing || mutation.isPending}
-                                                    onChange={(e) =>
-                                                        handleChange(resource, 'bidQuantity', e.target.value)
-                                                    }
-                                                    className='h-8 text-sm tabular-nums'
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                        {inputResources.length > 0 && (
+                            <div className='flex justify-end'>
+                                <Button size='sm' onClick={handleSave} disabled={automatePricing || mutation.isPending}>
+                                    {mutation.isPending ? 'Saving…' : 'Save bids'}
+                                </Button>
+                            </div>
+                        )}
 
-                    {inputResources.length > 0 && (
-                        <div className='flex justify-end'>
-                            <Button size='sm' onClick={handleSave} disabled={automatePricing || mutation.isPending}>
-                                {mutation.isPending ? 'Saving…' : 'Save bids'}
-                            </Button>
-                        </div>
-                    )}
-
-                    {successMsg && (
-                        <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
-                            <CheckCircle2 className='h-4 w-4 text-green-600' />
-                            <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
-                                {successMsg}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    {errorMsg && (
-                        <Alert variant='destructive'>
-                            <AlertCircle className='h-4 w-4' />
-                            <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
-                        </Alert>
-                    )}
-                </div>
-            )}
-        </div>
+                        {successMsg && (
+                            <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
+                                <CheckCircle2 className='h-4 w-4 text-green-600' />
+                                <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
+                                    {successMsg}
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        {errorMsg && (
+                            <Alert variant='destructive'>
+                                <AlertCircle className='h-4 w-4' />
+                                <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
+                            </Alert>
+                        )}
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
     );
 }

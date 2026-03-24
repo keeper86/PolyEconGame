@@ -24,6 +24,7 @@ export default function MarketPage() {
                         agentId={agentId}
                         planetId={planetId}
                         sellOffers={assets.market?.sell ?? {}}
+                        storageFacility={assets.storageFacility}
                         automatePricing={detail?.automatePricing ?? false}
                     />
                     <BuyBidsPanel
@@ -31,6 +32,7 @@ export default function MarketPage() {
                         planetId={planetId}
                         productionFacilities={assets.productionFacilities}
                         buyBids={assets.market?.buy ?? {}}
+                        deposits={assets.deposits}
                         automatePricing={detail?.automatePricing ?? false}
                     />
                 </div>

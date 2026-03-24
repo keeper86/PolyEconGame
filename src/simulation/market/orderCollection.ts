@@ -51,6 +51,7 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             if (qty <= 0) {
                 continue;
             }
+
             let book = books.get(resourceName);
             if (!book) {
                 book = [];

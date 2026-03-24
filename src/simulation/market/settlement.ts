@@ -72,13 +72,21 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
             continue;
         }
 
-        assets.deposits -= bid.cost;
-        putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
+        const actuallyStored = putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
+        const storageFull = actuallyStored < bid.filled;
+
+        const costForStored = bid.filled > 0 ? bid.cost * (actuallyStored / bid.filled) : 0;
+        assets.deposits -= costForStored;
 
         const buyState = assets.market?.buy[bid.resource.name];
         if (buyState) {
-            buyState.lastBought = (buyState.lastBought ?? 0) + bid.filled;
-            buyState.lastSpent = (buyState.lastSpent ?? 0) + bid.cost;
+            buyState.lastBought = (buyState.lastBought ?? 0) + actuallyStored;
+            buyState.lastSpent = (buyState.lastSpent ?? 0) + costForStored;
+
+            if (storageFull) {
+                buyState.bidQuantity = 0;
+                buyState.storageFullWarning = true;
+            }
         }
     }
 }
