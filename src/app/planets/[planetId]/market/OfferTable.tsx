@@ -95,7 +95,7 @@ export default function OfferTable({ offers, clearingPrice }: Props): React.Reac
                                     )}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums font-mono'>
-                                    {row.offerPrice.toFixed(4)}
+                                    {formatNumbers(row.offerPrice)}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums'>
                                     {formatNumbers(row.offerQuantity)}
@@ -107,7 +107,7 @@ export default function OfferTable({ offers, clearingPrice }: Props): React.Reac
                                         sellThroughClass(row.sellThrough),
                                     )}
                                 >
-                                    {(row.sellThrough * 100).toFixed(0)}%
+                                    {formatNumbers(row.sellThrough * 100)}%
                                 </td>
                                 <td className='py-1 text-right tabular-nums'>{formatNumbers(row.lastRevenue)}</td>
                             </tr>

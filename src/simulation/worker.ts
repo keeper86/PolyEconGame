@@ -247,7 +247,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                             break;
                         }
                         if (!assets.market) {
-                            assets.market = { sell: {} };
+                            assets.market = { sell: {}, buy: {} };
                         }
                         for (const [resourceName, update] of Object.entries(offers)) {
                             if (!assets.market.sell[resourceName]) {

@@ -228,11 +228,6 @@ export default function PlanetDemographicsPage() {
 
     return (
         <>
-            <span className='flex justify-between mb-2'>
-                <h4 className='text-sm font-semibold '>Population History</h4>
-                <span className='text-sm text-muted-foreground'>{`Total population: ${formatNumbers(populationTotal)}`}</span>
-            </span>
-
             <PlanetPopulationHistoryChart planetId={planetId} />
 
             <div className='my-3 border-t' />

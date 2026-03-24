@@ -106,6 +106,21 @@ export const PRICE_ADJUST_SENSITIVITY = 0.01;
  */
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
+/**
+ * Number of ticks of input stock an automated agent tries to maintain as a
+ * procurement buffer.  Used both in automaticPricing (bid quantity) and in the
+ * financial tick (retained-earnings extension + input-buffer loan).
+ */
+export const INPUT_BUFFER_TARGET_TICKS = 30;
+
+/**
+ * Maximum output inventory expressed as ticks of production.
+ * When an agent's output storage reaches this threshold, the facility is
+ * supply-constrained by lack of demand: input buying is suppressed entirely
+ * until inventory drops below this ceiling.
+ */
+export const OUTPUT_BUFFER_MAX_TICKS = 60;
+
 // ---------------------------------------------------------------------------
 // Bank credit / loan origination constants
 // ---------------------------------------------------------------------------

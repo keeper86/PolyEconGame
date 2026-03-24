@@ -17,6 +17,7 @@ import { educationLevelKeys } from '../../simulation/population/education';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { INITIAL_FOOD_PRICE } from '../../simulation/constants';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -33,18 +34,8 @@ export const getPlanetOverview = () =>
         .output(
             z.object({
                 tick: z.number(),
-                overview: z
-                    .object({
-                        id: z.string(),
-                        name: z.string(),
-                        position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
-                        populationTotal: z.number(),
-                        starvationLevel: z.number(),
-                        resources: z.record(z.string(), z.any()),
-                        infrastructure: z.any(),
-                        environment: z.any(),
-                    })
-                    .nullable(),
+                name: z.string(),
+                populationTotal: z.number(),
             }),
         )
         .query(async ({ input }) => {
@@ -52,21 +43,10 @@ export const getPlanetOverview = () =>
                 workerQueries.getCurrentTick(),
                 workerQueries.getPlanet(input.planetId),
             ]);
-            if (!planet) {
-                return { tick, overview: null };
-            }
             return {
                 tick,
-                overview: {
-                    id: planet.id,
-                    name: planet.name,
-                    position: planet.position,
-                    populationTotal: computePopulationTotal(planet),
-                    starvationLevel: computeGlobalStarvation(planet),
-                    resources: planet.resources,
-                    infrastructure: planet.infrastructure,
-                    environment: planet.environment,
-                },
+                name: planet?.name ?? input.planetId,
+                populationTotal: planet ? computePopulationTotal(planet) : 0,
             };
         });
 
@@ -540,26 +520,20 @@ export const getPlanetDemographicsFull = () =>
         });
 
 // ---------------------------------------------------------------------------
-// Food Market
+// Resource Market (generic)
 // ---------------------------------------------------------------------------
 
-/**
- * Per-agent offer entry for the market page.
- */
 type AgentOfferEntry = {
     agentId: string;
     agentName: string;
     offerPrice: number;
     offerQuantity: number;
     lastSold: number;
-    sellThrough: number; // [0,1] — lastSold / offerQuantity
+    sellThrough: number;
     lastRevenue: number;
 };
 
-/**
- * Collect per-agent offer summaries for all food-producing agents on a planet.
- */
-function buildAgentOffers(agents: Agent[], planetId: string): AgentOfferEntry[] {
+function buildAgentOffers(agents: Agent[], planetId: string, resourceName: string): AgentOfferEntry[] {
     const entries: AgentOfferEntry[] = [];
 
     for (const agent of agents) {
@@ -568,19 +542,20 @@ function buildAgentOffers(agents: Agent[], planetId: string): AgentOfferEntry[] 
             continue;
         }
 
-        const hasFoodProduction = assets.productionFacilities.some((f) =>
-            f.produces.some((p) => p.resource.name === agriculturalProductResourceType.name),
-        );
-        if (!hasFoodProduction) {
+        const offer = assets.market?.sell[resourceName];
+        if (!offer) {
             continue;
         }
 
-        const fm = assets.market?.sell[agriculturalProductResourceType.name];
-        const offerPrice = fm?.offerPrice ?? INITIAL_FOOD_PRICE;
-        const offerQuantity = fm?.offerQuantity ?? 0;
-        const lastSold = fm?.lastSold ?? 0;
-        const lastRevenue = fm?.lastRevenue ?? 0;
+        const offerPrice = offer.offerPrice ?? INITIAL_FOOD_PRICE;
+        const offerQuantity = offer.offerQuantity ?? 0;
+        const lastSold = offer.lastSold ?? 0;
+        const lastRevenue = offer.lastRevenue ?? 0;
         const sellThrough = offerQuantity > 0 ? Math.min(1, lastSold / offerQuantity) : 0;
+
+        if (offerQuantity <= 0 && lastSold <= 0) {
+            continue;
+        }
 
         entries.push({
             agentId: agent.id,
@@ -593,50 +568,115 @@ function buildAgentOffers(agents: Agent[], planetId: string): AgentOfferEntry[] 
         });
     }
 
-    // Sort by price ascending (merit order)
     entries.sort((a, b) => a.offerPrice - b.offerPrice);
     return entries;
 }
 
-export const getPlanetFoodMarket = () =>
+const agentOfferSchema = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    offerPrice: z.number(),
+    offerQuantity: z.number(),
+    lastSold: z.number(),
+    sellThrough: z.number(),
+    lastRevenue: z.number(),
+});
+
+type AgentBidEntry = {
+    agentId: string;
+    agentName: string;
+    bidPrice: number;
+    bidQuantity: number;
+    lastBought: number;
+    fillRatio: number;
+    lastSpent: number;
+};
+
+function buildAgentBids(agents: Agent[], planetId: string, resourceName: string): AgentBidEntry[] {
+    const entries: AgentBidEntry[] = [];
+
+    for (const agent of agents) {
+        const assets = agent.assets[planetId];
+        if (!assets) {
+            continue;
+        }
+
+        const bid = assets.market?.buy[resourceName];
+        if (!bid) {
+            continue;
+        }
+
+        const bidPrice = bid.bidPrice ?? 0;
+        const bidQuantity = bid.bidQuantity ?? 0;
+        const lastBought = bid.lastBought ?? 0;
+        const lastSpent = bid.lastSpent ?? 0;
+        const fillRatio = bidQuantity > 0 ? Math.min(1, lastBought / bidQuantity) : 0;
+
+        if (bidQuantity <= 0 && lastBought <= 0) {
+            continue;
+        }
+
+        entries.push({
+            agentId: agent.id,
+            agentName: agent.name,
+            bidPrice,
+            bidQuantity,
+            lastBought,
+            fillRatio,
+            lastSpent,
+        });
+    }
+
+    entries.sort((a, b) => b.bidPrice - a.bidPrice);
+    return entries;
+}
+
+const agentBidSchema = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    bidPrice: z.number(),
+    bidQuantity: z.number(),
+    lastBought: z.number(),
+    fillRatio: z.number(),
+    lastSpent: z.number(),
+});
+
+const marketSnapshotSchema = z.object({
+    planetName: z.string(),
+    resourceName: z.string(),
+    clearingPrice: z.number(),
+    totalDemand: z.number(),
+    totalSupply: z.number(),
+    totalSold: z.number(),
+    fillRatio: z.number(),
+    unfilledDemand: z.number(),
+    unsoldSupply: z.number(),
+    offers: z.array(agentOfferSchema),
+    bids: z.array(agentBidSchema),
+    populationBids: z
+        .array(
+            z.object({
+                bidPrice: z.number(),
+                bidQuantity: z.number(),
+                lastBought: z.number(),
+                fillRatio: z.number(),
+                lastSpent: z.number(),
+            }),
+        )
+        .optional(),
+    populationDemand: z.number(),
+    agentDemand: z.number(),
+});
+
+export type PlanetMarketSnapshot = z.infer<typeof marketSnapshotSchema>;
+
+export const getPlanetMarket = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string() }))
+        .input(z.object({ planetId: z.string(), resourceName: z.string() }))
         .output(
             z.object({
                 tick: z.number(),
-                market: z
-                    .object({
-                        planetName: z.string(),
-                        /** VWAP of all executed trades this tick (from lastFoodMarketResult). */
-                        clearingPrice: z.number(),
-                        starvationLevel: z.number(),
-                        populationTotal: z.number(),
-                        /** Total bid-order demand that entered the exchange (tons). */
-                        totalDemand: z.number(),
-                        /** Sum of all agent ask-order quantities (tons). */
-                        totalSupply: z.number(),
-                        /** Total food actually traded this tick (tons). */
-                        totalSold: z.number(),
-                        /** Fill ratio: totalSold / totalDemand. */
-                        fillRatio: z.number(),
-                        /** Demand that found no matching ask (tons). */
-                        unfilledDemand: z.number(),
-                        /** Supply that found no matching bid (tons). */
-                        unsoldSupply: z.number(),
-                        /** Per-agent offers, sorted price ascending (merit order). */
-                        offers: z.array(
-                            z.object({
-                                agentId: z.string(),
-                                agentName: z.string(),
-                                offerPrice: z.number(),
-                                offerQuantity: z.number(),
-                                lastSold: z.number(),
-                                sellThrough: z.number(),
-                                lastRevenue: z.number(),
-                            }),
-                        ),
-                    })
-                    .nullable(),
+                market: marketSnapshotSchema.nullable(),
             }),
         )
         .query(async ({ input }) => {
@@ -650,14 +690,8 @@ export const getPlanetFoodMarket = () =>
                 return { tick, market: null };
             }
 
-            // Read authoritative numbers directly from the last clearing snapshot.
-            // This ensures what the UI shows is exactly what the exchange produced —
-            // no re-estimation, no divergence.
-            const result = planet.lastMarketResult[agriculturalProductResourceType.name];
-            const clearingPrice =
-                result?.clearingPrice ??
-                planet.marketPrices[agriculturalProductResourceType.name] ??
-                INITIAL_FOOD_PRICE;
+            const result = planet.lastMarketResult[input.resourceName];
+            const clearingPrice = result?.clearingPrice ?? planet.marketPrices[input.resourceName] ?? 1;
             const totalDemand = result?.totalDemand ?? 0;
             const totalSupply = result?.totalSupply ?? 0;
             const totalSold = result?.totalVolume ?? 0;
@@ -665,15 +699,38 @@ export const getPlanetFoodMarket = () =>
             const unsoldSupply = result?.unsoldSupply ?? 0;
             const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
 
-            const offers = buildAgentOffers(agents, input.planetId);
+            const offers = buildAgentOffers(agents, input.planetId, input.resourceName);
+            const bids = buildAgentBids(agents, input.planetId, input.resourceName);
+            const agentDemand = bids.reduce((s, b) => s + b.bidQuantity, 0);
+            const populationDemand = Math.max(0, totalDemand - agentDemand);
+
+            const populationBids: {
+                bidPrice: number;
+                bidQuantity: number;
+                lastBought: number;
+                fillRatio: number;
+                lastSpent: number;
+            }[] = [];
+            if (result?.populationBids) {
+                result.populationBids.forEach((bin) => {
+                    const fillRatio = bin.quantity > 0 ? Math.min(1, bin.filled / bin.quantity) : 0;
+                    populationBids.push({
+                        bidPrice: bin.bidPrice,
+                        bidQuantity: bin.quantity,
+                        lastBought: bin.filled,
+                        fillRatio,
+                        lastSpent: bin.cost,
+                    });
+                });
+                populationBids.sort((a, b) => b.bidPrice - a.bidPrice);
+            }
 
             return {
                 tick,
                 market: {
                     planetName: planet.name,
+                    resourceName: input.resourceName,
                     clearingPrice,
-                    starvationLevel: computeGlobalStarvation(planet),
-                    populationTotal: computePopulationTotal(planet),
                     totalDemand,
                     totalSupply,
                     totalSold,
@@ -681,6 +738,159 @@ export const getPlanetFoodMarket = () =>
                     unfilledDemand,
                     unsoldSupply,
                     offers,
+                    bids,
+                    populationBids,
+                    populationDemand,
+                    agentDemand,
                 },
             };
+        });
+
+// ---------------------------------------------------------------------------
+// Claims overview (land-bound resources)
+// ---------------------------------------------------------------------------
+
+const claimResourceSummarySchema = z.object({
+    resourceName: z.string(),
+    totalCapacity: z.number(),
+    tenantedCapacity: z.number(),
+    availableCapacity: z.number(),
+    totalClaims: z.number(),
+    tenantedClaims: z.number(),
+    renewable: z.boolean(),
+});
+
+export type ClaimResourceSummary = z.infer<typeof claimResourceSummarySchema>;
+
+export const getPlanetClaims = () =>
+    protectedProcedure
+        .input(z.object({ planetId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                governmentId: z.string(),
+                resources: z.array(claimResourceSummarySchema),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ tick }, { planet }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getPlanet(input.planetId),
+            ]);
+
+            if (!planet) {
+                return { tick, governmentId: '', resources: [] };
+            }
+
+            const summaries: ClaimResourceSummary[] = Object.entries(planet.resources)
+                .filter(([, claims]) => claims.length > 0 && claims[0]?.type.form === 'landBoundResource')
+                .map(([resourceName, claims]) => {
+                    let tenantedCapacity = 0;
+                    let tenantedClaims = 0;
+                    let totalCapacity = 0;
+                    let isRenewable = false;
+
+                    for (const claim of claims) {
+                        totalCapacity += claim.maximumCapacity;
+                        if (claim.regenerationRate > 0) {
+                            isRenewable = true;
+                        }
+                        const isTenanted = claim.tenantAgentId !== null && claim.tenantAgentId !== claim.claimAgentId;
+                        if (isTenanted) {
+                            tenantedCapacity += claim.maximumCapacity;
+                            tenantedClaims += 1;
+                        }
+                    }
+
+                    return {
+                        resourceName,
+                        totalCapacity,
+                        tenantedCapacity,
+                        availableCapacity: totalCapacity - tenantedCapacity,
+                        totalClaims: claims.length,
+                        tenantedClaims,
+                        renewable: isRenewable,
+                    };
+                })
+                .sort((a, b) => a.resourceName.localeCompare(b.resourceName));
+
+            return { tick, governmentId: planet.governmentId, resources: summaries };
+        });
+
+// ---------------------------------------------------------------------------
+// Market overview (all resources)
+// ---------------------------------------------------------------------------
+
+const marketOverviewRowSchema = z.object({
+    resourceName: z.string(),
+    level: z.string(),
+    clearingPrice: z.number(),
+    totalProduction: z.number(),
+    totalSupply: z.number(),
+    totalDemand: z.number(),
+    totalSold: z.number(),
+    fillRatio: z.number(),
+});
+
+export type MarketOverviewRow = z.infer<typeof marketOverviewRowSchema>;
+
+function computePlanetProduction(agents: Agent[], planetId: string): Record<string, number> {
+    const production: Record<string, number> = {};
+    for (const agent of agents) {
+        const assets = agent.assets[planetId];
+        if (!assets) {
+            continue;
+        }
+        for (const fac of assets.productionFacilities ?? []) {
+            for (const [resourceName, qty] of Object.entries(fac.lastTickResults?.lastProduced ?? {})) {
+                production[resourceName] = (production[resourceName] ?? 0) + qty;
+            }
+        }
+    }
+    return production;
+}
+
+export const getPlanetMarketOverview = () =>
+    protectedProcedure
+        .input(z.object({ planetId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                rows: z.array(marketOverviewRowSchema),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ tick }, { planet }, { agents }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getPlanet(input.planetId),
+                workerQueries.getAgentsByPlanet(input.planetId),
+            ]);
+
+            if (!planet) {
+                return { tick, rows: [] };
+            }
+
+            const production = computePlanetProduction(agents, input.planetId);
+
+            const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
+                const result = planet.lastMarketResult[resource.name];
+                const clearingPrice = result?.clearingPrice ?? planet.marketPrices[resource.name] ?? 1;
+                const totalSupply = result?.totalSupply ?? 0;
+                const totalDemand = result?.totalDemand ?? 0;
+                const totalSold = result?.totalVolume ?? 0;
+                const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
+
+                return {
+                    resourceName: resource.name,
+                    level: resource.level,
+                    clearingPrice,
+                    totalProduction: production[resource.name] ?? 0,
+                    totalSupply,
+                    totalDemand,
+                    totalSold,
+                    fillRatio,
+                };
+            }).filter((row) => row.totalSupply > 0 || row.totalDemand > 0 || row.totalProduction > 0);
+
+            return { tick, rows };
         });

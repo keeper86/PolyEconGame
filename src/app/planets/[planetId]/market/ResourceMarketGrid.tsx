@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { cn } from '@/lib/utils';
 import { productImage } from '@/lib/mapResource';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
-import { RESOURCE_LEVELS, RESOURCE_LEVEL_LABELS, resourcesByLevel } from '@/simulation/planet/resourceCatalog';
+import { cn } from '@/lib/utils';
 import type { ResourceProcessLevel } from '@/simulation/planet/planet';
+import { RESOURCE_LEVELS, RESOURCE_LEVEL_LABELS, resourcesByLevel } from '@/simulation/planet/resourceCatalog';
+import Image from 'next/image';
+import React, { useState } from 'react';
 
 type Props = {
     planetId: string;
@@ -39,7 +38,6 @@ export default function ResourceMarketGrid({ planetId: _planetId, onSelect }: Pr
 
             <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3'>
                 {resources.map((resource) => {
-                    const isFood = resource.name === agriculturalProductResourceType.name;
                     return (
                         <button
                             key={resource.name}
@@ -47,7 +45,7 @@ export default function ResourceMarketGrid({ planetId: _planetId, onSelect }: Pr
                             className={cn(
                                 'group flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition-colors',
                                 'hover:border-primary hover:bg-accent',
-                                isFood ? 'border-primary/40 bg-primary/5' : 'border-border bg-card',
+                                'border-border bg-card',
                             )}
                         >
                             <div className='h-16 w-16 flex-shrink-0 flex items-center justify-center'>
@@ -63,7 +61,6 @@ export default function ResourceMarketGrid({ planetId: _planetId, onSelect }: Pr
                                 />
                             </div>
                             <span className='text-xs leading-tight text-foreground'>{resource.name}</span>
-                            {!isFood && <span className='text-[10px] text-muted-foreground italic'>soon</span>}
                         </button>
                     );
                 })}

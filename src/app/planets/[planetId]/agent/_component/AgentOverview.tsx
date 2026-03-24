@@ -8,6 +8,7 @@ import WorkforceDemographyPanel from './WorkforceDemographyPanel';
 import type { Agent } from '../../../../../simulation/planet/planet';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
+import { formatNumbers } from '@/lib/utils';
 
 /** One snapshot per tick, keyed by resource name → quantity. */
 export type AgentResourceSnapshot = {
@@ -371,10 +372,7 @@ export default function AgentOverview({ agents, timeSeries }: Props): React.Reac
                                                             Required total:{' '}
                                                             {Object.entries(f.workerRequirement || {})
                                                                 .filter(([, v]) => v && v > 0)
-                                                                .map(
-                                                                    ([k, v]) =>
-                                                                        `${k}: ${(v! * f.scale).toLocaleString()}`,
-                                                                )
+                                                                .map(([k, v]) => `${k}: ${formatNumbers(v! * f.scale)}`)
                                                                 .join(', ')}
                                                         </div>
                                                     )}

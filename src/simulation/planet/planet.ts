@@ -259,12 +259,38 @@ export type AgentMarketOfferState = {
 };
 
 /**
+ * Per-resource bid state for one resource on one planet, stored inside
+ * `AgentMarketOffers.buy`.
+ * Written by `automaticPricing` and settled by `marketTick`.
+ */
+export type AgentMarketBidState = {
+    /** The resource being sought. */
+    resource: Resource;
+    /**
+     * Maximum price this agent is willing to pay (currency / unit).
+     * Human-controllable: players can override this value.
+     */
+    bidPrice?: number;
+    /**
+     * Quantity demanded this tick (units).
+     */
+    bidQuantity?: number;
+    /** Units actually purchased during the last market clearing tick. */
+    lastBought?: number;
+    /** Total expenditure during the last market clearing tick (currency units). */
+    lastSpent?: number;
+};
+
+/**
  * All market offers posted by one agent on one planet.
  * Keyed by resource name so offer lookup is O(1).
  */
 export type AgentMarketOffers = {
     sell: {
         [resourceName: string]: AgentMarketOfferState;
+    };
+    buy: {
+        [resourceName: string]: AgentMarketBidState;
     };
 };
 
@@ -289,6 +315,13 @@ export type MarketResult = {
     unfilledDemand: number;
     /** Supply that was not sold (units). */
     unsoldSupply: number;
+    /** Binned population demand (so we can display it in the UI) */
+    populationBids?: {
+        bidPrice: number;
+        quantity: number;
+        filled: number;
+        cost: number;
+    }[];
 };
 
 // ---------------------------------------------------------------------------
@@ -362,7 +395,7 @@ export type ResourceProcessLevel = 'source' | 'raw' | 'refined' | 'manufactured'
 export type Resource = {
     name: string;
     // solids, liquids, frozenGoods and gases count quantity in tons, persons/pieces count quantity in pieces and
-    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource';
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource' | 'energy';
     level: ResourceProcessLevel; // raw, refined, manufactured, consumerGood
     volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
     massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -195,14 +196,10 @@ export default function SellOffersPanel({ agentId, planetId, sellOffers, automat
                                             <span className='text-xs font-semibold'>{resource}</span>
                                             <div className='flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums'>
                                                 {snap.lastSold !== undefined && (
-                                                    <span>
-                                                        Sold last tick: {Math.round(snap.lastSold).toLocaleString()}
-                                                    </span>
+                                                    <span>Sold last tick: {formatNumbers(snap.lastSold)}</span>
                                                 )}
                                                 {snap.lastRevenue !== undefined && (
-                                                    <span>
-                                                        Revenue: {Math.round(snap.lastRevenue).toLocaleString()}
-                                                    </span>
+                                                    <span>Revenue: {formatNumbers(snap.lastRevenue)}</span>
                                                 )}
                                                 {snap.priceDirection !== undefined && (
                                                     <span

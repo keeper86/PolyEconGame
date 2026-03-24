@@ -64,7 +64,7 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                                     <Wheat className='h-3 w-3' />
                                     Food price
                                 </div>
-                                <div className='text-sm font-semibold tabular-nums'>{foodPrice.toFixed(3)}</div>
+                                <div className='text-sm font-semibold tabular-nums'>{formatNumbers(foodPrice)}</div>
                             </div>
                         )}
                     </div>

@@ -5,7 +5,7 @@ import { productionTick } from './production';
 import type { GameState } from './planet';
 import { makePlanetWithPopulation, makeAgent, makeProductionFacility, agentMap } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
-import { ironOreResourceType } from './resources';
+import { ironOreResourceType, waterResourceType, agriculturalProductResourceType } from './resources';
 
 // test helpers create fresh objects; no deep clone needed
 
@@ -235,5 +235,92 @@ describe('productionTick (basic)', () => {
         expect(used).toBeLessThanOrEqual(1);
         // Efficiency should still be 1 (slot was filled)
         expect(facility.lastTickResults?.overallEfficiency).toBe(1);
+    });
+});
+
+describe('productionTick — shared stored-resource allocation', () => {
+    beforeEach(() => {
+        seedRng(42);
+    });
+
+    it('splits scarce stored input proportionally across two facilities sharing the same storage', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('company');
+
+        // facility A: needs 800 water, produces beverages  (scale 400 → needs 320 000 water at full)
+        const facilityA = makeProductionFacility({ none: 1 }, { id: 'fac-a', scale: 400 });
+        facilityA.needs = [{ resource: waterResourceType, quantity: 800 }];
+        facilityA.produces = [{ resource: agriculturalProductResourceType, quantity: 1000 }];
+
+        // facility B: needs 500 water, produces something else  (scale 800 → needs 400 000 water at full)
+        const facilityB = makeProductionFacility({ none: 1 }, { id: 'fac-b', scale: 800 });
+        facilityB.needs = [{ resource: waterResourceType, quantity: 500 }];
+        facilityB.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
+
+        // give each facility one worker so efficiency is not zero
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].none.novice.active = 2;
+
+        // stock the shared storage with a small amount of water — less than either facility needs alone
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 720,
+        };
+        agent.assets.p.storageFacility.current.volume = 720 * waterResourceType.volumePerQuantity;
+        agent.assets.p.storageFacility.current.mass = 720 * waterResourceType.massPerQuantity;
+
+        agent.assets.p.productionFacilities = [facilityA, facilityB];
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
+
+        // Both facilities must have run (efficiency > 0)
+        expect(facilityA.lastTickResults.overallEfficiency).toBeGreaterThan(0);
+        expect(facilityB.lastTickResults.overallEfficiency).toBeGreaterThan(0);
+
+        // No water should remain (all consumed, within rounding tolerance)
+        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBeLessThanOrEqual(1);
+
+        // Both facilities must have equal water efficiency — proportional allocation means
+        // available / totalDemand is the same for each.
+        expect(facilityA.lastTickResults.resourceEfficiency[waterResourceType.name]).toBeCloseTo(
+            facilityB.lastTickResults.resourceEfficiency[waterResourceType.name]!,
+            5,
+        );
+    });
+
+    it('does not over-draw storage when two facilities compete for the same stored resource', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('company');
+
+        const facilityA = makeProductionFacility({ none: 1 }, { id: 'fac-a', scale: 100 });
+        facilityA.needs = [{ resource: waterResourceType, quantity: 100 }];
+        facilityA.produces = [{ resource: agriculturalProductResourceType, quantity: 100 }];
+
+        const facilityB = makeProductionFacility({ none: 1 }, { id: 'fac-b', scale: 100 });
+        facilityB.needs = [{ resource: waterResourceType, quantity: 100 }];
+        facilityB.produces = [{ resource: ironOreResourceType, quantity: 100 }];
+
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].none.novice.active = 2;
+
+        const initialWater = 500;
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: initialWater,
+        };
+        agent.assets.p.storageFacility.current.volume = initialWater * waterResourceType.volumePerQuantity;
+        agent.assets.p.storageFacility.current.mass = initialWater * waterResourceType.massPerQuantity;
+
+        agent.assets.p.productionFacilities = [facilityA, facilityB];
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
+
+        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBeGreaterThanOrEqual(0);
+        // Total consumed must not exceed what was available
+        expect(remaining).toBeLessThanOrEqual(initialWater);
     });
 });

@@ -44,6 +44,9 @@ export type LastTickResults = {
             [workerEdu in EducationLevelType]?: number;
         };
     };
+
+    /** Actual units produced per output resource this tick (post-floor, matches storage change). */
+    lastProduced: { [resourceName: string]: number };
 };
 
 export type ProductionFacility = Facilility & {

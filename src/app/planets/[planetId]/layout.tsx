@@ -1,8 +1,9 @@
 'use client';
 
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
 import { AC_ID } from '@/simulation/utils/initialWorld';
-import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -22,9 +23,10 @@ export default function PlanetDetailLayout({ children }: { children: ReactNode }
     const planetId = (params?.planetId as string) ?? '';
     const trpc = useTRPC();
 
-    const { data } = useQuery(trpc.simulation.getPlanetOverview.queryOptions({ planetId }));
+    const { data } = useSimulationQuery(trpc.simulation.getPlanetOverview.queryOptions({ planetId }));
 
-    const planetName = data?.overview?.name ?? planetId;
+    const planetName = data?.name ?? planetId;
+    const populationTotal = data?.populationTotal;
     const watermarkSrc = PLANET_LARGE_IMAGES[planetId];
 
     return (
@@ -41,7 +43,12 @@ export default function PlanetDetailLayout({ children }: { children: ReactNode }
                     priority
                 />
             )}
-            <h1 className='text-3xl font-bold'>{planetName}</h1>
+            <span className='flex justify-between mb-2'>
+                <h1 className='text-3xl font-bold'>{planetName}</h1>
+                {populationTotal !== undefined && (
+                    <span className='text-sm text-muted-foreground self-end'>{`Total population: ${formatNumbers(populationTotal)}`}</span>
+                )}
+            </span>
             {children}
         </div>
     );

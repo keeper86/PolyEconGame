@@ -13,8 +13,6 @@ export type MarketSnapshot = {
     fillRatio: number;
     unfilledDemand: number;
     unsoldSupply: number;
-    starvationLevel: number;
-    populationTotal: number;
 };
 
 type Props = {
@@ -49,19 +47,6 @@ function fillRatioColor(ratio: number): string {
     return '#ef4444'; // red-500
 }
 
-function starvationColor(level: number): string {
-    if (level <= 0.001) {
-        return '#22c55e';
-    }
-    if (level < 0.05) {
-        return '#f59e0b';
-    }
-    if (level < 0.15) {
-        return '#f97316';
-    }
-    return '#ef4444';
-}
-
 // ─── Card data ────────────────────────────────────────────────────────────────
 
 type CardDef = {
@@ -91,7 +76,7 @@ function buildCards(m: MarketSnapshot): CardDef[] {
         {
             label: 'Demand',
             value: formatNumbers(m.totalDemand),
-            sub: `${formatNumbers(m.populationTotal)} people`,
+            sub: 'total bid quantity (units)',
             accentColor: '#a78bfa',
         },
         {
@@ -103,20 +88,14 @@ function buildCards(m: MarketSnapshot): CardDef[] {
         {
             label: 'Unfilled demand',
             value: formatNumbers(m.unfilledDemand),
-            sub: 'tons of bids with no matching ask',
+            sub: 'units of bids with no matching ask',
             accentColor: m.unfilledDemand > 0 ? '#f97316' : '#22c55e',
         },
         {
             label: 'Unsold supply',
             value: formatNumbers(m.unsoldSupply),
-            sub: 'tons of asks below any bid',
+            sub: 'units of asks below any bid',
             accentColor: m.unsoldSupply > 0 ? '#94a3b8' : '#22c55e',
-        },
-        {
-            label: 'Starvation',
-            value: formatNumbers(m.starvationLevel * 100) + '%',
-            sub: 'population-weighted avg',
-            accentColor: starvationColor(m.starvationLevel),
         },
     ];
 }

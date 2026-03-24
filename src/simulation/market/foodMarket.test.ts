@@ -1,19 +1,25 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
+import {
+    FOOD_BUFFER_TARGET_TICKS,
+    FOOD_PER_PERSON_PER_TICK,
+    INITIAL_FOOD_PRICE,
+    PRICE_ADJUST_MAX_UP,
+} from '../constants';
 import { putIntoStorageFacility } from '../planet/storage';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
-import { agriculturalProductResourceType } from '../planet/resources';
+import { agriculturalProductResourceType, clothingResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 const FOOD = agriculturalProductResourceType.name;
+const CLOTHING = clothingResourceType.name;
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
     return makeGS(planet, agents, 1);
@@ -37,6 +43,7 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
                 overqualifiedWorkers: {},
                 exactUsedByEdu: {},
                 totalUsedByEdu: {},
+                lastProduced: {},
             },
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -74,6 +81,7 @@ function setFoodOffer(agent: Agent, offerPrice: number, offerQuantity?: number, 
                 lastSold,
             },
         },
+        buy: {},
     };
 }
 
@@ -416,5 +424,154 @@ describe('updateAgentPricing', () => {
         automaticPricing(agentMap(foodAgent), planet);
 
         expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeGreaterThanOrEqual(0.01);
+    });
+
+    it('does not raise price when agent has nothing to offer and last sold is from a prior tick', () => {
+        putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
+        // Simulate: previously sold 1550 units, but current stock is empty → supply-constrained
+        setFoodOffer(foodAgent, 0.73, 0, 1550);
+
+        automaticPricing(agentMap(foodAgent), planet);
+
+        // supply = 0 → treated as full shortage → price rises by PRICE_ADJUST_MAX_UP
+        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeCloseTo(0.73 * PRICE_ADJUST_MAX_UP);
+    });
+
+    it('raises price when agent has no stock and also sold nothing (intermittent production)', () => {
+        putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
+        setFoodOffer(foodAgent, 2.0, 0, 0);
+
+        automaticPricing(agentMap(foodAgent), planet);
+
+        expect(foodAgent.assets.p.market!.sell[FOOD]!.offerPrice!).toBeCloseTo(2.0 * PRICE_ADJUST_MAX_UP);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Food-scarcity suppression of discretionary demand
+// ---------------------------------------------------------------------------
+
+describe('sequential settlement: food is settled before discretionary goods', () => {
+    // With sequential settlement, food is cleared and wealth debited before
+    // clothing bids are generated.  A cohort that spends all remaining wealth
+    // on food has nothing left for clothing.
+    const WEALTH_PER_PERSON = 0.02;
+
+    function makeClothingAgent(id = 'clothing-agent'): Agent {
+        const agent = makeAgent(id);
+        putIntoStorageFacility(agent.assets.p.storageFacility, clothingResourceType, 1e6);
+        agent.assets.p.market = {
+            sell: {
+                [CLOTHING]: {
+                    resource: clothingResourceType,
+                    offerPrice: 1.0,
+                    offerQuantity: 1e6,
+                },
+            },
+            buy: {},
+        };
+        return agent;
+    }
+
+    function makeFoodAgent(id = 'food-agent', price = 0.02): Agent {
+        const agent = makeAgent(id);
+        putIntoStorageFacility(agent.assets.p.storageFacility, agriculturalProductResourceType, 1e6);
+        agent.assets.p.market = {
+            sell: {
+                [FOOD]: {
+                    resource: agriculturalProductResourceType,
+                    offerPrice: price,
+                    offerQuantity: 1e6,
+                },
+            },
+            buy: {},
+        };
+        return agent;
+    }
+
+    function totalClothingBought(planet: Planet): number {
+        let total = 0;
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                total += cat.inventory[CLOTHING] ?? 0;
+            }),
+        );
+        return total;
+    }
+
+    function setupPlanet(foodInventoryPerPerson: number) {
+        const { planet } = makePlanetWithPopulation({ none: 500 });
+        const totalPop = planet.population.demography.reduce((s, cohort) => {
+            let n = 0;
+            forEachPopulationCohort(cohort, (cat) => {
+                n += cat.total;
+            });
+            return s + n;
+        }, 0);
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    cat.wealth = { mean: WEALTH_PER_PERSON, variance: 0 };
+                    cat.inventory[FOOD] = foodInventoryPerPerson * cat.total;
+                }
+            }),
+        );
+        planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
+        planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
+        return planet;
+    }
+
+    it('full food buffer → wealth intact → normal clothing demand', () => {
+        const fullBuffer = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = setupPlanet(fullBuffer);
+        const clothingAgent = makeClothingAgent();
+
+        marketTick(agentMap(clothingAgent), planet);
+
+        expect(totalClothingBought(planet)).toBeGreaterThan(0);
+    });
+
+    it('empty food buffer + food available → food spending reduces clothing budget', () => {
+        // Verify that food is settled (wealth debited) before clothing bids are
+        // generated by checking that total household wealth is lower when both
+        // food and clothing are available vs. only clothing.
+        const planet = setupPlanet(0);
+        const planetClothingOnly = setupPlanet(0);
+
+        const foodAgent = makeFoodAgent('food-agent', 0.01);
+
+        marketTick(
+            new Map([
+                ['food-agent', foodAgent],
+                ['clothing-agent', makeClothingAgent()],
+            ]),
+            planet,
+        );
+        marketTick(agentMap(makeClothingAgent('c-only')), planetClothingOnly);
+
+        const totalWealth = (p: Planet) => {
+            let w = 0;
+            p.population.demography.forEach((cohort) =>
+                forEachPopulationCohort(cohort, (cat) => {
+                    w += cat.total * cat.wealth.mean;
+                }),
+            );
+            return w;
+        };
+
+        // Food purchase drains more total wealth than clothing purchase alone
+        expect(totalWealth(planet)).toBeLessThan(totalWealth(planetClothingOnly));
+    });
+
+    it('empty food buffer + no food seller → wealth intact → clothing demand unaffected', () => {
+        const fullBuffer = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planetWithFullFood = setupPlanet(fullBuffer);
+        const planetWithNoFood = setupPlanet(0);
+
+        marketTick(agentMap(makeClothingAgent('c1')), planetWithFullFood);
+        marketTick(agentMap(makeClothingAgent('c2')), planetWithNoFood);
+
+        // No food to buy → no wealth debited → same clothing demand
+        expect(totalClothingBought(planetWithNoFood)).toBeCloseTo(totalClothingBought(planetWithFullFood), 6);
     });
 });

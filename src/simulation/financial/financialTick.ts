@@ -1,5 +1,5 @@
-import { RETAINED_EARNINGS_THRESHOLD } from '../constants';
-import type { Agent, Planet } from '../planet/planet';
+import { INITIAL_FOOD_PRICE, INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD } from '../constants';
+import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
@@ -26,6 +26,29 @@ export const C_WEALTH = 0.0;
 
 function getWage(planet: Planet, edu: EducationLevelType): number {
     return planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
+}
+
+/**
+ * Estimate the cost to purchase a full input buffer for all production
+ * facilities of an agent on a planet.
+ *
+ * inputBufferCost = Σ_facility Σ_input  qty × scale × INPUT_BUFFER_TARGET_TICKS × marketPrice
+ *
+ * Land-bound resources (deposits) are excluded because they are not purchased
+ * on the spot market.
+ */
+function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): number {
+    let cost = 0;
+    for (const facility of assets.productionFacilities) {
+        for (const { resource, quantity } of facility.needs) {
+            if (resource.form === 'landBoundResource') {
+                continue;
+            }
+            const price = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
+            cost += quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS * price;
+        }
+    }
+    return cost;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,6 +106,23 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         // householdDeposits is now updated inside creditWageIncome, per cell,
         // so no bulk increment here.
         assets.lastWageBill = wageBill;
+
+        // 3. Input-buffer procurement loan (MONEY CREATION)
+        //    Automated agents need capital to purchase production inputs every
+        //    tick.  If their deposits fall below the estimated buffer cost, the
+        //    bank tops them up so they can participate in the commodity market.
+        //    The retained-earnings threshold in automaticLoanRepayment ensures
+        //    this balance is never repaid below the buffer floor.
+        if (agent.automated) {
+            const bufferCost = estimateInputBufferCost(assets, planet);
+            if (bufferCost > 0 && assets.deposits < bufferCost) {
+                const shortfall = bufferCost - assets.deposits;
+                bank.loans += shortfall;
+                bank.deposits += shortfall;
+                assets.deposits += shortfall;
+                assets.loans += shortfall;
+            }
+        }
 
         // Count only THIS agent's employed workers (from their workforce demography),
         // so that wages are distributed only to workers employed by this agent.
@@ -157,10 +197,14 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         if (deposits <= 0 || bank.loans <= 0 || agentLoan <= 0) {
             return;
         }
-        // Retained earnings threshold: only repay from deposits exceeding
-        // RETAINED_EARNINGS_THRESHOLD × lastWageBill.
+        // Retained earnings threshold: only repay from deposits exceeding the
+        // greater of (RETAINED_EARNINGS_THRESHOLD × wageBill) and the full
+        // input-buffer cost.  This ensures agents always keep enough capital to
+        // re-purchase their input buffer before repaying bank debt.
         const wageBill = assets.lastWageBill ?? 0;
-        const retainedThreshold = wageBill * RETAINED_EARNINGS_THRESHOLD;
+        const wageThreshold = wageBill * RETAINED_EARNINGS_THRESHOLD;
+        const bufferCost = estimateInputBufferCost(assets, planet);
+        const retainedThreshold = Math.max(wageThreshold, bufferCost);
         const excessDeposits = Math.max(0, deposits - retainedThreshold);
         if (excessDeposits <= 0) {
             return;

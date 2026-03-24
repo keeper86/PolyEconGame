@@ -24,9 +24,9 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         description: 'No formal education. Attending Elementary school.',
         graduationAge: 9,
         graduationPreAgeProbability: 0.1, // graduation = starting primary school at age 5,6,7
-        graduationProbability: 0.9,
+        graduationProbability: 0.65, // ~35% still in elementary past age 9 each year; some reach 14 without graduating
         genericDropoutProbability: 0,
-        transitionProbability: 0.95,
+        transitionProbability: 0.9,
     },
     primary: {
         name: 'Primary',
@@ -68,10 +68,10 @@ export const educationGraduationProbabilityForAge = (age: number, level: Educati
     const { graduationAge, graduationPreAgeProbability, graduationProbability } = educationLevels[level];
     const ageDifferenceToGraduation = graduationAge - age;
     if (ageDifferenceToGraduation > 0) {
-        // before graduation age
         return Math.pow(graduationPreAgeProbability, ageDifferenceToGraduation);
     }
-    return graduationProbability;
+    const yearsOverdue = age - graduationAge;
+    return graduationProbability * Math.pow(1 - graduationPreAgeProbability, yearsOverdue);
 };
 
 // at which age will education dropouts occur?

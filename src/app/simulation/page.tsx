@@ -13,6 +13,7 @@ const TOC = [
     { id: 'financial-pre', label: '5. Pre-Production Financial Tick' },
     { id: 'production', label: '6. Production Tick' },
     { id: 'pricing', label: '7. Agent Pricing (Tâtonnement)' },
+    { id: 'buying', label: '7b. Agent Input Buying' },
     { id: 'transfers', label: '8. Intergenerational Transfers' },
     { id: 'market', label: '9. Market Clearing' },
     { id: 'financial-post', label: '10. Post-Production Financial Tick' },
@@ -419,6 +420,66 @@ offerQuantity = current storage inventory for this resource`}
                 </section>
 
                 {/* ---------------------------------------------------------------- */}
+                {/* 7b. AGENT INPUT BUYING                                            */}
+                {/* ---------------------------------------------------------------- */}
+                <section id='buying'>
+                    <h2 className='text-2xl font-bold mt-8 mb-3'>7b. Agent Input Buying (every tick)</h2>
+                    <p>
+                        In the same pricing step, each automated agent also posts <strong>buy orders</strong> for every
+                        traded input resource its facilities require. The target is a rolling 30-tick input buffer; the
+                        bid quantity equals the current shortfall against that target.
+                    </p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>Buffer Target &amp; Shortfall</h3>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`INPUT_BUFFER_TARGET_TICKS = 30
+
+targetQty = inputQuantity × facilityScale × 30
+shortfall = max(0, targetQty − currentInventory)
+bidQuantity = shortfall`}
+                    </pre>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>Bid Price — Tâtonnement with Break-Even Ceiling</h3>
+                    <p>
+                        The bid price rises when the previous tick was under-filled (urgency premium), mirroring the
+                        sell-side tâtonnement. Crucially, the bid is capped at the{' '}
+                        <strong>break-even input price</strong> — the maximum an agent can rationally pay per unit of
+                        input before the resulting output no longer covers the cost:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`breakEvenCeiling = Σ(outputQty × outputMarketPrice) / inputQty
+  (per facility; agent takes the highest ceiling across all facilities using that input)
+
+On first tick:
+  bidPrice = min(marketPrice, breakEvenCeiling)
+
+On subsequent ticks (symmetric two-segment tâtonnement, TARGET_FILL_RATE = 0.90):
+  fillRate = lastBought / previousDemand
+
+  fillRate = 0   → factor = PRICE_ADJUST_MAX_UP   (1.05)  — couldn't buy anything, bid up
+  fillRate = 0.9 → factor = 1.0                           — at target, no change
+  fillRate = 1   → factor = PRICE_ADJUST_MAX_DOWN (0.95)  — always fully filled, bid down
+
+  bidPrice = clamp(bidPrice × factor, 0.01, breakEvenCeiling)`}
+                    </pre>
+                    <p className='mt-2'>
+                        Without this ceiling, agents with access to cheap credit can keep outbidding the market until
+                        input prices detach from output values entirely. The ceiling ensures that an agent buying coal
+                        to produce steel will never pay more per ton of coal than the steel it generates is worth.
+                    </p>
+
+                    <h3 className='text-xl font-semibold mt-6 mb-2'>Sell-Side Reserve</h3>
+                    <p>
+                        Sell offers for a resource are additionally reduced by the total input reserve across all
+                        facilities — an agent does not sell inputs it still needs for its own next-tick production:
+                    </p>
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`inputReserve[r] = Σ_facilities inputQuantity[r] × scale × INPUT_BUFFER_TARGET_TICKS
+sellableQty     = max(0, inventory[r] − inputReserve[r])`}
+                    </pre>
+                </section>
+
+                {/* ---------------------------------------------------------------- */}
                 {/* 8. INTERGENERATIONAL TRANSFERS                                    */}
                 {/* ---------------------------------------------------------------- */}
                 <section id='transfers'>
@@ -629,7 +690,8 @@ workforce[0] ← empty cohort`}
                             <code>productionTick</code> — water-fill allocation, output, resource consumption, pollution
                         </li>
                         <li>
-                            <code>automaticPricing</code> — tâtonnement price update per resource per agent
+                            <code>automaticPricing</code> — tâtonnement price update per resource per agent (sell-side
+                            offers) and input buy orders with break-even ceiling
                         </li>
                         <li>
                             <code>intergenerationalTransfersForPlanet</code> — Gaussian food/wealth redistribution
