@@ -102,32 +102,50 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
             adjustOfferPrice(offer, sellableQty, initialPrice);
         }
+    }
+
+    // Aggregate shortfall per input resource across all facilities before placing
+    // buy orders. A facility whose output buffer is full contributes 0 to that
+    // resource's shortfall, but must not suppress the aggregate for other facilities
+    // that still need it.
+    const aggregatedShortfall = new Map<
+        string,
+        { resource: (typeof assets.productionFacilities)[number]['needs'][number]['resource']; shortfall: number }
+    >();
+    for (const facility of assets.productionFacilities) {
+        const outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
+            const outInventory = queryStorageFacility(assets.storageFacility, out.name);
+            return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
+        });
 
         for (const { resource, quantity } of facility.needs) {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
 
-            const outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
-                const outInventory = queryStorageFacility(assets.storageFacility, out.name);
-                return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
-            });
-
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const targetQty = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
-            const shortfall = outputBufferFull ? 0 : Math.max(0, targetQty - inventoryQty);
+            const facilityShortfall = outputBufferFull ? 0 : Math.max(0, targetQty - inventoryQty);
 
-            if (!assets.market.buy[resource.name]) {
-                assets.market.buy[resource.name] = { resource };
+            const existing = aggregatedShortfall.get(resource.name);
+            if (existing) {
+                existing.shortfall += facilityShortfall;
+            } else {
+                aggregatedShortfall.set(resource.name, { resource, shortfall: facilityShortfall });
             }
-
-            const bid = assets.market.buy[resource.name];
-            bid.resource = resource;
-
-            const marketPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
-            const ceiling = inputValueCeiling.get(resource.name);
-            adjustBidPrice(bid, shortfall, marketPrice, ceiling);
         }
+    }
+
+    for (const [resourceName, { resource, shortfall }] of aggregatedShortfall) {
+        if (!assets.market.buy[resourceName]) {
+            assets.market.buy[resourceName] = { resource };
+        }
+        const bid = assets.market.buy[resourceName];
+        bid.resource = resource;
+
+        const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
+        const ceiling = inputValueCeiling.get(resourceName);
+        adjustBidPrice(bid, shortfall, marketPrice, ceiling);
     }
 }
 
@@ -223,7 +241,7 @@ function adjustBidPrice(
         return;
     }
 
-    if (bid.bidPrice === undefined) {
+    if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
         bid.bidPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
         return;
     }

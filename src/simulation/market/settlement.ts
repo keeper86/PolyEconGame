@@ -3,8 +3,6 @@ import type { Planet } from '../planet/planet';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
 
-const QUANTITY_EPSILON = 1e-9;
-
 export function settleHouseholds(
     planet: Planet,
     resourceName: string,
@@ -63,13 +61,7 @@ export function settleAgentSellers(
     }
 }
 
-export function settleAgentBuyers(
-    planet: Planet,
-    agentBids: AgentBidOrder[],
-    askOrders: AskOrder[],
-    askFilledBaseline: number[],
-    askRevenueBaseline: number[],
-): void {
+export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): void {
     for (const bid of agentBids) {
         if (bid.filled <= 0) {
             continue;
@@ -80,62 +72,14 @@ export function settleAgentBuyers(
             continue;
         }
 
-        let settledFilled = bid.filled;
-        let settledCost = bid.cost;
-
-        if (settledCost > assets.deposits) {
-            if (assets.deposits <= 0) {
-                settledFilled = 0;
-                settledCost = 0;
-            } else {
-                const scale = assets.deposits / settledCost;
-                settledFilled *= scale;
-                settledCost = assets.deposits;
-            }
-        }
-
-        if (settledFilled <= 0) {
-            rollbackAskDeltas(askOrders, askFilledBaseline, askRevenueBaseline, bid.filled);
-            bid.filled = 0;
-            bid.cost = 0;
-            continue;
-        }
-
-        if (settledFilled < bid.filled) {
-            const cancelledFilled = bid.filled - settledFilled;
-            rollbackAskDeltas(askOrders, askFilledBaseline, askRevenueBaseline, cancelledFilled);
-            bid.filled = settledFilled;
-            bid.cost = settledCost;
-        }
-
-        assets.deposits -= settledCost;
-        putIntoStorageFacility(assets.storageFacility, bid.resource, settledFilled);
+        assets.deposits -= bid.cost;
+        putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
 
         const buyState = assets.market?.buy[bid.resource.name];
         if (buyState) {
-            buyState.lastBought = (buyState.lastBought ?? 0) + settledFilled;
-            buyState.lastSpent = (buyState.lastSpent ?? 0) + settledCost;
+            buyState.lastBought = (buyState.lastBought ?? 0) + bid.filled;
+            buyState.lastSpent = (buyState.lastSpent ?? 0) + bid.cost;
         }
-    }
-}
-
-function rollbackAskDeltas(
-    askOrders: AskOrder[],
-    filledBaseline: number[],
-    revenueBaseline: number[],
-    cancelledFilled: number,
-): void {
-    let remaining = cancelledFilled;
-    for (let i = askOrders.length - 1; i >= 0 && remaining > QUANTITY_EPSILON; i--) {
-        const deltaFilled = askOrders[i].filled - filledBaseline[i];
-        if (deltaFilled <= 0) {
-            continue;
-        }
-        const rollback = Math.min(remaining, deltaFilled);
-        const deltaRevenue = askOrders[i].revenue - revenueBaseline[i];
-        askOrders[i].filled -= rollback;
-        askOrders[i].revenue -= deltaRevenue * (rollback / deltaFilled);
-        remaining -= rollback;
     }
 }
 

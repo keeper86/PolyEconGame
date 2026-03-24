@@ -20,6 +20,8 @@ export interface AgentBidOrder {
     quantity: number;
     filled: number;
     cost: number;
+    /** Remaining deposit budget available for this bid. Decremented during matching. */
+    remainingDeposits: number;
 }
 
 export interface AskOrder {

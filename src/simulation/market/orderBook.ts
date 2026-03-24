@@ -39,7 +39,13 @@ export function clearUnifiedBids(
                 break;
             }
 
-            const tradeQty = Math.min(bidRemaining, askRemaining);
+            // For agent bids, cap the tradeable quantity by the remaining deposit budget.
+            const effectiveBidRemaining =
+                bid.kind === 'agent' && ask.askPrice > 0
+                    ? Math.min(bidRemaining, Math.floor(bid.order.remainingDeposits / ask.askPrice))
+                    : bidRemaining;
+
+            const tradeQty = Math.min(effectiveBidRemaining, askRemaining);
             if (tradeQty < QUANTITY_EPSILON) {
                 break;
             }
@@ -57,6 +63,7 @@ export function clearUnifiedBids(
                 agentTrades.push({ price: tradePrice, quantity: tradeQty });
                 bid.order.filled += tradeQty;
                 bid.order.cost += tradeQty * tradePrice;
+                bid.order.remainingDeposits -= tradeQty * tradePrice;
             }
 
             if (askRemaining < QUANTITY_EPSILON) {

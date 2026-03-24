@@ -63,6 +63,7 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
                 quantity: qty,
                 filled: 0,
                 cost: 0,
+                remainingDeposits: assets.deposits,
             });
         }
     });

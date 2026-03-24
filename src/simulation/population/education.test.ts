@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 import { MIN_EMPLOYABLE_AGE } from '../constants';
+import { seedRng } from '../engine';
 import { makePlanet } from '../utils/testHelper';
 import {
     applyEducationTransition,
@@ -69,6 +70,10 @@ describe('educationGraduationProbabilityForAge', () => {
 // ============================================================================
 
 describe('applyEducationTransition', () => {
+    beforeEach(() => {
+        seedRng(42);
+    });
+
     it('does not produce any unoccupied people for ages below MIN_EMPLOYABLE_AGE', () => {
         const planet = makePlanet();
         // Age 5 in 'none' education: graduationAge=9, so these kids are 4 years before graduation.

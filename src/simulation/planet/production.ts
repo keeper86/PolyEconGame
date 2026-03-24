@@ -168,7 +168,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             planet.environment.pollution.soil += facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
 
             facility.produces.forEach((output) => {
-                const produced = Math.floor(output.quantity * facility.scale * overallEfficiency);
+                const produced = stochasticRound(output.quantity * facility.scale * overallEfficiency);
                 if (produced <= 0) {
                     return;
                 }
@@ -177,7 +177,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             });
 
             facility.needs.forEach((need) => {
-                const consumed = Math.floor(need.quantity * facility.scale * overallEfficiency);
+                const consumed = Math.ceil(need.quantity * facility.scale * overallEfficiency);
                 if (need.resource.form === 'landBoundResource') {
                     const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
                     if (extracted < consumed) {

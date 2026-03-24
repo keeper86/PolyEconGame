@@ -75,7 +75,7 @@ function clearResourceMarket(
     const bidCosts = reconstructBidCosts(householdTrades, householdBidFilled);
 
     settleHouseholds(planet, resourceName, householdBids, householdBidFilled, bidCosts);
-    settleAgentBuyers(planet, agentBids, askOrders, askFilledBaseline, askRevenueBaseline);
+    settleAgentBuyers(planet, agentBids);
     settleAgentSellers(planet, askOrders, askFilledBaseline, askRevenueBaseline);
 
     const allTrades = [...householdTrades, ...agentTrades];
