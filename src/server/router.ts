@@ -35,6 +35,7 @@ import {
     setWorkerAllocationTargets,
     setSellOffers,
     claimResources,
+    buildFacility,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -71,6 +72,7 @@ const protectedAppRouter = trpcRoot.router({
     setWorkerAllocationTargets: setWorkerAllocationTargets(),
     setSellOffers: setSellOffers(),
     claimResources: claimResources(),
+    buildFacility: buildFacility(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

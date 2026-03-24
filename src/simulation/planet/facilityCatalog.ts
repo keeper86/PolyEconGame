@@ -120,3 +120,7 @@ export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntr
     manufactured: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'manufactured'),
     consumerGood: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'consumerGood'),
 };
+
+export const facilityByName: ReadonlyMap<string, FacilityCatalogEntry> = new Map(
+    ALL_FACILITY_ENTRIES.map((e) => [e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name, e]),
+);

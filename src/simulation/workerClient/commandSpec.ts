@@ -95,3 +95,16 @@ export const claimResourcesSpec: CommandSpec<
     failureType: 'resourcesClaimFailed',
     extract: (msg) => ({ arableClaimId: msg.arableClaimId, waterClaimId: msg.waterClaimId }),
 };
+
+type BuildFacilitySuccess = Extract<OutboundMessage, { type: 'facilityBuilt' }>;
+type BuildFacilityFailure = Extract<OutboundMessage, { type: 'facilityBuildFailed' }>;
+export const buildFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'buildFacility' }>,
+    BuildFacilitySuccess,
+    BuildFacilityFailure,
+    string
+> = {
+    successType: 'facilityBuilt',
+    failureType: 'facilityBuildFailed',
+    extract: (msg) => msg.facilityId,
+};

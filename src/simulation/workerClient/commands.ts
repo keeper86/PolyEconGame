@@ -7,6 +7,7 @@ import {
     setWorkerAllocationTargetsSpec,
     setSellOffersSpec,
     claimResourcesSpec,
+    buildFacilitySpec,
 } from './commandSpec';
 
 export function workerCreateAgent(opts: {
@@ -90,6 +91,20 @@ export function workerClaimResources(opts: {
     return sendCommandSpec(
         { type: 'claimResources', requestId: randomUUID(), agentId, planetId, arableLandQuantity, waterSourceQuantity },
         claimResourcesSpec,
+        timeoutMs,
+    );
+}
+
+export function workerBuildFacility(opts: {
+    agentId: string;
+    planetId: string;
+    facilityKey: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, facilityKey, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'buildFacility', requestId: randomUUID(), agentId, planetId, facilityKey },
+        buildFacilitySpec,
         timeoutMs,
     );
 }

@@ -20,6 +20,7 @@ import { arableLandResourceType, waterSourceResourceType } from './planet/landBo
 import { makeAgent } from './utils/testHelper';
 import { collapseUntenantedClaims } from './utils/entities';
 import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from './utils/initialWorld';
+import { facilityByName } from './planet/facilityCatalog';
 export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 
@@ -415,6 +416,40 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                                 `${waterSourceQuantity} water source on planet '${planetId}'`,
                         );
                         safePostMessage({ type: 'resourcesClaimed', requestId, agentId, arableClaimId, waterClaimId });
+                        break;
+                    }
+                    case 'buildFacility': {
+                        const { requestId, agentId, planetId, facilityKey } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'facilityBuildFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        const catalogEntry = facilityByName.get(facilityKey);
+                        if (!catalogEntry) {
+                            safePostMessage({
+                                type: 'facilityBuildFailed',
+                                requestId,
+                                reason: `Unknown facility '${facilityKey}'`,
+                            });
+                            break;
+                        }
+                        const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+                        const newFacility = catalogEntry.factory(planetId, facilityId);
+                        newFacility.scale = 1;
+                        newFacility.maxScale = 1;
+                        assets.productionFacilities.push(newFacility);
+                        console.log(`[worker] Agent '${agentId}' built '${facilityKey}' on planet '${planetId}'`);
+                        safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId });
                         break;
                     }
                 }
@@ -831,6 +866,20 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 arableLandQuantity,
                 waterSourceQuantity,
             });
+            return;
+        }
+
+        if (msg.type === 'buildFacility') {
+            const { requestId, agentId, planetId, facilityKey } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'facilityBuildFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'buildFacility', requestId, agentId, planetId, facilityKey });
             return;
         }
 
