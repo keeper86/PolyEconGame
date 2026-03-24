@@ -8,6 +8,9 @@ import {
     pharmaceuticalResourceType,
     furnitureResourceType,
     consumerElectronicsResourceType,
+    vehicleResourceType,
+    brickResourceType,
+    concreteResourceType,
 } from '../planet/resources';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
@@ -72,7 +75,7 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
 // incomeSharePerTick  - fraction of remaining per-capita wealth spent
 // yearlyQtyPerPerson  - physical cap on how much one person buys/year
 // ------------------------------------------------------------------
-function makeConsumerGoodRule(incomeSharePerTick: number, yearlyQtyPerPerson: number): DemandRule {
+function makeConsumerGoodRule(wealthPerTick: number, yearlyQtyPerPerson: number): DemandRule {
     const qtyPerTick = yearlyQtyPerPerson / TICKS_PER_YEAR;
 
     return ({ wealthMeanPerPerson, referencePrice }) => {
@@ -83,7 +86,7 @@ function makeConsumerGoodRule(incomeSharePerTick: number, yearlyQtyPerPerson: nu
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const budget = wealthMeanPerPerson * incomeSharePerTick;
+        const budget = wealthMeanPerPerson * wealthPerTick;
         const affordableQty = budget / referencePrice;
         const effectiveQty = Math.min(qtyPerTick, affordableQty);
 
@@ -106,6 +109,10 @@ demandRules.set(pharmaceuticalResourceType.name, makeConsumerGoodRule(0.001, 0.0
 demandRules.set(furnitureResourceType.name, makeConsumerGoodRule(0.001, 0.02));
 // Consumer Electronics: ~0.1 pieces/person/year.
 demandRules.set(consumerElectronicsResourceType.name, makeConsumerGoodRule(0.002, 0.1));
+// Manufactured goods
+demandRules.set(vehicleResourceType.name, makeConsumerGoodRule(0.001, 0.03));
+demandRules.set(brickResourceType.name, makeConsumerGoodRule(0.001, 1));
+demandRules.set(concreteResourceType.name, makeConsumerGoodRule(0.001, 0.1));
 /**
  * Priority order for sequential household settlement.
  * Food is cleared and settled first; household wealth is debited before

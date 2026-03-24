@@ -132,8 +132,8 @@ export default function MarketOverviewTable({ planetId, onSelect }: Props): Reac
                                                 <Image
                                                     src={productImage(row.resourceName)}
                                                     alt={row.resourceName}
-                                                    width={24}
-                                                    height={24}
+                                                    width={28}
+                                                    height={28}
                                                     className='object-contain flex-shrink-0'
                                                     onError={(e) => {
                                                         (e.currentTarget as HTMLImageElement).style.display = 'none';

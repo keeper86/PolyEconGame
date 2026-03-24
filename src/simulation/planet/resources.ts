@@ -359,3 +359,27 @@ export const vehicleResourceType: Resource = {
     volumePerQuantity: 10.0,
     massPerQuantity: 1.5,
 };
+
+export const constructionResourceType: Resource = {
+    name: 'Construction Material',
+    form: 'solid',
+    level: 'manufactured',
+    volumePerQuantity: 0.8,
+    massPerQuantity: 1,
+};
+
+export const packagingResourceType: Resource = {
+    name: 'Packaging Material',
+    form: 'solid',
+    level: 'manufactured',
+    volumePerQuantity: 0.5,
+    massPerQuantity: 0.5,
+};
+
+export const energyResourceType: Resource = {
+    name: 'Energy',
+    form: 'energy',
+    level: 'manufactured',
+    volumePerQuantity: 0,
+    massPerQuantity: 0, // energy doesn't have mass/ store is emptied at begin of tick
+};

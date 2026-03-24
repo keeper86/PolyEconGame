@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { INITIAL_FOOD_PRICE } from '../constants';
+import { INITIAL_FOOD_PRICE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import { putIntoStorageFacility } from '../planet/storage';
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
@@ -301,6 +301,44 @@ describe('automaticPricing — buy side', () => {
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
         expect(bid.bidPrice).toBeLessThanOrEqual(2.0 + 1e-9);
+    });
+
+    it('suppresses input buying when all outputs exceed the output buffer ceiling', () => {
+        const buyer = makeSteelProducer();
+        const fullOutputBuffer = 50 * 1 * OUTPUT_BUFFER_MAX_TICKS;
+        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullOutputBuffer);
+
+        automaticPricing(agentMap(buyer), planet);
+
+        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(0);
+    });
+
+    it('resumes input buying once output inventory drops below the output buffer ceiling', () => {
+        const buyer = makeSteelProducer();
+        const fullOutputBuffer = 50 * 1 * OUTPUT_BUFFER_MAX_TICKS;
+        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullOutputBuffer - 1);
+
+        automaticPricing(agentMap(buyer), planet);
+
+        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBeGreaterThan(0);
+    });
+
+    it('suppresses input buying per facility independently when one facility output is full', () => {
+        const buyer = makeSteelProducer();
+        buyer.assets.p.productionFacilities.push({
+            ...buyer.assets.p.productionFacilities[0],
+            id: 'steel-fac-2',
+            needs: [{ resource: coalResourceType, quantity: 200 }],
+            produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
+        });
+
+        const fullBuffer = 50 * 1 * OUTPUT_BUFFER_MAX_TICKS;
+        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullBuffer);
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        expect(bid.bidQuantity).toBeGreaterThan(0);
     });
 });
 

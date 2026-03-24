@@ -3,6 +3,7 @@ import {
     FOOD_PRICE_FLOOR,
     INITIAL_FOOD_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
+    OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
 } from '../constants';
@@ -107,9 +108,14 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
+            const outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
+                const outInventory = queryStorageFacility(assets.storageFacility, out.name);
+                return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
+            });
+
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const targetQty = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
-            const shortfall = Math.max(0, targetQty - inventoryQty);
+            const shortfall = outputBufferFull ? 0 : Math.max(0, targetQty - inventoryQty);
 
             if (!assets.market.buy[resource.name]) {
                 assets.market.buy[resource.name] = { resource };
