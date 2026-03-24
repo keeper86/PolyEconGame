@@ -83,6 +83,19 @@ export const setSellOffersSpec: CommandSpec<
     extract: () => undefined,
 };
 
+type SetBuyBidsSuccess = Extract<OutboundMessage, { type: 'buyBidsSet' }>;
+type SetBuyBidsFailure = Extract<OutboundMessage, { type: 'buyBidsFailed' }>;
+export const setBuyBidsSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'setBuyBids' }>,
+    SetBuyBidsSuccess,
+    SetBuyBidsFailure,
+    void
+> = {
+    successType: 'buyBidsSet',
+    failureType: 'buyBidsFailed',
+    extract: () => undefined,
+};
+
 type ClaimResourcesSuccess = Extract<OutboundMessage, { type: 'resourcesClaimed' }>;
 type ClaimResourcesFailure = Extract<OutboundMessage, { type: 'resourcesClaimFailed' }>;
 export const claimResourcesSpec: CommandSpec<

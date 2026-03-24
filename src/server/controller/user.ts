@@ -4,6 +4,7 @@ import {
     workerSetAutomation,
     workerSetWorkerAllocationTargets,
     workerSetSellOffers,
+    workerSetBuyBids,
     workerClaimResources,
     workerBuildFacility,
 } from '@/simulation/workerClient/commands';
@@ -452,6 +453,46 @@ export const setSellOffers = () => {
                 agentId: input.agentId,
                 planetId: input.planetId,
                 offers: input.offers,
+            });
+        });
+};
+
+export const setBuyBids = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                bids: z.record(
+                    z.string(),
+                    z.object({
+                        bidPrice: z.number().positive().optional(),
+                        bidQuantity: z.number().min(0).optional(),
+                    }),
+                ),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'set-buy-bids' },
+                `User ${userId} setting buy bids for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            await workerSetBuyBids({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                bids: input.bids,
             });
         });
 };

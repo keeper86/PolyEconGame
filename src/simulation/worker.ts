@@ -280,6 +280,53 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         safePostMessage({ type: 'sellOffersSet', requestId, agentId });
                         break;
                     }
+                    case 'setBuyBids': {
+                        const { requestId, agentId, planetId, bids } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'buyBidsFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        if (!assets.market) {
+                            assets.market = { sell: {}, buy: {} };
+                        }
+                        for (const [resourceName, update] of Object.entries(bids)) {
+                            if (!assets.market.buy[resourceName]) {
+                                let resource = null;
+                                outerBidLoop: for (const facility of assets.productionFacilities) {
+                                    for (const n of facility.needs) {
+                                        if (n.resource.name === resourceName) {
+                                            resource = n.resource;
+                                            break outerBidLoop;
+                                        }
+                                    }
+                                }
+                                if (!resource) {
+                                    continue;
+                                }
+                                assets.market.buy[resourceName] = { resource };
+                            }
+                            const bid = assets.market.buy[resourceName];
+                            if (update.bidPrice !== undefined && update.bidPrice > 0) {
+                                bid.bidPrice = update.bidPrice;
+                            }
+                            if (update.bidQuantity !== undefined && update.bidQuantity >= 0) {
+                                bid.bidQuantity = update.bidQuantity;
+                            }
+                        }
+                        console.log(`[worker] Buy bids updated for agent '${agentId}' on '${planetId}'`);
+                        safePostMessage({ type: 'buyBidsSet', requestId, agentId });
+                        break;
+                    }
                     case 'claimResources': {
                         const { requestId, agentId, planetId, arableLandQuantity, waterSourceQuantity } = action;
                         const agent = state.agents.get(agentId);
@@ -837,6 +884,20 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setSellOffers', requestId, agentId, planetId, offers });
+            return;
+        }
+
+        if (msg.type === 'setBuyBids') {
+            const { requestId, agentId, planetId, bids } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'buyBidsFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'setBuyBids', requestId, agentId, planetId, bids });
             return;
         }
 

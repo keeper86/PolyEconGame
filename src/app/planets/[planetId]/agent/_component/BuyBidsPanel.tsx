@@ -1,0 +1,281 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
+import type { ProductionFacility } from '@/simulation/planet/storage';
+
+export type BuyBidEntry = {
+    bidPrice?: number;
+    bidQuantity?: number;
+    lastBought?: number;
+    lastSpent?: number;
+};
+
+type LocalBid = {
+    bidPrice: string;
+    bidQuantity: string;
+};
+
+type Props = {
+    agentId: string;
+    planetId: string;
+    productionFacilities: ProductionFacility[];
+    buyBids: Record<string, BuyBidEntry>;
+    automatePricing: boolean;
+};
+
+function collectInputResources(facilities: ProductionFacility[]): { name: string }[] {
+    const seen = new Set<string>();
+    const result: { name: string }[] = [];
+    for (const facility of facilities) {
+        for (const { resource } of facility.needs) {
+            if (resource.form === 'landBoundResource') {
+                continue;
+            }
+            if (!seen.has(resource.name)) {
+                seen.add(resource.name);
+                result.push({ name: resource.name });
+            }
+        }
+    }
+    return result;
+}
+
+function buildLocalBids(
+    inputResources: { name: string }[],
+    buyBids: Record<string, BuyBidEntry>,
+): Record<string, LocalBid> {
+    const result: Record<string, LocalBid> = {};
+    for (const { name } of inputResources) {
+        const entry = buyBids[name];
+        result[name] = {
+            bidPrice: entry?.bidPrice !== undefined ? String(entry.bidPrice) : '',
+            bidQuantity: entry?.bidQuantity !== undefined ? String(Math.round(entry.bidQuantity)) : '',
+        };
+    }
+    return result;
+}
+
+export default function BuyBidsPanel({
+    agentId,
+    planetId,
+    productionFacilities,
+    buyBids,
+    automatePricing,
+}: Props): React.ReactElement {
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    const inputResources = collectInputResources(productionFacilities);
+
+    const [expanded, setExpanded] = useState(false);
+    const [localBids, setLocalBids] = useState<Record<string, LocalBid>>(() => buildLocalBids(inputResources, buyBids));
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        setLocalBids(buildLocalBids(inputResources, buyBids));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [JSON.stringify(buyBids), JSON.stringify(inputResources.map((r) => r.name))]);
+
+    const mutation = useMutation(
+        trpc.setBuyBids.mutationOptions({
+            onSuccess: () => {
+                setSuccessMsg('Buy bids saved. Changes take effect on the next market tick.');
+                setErrorMsg(null);
+                void queryClient.invalidateQueries({
+                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey(),
+                });
+            },
+            onError: (err) => {
+                setErrorMsg(err instanceof Error ? err.message : 'Failed to update buy bids');
+                setSuccessMsg(null);
+            },
+        }),
+    );
+
+    const handleChange = (resource: string, field: 'bidPrice' | 'bidQuantity', value: string) => {
+        setLocalBids((prev) => ({
+            ...prev,
+            [resource]: { ...(prev[resource] ?? { bidPrice: '', bidQuantity: '' }), [field]: value },
+        }));
+    };
+
+    const handleSave = () => {
+        setSuccessMsg(null);
+        setErrorMsg(null);
+
+        const bids: Record<string, { bidPrice?: number; bidQuantity?: number }> = {};
+        for (const [resource, lo] of Object.entries(localBids)) {
+            const entry: { bidPrice?: number; bidQuantity?: number } = {};
+            const price = parseFloat(lo.bidPrice);
+            const qty = parseFloat(lo.bidQuantity);
+            if (!isNaN(price) && price > 0) {
+                entry.bidPrice = price;
+            }
+            if (!isNaN(qty) && qty >= 0) {
+                entry.bidQuantity = qty;
+            }
+            if (Object.keys(entry).length > 0) {
+                bids[resource] = entry;
+            }
+        }
+
+        if (Object.keys(bids).length === 0) {
+            setErrorMsg('No valid bid data to save. Enter a price > 0 or quantity ≥ 0 for at least one resource.');
+            return;
+        }
+
+        mutation.mutate({ agentId, planetId, bids });
+    };
+
+    return (
+        <div className='border rounded-md p-3 space-y-3'>
+            <button
+                type='button'
+                className='w-full flex items-center justify-between gap-2 cursor-pointer'
+                onClick={() => setExpanded((v) => !v)}
+            >
+                <div className='flex items-center gap-2'>
+                    <ShoppingCart className='h-4 w-4 text-muted-foreground' />
+                    <span className='text-sm font-semibold'>Buy Bids</span>
+                    {automatePricing && (
+                        <span className='text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded px-1.5 py-0.5 font-medium'>
+                            AI managed
+                        </span>
+                    )}
+                </div>
+                {expanded ? (
+                    <ChevronUp className='h-4 w-4 text-muted-foreground' />
+                ) : (
+                    <ChevronDown className='h-4 w-4 text-muted-foreground' />
+                )}
+            </button>
+
+            {expanded && (
+                <div className='space-y-4'>
+                    {automatePricing ? (
+                        <p className='text-xs text-muted-foreground'>
+                            Automatic pricing is enabled. The AI places buy bids each tick based on facility input
+                            shortfalls. Disable automation in the Automation Controls panel to set bids manually.
+                        </p>
+                    ) : (
+                        <p className='text-xs text-muted-foreground'>
+                            Set the maximum bid price (per unit) and how many units to demand from the market each tick.
+                            Leave a field blank to keep the current value.
+                        </p>
+                    )}
+
+                    {inputResources.length === 0 ? (
+                        <p className='text-xs text-muted-foreground'>
+                            No production facilities yet. Build a facility to see its input resources here.
+                        </p>
+                    ) : (
+                        <div className='space-y-4'>
+                            {inputResources.map(({ name: resource }) => {
+                                const snap = buyBids[resource];
+                                const lo = localBids[resource] ?? { bidPrice: '', bidQuantity: '' };
+                                return (
+                                    <div key={resource} className='space-y-2'>
+                                        <div className='flex items-center justify-between gap-2'>
+                                            <span className='text-xs font-semibold'>{resource}</span>
+                                            <div className='flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums'>
+                                                {snap?.lastBought !== undefined && (
+                                                    <span>Bought last tick: {formatNumbers(snap.lastBought)}</span>
+                                                )}
+                                                {snap?.lastSpent !== undefined && (
+                                                    <span>Spent: {formatNumbers(snap.lastSpent)}</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className='grid grid-cols-2 gap-3'>
+                                            <div className='space-y-1'>
+                                                <Label
+                                                    htmlFor={`bid-price-${resource}`}
+                                                    className='text-[11px] text-muted-foreground'
+                                                >
+                                                    Max price / unit
+                                                </Label>
+                                                <Input
+                                                    id={`bid-price-${resource}`}
+                                                    type='number'
+                                                    min={0.01}
+                                                    step='any'
+                                                    placeholder={
+                                                        snap?.bidPrice !== undefined
+                                                            ? snap.bidPrice.toFixed(2)
+                                                            : 'e.g. 1.50'
+                                                    }
+                                                    value={lo.bidPrice}
+                                                    disabled={automatePricing || mutation.isPending}
+                                                    onChange={(e) => handleChange(resource, 'bidPrice', e.target.value)}
+                                                    className='h-8 text-sm tabular-nums'
+                                                />
+                                            </div>
+                                            <div className='space-y-1'>
+                                                <Label
+                                                    htmlFor={`bid-qty-${resource}`}
+                                                    className='text-[11px] text-muted-foreground'
+                                                >
+                                                    Quantity to demand
+                                                </Label>
+                                                <Input
+                                                    id={`bid-qty-${resource}`}
+                                                    type='number'
+                                                    min={0}
+                                                    step={1}
+                                                    placeholder={
+                                                        snap?.bidQuantity !== undefined
+                                                            ? String(Math.round(snap.bidQuantity))
+                                                            : 'e.g. 100'
+                                                    }
+                                                    value={lo.bidQuantity}
+                                                    disabled={automatePricing || mutation.isPending}
+                                                    onChange={(e) =>
+                                                        handleChange(resource, 'bidQuantity', e.target.value)
+                                                    }
+                                                    className='h-8 text-sm tabular-nums'
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {inputResources.length > 0 && (
+                        <div className='flex justify-end'>
+                            <Button size='sm' onClick={handleSave} disabled={automatePricing || mutation.isPending}>
+                                {mutation.isPending ? 'Saving…' : 'Save bids'}
+                            </Button>
+                        </div>
+                    )}
+
+                    {successMsg && (
+                        <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
+                            <CheckCircle2 className='h-4 w-4 text-green-600' />
+                            <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
+                                {successMsg}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    {errorMsg && (
+                        <Alert variant='destructive'>
+                            <AlertCircle className='h-4 w-4' />
+                            <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
+                        </Alert>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}

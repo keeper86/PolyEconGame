@@ -6,6 +6,7 @@ import {
     setAutomationSpec,
     setWorkerAllocationTargetsSpec,
     setSellOffersSpec,
+    setBuyBidsSpec,
     claimResourcesSpec,
     buildFacilitySpec,
 } from './commandSpec';
@@ -76,6 +77,20 @@ export function workerSetSellOffers(opts: {
     return sendCommandSpec(
         { type: 'setSellOffers', requestId: randomUUID(), agentId, planetId, offers },
         setSellOffersSpec,
+        timeoutMs,
+    );
+}
+
+export function workerSetBuyBids(opts: {
+    agentId: string;
+    planetId: string;
+    bids: Record<string, { bidPrice?: number; bidQuantity?: number }>;
+    timeoutMs?: number;
+}): Promise<void> {
+    const { agentId, planetId, bids, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'setBuyBids', requestId: randomUUID(), agentId, planetId, bids },
+        setBuyBidsSpec,
         timeoutMs,
     );
 }
