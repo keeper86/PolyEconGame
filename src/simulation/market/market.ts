@@ -1,7 +1,7 @@
 import { INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { agriculturalProductResourceType } from '../planet/resources';
-import { clearUnifiedBids, reconstructBidCosts } from './orderBook';
+import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';
 import { binHouseholdBids, buildPopulationDemandForResource, householdDemandPriority } from './populationDemand';
 import { computeMarketSummary, settleAgentBuyers, settleAgentSellers, settleHouseholds } from './settlement';
@@ -71,10 +71,13 @@ function clearResourceMarket(
     const askFilledBaseline = askOrders.map((a) => a.filled);
     const askRevenueBaseline = askOrders.map((a) => a.revenue);
 
-    const { householdBidFilled, householdTrades, agentTrades } = clearUnifiedBids(householdBids, agentBids, askOrders);
-    const bidCosts = reconstructBidCosts(householdTrades, householdBidFilled);
+    const { householdBidFilled, householdTrades, agentTrades, householdBidCosts } = clearUnifiedBids(
+        householdBids,
+        agentBids,
+        askOrders,
+    );
 
-    settleHouseholds(planet, resourceName, householdBids, householdBidFilled, bidCosts);
+    settleHouseholds(planet, resourceName, householdBids, householdBidFilled, householdBidCosts);
     settleAgentBuyers(planet, agentBids);
     settleAgentSellers(planet, askOrders, askFilledBaseline, askRevenueBaseline);
 
@@ -95,7 +98,7 @@ function clearResourceMarket(
         totalSupply,
         unfilledDemand: Math.max(0, totalDemand - totalVolume),
         unsoldSupply,
-        populationBids: binHouseholdBids(householdBids, householdBidFilled, bidCosts),
+        populationBids: binHouseholdBids(householdBids, householdBidFilled, householdBidCosts),
     };
 }
 

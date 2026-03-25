@@ -2,6 +2,49 @@ import type { AgentBidOrder, AskOrder, BidOrder, MergedBid, TradeRecord, Unified
 
 const QUANTITY_EPSILON = 1e-9;
 
+/**
+ * Groups consecutive elements with the same price into tiers.
+ * Assumes the array is already sorted.
+ */
+function groupByPrice<T extends { bidPrice?: number; askPrice?: number }>(
+    items: T[],
+    priceKey: 'bidPrice' | 'askPrice',
+): T[][] {
+    const tiers: T[][] = [];
+    let i = 0;
+    while (i < items.length) {
+        const price = (items[i] as Record<string, number>)[priceKey];
+        const tier: T[] = [];
+        while (i < items.length && (items[i] as Record<string, number>)[priceKey] === price) {
+            tier.push(items[i]);
+            i++;
+        }
+        tiers.push(tier);
+    }
+    return tiers;
+}
+
+/**
+ * Effective quantity a bid can still absorb at a given ask price,
+ * considering deposit constraints for agent bids.
+ */
+function effectiveBidCapacity(bid: MergedBid, remaining: number, askPrice: number): number {
+    if (bid.kind === 'agent' && askPrice > 0) {
+        return Math.min(remaining, Math.floor(bid.order.remainingDeposits / askPrice));
+    }
+    return remaining;
+}
+
+/**
+ * Clears a market using pro-rata matching within price tiers.
+ *
+ * Bids and asks are grouped by price level. When multiple sellers (asks) sit
+ * at the same price, the available demand at that tier is distributed
+ * proportionally to each seller's remaining offer size. Symmetrically, when
+ * multiple buyers (bids) share the same price, the available supply is split
+ * proportionally among them. This prevents any single participant from
+ * monopolising trades just because of iteration order under a price floor.
+ */
 export function clearUnifiedBids(
     householdBids: BidOrder[],
     agentBids: AgentBidOrder[],
@@ -10,6 +53,7 @@ export function clearUnifiedBids(
     const householdTrades: TradeRecord[] = [];
     const agentTrades: TradeRecord[] = [];
     const householdBidFilled: number[] = householdBids.map(() => 0);
+    const householdBidCosts: number[] = householdBids.map(() => 0);
 
     const merged: MergedBid[] = [
         ...householdBids.map(
@@ -19,95 +63,105 @@ export function clearUnifiedBids(
     ];
     merged.sort((a, b) => b.bidPrice - a.bidPrice);
 
-    let askIdx = 0;
-    let askRemaining = askOrders.length > 0 ? askOrders[0].quantity - askOrders[0].filled : 0;
+    // Track remaining quantities for bids and asks separately from the originals
+    // so we can do proportional splits without mutating prematurely.
+    const bidRemaining = merged.map((b) => b.quantity);
+    const askRemaining = askOrders.map((a) => a.quantity - a.filled);
 
-    for (const bid of merged) {
-        let bidRemaining = bid.quantity;
+    const mergedIndexOf = new Map(merged.map((b, i) => [b, i]));
+    const askIndexOf = new Map(askOrders.map((a, i) => [a, i]));
 
-        while (bidRemaining > QUANTITY_EPSILON && askIdx < askOrders.length) {
-            const ask = askOrders[askIdx];
-            const effectiveAskRemaining = ask.quantity - ask.filled;
+    const bidTiers = groupByPrice(merged, 'bidPrice');
+    const askTiers = groupByPrice(askOrders, 'askPrice');
 
-            if (effectiveAskRemaining < QUANTITY_EPSILON) {
-                askIdx++;
-                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
+    let askTierIdx = 0;
+
+    for (const bidTier of bidTiers) {
+        // Advance to the cheapest ask tier that this bid tier can afford.
+        while (askTierIdx < askTiers.length) {
+            const tierPrice = askTiers[askTierIdx][0].askPrice;
+            if (bidTier[0].bidPrice >= tierPrice) {
+                break;
+            }
+            askTierIdx++;
+        }
+        if (askTierIdx >= askTiers.length) {
+            break;
+        }
+
+        // Process ask tiers from cheapest to most expensive while bids can still pay.
+        let localAskTierIdx = askTierIdx;
+        while (localAskTierIdx < askTiers.length) {
+            const askTier = askTiers[localAskTierIdx];
+            const tradePrice = askTier[0].askPrice;
+
+            if (bidTier[0].bidPrice < tradePrice) {
+                break;
+            }
+
+            // Total supply available in this ask tier.
+            const totalAskSupply = askTier.reduce((s, a) => s + askRemaining[askIndexOf.get(a)!], 0);
+
+            if (totalAskSupply < QUANTITY_EPSILON) {
+                localAskTierIdx++;
                 continue;
             }
 
-            if (bid.bidPrice < ask.askPrice) {
+            // Total effective demand from this bid tier at this ask price.
+            const bidIndices = bidTier.map((b) => mergedIndexOf.get(b)!);
+            const effectiveDemands = bidIndices.map((i) =>
+                effectiveBidCapacity(merged[i], bidRemaining[i], tradePrice),
+            );
+            const totalDemand = effectiveDemands.reduce((s, d) => s + d, 0);
+
+            if (totalDemand < QUANTITY_EPSILON) {
                 break;
             }
 
-            // For agent bids, cap the tradeable quantity by the remaining deposit budget.
-            const effectiveBidRemaining =
-                bid.kind === 'agent' && ask.askPrice > 0
-                    ? Math.min(bidRemaining, Math.floor(bid.order.remainingDeposits / ask.askPrice))
-                    : bidRemaining;
+            const totalTrade = Math.min(totalAskSupply, totalDemand);
 
-            const tradeQty = Math.min(effectiveBidRemaining, askRemaining);
-            if (tradeQty < QUANTITY_EPSILON) {
-                break;
+            // Distribute supply across asks proportionally by their available quantity.
+            for (const ask of askTier) {
+                const askIdx = askIndexOf.get(ask)!;
+                const askShare = askRemaining[askIdx] / totalAskSupply;
+                const askFill = totalTrade * askShare;
+
+                if (askFill < QUANTITY_EPSILON) {
+                    continue;
+                }
+
+                // Distribute this ask's fill across bids proportionally by effective demand.
+                for (let b = 0; b < bidTier.length; b++) {
+                    const bidIdx = bidIndices[b];
+                    const bidShare = totalDemand > 0 ? effectiveDemands[b] / totalDemand : 0;
+                    const bidFill = askFill * bidShare;
+
+                    if (bidFill < QUANTITY_EPSILON) {
+                        continue;
+                    }
+
+                    const bid = merged[bidIdx];
+                    bidRemaining[bidIdx] -= bidFill;
+                    askRemaining[askIdx] -= bidFill;
+                    ask.filled += bidFill;
+                    ask.revenue += bidFill * tradePrice;
+
+                    if (bid.kind === 'household') {
+                        householdTrades.push({ price: tradePrice, quantity: bidFill });
+                        householdBidFilled[bid.index] += bidFill;
+                        householdBidCosts[bid.index] += bidFill * tradePrice;
+                    } else {
+                        agentTrades.push({ price: tradePrice, quantity: bidFill });
+                        bid.order.filled += bidFill;
+                        bid.order.cost += bidFill * tradePrice;
+                        bid.order.remainingDeposits -= bidFill * tradePrice;
+                    }
+                }
             }
 
-            const tradePrice = ask.askPrice;
-            ask.filled += tradeQty;
-            ask.revenue += tradeQty * tradePrice;
-            bidRemaining -= tradeQty;
-            askRemaining -= tradeQty;
-
-            if (bid.kind === 'household') {
-                householdTrades.push({ price: tradePrice, quantity: tradeQty });
-                householdBidFilled[bid.index] += tradeQty;
-            } else {
-                agentTrades.push({ price: tradePrice, quantity: tradeQty });
-                bid.order.filled += tradeQty;
-                bid.order.cost += tradeQty * tradePrice;
-                bid.order.remainingDeposits -= tradeQty * tradePrice;
-            }
-
-            if (askRemaining < QUANTITY_EPSILON) {
-                askIdx++;
-                askRemaining = askIdx < askOrders.length ? askOrders[askIdx].quantity - askOrders[askIdx].filled : 0;
-            }
+            localAskTierIdx++;
         }
     }
 
-    return { householdTrades, agentTrades, householdBidFilled };
-}
-
-/**
- * Reconstructs per-bid costs from a flat list of trade records produced by
- * clearUnifiedBids.  Trades are emitted in the same order as bids (highest
- * price first), so we walk both arrays in parallel to attribute each trade
- * fragment to the correct bid.
- */
-export function reconstructBidCosts(trades: TradeRecord[], bidFilled: number[]): number[] {
-    const bidCosts: number[] = new Array(bidFilled.length).fill(0);
-    let bidIdx = 0;
-    while (bidIdx < bidFilled.length && bidFilled[bidIdx] <= 0) {
-        bidIdx++;
-    }
-    let remainingForBid = bidIdx < bidFilled.length ? bidFilled[bidIdx] : 0;
-
-    for (const trade of trades) {
-        let remainingTradeQty = trade.quantity;
-        while (remainingTradeQty > 0 && bidIdx < bidFilled.length) {
-            if (remainingForBid <= 0) {
-                bidIdx++;
-                while (bidIdx < bidFilled.length && bidFilled[bidIdx] <= 0) {
-                    bidIdx++;
-                }
-                if (bidIdx >= bidFilled.length) {
-                    break;
-                }
-                remainingForBid = bidFilled[bidIdx];
-            }
-            const alloc = Math.min(remainingTradeQty, remainingForBid);
-            bidCosts[bidIdx] += alloc * trade.price;
-            remainingTradeQty -= alloc;
-            remainingForBid -= alloc;
-        }
-    }
-    return bidCosts;
+    return { householdTrades, agentTrades, householdBidFilled, householdBidCosts };
 }
