@@ -163,31 +163,77 @@ export function binHouseholdBids(bids: BidOrder[], filled: number[], costs: numb
     const binSize = totalQty / 10;
     const bins = [];
 
-    let runningQty = 0;
     let group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
     let binTarget = binSize;
+    let runningQty = 0;
 
     for (let i = 0; i < bids.length; i++) {
         const b = bids[i];
-        group.quantity += b.quantity;
-        group.filled += filled[i] ?? 0;
-        group.cost += costs[i] ?? 0;
-        group.priceSum += b.bidPrice * b.quantity;
-        runningQty += b.quantity;
+        const bidFilled = filled[i] ?? 0;
+        const bidCost = costs[i] ?? 0;
+        const fillRatio = b.quantity > 0 ? bidFilled / b.quantity : 0;
+        const costRatio = b.quantity > 0 ? bidCost / b.quantity : 0;
 
-        if (runningQty >= binTarget || i === bids.length - 1) {
-            if (group.quantity > 0) {
+        let remaining = b.quantity;
+        let filledRemaining = bidFilled;
+        let costRemaining = bidCost;
+
+        while (remaining > 0) {
+            const spaceInBin = binTarget - runningQty;
+            const isLast = i === bids.length - 1 && remaining <= spaceInBin;
+
+            if (remaining <= spaceInBin || isLast) {
+                group.quantity += remaining;
+                group.filled += filledRemaining;
+                group.cost += costRemaining;
+                group.priceSum += b.bidPrice * remaining;
+                runningQty += remaining;
+                remaining = 0;
+
+                if (runningQty >= binTarget) {
+                    bins.push({
+                        bidPrice: group.priceSum / group.quantity,
+                        quantity: group.quantity,
+                        filled: group.filled,
+                        cost: group.cost,
+                    });
+                    binTarget += binSize;
+                    group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
+                }
+            } else {
+                const slice = spaceInBin;
+                const sliceFilled = slice * fillRatio;
+                const sliceCost = slice * costRatio;
+                group.quantity += slice;
+                group.filled += sliceFilled;
+                group.cost += sliceCost;
+                group.priceSum += b.bidPrice * slice;
+                runningQty += slice;
+                remaining -= slice;
+                filledRemaining -= sliceFilled;
+                costRemaining -= sliceCost;
+
                 bins.push({
                     bidPrice: group.priceSum / group.quantity,
                     quantity: group.quantity,
                     filled: group.filled,
                     cost: group.cost,
                 });
+                binTarget += binSize;
+                group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
             }
-            binTarget += binSize;
-            group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
         }
     }
+
+    if (group.quantity > 0) {
+        bins.push({
+            bidPrice: group.priceSum / group.quantity,
+            quantity: group.quantity,
+            filled: group.filled,
+            cost: group.cost,
+        });
+    }
+
     return bins;
 } // ---------------------------------------------------------------------------
 // Build population demand for a single resource, using current cohort wealth

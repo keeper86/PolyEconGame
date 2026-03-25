@@ -4,7 +4,80 @@ import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE 
 import { clothingResourceType, agriculturalProductResourceType } from '../planet/resources';
 import { forEachPopulationCohort } from '../population/population';
 import { makePlanetWithPopulation } from '../utils/testHelper';
-import { buildPopulationDemandForResource } from './populationDemand';
+import { binHouseholdBids, buildPopulationDemandForResource } from './populationDemand';
+import type { BidOrder } from './marketTypes';
+
+function makeBid(bidPrice: number, quantity: number): BidOrder {
+    return {
+        age: 0,
+        edu: 'none',
+        occ: 'unoccupied',
+        skill: 'novice',
+        population: quantity,
+        bidPrice,
+        quantity,
+        wealthMoments: { mean: bidPrice, variance: 0 },
+    };
+}
+
+describe('binHouseholdBids', () => {
+    it('returns empty array for no bids', () => {
+        expect(binHouseholdBids([], [], [])).toEqual([]);
+    });
+
+    it('returns empty array when all bid quantities are zero', () => {
+        const bids = [makeBid(10, 0), makeBid(5, 0)];
+        expect(binHouseholdBids(bids, [0, 0], [0, 0])).toEqual([]);
+    });
+
+    it('produces exactly 10 bins for uniform bids', () => {
+        const bids = Array.from({ length: 100 }, (_, i) => makeBid(100 - i, 10));
+        const bins = binHouseholdBids(bids, new Array(100).fill(0), new Array(100).fill(0));
+        expect(bins.length).toBe(10);
+    });
+
+    it('each bin has equal quantity when bids are uniform', () => {
+        const bids = Array.from({ length: 100 }, (_, i) => makeBid(100 - i, 10));
+        const totalQty = 1000;
+        const bins = binHouseholdBids(bids, new Array(100).fill(0), new Array(100).fill(0));
+        const expectedBinQty = totalQty / 10;
+        for (const bin of bins) {
+            expect(bin.quantity).toBeCloseTo(expectedBinQty, 5);
+        }
+    });
+
+    it('total quantity across bins equals total input quantity', () => {
+        const bids = [makeBid(100, 265), makeBid(90, 14), makeBid(80, 140), makeBid(70, 81)];
+        const bins = binHouseholdBids(bids, [0, 0, 0, 0], [0, 0, 0, 0]);
+        const inputTotal = bids.reduce((s, b) => s + b.quantity, 0);
+        const outputTotal = bins.reduce((s, b) => s + b.quantity, 0);
+        expect(outputTotal).toBeCloseTo(inputTotal, 5);
+    });
+
+    it('bin quantities are approximately equal even when a single bid is larger than binSize', () => {
+        const bids = [makeBid(100, 265), makeBid(90, 14), makeBid(80, 140), makeBid(70, 81)];
+        const bins = binHouseholdBids(bids, [0, 0, 0, 0], [0, 0, 0, 0]);
+        const totalQty = bids.reduce((s, b) => s + b.quantity, 0);
+        const expectedBinQty = totalQty / 10;
+        for (const bin of bins) {
+            expect(bin.quantity).toBeCloseTo(expectedBinQty, 5);
+        }
+    });
+
+    it('produces at most 10 bins', () => {
+        const bids = [makeBid(50, 7)];
+        const bins = binHouseholdBids(bids, [0], [0]);
+        expect(bins.length).toBeLessThanOrEqual(10);
+    });
+
+    it('bid price is higher in earlier bins (sorted highest bid first)', () => {
+        const bids = [makeBid(100, 100), makeBid(80, 100), makeBid(60, 100), makeBid(40, 100), makeBid(20, 100)];
+        const bins = binHouseholdBids(bids, new Array(5).fill(0), new Array(5).fill(0));
+        for (let i = 1; i < bins.length; i++) {
+            expect(bins[i - 1].bidPrice).toBeGreaterThanOrEqual(bins[i].bidPrice);
+        }
+    });
+});
 
 const FOOD = agriculturalProductResourceType.name;
 const CLOTHING = clothingResourceType.name;

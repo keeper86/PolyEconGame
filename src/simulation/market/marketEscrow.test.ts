@@ -108,6 +108,49 @@ describe('market escrow — seller-side', () => {
         const remaining = seller.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
         expect(remaining).toBeCloseTo(40, 6);
     });
+
+    it('agent selling two resources has zero escrow for both after a full tick', () => {
+        const seller = makeAgent('seller', 'p');
+        seller.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', id: 'storage-seller' });
+        putIntoStorageFacility(seller.assets.p.storageFacility, coalResourceType, 100);
+        putIntoStorageFacility(seller.assets.p.storageFacility, machineryResourceType, 5);
+        seller.assets.p.market = {
+            sell: {
+                [COAL]: { resource: coalResourceType, offerPrice: 1.0, offerQuantity: 100 },
+                [MACHINERY]: { resource: machineryResourceType, offerPrice: 10.0, offerQuantity: 5 },
+            },
+            buy: {},
+        };
+        planet.marketPrices[MACHINERY] = 10.0;
+
+        marketTick(agentMap(seller), planet);
+
+        expect(seller.assets.p.storageFacility.escrow[COAL] ?? 0).toBe(0);
+        expect(seller.assets.p.storageFacility.escrow[MACHINERY] ?? 0).toBe(0);
+        expect(seller.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0).toBeCloseTo(100, 6);
+        expect(seller.assets.p.storageFacility.currentInStorage[MACHINERY]?.quantity ?? 0).toBeCloseTo(5, 6);
+    });
+
+    it('agent that is both buyer and seller ends tick with zero escrow and zero depositHold', () => {
+        const agent = makeAgent('dual', 'p');
+        agent.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', id: 'storage-dual' });
+        putIntoStorageFacility(agent.assets.p.storageFacility, coalResourceType, 50);
+        agent.assets.p.deposits = 1_000;
+        planet.marketPrices[MACHINERY] = 10.0;
+        agent.assets.p.market = {
+            sell: {
+                [COAL]: { resource: coalResourceType, offerPrice: 1.0, offerQuantity: 50 },
+            },
+            buy: {
+                [MACHINERY]: { resource: machineryResourceType, bidPrice: 12.0, bidQuantity: 3 },
+            },
+        };
+
+        marketTick(agentMap(agent), planet);
+
+        expect(agent.assets.p.storageFacility.escrow[COAL] ?? 0).toBe(0);
+        expect(agent.assets.p.depositHold).toBe(0);
+    });
 });
 
 // ---------------------------------------------------------------------------

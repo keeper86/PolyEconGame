@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { automaticPricing } from './automaticPricing';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
-import { agriculturalProductResourceType, ironOreResourceType, waterResourceType } from '../planet/resources';
+import {
+    agriculturalProductResourceType,
+    clothingResourceType,
+    ironOreResourceType,
+    waterResourceType,
+    fabricResourceType,
+} from '../planet/resources';
 import { FOOD_PRICE_CEIL, FOOD_PRICE_FLOOR, PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '../constants';
 import type { StorageFacility } from '../planet/storage';
 
@@ -200,5 +206,48 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBe(FOOD_PRICE_CEIL);
+    });
+});
+
+describe('automaticPricing — pieces resource quantities are always integers', () => {
+    it('floors offerQuantity to an integer for a pieces resource', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'clothing-fac', scale: 1 });
+        facility.needs = [{ resource: fabricResourceType, quantity: 80 }];
+        facility.produces = [{ resource: clothingResourceType, quantity: 6_000 }];
+
+        const planet = makePlanetWithPrice({ [clothingResourceType.name]: 0.5 });
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.automated = true;
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+            [clothingResourceType.name]: { resource: clothingResourceType, quantity: 0.22 },
+            [fabricResourceType.name]: { resource: fabricResourceType, quantity: 500 },
+        });
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const offerQty = agent.assets[PLANET_ID].market?.sell[clothingResourceType.name]?.offerQuantity ?? -1;
+        expect(Number.isInteger(offerQty)).toBe(true);
+        expect(offerQty).toBe(0);
+    });
+
+    it('ceils bidQuantity to an integer for a pieces resource input', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'clothing-fac', scale: 1 });
+        facility.needs = [{ resource: clothingResourceType, quantity: 10 }];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+
+        const planet = makePlanetWithPrice({ [clothingResourceType.name]: 0.5 });
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.automated = true;
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageWith({});
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bidQty = agent.assets[PLANET_ID].market?.buy[clothingResourceType.name]?.bidQuantity ?? -1;
+        expect(Number.isInteger(bidQty)).toBe(true);
+        expect(bidQty).toBeGreaterThan(0);
     });
 });
