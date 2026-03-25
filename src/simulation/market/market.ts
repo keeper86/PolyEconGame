@@ -1,5 +1,6 @@
 import { INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
+import { releaseFromEscrow } from '../planet/storage';
 import { agriculturalProductResourceType } from '../planet/resources';
 import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';
@@ -20,6 +21,25 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const resourceName of resourceOrder) {
         clearResourceMarket(resourceName, askBooks, agentBidBooks, planet);
     }
+
+    releaseRemainingHolds(agents, planet);
+}
+
+/**
+ * After all resource markets are cleared, release any deposit hold that was
+ * not consumed during settlement (bids that got zero fill).
+ */
+function releaseRemainingHolds(agents: Map<string, Agent>, planet: Planet): void {
+    agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            return;
+        }
+        if (assets.depositHold > 0) {
+            assets.deposits += assets.depositHold;
+            assets.depositHold = 0;
+        }
+    });
 }
 
 function buildResourceOrder(askBooks: Map<string, unknown>, agentBidBooks: Map<string, unknown>): string[] {
@@ -53,6 +73,12 @@ function clearResourceMarket(
     const referencePrice = referencePriceFor(planet, resourceName);
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
+        for (const ask of askOrders) {
+            const assets = ask.agent.assets[planet.id];
+            if (assets) {
+                releaseFromEscrow(assets.storageFacility, ask.resource.name, ask.quantity);
+            }
+        }
         planet.lastMarketResult[resourceName] = {
             resourceName,
             clearingPrice: referencePrice,

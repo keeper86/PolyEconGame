@@ -75,6 +75,7 @@ const zeroLastTicksResults = {
     exactUsedByEdu: {},
     totalUsedByEdu: {},
     lastProduced: {},
+    lastConsumed: {},
 };
 
 const defaultPollutionPerTick = {
@@ -504,7 +505,7 @@ export const brickFactory = (planetId: string, id: string): ProductionFacility =
         { resource: clayResourceType, quantity: 120 },
         { resource: coalResourceType, quantity: 10 },
     ],
-    produces: [{ resource: brickResourceType, quantity: 110 }],
+    produces: [{ resource: brickResourceType, quantity: 55_000 }], // ~55k bricks per tick (0.002 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -597,7 +598,7 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
         { resource: chemicalResourceType, quantity: 80 },
         { resource: waterResourceType, quantity: 100 },
     ],
-    produces: [{ resource: pharmaceuticalResourceType, quantity: 10 }], // in tons
+    produces: [{ resource: pharmaceuticalResourceType, quantity: 10_000 }], // ~10k boxes of 100 pills per tick (0.001 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -730,7 +731,7 @@ export const clothingFactory = (planetId: string, id: string): ProductionFacilit
         { resource: fabricResourceType, quantity: 80 },
         { resource: plasticResourceType, quantity: 10 },
     ],
-    produces: [{ resource: clothingResourceType, quantity: 60 }], // tons
+    produces: [{ resource: clothingResourceType, quantity: 6_000 }], // ~6k boxes of 10 garments per tick (0.01 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -753,7 +754,7 @@ export const furnitureFactory = (planetId: string, id: string): ProductionFacili
         { resource: steelResourceType, quantity: 20 },
         { resource: fabricResourceType, quantity: 10 },
     ],
-    produces: [{ resource: furnitureResourceType, quantity: 50 }],
+    produces: [{ resource: furnitureResourceType, quantity: 1_000 }], // ~1k pieces per tick (0.05 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -777,7 +778,7 @@ export const electronicComponentFactory = (planetId: string, id: string): Produc
         { resource: rareEarthOreResourceType, quantity: 50 },
         { resource: plasticResourceType, quantity: 100 },
     ],
-    produces: [{ resource: electronicComponentResourceType, quantity: 80 }], // in tons
+    produces: [{ resource: electronicComponentResourceType, quantity: 8_000 }], // ~8k reels of 1000 chips per tick (0.01 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -801,7 +802,7 @@ export const consumerElectronicsFactory = (planetId: string, id: string): Produc
         { resource: glassResourceType, quantity: 30 },
         { resource: packagingResourceType, quantity: 2 },
     ],
-    produces: [{ resource: consumerElectronicsResourceType, quantity: 20 }],
+    produces: [{ resource: consumerElectronicsResourceType, quantity: 10_000 }], // ~10k devices per tick (0.002 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -824,7 +825,7 @@ export const machineryFactory = (planetId: string, id: string): ProductionFacili
         { resource: electronicComponentResourceType, quantity: 10 },
         { resource: plasticResourceType, quantity: 20 },
     ],
-    produces: [{ resource: machineryResourceType, quantity: 50 }],
+    produces: [{ resource: machineryResourceType, quantity: 50 }], // 50 machines per tick (1 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -851,7 +852,7 @@ export const vehicleFactory = (planetId: string, id: string): ProductionFacility
         { resource: fabricResourceType, quantity: 5 },
         { resource: machineryResourceType, quantity: 10 },
     ],
-    produces: [{ resource: vehicleResourceType, quantity: 10 }],
+    produces: [{ resource: vehicleResourceType, quantity: 7 }], // ~7 vehicles per tick (1.5 t each)
     lastTickResults: { ...zeroLastTicksResults },
 });
 

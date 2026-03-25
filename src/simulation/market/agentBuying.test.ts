@@ -682,7 +682,6 @@ describe('marketTick — agent buying', () => {
 
     it('settlement zeros out bid and sets storageFullWarning when goods arrive but storage is already full', () => {
         const buyer = makeSteelProducer();
-        buyer.assets.p.deposits = 1_000_000;
         buyer.assets.p.storageFacility = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
@@ -693,7 +692,10 @@ describe('marketTick — agent buying', () => {
             buy: { [COAL]: { resource: coalResourceType, bidPrice: 5.0, bidQuantity: 100 } },
         };
 
-        const depositsBefore = buyer.assets.p.deposits;
+        const holdAmount = 500;
+        buyer.assets.p.deposits = 1_000_000 - holdAmount;
+        buyer.assets.p.depositHold = holdAmount;
+        const depositsBefore = buyer.assets.p.deposits + buyer.assets.p.depositHold;
 
         settleAgentBuyers(planet, [
             {
@@ -703,11 +705,11 @@ describe('marketTick — agent buying', () => {
                 quantity: 100,
                 filled: 100,
                 cost: 500,
-                remainingDeposits: depositsBefore,
+                remainingDeposits: buyer.assets.p.deposits,
             },
         ]);
 
-        expect(buyer.assets.p.deposits).toBe(depositsBefore);
+        expect(buyer.assets.p.deposits + buyer.assets.p.depositHold).toBe(depositsBefore);
         expect(buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0).toBe(0);
         expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(0);
         expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);

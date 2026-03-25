@@ -98,24 +98,25 @@ describe('clearUnifiedBids — basic clearing', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pro-rata: same-price sellers share demand proportionally
+// Equal-share: same-price sellers share demand equally (not proportionally)
 // ---------------------------------------------------------------------------
 
-describe('clearUnifiedBids — pro-rata ask allocation', () => {
-    it('two sellers at the same price receive proportional fills when supply exceeds demand', () => {
+describe('clearUnifiedBids — equal-share ask allocation', () => {
+    it('two sellers at the same price each receive an equal share of demand, capped by their supply', () => {
         const sellerA = makeAgent('seller-a');
         const sellerB = makeAgent('seller-b');
         const buyer = makeAgent('buyer');
 
+        // Supply: A=300, B=100, Demand=200 → equal share = 100 each.
+        // Both can absorb 100, so each fills 100.  Total = 200 = full demand.
         const askA = makeAsk(sellerA, 1.0, 300);
         const askB = makeAsk(sellerB, 1.0, 100);
         const bid = makeAgentBid(buyer, 2.0, 200);
 
         clearUnifiedBids([], [bid], [askA, askB]);
 
-        // Seller A has 75% of supply → should get 75% of the demand filled
-        expect(askA.filled).toBeCloseTo(150, 6);
-        expect(askB.filled).toBeCloseTo(50, 6);
+        expect(askA.filled).toBeCloseTo(100, 6);
+        expect(askB.filled).toBeCloseTo(100, 6);
         expect(bid.filled).toBeCloseTo(200, 6);
     });
 
@@ -188,21 +189,22 @@ describe('clearUnifiedBids — pro-rata ask allocation', () => {
 // Pro-rata: same-price buyers share supply proportionally
 // ---------------------------------------------------------------------------
 
-describe('clearUnifiedBids — pro-rata bid allocation', () => {
-    it('two agent buyers at the same price share scarce supply proportionally', () => {
+describe('clearUnifiedBids — equal-share bid allocation', () => {
+    it('two agent buyers at the same price each receive an equal share of supply, capped by their demand', () => {
         const seller = makeAgent('seller');
         const buyerA = makeAgent('buyer-a');
         const buyerB = makeAgent('buyer-b');
 
+        // Supply=60, A demands 100, B demands 50 → equal share = 30 each.
+        // Both can absorb 30, so each fills 30.  Total = 60 = full supply.
         const ask = makeAsk(seller, 1.0, 60);
         const bidA = makeAgentBid(buyerA, 2.0, 100);
         const bidB = makeAgentBid(buyerB, 2.0, 50);
 
         clearUnifiedBids([], [bidA, bidB], [ask]);
 
-        // Buyer A demanded 100, Buyer B demanded 50 → shares 2/3 and 1/3
-        expect(bidA.filled).toBeCloseTo(40, 6);
-        expect(bidB.filled).toBeCloseTo(20, 6);
+        expect(bidA.filled).toBeCloseTo(30, 6);
+        expect(bidB.filled).toBeCloseTo(30, 6);
     });
 
     it('two equal-demand buyers split supply 50/50', () => {
@@ -253,19 +255,20 @@ describe('clearUnifiedBids — household bids', () => {
         expect(ask.filled).toBeCloseTo(80, 6);
     });
 
-    it('household and agent buyer at the same price share supply proportionally', () => {
+    it('household and agent buyer at the same price each receive an equal share of supply', () => {
         const seller = makeAgent('seller');
         const buyer = makeAgent('buyer');
 
+        // Supply=60, household demands 90, agent demands 30 → equal share = 30 each.
+        // Both can absorb 30, so each fills 30.  Total = 60 = full supply.
         const ask = makeAsk(seller, 1.0, 60);
         const hBid = makeHouseholdBid(2.0, 90);
         const aBid = makeAgentBid(buyer, 2.0, 30);
 
         const result = clearUnifiedBids([hBid], [aBid], [ask]);
 
-        // Household demands 90, agent demands 30 → shares 75% and 25%
-        expect(result.householdBidFilled[0]).toBeCloseTo(45, 6);
-        expect(aBid.filled).toBeCloseTo(15, 6);
+        expect(result.householdBidFilled[0]).toBeCloseTo(30, 6);
+        expect(aBid.filled).toBeCloseTo(30, 6);
     });
 
     it('householdBidCosts accumulates cost correctly across multiple ask price levels', () => {

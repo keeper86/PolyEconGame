@@ -213,6 +213,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
                 resourceTenancies: [],
                 productionFacilities: [],
                 deposits: 0,
+                depositHold: 0,
                 loans: 0,
                 storageFacility: makeStorageFacility(),
                 allocatedWorkers: makeAllocatedWorkers({ primary: 300 }),

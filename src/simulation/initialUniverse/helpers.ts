@@ -55,6 +55,7 @@ export function makeProductionFacility(opts: {
             exactUsedByEdu: {},
             totalUsedByEdu: {},
             lastProduced: {},
+            lastConsumed: {},
         },
     };
 }
@@ -82,6 +83,7 @@ export function makeStorage(opts: {
         },
         current: { mass: 0, volume: 0 },
         currentInStorage: {},
+        escrow: {},
     };
 }
 
@@ -98,6 +100,7 @@ export function makeAgentPlanetAssets(
         productionFacilities: facilities,
         storageFacility: storage,
         deposits: 0,
+        depositHold: 0,
         loans: 0,
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         workforceDemography: makeWorkforceDemography(),

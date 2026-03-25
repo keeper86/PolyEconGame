@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import ResourceMarketGrid from './ResourceMarketGrid';
 import MarketOverviewTable from './MarketOverviewTable';
 
 export default function PlanetMarketIndexPage() {

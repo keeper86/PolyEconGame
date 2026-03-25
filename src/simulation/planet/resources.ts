@@ -268,8 +268,8 @@ export const pharmaceuticalResourceType: Resource = {
     name: 'Pharmaceutical',
     form: 'pieces',
     level: 'consumerGood',
-    volumePerQuantity: 0.00001, // very small per pill
-    massPerQuantity: 0.00001,
+    volumePerQuantity: 0.01, // m³ per box of 100 pills
+    massPerQuantity: 0.001, // tons per box of 100 pills
 };
 
 export const processedFoodResourceType: Resource = {
@@ -316,8 +316,8 @@ export const clothingResourceType: Resource = {
     name: 'Clothing',
     form: 'pieces',
     level: 'consumerGood',
-    volumePerQuantity: 0.1, // m³ per item
-    massPerQuantity: 0.001, // tons per item
+    volumePerQuantity: 0.5, // m³ per box of 10 garments
+    massPerQuantity: 0.01, // tons per box of 10 garments
 };
 
 export const furnitureResourceType: Resource = {
@@ -332,8 +332,8 @@ export const electronicComponentResourceType: Resource = {
     name: 'Electronic Component',
     form: 'pieces',
     level: 'refined',
-    volumePerQuantity: 0.0001,
-    massPerQuantity: 0.00001,
+    volumePerQuantity: 0.05, // m³ per reel of 1000 chips
+    massPerQuantity: 0.01, // tons per reel of 1000 chips
 };
 
 export const consumerElectronicsResourceType: Resource = {

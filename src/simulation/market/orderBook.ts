@@ -2,10 +2,6 @@ import type { AgentBidOrder, AskOrder, BidOrder, MergedBid, TradeRecord, Unified
 
 const QUANTITY_EPSILON = 1e-9;
 
-/**
- * Groups consecutive elements with the same price into tiers.
- * Assumes the array is already sorted.
- */
 function groupByPrice<T extends { bidPrice?: number; askPrice?: number }>(
     items: T[],
     priceKey: 'bidPrice' | 'askPrice',
@@ -24,9 +20,87 @@ function groupByPrice<T extends { bidPrice?: number; askPrice?: number }>(
     return tiers;
 }
 
+function shuffledIndices(n: number): number[] {
+    const idx = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    return idx;
+}
+
 /**
- * Effective quantity a bid can still absorb at a given ask price,
- * considering deposit constraints for agent bids.
+ * Distribute `supply` among `participants` (each entry is their remaining demand).
+ *
+ * Phase 1 — equal-share rounds: repeatedly give every unsatisfied participant
+ * an equal slice of the remaining supply, capped at their demand.  Participants
+ * whose demand is smaller than their equal slice absorb only what they need;
+ * their surplus feeds the next round.  Continues until supply is exhausted or
+ * all demands are met, or until the per-participant share would be < 1 unit
+ * (the integer-remainder boundary).
+ *
+ * Phase 2 — random remainder: when remaining supply is less than the number of
+ * still-hungry participants (i.e. each equal share < 1), assign one unit at a
+ * time in a random order.  This avoids starvation: a participant wanting 1 unit
+ * competes on equal terms with one wanting 1 000 000.
+ *
+ * Properties:
+ * - No participant starves because another has a larger demand.
+ * - Order-independent within a price tier.
+ * - Monotone: a new large order never reduces what small participants receive.
+ *
+ * For continuous resources (not pieces), set `minUnit = QUANTITY_EPSILON` so
+ * Phase 2 is never entered and Phase 1 runs to full convergence.
+ * For integer pieces resources, set `minUnit = 1`.
+ */
+function equalShareAllocate(participants: number[], supply: number, minUnit: number): number[] {
+    const allocations = participants.map(() => 0);
+    const remaining = [...participants];
+    let leftover = supply;
+
+    while (leftover > QUANTITY_EPSILON) {
+        const activeIndices = remaining.map((d, i) => i).filter((i) => remaining[i] > QUANTITY_EPSILON);
+        if (activeIndices.length === 0) {
+            break;
+        }
+
+        const perParticipant = leftover / activeIndices.length;
+
+        if (perParticipant < minUnit - QUANTITY_EPSILON) {
+            // Integer remainder phase — assign one unit each in random order.
+            const order = shuffledIndices(activeIndices.length);
+            for (const pos of order) {
+                if (leftover < minUnit - QUANTITY_EPSILON) {
+                    break;
+                }
+                const i = activeIndices[pos];
+                const given = Math.min(remaining[i], minUnit);
+                allocations[i] += given;
+                remaining[i] -= given;
+                leftover -= given;
+            }
+            break;
+        }
+
+        let consumed = 0;
+        for (const i of activeIndices) {
+            const given = Math.min(remaining[i], perParticipant);
+            allocations[i] += given;
+            remaining[i] -= given;
+            consumed += given;
+        }
+        leftover -= consumed;
+
+        if (consumed < QUANTITY_EPSILON) {
+            break;
+        }
+    }
+
+    return allocations;
+}
+
+/**
+ * Deposit-aware effective demand for an agent bid at a given ask price.
  */
 function effectiveBidCapacity(bid: MergedBid, remaining: number, askPrice: number): number {
     if (bid.kind === 'agent' && askPrice > 0) {
@@ -36,14 +110,12 @@ function effectiveBidCapacity(bid: MergedBid, remaining: number, askPrice: numbe
 }
 
 /**
- * Clears a market using pro-rata matching within price tiers.
+ * Clears a market using equal-share allocation within same-price tiers.
  *
- * Bids and asks are grouped by price level. When multiple sellers (asks) sit
- * at the same price, the available demand at that tier is distributed
- * proportionally to each seller's remaining offer size. Symmetrically, when
- * multiple buyers (bids) share the same price, the available supply is split
- * proportionally among them. This prevents any single participant from
- * monopolising trades just because of iteration order under a price floor.
+ * Bids and asks are grouped by price level and matched cheapest-ask-first /
+ * highest-bid-first.  Within a tier, available supply (or demand) is split
+ * using `equalShareAllocate` so that no single large order can crowd out
+ * smaller participants at the same price.
  */
 export function clearUnifiedBids(
     householdBids: BidOrder[],
@@ -63,8 +135,6 @@ export function clearUnifiedBids(
     ];
     merged.sort((a, b) => b.bidPrice - a.bidPrice);
 
-    // Track remaining quantities for bids and asks separately from the originals
-    // so we can do proportional splits without mutating prematurely.
     const bidRemaining = merged.map((b) => b.quantity);
     const askRemaining = askOrders.map((a) => a.quantity - a.filled);
 
@@ -77,10 +147,8 @@ export function clearUnifiedBids(
     let askTierIdx = 0;
 
     for (const bidTier of bidTiers) {
-        // Advance to the cheapest ask tier that this bid tier can afford.
         while (askTierIdx < askTiers.length) {
-            const tierPrice = askTiers[askTierIdx][0].askPrice;
-            if (bidTier[0].bidPrice >= tierPrice) {
+            if (bidTier[0].bidPrice >= askTiers[askTierIdx][0].askPrice) {
                 break;
             }
             askTierIdx++;
@@ -89,7 +157,6 @@ export function clearUnifiedBids(
             break;
         }
 
-        // Process ask tiers from cheapest to most expensive while bids can still pay.
         let localAskTierIdx = askTierIdx;
         while (localAskTierIdx < askTiers.length) {
             const askTier = askTiers[localAskTierIdx];
@@ -99,15 +166,13 @@ export function clearUnifiedBids(
                 break;
             }
 
-            // Total supply available in this ask tier.
             const totalAskSupply = askTier.reduce((s, a) => s + askRemaining[askIndexOf.get(a)!], 0);
-
             if (totalAskSupply < QUANTITY_EPSILON) {
                 localAskTierIdx++;
                 continue;
             }
 
-            // Total effective demand from this bid tier at this ask price.
+            // Compute effective bid demands at this ask price.
             const bidIndices = bidTier.map((b) => mergedIndexOf.get(b)!);
             const effectiveDemands = bidIndices.map((i) =>
                 effectiveBidCapacity(merged[i], bidRemaining[i], tradePrice),
@@ -120,27 +185,32 @@ export function clearUnifiedBids(
 
             const totalTrade = Math.min(totalAskSupply, totalDemand);
 
-            // Distribute supply across asks proportionally by their available quantity.
-            for (const ask of askTier) {
-                const askIdx = askIndexOf.get(ask)!;
-                const askShare = askRemaining[askIdx] / totalAskSupply;
-                const askFill = totalTrade * askShare;
+            const isPieces = askTier[0].resource.form === 'pieces';
+            const minUnit = isPieces ? 1 : QUANTITY_EPSILON;
 
+            // --- Ask side: equal-share allocation among sellers in this tier ---
+            const askSupplies = askTier.map((a) => askRemaining[askIndexOf.get(a)!]);
+            const askFills = equalShareAllocate(askSupplies, totalTrade, minUnit);
+
+            for (let ai = 0; ai < askTier.length; ai++) {
+                const askFill = askFills[ai];
                 if (askFill < QUANTITY_EPSILON) {
                     continue;
                 }
+                const ask = askTier[ai];
+                const askIdx = askIndexOf.get(ask)!;
 
-                // Distribute this ask's fill across bids proportionally by effective demand.
-                for (let b = 0; b < bidTier.length; b++) {
-                    const bidIdx = bidIndices[b];
-                    const bidShare = totalDemand > 0 ? effectiveDemands[b] / totalDemand : 0;
-                    const bidFill = askFill * bidShare;
+                // --- Bid side: equal-share allocation among buyers for this ask's fill ---
+                const bidFills = equalShareAllocate(effectiveDemands, askFill, minUnit);
 
+                for (let bi = 0; bi < bidTier.length; bi++) {
+                    const bidFill = bidFills[bi];
                     if (bidFill < QUANTITY_EPSILON) {
                         continue;
                     }
-
+                    const bidIdx = bidIndices[bi];
                     const bid = merged[bidIdx];
+
                     bidRemaining[bidIdx] -= bidFill;
                     askRemaining[askIdx] -= bidFill;
                     ask.filled += bidFill;

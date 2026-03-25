@@ -101,17 +101,18 @@ function makeConsumerGoodRule(wealthPerTick: number, yearlyQtyPerPerson: number)
 demandRules.set(processedFoodResourceType.name, makeConsumerGoodRule(0.003, 0.5));
 // Beverages: moderate demand (~0.2 t/person/year).
 demandRules.set(beverageResourceType.name, makeConsumerGoodRule(0.001, 0.2));
-// Clothing: ~10 items/person/year (each ~0.001 t → 0.01 t/year).
-demandRules.set(clothingResourceType.name, makeConsumerGoodRule(0.002, 0.01));
-// Pharmaceuticals: low physical volume but steady demand.
-demandRules.set(pharmaceuticalResourceType.name, makeConsumerGoodRule(0.001, 0.001));
-// Furniture: durable good, slow turnover (~0.02 pieces/person/year).
-demandRules.set(furnitureResourceType.name, makeConsumerGoodRule(0.001, 0.02));
-// Consumer Electronics: ~0.1 pieces/person/year.
-demandRules.set(consumerElectronicsResourceType.name, makeConsumerGoodRule(0.002, 0.1));
-// Manufactured goods
-demandRules.set(vehicleResourceType.name, makeConsumerGoodRule(0.001, 0.03));
-demandRules.set(brickResourceType.name, makeConsumerGoodRule(0.001, 1));
+// Clothing: 1 box of 10 garments/person/year.
+demandRules.set(clothingResourceType.name, makeConsumerGoodRule(0.002, 1));
+// Pharmaceuticals: 1 box of 100 pills/person/year.
+demandRules.set(pharmaceuticalResourceType.name, makeConsumerGoodRule(0.001, 1));
+// Furniture: 0.4 pieces/person/year (durable, 0.05 t each → 0.02 t/year).
+demandRules.set(furnitureResourceType.name, makeConsumerGoodRule(0.001, 0.4));
+// Consumer Electronics: 50 devices/person/year (0.002 t each → 0.1 t/year).
+demandRules.set(consumerElectronicsResourceType.name, makeConsumerGoodRule(0.002, 50));
+// Vehicles: 0.02 vehicles/person/year (1.5 t each → 0.03 t/year).
+demandRules.set(vehicleResourceType.name, makeConsumerGoodRule(0.001, 0.02));
+// Bricks: 500/person/year for construction (0.002 t each → 1 t/year).
+demandRules.set(brickResourceType.name, makeConsumerGoodRule(0.001, 500));
 demandRules.set(concreteResourceType.name, makeConsumerGoodRule(0.001, 0.1));
 /**
  * Priority order for sequential household settlement.

@@ -464,7 +464,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
             sell: {
                 [CLOTHING]: {
                     resource: clothingResourceType,
-                    offerPrice: 1.0,
+                    offerPrice: 0.01,
                     offerQuantity: 1e6,
                 },
             },
