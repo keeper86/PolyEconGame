@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
+import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
 import type { StorageFacility } from '@/simulation/planet/storage';
 
 /* ------------------------------------------------------------------ */
@@ -77,7 +78,13 @@ function priceDirectionLabel(dir?: number): string {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export default function SellOffersPanel({ agentId, planetId, sellOffers, storageFacility, automatePricing }: Props): React.ReactElement {
+export default function SellOffersPanel({
+    agentId,
+    planetId,
+    sellOffers,
+    storageFacility,
+    automatePricing,
+}: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -124,7 +131,7 @@ export default function SellOffersPanel({ agentId, planetId, sellOffers, storage
             const entry: { offerPrice?: number; offerQuantity?: number } = {};
             const price = parseFloat(lo.offerPrice);
             const qty = parseFloat(lo.offerQuantity);
-            if (!isNaN(price) && price > 0) {
+            if (!isNaN(price) && price >= FOOD_PRICE_FLOOR) {
                 entry.offerPrice = price;
             }
             if (!isNaN(qty) && qty >= 0) {
@@ -136,7 +143,9 @@ export default function SellOffersPanel({ agentId, planetId, sellOffers, storage
         }
 
         if (Object.keys(offers).length === 0) {
-            setErrorMsg('No valid offer data to save. Enter a price > 0 or quantity ≥ 0 for at least one resource.');
+            setErrorMsg(
+                `No valid offer data to save. Enter a price ≥ ${FOOD_PRICE_FLOOR} or quantity ≥ 0 for at least one resource.`,
+            );
             return;
         }
 
@@ -225,7 +234,7 @@ export default function SellOffersPanel({ agentId, planetId, sellOffers, storage
                                                     <Input
                                                         id={`offer-price-${resource}`}
                                                         type='number'
-                                                        min={0.01}
+                                                        min={FOOD_PRICE_FLOOR}
                                                         step='any'
                                                         placeholder={
                                                             snap?.offerPrice !== undefined
@@ -251,6 +260,7 @@ export default function SellOffersPanel({ agentId, planetId, sellOffers, storage
                                                         id={`offer-qty-${resource}`}
                                                         type='number'
                                                         min={0}
+                                                        max={storageFacility.currentInStorage[resource]?.quantity ?? ''}
                                                         step={1}
                                                         placeholder={
                                                             snap?.offerQuantity !== undefined

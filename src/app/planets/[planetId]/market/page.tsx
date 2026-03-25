@@ -24,11 +24,6 @@ export default function PlanetMarketIndexPage() {
                 <h3 className='text-base font-semibold mb-3'>Market Overview</h3>
                 <MarketOverviewTable planetId={planetId} onSelect={handleSelect} />
             </section>
-
-            <section>
-                <h3 className='text-base font-semibold mb-3'>Browse by Product</h3>
-                <ResourceMarketGrid planetId={planetId} onSelect={handleSelect} />
-            </section>
         </div>
     );
 }

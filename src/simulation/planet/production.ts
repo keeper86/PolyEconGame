@@ -149,6 +149,63 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
 
+            // Track actual absolute consumption/production
+            const actualConsumed: Record<string, number> = {};
+            const actualProduced: Record<string, number> = {};
+
+            if (overallEfficiency > 0) {
+                planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;
+                planet.environment.pollution.water +=
+                    facility.pollutionPerTick.water * facility.scale * overallEfficiency;
+                planet.environment.pollution.soil +=
+                    facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
+
+                facility.produces.forEach((output) => {
+                    const produced = stochasticRound(output.quantity * facility.scale * overallEfficiency);
+                    if (produced > 0) {
+                        actualProduced[output.resource.name] = produced;
+                        putIntoStorageFacility(assets.storageFacility, output.resource, produced);
+                    } else {
+                        actualProduced[output.resource.name] = 0;
+                    }
+                });
+
+                facility.needs.forEach((need) => {
+                    const consumed = Math.ceil(need.quantity * facility.scale * overallEfficiency);
+                    if (need.resource.form === 'landBoundResource') {
+                        const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
+                        actualConsumed[need.resource.name] = extracted;
+                        if (extracted < consumed) {
+                            console.warn(
+                                `Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`,
+                                { planetId: planet.id, agentId: agent.id, facilityId: facility.id },
+                            );
+                        }
+                    } else {
+                        const removed = removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
+                        actualConsumed[need.resource.name] = removed;
+                        if (removed < consumed) {
+                            console.warn(
+                                `Unexpected: removed ${removed} of ${need.resource.name}, expected ${consumed}.`,
+                                {
+                                    planetId: planet.id,
+                                    agentId: agent.id,
+                                    facilityId: facility.id,
+                                },
+                            );
+                        }
+                    }
+                });
+            } else {
+                // If not running, still report zeroes for all needs/produces
+                facility.produces.forEach((output) => {
+                    actualProduced[output.resource.name] = 0;
+                });
+                facility.needs.forEach((need) => {
+                    actualConsumed[need.resource.name] = 0;
+                });
+            }
+
             facility.lastTickResults = {
                 overallEfficiency,
                 workerEfficiency,
@@ -156,47 +213,9 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 overqualifiedWorkers,
                 totalUsedByEdu,
                 exactUsedByEdu,
-                lastProduced: {},
+                lastProduced: actualProduced,
+                lastConsumed: actualConsumed,
             };
-
-            if (overallEfficiency <= 0) {
-                return;
-            }
-
-            planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;
-            planet.environment.pollution.water += facility.pollutionPerTick.water * facility.scale * overallEfficiency;
-            planet.environment.pollution.soil += facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
-
-            facility.produces.forEach((output) => {
-                const produced = stochasticRound(output.quantity * facility.scale * overallEfficiency);
-                if (produced <= 0) {
-                    return;
-                }
-                facility.lastTickResults.lastProduced[output.resource.name] = produced;
-                putIntoStorageFacility(assets.storageFacility, output.resource, produced);
-            });
-
-            facility.needs.forEach((need) => {
-                const consumed = Math.ceil(need.quantity * facility.scale * overallEfficiency);
-                if (need.resource.form === 'landBoundResource') {
-                    const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
-                    if (extracted < consumed) {
-                        console.warn(
-                            `Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`,
-                            { planetId: planet.id, agentId: agent.id, facilityId: facility.id },
-                        );
-                    }
-                } else {
-                    const removed = removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
-                    if (removed < consumed) {
-                        console.warn(`Unexpected: removed ${removed} of ${need.resource.name}, expected ${consumed}.`, {
-                            planetId: planet.id,
-                            agentId: agent.id,
-                            facilityId: facility.id,
-                        });
-                    }
-                }
-            });
         });
     });
 }

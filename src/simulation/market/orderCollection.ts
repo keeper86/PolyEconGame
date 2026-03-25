@@ -1,5 +1,6 @@
-import { INITIAL_FOOD_PRICE } from '../constants';
+import { FOOD_PRICE_FLOOR, INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
+import { queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
@@ -12,12 +13,15 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
-            const qty = offer.offerQuantity ?? 0;
+            const requested = offer.offerQuantity ?? 0;
+            const inStorage = queryStorageFacility(assets.storageFacility, resourceName);
+            const qty = Math.min(requested, inStorage);
             if (qty <= 0) {
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
                 continue;
             }
+            const askPrice = Math.max(FOOD_PRICE_FLOOR, offer.offerPrice ?? INITIAL_FOOD_PRICE);
             let book = books.get(resourceName);
             if (!book) {
                 book = [];
@@ -26,7 +30,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
             book.push({
                 agent,
                 resource: offer.resource,
-                askPrice: offer.offerPrice ?? INITIAL_FOOD_PRICE,
+                askPrice,
                 quantity: qty,
                 filled: 0,
                 revenue: 0,

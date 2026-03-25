@@ -47,6 +47,8 @@ export type LastTickResults = {
 
     /** Actual units produced per output resource this tick (post-floor, matches storage change). */
     lastProduced: { [resourceName: string]: number };
+    /** Actual units consumed per input resource this tick (post-ceil, matches storage change). */
+    lastConsumed: { [resourceName: string]: number };
 };
 
 export type ProductionFacility = Facilility & {
