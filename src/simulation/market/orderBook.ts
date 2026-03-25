@@ -66,7 +66,7 @@ function equalShareAllocate(participants: number[], supply: number, minUnit: num
 
         const perParticipant = leftover / activeIndices.length;
 
-        if (perParticipant < minUnit - QUANTITY_EPSILON) {
+        if (activeIndices.length > 1 && perParticipant < minUnit - QUANTITY_EPSILON) {
             // Integer remainder phase — assign one unit each in random order.
             const order = shuffledIndices(activeIndices.length);
             for (const pos of order) {

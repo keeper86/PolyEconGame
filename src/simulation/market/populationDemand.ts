@@ -13,57 +13,67 @@ import {
     concreteResourceType,
 } from '../planet/resources';
 import { forEachPopulationCohort } from '../population/population';
+import { stochasticRound } from '../utils/stochasticRound';
 import type { BidOrder } from './marketTypes';
 
 // ---------------------------------------------------------------------------
 // Demand rule registry
 // ---------------------------------------------------------------------------
 /**
- * A demand rule returns the desired per-person purchase quantity and
- * reservation price for a cohort cell, given its *current* (post-prior-
- * settlement) wealth.  Because markets are cleared sequentially in
- * priority order and wealth is debited before moving to the next resource,
- * each rule sees only the wealth the cohort still has available.
+ * A demand rule returns the desired total purchase quantity for a whole cohort
+ * and its reservation price, given the cohort's current wealth.
+ *
+ * For continuous goods the quantity is a real number.
+ * For pieces resources the quantity is already a non-negative integer
+ * (stochastic rounding is applied inside the rule).
  */
 type DemandRule = (params: {
-    resource: Resource;
     population: number;
     wealthMeanPerPerson: number;
     inventoryPerPerson: number;
     referencePrice: number;
+    isPieces: boolean;
 }) => {
-    /** Per-person desired purchase quantity (>= 0). */
+    /** Total desired purchase quantity for the cohort (>= 0). Integer for pieces resources. */
     quantity: number;
     /** Reservation price (currency / unit). */
     reservationPrice: number;
 };
-export const demandRules = new Map<string, DemandRule>();
+type DemandEntry = { rule: DemandRule; isPieces: boolean };
+export const demandRules = new Map<string, DemandEntry>();
+
+function registerDemand(resource: Resource, rule: DemandRule): void {
+    demandRules.set(resource.name, { rule, isPieces: resource.form === 'pieces' });
+}
 // ------------------------------------------------------------------
 // Food (Agricultural Product) — survival priority 1
 // ------------------------------------------------------------------
 const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
-demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, inventoryPerPerson, referencePrice }) => {
-    const desiredPerPerson = Math.max(0, foodTargetPerPerson - inventoryPerPerson);
-    if (desiredPerPerson <= 0) {
-        return { quantity: 0, reservationPrice: 0 };
-    }
-    if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
-        return { quantity: 0, reservationPrice: 0 };
-    }
-    if (!Number.isFinite(wealthMeanPerPerson) || wealthMeanPerPerson < 0) {
-        return { quantity: 0, reservationPrice: 0 };
-    }
+registerDemand(
+    agriculturalProductResourceType,
+    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice }) => {
+        const desiredPerPerson = Math.max(0, foodTargetPerPerson - inventoryPerPerson);
+        if (desiredPerPerson <= 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+        if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+        if (!Number.isFinite(wealthMeanPerPerson) || wealthMeanPerPerson < 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
 
-    const affordableQty = wealthMeanPerPerson / referencePrice;
-    const effectiveQty = Math.min(desiredPerPerson, Math.max(0, affordableQty));
+        const affordableQty = wealthMeanPerPerson / referencePrice;
+        const effectiveQtyPerPerson = Math.min(desiredPerPerson, Math.max(0, affordableQty));
 
-    if (!Number.isFinite(effectiveQty) || effectiveQty < 0) {
-        return { quantity: 0, reservationPrice: 0 };
-    }
+        if (!Number.isFinite(effectiveQtyPerPerson) || effectiveQtyPerPerson < 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
 
-    const reservationPrice = desiredPerPerson > 0 ? wealthMeanPerPerson / desiredPerPerson : 0;
-    return { quantity: effectiveQty, reservationPrice };
-});
+        const reservationPrice = desiredPerPerson > 0 ? wealthMeanPerPerson / desiredPerPerson : 0;
+        return { quantity: effectiveQtyPerPerson * population, reservationPrice };
+    },
+);
 // ------------------------------------------------------------------
 // Generic discretionary consumer-good demand rule factory.
 //
@@ -76,9 +86,9 @@ demandRules.set(agriculturalProductResourceType.name, ({ wealthMeanPerPerson, in
 // yearlyQtyPerPerson  - physical cap on how much one person buys/year
 // ------------------------------------------------------------------
 function makeConsumerGoodRule(wealthPerTick: number, yearlyQtyPerPerson: number): DemandRule {
-    const qtyPerTick = yearlyQtyPerPerson / TICKS_PER_YEAR;
+    const qtyPerTickPerPerson = yearlyQtyPerPerson / TICKS_PER_YEAR;
 
-    return ({ wealthMeanPerPerson, referencePrice }) => {
+    return ({ population, wealthMeanPerPerson, referencePrice, isPieces }) => {
         if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
@@ -87,33 +97,40 @@ function makeConsumerGoodRule(wealthPerTick: number, yearlyQtyPerPerson: number)
         }
 
         const budget = wealthMeanPerPerson * wealthPerTick;
-        const affordableQty = budget / referencePrice;
-        const effectiveQty = Math.min(qtyPerTick, affordableQty);
+        const affordableQtyPerPerson = budget / referencePrice;
+        const qtyPerPerson = Math.min(qtyPerTickPerPerson, affordableQtyPerPerson);
 
-        if (effectiveQty <= 0) {
+        if (qtyPerPerson <= 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        return { quantity: effectiveQty, reservationPrice: budget / effectiveQty };
+        const rawTotal = qtyPerPerson * population;
+        const totalQty = isPieces ? stochasticRound(rawTotal) : rawTotal;
+
+        if (totalQty <= 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+
+        return { quantity: totalQty, reservationPrice: budget / qtyPerPerson };
     };
 }
 // Processed Food: secondary staple, strong demand (~0.5 t/person/year).
-demandRules.set(processedFoodResourceType.name, makeConsumerGoodRule(0.003, 0.5));
+registerDemand(processedFoodResourceType, makeConsumerGoodRule(0.003, 0.5));
 // Beverages: moderate demand (~0.2 t/person/year).
-demandRules.set(beverageResourceType.name, makeConsumerGoodRule(0.001, 0.2));
+registerDemand(beverageResourceType, makeConsumerGoodRule(0.001, 0.2));
 // Clothing: 1 box of 10 garments/person/year.
-demandRules.set(clothingResourceType.name, makeConsumerGoodRule(0.002, 1));
+registerDemand(clothingResourceType, makeConsumerGoodRule(0.002, 1));
 // Pharmaceuticals: 1 box of 100 pills/person/year.
-demandRules.set(pharmaceuticalResourceType.name, makeConsumerGoodRule(0.001, 1));
+registerDemand(pharmaceuticalResourceType, makeConsumerGoodRule(0.001, 1));
 // Furniture: 0.4 pieces/person/year (durable, 0.05 t each → 0.02 t/year).
-demandRules.set(furnitureResourceType.name, makeConsumerGoodRule(0.001, 0.4));
+registerDemand(furnitureResourceType, makeConsumerGoodRule(0.001, 0.4));
 // Consumer Electronics: 50 devices/person/year (0.002 t each → 0.1 t/year).
-demandRules.set(consumerElectronicsResourceType.name, makeConsumerGoodRule(0.002, 50));
+registerDemand(consumerElectronicsResourceType, makeConsumerGoodRule(0.002, 50));
 // Vehicles: 0.02 vehicles/person/year (1.5 t each → 0.03 t/year).
-demandRules.set(vehicleResourceType.name, makeConsumerGoodRule(0.001, 0.02));
+registerDemand(vehicleResourceType, makeConsumerGoodRule(0.001, 0.02));
 // Bricks: 500/person/year for construction (0.002 t each → 1 t/year).
-demandRules.set(brickResourceType.name, makeConsumerGoodRule(0.001, 500));
-demandRules.set(concreteResourceType.name, makeConsumerGoodRule(0.001, 0.1));
+registerDemand(brickResourceType, makeConsumerGoodRule(0.001, 500));
+registerDemand(concreteResourceType, makeConsumerGoodRule(0.001, 0.1));
 /**
  * Priority order for sequential household settlement.
  * Food is cleared and settled first; household wealth is debited before
@@ -176,10 +193,11 @@ export function binHouseholdBids(bids: BidOrder[], filled: number[], costs: numb
 // Build population demand for a single resource, using current cohort wealth
 // ---------------------------------------------------------------------------
 export function buildPopulationDemandForResource(planet: Planet, resourceName: string): BidOrder[] {
-    const rule = demandRules.get(resourceName);
-    if (!rule) {
+    const entry = demandRules.get(resourceName);
+    if (!entry) {
         return [];
     }
+    const { rule, isPieces } = entry;
 
     const referencePrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
     const bidOrders: BidOrder[] = [];
@@ -200,15 +218,13 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
 
             const inventoryPerPerson = (category.inventory[resourceName] ?? 0) / pop;
 
-            const { quantity: qtyPerPerson, reservationPrice } = rule({
-                resource: { name: resourceName } as Resource,
+            const { quantity: totalQty, reservationPrice } = rule({
                 population: pop,
                 wealthMeanPerPerson: wm.mean,
                 inventoryPerPerson,
                 referencePrice,
+                isPieces,
             });
-
-            const totalQty = qtyPerPerson * pop;
 
             if (!Number.isFinite(totalQty) || totalQty < 0) {
                 console.log('warn: non-finite totalQty in buildPopulationDemandForResource', {
@@ -217,7 +233,6 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
                     occ,
                     skill,
                     resourceName,
-                    qtyPerPerson,
                     totalQty,
                 });
                 return;
