@@ -2,6 +2,7 @@ import { FOOD_PRICE_FLOOR, FOOD_PRICE_CEIL, INITIAL_FOOD_PRICE } from '../consta
 import type { Agent, Planet } from '../planet/planet';
 import { lockIntoEscrow, queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
+
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
     const books = new Map<string, AskOrder[]>();
 
@@ -12,17 +13,22 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
+            if (!offer.offerQuantity || !offer.offerPrice) {
+                continue;
+            }
             const resource = offer.resource;
-            const requested = validatedOfferQuantity(offer.offerQuantity ?? 0, resource.form);
+            const requested = resource.form === 'pieces' ? Math.floor(offer.offerQuantity) : offer.offerQuantity;
             const free = queryStorageFacility(assets.storageFacility, resourceName);
-            const qty = Math.min(requested, free);
-            if (qty <= 0) {
+
+            const quantity = Math.min(offer.offerQuantity, free);
+            if (quantity <= 0) {
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
                 continue;
             }
-            const askPrice = clampPrice(offer.offerPrice ?? INITIAL_FOOD_PRICE);
-            lockIntoEscrow(assets.storageFacility, resourceName, qty);
+
+            const askPrice = clampPrice(offer.offerPrice);
+            lockIntoEscrow(assets.storageFacility, resourceName, quantity);
 
             let book = books.get(resourceName);
             if (!book) {
@@ -33,7 +39,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
                 agent,
                 resource,
                 askPrice,
-                quantity: qty,
+                quantity: quantity,
                 filled: 0,
                 revenue: 0,
             });
@@ -134,8 +140,8 @@ export function resetAgentSellCounters(askBooks: Map<string, AskOrder[]>, planet
     }
 }
 
-function clampPrice(price: number): number {
-    return Math.max(FOOD_PRICE_FLOOR, Math.min(FOOD_PRICE_CEIL, price));
+function clampPrice(price?: number): number {
+    return Math.max(FOOD_PRICE_FLOOR, Math.min(FOOD_PRICE_CEIL, price ?? INITIAL_FOOD_PRICE));
 }
 
 function validatedOfferQuantity(qty: number, form: string): number {

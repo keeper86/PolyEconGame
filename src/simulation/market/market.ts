@@ -1,4 +1,4 @@
-import { INITIAL_FOOD_PRICE } from '../constants';
+import { EPSILON, INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/storage';
 import { agriculturalProductResourceType } from '../planet/resources';
@@ -73,9 +73,19 @@ function clearResourceMarket(
     const referencePrice = referencePriceFor(planet, resourceName);
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
+        // No trades possible: release any escrowed goods back to free stock
         for (const ask of askOrders) {
             const assets = ask.agent.assets[planet.id];
             if (assets) {
+                if (process.env.SIM_DEBUG === '1') {
+                    const escrowed = assets.storageFacility.escrow[ask.resource.name] ?? 0;
+                    if (escrowed < ask.quantity - EPSILON) {
+                        throw new Error(
+                            `Escrow mismatch: trying to release ${ask.quantity} but only ${escrowed} escrowed. ` +
+                                `agent=${ask.agent.id}, resource=${ask.resource.name}`,
+                        );
+                    }
+                }
                 releaseFromEscrow(assets.storageFacility, ask.resource.name, ask.quantity);
             }
         }
@@ -94,9 +104,6 @@ function clearResourceMarket(
 
     askOrders.sort((a, b) => a.askPrice - b.askPrice);
 
-    const askFilledBaseline = askOrders.map((a) => a.filled);
-    const askRevenueBaseline = askOrders.map((a) => a.revenue);
-
     const { householdBidFilled, householdTrades, agentTrades, householdBidCosts } = clearUnifiedBids(
         householdBids,
         agentBids,
@@ -105,7 +112,7 @@ function clearResourceMarket(
 
     settleHouseholds(planet, resourceName, householdBids, householdBidFilled, householdBidCosts);
     settleAgentBuyers(planet, agentBids);
-    settleAgentSellers(planet, askOrders, askFilledBaseline, askRevenueBaseline);
+    settleAgentSellers(planet, askOrders);
 
     const allTrades = [...householdTrades, ...agentTrades];
     const { clearingPrice, totalVolume } = computeMarketSummary(allTrades, referencePrice);
@@ -114,7 +121,7 @@ function clearResourceMarket(
         planet.marketPrices[resourceName] = clearingPrice;
     }
 
-    const unsoldSupply = askOrders.reduce((s, a) => s + (a.quantity - a.filled), 0);
+    const unsoldSupply = totalSupply - totalVolume;
 
     planet.lastMarketResult[resourceName] = {
         resourceName,

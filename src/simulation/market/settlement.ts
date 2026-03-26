@@ -30,8 +30,6 @@ export function settleHouseholds(
 export function settleAgentSellers(
     planet: Planet,
     askOrders: AskOrder[],
-    filledBaseline: number[],
-    revenueBaseline: number[],
 ): void {
     for (let i = 0; i < askOrders.length; i++) {
         const ask = askOrders[i];
@@ -44,25 +42,25 @@ export function settleAgentSellers(
             assets.market = { sell: {}, buy: {} };
         }
 
-        const filledDelta = ask.filled - filledBaseline[i];
-        const unfilledDelta = ask.quantity - filledBaseline[i] - filledDelta;
+        const filled = ask.filled;
+        const revenue = ask.revenue;
+        const unfilled = ask.quantity - filled;
 
         // Transfer sold goods out of escrow (removes them from storage too).
-        if (filledDelta > 0) {
-            transferFromEscrow(assets.storageFacility, ask.resource.name, filledDelta);
-            const revenueDelta = ask.revenue - revenueBaseline[i];
-            assets.deposits += revenueDelta;
+        if (filled > 0) {
+            transferFromEscrow(assets.storageFacility, ask.resource.name, filled);
+            assets.deposits += revenue;
 
             const offer = assets.market.sell[ask.resource.name];
             if (offer) {
-                offer.lastSold = (offer.lastSold ?? 0) + filledDelta;
-                offer.lastRevenue = (offer.lastRevenue ?? 0) + revenueDelta;
+                offer.lastSold = (offer.lastSold ?? 0) + filled;
+                offer.lastRevenue = (offer.lastRevenue ?? 0) + revenue;
             }
         }
 
         // Release unsold goods from escrow back to free stock.
-        if (unfilledDelta > 0) {
-            releaseFromEscrow(assets.storageFacility, ask.resource.name, unfilledDelta);
+        if (unfilled > 0) {
+            releaseFromEscrow(assets.storageFacility, ask.resource.name, unfilled);
         }
     }
 }
@@ -97,6 +95,14 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
         const costRefunded = bid.cost - costForStored;
 
         if (costRefunded > 0) {
+            if (process.env.SIM_DEBUG === '1') {
+                throw new Error(
+                    `Monetary conservation violation: costRefunded=${costRefunded} > 0. ` +
+                    `bid.cost=${bid.cost}, costForStored=${costForStored}, ` +
+                    `bid.filled=${bid.filled}, actuallyStored=${actuallyStored}, ` +
+                    `agent=${bid.agent.id}, resource=${bid.resource.name}`
+                );
+            }
             assets.deposits += costRefunded;
         }
 

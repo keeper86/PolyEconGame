@@ -1,6 +1,6 @@
 import type { AgentBidOrder, AskOrder, BidOrder, MergedBid, TradeRecord, UnifiedClearResult } from './marketTypes';
-
-const QUANTITY_EPSILON = 1e-9;
+import { nextRandom } from '../utils/stochasticRound';
+import { EPSILON } from '../constants';
 
 function groupByPrice<T extends { bidPrice?: number; askPrice?: number }>(
     items: T[],
@@ -23,7 +23,7 @@ function groupByPrice<T extends { bidPrice?: number; askPrice?: number }>(
 function shuffledIndices(n: number): number[] {
     const idx = Array.from({ length: n }, (_, i) => i);
     for (let i = n - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(nextRandom() * (i + 1));
         [idx[i], idx[j]] = [idx[j], idx[i]];
     }
     return idx;
@@ -58,19 +58,19 @@ function equalShareAllocate(participants: number[], supply: number, minUnit: num
     const remaining = [...participants];
     let leftover = supply;
 
-    while (leftover > QUANTITY_EPSILON) {
-        const activeIndices = remaining.map((d, i) => i).filter((i) => remaining[i] > QUANTITY_EPSILON);
+    while (leftover > EPSILON) {
+        const activeIndices = remaining.map((d, i) => i).filter((i) => remaining[i] > EPSILON);
         if (activeIndices.length === 0) {
             break;
         }
 
         const perParticipant = leftover / activeIndices.length;
 
-        if (activeIndices.length > 1 && perParticipant < minUnit - QUANTITY_EPSILON) {
+        if (activeIndices.length > 1 && perParticipant < minUnit - EPSILON) {
             // Integer remainder phase — assign one unit each in random order.
             const order = shuffledIndices(activeIndices.length);
             for (const pos of order) {
-                if (leftover < minUnit - QUANTITY_EPSILON) {
+                if (leftover < minUnit - EPSILON) {
                     break;
                 }
                 const i = activeIndices[pos];
@@ -91,7 +91,7 @@ function equalShareAllocate(participants: number[], supply: number, minUnit: num
         }
         leftover -= consumed;
 
-        if (consumed < QUANTITY_EPSILON) {
+        if (consumed < EPSILON) {
             break;
         }
     }
@@ -167,7 +167,7 @@ export function clearUnifiedBids(
             }
 
             const totalAskSupply = askTier.reduce((s, a) => s + askRemaining[askIndexOf.get(a)!], 0);
-            if (totalAskSupply < QUANTITY_EPSILON) {
+            if (totalAskSupply < EPSILON) {
                 localAskTierIdx++;
                 continue;
             }
@@ -179,14 +179,14 @@ export function clearUnifiedBids(
             );
             const totalDemand = effectiveDemands.reduce((s, d) => s + d, 0);
 
-            if (totalDemand < QUANTITY_EPSILON) {
+            if (totalDemand < EPSILON) {
                 break;
             }
 
             const totalTrade = Math.min(totalAskSupply, totalDemand);
 
             const isPieces = askTier[0].resource.form === 'pieces';
-            const minUnit = isPieces ? 1 : QUANTITY_EPSILON;
+            const minUnit = isPieces ? 1 : EPSILON;
 
             // --- Ask side: equal-share allocation among sellers in this tier ---
             const askSupplies = askTier.map((a) => askRemaining[askIndexOf.get(a)!]);
@@ -194,7 +194,7 @@ export function clearUnifiedBids(
 
             for (let ai = 0; ai < askTier.length; ai++) {
                 const askFill = askFills[ai];
-                if (askFill < QUANTITY_EPSILON) {
+                if (askFill < EPSILON) {
                     continue;
                 }
                 const ask = askTier[ai];
@@ -205,7 +205,7 @@ export function clearUnifiedBids(
 
                 for (let bi = 0; bi < bidTier.length; bi++) {
                     const bidFill = bidFills[bi];
-                    if (bidFill < QUANTITY_EPSILON) {
+                    if (bidFill < EPSILON) {
                         continue;
                     }
                     const bidIdx = bidIndices[bi];
