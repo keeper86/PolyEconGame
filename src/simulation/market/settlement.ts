@@ -27,10 +27,7 @@ export function settleHouseholds(
     }
 }
 
-export function settleAgentSellers(
-    planet: Planet,
-    askOrders: AskOrder[],
-): void {
+export function settleAgentSellers(planet: Planet, askOrders: AskOrder[]): void {
     for (let i = 0; i < askOrders.length; i++) {
         const ask = askOrders[i];
         const assets = ask.agent.assets[planet.id];
@@ -98,9 +95,9 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
             if (process.env.SIM_DEBUG === '1') {
                 throw new Error(
                     `Monetary conservation violation: costRefunded=${costRefunded} > 0. ` +
-                    `bid.cost=${bid.cost}, costForStored=${costForStored}, ` +
-                    `bid.filled=${bid.filled}, actuallyStored=${actuallyStored}, ` +
-                    `agent=${bid.agent.id}, resource=${bid.resource.name}`
+                        `bid.cost=${bid.cost}, costForStored=${costForStored}, ` +
+                        `bid.filled=${bid.filled}, actuallyStored=${actuallyStored}, ` +
+                        `agent=${bid.agent.id}, resource=${bid.resource.name}`,
                 );
             }
             assets.deposits += costRefunded;
