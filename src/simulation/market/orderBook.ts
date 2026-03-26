@@ -101,22 +101,21 @@ function equalShareAllocate(participants: number[], supply: number, minUnit: num
 
 /**
  * Deposit-aware effective demand for an agent bid at a given ask price.
+ *
+ * For 'pieces' resources the capacity is floored to an integer because you
+ * cannot buy a fractional piece.  For all other forms (solid, liquid, gas …)
+ * no rounding is applied: even a budget of 0.005 credits at an ask price of
+ * 0.01 per ton allows a 0.5-ton purchase.
  */
 function effectiveBidCapacity(bid: MergedBid, remaining: number, askPrice: number): number {
     if (bid.kind === 'agent' && askPrice > 0) {
-        return Math.min(remaining, Math.floor(bid.order.remainingDeposits / askPrice));
+        const maxAffordable = bid.order.remainingDeposits / askPrice;
+        const capacity = bid.order.resource.form === 'pieces' ? Math.floor(maxAffordable) : maxAffordable;
+        return Math.min(remaining, capacity);
     }
     return remaining;
 }
 
-/**
- * Clears a market using equal-share allocation within same-price tiers.
- *
- * Bids and asks are grouped by price level and matched cheapest-ask-first /
- * highest-bid-first.  Within a tier, available supply (or demand) is split
- * using `equalShareAllocate` so that no single large order can crowd out
- * smaller participants at the same price.
- */
 export function clearUnifiedBids(
     householdBids: BidOrder[],
     agentBids: AgentBidOrder[],
@@ -188,7 +187,6 @@ export function clearUnifiedBids(
             const isPieces = askTier[0].resource.form === 'pieces';
             const minUnit = isPieces ? 1 : EPSILON;
 
-            // --- Ask side: equal-share allocation among sellers in this tier ---
             const askSupplies = askTier.map((a) => askRemaining[askIndexOf.get(a)!]);
             const askFills = equalShareAllocate(askSupplies, totalTrade, minUnit);
 
@@ -200,8 +198,13 @@ export function clearUnifiedBids(
                 const ask = askTier[ai];
                 const askIdx = askIndexOf.get(ask)!;
 
-                // --- Bid side: equal-share allocation among buyers for this ask's fill ---
-                const bidFills = equalShareAllocate(effectiveDemands, askFill, minUnit);
+                // Recompute effective demands from the current bidRemaining so that buyers
+                // already satisfied by earlier sellers in this tier don't steal quota from
+                // others (stale values would cause over-allocation beyond a buyer's demand).
+                const currentEffectiveDemands = bidIndices.map((i) =>
+                    effectiveBidCapacity(merged[i], bidRemaining[i], tradePrice),
+                );
+                const bidFills = equalShareAllocate(currentEffectiveDemands, askFill, minUnit);
 
                 for (let bi = 0; bi < bidTier.length; bi++) {
                     const bidFill = bidFills[bi];
