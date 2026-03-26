@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import ResourceMarketGrid from './ResourceMarketGrid';
 import MarketOverviewTable from './MarketOverviewTable';
 
 export default function PlanetMarketIndexPage() {
@@ -23,11 +22,6 @@ export default function PlanetMarketIndexPage() {
             <section>
                 <h3 className='text-base font-semibold mb-3'>Market Overview</h3>
                 <MarketOverviewTable planetId={planetId} onSelect={handleSelect} />
-            </section>
-
-            <section>
-                <h3 className='text-base font-semibold mb-3'>Browse by Product</h3>
-                <ResourceMarketGrid planetId={planetId} onSelect={handleSelect} />
             </section>
         </div>
     );

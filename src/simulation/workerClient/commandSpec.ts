@@ -83,6 +83,19 @@ export const setSellOffersSpec: CommandSpec<
     extract: () => undefined,
 };
 
+type SetBuyBidsSuccess = Extract<OutboundMessage, { type: 'buyBidsSet' }>;
+type SetBuyBidsFailure = Extract<OutboundMessage, { type: 'buyBidsFailed' }>;
+export const setBuyBidsSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'setBuyBids' }>,
+    SetBuyBidsSuccess,
+    SetBuyBidsFailure,
+    void
+> = {
+    successType: 'buyBidsSet',
+    failureType: 'buyBidsFailed',
+    extract: () => undefined,
+};
+
 type ClaimResourcesSuccess = Extract<OutboundMessage, { type: 'resourcesClaimed' }>;
 type ClaimResourcesFailure = Extract<OutboundMessage, { type: 'resourcesClaimFailed' }>;
 export const claimResourcesSpec: CommandSpec<
@@ -94,4 +107,17 @@ export const claimResourcesSpec: CommandSpec<
     successType: 'resourcesClaimed',
     failureType: 'resourcesClaimFailed',
     extract: (msg) => ({ arableClaimId: msg.arableClaimId, waterClaimId: msg.waterClaimId }),
+};
+
+type BuildFacilitySuccess = Extract<OutboundMessage, { type: 'facilityBuilt' }>;
+type BuildFacilityFailure = Extract<OutboundMessage, { type: 'facilityBuildFailed' }>;
+export const buildFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'buildFacility' }>,
+    BuildFacilitySuccess,
+    BuildFacilityFailure,
+    string
+> = {
+    successType: 'facilityBuilt',
+    failureType: 'facilityBuildFailed',
+    extract: (msg) => msg.facilityId,
 };

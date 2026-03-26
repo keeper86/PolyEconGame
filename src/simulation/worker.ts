@@ -15,11 +15,13 @@ import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepos
 import { createInitialGameState } from './utils/initialWorld';
 import knexConfig from '../../knexfile.js';
 import { computeLoanConditions } from './financial/loanConditions';
+import { FOOD_PRICE_FLOOR } from './constants';
 import { agriculturalProductResourceType } from './planet/resources';
 import { arableLandResourceType, waterSourceResourceType } from './planet/landBoundResources';
 import { makeAgent } from './utils/testHelper';
 import { collapseUntenantedClaims } from './utils/entities';
 import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from './utils/initialWorld';
+import { facilityByName } from './planet/facilityCatalog';
 export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 
@@ -251,7 +253,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         }
                         for (const [resourceName, update] of Object.entries(offers)) {
                             if (!assets.market.sell[resourceName]) {
-                                // Find resource reference from production facilities
                                 let resource = null;
                                 outerLoop: for (const facility of assets.productionFacilities) {
                                     for (const p of facility.produces) {
@@ -262,14 +263,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                                     }
                                 }
                                 if (!resource) {
-                                    // Skip resources this agent does not produce
+                                    resource = assets.storageFacility.currentInStorage[resourceName]?.resource ?? null;
+                                }
+                                if (!resource) {
                                     continue;
                                 }
                                 assets.market.sell[resourceName] = { resource };
                             }
                             const offer = assets.market.sell[resourceName];
                             if (update.offerPrice !== undefined && update.offerPrice > 0) {
-                                offer.offerPrice = update.offerPrice;
+                                offer.offerPrice = Math.max(FOOD_PRICE_FLOOR, update.offerPrice);
                             }
                             if (update.offerQuantity !== undefined && update.offerQuantity >= 0) {
                                 offer.offerQuantity = update.offerQuantity;
@@ -277,6 +280,53 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         }
                         console.log(`[worker] Sell offers updated for agent '${agentId}' on '${planetId}'`);
                         safePostMessage({ type: 'sellOffersSet', requestId, agentId });
+                        break;
+                    }
+                    case 'setBuyBids': {
+                        const { requestId, agentId, planetId, bids } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'buyBidsFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        if (!assets.market) {
+                            assets.market = { sell: {}, buy: {} };
+                        }
+                        for (const [resourceName, update] of Object.entries(bids)) {
+                            if (!assets.market.buy[resourceName]) {
+                                let resource = null;
+                                outerBidLoop: for (const facility of assets.productionFacilities) {
+                                    for (const n of facility.needs) {
+                                        if (n.resource.name === resourceName) {
+                                            resource = n.resource;
+                                            break outerBidLoop;
+                                        }
+                                    }
+                                }
+                                if (!resource) {
+                                    continue;
+                                }
+                                assets.market.buy[resourceName] = { resource };
+                            }
+                            const bid = assets.market.buy[resourceName];
+                            if (update.bidPrice !== undefined && update.bidPrice > 0) {
+                                bid.bidPrice = update.bidPrice;
+                            }
+                            if (update.bidQuantity !== undefined && update.bidQuantity >= 0) {
+                                bid.bidQuantity = update.bidQuantity;
+                            }
+                        }
+                        console.log(`[worker] Buy bids updated for agent '${agentId}' on '${planetId}'`);
+                        safePostMessage({ type: 'buyBidsSet', requestId, agentId });
                         break;
                     }
                     case 'claimResources': {
@@ -415,6 +465,40 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                                 `${waterSourceQuantity} water source on planet '${planetId}'`,
                         );
                         safePostMessage({ type: 'resourcesClaimed', requestId, agentId, arableClaimId, waterClaimId });
+                        break;
+                    }
+                    case 'buildFacility': {
+                        const { requestId, agentId, planetId, facilityKey } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'facilityBuildFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        const catalogEntry = facilityByName.get(facilityKey);
+                        if (!catalogEntry) {
+                            safePostMessage({
+                                type: 'facilityBuildFailed',
+                                requestId,
+                                reason: `Unknown facility '${facilityKey}'`,
+                            });
+                            break;
+                        }
+                        const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+                        const newFacility = catalogEntry.factory(planetId, facilityId);
+                        newFacility.scale = 1;
+                        newFacility.maxScale = 1;
+                        assets.productionFacilities.push(newFacility);
+                        console.log(`[worker] Agent '${agentId}' built '${facilityKey}' on planet '${planetId}'`);
+                        safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId });
                         break;
                     }
                 }
@@ -805,6 +889,20 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
+        if (msg.type === 'setBuyBids') {
+            const { requestId, agentId, planetId, bids } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'buyBidsFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'setBuyBids', requestId, agentId, planetId, bids });
+            return;
+        }
+
         if (msg.type === 'claimResources') {
             const { requestId, agentId, planetId, arableLandQuantity, waterSourceQuantity } = msg;
             if (!state.agents.has(agentId)) {
@@ -831,6 +929,20 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 arableLandQuantity,
                 waterSourceQuantity,
             });
+            return;
+        }
+
+        if (msg.type === 'buildFacility') {
+            const { requestId, agentId, planetId, facilityKey } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'facilityBuildFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'buildFacility', requestId, agentId, planetId, facilityKey });
             return;
         }
 

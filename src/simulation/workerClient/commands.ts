@@ -6,7 +6,9 @@ import {
     setAutomationSpec,
     setWorkerAllocationTargetsSpec,
     setSellOffersSpec,
+    setBuyBidsSpec,
     claimResourcesSpec,
+    buildFacilitySpec,
 } from './commandSpec';
 
 export function workerCreateAgent(opts: {
@@ -79,6 +81,20 @@ export function workerSetSellOffers(opts: {
     );
 }
 
+export function workerSetBuyBids(opts: {
+    agentId: string;
+    planetId: string;
+    bids: Record<string, { bidPrice?: number; bidQuantity?: number }>;
+    timeoutMs?: number;
+}): Promise<void> {
+    const { agentId, planetId, bids, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'setBuyBids', requestId: randomUUID(), agentId, planetId, bids },
+        setBuyBidsSpec,
+        timeoutMs,
+    );
+}
+
 export function workerClaimResources(opts: {
     agentId: string;
     planetId: string;
@@ -90,6 +106,20 @@ export function workerClaimResources(opts: {
     return sendCommandSpec(
         { type: 'claimResources', requestId: randomUUID(), agentId, planetId, arableLandQuantity, waterSourceQuantity },
         claimResourcesSpec,
+        timeoutMs,
+    );
+}
+
+export function workerBuildFacility(opts: {
+    agentId: string;
+    planetId: string;
+    facilityKey: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, facilityKey, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'buildFacility', requestId: randomUUID(), agentId, planetId, facilityKey },
+        buildFacilitySpec,
         timeoutMs,
     );
 }

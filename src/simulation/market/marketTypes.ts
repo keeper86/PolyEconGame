@@ -42,6 +42,7 @@ export interface UnifiedClearResult {
     householdTrades: TradeRecord[];
     agentTrades: TradeRecord[];
     householdBidFilled: number[];
+    householdBidCosts: number[];
 }
 
 export type MergedBid =

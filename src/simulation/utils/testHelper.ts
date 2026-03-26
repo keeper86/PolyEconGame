@@ -295,6 +295,7 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         capacity: { volume: 1e3, mass: 1e3 },
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
+        escrow: {},
         ...overrides,
     } as StorageFacility;
 }
@@ -337,6 +338,7 @@ export function makeProductionFacility(
             exactUsedByEdu: {},
             totalUsedByEdu: {},
             lastProduced: {},
+            lastConsumed: {},
         },
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
@@ -369,6 +371,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         resourceTenancies: [],
         productionFacilities: [],
         deposits: 0,
+        depositHold: 0,
         loans: 0,
         storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
         allocatedWorkers: makeAllocatedWorkers(),

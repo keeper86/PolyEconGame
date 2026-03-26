@@ -45,8 +45,10 @@ export type LastTickResults = {
         };
     };
 
-    /** Actual units produced per output resource this tick (post-floor, matches storage change). */
+    /** Actual units produced per output resource this tick. For pieces resources this is an integer; for continuous resources this is a float. */
     lastProduced: { [resourceName: string]: number };
+    /** Actual units consumed per input resource this tick. For pieces resources this is an integer (floor); for continuous resources this is a float. */
+    lastConsumed: { [resourceName: string]: number };
 };
 
 export type ProductionFacility = Facilility & {
@@ -72,6 +74,12 @@ export type StorageFacility = Facilility & {
     currentInStorage: {
         [resourceName in string]: { resource: Resource; quantity: number }; // in tons
     };
+    /**
+     * Quantities reserved for active market asks (not yet transferred to buyers).
+     * Escrowed units are still counted in `currentInStorage` so storage accounting
+     * stays correct, but they are unavailable for production or further offers.
+     */
+    escrow: { [resourceName: string]: number };
 };
 
 export const putIntoStorageFacility = (
@@ -110,7 +118,9 @@ export const queryStorageFacility = (storage: StorageFacility | undefined, resou
     if (!storage) {
         return 0;
     }
-    return storage.currentInStorage[resourceName]?.quantity || 0;
+    const total = storage.currentInStorage[resourceName]?.quantity ?? 0;
+    const escrowed = storage.escrow[resourceName] ?? 0;
+    return Math.max(0, total - escrowed);
 };
 
 export const removeFromStorageFacility = (
@@ -130,4 +140,44 @@ export const removeFromStorageFacility = (
     storage.current.volume -= quantityRemoved * currentEntry.resource.volumePerQuantity;
     storage.current.mass -= quantityRemoved * currentEntry.resource.massPerQuantity;
     return quantityRemoved;
+};
+
+/**
+ * Move `quantity` units from free storage into market escrow.
+ * Returns the amount actually escrowed (≤ quantity, limited by free stock).
+ * Escrowed goods stay in `currentInStorage` — they are just earmarked so that
+ * production and subsequent offer collection cannot touch them.
+ */
+export const lockIntoEscrow = (storage: StorageFacility, resourceName: string, quantity: number): number => {
+    const locked = Math.min(queryStorageFacility(storage, resourceName), quantity);
+    if (locked <= 0) {
+        return 0;
+    }
+    storage.escrow[resourceName] = (storage.escrow[resourceName] ?? 0) + locked;
+    return locked;
+};
+
+/**
+ * Release `quantity` units from escrow back to free stock.
+ * Safe to call with any amount; excess is ignored.
+ */
+export const releaseFromEscrow = (storage: StorageFacility, resourceName: string, quantity: number): void => {
+    const current = storage.escrow[resourceName] ?? 0;
+    storage.escrow[resourceName] = Math.max(0, current - quantity);
+};
+
+/**
+ * Transfer `quantity` units out of escrow (and out of storage entirely),
+ * as if the goods were handed to a buyer.
+ * Returns the amount actually transferred.
+ */
+export const transferFromEscrow = (storage: StorageFacility, resourceName: string, quantity: number): number => {
+    const escrowed = storage.escrow[resourceName] ?? 0;
+    const transferred = Math.min(escrowed, quantity);
+    if (transferred <= 0) {
+        return 0;
+    }
+    storage.escrow[resourceName] = escrowed - transferred;
+    removeFromStorageFacility(storage, resourceName, transferred);
+    return transferred;
 };

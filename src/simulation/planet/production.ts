@@ -5,8 +5,8 @@ import { SKILL } from '../population/population';
 import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { stochasticRound } from '../utils/stochasticRound';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
+import type { Agent, Planet, Resource } from './planet';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './storage';
-import type { Agent, Planet } from './planet';
 import { waterFill } from './waterFill';
 import type { WorkerSlot } from './waterFill';
 
@@ -27,6 +27,25 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
         }
     }
     return count > 0 ? sumAge / count : 30;
+}
+
+const CONSUMPTION_MISMATCH_TOLERANCE = 1e-9;
+
+function quantityProduced(resource: Resource, raw: number): number {
+    return resource.form === 'pieces' ? stochasticRound(raw) : raw;
+}
+
+function quantityConsumed(resource: Resource, raw: number): number {
+    return resource.form === 'pieces' ? Math.floor(raw) : raw;
+}
+
+function pieceAwareEfficiency(resource: Resource, fairShare: number, required: number): number {
+    if (resource.form !== 'pieces') {
+        return required > 0 ? Math.min(1, fairShare / required) : 1;
+    }
+    const availablePieces = Math.floor(fairShare);
+    const requiredPieces = Math.floor(required);
+    return requiredPieces > 0 ? Math.min(1, availablePieces / requiredPieces) : 1;
 }
 
 export function productionTick(agents: Map<string, Agent>, planet: Planet): void {
@@ -87,7 +106,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 const available = queryStorageFacility(assets.storageFacility, need.resource.name);
                 const totalDemand = totalStorageDemand.get(need.resource.name) ?? required;
                 const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
-                const eff = required > 0 ? Math.min(1, fairShare / required) : 1;
+                const eff = pieceAwareEfficiency(need.resource, fairShare, required);
                 resourceEfficiencyMap[need.resource.name] = eff;
                 return eff;
             });
@@ -149,6 +168,69 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
 
+            // Track actual absolute consumption/production
+            const actualConsumed: Record<string, number> = {};
+            const actualProduced: Record<string, number> = {};
+
+            if (overallEfficiency > 0) {
+                planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;
+                planet.environment.pollution.water +=
+                    facility.pollutionPerTick.water * facility.scale * overallEfficiency;
+                planet.environment.pollution.soil +=
+                    facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
+
+                facility.produces.forEach((output) => {
+                    const produced = quantityProduced(
+                        output.resource,
+                        output.quantity * facility.scale * overallEfficiency,
+                    );
+                    if (produced > 0) {
+                        actualProduced[output.resource.name] = produced;
+                        putIntoStorageFacility(assets.storageFacility, output.resource, produced);
+                    } else {
+                        actualProduced[output.resource.name] = 0;
+                    }
+                });
+
+                facility.needs.forEach((need) => {
+                    const consumed = quantityConsumed(
+                        need.resource,
+                        need.quantity * facility.scale * overallEfficiency,
+                    );
+                    if (need.resource.form === 'landBoundResource') {
+                        const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
+                        actualConsumed[need.resource.name] = extracted;
+                        if (extracted < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
+                            console.warn(
+                                `Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`,
+                                { planetId: planet.id, agentId: agent.id, facilityId: facility.id },
+                            );
+                        }
+                    } else {
+                        const removed = removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
+                        actualConsumed[need.resource.name] = removed;
+                        if (removed < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
+                            console.warn(
+                                `Unexpected: removed ${removed} of ${need.resource.name}, expected ${consumed}.`,
+                                {
+                                    planetId: planet.id,
+                                    agentId: agent.id,
+                                    facilityId: facility.id,
+                                },
+                            );
+                        }
+                    }
+                });
+            } else {
+                // If not running, still report zeroes for all needs/produces
+                facility.produces.forEach((output) => {
+                    actualProduced[output.resource.name] = 0;
+                });
+                facility.needs.forEach((need) => {
+                    actualConsumed[need.resource.name] = 0;
+                });
+            }
+
             facility.lastTickResults = {
                 overallEfficiency,
                 workerEfficiency,
@@ -156,47 +238,9 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 overqualifiedWorkers,
                 totalUsedByEdu,
                 exactUsedByEdu,
-                lastProduced: {},
+                lastProduced: actualProduced,
+                lastConsumed: actualConsumed,
             };
-
-            if (overallEfficiency <= 0) {
-                return;
-            }
-
-            planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;
-            planet.environment.pollution.water += facility.pollutionPerTick.water * facility.scale * overallEfficiency;
-            planet.environment.pollution.soil += facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
-
-            facility.produces.forEach((output) => {
-                const produced = stochasticRound(output.quantity * facility.scale * overallEfficiency);
-                if (produced <= 0) {
-                    return;
-                }
-                facility.lastTickResults.lastProduced[output.resource.name] = produced;
-                putIntoStorageFacility(assets.storageFacility, output.resource, produced);
-            });
-
-            facility.needs.forEach((need) => {
-                const consumed = Math.ceil(need.quantity * facility.scale * overallEfficiency);
-                if (need.resource.form === 'landBoundResource') {
-                    const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
-                    if (extracted < consumed) {
-                        console.warn(
-                            `Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`,
-                            { planetId: planet.id, agentId: agent.id, facilityId: facility.id },
-                        );
-                    }
-                } else {
-                    const removed = removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
-                    if (removed < consumed) {
-                        console.warn(`Unexpected: removed ${removed} of ${need.resource.name}, expected ${consumed}.`, {
-                            planetId: planet.id,
-                            agentId: agent.id,
-                            facilityId: facility.id,
-                        });
-                    }
-                }
-            });
         });
     });
 }

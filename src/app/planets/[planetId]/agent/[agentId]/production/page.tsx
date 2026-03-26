@@ -21,7 +21,7 @@ export default function ProductionPage() {
             ) : !isLoading && assets ? (
                 <div className='space-y-4'>
                     <ProductionFacilitiesPanel facilities={assets.productionFacilities ?? []} />
-                    <BuildFacilityDialog />
+                    <BuildFacilityDialog agentId={agentId} planetId={planetId} />
                 </div>
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>

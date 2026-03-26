@@ -29,6 +29,15 @@ export type AgentPlanetAssets = {
                 priceDirection?: number;
             };
         };
+        buy: {
+            [resourceName: string]: {
+                bidPrice?: number;
+                bidQuantity?: number;
+                lastBought?: number;
+                lastSpent?: number;
+                storageFullWarning?: boolean;
+            };
+        };
     };
 };
 

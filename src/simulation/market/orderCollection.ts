@@ -1,5 +1,6 @@
-import { INITIAL_FOOD_PRICE } from '../constants';
+import { FOOD_PRICE_CEIL, FOOD_PRICE_FLOOR, INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
+import { lockIntoEscrow, queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
@@ -12,12 +13,24 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
-            const qty = offer.offerQuantity ?? 0;
-            if (qty <= 0) {
+            if (!offer.offerQuantity || !offer.offerPrice) {
+                continue;
+            }
+            const resource = offer.resource;
+            const free = queryStorageFacility(assets.storageFacility, resourceName);
+
+            const quantity = Math.min(offer.offerQuantity, free);
+            const maybeFloorQty = resource.form === 'pieces' ? Math.floor(quantity) : quantity;
+
+            if (maybeFloorQty <= 0) {
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
                 continue;
             }
+
+            const askPrice = clampPrice(offer.offerPrice);
+            lockIntoEscrow(assets.storageFacility, resourceName, maybeFloorQty);
+
             let book = books.get(resourceName);
             if (!book) {
                 book = [];
@@ -25,9 +38,9 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
             }
             book.push({
                 agent,
-                resource: offer.resource,
-                askPrice: offer.offerPrice ?? INITIAL_FOOD_PRICE,
-                quantity: qty,
+                resource,
+                askPrice,
+                quantity: maybeFloorQty,
                 filled: 0,
                 revenue: 0,
             });
@@ -46,11 +59,40 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             return;
         }
 
+        // Gather all valid bids and their maximum possible cost.
+        const pendingBids: { resourceName: string; qty: number; price: number }[] = [];
+        let totalMaxCost = 0;
+
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
-            const qty = bid.bidQuantity ?? 0;
+            const qty = validatedBidQuantity(bid.bidQuantity ?? 0, bid.resource.form);
             if (qty <= 0) {
                 continue;
             }
+            const price = clampPrice(bid.bidPrice ?? INITIAL_FOOD_PRICE);
+            const maxCost = qty * price;
+            pendingBids.push({ resourceName, qty, price });
+            totalMaxCost += maxCost;
+        }
+
+        if (pendingBids.length === 0) {
+            return;
+        }
+
+        // Scale all bids proportionally if the agent cannot afford the full set.
+        const availableDeposits = assets.deposits;
+        const scaleFactor = totalMaxCost > availableDeposits ? availableDeposits / totalMaxCost : 1;
+
+        let holdAmount = 0;
+
+        for (const { resourceName, qty, price } of pendingBids) {
+            const bid = assets.market.buy[resourceName]!;
+            const scaledQty = validatedBidQuantity(qty * scaleFactor, bid.resource.form);
+            if (scaledQty <= 0) {
+                continue;
+            }
+            const cost = scaledQty * price;
+            holdAmount += cost;
+
             let book = books.get(resourceName);
             if (!book) {
                 book = [];
@@ -59,13 +101,16 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             book.push({
                 agent,
                 resource: bid.resource,
-                bidPrice: bid.bidPrice ?? INITIAL_FOOD_PRICE,
-                quantity: qty,
+                bidPrice: price,
+                quantity: scaledQty,
                 filled: 0,
                 cost: 0,
-                remainingDeposits: assets.deposits,
+                remainingDeposits: availableDeposits - holdAmount + cost,
             });
         }
+
+        assets.deposits -= holdAmount;
+        assets.depositHold += holdAmount;
     });
 
     return books;
@@ -94,4 +139,15 @@ export function resetAgentSellCounters(askBooks: Map<string, AskOrder[]>, planet
             }
         }
     }
+}
+
+function clampPrice(price?: number): number {
+    return Math.max(FOOD_PRICE_FLOOR, Math.min(FOOD_PRICE_CEIL, price ?? INITIAL_FOOD_PRICE));
+}
+
+function validatedBidQuantity(qty: number, form: string): number {
+    if (qty <= 0) {
+        return 0;
+    }
+    return form === 'pieces' ? Math.floor(qty) : qty;
 }

@@ -35,6 +35,20 @@ export type InboundMessage =
           arableLandQuantity: number;
           waterSourceQuantity: number;
       }
+    | {
+          type: 'buildFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityKey: string;
+      }
+    | {
+          type: 'setBuyBids';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          bids: Record<string, { bidPrice?: number; bidQuantity?: number }>;
+      }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -60,8 +74,12 @@ export type OutboundMessage =
     | { type: 'workerAllocationFailed'; requestId: string; reason: string }
     | { type: 'sellOffersSet'; requestId: string; agentId: string }
     | { type: 'sellOffersFailed'; requestId: string; reason: string }
+    | { type: 'buyBidsSet'; requestId: string; agentId: string }
+    | { type: 'buyBidsFailed'; requestId: string; reason: string }
     | { type: 'resourcesClaimed'; requestId: string; agentId: string; arableClaimId: string; waterClaimId: string }
     | { type: 'resourcesClaimFailed'; requestId: string; reason: string }
+    | { type: 'facilityBuilt'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'facilityBuildFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
     | WorkerSuccessResponse
     | WorkerErrorResponse;
@@ -109,4 +127,18 @@ export type PendingAction =
           planetId: string;
           arableLandQuantity: number;
           waterSourceQuantity: number;
+      }
+    | {
+          type: 'buildFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityKey: string;
+      }
+    | {
+          type: 'setBuyBids';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          bids: Record<string, { bidPrice?: number; bidQuantity?: number }>;
       };

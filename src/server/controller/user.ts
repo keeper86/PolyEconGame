@@ -4,7 +4,9 @@ import {
     workerSetAutomation,
     workerSetWorkerAllocationTargets,
     workerSetSellOffers,
+    workerSetBuyBids,
     workerClaimResources,
+    workerBuildFacility,
 } from '@/simulation/workerClient/commands';
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
@@ -455,6 +457,46 @@ export const setSellOffers = () => {
         });
 };
 
+export const setBuyBids = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                bids: z.record(
+                    z.string(),
+                    z.object({
+                        bidPrice: z.number().positive().optional(),
+                        bidQuantity: z.number().min(0).optional(),
+                    }),
+                ),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'set-buy-bids' },
+                `User ${userId} setting buy bids for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            await workerSetBuyBids({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                bids: input.bids,
+            });
+        });
+};
+
 /**
  * Claim a slice of untenanted arable land and a water source on the given
  * planet for the user's agent and equip it with the matching production
@@ -524,5 +566,43 @@ export const claimResources = () => {
             );
 
             return result;
+        });
+};
+
+export const buildFacility = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityKey: z.string().min(1),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'build-facility' },
+                `User ${userId} building '${input.facilityKey}' for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            const facilityId = await workerBuildFacility({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityKey: input.facilityKey,
+            });
+
+            logger.info({ component: 'build-facility' }, `Agent ${input.agentId} built facility ${facilityId}`);
+
+            return { facilityId };
         });
 };

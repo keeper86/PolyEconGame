@@ -34,7 +34,9 @@ import {
     setAutomation,
     setWorkerAllocationTargets,
     setSellOffers,
+    setBuyBids,
     claimResources,
+    buildFacility,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -70,7 +72,9 @@ const protectedAppRouter = trpcRoot.router({
     setAutomation: setAutomation(),
     setWorkerAllocationTargets: setWorkerAllocationTargets(),
     setSellOffers: setSellOffers(),
+    setBuyBids: setBuyBids(),
     claimResources: claimResources(),
+    buildFacility: buildFacility(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

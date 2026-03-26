@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { facilityImage, productImage } from '@/lib/mapResource';
+import { useTRPC } from '@/lib/trpc';
 import {
     FACILITY_LEVELS,
     FACILITY_LEVEL_LABELS,
@@ -13,6 +14,7 @@ import {
     type FacilityCatalogEntry,
 } from '@/simulation/planet/facilityCatalog';
 import type { ProductionFacility } from '@/simulation/planet/storage';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import React, { useMemo, useState } from 'react';
@@ -21,7 +23,15 @@ import { formatNumbers } from '@/lib/utils';
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
-function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactElement {
+function FacilityCard({
+    entry,
+    onBuild,
+    isBuilding,
+}: {
+    entry: FacilityCatalogEntry;
+    onBuild: (facilityName: string) => void;
+    isBuilding: boolean;
+}): React.ReactElement {
     const facility: ProductionFacility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
 
     const totalWorkers = Object.values(facility.workerRequirement).reduce((sum, v) => sum + (v ?? 0), 0);
@@ -105,15 +115,43 @@ function FacilityCard({ entry }: { entry: FacilityCatalogEntry }): React.ReactEl
                 )}
             </div>
 
-            <Button variant='outline' size='sm' disabled className='mt-auto w-full text-xs'>
-                Build (coming soon)
+            <Button
+                variant='outline'
+                size='sm'
+                disabled={isBuilding}
+                onClick={() => onBuild(facility.name)}
+                className='mt-auto w-full text-xs'
+            >
+                {isBuilding ? 'Building…' : 'Build'}
             </Button>
         </>
     );
 }
 
-export default function BuildFacilityDialog(): React.ReactElement {
+export default function BuildFacilityDialog({
+    agentId,
+    planetId,
+}: {
+    agentId: string;
+    planetId: string;
+}): React.ReactElement {
     const [open, setOpen] = useState(false);
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    const buildMutation = useMutation(
+        trpc.buildFacility.mutationOptions({
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
+                });
+            },
+        }),
+    );
+
+    function handleBuild(facilityKey: string) {
+        buildMutation.mutate({ agentId, planetId, facilityKey });
+    }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -156,7 +194,11 @@ export default function BuildFacilityDialog(): React.ReactElement {
                                 <div className='flex flex-col gap-3 rounded-lg border border-border bg-card p-2 md:p-4'>
                                     {facilitiesByLevel[level].map((entry) => (
                                         <React.Fragment key={entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name}>
-                                            <FacilityCard entry={entry} />
+                                            <FacilityCard
+                                                entry={entry}
+                                                onBuild={handleBuild}
+                                                isBuilding={buildMutation.isPending}
+                                            />
                                             <Separator className='my-3' />
                                         </React.Fragment>
                                     ))}

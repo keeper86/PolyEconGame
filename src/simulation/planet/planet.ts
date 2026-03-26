@@ -279,6 +279,11 @@ export type AgentMarketBidState = {
     lastBought?: number;
     /** Total expenditure during the last market clearing tick (currency units). */
     lastSpent?: number;
+    /**
+     * Set to true when the bid was suppressed because storage had no room for
+     * the resource. Cleared each tick when there is capacity available.
+     */
+    storageFullWarning?: boolean;
 };
 
 /**
@@ -346,6 +351,12 @@ export type AgentPlanetAssets = {
 
     /** Firm deposit balance for this agent on this planet (currency units). */
     deposits: number;
+    /**
+     * Funds locked against active market bids this tick (currency units).
+     * Deducted from `deposits` at bid collection time; returned if unfilled,
+     * consumed if filled.  Always zero outside of a market tick.
+     */
+    depositHold: number;
     /** Outstanding loan principal for this agent on this planet (currency units). */
     loans: number;
     /**

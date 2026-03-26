@@ -1,4 +1,4 @@
-import { putIntoStorageFacility, removeFromStorageFacility } from '../planet/storage';
+import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '../planet/storage';
 import type { Planet } from '../planet/planet';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
@@ -27,12 +27,7 @@ export function settleHouseholds(
     }
 }
 
-export function settleAgentSellers(
-    planet: Planet,
-    askOrders: AskOrder[],
-    filledBaseline: number[],
-    revenueBaseline: number[],
-): void {
+export function settleAgentSellers(planet: Planet, askOrders: AskOrder[]): void {
     for (let i = 0; i < askOrders.length; i++) {
         const ask = askOrders[i];
         const assets = ask.agent.assets[planet.id];
@@ -44,41 +39,79 @@ export function settleAgentSellers(
             assets.market = { sell: {}, buy: {} };
         }
 
-        const filledDelta = ask.filled - filledBaseline[i];
-        if (filledDelta <= 0) {
-            continue;
+        const filled = ask.filled;
+        const revenue = ask.revenue;
+        const unfilled = ask.quantity - filled;
+
+        // Transfer sold goods out of escrow (removes them from storage too).
+        if (filled > 0) {
+            transferFromEscrow(assets.storageFacility, ask.resource.name, filled);
+            assets.deposits += revenue;
+
+            const offer = assets.market.sell[ask.resource.name];
+            if (offer) {
+                offer.lastSold = (offer.lastSold ?? 0) + filled;
+                offer.lastRevenue = (offer.lastRevenue ?? 0) + revenue;
+            }
         }
 
-        const revenueDelta = ask.revenue - revenueBaseline[i];
-        assets.deposits += revenueDelta;
-        removeFromStorageFacility(assets.storageFacility, ask.resource.name, filledDelta);
-
-        const offer = assets.market.sell[ask.resource.name];
-        if (offer) {
-            offer.lastSold = (offer.lastSold ?? 0) + filledDelta;
-            offer.lastRevenue = (offer.lastRevenue ?? 0) + revenueDelta;
+        // Release unsold goods from escrow back to free stock.
+        if (unfilled > 0) {
+            releaseFromEscrow(assets.storageFacility, ask.resource.name, unfilled);
         }
     }
 }
 
 export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): void {
     for (const bid of agentBids) {
-        if (bid.filled <= 0) {
-            continue;
-        }
-
         const assets = bid.agent.assets[planet.id];
         if (!assets) {
             continue;
         }
 
-        assets.deposits -= bid.cost;
-        putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
+        const holdConsumed = bid.cost;
+        const holdUnused = bid.quantity * bid.bidPrice - holdConsumed;
+
+        // Return the unused portion of the hold to free deposits.
+        if (holdUnused > 0) {
+            assets.depositHold -= holdUnused;
+            assets.deposits += holdUnused;
+        }
+
+        if (bid.filled <= 0) {
+            continue;
+        }
+
+        // Consume the hold for the filled amount.
+        assets.depositHold -= holdConsumed;
+
+        const actuallyStored = putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
+        const storageFull = actuallyStored < bid.filled;
+
+        const costForStored = bid.filled > 0 ? bid.cost * (actuallyStored / bid.filled) : 0;
+        const costRefunded = bid.cost - costForStored;
+
+        if (costRefunded > 0) {
+            if (process.env.SIM_DEBUG === '1') {
+                throw new Error(
+                    `Monetary conservation violation: costRefunded=${costRefunded} > 0. ` +
+                        `bid.cost=${bid.cost}, costForStored=${costForStored}, ` +
+                        `bid.filled=${bid.filled}, actuallyStored=${actuallyStored}, ` +
+                        `agent=${bid.agent.id}, resource=${bid.resource.name}`,
+                );
+            }
+            assets.deposits += costRefunded;
+        }
 
         const buyState = assets.market?.buy[bid.resource.name];
         if (buyState) {
-            buyState.lastBought = (buyState.lastBought ?? 0) + bid.filled;
-            buyState.lastSpent = (buyState.lastSpent ?? 0) + bid.cost;
+            buyState.lastBought = (buyState.lastBought ?? 0) + actuallyStored;
+            buyState.lastSpent = (buyState.lastSpent ?? 0) + costForStored;
+
+            if (storageFull) {
+                buyState.bidQuantity = 0;
+                buyState.storageFullWarning = true;
+            }
         }
     }
 }
