@@ -292,7 +292,7 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         powerConsumptionPerTick: 0,
         workerRequirement: {},
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
-        capacity: { volume: 1e3, mass: 1e3 },
+        capacity: { volume: 1e9, mass: 1e9 },
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
