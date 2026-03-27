@@ -17,12 +17,20 @@ export function automaticPricing(agents: Map<string, Agent>, planet: Planet): vo
 }
 
 function automaticPricingForAgent(agent: Agent, planet: Planet): void {
-    if (!agent.automated && !agent.automatePricing) {
-        return;
-    }
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
+    }
+
+    // For human-controlled agents, skip entirely if no resources are flagged for
+    // per-resource automation (avoids unnecessary market state initialization).
+    if (!agent.automated) {
+        const hasAnyAuto =
+            Object.values(assets.market?.sell ?? {}).some((e) => e.automated) ||
+            Object.values(assets.market?.buy ?? {}).some((e) => e.automated);
+        if (!hasAnyAuto) {
+            return;
+        }
     }
 
     if (!assets.market) {
@@ -88,13 +96,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
+            // For human-controlled agents only auto-adjust entries explicitly flagged
+            if (!agent.automated && assets.market.sell[resource.name]?.automated !== true) {
+                continue;
+            }
+
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
             const rawSellableQty = Math.max(0, inventoryQty - reserved);
             const sellableQty = resource.form === 'pieces' ? Math.floor(rawSellableQty) : rawSellableQty;
 
             if (!assets.market.sell[resource.name]) {
-                assets.market.sell[resource.name] = { resource };
+                assets.market.sell[resource.name] = { resource, automated: true };
             }
 
             const offer = assets.market.sell[resource.name];
@@ -138,8 +151,13 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     for (const [resourceName, { resource, shortfall }] of aggregatedShortfall) {
+        // For human-controlled agents only auto-adjust entries explicitly flagged
+        if (!agent.automated && assets.market.buy[resourceName]?.automated !== true) {
+            continue;
+        }
+
         if (!assets.market.buy[resourceName]) {
-            assets.market.buy[resourceName] = { resource };
+            assets.market.buy[resourceName] = { resource, automated: true };
         }
         const bid = assets.market.buy[resourceName];
         bid.resource = resource;

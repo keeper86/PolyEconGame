@@ -332,7 +332,6 @@ export const setAutomation = () => {
             z.object({
                 agentId: z.string().min(1),
                 automateWorkerAllocation: z.boolean(),
-                automatePricing: z.boolean(),
             }),
         )
         .output(z.void())
@@ -351,13 +350,12 @@ export const setAutomation = () => {
             logger.info(
                 { component: 'set-automation' },
                 `User ${userId} setting automation for agent ${input.agentId}: ` +
-                    `workerAllocation=${input.automateWorkerAllocation}, pricing=${input.automatePricing}`,
+                    `workerAllocation=${input.automateWorkerAllocation}`,
             );
 
             await workerSetAutomation({
                 agentId: input.agentId,
                 automateWorkerAllocation: input.automateWorkerAllocation,
-                automatePricing: input.automatePricing,
             });
         });
 };
@@ -428,6 +426,8 @@ export const setSellOffers = () => {
                         offerPrice: z.number().positive().optional(),
                         /** Units to offer for sale this tick. 0 = withdraw offer. */
                         offerQuantity: z.number().min(0).optional(),
+                        /** When true, the auto-pricing engine manages this offer each tick. */
+                        automated: z.boolean().optional(),
                     }),
                 ),
             }),
@@ -468,6 +468,8 @@ export const setBuyBids = () => {
                     z.object({
                         bidPrice: z.number().positive().optional(),
                         bidQuantity: z.number().min(0).optional(),
+                        /** When true, the auto-pricing engine manages this bid each tick. */
+                        automated: z.boolean().optional(),
                     }),
                 ),
             }),

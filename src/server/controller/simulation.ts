@@ -333,7 +333,6 @@ export const getAgentPlanetDetail = () =>
                     agentName: agent.name,
                     planetId: input.planetId,
                     automateWorkerAllocation: agent.automateWorkerAllocation ?? false,
-                    automatePricing: agent.automatePricing ?? false,
                     assets,
                 },
             };

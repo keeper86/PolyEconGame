@@ -32,7 +32,6 @@ export default function FinancialPage() {
                     <AutomationPanel
                         agentId={agentId}
                         automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
-                        automatePricing={detail?.automatePricing ?? false}
                     />
                 </div>
             ) : (

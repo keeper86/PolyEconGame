@@ -256,6 +256,8 @@ export type AgentMarketOfferState = {
     lastRevenue?: number;
     /** Tâtonnement price-direction hint (−1 / 0 / +1). */
     priceDirection?: number;
+    /** When true, the automatic pricing engine manages this offer each tick. */
+    automated?: boolean;
 };
 
 /**
@@ -284,6 +286,8 @@ export type AgentMarketBidState = {
      * the resource. Cleared each tick when there is capacity available.
      */
     storageFullWarning?: boolean;
+    /** When true, the automatic pricing engine manages this bid each tick. */
+    automated?: boolean;
 };
 
 /**
@@ -385,8 +389,6 @@ export type Agent = {
     automated: boolean; // whether this agent is controlled by the AI (true) or a human player (false)
     /** When false (human player), the worker still auto-allocates workforce targets each tick. */
     automateWorkerAllocation: boolean;
-    /** When false (human player), the worker still auto-adjusts sell-offer prices each tick. */
-    automatePricing: boolean;
     name: string;
     associatedPlanetId: string;
     transportShips: TransportShip[];

@@ -27,6 +27,7 @@ export type AgentPlanetAssets = {
                 lastSold?: number;
                 lastRevenue?: number;
                 priceDirection?: number;
+                automated?: boolean;
             };
         };
         buy: {
@@ -36,6 +37,7 @@ export type AgentPlanetAssets = {
                 lastBought?: number;
                 lastSpent?: number;
                 storageFullWarning?: boolean;
+                automated?: boolean;
             };
         };
     };
@@ -46,7 +48,6 @@ export type AgentPlanetDetail = {
     agentName: string;
     planetId: string;
     automateWorkerAllocation: boolean;
-    automatePricing: boolean;
     assets: AgentPlanetAssets;
 };
 

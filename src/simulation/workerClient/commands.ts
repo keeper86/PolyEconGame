@@ -42,12 +42,11 @@ export function workerRequestLoan(opts: {
 export function workerSetAutomation(opts: {
     agentId: string;
     automateWorkerAllocation: boolean;
-    automatePricing: boolean;
     timeoutMs?: number;
 }): Promise<void> {
-    const { agentId, automateWorkerAllocation, automatePricing, timeoutMs } = opts;
+    const { agentId, automateWorkerAllocation, timeoutMs } = opts;
     return sendCommandSpec(
-        { type: 'setAutomation', requestId: randomUUID(), agentId, automateWorkerAllocation, automatePricing },
+        { type: 'setAutomation', requestId: randomUUID(), agentId, automateWorkerAllocation },
         setAutomationSpec,
         timeoutMs,
     );
@@ -70,7 +69,7 @@ export function workerSetWorkerAllocationTargets(opts: {
 export function workerSetSellOffers(opts: {
     agentId: string;
     planetId: string;
-    offers: Record<string, { offerPrice?: number; offerQuantity?: number }>;
+    offers: Record<string, { offerPrice?: number; offerQuantity?: number; automated?: boolean }>;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, offers, timeoutMs } = opts;
@@ -84,7 +83,7 @@ export function workerSetSellOffers(opts: {
 export function workerSetBuyBids(opts: {
     agentId: string;
     planetId: string;
-    bids: Record<string, { bidPrice?: number; bidQuantity?: number }>;
+    bids: Record<string, { bidPrice?: number; bidQuantity?: number; automated?: boolean }>;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, bids, timeoutMs } = opts;

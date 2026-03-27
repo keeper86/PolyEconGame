@@ -242,10 +242,9 @@ describe('automaticPricing — buy side', () => {
         expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeGreaterThan(firstBidPrice);
     });
 
-    it('skips buy-order creation when agent.automated is false and automatePricing is false', () => {
+    it('skips buy-order creation when agent.automated is false and no bids have automated=true', () => {
         const buyer = makeSteelProducer();
         buyer.automated = false;
-        buyer.automatePricing = false;
 
         automaticPricing(agentMap(buyer), planet);
 
