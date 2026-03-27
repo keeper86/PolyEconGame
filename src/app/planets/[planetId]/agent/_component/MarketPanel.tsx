@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { AlertCircle, Bot, CheckCircle2, ShoppingCart, Tag } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -52,7 +53,6 @@ type LocalResourceState = {
     bidAutomated: boolean;
     // UI-only helpers — not sent to server
     targetBufferTicks: string;
-    retainTicks: string;
 };
 
 type Props = {
@@ -168,7 +168,6 @@ function buildInitialState(
             bidQuantity: bid?.bidQuantity !== undefined ? String(Math.round(bid.bidQuantity)) : '',
             bidAutomated: bid?.automated ?? false,
             targetBufferTicks: '',
-            retainTicks: '',
         };
     }
     return result;
@@ -251,34 +250,49 @@ function ResourceTrigger({
 function ResourceAccordionItem({
     resourceName,
     agentId,
-    planetId,
     bid,
     offer,
-    storageFacility,
-    facilities,
+    inventoryQty,
+    consumedPerTick,
+    producedPerTick,
     deposits,
     local,
     onLocalChange,
-    isPending,
+    isOpen,
 }: {
     resourceName: string;
     agentId: string;
-    planetId: string;
     bid?: MarketBidEntry;
     offer?: MarketOfferEntry;
-    storageFacility: StorageFacility;
-    facilities: ProductionFacility[];
+    /** Current quantity in storage for this resource */
+    inventoryQty: number;
+    /** Agent's planned consumption per tick (sum across facilities) */
+    consumedPerTick: number;
+    /** Agent's planned production per tick (sum across facilities) */
+    producedPerTick: number;
     deposits: number;
     local: LocalResourceState;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
-    isPending: boolean;
+    isOpen: boolean;
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    // useParams returns route params; cast to access the dynamic segment
+    const { planetId } = useParams() as { planetId: string };
 
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+    // ── Market KPI query — only polls while this item is open ──────────
+    const { data: marketData } = useQuery({
+        ...trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName }),
+        enabled: isOpen,
+        staleTime: 1_000,
+        refetchInterval: isOpen ? 900 : false,
+    });
+    const market = marketData?.market;
+
+    // ── Mutations ──────────────────────────────────────────────────────
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
             onSuccess: () => {
@@ -301,16 +315,13 @@ function ResourceAccordionItem({
         }),
     );
 
-    const saving = sellMutation.isPending || buyMutation.isPending || isPending;
+    const saving = sellMutation.isPending || buyMutation.isPending;
 
-    const consumedPerTick = consumptionPerTick(facilities, resourceName);
-    const producedPerTick = productionPerTick(facilities, resourceName);
+    // ── Derived helpers ────────────────────────────────────────────────
     const isFacilityInput = consumedPerTick > 0;
     const isFacilityOutput = producedPerTick > 0;
 
-    const inventoryQty = storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
-    const inventoryInBuyTicks = isFacilityInput && consumedPerTick > 0 ? inventoryQty / consumedPerTick : null;
-    const inventoryInSellTicks = isFacilityOutput && producedPerTick > 0 ? inventoryQty / producedPerTick : null;
+    const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
     // Buffer calculator: suggested bid quantity
     const targetBuffer = parseFloat(local.targetBufferTicks);
@@ -319,59 +330,68 @@ function ResourceAccordionItem({
             ? Math.max(0, targetBuffer * consumedPerTick - inventoryQty)
             : null;
 
-    // Retain calculator: suggested offer quantity
-    const retainTicks = parseFloat(local.retainTicks);
-    const suggestedOfferQty =
-        isFacilityOutput && !isNaN(retainTicks) && retainTicks >= 0
-            ? Math.max(0, inventoryQty - retainTicks * producedPerTick)
-            : null;
+    // Sell quantity quick-set presets based on available stock
+    const sellPresets = inventoryQty > 0
+        ? ([
+            { label: '10%', qty: Math.max(1, Math.floor(inventoryQty * 0.1)) },
+            { label: '50%', qty: Math.max(1, Math.floor(inventoryQty * 0.5)) },
+            { label: '100%', qty: Math.floor(inventoryQty) },
+          ] as const)
+        : null;
 
+    // Sell section is only active when there's something to sell
+    const canSell =
+        inventoryQty > 0 ||
+        isFacilityOutput ||
+        offer?.offerPrice !== undefined ||
+        offer?.offerQuantity !== undefined;
+
+    // ── Validation + save ──────────────────────────────────────────────
     const handleSave = () => {
         setSuccessMsg(null);
         setErrorMsg(null);
 
-        // Get resource object for validation
         const resource = getResourceByName(resourceName);
         if (!resource) {
             setErrorMsg(`Unknown resource: ${resourceName}`);
             return;
         }
 
-        // Parse values
         const offerPrice = parseFloat(local.offerPrice);
         const offerQty = parseFloat(local.offerQuantity);
         const bidPrice = parseFloat(local.bidPrice);
         const bidQty = parseFloat(local.bidQuantity);
 
-        // Validate sell offer
         if (!isNaN(offerPrice) || !isNaN(offerQty)) {
-            const sellValidation = validateSellOffer(
+            const validation = validateSellOffer(
                 !isNaN(offerPrice) ? offerPrice : undefined,
                 !isNaN(offerQty) ? offerQty : undefined,
                 resource,
                 inventoryQty,
             );
-            if (!sellValidation.isValid) {
-                setErrorMsg(`Sell validation failed: ${sellValidation.error}`);
+            if (!validation.isValid) {
+                setErrorMsg(`Sell validation failed: ${validation.error}`);
                 return;
             }
         }
 
-        // Validate buy bid
         if (!isNaN(bidPrice) || !isNaN(bidQty)) {
-            const buyValidation = validateBuyBid(
+            const validation = validateBuyBid(
                 !isNaN(bidPrice) ? bidPrice : undefined,
                 !isNaN(bidQty) ? bidQty : undefined,
                 resource,
                 deposits,
             );
-            if (!buyValidation.isValid) {
-                setErrorMsg(`Buy validation failed: ${buyValidation.error}`);
+            if (!validation.isValid) {
+                let errorText = validation.error;
+                if (errorText && errorText.includes('Insufficient deposits')) {
+                    errorText = `${errorText}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                }
+                setErrorMsg(`Buy validation failed: ${errorText}`);
                 return;
             }
         }
 
-        // Build sell payload
         const sellPayload: Record<string, { offerPrice?: number; offerQuantity?: number; automated?: boolean }> = {
             [resourceName]: {
                 ...(local.offerAutomated !== (offer?.automated ?? false) && { automated: local.offerAutomated }),
@@ -379,12 +399,7 @@ function ResourceAccordionItem({
                 ...(!isNaN(offerQty) && offerQty >= 0 && { offerQuantity: offerQty }),
             },
         };
-        // Always send automated flag change
-        if (local.offerAutomated !== (offer?.automated ?? false)) {
-            sellPayload[resourceName].automated = local.offerAutomated;
-        }
 
-        // Build buy payload
         const buyPayload: Record<string, { bidPrice?: number; bidQuantity?: number; automated?: boolean }> = {
             [resourceName]: {
                 ...(local.bidAutomated !== (bid?.automated ?? false) && { automated: local.bidAutomated }),
@@ -392,11 +407,7 @@ function ResourceAccordionItem({
                 ...(!isNaN(bidQty) && bidQty >= 0 && { bidQuantity: bidQty }),
             },
         };
-        if (local.bidAutomated !== (bid?.automated ?? false)) {
-            buyPayload[resourceName].automated = local.bidAutomated;
-        }
 
-        // Always send both to make sure automated flag is persisted
         sellMutation.mutate({ agentId, planetId, offers: sellPayload });
         buyMutation.mutate({ agentId, planetId, bids: buyPayload });
     };
@@ -411,7 +422,45 @@ function ResourceAccordionItem({
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-5'>
-                    {/* ---- BUY section ---- */}
+
+                    {/* ── Market KPI strip ── */}
+                    {market && (
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
+                            <span>
+                                Clearing{' '}
+                                <span className='font-semibold text-foreground'>{market.clearingPrice.toFixed(2)}</span>
+                            </span>
+                            <span>
+                                Demand{' '}
+                                <span className='font-semibold text-foreground'>{formatNumbers(market.totalDemand)}</span>
+                            </span>
+                            <span>
+                                Supply{' '}
+                                <span className='font-semibold text-foreground'>{formatNumbers(market.totalSupply)}</span>
+                            </span>
+                            {(isFacilityOutput || producedPerTick > 0) && (
+                                <span>
+                                    My production{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumbers(producedPerTick)}/tick
+                                    </span>
+                                </span>
+                            )}
+                            <span
+                                className={
+                                    market.fillRatio >= 0.9
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : market.fillRatio < 0.5
+                                          ? 'text-red-500 dark:text-red-400'
+                                          : 'text-yellow-600 dark:text-yellow-400'
+                                }
+                            >
+                                Fill {Math.round(market.fillRatio * 100)}%
+                            </span>
+                        </div>
+                    )}
+
+                    {/* ── BUY section ── */}
                     <div className='space-y-3'>
                         <div className='flex items-center justify-between'>
                             <span className='text-xs font-semibold flex items-center gap-1.5'>
@@ -433,62 +482,9 @@ function ResourceAccordionItem({
                             </div>
                         </div>
 
-                        {isFacilityInput && (
-                            <div className='rounded-md bg-muted/50 p-2.5 space-y-2 text-xs'>
-                                <p className='font-medium text-muted-foreground'>Buffer calculator</p>
-                                <div className='flex items-center gap-2 text-muted-foreground'>
-                                    <span>Consumption: {formatNumbers(consumedPerTick)}/tick</span>
-                                    <span>·</span>
-                                    <span>
-                                        Stock: {formatNumbers(inventoryQty)}
-                                        {inventoryInBuyTicks !== null && (
-                                            <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
-                                        )}
-                                    </span>
-                                </div>
-                                <div className='flex items-center gap-2'>
-                                    <Label htmlFor={`buf-ticks-${resourceName}`} className='text-[11px] shrink-0'>
-                                        Target buffer (ticks)
-                                    </Label>
-                                    <Input
-                                        id={`buf-ticks-${resourceName}`}
-                                        type='number'
-                                        min={0}
-                                        step={1}
-                                        placeholder='e.g. 30'
-                                        value={local.targetBufferTicks}
-                                        disabled={local.bidAutomated || saving}
-                                        onChange={(e) =>
-                                            onLocalChange(resourceName, { targetBufferTicks: e.target.value })
-                                        }
-                                        className='h-7 text-xs w-24 tabular-nums'
-                                    />
-                                    {suggestedBidQty !== null && (
-                                        <span className='text-muted-foreground'>
-                                            → bid qty: {formatNumbers(suggestedBidQty)}
-                                        </span>
-                                    )}
-                                    {suggestedBidQty !== null && (
-                                        <Button
-                                            variant='outline'
-                                            size='sm'
-                                            className='h-7 text-xs px-2'
-                                            disabled={local.bidAutomated || saving}
-                                            onClick={() =>
-                                                onLocalChange(resourceName, {
-                                                    bidQuantity: String(Math.ceil(suggestedBidQty)),
-                                                })
-                                            }
-                                        >
-                                            Use
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
                         <div className='grid grid-cols-2 gap-3'>
-                            <div className='space-y-1'>
+                            {/* Max price box */}
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                                 <Label
                                     htmlFor={`bid-price-${resourceName}`}
                                     className='text-[11px] text-muted-foreground'
@@ -506,8 +502,28 @@ function ResourceAccordionItem({
                                     onChange={(e) => onLocalChange(resourceName, { bidPrice: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
+                                {market && !local.bidAutomated && (
+                                    <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
+                                        <span>Clearing: {market.clearingPrice.toFixed(2)}</span>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className='h-5 text-[10px] px-1.5 py-0'
+                                            disabled={saving}
+                                            onClick={() =>
+                                                onLocalChange(resourceName, {
+                                                    bidPrice: market.clearingPrice.toFixed(2),
+                                                })
+                                            }
+                                        >
+                                            Use
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
-                            <div className='space-y-1'>
+
+                            {/* Quantity to buy box + buffer calculator */}
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                                 <Label
                                     htmlFor={`bid-qty-${resourceName}`}
                                     className='text-[11px] text-muted-foreground'
@@ -529,6 +545,57 @@ function ResourceAccordionItem({
                                     onChange={(e) => onLocalChange(resourceName, { bidQuantity: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
+                                {isFacilityInput && (
+                                    <div className='space-y-1 text-[11px] text-muted-foreground'>
+                                        <div>
+                                            {formatNumbers(consumedPerTick)}/tick · Stock: {formatNumbers(inventoryQty)}
+                                            {inventoryInBuyTicks !== null && (
+                                                <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
+                                            )}
+                                        </div>
+                                        <div className='flex items-center gap-1.5'>
+                                            <Label
+                                                htmlFor={`buf-ticks-${resourceName}`}
+                                                className='text-[11px] text-muted-foreground shrink-0'
+                                            >
+                                                Buffer (ticks)
+                                            </Label>
+                                            <Input
+                                                id={`buf-ticks-${resourceName}`}
+                                                type='number'
+                                                min={0}
+                                                step={1}
+                                                placeholder='e.g. 30'
+                                                value={local.targetBufferTicks}
+                                                disabled={local.bidAutomated || saving}
+                                                onChange={(e) =>
+                                                    onLocalChange(resourceName, {
+                                                        targetBufferTicks: e.target.value,
+                                                    })
+                                                }
+                                                className='h-6 w-16 text-[11px] tabular-nums'
+                                            />
+                                            {suggestedBidQty !== null && (
+                                                <>
+                                                    <span>→ {formatNumbers(suggestedBidQty)}</span>
+                                                    <Button
+                                                        variant='outline'
+                                                        size='sm'
+                                                        className='h-6 text-[11px] px-1.5'
+                                                        disabled={local.bidAutomated || saving}
+                                                        onClick={() =>
+                                                            onLocalChange(resourceName, {
+                                                                bidQuantity: String(Math.ceil(suggestedBidQty)),
+                                                            })
+                                                        }
+                                                    >
+                                                        Use
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -554,11 +621,16 @@ function ResourceAccordionItem({
 
                     <div className='border-t' />
 
-                    {/* ---- SELL section ---- */}
-                    <div className='space-y-3'>
+                    {/* ── SELL section ── */}
+                    <div className={`space-y-3 ${!canSell ? 'opacity-50 pointer-events-none' : ''}`}>
                         <div className='flex items-center justify-between'>
                             <span className='text-xs font-semibold flex items-center gap-1.5'>
                                 <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
+                                {!canSell && (
+                                    <span className='text-[10px] font-normal text-muted-foreground'>
+                                        — nothing to sell
+                                    </span>
+                                )}
                             </span>
                             <div className='flex items-center gap-2'>
                                 <Label
@@ -570,66 +642,15 @@ function ResourceAccordionItem({
                                 <Switch
                                     id={`offer-auto-${resourceName}`}
                                     checked={local.offerAutomated}
-                                    disabled={saving}
+                                    disabled={saving || !canSell}
                                     onCheckedChange={(v) => onLocalChange(resourceName, { offerAutomated: v })}
                                 />
                             </div>
                         </div>
 
-                        {isFacilityOutput && (
-                            <div className='rounded-md bg-muted/50 p-2.5 space-y-2 text-xs'>
-                                <p className='font-medium text-muted-foreground'>Retain calculator</p>
-                                <div className='flex items-center gap-2 text-muted-foreground'>
-                                    <span>Production: {formatNumbers(producedPerTick)}/tick</span>
-                                    <span>·</span>
-                                    <span>
-                                        Stock: {formatNumbers(inventoryQty)}
-                                        {inventoryInSellTicks !== null && (
-                                            <span className='ml-1'>({inventoryInSellTicks.toFixed(1)} ticks)</span>
-                                        )}
-                                    </span>
-                                </div>
-                                <div className='flex items-center gap-2'>
-                                    <Label htmlFor={`retain-ticks-${resourceName}`} className='text-[11px] shrink-0'>
-                                        Retain (ticks)
-                                    </Label>
-                                    <Input
-                                        id={`retain-ticks-${resourceName}`}
-                                        type='number'
-                                        min={0}
-                                        step={1}
-                                        placeholder='e.g. 5'
-                                        value={local.retainTicks}
-                                        disabled={local.offerAutomated || saving}
-                                        onChange={(e) => onLocalChange(resourceName, { retainTicks: e.target.value })}
-                                        className='h-7 text-xs w-24 tabular-nums'
-                                    />
-                                    {suggestedOfferQty !== null && (
-                                        <span className='text-muted-foreground'>
-                                            → offer qty: {formatNumbers(suggestedOfferQty)}
-                                        </span>
-                                    )}
-                                    {suggestedOfferQty !== null && (
-                                        <Button
-                                            variant='outline'
-                                            size='sm'
-                                            className='h-7 text-xs px-2'
-                                            disabled={local.offerAutomated || saving}
-                                            onClick={() =>
-                                                onLocalChange(resourceName, {
-                                                    offerQuantity: String(Math.ceil(suggestedOfferQty)),
-                                                })
-                                            }
-                                        >
-                                            Use
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
                         <div className='grid grid-cols-2 gap-3'>
-                            <div className='space-y-1'>
+                            {/* Price / unit box */}
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                                 <Label
                                     htmlFor={`offer-price-${resourceName}`}
                                     className='text-[11px] text-muted-foreground'
@@ -649,8 +670,28 @@ function ResourceAccordionItem({
                                     onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
+                                {market && !local.offerAutomated && (
+                                    <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
+                                        <span>Clearing: {market.clearingPrice.toFixed(2)}</span>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className='h-5 text-[10px] px-1.5 py-0'
+                                            disabled={saving}
+                                            onClick={() =>
+                                                onLocalChange(resourceName, {
+                                                    offerPrice: market.clearingPrice.toFixed(2),
+                                                })
+                                            }
+                                        >
+                                            Use
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
-                            <div className='space-y-1'>
+
+                            {/* Quantity to sell box + % presets */}
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                                 <Label
                                     htmlFor={`offer-qty-${resourceName}`}
                                     className='text-[11px] text-muted-foreground'
@@ -673,6 +714,27 @@ function ResourceAccordionItem({
                                     onChange={(e) => onLocalChange(resourceName, { offerQuantity: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
+                                {sellPresets && !local.offerAutomated && (
+                                    <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
+                                        <span className='shrink-0'>Stock: {formatNumbers(inventoryQty)}</span>
+                                        <div className='flex gap-1 ml-auto'>
+                                            {sellPresets.map(({ label, qty }) => (
+                                                <Button
+                                                    key={label}
+                                                    variant='outline'
+                                                    size='sm'
+                                                    className='h-5 text-[10px] px-1.5 py-0'
+                                                    disabled={saving}
+                                                    onClick={() =>
+                                                        onLocalChange(resourceName, { offerQuantity: String(qty) })
+                                                    }
+                                                >
+                                                    {label}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -693,7 +755,7 @@ function ResourceAccordionItem({
                         )}
                     </div>
 
-                    {/* ---- Save button ---- */}
+                    {/* ── Save button + feedback ── */}
                     <div className='flex items-center justify-between gap-3'>
                         <div>
                             {successMsg && (
@@ -701,11 +763,12 @@ function ResourceAccordionItem({
                                     <CheckCircle2 className='h-3.5 w-3.5' /> {successMsg}
                                 </span>
                             )}
-                            {errorMsg && (
-                                <span className='text-xs text-destructive flex items-center gap-1'>
-                                    <AlertCircle className='h-3.5 w-3.5' /> {errorMsg}
-                                </span>
-                            )}
+                        {errorMsg && (
+                            <span className='text-xs text-destructive flex items-center gap-1'>
+                                <AlertCircle className='h-3.5 w-3.5' />
+                                <span dangerouslySetInnerHTML={{ __html: errorMsg }} />
+                            </span>
+                        )}
                         </div>
                         <Button size='sm' onClick={handleSave} disabled={saving}>
                             {saving ? 'Saving…' : 'Save'}
@@ -716,29 +779,25 @@ function ResourceAccordionItem({
         </AccordionItem>
     );
 }
-
 /* ------------------------------------------------------------------ */
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function MarketPanel({ agentId, planetId, assets }: Props): React.ReactElement {
+export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
     const [showAll, setShowAll] = useState(false);
+    const [openItem, setOpenItem] = useState<string>('');
 
-    // Destructure assets for internal use
     const { productionFacilities, storageFacility, deposits, market } = assets;
 
     const buyBids = market?.buy ?? {};
     const sellOffers = market?.sell ?? {};
 
+    const buyBidKeys = Object.keys(buyBids).join(',');
+    const sellOfferKeys = Object.keys(sellOffers).join(',');
     const resources = useMemo(
         () => buildResourceList(productionFacilities, buyBids, sellOffers, storageFacility, showAll),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [
-            showAll,
-            JSON.stringify(Object.keys(buyBids)),
-            JSON.stringify(Object.keys(sellOffers)),
-            productionFacilities.length,
-        ],
+        [showAll, buyBidKeys, sellOfferKeys, productionFacilities.length],
     );
 
     const [localStates, setLocalStates] = useState<Record<string, LocalResourceState>>(() =>
@@ -749,12 +808,11 @@ export default function MarketPanel({ agentId, planetId, assets }: Props): React
     useEffect(() => {
         setLocalStates((prev) => {
             const next = buildInitialState(resources, buyBids, sellOffers);
-            // Preserve any in-progress UI-only fields (targetBufferTicks, retainTicks)
+            // Preserve in-progress UI-only fields
             for (const name of Object.keys(next)) {
                 const p = prev[name];
                 if (p) {
                     next[name].targetBufferTicks = p.targetBufferTicks;
-                    next[name].retainTicks = p.retainTicks;
                 }
             }
             return next;
@@ -794,21 +852,27 @@ export default function MarketPanel({ agentId, planetId, assets }: Props): React
                         No resources to display. Build a facility or enable &quot;Show all resources&quot;.
                     </p>
                 ) : (
-                    <Accordion type='multiple' className='w-full'>
+                    <Accordion
+                        type='single'
+                        collapsible
+                        value={openItem}
+                        onValueChange={setOpenItem}
+                        className='w-full'
+                    >
                         {resources.map(({ name }) => (
                             <ResourceAccordionItem
                                 key={name}
                                 resourceName={name}
                                 agentId={agentId}
-                                planetId={planetId}
                                 bid={buyBids[name]}
                                 offer={sellOffers[name]}
-                                storageFacility={storageFacility}
-                                facilities={productionFacilities}
+                                inventoryQty={storageFacility.currentInStorage[name]?.quantity ?? 0}
+                                consumedPerTick={consumptionPerTick(productionFacilities, name)}
+                                producedPerTick={productionPerTick(productionFacilities, name)}
                                 deposits={deposits}
                                 local={localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]}
                                 onLocalChange={handleLocalChange}
-                                isPending={false}
+                                isOpen={openItem === name}
                             />
                         ))}
                     </Accordion>

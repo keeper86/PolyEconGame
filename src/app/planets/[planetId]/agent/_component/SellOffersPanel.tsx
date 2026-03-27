@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import { PRICE_FLOOR } from '@/simulation/constants';
+import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
 import type { StorageFacility } from '@/simulation/planet/storage';
 
 /* ------------------------------------------------------------------ */
@@ -108,7 +108,11 @@ export default function SellOffersPanel({
                 });
             },
             onError: (err) => {
-                setErrorMsg(err instanceof Error ? err.message : 'Failed to update sell offers');
+                let errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
+                if (errorMessage.includes('Insufficient deposits')) {
+                    errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                }
+                setErrorMsg(errorMessage);
                 setSuccessMsg(null);
             },
         }),
@@ -131,7 +135,7 @@ export default function SellOffersPanel({
             const entry: { offerPrice?: number; offerQuantity?: number } = {};
             const price = parseFloat(lo.offerPrice);
             const qty = parseFloat(lo.offerQuantity);
-            if (!isNaN(price) && price >= PRICE_FLOOR) {
+            if (!isNaN(price) && price >= FOOD_PRICE_FLOOR) {
                 entry.offerPrice = price;
             }
             if (!isNaN(qty) && qty >= 0) {
@@ -144,7 +148,7 @@ export default function SellOffersPanel({
 
         if (Object.keys(offers).length === 0) {
             setErrorMsg(
-                `No valid offer data to save. Enter a price ≥ ${PRICE_FLOOR} or quantity ≥ 0 for at least one resource.`,
+                `No valid offer data to save. Enter a price ≥ ${FOOD_PRICE_FLOOR} or quantity ≥ 0 for at least one resource.`,
             );
             return;
         }
@@ -234,7 +238,7 @@ export default function SellOffersPanel({
                                                     <Input
                                                         id={`offer-price-${resource}`}
                                                         type='number'
-                                                        min={PRICE_FLOOR}
+                                                        min={FOOD_PRICE_FLOOR}
                                                         step='any'
                                                         placeholder={
                                                             snap?.offerPrice !== undefined
@@ -301,7 +305,10 @@ export default function SellOffersPanel({
                         {errorMsg && (
                             <Alert variant='destructive'>
                                 <AlertCircle className='h-4 w-4' />
-                                <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
+                                <AlertDescription 
+                                    className='text-xs'
+                                    dangerouslySetInnerHTML={{ __html: errorMsg }}
+                                />
                             </Alert>
                         )}
                     </CardContent>
