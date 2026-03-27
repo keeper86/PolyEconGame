@@ -10,6 +10,8 @@ import { computeMarketSummary, settleAgentBuyers, settleAgentSellers, settleHous
 export type { BidOrder } from './marketTypes';
 
 export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
+    planet.lastMarketResult = {};
+
     const askBooks = collectAgentOffers(agents, planet);
     resetAgentSellCounters(askBooks, planet);
     resetAgentBuyCounters(agents, planet);
