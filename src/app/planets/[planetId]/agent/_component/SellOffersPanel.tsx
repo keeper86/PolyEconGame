@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
+import { PRICE_FLOOR } from '@/simulation/constants';
 import type { StorageFacility } from '@/simulation/planet/storage';
 
 /* ------------------------------------------------------------------ */
@@ -131,7 +131,7 @@ export default function SellOffersPanel({
             const entry: { offerPrice?: number; offerQuantity?: number } = {};
             const price = parseFloat(lo.offerPrice);
             const qty = parseFloat(lo.offerQuantity);
-            if (!isNaN(price) && price >= FOOD_PRICE_FLOOR) {
+            if (!isNaN(price) && price >= PRICE_FLOOR) {
                 entry.offerPrice = price;
             }
             if (!isNaN(qty) && qty >= 0) {
@@ -144,7 +144,7 @@ export default function SellOffersPanel({
 
         if (Object.keys(offers).length === 0) {
             setErrorMsg(
-                `No valid offer data to save. Enter a price ≥ ${FOOD_PRICE_FLOOR} or quantity ≥ 0 for at least one resource.`,
+                `No valid offer data to save. Enter a price ≥ ${PRICE_FLOOR} or quantity ≥ 0 for at least one resource.`,
             );
             return;
         }
@@ -234,7 +234,7 @@ export default function SellOffersPanel({
                                                     <Input
                                                         id={`offer-price-${resource}`}
                                                         type='number'
-                                                        min={FOOD_PRICE_FLOOR}
+                                                        min={PRICE_FLOOR}
                                                         step='any'
                                                         placeholder={
                                                             snap?.offerPrice !== undefined

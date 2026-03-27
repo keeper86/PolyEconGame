@@ -8,6 +8,9 @@ import {
     workerClaimResources,
     workerBuildFacility,
 } from '@/simulation/workerClient/commands';
+import { workerQueries } from '@/simulation/workerClient/queries';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
 import z from 'zod';
@@ -444,6 +447,44 @@ export const setSellOffers = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
+            // Validate each offer using the shared validation module
+            for (const [resourceName, offer] of Object.entries(input.offers)) {
+                const resource = ALL_RESOURCES.find(r => r.name === resourceName);
+                if (!resource) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Unknown resource: ${resourceName}`,
+                    });
+                }
+
+                // Get agent details to validate against inventory
+                const { agent } = await workerQueries.getAgent(input.agentId);
+                if (!agent) {
+                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+                }
+                
+                const assets = agent.assets[input.planetId];
+                if (!assets) {
+                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
+                }
+                
+                const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+                
+                const validation = validateSellOffer(
+                    offer.offerPrice,
+                    offer.offerQuantity,
+                    resource,
+                    inventoryQty
+                );
+                
+                if (!validation.isValid) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Invalid sell offer for ${resourceName}: ${validation.error}`,
+                    });
+                }
+            }
+
             logger.info(
                 { component: 'set-sell-offers' },
                 `User ${userId} setting sell offers for agent ${input.agentId} on planet ${input.planetId}`,
@@ -484,6 +525,44 @@ export const setBuyBids = () => {
             }
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            // Validate each bid using the shared validation module
+            for (const [resourceName, bid] of Object.entries(input.bids)) {
+                const resource = ALL_RESOURCES.find(r => r.name === resourceName);
+                if (!resource) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Unknown resource: ${resourceName}`,
+                    });
+                }
+
+                // Get agent details to validate against deposits
+                const { agent } = await workerQueries.getAgent(input.agentId);
+                if (!agent) {
+                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+                }
+                
+                const assets = agent.assets[input.planetId];
+                if (!assets) {
+                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
+                }
+                
+                const deposits = assets.deposits;
+                
+                const validation = validateBuyBid(
+                    bid.bidPrice,
+                    bid.bidQuantity,
+                    resource,
+                    deposits
+                );
+                
+                if (!validation.isValid) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Invalid buy bid for ${resourceName}: ${validation.error}`,
+                    });
+                }
             }
 
             logger.info(

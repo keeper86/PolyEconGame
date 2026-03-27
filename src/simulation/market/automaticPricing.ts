@@ -1,6 +1,6 @@
 import {
-    FOOD_PRICE_CEIL,
-    FOOD_PRICE_FLOOR,
+    FOOD_PRICE_CEIL as PRICE_CEIL,
+    FOOD_PRICE_FLOOR as PRICE_FLOOR,
     INITIAL_FOOD_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
@@ -214,15 +214,15 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
     // full sell-through: the good is scarce and the price should rise.
     if (newOfferQuantity === 0) {
         const factor = sellThroughFactor(1);
-        offer.offerPrice = Math.min(FOOD_PRICE_CEIL, Math.max(FOOD_PRICE_FLOOR, price * factor));
+        offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, price * factor));
         return;
     }
 
     const sellThrough = sold / newOfferQuantity;
     const factor = sellThroughFactor(sellThrough);
 
-    const priceCeil = FOOD_PRICE_CEIL;
-    const priceFloor = FOOD_PRICE_FLOOR;
+    const priceCeil = PRICE_CEIL;
+    const priceFloor = PRICE_FLOOR;
     offer.offerPrice = Math.min(priceCeil, Math.max(priceFloor, price * factor));
 }
 
@@ -272,7 +272,7 @@ function adjustBidPrice(
 
     const factor = fillRateFactor(fillRate);
 
-    const priceFloor = FOOD_PRICE_FLOOR;
-    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : FOOD_PRICE_CEIL;
+    const priceFloor = PRICE_FLOOR;
+    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : PRICE_CEIL;
     bid.bidPrice = Math.max(priceFloor, Math.min(priceCeil, bid.bidPrice * factor));
 }

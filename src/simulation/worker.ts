@@ -15,7 +15,7 @@ import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepos
 import { createInitialGameState } from './utils/initialWorld';
 import knexConfig from '../../knexfile.js';
 import { computeLoanConditions } from './financial/loanConditions';
-import { FOOD_PRICE_FLOOR } from './constants';
+import { FOOD_PRICE_FLOOR as PRICE_FLOOR } from './constants';
 import { agriculturalProductResourceType } from './planet/resources';
 import { arableLandResourceType, waterSourceResourceType } from './planet/landBoundResources';
 import { makeAgent } from './utils/testHelper';
@@ -271,7 +271,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                             }
                             const offer = assets.market.sell[resourceName];
                             if (update.offerPrice !== undefined && update.offerPrice > 0) {
-                                offer.offerPrice = Math.max(FOOD_PRICE_FLOOR, update.offerPrice);
+                                offer.offerPrice = Math.max(PRICE_FLOOR, update.offerPrice);
                             }
                             if (update.offerQuantity !== undefined && update.offerQuantity >= 0) {
                                 offer.offerQuantity = update.offerQuantity;

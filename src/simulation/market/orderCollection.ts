@@ -1,7 +1,8 @@
-import { FOOD_PRICE_CEIL, FOOD_PRICE_FLOOR, INITIAL_FOOD_PRICE } from '../constants';
+import { INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { lockIntoEscrow, queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
+import { clampPrice, validatedBidQuantity } from './validation';
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
     const books = new Map<string, AskOrder[]>();
@@ -143,15 +144,4 @@ export function resetAgentSellCounters(askBooks: Map<string, AskOrder[]>, planet
             }
         }
     }
-}
-
-function clampPrice(price?: number): number {
-    return Math.max(FOOD_PRICE_FLOOR, Math.min(FOOD_PRICE_CEIL, price ?? INITIAL_FOOD_PRICE));
-}
-
-function validatedBidQuantity(qty: number, form: string): number {
-    if (qty <= 0) {
-        return 0;
-    }
-    return form === 'pieces' ? Math.floor(qty) : qty;
 }

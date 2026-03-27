@@ -8,7 +8,7 @@ import {
     waterResourceType,
     fabricResourceType,
 } from '../planet/resources';
-import { FOOD_PRICE_CEIL, FOOD_PRICE_FLOOR, PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '../constants';
+import { FOOD_PRICE_CEIL as PRICE_CEIL, FOOD_PRICE_FLOOR as PRICE_FLOOR, PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '../constants';
 import type { StorageFacility } from '../planet/storage';
 
 const PLANET_ID = 'p';
@@ -181,13 +181,13 @@ describe('automaticPricing — offer price tâtonnement', () => {
 
     it('recovers quickly from the price floor under persistent full sell-through', () => {
         const STOCK = 1000;
-        const { agent, planet } = makeWaterProducerWithPriorOffer(FOOD_PRICE_FLOOR, STOCK, STOCK);
+        const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE_FLOOR, STOCK, STOCK);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeGreaterThan(FOOD_PRICE_FLOOR);
-        expect(newPrice).toBeCloseTo(FOOD_PRICE_FLOOR * PRICE_ADJUST_MAX_UP);
+        expect(newPrice).toBeGreaterThan(PRICE_FLOOR);
+        expect(newPrice).toBeCloseTo(PRICE_FLOOR * PRICE_ADJUST_MAX_UP);
     });
 
     it('raises price when agent has no stock (supply-constrained, intermittent production)', () => {
@@ -201,11 +201,11 @@ describe('automaticPricing — offer price tâtonnement', () => {
 
     it('does not exceed FOOD_PRICE_CEIL', () => {
         const STOCK = 1000;
-        const { agent, planet } = makeWaterProducerWithPriorOffer(FOOD_PRICE_CEIL, STOCK, STOCK);
+        const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE_CEIL, STOCK, STOCK);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBe(FOOD_PRICE_CEIL);
+        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBe(PRICE_CEIL);
     });
 });
 

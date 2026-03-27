@@ -18,6 +18,7 @@ import { formatNumbers } from '@/lib/utils';
 import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
 import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
 import type { AgentPlanetAssets } from './useAgentPlanetDetail';
 
 /* ------------------------------------------------------------------ */
@@ -91,6 +92,11 @@ function productionPerTick(facilities: ProductionFacility[], resourceName: strin
         const prod = f.produces.find((p) => p.resource.name === resourceName);
         return prod ? sum + prod.quantity * f.scale : sum;
     }, 0);
+}
+
+/** Get resource object by name */
+function getResourceByName(resourceName: string) {
+    return ALL_RESOURCES.find((r) => r.name === resourceName);
 }
 
 /** Build the deduplicated list of resources to show. */
@@ -324,9 +330,48 @@ function ResourceAccordionItem({
         setSuccessMsg(null);
         setErrorMsg(null);
 
-        // Build sell payload
+        // Get resource object for validation
+        const resource = getResourceByName(resourceName);
+        if (!resource) {
+            setErrorMsg(`Unknown resource: ${resourceName}`);
+            return;
+        }
+
+        // Parse values
         const offerPrice = parseFloat(local.offerPrice);
         const offerQty = parseFloat(local.offerQuantity);
+        const bidPrice = parseFloat(local.bidPrice);
+        const bidQty = parseFloat(local.bidQuantity);
+
+        // Validate sell offer
+        if (!isNaN(offerPrice) || !isNaN(offerQty)) {
+            const sellValidation = validateSellOffer(
+                !isNaN(offerPrice) ? offerPrice : undefined,
+                !isNaN(offerQty) ? offerQty : undefined,
+                resource,
+                inventoryQty,
+            );
+            if (!sellValidation.isValid) {
+                setErrorMsg(`Sell validation failed: ${sellValidation.error}`);
+                return;
+            }
+        }
+
+        // Validate buy bid
+        if (!isNaN(bidPrice) || !isNaN(bidQty)) {
+            const buyValidation = validateBuyBid(
+                !isNaN(bidPrice) ? bidPrice : undefined,
+                !isNaN(bidQty) ? bidQty : undefined,
+                resource,
+                deposits,
+            );
+            if (!buyValidation.isValid) {
+                setErrorMsg(`Buy validation failed: ${buyValidation.error}`);
+                return;
+            }
+        }
+
+        // Build sell payload
         const sellPayload: Record<string, { offerPrice?: number; offerQuantity?: number; automated?: boolean }> = {
             [resourceName]: {
                 ...(local.offerAutomated !== (offer?.automated ?? false) && { automated: local.offerAutomated }),
@@ -340,8 +385,6 @@ function ResourceAccordionItem({
         }
 
         // Build buy payload
-        const bidPrice = parseFloat(local.bidPrice);
-        const bidQty = parseFloat(local.bidQuantity);
         const buyPayload: Record<string, { bidPrice?: number; bidQuantity?: number; automated?: boolean }> = {
             [resourceName]: {
                 ...(local.bidAutomated !== (bid?.automated ?? false) && { automated: local.bidAutomated }),
@@ -678,21 +721,12 @@ function ResourceAccordionItem({
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function MarketPanel({
-    agentId,
-    planetId,
-    assets,
-}: Props): React.ReactElement {
+export default function MarketPanel({ agentId, planetId, assets }: Props): React.ReactElement {
     const [showAll, setShowAll] = useState(false);
 
     // Destructure assets for internal use
-    const {
-        productionFacilities,
-        storageFacility,
-        deposits,
-        market,
-    } = assets;
-    
+    const { productionFacilities, storageFacility, deposits, market } = assets;
+
     const buyBids = market?.buy ?? {};
     const sellOffers = market?.sell ?? {};
 
