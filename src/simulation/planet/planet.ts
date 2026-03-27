@@ -254,6 +254,8 @@ export type AgentMarketOfferState = {
     lastSold?: number;
     /** Revenue earned during the last market clearing tick (currency units). */
     lastRevenue?: number;
+    /** Quantity actually placed into the order book last tick (capped by free stock). */
+    lastPlacedQty?: number;
     /** Tâtonnement price-direction hint (−1 / 0 / +1). */
     priceDirection?: number;
     /** When true, the automatic pricing engine manages this offer each tick. */
@@ -281,6 +283,8 @@ export type AgentMarketBidState = {
     lastBought?: number;
     /** Total expenditure during the last market clearing tick (currency units). */
     lastSpent?: number;
+    /** Quantity actually placed into the order book last tick (scaled by available deposits). */
+    lastEffectiveQty?: number;
     /**
      * Set to true when the bid was suppressed because storage had no room for
      * the resource. Cleared each tick when there is capacity available.

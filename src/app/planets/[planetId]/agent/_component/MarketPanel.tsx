@@ -18,6 +18,7 @@ import { formatNumbers } from '@/lib/utils';
 import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
 import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import type { AgentPlanetAssets } from './useAgentPlanetDetail';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -56,11 +57,7 @@ type LocalResourceState = {
 type Props = {
     agentId: string;
     planetId: string;
-    productionFacilities: ProductionFacility[];
-    buyBids: Record<string, MarketBidEntry>;
-    sellOffers: Record<string, MarketOfferEntry>;
-    storageFacility: StorageFacility;
-    deposits: number;
+    assets: AgentPlanetAssets;
 };
 
 /* ------------------------------------------------------------------ */
@@ -213,9 +210,7 @@ function ResourceTrigger({
                         <ShoppingCart className='h-3 w-3' />
                         {bid.bidPrice !== undefined && <span>{bid.bidPrice.toFixed(2)}</span>}
                         {bid.lastBought !== undefined && (
-                            <span className='text-blue-600 dark:text-blue-400'>
-                                {formatNumbers(bid.lastBought)}
-                            </span>
+                            <span className='text-blue-600 dark:text-blue-400'>{formatNumbers(bid.lastBought)}</span>
                         )}
                         {bid.automated && <Bot className='h-3 w-3 text-purple-500' />}
                         {bid.storageFullWarning && (
@@ -232,9 +227,7 @@ function ResourceTrigger({
                         <Tag className='h-3 w-3' />
                         {offer.offerPrice !== undefined && <span>{offer.offerPrice.toFixed(2)}</span>}
                         {offer.lastSold !== undefined && (
-                            <span className='text-green-600 dark:text-green-400'>
-                                {formatNumbers(offer.lastSold)}
-                            </span>
+                            <span className='text-green-600 dark:text-green-400'>{formatNumbers(offer.lastSold)}</span>
                         )}
                         {arrow.label && <span className={arrow.className}>{arrow.label}</span>}
                         {offer.automated && <Bot className='h-3 w-3 text-purple-500' />}
@@ -382,7 +375,10 @@ function ResourceAccordionItem({
                                 <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                             </span>
                             <div className='flex items-center gap-2'>
-                                <Label htmlFor={`bid-auto-${resourceName}`} className='text-[11px] text-muted-foreground cursor-pointer'>
+                                <Label
+                                    htmlFor={`bid-auto-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground cursor-pointer'
+                                >
                                     Auto-manage
                                 </Label>
                                 <Switch
@@ -403,9 +399,7 @@ function ResourceAccordionItem({
                                     <span>
                                         Stock: {formatNumbers(inventoryQty)}
                                         {inventoryInBuyTicks !== null && (
-                                            <span className='ml-1'>
-                                                ({inventoryInBuyTicks.toFixed(1)} ticks)
-                                            </span>
+                                            <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
                                         )}
                                     </span>
                                 </div>
@@ -421,7 +415,9 @@ function ResourceAccordionItem({
                                         placeholder='e.g. 30'
                                         value={local.targetBufferTicks}
                                         disabled={local.bidAutomated || saving}
-                                        onChange={(e) => onLocalChange(resourceName, { targetBufferTicks: e.target.value })}
+                                        onChange={(e) =>
+                                            onLocalChange(resourceName, { targetBufferTicks: e.target.value })
+                                        }
                                         className='h-7 text-xs w-24 tabular-nums'
                                     />
                                     {suggestedBidQty !== null && (
@@ -450,7 +446,10 @@ function ResourceAccordionItem({
 
                         <div className='grid grid-cols-2 gap-3'>
                             <div className='space-y-1'>
-                                <Label htmlFor={`bid-price-${resourceName}`} className='text-[11px] text-muted-foreground'>
+                                <Label
+                                    htmlFor={`bid-price-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
+                                >
                                     Max price / unit
                                 </Label>
                                 <Input
@@ -466,7 +465,10 @@ function ResourceAccordionItem({
                                 />
                             </div>
                             <div className='space-y-1'>
-                                <Label htmlFor={`bid-qty-${resourceName}`} className='text-[11px] text-muted-foreground'>
+                                <Label
+                                    htmlFor={`bid-qty-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
+                                >
                                     Quantity to buy
                                 </Label>
                                 <Input
@@ -474,7 +476,11 @@ function ResourceAccordionItem({
                                     type='number'
                                     min={0}
                                     step={1}
-                                    placeholder={bid?.bidQuantity !== undefined ? String(Math.round(bid.bidQuantity)) : 'e.g. 100'}
+                                    placeholder={
+                                        bid?.bidQuantity !== undefined
+                                            ? String(Math.round(bid.bidQuantity))
+                                            : 'e.g. 100'
+                                    }
                                     value={local.bidQuantity}
                                     disabled={local.bidAutomated || saving}
                                     onChange={(e) => onLocalChange(resourceName, { bidQuantity: e.target.value })}
@@ -485,7 +491,9 @@ function ResourceAccordionItem({
 
                         {(bid?.lastBought !== undefined || bid?.lastSpent !== undefined) && (
                             <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                                {bid.lastBought !== undefined && <span>Last bought: {formatNumbers(bid.lastBought)}</span>}
+                                {bid.lastBought !== undefined && (
+                                    <span>Last bought: {formatNumbers(bid.lastBought)}</span>
+                                )}
                                 {bid.lastSpent !== undefined && <span>Spent: {formatNumbers(bid.lastSpent)}</span>}
                             </div>
                         )}
@@ -510,7 +518,10 @@ function ResourceAccordionItem({
                                 <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
                             </span>
                             <div className='flex items-center gap-2'>
-                                <Label htmlFor={`offer-auto-${resourceName}`} className='text-[11px] text-muted-foreground cursor-pointer'>
+                                <Label
+                                    htmlFor={`offer-auto-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground cursor-pointer'
+                                >
                                     Auto-manage
                                 </Label>
                                 <Switch
@@ -531,9 +542,7 @@ function ResourceAccordionItem({
                                     <span>
                                         Stock: {formatNumbers(inventoryQty)}
                                         {inventoryInSellTicks !== null && (
-                                            <span className='ml-1'>
-                                                ({inventoryInSellTicks.toFixed(1)} ticks)
-                                            </span>
+                                            <span className='ml-1'>({inventoryInSellTicks.toFixed(1)} ticks)</span>
                                         )}
                                     </span>
                                 </div>
@@ -578,7 +587,10 @@ function ResourceAccordionItem({
 
                         <div className='grid grid-cols-2 gap-3'>
                             <div className='space-y-1'>
-                                <Label htmlFor={`offer-price-${resourceName}`} className='text-[11px] text-muted-foreground'>
+                                <Label
+                                    htmlFor={`offer-price-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
+                                >
                                     Price / unit
                                 </Label>
                                 <Input
@@ -586,7 +598,9 @@ function ResourceAccordionItem({
                                     type='number'
                                     min={FOOD_PRICE_FLOOR}
                                     step='any'
-                                    placeholder={offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'}
+                                    placeholder={
+                                        offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'
+                                    }
                                     value={local.offerPrice}
                                     disabled={local.offerAutomated || saving}
                                     onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
@@ -594,7 +608,10 @@ function ResourceAccordionItem({
                                 />
                             </div>
                             <div className='space-y-1'>
-                                <Label htmlFor={`offer-qty-${resourceName}`} className='text-[11px] text-muted-foreground'>
+                                <Label
+                                    htmlFor={`offer-qty-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
+                                >
                                     Quantity to sell
                                 </Label>
                                 <Input
@@ -603,7 +620,11 @@ function ResourceAccordionItem({
                                     min={0}
                                     max={inventoryQty}
                                     step={1}
-                                    placeholder={offer?.offerQuantity !== undefined ? String(Math.round(offer.offerQuantity)) : 'e.g. 100'}
+                                    placeholder={
+                                        offer?.offerQuantity !== undefined
+                                            ? String(Math.round(offer.offerQuantity))
+                                            : 'e.g. 100'
+                                    }
                                     value={local.offerQuantity}
                                     disabled={local.offerAutomated || saving}
                                     onChange={(e) => onLocalChange(resourceName, { offerQuantity: e.target.value })}
@@ -614,12 +635,17 @@ function ResourceAccordionItem({
 
                         {(offer?.lastSold !== undefined || offer?.lastRevenue !== undefined) && (
                             <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                                {offer.lastSold !== undefined && <span>Last sold: {formatNumbers(offer.lastSold)}</span>}
-                                {offer.lastRevenue !== undefined && <span>Revenue: {formatNumbers(offer.lastRevenue)}</span>}
-                                {offer.priceDirection !== undefined && (() => {
-                                    const a = priceArrow(offer.priceDirection);
-                                    return a.label ? <span className={a.className}>{a.label}</span> : null;
-                                })()}
+                                {offer.lastSold !== undefined && (
+                                    <span>Last sold: {formatNumbers(offer.lastSold)}</span>
+                                )}
+                                {offer.lastRevenue !== undefined && (
+                                    <span>Revenue: {formatNumbers(offer.lastRevenue)}</span>
+                                )}
+                                {offer.priceDirection !== undefined &&
+                                    (() => {
+                                        const a = priceArrow(offer.priceDirection);
+                                        return a.label ? <span className={a.className}>{a.label}</span> : null;
+                                    })()}
                             </div>
                         )}
                     </div>
@@ -655,18 +681,30 @@ function ResourceAccordionItem({
 export default function MarketPanel({
     agentId,
     planetId,
-    productionFacilities,
-    buyBids,
-    sellOffers,
-    storageFacility,
-    deposits,
+    assets,
 }: Props): React.ReactElement {
     const [showAll, setShowAll] = useState(false);
+
+    // Destructure assets for internal use
+    const {
+        productionFacilities,
+        storageFacility,
+        deposits,
+        market,
+    } = assets;
+    
+    const buyBids = market?.buy ?? {};
+    const sellOffers = market?.sell ?? {};
 
     const resources = useMemo(
         () => buildResourceList(productionFacilities, buyBids, sellOffers, storageFacility, showAll),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [showAll, JSON.stringify(Object.keys(buyBids)), JSON.stringify(Object.keys(sellOffers)), productionFacilities.length],
+        [
+            showAll,
+            JSON.stringify(Object.keys(buyBids)),
+            JSON.stringify(Object.keys(sellOffers)),
+            productionFacilities.length,
+        ],
     );
 
     const [localStates, setLocalStates] = useState<Record<string, LocalResourceState>>(() =>
@@ -707,11 +745,7 @@ export default function MarketPanel({
                         <Label htmlFor='show-all-resources' className='text-xs text-muted-foreground cursor-pointer'>
                             Show all resources
                         </Label>
-                        <Switch
-                            id='show-all-resources'
-                            checked={showAll}
-                            onCheckedChange={setShowAll}
-                        />
+                        <Switch id='show-all-resources' checked={showAll} onCheckedChange={setShowAll} />
                     </div>
                 </div>
 
@@ -738,10 +772,7 @@ export default function MarketPanel({
                                 storageFacility={storageFacility}
                                 facilities={productionFacilities}
                                 deposits={deposits}
-                                local={
-                                    localStates[name] ??
-                                    buildInitialState([{ name }], buyBids, sellOffers)[name]
-                                }
+                                local={localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]}
                                 onLocalChange={handleLocalChange}
                                 isPending={false}
                             />

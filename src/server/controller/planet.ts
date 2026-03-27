@@ -548,7 +548,7 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
         }
 
         const offerPrice = offer.offerPrice ?? INITIAL_FOOD_PRICE;
-        const offerQuantity = offer.offerQuantity ?? 0;
+        const offerQuantity = offer.lastPlacedQty ?? offer.offerQuantity ?? 0;
         const lastSold = offer.lastSold ?? 0;
         const lastRevenue = offer.lastRevenue ?? 0;
         const sellThrough = offerQuantity > 0 ? Math.min(1, lastSold / offerQuantity) : 0;
@@ -607,12 +607,12 @@ function buildAgentBids(agents: Agent[], planetId: string, resourceName: string)
         }
 
         const bidPrice = bid.bidPrice ?? 0;
-        const bidQuantity = bid.bidQuantity ?? 0;
+        const effectiveQty = bid.lastEffectiveQty ?? 0;
         const lastBought = bid.lastBought ?? 0;
         const lastSpent = bid.lastSpent ?? 0;
-        const fillRatio = bidQuantity > 0 ? Math.min(1, lastBought / bidQuantity) : 0;
+        const fillRatio = effectiveQty > 0 ? Math.min(1, lastBought / effectiveQty) : 0;
 
-        if (bidQuantity <= 0 && lastBought <= 0) {
+        if (effectiveQty <= 0 && lastBought <= 0) {
             continue;
         }
 
@@ -620,7 +620,7 @@ function buildAgentBids(agents: Agent[], planetId: string, resourceName: string)
             agentId: agent.id,
             agentName: agent.name,
             bidPrice,
-            bidQuantity,
+            bidQuantity: effectiveQty,
             lastBought,
             fillRatio,
             lastSpent,

@@ -25,9 +25,11 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
             if (maybeFloorQty <= 0) {
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
+                offer.lastPlacedQty = 0;
                 continue;
             }
 
+            offer.lastPlacedQty = maybeFloorQty;
             const askPrice = clampPrice(offer.offerPrice);
             lockIntoEscrow(assets.storageFacility, resourceName, maybeFloorQty);
 
@@ -90,6 +92,7 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             if (scaledQty <= 0) {
                 continue;
             }
+            bid.lastEffectiveQty = scaledQty;
             const cost = scaledQty * price;
             holdAmount += cost;
 
@@ -125,6 +128,7 @@ export function resetAgentBuyCounters(agents: Map<string, Agent>, planet: Planet
         for (const bid of Object.values(market.buy)) {
             bid.lastBought = 0;
             bid.lastSpent = 0;
+            bid.lastEffectiveQty = 0;
         }
     });
 }

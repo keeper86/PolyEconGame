@@ -21,11 +21,7 @@ export default function MarketPage() {
                 <MarketPanel
                     agentId={agentId}
                     planetId={planetId}
-                    productionFacilities={assets.productionFacilities}
-                    buyBids={assets.market?.buy ?? {}}
-                    sellOffers={assets.market?.sell ?? {}}
-                    storageFacility={assets.storageFacility}
-                    deposits={assets.deposits}
+                    assets={assets}
                 />
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>
@@ -33,4 +29,3 @@ export default function MarketPage() {
         </AgentAccessGuard>
     );
 }
-
