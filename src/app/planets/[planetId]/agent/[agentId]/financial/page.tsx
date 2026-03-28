@@ -5,7 +5,6 @@ import AgentFinancialOverview from '@/app/planets/[planetId]/agent/_component/Ag
 import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
-import { Card } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
@@ -31,7 +30,7 @@ export default function FinancialPage() {
     }
 
     return (
-        <Card className='space-y-4'>
+        <>
             <BankPanel bank={economy.bank} priceLevel={economy.priceLevel ?? undefined} />
 
             <AgentAccessGuard
@@ -56,6 +55,6 @@ export default function FinancialPage() {
                     <div className='text-sm text-muted-foreground'>Loading…</div>
                 )}
             </AgentAccessGuard>
-        </Card>
+        </>
     );
 }

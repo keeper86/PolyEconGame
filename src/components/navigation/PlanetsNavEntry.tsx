@@ -5,14 +5,18 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { ChevronRight, Globe, Users } from 'lucide-react';
+import { ChevronRight, Globe, Landmark, Users } from 'lucide-react';
+import { GiAxeInStump } from 'react-icons/gi';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PlanetIcon } from '../client/PlanetIcon';
 
-const PLANET_SUB_PAGES = [{ segment: 'demographics', label: 'Demographics', icon: Users }] as const;
+const PLANET_SUB_PAGES = [
+    { segment: 'demographics', label: 'Demographics', icon: Users },
+    { segment: 'claims', label: 'Resources', icon: GiAxeInStump },
+] as const;
 
 function ActivePlanetSubNav({ planetId, disabled }: { planetId: string | null; disabled: boolean }) {
     const pathname = usePathname();

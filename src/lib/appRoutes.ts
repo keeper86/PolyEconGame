@@ -168,15 +168,9 @@ export type AgentSubPage = {
     icon: LucideIcon;
 };
 
-export const PLANET_SUB_PAGES: AgentSubPage[] = [
-    { segment: 'economy', label: 'Economy', icon: EuroIcon },
-    { segment: 'market', label: 'Market', icon: ShoppingCartIcon },
-    { segment: 'claims', label: 'Claims', icon: Landmark },
-];
-
 export const AGENT_SUB_PAGES: AgentSubPage[] = [
+    { segment: 'financial', label: 'Finances', icon: EuroIcon },
     { segment: 'workforce', label: 'Workforce', icon: Users },
-    { segment: 'financial', label: 'Financial', icon: EuroIcon },
     { segment: 'production', label: 'Production', icon: Package },
     { segment: 'storage', label: 'Storage', icon: Warehouse },
     { segment: 'market', label: 'Market', icon: ShoppingCartIcon },

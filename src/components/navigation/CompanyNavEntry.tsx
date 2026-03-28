@@ -69,36 +69,6 @@ export function CompanyNavEntry() {
                 </Link>
             </SidebarMenuButton>
             <SidebarMenu className='pl-2 pt-1'>
-                {PLANET_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
-                    const href = activePlanetId
-                        ? (`/planets/${encodeURIComponent(activePlanetId)}/${segment}` as never)
-                        : null;
-                    const isActive = !!href && (pathname === href || pathname.startsWith(`${href}/`));
-                    return (
-                        <SidebarMenuItem key={segment}>
-                            <SidebarMenuButton
-                                asChild={!!href}
-                                size='sm'
-                                className='font-normal text-muted-foreground'
-                                isActive={isActive}
-                                disabled={!href}
-                                onClick={handleClick}
-                            >
-                                {href ? (
-                                    <Link href={href} aria-disabled={!href}>
-                                        <Icon width={14} height={14} />
-                                        {label}
-                                    </Link>
-                                ) : (
-                                    <span className='flex items-center gap-2 text-muted-foreground'>
-                                        <Icon width={14} height={14} />
-                                        {label}
-                                    </span>
-                                )}
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    );
-                })}
                 {AGENT_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
                     const href = activePlanetId
                         ? (`/planets/${encodeURIComponent(activePlanetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as never)

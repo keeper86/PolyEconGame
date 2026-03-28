@@ -106,26 +106,6 @@ export default function BankPanel({ bank, wagePerEdu, priceLevel }: Props): Reac
                 ) : (
                     <p className='text-xs text-muted-foreground'>Bank not yet initialised (no financial tick run).</p>
                 )}
-
-                <Separator />
-
-                <div>
-                    <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
-                        <Coins className='h-3 w-3' />
-                        Wage per worker / tick
-                    </div>
-                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5'>
-                        {educationLevelKeys.map((edu) => {
-                            const wage = wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
-                            return (
-                                <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
-                                    <span className='text-muted-foreground capitalize'>{edu}</span>
-                                    <span className='tabular-nums font-medium'>{formatNumbers(wage)}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
             </CardContent>
         </Card>
     );
