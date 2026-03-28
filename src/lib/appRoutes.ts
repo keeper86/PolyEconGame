@@ -5,7 +5,6 @@ import {
     FlaskConical,
     Gamepad,
     Home,
-    Landmark,
     Package,
     ShoppingCartIcon,
     User,

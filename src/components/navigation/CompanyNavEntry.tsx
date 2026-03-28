@@ -1,14 +1,14 @@
+import { usePlanetId } from '@/hooks/usePlanetId';
+import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { route } from 'nextjs-routes';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../ui/sidebar';
 import { JoinGameDialog } from './JoinGameDialog';
-import { AGENT_SUB_PAGES, PLANET_SUB_PAGES } from '@/lib/appRoutes';
-import { usePlanetId } from '@/hooks/usePlanetId';
 
 export function CompanyNavEntry() {
     const { status } = useSession();
