@@ -1,21 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { automaticPricing } from './automaticPricing';
-import { seedRng } from '../utils/stochasticRound';
-import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { PRICE_ADJUST_MAX_UP, FOOD_PRICE_CEIL as PRICE_CEIL, FOOD_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
+    fabricResourceType,
     ironOreResourceType,
     waterResourceType,
-    fabricResourceType,
 } from '../planet/resources';
-import {
-    FOOD_PRICE_CEIL as PRICE_CEIL,
-    FOOD_PRICE_FLOOR as PRICE_FLOOR,
-    PRICE_ADJUST_MAX_DOWN,
-    PRICE_ADJUST_MAX_UP,
-} from '../constants';
 import type { StorageFacility } from '../planet/storage';
+import { seedRng } from '../utils/stochasticRound';
+import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { automaticPricing } from './automaticPricing';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;

@@ -14,10 +14,10 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
             const free = queryStorageFacility(assets.storageFacility, resourceName);
-            
+
             // Use the new validation function
             const validatedOffer = validateAndPrepareSellOffer(offer, free);
-            
+
             if (!validatedOffer) {
                 // Update counters for invalid/zero quantity offers
                 offer.lastSold = 0;
@@ -27,8 +27,9 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
             }
 
             const { price: askPrice, quantity } = validatedOffer;
-            
+
             offer.lastPlacedQty = quantity;
+            offer.lastOfferPrice = askPrice;
             lockIntoEscrow(assets.storageFacility, resourceName, quantity);
 
             let book = books.get(resourceName);
@@ -65,10 +66,10 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
             const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
-            
+
             // Use the new validation function
             const validatedBid = validateAndPrepareBuyBid(bid, assets, currentInventory);
-            
+
             if (!validatedBid) {
                 continue;
             }
@@ -91,12 +92,13 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         for (const { resourceName, qty, price } of pendingBids) {
             const bid = assets.market.buy[resourceName]!;
             const scaledQty = Math.max(0, qty * scaleFactor);
-            
+
             if (scaledQty <= 0) {
                 continue;
             }
-            
+
             bid.lastEffectiveQty = scaledQty;
+            bid.lastBidPrice = price;
             const cost = scaledQty * price;
             holdAmount += cost;
 

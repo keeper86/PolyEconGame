@@ -11,6 +11,7 @@ import {
 import { workerQueries } from '@/simulation/workerClient/queries';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
+import { queryStorageFacility } from '@/simulation/planet/storage';
 
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
@@ -450,6 +451,16 @@ export const setSellOffers = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
+            // Fetch agent once before the loop to avoid N× worker round-trips
+            const { agent: sellAgent } = await workerQueries.getAgent(input.agentId);
+            if (!sellAgent) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+            }
+            const sellAssets = sellAgent.assets[input.planetId];
+            if (!sellAssets) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
+            }
+
             // Validate each offer using the shared validation module
             for (const [resourceName, offer] of Object.entries(input.offers)) {
                 const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
@@ -460,24 +471,13 @@ export const setSellOffers = () => {
                     });
                 }
 
-                // Get agent details to validate against inventory
-                const { agent } = await workerQueries.getAgent(input.agentId);
-                if (!agent) {
-                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
-                }
-
-                const assets = agent.assets[input.planetId];
-                if (!assets) {
-                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
-                }
-
-                const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+                // Use queryStorageFacility to get non-escrowed stock
+                const inventoryQty = queryStorageFacility(sellAssets.storageFacility, resourceName);
 
                 // Validate price only when using retainment (qty is computed dynamically)
                 const validation = validateSellOffer(
                     offer.offerPrice,
                     offer.offerRetainment !== undefined ? undefined : offer.offerQuantity,
-                    resource,
                     inventoryQty,
                 );
 
@@ -532,6 +532,16 @@ export const setBuyBids = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
+            // Fetch agent once before the loop to avoid N× worker round-trips
+            const { agent: bidAgent } = await workerQueries.getAgent(input.agentId);
+            if (!bidAgent) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+            }
+            const bidAssets = bidAgent.assets[input.planetId];
+            if (!bidAssets) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
+            }
+
             // Validate each bid using the shared validation module
             for (const [resourceName, bid] of Object.entries(input.bids)) {
                 const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
@@ -542,18 +552,7 @@ export const setBuyBids = () => {
                     });
                 }
 
-                // Get agent details to validate against deposits
-                const { agent } = await workerQueries.getAgent(input.agentId);
-                if (!agent) {
-                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
-                }
-
-                const assets = agent.assets[input.planetId];
-                if (!assets) {
-                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
-                }
-
-                const validation = validateBuyBid(bid, resource, assets);
+                const validation = validateBuyBid(bid, resource, bidAssets);
 
                 if (!validation.isValid) {
                     throw new TRPCError({

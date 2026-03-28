@@ -47,14 +47,13 @@ export function advanceTick(gameState: GameState) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'othermonth');
             }
         }
+        preProductionFinancialTick(planetAgents, planet);
 
         //updateAgentProductionScale(planetAgents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 
         marketTick(planetAgents, planet);
-
-        preProductionFinancialTick(planetAgents, planet);
 
         productionTick(planetAgents, planet);
 

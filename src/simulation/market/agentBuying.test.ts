@@ -50,6 +50,7 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
                 exactUsedByEdu: {},
                 totalUsedByEdu: {},
                 lastProduced: {},
+                lastConsumed: { [coalResourceType.name]: 0 },
             },
         },
     ];
@@ -128,6 +129,7 @@ describe('automaticPricing — buy side', () => {
                     exactUsedByEdu: {},
                     totalUsedByEdu: {},
                     lastProduced: {},
+                    lastConsumed: { [arableLandResourceType.name]: 0 },
                 },
             },
         ];

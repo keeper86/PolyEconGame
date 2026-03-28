@@ -419,12 +419,7 @@ function ResourceAccordionItem({
 
         // Validate sell price only (retainment just needs to be ≥ 0)
         if (!isNaN(offerPrice)) {
-            const validation = validateSellOffer(
-                !isNaN(offerPrice) ? offerPrice : undefined,
-                undefined,
-                resource,
-                inventoryQty,
-            );
+            const validation = validateSellOffer(!isNaN(offerPrice) ? offerPrice : undefined, undefined, inventoryQty);
             if (!validation.isValid) {
                 setErrorMsg(`Sell validation failed: ${validation.error}`);
                 return;
@@ -435,8 +430,8 @@ function ResourceAccordionItem({
         if (!isNaN(bidPrice) || !isNaN(bidStorageTarget)) {
             const validation = validateBuyBid(
                 {
-                    bidPrice,
-                    bidStorageTarget,
+                    bidPrice: isNaN(bidPrice) ? undefined : bidPrice,
+                    bidStorageTarget: isNaN(bidStorageTarget) ? undefined : bidStorageTarget,
                 },
                 resource,
                 assets,

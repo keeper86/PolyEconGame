@@ -23,7 +23,6 @@ export interface ValidationResult {
 export function validateSellOffer(
     price: number | undefined,
     quantity: number | undefined,
-    resource: Resource,
     availableStock: number,
 ): ValidationResult {
     // If both are undefined, nothing to validate
@@ -33,6 +32,10 @@ export function validateSellOffer(
 
     // Price validation (only if provided)
     if (price !== undefined) {
+        if (isNaN(price)) {
+            return { isValid: false, error: 'Price must be a valid number' };
+        }
+
         if (price <= 0) {
             return { isValid: false, error: 'Price must be greater than 0' };
         }
@@ -48,6 +51,10 @@ export function validateSellOffer(
 
     // Quantity validation (only if provided)
     if (quantity !== undefined) {
+        if (isNaN(quantity)) {
+            return { isValid: false, error: 'Quantity must be a valid number' };
+        }
+
         if (quantity < 0) {
             return { isValid: false, error: 'Quantity must be non-negative' };
         }
@@ -168,18 +175,14 @@ export function validateAndPrepareSellOffer(
     availableStock: number,
 ): { price: number; quantity: number } | null {
     // Calculate effective quantity based on retainment if set
-    const effectiveQuantity = offer.offerRetainment !== undefined
-        ? Math.max(0, availableStock - offer.offerRetainment)
-        : (offer.offerQuantity ?? 0);
+    const effectiveQuantity =
+        offer.offerRetainment !== undefined
+            ? Math.max(0, availableStock - offer.offerRetainment)
+            : (offer.offerQuantity ?? 0);
 
     // Validate the offer
-    const validation = validateSellOffer(
-        offer.offerPrice,
-        effectiveQuantity,
-        offer.resource,
-        availableStock
-    );
-    
+    const validation = validateSellOffer(offer.offerPrice, effectiveQuantity, availableStock);
+
     if (!validation.isValid) {
         console.warn(`Invalid sell offer for ${offer.resource.name}: ${validation.error}`);
         return null;
@@ -198,7 +201,7 @@ export function validateAndPrepareSellOffer(
 
     return {
         price: clampPrice(offer.offerPrice),
-        quantity: effectiveQuantity
+        quantity: effectiveQuantity,
     };
 }
 
@@ -213,9 +216,10 @@ export function validateAndPrepareBuyBid(
     currentInventory: number,
 ): { price: number; quantity: number; maxCost: number } | null {
     // Calculate effective quantity based on storage target if set
-    const effectiveQuantity = bid.bidStorageTarget !== undefined
-        ? Math.max(0, bid.bidStorageTarget - currentInventory)
-        : (bid.bidQuantity ?? 0);
+    const effectiveQuantity =
+        bid.bidStorageTarget !== undefined
+            ? Math.max(0, bid.bidStorageTarget - currentInventory)
+            : (bid.bidQuantity ?? 0);
 
     // Cap by available storage capacity
     const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, bid.resource);
@@ -223,17 +227,13 @@ export function validateAndPrepareBuyBid(
 
     // Use validatedBidQuantity to ensure non-negative
     const validatedQuantity = validatedBidQuantity(cappedQuantity, bid.resource.form);
-    
+
     // Use default price if not set
     const price = bid.bidPrice !== undefined ? bid.bidPrice : 0;
-    
+
     // Validate the bid
-    const validation = validateBuyBid(
-        { bidPrice: price, bidQuantity: validatedQuantity },
-        bid.resource,
-        assets
-    );
-    
+    const validation = validateBuyBid({ bidPrice: price, bidQuantity: validatedQuantity }, bid.resource, assets);
+
     if (!validation.isValid) {
         console.warn(`Invalid buy bid for ${bid.resource.name}: ${validation.error}`);
         return null;
@@ -251,10 +251,10 @@ export function validateAndPrepareBuyBid(
     }
 
     const maxCost = validatedQuantity * price;
-    
+
     return {
         price: clampPrice(price),
         quantity: validatedQuantity,
-        maxCost
+        maxCost,
     };
 }
