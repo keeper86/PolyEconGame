@@ -24,18 +24,22 @@ export type AgentPlanetAssets = {
             [resourceName: string]: {
                 offerPrice?: number;
                 offerQuantity?: number;
+                offerRetainment?: number;
                 lastSold?: number;
                 lastRevenue?: number;
                 priceDirection?: number;
+                automated?: boolean;
             };
         };
         buy: {
             [resourceName: string]: {
                 bidPrice?: number;
                 bidQuantity?: number;
+                bidStorageTarget?: number;
                 lastBought?: number;
                 lastSpent?: number;
                 storageFullWarning?: boolean;
+                automated?: boolean;
             };
         };
     };
@@ -46,7 +50,6 @@ export type AgentPlanetDetail = {
     agentName: string;
     planetId: string;
     automateWorkerAllocation: boolean;
-    automatePricing: boolean;
     assets: AgentPlanetAssets;
 };
 

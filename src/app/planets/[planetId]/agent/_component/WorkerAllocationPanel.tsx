@@ -124,12 +124,13 @@ export default function WorkerAllocationPanel({
                     {automateWorkerAllocation ? (
                         <p className='text-xs text-muted-foreground'>
                             Automatic worker allocation is enabled. The AI sets these targets each tick. Disable
-                            automation in the Automation Controls panel to take manual control.
+                            automation in the Automation Controls panel above to take manual control.
                         </p>
                     ) : (
                         <p className='text-xs text-muted-foreground'>
                             Set the desired headcount per education level. The simulation will hire or fire workers each
-                            month to reach these targets.
+                            month to reach these targets. Enable automation in the Automation Controls panel above to
+                            let the AI manage this.
                         </p>
                     )}
 

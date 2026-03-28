@@ -22,6 +22,9 @@ const FOOD = agriculturalProductResourceType.name;
  */
 function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
+    // A well-capitalised producer; tests that want a specific deposit level
+    // override this explicitly (e.g. buyer.assets.p.deposits = 5).
+    agent.assets[planetId].deposits = 1_000_000;
     agent.assets[planetId].storageFacility = makeStorageFacility({
         planetId,
         id: `storage-${planetId}`,
@@ -47,6 +50,7 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
                 exactUsedByEdu: {},
                 totalUsedByEdu: {},
                 lastProduced: {},
+                lastConsumed: { [coalResourceType.name]: 0 },
             },
         },
     ];
@@ -125,6 +129,7 @@ describe('automaticPricing — buy side', () => {
                     exactUsedByEdu: {},
                     totalUsedByEdu: {},
                     lastProduced: {},
+                    lastConsumed: { [arableLandResourceType.name]: 0 },
                 },
             },
         ];
@@ -242,10 +247,9 @@ describe('automaticPricing — buy side', () => {
         expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeGreaterThan(firstBidPrice);
     });
 
-    it('skips buy-order creation when agent.automated is false and automatePricing is false', () => {
+    it('skips buy-order creation when agent.automated is false and no bids have automated=true', () => {
         const buyer = makeSteelProducer();
         buyer.automated = false;
-        buyer.automatePricing = false;
 
         automaticPricing(agentMap(buyer), planet);
 
@@ -676,8 +680,11 @@ describe('marketTick — agent buying', () => {
 
         expect(coalReceived).toBeCloseTo(50, 1);
         expect(depositsSpent).toBeCloseTo(coalReceived * 1.0, 5);
-        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(0);
-        expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);
+        // With validation consolidation, bid quantity is capped at storage capacity during collection
+        // so the original bidQuantity remains unchanged in the agent's state
+        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(100);
+        // Storage is not full because we only bid for what we can store (50 units)
+        expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBeUndefined();
     });
 
     it('settlement zeros out bid and sets storageFullWarning when goods arrive but storage is already full', () => {

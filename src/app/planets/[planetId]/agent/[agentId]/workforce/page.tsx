@@ -1,6 +1,7 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
+import AutomationPanel from '@/app/planets/[planetId]/agent/_component/AutomationPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/_component/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/_component/WorkforceDemographyPanel';
@@ -32,6 +33,10 @@ export default function WorkforcePage() {
                         disabilitiesPrevMonth={assets.disabilities?.prevMonth}
                         retirementsThisMonth={assets.retirements?.thisMonth}
                         retirementsPrevMonth={assets.retirements?.prevMonth}
+                    />
+                    <AutomationPanel
+                        agentId={agentId}
+                        automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
                     />
                     <WorkerAllocationPanel
                         agentId={agentId}

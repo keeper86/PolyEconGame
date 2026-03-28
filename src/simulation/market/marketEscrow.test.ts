@@ -237,7 +237,7 @@ describe('market input validation — pieces resources', () => {
         planet.marketPrices[CLOTHING] = 1.0;
     });
 
-    it('fractional offer quantity for pieces resource is floored to integer before entering book', () => {
+    it('fractional offer quantity for pieces resource is placed as-is', () => {
         const agent = makeAgent('seller', 'p');
         agent.assets.p.storageFacility = makeStorageFacility({ planetId: 'p' });
         putIntoStorageFacility(agent.assets.p.storageFacility, vehicleResourceType, 5);
@@ -254,10 +254,10 @@ describe('market input validation — pieces resources', () => {
         const books = collectAgentOffers(agentMap(agent), planet);
         const orders = books.get(VEHICLE) ?? [];
 
-        expect(orders[0].quantity).toBe(3);
+        expect(orders[0].quantity).toBe(3.7);
     });
 
-    it('fractional bid quantity for pieces resource is floored to integer before entering book', () => {
+    it('fractional bid quantity for pieces resource is placed as-is', () => {
         const agent = makeAgent('buyer', 'p');
         agent.assets.p.deposits = 1_000_000;
         agent.assets.p.market = {
@@ -270,10 +270,10 @@ describe('market input validation — pieces resources', () => {
         const books = collectAgentBids(agentMap(agent), planet);
         const orders = books.get(VEHICLE) ?? [];
 
-        expect(orders[0].quantity).toBe(4);
+        expect(orders[0].quantity).toBe(4.9);
     });
 
-    it('bid quantity that rounds down to zero is dropped from the book', () => {
+    it('small fractional bid quantity for pieces resource enters the book as-is', () => {
         const agent = makeAgent('buyer', 'p');
         agent.assets.p.deposits = 1_000_000;
         agent.assets.p.market = {
@@ -284,11 +284,12 @@ describe('market input validation — pieces resources', () => {
         };
 
         const books = collectAgentBids(agentMap(agent), planet);
+        const orders = books.get(VEHICLE) ?? [];
 
-        expect(books.get(VEHICLE)).toBeUndefined();
+        expect(orders[0].quantity).toBe(0.3);
     });
 
-    it('pieces buyer and seller trade only whole units — no fractional fill', () => {
+    it('pieces buyer and seller trade the full bid quantity', () => {
         const planet2 = makePlanetWithPopulation({}).planet;
         planet2.marketPrices[VEHICLE] = 10.0;
 
@@ -298,7 +299,6 @@ describe('market input validation — pieces resources', () => {
         marketTick(agentMap(seller, buyer), planet2);
 
         const bought = buyer.assets.p.storageFacility.currentInStorage[VEHICLE]?.quantity ?? 0;
-        expect(Number.isInteger(bought)).toBe(true);
         expect(bought).toBe(2);
     });
 });

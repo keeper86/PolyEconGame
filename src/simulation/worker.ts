@@ -15,13 +15,14 @@ import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepos
 import { createInitialGameState } from './utils/initialWorld';
 import knexConfig from '../../knexfile.js';
 import { computeLoanConditions } from './financial/loanConditions';
-import { FOOD_PRICE_FLOOR } from './constants';
+import { FOOD_PRICE_FLOOR as PRICE_FLOOR } from './constants';
 import { agriculturalProductResourceType } from './planet/resources';
 import { arableLandResourceType, waterSourceResourceType } from './planet/landBoundResources';
 import { makeAgent } from './utils/testHelper';
 import { collapseUntenantedClaims } from './utils/entities';
 import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from './utils/initialWorld';
 import { facilityByName } from './planet/facilityCatalog';
+import { ALL_RESOURCES } from './planet/resourceCatalog';
 export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 
@@ -147,7 +148,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         const newAgent: Agent = makeAgent(agentId, planetId, agentName);
                         newAgent.automated = false; // explicitly mark user-created agents as non-automated
                         newAgent.automateWorkerAllocation = false; // start with manual control
-                        newAgent.automatePricing = false; // start with manual control
                         state.agents.set(agentId, newAgent);
                         console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
                         safePostMessage({ type: 'agentCreated', requestId, agentId });
@@ -189,17 +189,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     }
                     case 'setAutomation': {
-                        const { requestId, agentId, automateWorkerAllocation, automatePricing } = action;
+                        const { requestId, agentId, automateWorkerAllocation } = action;
                         const agent = state.agents.get(agentId);
                         if (!agent) {
                             safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found' });
                             break;
                         }
                         agent.automateWorkerAllocation = automateWorkerAllocation;
-                        agent.automatePricing = automatePricing;
                         console.log(
                             `[worker] Automation updated for agent '${agentId}': ` +
-                                `workerAllocation=${automateWorkerAllocation}, pricing=${automatePricing}`,
+                                `workerAllocation=${automateWorkerAllocation}`,
                         );
                         safePostMessage({ type: 'automationSet', requestId, agentId });
                         break;
@@ -272,10 +271,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                             }
                             const offer = assets.market.sell[resourceName];
                             if (update.offerPrice !== undefined && update.offerPrice > 0) {
-                                offer.offerPrice = Math.max(FOOD_PRICE_FLOOR, update.offerPrice);
+                                offer.offerPrice = Math.max(PRICE_FLOOR, update.offerPrice);
                             }
                             if (update.offerQuantity !== undefined && update.offerQuantity >= 0) {
                                 offer.offerQuantity = update.offerQuantity;
+                            }
+                            if (update.offerRetainment !== undefined && update.offerRetainment >= 0) {
+                                offer.offerRetainment = update.offerRetainment;
+                            }
+                            if (update.automated !== undefined) {
+                                offer.automated = update.automated;
                             }
                         }
                         console.log(`[worker] Sell offers updated for agent '${agentId}' on '${planetId}'`);
@@ -313,6 +318,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                                     }
                                 }
                                 if (!resource) {
+                                    // Fall back to the global resource catalog for free-trading bids
+                                    resource = ALL_RESOURCES.find((r) => r.name === resourceName) ?? null;
+                                }
+                                if (!resource) {
                                     continue;
                                 }
                                 assets.market.buy[resourceName] = { resource };
@@ -323,6 +332,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                             }
                             if (update.bidQuantity !== undefined && update.bidQuantity >= 0) {
                                 bid.bidQuantity = update.bidQuantity;
+                            }
+                            if (update.bidStorageTarget !== undefined && update.bidStorageTarget >= 0) {
+                                bid.bidStorageTarget = update.bidStorageTarget;
+                            }
+                            if (update.automated !== undefined) {
+                                bid.automated = update.automated;
                             }
                         }
                         console.log(`[worker] Buy bids updated for agent '${agentId}' on '${planetId}'`);
@@ -842,7 +857,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'setAutomation') {
-            const { requestId, agentId, automateWorkerAllocation, automatePricing } = msg;
+            const { requestId, agentId, automateWorkerAllocation } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -852,7 +867,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 requestId,
                 agentId,
                 automateWorkerAllocation,
-                automatePricing,
             });
             return;
         }

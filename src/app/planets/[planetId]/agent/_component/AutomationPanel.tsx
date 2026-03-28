@@ -16,7 +16,6 @@ type Props = {
     agentId: string;
     /** Current server-side state (from the last getAgentPlanetDetail query). */
     automateWorkerAllocation: boolean;
-    automatePricing: boolean;
 };
 
 /* ------------------------------------------------------------------ */
@@ -26,14 +25,12 @@ type Props = {
 export default function AutomationPanel({
     agentId,
     automateWorkerAllocation: initialWorker,
-    automatePricing: initialPricing,
 }: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
     const [expanded, setExpanded] = useState(false);
     const [workerAuto, setWorkerAuto] = useState(initialWorker);
-    const [pricingAuto, setPricingAuto] = useState(initialPricing);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -41,9 +38,6 @@ export default function AutomationPanel({
     useEffect(() => {
         setWorkerAuto(initialWorker);
     }, [initialWorker]);
-    useEffect(() => {
-        setPricingAuto(initialPricing);
-    }, [initialPricing]);
 
     // ------------------------------------------------------------------
     // Mutation
@@ -65,24 +59,14 @@ export default function AutomationPanel({
         }),
     );
 
-    const handleToggle = (field: 'worker' | 'pricing', value: boolean) => {
-        const next = {
-            automateWorkerAllocation: field === 'worker' ? value : workerAuto,
-            automatePricing: field === 'pricing' ? value : pricingAuto,
-        };
-
-        // Optimistically update local state
-        if (field === 'worker') {
-            setWorkerAuto(value);
-        } else {
-            setPricingAuto(value);
-        }
+    const handleToggle = (value: boolean) => {
+        setWorkerAuto(value);
         setSuccessMsg(null);
         setErrorMsg(null);
 
         setAutomationMutation.mutate({
             agentId,
-            ...next,
+            automateWorkerAllocation: value,
         });
     };
 
@@ -131,27 +115,7 @@ export default function AutomationPanel({
                             id='worker-auto-toggle'
                             checked={workerAuto}
                             disabled={setAutomationMutation.isPending}
-                            onCheckedChange={(v) => handleToggle('worker', v)}
-                        />
-                    </div>
-
-                    {/* Pricing toggle */}
-                    <div className='flex items-center justify-between gap-3'>
-                        <div className='space-y-0.5'>
-                            <Label htmlFor='pricing-auto-toggle' className='text-xs font-medium cursor-pointer'>
-                                Automatic sell-price adjustment
-                            </Label>
-                            <p className='text-[11px] text-muted-foreground'>
-                                {pricingAuto
-                                    ? 'The AI adjusts sell prices each tick using tâtonnement (sell-through targeting).'
-                                    : 'You set your own sell prices. The AI will not adjust them.'}
-                            </p>
-                        </div>
-                        <Switch
-                            id='pricing-auto-toggle'
-                            checked={pricingAuto}
-                            disabled={setAutomationMutation.isPending}
-                            onCheckedChange={(v) => handleToggle('pricing', v)}
+                            onCheckedChange={(v) => handleToggle(v)}
                         />
                     </div>
 

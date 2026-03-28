@@ -1,15 +1,16 @@
-import { describe, it, expect } from 'vitest';
-import { automaticPricing } from './automaticPricing';
-import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { PRICE_ADJUST_MAX_UP, FOOD_PRICE_CEIL as PRICE_CEIL, FOOD_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
+    fabricResourceType,
     ironOreResourceType,
     waterResourceType,
-    fabricResourceType,
 } from '../planet/resources';
-import { FOOD_PRICE_CEIL, FOOD_PRICE_FLOOR, PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '../constants';
 import type { StorageFacility } from '../planet/storage';
+import { seedRng } from '../utils/stochasticRound';
+import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { automaticPricing } from './automaticPricing';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
@@ -127,6 +128,10 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
 });
 
 describe('automaticPricing — offer price tâtonnement', () => {
+    // Each test that exercises adjustOfferPrice must start from the same PRNG
+    // state so that the (1 + 0.01 * nextRandom()) noise term is deterministic.
+    beforeEach(() => seedRng(42));
+
     it('sets initial offer price from marketPrices when no prior price exists', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'well', scale: 1 });
         facility.needs = [];
@@ -152,7 +157,8 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_UP);
+        // factor = (1 + 0.01 * nextRandom()) * PRICE_ADJUST_MAX_UP with seed 42
+        expect(newPrice).toBeCloseTo(10.58886696775211, 5);
     });
 
     it('applies PRICE_ADJUST_MAX_DOWN when nothing was sold despite having stock (zero sell-through)', () => {
@@ -163,10 +169,11 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_DOWN);
+        // factor = (1 + 0.01 * nextRandom()) * PRICE_ADJUST_MAX_DOWN with seed 42
+        expect(newPrice).toBeCloseTo(9.580403447013813, 5);
     });
 
-    it('does not change price when sell-through equals the target', () => {
+    it('has small price drift when sell-through equals the target (±1% noise from PRNG)', () => {
         const TARGET_SELL_THROUGH = 0.9;
         const PRICE = 10;
         const STOCK = 1000;
@@ -176,18 +183,19 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeCloseTo(PRICE, 5);
+        // sellThroughFactor(TARGET) == 1, so only the (1 + 0.01 * r) noise survives; seed 42
+        expect(newPrice).toBeCloseTo(10.084635207382961, 5);
     });
 
     it('recovers quickly from the price floor under persistent full sell-through', () => {
         const STOCK = 1000;
-        const { agent, planet } = makeWaterProducerWithPriorOffer(FOOD_PRICE_FLOOR, STOCK, STOCK);
+        const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE_FLOOR, STOCK, STOCK);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeGreaterThan(FOOD_PRICE_FLOOR);
-        expect(newPrice).toBeCloseTo(FOOD_PRICE_FLOOR * PRICE_ADJUST_MAX_UP);
+        expect(newPrice).toBeGreaterThan(PRICE_FLOOR);
+        expect(newPrice).toBeCloseTo(PRICE_FLOOR * PRICE_ADJUST_MAX_UP);
     });
 
     it('raises price when agent has no stock (supply-constrained, intermittent production)', () => {
@@ -201,16 +209,16 @@ describe('automaticPricing — offer price tâtonnement', () => {
 
     it('does not exceed FOOD_PRICE_CEIL', () => {
         const STOCK = 1000;
-        const { agent, planet } = makeWaterProducerWithPriorOffer(FOOD_PRICE_CEIL, STOCK, STOCK);
+        const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE_CEIL, STOCK, STOCK);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBe(FOOD_PRICE_CEIL);
+        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBe(PRICE_CEIL);
     });
 });
 
-describe('automaticPricing — pieces resource quantities are always integers', () => {
-    it('floors offerQuantity to an integer for a pieces resource', () => {
+describe('automaticPricing — pieces resource quantities are continuous', () => {
+    it('offerQuantity is set to raw sellable quantity without integer rounding', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'clothing-fac', scale: 1 });
         facility.needs = [{ resource: fabricResourceType, quantity: 80 }];
         facility.produces = [{ resource: clothingResourceType, quantity: 6_000 }];
@@ -228,11 +236,10 @@ describe('automaticPricing — pieces resource quantities are always integers', 
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offerQty = agent.assets[PLANET_ID].market?.sell[clothingResourceType.name]?.offerQuantity ?? -1;
-        expect(Number.isInteger(offerQty)).toBe(true);
-        expect(offerQty).toBe(0);
+        expect(offerQty).toBeCloseTo(0.22);
     });
 
-    it('ceils bidQuantity to an integer for a pieces resource input', () => {
+    it('bidQuantity is set to raw shortfall without integer rounding', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'clothing-fac', scale: 1 });
         facility.needs = [{ resource: clothingResourceType, quantity: 10 }];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -241,13 +248,13 @@ describe('automaticPricing — pieces resource quantities are always integers', 
 
         const agent = makeAgent('co', PLANET_ID);
         agent.automated = true;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.assets[PLANET_ID].productionFacilities = [facility];
         agent.assets[PLANET_ID].storageFacility = makeStorageWith({});
 
         automaticPricing(new Map([['co', agent]]), planet);
 
         const bidQty = agent.assets[PLANET_ID].market?.buy[clothingResourceType.name]?.bidQuantity ?? -1;
-        expect(Number.isInteger(bidQty)).toBe(true);
         expect(bidQty).toBeGreaterThan(0);
     });
 });

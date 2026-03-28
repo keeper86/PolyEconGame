@@ -2,7 +2,6 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import AgentFinancialPanel from '@/app/planets/[planetId]/agent/_component/AgentFinancialPanel';
-import AutomationPanel from '@/app/planets/[planetId]/agent/_component/AutomationPanel';
 import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
@@ -29,11 +28,6 @@ export default function FinancialPage() {
                         foodMarket={assets.market?.sell[agriculturalProductResourceType.name]}
                     />
                     <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} />
-                    <AutomationPanel
-                        agentId={agentId}
-                        automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
-                        automatePricing={detail?.automatePricing ?? false}
-                    />
                 </div>
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>

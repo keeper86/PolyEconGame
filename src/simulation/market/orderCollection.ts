@@ -1,7 +1,7 @@
-import { FOOD_PRICE_CEIL, FOOD_PRICE_FLOOR, INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { lockIntoEscrow, queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
+import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
     const books = new Map<string, AskOrder[]>();
@@ -13,23 +13,24 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
-            if (!offer.offerQuantity || !offer.offerPrice) {
-                continue;
-            }
-            const resource = offer.resource;
             const free = queryStorageFacility(assets.storageFacility, resourceName);
 
-            const quantity = Math.min(offer.offerQuantity, free);
-            const maybeFloorQty = resource.form === 'pieces' ? Math.floor(quantity) : quantity;
+            // Use the new validation function
+            const validatedOffer = validateAndPrepareSellOffer(offer, free);
 
-            if (maybeFloorQty <= 0) {
+            if (!validatedOffer) {
+                // Update counters for invalid/zero quantity offers
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
+                offer.lastPlacedQty = 0;
                 continue;
             }
 
-            const askPrice = clampPrice(offer.offerPrice);
-            lockIntoEscrow(assets.storageFacility, resourceName, maybeFloorQty);
+            const { price: askPrice, quantity } = validatedOffer;
+
+            offer.lastPlacedQty = quantity;
+            offer.lastOfferPrice = askPrice;
+            lockIntoEscrow(assets.storageFacility, resourceName, quantity);
 
             let book = books.get(resourceName);
             if (!book) {
@@ -38,9 +39,9 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
             }
             book.push({
                 agent,
-                resource,
+                resource: offer.resource,
                 askPrice,
-                quantity: maybeFloorQty,
+                quantity,
                 filled: 0,
                 revenue: 0,
             });
@@ -60,17 +61,21 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         }
 
         // Gather all valid bids and their maximum possible cost.
-        const pendingBids: { resourceName: string; qty: number; price: number }[] = [];
+        const pendingBids: { resourceName: string; qty: number; price: number; maxCost: number }[] = [];
         let totalMaxCost = 0;
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
-            const qty = validatedBidQuantity(bid.bidQuantity ?? 0, bid.resource.form);
-            if (qty <= 0) {
+            const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+
+            // Use the new validation function
+            const validatedBid = validateAndPrepareBuyBid(bid, assets, currentInventory);
+
+            if (!validatedBid) {
                 continue;
             }
-            const price = clampPrice(bid.bidPrice ?? INITIAL_FOOD_PRICE);
-            const maxCost = qty * price;
-            pendingBids.push({ resourceName, qty, price });
+
+            const { price, quantity: qty, maxCost } = validatedBid;
+            pendingBids.push({ resourceName, qty, price, maxCost });
             totalMaxCost += maxCost;
         }
 
@@ -86,10 +91,14 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
 
         for (const { resourceName, qty, price } of pendingBids) {
             const bid = assets.market.buy[resourceName]!;
-            const scaledQty = validatedBidQuantity(qty * scaleFactor, bid.resource.form);
+            const scaledQty = Math.max(0, qty * scaleFactor);
+
             if (scaledQty <= 0) {
                 continue;
             }
+
+            bid.lastEffectiveQty = scaledQty;
+            bid.lastBidPrice = price;
             const cost = scaledQty * price;
             holdAmount += cost;
 
@@ -125,6 +134,7 @@ export function resetAgentBuyCounters(agents: Map<string, Agent>, planet: Planet
         for (const bid of Object.values(market.buy)) {
             bid.lastBought = 0;
             bid.lastSpent = 0;
+            bid.lastEffectiveQty = 0;
         }
     });
 }
@@ -139,15 +149,4 @@ export function resetAgentSellCounters(askBooks: Map<string, AskOrder[]>, planet
             }
         }
     }
-}
-
-function clampPrice(price?: number): number {
-    return Math.max(FOOD_PRICE_FLOOR, Math.min(FOOD_PRICE_CEIL, price ?? INITIAL_FOOD_PRICE));
-}
-
-function validatedBidQuantity(qty: number, form: string): number {
-    if (qty <= 0) {
-        return 0;
-    }
-    return form === 'pieces' ? Math.floor(qty) : qty;
 }

@@ -45,9 +45,9 @@ export type LastTickResults = {
         };
     };
 
-    /** Actual units produced per output resource this tick. For pieces resources this is an integer; for continuous resources this is a float. */
+    /** Actual units produced per output resource this tick. */
     lastProduced: { [resourceName: string]: number };
-    /** Actual units consumed per input resource this tick. For pieces resources this is an integer (floor); for continuous resources this is a float. */
+    /** Actual units consumed per input resource this tick. */
     lastConsumed: { [resourceName: string]: number };
 };
 
@@ -121,6 +121,18 @@ export const queryStorageFacility = (storage: StorageFacility | undefined, resou
     const total = storage.currentInStorage[resourceName]?.quantity ?? 0;
     const escrowed = storage.escrow[resourceName] ?? 0;
     return Math.max(0, total - escrowed);
+};
+
+/**
+ * Returns the maximum additional quantity of `resource` that can be stored
+ * given the facility's remaining volume and mass capacity.
+ */
+export const getAvailableStorageCapacity = (storage: StorageFacility, resource: Resource): number => {
+    const freeVolume = storage.capacity.volume * storage.scale - storage.current.volume;
+    const freeMass = storage.capacity.mass * storage.scale - storage.current.mass;
+    const byVolume = resource.volumePerQuantity > 0 ? freeVolume / resource.volumePerQuantity : Infinity;
+    const byMass = resource.massPerQuantity > 0 ? freeMass / resource.massPerQuantity : Infinity;
+    return Math.max(0, Math.min(byVolume, byMass));
 };
 
 export const removeFromStorageFacility = (

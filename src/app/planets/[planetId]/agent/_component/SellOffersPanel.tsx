@@ -108,7 +108,11 @@ export default function SellOffersPanel({
                 });
             },
             onError: (err) => {
-                setErrorMsg(err instanceof Error ? err.message : 'Failed to update sell offers');
+                let errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
+                if (errorMessage.includes('Insufficient deposits')) {
+                    errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                }
+                setErrorMsg(errorMessage);
                 setSuccessMsg(null);
             },
         }),
@@ -301,7 +305,7 @@ export default function SellOffersPanel({
                         {errorMsg && (
                             <Alert variant='destructive'>
                                 <AlertCircle className='h-4 w-4' />
-                                <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
+                                <AlertDescription className='text-xs' dangerouslySetInnerHTML={{ __html: errorMsg }} />
                             </Alert>
                         )}
                     </CardContent>

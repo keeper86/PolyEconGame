@@ -248,14 +248,28 @@ export type AgentMarketOfferState = {
     /**
      * Quantity offered for sale this tick (units).
      * Drawn from the agent's storage facility.
+     * When `offerRetainment` is set this field is ignored in favour of the
+     * dynamic computation `max(0, inventory − offerRetainment)`.
      */
     offerQuantity?: number;
+    /**
+     * Keep at least this many units in storage — sell quantity per tick is
+     * computed dynamically as `max(0, freeInventory − offerRetainment)`.
+     * Takes precedence over `offerQuantity` when set.  Human-settable.
+     */
+    offerRetainment?: number;
     /** Units actually sold during the last market clearing tick. */
     lastSold?: number;
     /** Revenue earned during the last market clearing tick (currency units). */
     lastRevenue?: number;
+    /** Quantity actually placed into the order book last tick (capped by free stock). */
+    lastPlacedQty?: number;
+    /** Offer price that was actually submitted to the order book last tick. */
+    lastOfferPrice?: number;
     /** Tâtonnement price-direction hint (−1 / 0 / +1). */
     priceDirection?: number;
+    /** When true, the automatic pricing engine manages this offer each tick. */
+    automated?: boolean;
 };
 
 /**
@@ -273,17 +287,31 @@ export type AgentMarketBidState = {
     bidPrice?: number;
     /**
      * Quantity demanded this tick (units).
+     * When `bidStorageTarget` is set this field is ignored in favour of the
+     * dynamic computation `max(0, bidStorageTarget − inventory)`.
      */
     bidQuantity?: number;
+    /**
+     * Fill storage up to this level — bid quantity per tick is computed
+     * dynamically as `max(0, bidStorageTarget − inventory)`.
+     * Takes precedence over `bidQuantity` when set.  Human-settable.
+     */
+    bidStorageTarget?: number;
     /** Units actually purchased during the last market clearing tick. */
     lastBought?: number;
     /** Total expenditure during the last market clearing tick (currency units). */
     lastSpent?: number;
+    /** Quantity actually placed into the order book last tick (scaled by available deposits). */
+    lastEffectiveQty?: number;
+    /** Bid price that was actually submitted to the order book last tick. */
+    lastBidPrice?: number;
     /**
      * Set to true when the bid was suppressed because storage had no room for
      * the resource. Cleared each tick when there is capacity available.
      */
     storageFullWarning?: boolean;
+    /** When true, the automatic pricing engine manages this bid each tick. */
+    automated?: boolean;
 };
 
 /**
@@ -385,8 +413,6 @@ export type Agent = {
     automated: boolean; // whether this agent is controlled by the AI (true) or a human player (false)
     /** When false (human player), the worker still auto-allocates workforce targets each tick. */
     automateWorkerAllocation: boolean;
-    /** When false (human player), the worker still auto-adjusts sell-offer prices each tick. */
-    automatePricing: boolean;
     name: string;
     associatedPlanetId: string;
     transportShips: TransportShip[];

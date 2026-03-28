@@ -1,14 +1,16 @@
 import {
-    FOOD_PRICE_CEIL,
-    FOOD_PRICE_FLOOR,
+    FOOD_PRICE_CEIL as PRICE_CEIL,
+    FOOD_PRICE_FLOOR as PRICE_FLOOR,
     INITIAL_FOOD_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
+    EPSILON,
 } from '../constants';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
-import { queryStorageFacility } from '../planet/storage';
+import { getAvailableStorageCapacity, queryStorageFacility } from '../planet/storage';
+import { nextRandom } from '../utils/stochasticRound';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -17,12 +19,20 @@ export function automaticPricing(agents: Map<string, Agent>, planet: Planet): vo
 }
 
 function automaticPricingForAgent(agent: Agent, planet: Planet): void {
-    if (!agent.automated && !agent.automatePricing) {
-        return;
-    }
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
+    }
+
+    // For human-controlled agents, skip entirely if no resources are flagged for
+    // per-resource automation (avoids unnecessary market state initialization).
+    if (!agent.automated) {
+        const hasAnyAuto =
+            Object.values(assets.market?.sell ?? {}).some((e) => e.automated) ||
+            Object.values(assets.market?.buy ?? {}).some((e) => e.automated);
+        if (!hasAnyAuto) {
+            return;
+        }
     }
 
     if (!assets.market) {
@@ -88,13 +98,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
+            // For human-controlled agents only auto-adjust entries explicitly flagged
+            if (!agent.automated && assets.market.sell[resource.name]?.automated !== true) {
+                continue;
+            }
+
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
             const rawSellableQty = Math.max(0, inventoryQty - reserved);
-            const sellableQty = resource.form === 'pieces' ? Math.floor(rawSellableQty) : rawSellableQty;
+            const sellableQty = rawSellableQty;
 
             if (!assets.market.sell[resource.name]) {
-                assets.market.sell[resource.name] = { resource };
+                assets.market.sell[resource.name] = { resource, automated: true };
             }
 
             const offer = assets.market.sell[resource.name];
@@ -138,16 +153,74 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     for (const [resourceName, { resource, shortfall }] of aggregatedShortfall) {
+        // For human-controlled agents only auto-adjust entries explicitly flagged
+        if (!agent.automated && assets.market.buy[resourceName]?.automated !== true) {
+            continue;
+        }
+
         if (!assets.market.buy[resourceName]) {
-            assets.market.buy[resourceName] = { resource };
+            assets.market.buy[resourceName] = { resource, automated: true };
         }
         const bid = assets.market.buy[resourceName];
         bid.resource = resource;
 
         const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
         const ceiling = inputValueCeiling.get(resourceName);
-        const roundedShortfall = resource.form === 'pieces' ? Math.ceil(shortfall) : shortfall;
-        adjustBidPrice(bid, roundedShortfall, marketPrice, ceiling);
+        adjustBidPrice(bid, shortfall, marketPrice, ceiling);
+
+        // --- Validity guards (ensure collectAgentBids never rejects this bid) ---
+
+        // 1. Price must be a finite positive number >= PRICE_FLOOR.
+        //    adjustBidPrice should guarantee this, but NaN/Infinity can leak in
+        //    from degenerate ceiling calculations, so we clamp defensively.
+        if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
+            bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);
+        }
+
+        // 2. Cap quantity by available storage capacity so the final clamped
+        //    value never falls into the 0 < qty < EPSILON range that the
+        //    validator rejects as "Quantity is too small".
+        if (bid.bidQuantity && bid.bidQuantity > 0) {
+            const availableStorage = getAvailableStorageCapacity(assets.storageFacility, resource);
+            if (bid.bidQuantity > availableStorage) {
+                bid.bidQuantity = availableStorage;
+            }
+        }
+
+        // 3. Snap any tiny-but-nonzero quantity to zero.
+        if (bid.bidQuantity !== undefined && bid.bidQuantity > 0 && bid.bidQuantity < EPSILON) {
+            bid.bidQuantity = 0;
+        }
+    }
+
+    // --- Aggregate deposit cap ---
+    // validateBuyBid rejects any single bid whose cost (qty × price) exceeds
+    // total deposits.  When multiple bids compete for the same pool the
+    // per-bid checks above can each pass individually while the aggregate
+    // still exceeds deposits.  Mirror collectAgentBids' proportional
+    // scale-down here so every bid is guaranteed to pass the validator.
+    let totalBidCost = 0;
+    for (const [resourceName] of aggregatedShortfall) {
+        const bid = assets.market.buy[resourceName];
+        if (!bid?.bidQuantity || bid.bidQuantity <= 0 || !bid.bidPrice) {
+            continue;
+        }
+        totalBidCost += bid.bidQuantity * bid.bidPrice;
+    }
+    if (totalBidCost > assets.deposits) {
+        // Use a tiny relative safety margin so that (qty * price) after scaling
+        // never rounds up past deposits due to floating-point imprecision.
+        const scaleFactor = (assets.deposits * (1 - 1e-9)) / totalBidCost;
+        for (const [resourceName] of aggregatedShortfall) {
+            const bid = assets.market.buy[resourceName];
+            if (!bid?.bidQuantity || bid.bidQuantity <= 0) {
+                continue;
+            }
+            bid.bidQuantity *= scaleFactor;
+            if (bid.bidQuantity < EPSILON) {
+                bid.bidQuantity = 0;
+            }
+        }
     }
 }
 
@@ -182,29 +255,34 @@ function sellThroughFactor(sellThrough: number): number {
 }
 
 function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number, initialPrice: number): void {
-    offer.offerQuantity = newOfferQuantity;
+    // Ensure quantity is either 0 or >= EPSILON
+    if (newOfferQuantity > 0 && newOfferQuantity < EPSILON) {
+        offer.offerQuantity = 0;
+    } else {
+        offer.offerQuantity = newOfferQuantity;
+    }
 
     const sold = offer.lastSold;
     const price = offer.offerPrice;
 
     if (sold === undefined || price === undefined) {
-        offer.offerPrice = initialPrice;
+        offer.offerPrice = Math.max(PRICE_FLOOR, initialPrice);
         return;
     }
 
     // When the agent has no stock this tick (supply-constrained), treat it as
     // full sell-through: the good is scarce and the price should rise.
-    if (newOfferQuantity === 0) {
+    if (offer.offerQuantity === 0) {
         const factor = sellThroughFactor(1);
-        offer.offerPrice = Math.min(FOOD_PRICE_CEIL, Math.max(FOOD_PRICE_FLOOR, price * factor));
+        offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, price * factor));
         return;
     }
 
-    const sellThrough = sold / newOfferQuantity;
-    const factor = sellThroughFactor(sellThrough);
+    const sellThrough = sold / offer.offerQuantity;
+    const factor = (1 + 0.01 * nextRandom()) * sellThroughFactor(sellThrough);
 
-    const priceCeil = FOOD_PRICE_CEIL;
-    const priceFloor = FOOD_PRICE_FLOOR;
+    const priceCeil = PRICE_CEIL;
+    const priceFloor = PRICE_FLOOR;
     offer.offerPrice = Math.min(priceCeil, Math.max(priceFloor, price * factor));
 }
 
@@ -236,25 +314,37 @@ function adjustBidPrice(
     breakEvenCeiling?: number,
 ): void {
     const previousDemand = bid.bidQuantity;
-    bid.bidQuantity = shortfall;
 
+    // Ensure quantity is either 0 or >= EPSILON
     if (shortfall <= 0) {
-        bid.bidPrice = 0;
+        bid.bidQuantity = 0;
+        // Don't set price to 0 - keep existing price or use market price
+        if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
+            // Use market price or break-even ceiling, but ensure at least PRICE_FLOOR
+            const newPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
+            bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
+        }
         return;
     }
 
+    // Ensure quantity is at least EPSILON
+    const effectiveShortfall = Math.max(shortfall, EPSILON);
+    bid.bidQuantity = effectiveShortfall;
+
+    // If bid price is undefined, 0, or negative, initialize it
     if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
         bid.bidPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
+        // Ensure price is at least PRICE_FLOOR
+        bid.bidPrice = Math.max(PRICE_FLOOR, bid.bidPrice);
         return;
     }
 
     const lastBought = bid.lastBought ?? 0;
-    const lastDemanded = previousDemand ?? shortfall;
+    const lastDemanded = previousDemand ?? effectiveShortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
     const factor = fillRateFactor(fillRate);
 
-    const priceFloor = FOOD_PRICE_FLOOR;
-    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : FOOD_PRICE_CEIL;
-    bid.bidPrice = Math.max(priceFloor, Math.min(priceCeil, bid.bidPrice * factor));
+    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : PRICE_CEIL;
+    bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(priceCeil, bid.bidPrice * factor));
 }

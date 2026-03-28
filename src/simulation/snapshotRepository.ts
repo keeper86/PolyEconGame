@@ -144,23 +144,23 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
     const unusedWorkerFraction = 0;
 
     for (const assets of Object.values(a.assets ?? {})) {
-        const facs = assets.productionFacilities ?? [];
+        const facs = assets?.productionFacilities ?? [];
         facilityCount += facs.length;
         for (const f of facs) {
-            if (f.lastTickResults) {
+            if (f?.lastTickResults) {
                 efficiencySum += f.lastTickResults.overallEfficiency;
                 efficiencyN += 1;
             }
         }
 
-        const stor = assets.storageFacility;
+        const stor = assets?.storageFacility;
         if (stor?.currentInStorage) {
             for (const [rName, entry] of Object.entries(stor.currentInStorage)) {
                 storageTotals[rName] = (storageTotals[rName] || 0) + (entry?.quantity || 0);
             }
         }
 
-        if (assets.allocatedWorkers) {
+        if (assets?.allocatedWorkers) {
             for (const v of Object.values(assets.allocatedWorkers)) {
                 totalWorkers += (v as number) ?? 0;
             }
@@ -171,21 +171,24 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
         .filter(([, qty]) => qty > 0)
         .sort(([, x], [, y]) => y - x)
         .slice(0, 3)
-        .map(([name, quantity]) => ({ name, quantity }));
+        .map(([name, quantity]) => ({
+            name: name || '',
+            quantity: quantity || 0,
+        }));
 
     return {
-        agentId,
-        name: a.name ?? agentId,
-        associatedPlanetId: a.associatedPlanetId ?? '',
-        balance: a.assets
-            ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+        agentId: agentId || '',
+        name: a?.name ?? agentId ?? '',
+        associatedPlanetId: a?.associatedPlanetId ?? '',
+        balance: a?.assets
+            ? Object.values(a.assets).reduce((sum, pa) => sum + (pa?.deposits ?? 0) - (pa?.loans ?? 0), 0)
             : 0,
         facilityCount,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,
         unusedWorkerFraction,
         topResources,
-        shipCount: a.transportShips?.length ?? 0,
+        shipCount: a?.transportShips?.length ?? 0,
     };
 };
 

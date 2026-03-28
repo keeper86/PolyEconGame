@@ -24,9 +24,12 @@ export function CompanyNavEntry() {
     const agentId = userQuery.data?.agentId;
 
     const agentQuery = useQuery(
-        trpc.simulation.getAgentListSummaries.queryOptions(undefined, {
-            enabled: status === 'authenticated' && !!agentId,
-        }),
+        trpc.simulation.getAgentDetail.queryOptions(
+            { agentId: agentId ?? '' },
+            {
+                enabled: status === 'authenticated' && !!agentId,
+            },
+        ),
     );
 
     if (status !== 'authenticated') {
@@ -41,7 +44,7 @@ export function CompanyNavEntry() {
         );
     }
 
-    const agent = agentQuery.data?.agents.find((a) => a.agentId === agentId);
+    const agent = agentQuery.data?.agent;
     const companyName = agent?.name ?? 'My Company';
 
     const handleClick = () => {

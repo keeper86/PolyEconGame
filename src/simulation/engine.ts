@@ -47,12 +47,7 @@ export function advanceTick(gameState: GameState) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'othermonth');
             }
         }
-
         preProductionFinancialTick(planetAgents, planet);
-
-        productionTick(planetAgents, planet);
-
-        automaticPricing(planetAgents, planet);
 
         //updateAgentProductionScale(planetAgents, planet);
 
@@ -60,7 +55,11 @@ export function advanceTick(gameState: GameState) {
 
         marketTick(planetAgents, planet);
 
+        productionTick(planetAgents, planet);
+
         automaticLoanRepayment(planetAgents, planet);
+
+        automaticPricing(planetAgents, planet);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(planetAgents, planet);

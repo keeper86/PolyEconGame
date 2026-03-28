@@ -133,7 +133,6 @@ export function makeAgent(opts: {
         transportShips: [],
         automated: true,
         automateWorkerAllocation: true,
-        automatePricing: true,
         assets: { [opts.planetId]: assets },
     };
 }

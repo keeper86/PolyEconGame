@@ -11,7 +11,6 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           automateWorkerAllocation: boolean;
-          automatePricing: boolean;
       }
     | {
           type: 'setWorkerAllocationTargets';
@@ -25,7 +24,10 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<string, { offerPrice?: number; offerQuantity?: number }>;
+          offers: Record<
+              string,
+              { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
+          >;
       }
     | {
           type: 'claimResources';
@@ -47,7 +49,10 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<string, { bidPrice?: number; bidQuantity?: number }>;
+          bids: Record<
+              string,
+              { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
+          >;
       }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
@@ -104,7 +109,6 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           automateWorkerAllocation: boolean;
-          automatePricing: boolean;
       }
     | {
           type: 'setWorkerAllocationTargets';
@@ -118,7 +122,10 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<string, { offerPrice?: number; offerQuantity?: number }>;
+          offers: Record<
+              string,
+              { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
+          >;
       }
     | {
           type: 'claimResources';
@@ -140,5 +147,8 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<string, { bidPrice?: number; bidQuantity?: number }>;
+          bids: Record<
+              string,
+              { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
+          >;
       };

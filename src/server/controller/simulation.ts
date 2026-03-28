@@ -172,6 +172,7 @@ export const getAgentDetail = () =>
                 agent: z
                     .object({
                         agentId: z.string(),
+                        name: z.string(),
                         balance: z.number(),
                         storage: z.record(z.string(), z.number()),
                         production: z.record(z.string(), z.number()),
@@ -193,6 +194,7 @@ export const getAgentDetail = () =>
                 tick,
                 agent: {
                     agentId: agent.id,
+                    name: agent.name,
                     balance: agent.assets
                         ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
                         : 0,
@@ -333,7 +335,6 @@ export const getAgentPlanetDetail = () =>
                     agentName: agent.name,
                     planetId: input.planetId,
                     automateWorkerAllocation: agent.automateWorkerAllocation ?? false,
-                    automatePricing: agent.automatePricing ?? false,
                     assets,
                 },
             };

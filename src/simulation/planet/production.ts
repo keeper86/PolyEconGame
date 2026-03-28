@@ -5,7 +5,7 @@ import { SKILL } from '../population/population';
 import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { stochasticRound } from '../utils/stochasticRound';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
-import type { Agent, Planet, Resource } from './planet';
+import type { Agent, Planet } from './planet';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './storage';
 import { waterFill } from './waterFill';
 import type { WorkerSlot } from './waterFill';
@@ -30,23 +30,6 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
 }
 
 const CONSUMPTION_MISMATCH_TOLERANCE = 1e-9;
-
-function quantityProduced(resource: Resource, raw: number): number {
-    return resource.form === 'pieces' ? stochasticRound(raw) : raw;
-}
-
-function quantityConsumed(resource: Resource, raw: number): number {
-    return resource.form === 'pieces' ? Math.floor(raw) : raw;
-}
-
-function pieceAwareEfficiency(resource: Resource, fairShare: number, required: number): number {
-    if (resource.form !== 'pieces') {
-        return required > 0 ? Math.min(1, fairShare / required) : 1;
-    }
-    const availablePieces = Math.floor(fairShare);
-    const requiredPieces = Math.floor(required);
-    return requiredPieces > 0 ? Math.min(1, availablePieces / requiredPieces) : 1;
-}
 
 export function productionTick(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -106,7 +89,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 const available = queryStorageFacility(assets.storageFacility, need.resource.name);
                 const totalDemand = totalStorageDemand.get(need.resource.name) ?? required;
                 const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
-                const eff = pieceAwareEfficiency(need.resource, fairShare, required);
+                const eff = required > 0 ? Math.min(1, fairShare / required) : 1;
                 resourceEfficiencyMap[need.resource.name] = eff;
                 return eff;
             });
@@ -180,10 +163,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                     facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
 
                 facility.produces.forEach((output) => {
-                    const produced = quantityProduced(
-                        output.resource,
-                        output.quantity * facility.scale * overallEfficiency,
-                    );
+                    const produced = output.quantity * facility.scale * overallEfficiency;
                     if (produced > 0) {
                         actualProduced[output.resource.name] = produced;
                         putIntoStorageFacility(assets.storageFacility, output.resource, produced);
@@ -193,10 +173,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 });
 
                 facility.needs.forEach((need) => {
-                    const consumed = quantityConsumed(
-                        need.resource,
-                        need.quantity * facility.scale * overallEfficiency,
-                    );
+                    const consumed = need.quantity * facility.scale * overallEfficiency;
                     if (need.resource.form === 'landBoundResource') {
                         const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
                         actualConsumed[need.resource.name] = extracted;

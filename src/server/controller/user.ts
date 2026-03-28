@@ -8,6 +8,11 @@ import {
     workerClaimResources,
     workerBuildFacility,
 } from '@/simulation/workerClient/commands';
+import { workerQueries } from '@/simulation/workerClient/queries';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
+import { queryStorageFacility } from '@/simulation/planet/storage';
+
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
 import z from 'zod';
@@ -332,7 +337,6 @@ export const setAutomation = () => {
             z.object({
                 agentId: z.string().min(1),
                 automateWorkerAllocation: z.boolean(),
-                automatePricing: z.boolean(),
             }),
         )
         .output(z.void())
@@ -351,13 +355,12 @@ export const setAutomation = () => {
             logger.info(
                 { component: 'set-automation' },
                 `User ${userId} setting automation for agent ${input.agentId}: ` +
-                    `workerAllocation=${input.automateWorkerAllocation}, pricing=${input.automatePricing}`,
+                    `workerAllocation=${input.automateWorkerAllocation}`,
             );
 
             await workerSetAutomation({
                 agentId: input.agentId,
                 automateWorkerAllocation: input.automateWorkerAllocation,
-                automatePricing: input.automatePricing,
             });
         });
 };
@@ -428,6 +431,10 @@ export const setSellOffers = () => {
                         offerPrice: z.number().positive().optional(),
                         /** Units to offer for sale this tick. 0 = withdraw offer. */
                         offerQuantity: z.number().min(0).optional(),
+                        /** Keep at least this many units — sell qty = max(0, inventory − retainment). */
+                        offerRetainment: z.number().min(0).optional(),
+                        /** When true, the auto-pricing engine manages this offer each tick. */
+                        automated: z.boolean().optional(),
                     }),
                 ),
             }),
@@ -442,6 +449,44 @@ export const setSellOffers = () => {
             }
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            // Fetch agent once before the loop to avoid N× worker round-trips
+            const { agent: sellAgent } = await workerQueries.getAgent(input.agentId);
+            if (!sellAgent) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+            }
+            const sellAssets = sellAgent.assets[input.planetId];
+            if (!sellAssets) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
+            }
+
+            // Validate each offer using the shared validation module
+            for (const [resourceName, offer] of Object.entries(input.offers)) {
+                const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+                if (!resource) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Unknown resource: ${resourceName}`,
+                    });
+                }
+
+                // Use queryStorageFacility to get non-escrowed stock
+                const inventoryQty = queryStorageFacility(sellAssets.storageFacility, resourceName);
+
+                // Validate price only when using retainment (qty is computed dynamically)
+                const validation = validateSellOffer(
+                    offer.offerPrice,
+                    offer.offerRetainment !== undefined ? undefined : offer.offerQuantity,
+                    inventoryQty,
+                );
+
+                if (!validation.isValid) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Invalid sell offer for ${resourceName}: ${validation.error}`,
+                    });
+                }
             }
 
             logger.info(
@@ -457,19 +502,22 @@ export const setSellOffers = () => {
         });
 };
 
+const buyBid = z.object({
+    bidPrice: z.number().positive().optional(),
+    bidQuantity: z.number().min(0).optional(),
+    bidStorageTarget: z.number().min(0).optional(),
+    automated: z.boolean().optional(),
+});
+
+export type BuyBid = z.infer<typeof buyBid>;
+
 export const setBuyBids = () => {
     return protectedProcedure
         .input(
             z.object({
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
-                bids: z.record(
-                    z.string(),
-                    z.object({
-                        bidPrice: z.number().positive().optional(),
-                        bidQuantity: z.number().min(0).optional(),
-                    }),
-                ),
+                bids: z.record(z.string(), buyBid),
             }),
         )
         .output(z.void())
@@ -482,6 +530,36 @@ export const setBuyBids = () => {
             }
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            // Fetch agent once before the loop to avoid N× worker round-trips
+            const { agent: bidAgent } = await workerQueries.getAgent(input.agentId);
+            if (!bidAgent) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+            }
+            const bidAssets = bidAgent.assets[input.planetId];
+            if (!bidAssets) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
+            }
+
+            // Validate each bid using the shared validation module
+            for (const [resourceName, bid] of Object.entries(input.bids)) {
+                const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+                if (!resource) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Unknown resource: ${resourceName}`,
+                    });
+                }
+
+                const validation = validateBuyBid(bid, resource, bidAssets);
+
+                if (!validation.isValid) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Invalid buy bid for ${resourceName}: ${validation.error}`,
+                    });
+                }
             }
 
             logger.info(
