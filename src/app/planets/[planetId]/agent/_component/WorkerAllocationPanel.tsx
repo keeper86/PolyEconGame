@@ -129,7 +129,8 @@ export default function WorkerAllocationPanel({
                     ) : (
                         <p className='text-xs text-muted-foreground'>
                             Set the desired headcount per education level. The simulation will hire or fire workers each
-                            month to reach these targets. Enable automation in the Automation Controls panel above to let the AI manage this.
+                            month to reach these targets. Enable automation in the Automation Controls panel above to
+                            let the AI manage this.
                         </p>
                     )}
 

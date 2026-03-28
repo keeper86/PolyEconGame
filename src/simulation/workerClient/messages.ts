@@ -24,7 +24,10 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<string, { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }>;
+          offers: Record<
+              string,
+              { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
+          >;
       }
     | {
           type: 'claimResources';
@@ -119,7 +122,10 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<string, { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }>;
+          offers: Record<
+              string,
+              { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
+          >;
       }
     | {
           type: 'claimResources';

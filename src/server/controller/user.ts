@@ -11,6 +11,7 @@ import {
 import { workerQueries } from '@/simulation/workerClient/queries';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
+
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
 import z from 'zod';
@@ -501,23 +502,22 @@ export const setSellOffers = () => {
         });
 };
 
+const buyBid = z.object({
+    bidPrice: z.number().positive().optional(),
+    bidQuantity: z.number().min(0).optional(),
+    bidStorageTarget: z.number().min(0).optional(),
+    automated: z.boolean().optional(),
+});
+
+export type BuyBid = z.infer<typeof buyBid>;
+
 export const setBuyBids = () => {
     return protectedProcedure
         .input(
             z.object({
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
-                bids: z.record(
-                    z.string(),
-                    z.object({
-                        bidPrice: z.number().positive().optional(),
-                        bidQuantity: z.number().min(0).optional(),
-                        /** Fill storage up to this level — bid qty = max(0, target − inventory). */
-                        bidStorageTarget: z.number().min(0).optional(),
-                        /** When true, the auto-pricing engine manages this bid each tick. */
-                        automated: z.boolean().optional(),
-                    }),
-                ),
+                bids: z.record(z.string(), buyBid),
             }),
         )
         .output(z.void())
@@ -553,16 +553,7 @@ export const setBuyBids = () => {
                     throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
                 }
 
-                const deposits = assets.deposits;
-
-                // For storage-target bids the actual qty is computed dynamically;
-                // skip deposit check since we can't know the effective qty yet.
-                const validation = validateBuyBid(
-                    bid.bidPrice,
-                    bid.bidStorageTarget !== undefined ? undefined : bid.bidQuantity,
-                    resource,
-                    deposits,
-                );
+                const validation = validateBuyBid(bid, resource, assets);
 
                 if (!validation.isValid) {
                     throw new TRPCError({

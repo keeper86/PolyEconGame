@@ -171,9 +171,9 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
         .filter(([, qty]) => qty > 0)
         .sort(([, x], [, y]) => y - x)
         .slice(0, 3)
-        .map(([name, quantity]) => ({ 
-            name: name || '', 
-            quantity: quantity || 0 
+        .map(([name, quantity]) => ({
+            name: name || '',
+            quantity: quantity || 0,
         }));
 
     return {

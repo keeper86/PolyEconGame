@@ -1,6 +1,6 @@
 import { INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
-import { lockIntoEscrow, queryStorageFacility } from '../planet/storage';
+import { getAvailableStorageCapacity, lockIntoEscrow, queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { clampPrice, validatedBidQuantity } from './validation';
 
@@ -73,10 +73,14 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
             // Storage-target-based: buy enough to reach the target level.
             // Falls back to the legacy fixed bidQuantity when target is not set.
-            const rawQty =
+            // Cap by available storage capacity so we never bid for more than we can store.
+            const storageCapacity = getAvailableStorageCapacity(assets.storageFacility, bid.resource);
+            const rawQty = Math.min(
+                storageCapacity,
                 bid.bidStorageTarget !== undefined
                     ? Math.max(0, bid.bidStorageTarget - queryStorageFacility(assets.storageFacility, resourceName))
-                    : (bid.bidQuantity ?? 0);
+                    : (bid.bidQuantity ?? 0),
+            );
             const qty = validatedBidQuantity(rawQty, bid.resource.form);
             if (qty <= 0) {
                 continue;

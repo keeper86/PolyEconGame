@@ -305,10 +305,7 @@ export default function SellOffersPanel({
                         {errorMsg && (
                             <Alert variant='destructive'>
                                 <AlertCircle className='h-4 w-4' />
-                                <AlertDescription 
-                                    className='text-xs'
-                                    dangerouslySetInnerHTML={{ __html: errorMsg }}
-                                />
+                                <AlertDescription className='text-xs' dangerouslySetInnerHTML={{ __html: errorMsg }} />
                             </Alert>
                         )}
                     </CardContent>

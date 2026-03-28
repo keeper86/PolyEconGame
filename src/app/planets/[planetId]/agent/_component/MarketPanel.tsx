@@ -18,6 +18,7 @@ import { useTRPC } from '@/lib/trpc';
 import { productImage } from '@/lib/mapResource';
 import { formatNumbers } from '@/lib/utils';
 import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
+
 import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
@@ -306,31 +307,24 @@ function ResourceTrigger({
 function ResourceAccordionItem({
     resourceName,
     agentId,
-    bid,
-    offer,
-    inventoryQty,
-    consumedPerTick,
-    producedPerTick,
-    deposits,
+    assets,
     local,
     onLocalChange,
     isOpen,
 }: {
     resourceName: string;
     agentId: string;
-    bid?: MarketBidEntry;
-    offer?: MarketOfferEntry;
-    /** Current quantity in storage for this resource */
-    inventoryQty: number;
-    /** Agent's planned consumption per tick (sum across facilities) */
-    consumedPerTick: number;
-    /** Agent's planned production per tick (sum across facilities) */
-    producedPerTick: number;
-    deposits: number;
+    assets: AgentPlanetAssets;
     local: LocalResourceState;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
     isOpen: boolean;
 }): React.ReactElement {
+    const bid = assets.market?.buy[resourceName];
+    const offer = assets.market?.sell[resourceName];
+    const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+    const consumedPerTick = consumptionPerTick(assets.productionFacilities, resourceName);
+    const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
+    const deposits = assets.deposits;
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     // useParams returns route params; cast to access the dynamic segment
@@ -338,6 +332,8 @@ function ResourceAccordionItem({
 
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    const resource = getResourceByName(resourceName);
 
     // ── Market KPI query — only polls while this item is open ──────────
     const { data: marketData } = useQuery({
@@ -411,7 +407,6 @@ function ResourceAccordionItem({
         setSuccessMsg(null);
         setErrorMsg(null);
 
-        const resource = getResourceByName(resourceName);
         if (!resource) {
             setErrorMsg(`Unknown resource: ${resourceName}`);
             return;
@@ -436,9 +431,16 @@ function ResourceAccordionItem({
             }
         }
 
-        // Validate bid price only (storage target just needs to be ≥ 0; deposit check skipped since qty is dynamic)
-        if (!isNaN(bidPrice)) {
-            const validation = validateBuyBid(!isNaN(bidPrice) ? bidPrice : undefined, undefined, resource, deposits);
+        // Validate bid price and effective quantity against deposits and storage capacity.
+        if (!isNaN(bidPrice) || !isNaN(bidStorageTarget)) {
+            const validation = validateBuyBid(
+                {
+                    bidPrice,
+                    bidStorageTarget,
+                },
+                resource,
+                assets,
+            );
             if (!validation.isValid) {
                 let errorText = validation.error;
                 if (errorText && errorText.includes('Insufficient deposits')) {
@@ -872,7 +874,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     const [showAll, setShowAll] = useState(false);
     const [openItem, setOpenItem] = useState<string>('');
 
-    const { productionFacilities, storageFacility, deposits, market } = assets;
+    const { productionFacilities, storageFacility, market } = assets;
 
     const buyBids = market?.buy ?? {};
     const sellOffers = market?.sell ?? {};
@@ -949,12 +951,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                 key={name}
                                 resourceName={name}
                                 agentId={agentId}
-                                bid={buyBids[name]}
-                                offer={sellOffers[name]}
-                                inventoryQty={storageFacility.currentInStorage[name]?.quantity ?? 0}
-                                consumedPerTick={consumptionPerTick(productionFacilities, name)}
-                                producedPerTick={productionPerTick(productionFacilities, name)}
-                                deposits={deposits}
+                                assets={assets}
                                 local={localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]}
                                 onLocalChange={handleLocalChange}
                                 isOpen={openItem === name}

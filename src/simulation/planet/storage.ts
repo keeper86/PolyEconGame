@@ -123,6 +123,18 @@ export const queryStorageFacility = (storage: StorageFacility | undefined, resou
     return Math.max(0, total - escrowed);
 };
 
+/**
+ * Returns the maximum additional quantity of `resource` that can be stored
+ * given the facility's remaining volume and mass capacity.
+ */
+export const getAvailableStorageCapacity = (storage: StorageFacility, resource: Resource): number => {
+    const freeVolume = storage.capacity.volume * storage.scale - storage.current.volume;
+    const freeMass = storage.capacity.mass * storage.scale - storage.current.mass;
+    const byVolume = resource.volumePerQuantity > 0 ? freeVolume / resource.volumePerQuantity : Infinity;
+    const byMass = resource.massPerQuantity > 0 ? freeMass / resource.massPerQuantity : Infinity;
+    return Math.max(0, Math.min(byVolume, byMass));
+};
+
 export const removeFromStorageFacility = (
     storage: StorageFacility | undefined,
     resourceName: string,
