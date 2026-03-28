@@ -49,9 +49,8 @@ function shuffledIndices(n: number): number[] {
  * - Order-independent within a price tier.
  * - Monotone: a new large order never reduces what small participants receive.
  *
- * For continuous resources (not pieces), set `minUnit = QUANTITY_EPSILON` so
- * Phase 2 is never entered and Phase 1 runs to full convergence.
- * For integer pieces resources, set `minUnit = 1`.
+ * Set `minUnit = QUANTITY_EPSILON` so Phase 2 is never entered and Phase 1
+ * runs to full convergence.
  */
 function equalShareAllocate(participants: number[], supply: number, minUnit: number): number[] {
     const allocations = participants.map(() => 0);
@@ -102,16 +101,13 @@ function equalShareAllocate(participants: number[], supply: number, minUnit: num
 /**
  * Deposit-aware effective demand for an agent bid at a given ask price.
  *
- * For 'pieces' resources the capacity is floored to an integer because you
- * cannot buy a fractional piece.  For all other forms (solid, liquid, gas …)
- * no rounding is applied: even a budget of 0.005 credits at an ask price of
+ * No rounding is applied: even a budget of 0.005 credits at an ask price of
  * 0.01 per ton allows a 0.5-ton purchase.
  */
 function effectiveBidCapacity(bid: MergedBid, remaining: number, askPrice: number): number {
     if (bid.kind === 'agent' && askPrice > 0) {
         const maxAffordable = bid.order.remainingDeposits / askPrice;
-        const capacity = bid.order.resource.form === 'pieces' ? Math.floor(maxAffordable) : maxAffordable;
-        return Math.min(remaining, capacity);
+        return Math.min(remaining, maxAffordable);
     }
     return remaining;
 }
@@ -184,11 +180,8 @@ export function clearUnifiedBids(
 
             const totalTrade = Math.min(totalAskSupply, totalDemand);
 
-            const isPieces = askTier[0].resource.form === 'pieces';
-            const minUnit = isPieces ? 1 : EPSILON;
-
             const askSupplies = askTier.map((a) => askRemaining[askIndexOf.get(a)!]);
-            const askFills = equalShareAllocate(askSupplies, totalTrade, minUnit);
+            const askFills = equalShareAllocate(askSupplies, totalTrade, EPSILON);
 
             for (let ai = 0; ai < askTier.length; ai++) {
                 const askFill = askFills[ai];
@@ -204,7 +197,7 @@ export function clearUnifiedBids(
                 const currentEffectiveDemands = bidIndices.map((i) =>
                     effectiveBidCapacity(merged[i], bidRemaining[i], tradePrice),
                 );
-                const bidFills = equalShareAllocate(currentEffectiveDemands, askFill, minUnit);
+                const bidFills = equalShareAllocate(currentEffectiveDemands, askFill, EPSILON);
 
                 for (let bi = 0; bi < bidTier.length; bi++) {
                     const bidFill = bidFills[bi];

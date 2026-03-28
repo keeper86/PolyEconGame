@@ -45,9 +45,9 @@ export type LastTickResults = {
         };
     };
 
-    /** Actual units produced per output resource this tick. For pieces resources this is an integer; for continuous resources this is a float. */
+    /** Actual units produced per output resource this tick. */
     lastProduced: { [resourceName: string]: number };
-    /** Actual units consumed per input resource this tick. For pieces resources this is an integer (floor); for continuous resources this is a float. */
+    /** Actual units consumed per input resource this tick. */
     lastConsumed: { [resourceName: string]: number };
 };
 

@@ -13,7 +13,6 @@ import {
     concreteResourceType,
 } from '../planet/resources';
 import { forEachPopulationCohort } from '../population/population';
-import { stochasticRound } from '../utils/stochasticRound';
 import type { BidOrder } from './marketTypes';
 
 // ---------------------------------------------------------------------------
@@ -22,28 +21,23 @@ import type { BidOrder } from './marketTypes';
 /**
  * A demand rule returns the desired total purchase quantity for a whole cohort
  * and its reservation price, given the cohort's current wealth.
- *
- * For continuous goods the quantity is a real number.
- * For pieces resources the quantity is already a non-negative integer
- * (stochastic rounding is applied inside the rule).
  */
 type DemandRule = (params: {
     population: number;
     wealthMeanPerPerson: number;
     inventoryPerPerson: number;
     referencePrice: number;
-    isPieces: boolean;
 }) => {
-    /** Total desired purchase quantity for the cohort (>= 0). Integer for pieces resources. */
+    /** Total desired purchase quantity for the cohort (>= 0). */
     quantity: number;
     /** Reservation price (currency / unit). */
     reservationPrice: number;
 };
-type DemandEntry = { rule: DemandRule; isPieces: boolean };
+type DemandEntry = { rule: DemandRule };
 export const demandRules = new Map<string, DemandEntry>();
 
 function registerDemand(resource: Resource, rule: DemandRule): void {
-    demandRules.set(resource.name, { rule, isPieces: resource.form === 'pieces' });
+    demandRules.set(resource.name, { rule });
 }
 // ------------------------------------------------------------------
 // Food (Agricultural Product) — survival priority 1
@@ -88,7 +82,7 @@ registerDemand(
 function makeConsumerGoodRule(wealthPerTick: number, yearlyQtyPerPerson: number): DemandRule {
     const qtyPerTickPerPerson = yearlyQtyPerPerson / TICKS_PER_YEAR;
 
-    return ({ population, wealthMeanPerPerson, referencePrice, isPieces }) => {
+    return ({ population, wealthMeanPerPerson, referencePrice }) => {
         if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
@@ -104,8 +98,7 @@ function makeConsumerGoodRule(wealthPerTick: number, yearlyQtyPerPerson: number)
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const rawTotal = qtyPerPerson * population;
-        const totalQty = isPieces ? stochasticRound(rawTotal) : rawTotal;
+        const totalQty = qtyPerPerson * population;
 
         if (totalQty <= 0) {
             return { quantity: 0, reservationPrice: 0 };
@@ -119,17 +112,18 @@ registerDemand(processedFoodResourceType, makeConsumerGoodRule(0.003, 0.5));
 // Beverages: moderate demand (~0.2 t/person/year).
 registerDemand(beverageResourceType, makeConsumerGoodRule(0.001, 0.2));
 // Clothing: 1 box of 10 garments/person/year.
-registerDemand(clothingResourceType, makeConsumerGoodRule(0.002, 1));
-// Pharmaceuticals: 1 box of 100 pills/person/year.
-registerDemand(pharmaceuticalResourceType, makeConsumerGoodRule(0.001, 1));
-// Furniture: 0.4 pieces/person/year (durable, 0.05 t each → 0.02 t/year).
-registerDemand(furnitureResourceType, makeConsumerGoodRule(0.001, 0.4));
-// Consumer Electronics: 50 devices/person/year (0.002 t each → 0.1 t/year).
-registerDemand(consumerElectronicsResourceType, makeConsumerGoodRule(0.002, 50));
-// Vehicles: 0.02 vehicles/person/year (1.5 t each → 0.03 t/year).
-registerDemand(vehicleResourceType, makeConsumerGoodRule(0.001, 0.02));
-// Bricks: 500/person/year for construction (0.002 t each → 1 t/year).
-registerDemand(brickResourceType, makeConsumerGoodRule(0.001, 500));
+// Clothing: 0.01 t/person/year.
+registerDemand(clothingResourceType, makeConsumerGoodRule(0.002, 0.01));
+// Pharmaceuticals: 0.001 t/person/year.
+registerDemand(pharmaceuticalResourceType, makeConsumerGoodRule(0.001, 0.001));
+// Furniture: 0.02 t/person/year.
+registerDemand(furnitureResourceType, makeConsumerGoodRule(0.001, 0.02));
+// Consumer Electronics: 0.1 t/person/year.
+registerDemand(consumerElectronicsResourceType, makeConsumerGoodRule(0.002, 0.1));
+// Vehicles: 0.03 t/person/year.
+registerDemand(vehicleResourceType, makeConsumerGoodRule(0.001, 0.03));
+// Bricks: 1 t/person/year for construction.
+registerDemand(brickResourceType, makeConsumerGoodRule(0.001, 1));
 registerDemand(concreteResourceType, makeConsumerGoodRule(0.001, 0.1));
 /**
  * Priority order for sequential household settlement.
@@ -243,7 +237,7 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
     if (!entry) {
         return [];
     }
-    const { rule, isPieces } = entry;
+    const { rule } = entry;
 
     const referencePrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
     const bidOrders: BidOrder[] = [];
@@ -269,7 +263,6 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
                 wealthMeanPerPerson: wm.mean,
                 inventoryPerPerson,
                 referencePrice,
-                isPieces,
             });
 
             if (!Number.isFinite(totalQty) || totalQty < 0) {

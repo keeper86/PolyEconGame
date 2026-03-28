@@ -26,18 +26,17 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
                 offer.offerRetainment !== undefined
                     ? Math.max(0, free - offer.offerRetainment)
                     : Math.min(offer.offerQuantity ?? 0, free);
-            const maybeFloorQty = resource.form === 'pieces' ? Math.floor(quantity) : quantity;
 
-            if (maybeFloorQty <= 0) {
+            if (quantity <= 0) {
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
                 offer.lastPlacedQty = 0;
                 continue;
             }
 
-            offer.lastPlacedQty = maybeFloorQty;
+            offer.lastPlacedQty = quantity;
             const askPrice = clampPrice(offer.offerPrice);
-            lockIntoEscrow(assets.storageFacility, resourceName, maybeFloorQty);
+            lockIntoEscrow(assets.storageFacility, resourceName, quantity);
 
             let book = books.get(resourceName);
             if (!book) {
@@ -48,7 +47,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
                 agent,
                 resource,
                 askPrice,
-                quantity: maybeFloorQty,
+                quantity: quantity,
                 filled: 0,
                 revenue: 0,
             });

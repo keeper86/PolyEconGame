@@ -104,7 +104,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
             const rawSellableQty = Math.max(0, inventoryQty - reserved);
-            const sellableQty = resource.form === 'pieces' ? Math.floor(rawSellableQty) : rawSellableQty;
+            const sellableQty = rawSellableQty;
 
             if (!assets.market.sell[resource.name]) {
                 assets.market.sell[resource.name] = { resource, automated: true };
@@ -164,8 +164,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
         const ceiling = inputValueCeiling.get(resourceName);
-        const roundedShortfall = resource.form === 'pieces' ? Math.ceil(shortfall) : shortfall;
-        adjustBidPrice(bid, roundedShortfall, marketPrice, ceiling);
+        adjustBidPrice(bid, shortfall, marketPrice, ceiling);
     }
 }
 

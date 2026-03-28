@@ -42,10 +42,9 @@ describe('market validation', () => {
             expect(result.isValid).toBe(true);
         });
 
-        it('returns invalid for pieces resource with fractional quantity', () => {
+        it('returns valid for pieces resource with fractional quantity', () => {
             const result = validateSellOffer(10, 5.5, clothingResource, 10);
-            expect(result.isValid).toBe(false);
-            expect(result.error).toContain('must be a whole number');
+            expect(result.isValid).toBe(true);
         });
 
         it('returns valid when price is undefined but quantity is defined', () => {
@@ -103,10 +102,9 @@ describe('market validation', () => {
             expect(result.isValid).toBe(true);
         });
 
-        it('returns invalid for pieces resource with fractional quantity', () => {
+        it('returns valid for pieces resource with fractional quantity', () => {
             const result = validateBuyBid(10, 5.5, clothingResource, 1000);
-            expect(result.isValid).toBe(false);
-            expect(result.error).toContain('must be a whole number');
+            expect(result.isValid).toBe(true);
         });
 
         it('returns valid when price is undefined but quantity is defined', () => {

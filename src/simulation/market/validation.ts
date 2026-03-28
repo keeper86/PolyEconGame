@@ -54,11 +54,6 @@ export function validateSellOffer(
             return { isValid: false, error: 'Quantity is too small' };
         }
 
-        // For pieces resources, quantity must be integer
-        if (resource.form === 'pieces' && !Number.isInteger(quantity)) {
-            return { isValid: false, error: 'Quantity must be a whole number for this resource' };
-        }
-
         // Check against available stock
         if (quantity > availableStock + EPSILON) {
             return { isValid: false, error: `Quantity exceeds available stock (${availableStock.toFixed(2)})` };
@@ -108,11 +103,6 @@ export function validateBuyBid(
         if (quantity > 0 && quantity < EPSILON) {
             return { isValid: false, error: 'Quantity is too small' };
         }
-
-        // For pieces resources, quantity must be integer
-        if (resource.form === 'pieces' && !Number.isInteger(quantity)) {
-            return { isValid: false, error: 'Quantity must be a whole number for this resource' };
-        }
     }
 
     // Check if agent can afford the bid (only if both price and quantity are provided)
@@ -138,12 +128,11 @@ export function clampPrice(price: number): number {
 }
 
 /**
- * Validates and adjusts bid quantity for pieces resources (floors to integer).
- * Used in the market clearing process.
+ * Clamps a quantity to non-negative. Used in the market clearing process.
  */
-export function validatedBidQuantity(qty: number, form: string): number {
+export function validatedBidQuantity(qty: number, _form: string): number {
     if (qty <= 0) {
         return 0;
     }
-    return form === 'pieces' ? Math.floor(qty) : qty;
+    return qty;
 }

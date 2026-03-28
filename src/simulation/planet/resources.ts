@@ -220,8 +220,8 @@ export const brickResourceType: Resource = {
     name: 'Brick',
     form: 'pieces',
     level: 'manufactured',
-    volumePerQuantity: 0.002, // m³ per brick (approx)
-    massPerQuantity: 0.002, // tons per brick
+    volumePerQuantity: 1.0,
+    massPerQuantity: 1,
 };
 
 export const glassResourceType: Resource = {
@@ -268,8 +268,8 @@ export const pharmaceuticalResourceType: Resource = {
     name: 'Pharmaceutical',
     form: 'pieces',
     level: 'consumerGood',
-    volumePerQuantity: 0.01, // m³ per box of 100 pills
-    massPerQuantity: 0.001, // tons per box of 100 pills
+    volumePerQuantity: 10.0,
+    massPerQuantity: 1,
 };
 
 export const processedFoodResourceType: Resource = {
@@ -316,32 +316,32 @@ export const clothingResourceType: Resource = {
     name: 'Clothing',
     form: 'pieces',
     level: 'consumerGood',
-    volumePerQuantity: 0.5, // m³ per box of 10 garments
-    massPerQuantity: 0.01, // tons per box of 10 garments
+    volumePerQuantity: 50.0,
+    massPerQuantity: 1,
 };
 
 export const furnitureResourceType: Resource = {
     name: 'Furniture',
     form: 'pieces',
     level: 'consumerGood',
-    volumePerQuantity: 1.0,
-    massPerQuantity: 0.05,
+    volumePerQuantity: 20.0,
+    massPerQuantity: 1,
 };
 
 export const electronicComponentResourceType: Resource = {
     name: 'Electronic Component',
     form: 'pieces',
     level: 'refined',
-    volumePerQuantity: 0.05, // m³ per reel of 1000 chips
-    massPerQuantity: 0.01, // tons per reel of 1000 chips
+    volumePerQuantity: 5.0,
+    massPerQuantity: 1,
 };
 
 export const consumerElectronicsResourceType: Resource = {
     name: 'Consumer Electronics',
     form: 'pieces',
     level: 'consumerGood',
-    volumePerQuantity: 0.01,
-    massPerQuantity: 0.002,
+    volumePerQuantity: 5.0,
+    massPerQuantity: 1,
 };
 
 export const machineryResourceType: Resource = {
@@ -356,8 +356,8 @@ export const vehicleResourceType: Resource = {
     name: 'Vehicle',
     form: 'pieces',
     level: 'manufactured',
-    volumePerQuantity: 10.0,
-    massPerQuantity: 1.5,
+    volumePerQuantity: 6.67,
+    massPerQuantity: 1,
 };
 
 export const constructionResourceType: Resource = {

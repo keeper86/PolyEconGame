@@ -137,7 +137,7 @@ describe('buildPopulationDemandForResource', () => {
     });
 
     describe('clothing demand (pieces resource)', () => {
-        it('produces only integer quantities per cohort', () => {
+        it('produces positive quantities per cohort', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
             planet.marketPrices[CLOTHING] = 0.01;
             planet.population.demography.forEach((cohort) =>
@@ -151,7 +151,6 @@ describe('buildPopulationDemandForResource', () => {
             const bids = buildPopulationDemandForResource(planet, CLOTHING);
 
             for (const bid of bids) {
-                expect(Number.isInteger(bid.quantity)).toBe(true);
                 expect(bid.quantity).toBeGreaterThan(0);
             }
         });
@@ -173,7 +172,7 @@ describe('buildPopulationDemandForResource', () => {
             expect(totalDemand).toBeGreaterThan(0);
         });
 
-        it('returns no bids when clothing price is too high to afford any', () => {
+        it('total demand is negligible when clothing price is too high to afford any', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
             planet.marketPrices[CLOTHING] = 1_000_000;
             planet.population.demography.forEach((cohort) =>
@@ -185,8 +184,9 @@ describe('buildPopulationDemandForResource', () => {
             );
 
             const bids = buildPopulationDemandForResource(planet, CLOTHING);
+            const totalDemand = bids.reduce((s, b) => s + b.quantity, 0);
 
-            expect(bids.length).toBe(0);
+            expect(totalDemand).toBeLessThan(1e-3);
         });
 
         it('returns no bids when all cohorts have zero wealth', () => {
