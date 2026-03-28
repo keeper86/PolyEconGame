@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
@@ -14,6 +14,7 @@ import { getResourceByName } from './marketHelpers';
 import ResourceTrigger from './ResourceTrigger';
 import BuySection from './BuySection';
 import SellSection from './SellSection';
+import MarketDetailsSection from './MarketDetailsSection';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -34,6 +35,7 @@ export default function ResourceAccordionItem({
 
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [showMarketDetails, setShowMarketDetails] = useState(false);
 
     const resource = getResourceByName(resourceName);
 
@@ -155,25 +157,41 @@ export default function ResourceAccordionItem({
                         saving={saving}
                     />
 
-                    {/* ── Save button + feedback ── */}
+                    {/* ── Save button + feedback + market details toggle in same row ── */}
                     <div className='flex items-center justify-between gap-3'>
-                        <div>
-                            {successMsg && (
-                                <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
-                                    <CheckCircle2 className='h-3.5 w-3.5' /> {successMsg}
-                                </span>
-                            )}
-                            {errorMsg && (
-                                <span className='text-xs text-destructive flex items-center gap-1'>
-                                    <AlertCircle className='h-3.5 w-3.5' />
-                                    <span dangerouslySetInnerHTML={{ __html: errorMsg }} />
-                                </span>
-                            )}
+                        <div className='flex items-center gap-3'>
+                            <div>
+                                {successMsg && (
+                                    <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
+                                        <CheckCircle2 className='h-3.5 w-3.5' /> {successMsg}
+                                    </span>
+                                )}
+                                {errorMsg && (
+                                    <span className='text-xs text-destructive flex items-center gap-1'>
+                                        <AlertCircle className='h-3.5 w-3.5' />
+                                        <span dangerouslySetInnerHTML={{ __html: errorMsg }} />
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setShowMarketDetails(!showMarketDetails)}
+                                className='flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors'
+                            >
+                                {showMarketDetails ? (
+                                    <ChevronUp className='h-3.5 w-3.5' />
+                                ) : (
+                                    <ChevronDown className='h-3.5 w-3.5' />
+                                )}
+                                <span>Market details</span>
+                            </button>
                         </div>
                         <Button size='sm' onClick={handleSave} disabled={saving}>
                             {saving ? 'Saving…' : 'Save'}
                         </Button>
                     </div>
+
+                    {/* ── Market details content ── */}
+                    {showMarketDetails && <MarketDetailsSection planetId={planetId} resourceName={resourceName} />}
                 </div>
             </AccordionContent>
         </AccordionItem>

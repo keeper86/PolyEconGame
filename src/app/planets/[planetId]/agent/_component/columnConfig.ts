@@ -24,7 +24,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     {
         id: 'clearingPrice',
         label: 'Price',
-        widthClass: 'w-14',
+        widthClass: 'w-18',
         responsiveClass: '',
         title: 'Clearing price',
         align: 'text-right',
@@ -33,7 +33,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     {
         id: 'totalProduction',
         label: 'Prod',
-        widthClass: 'w-12',
+        widthClass: 'w-18',
         responsiveClass: 'hidden sm:inline-block',
         title: 'Total production',
         align: 'text-right',
@@ -42,7 +42,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     {
         id: 'totalSupply',
         label: 'Supply',
-        widthClass: 'w-14',
+        widthClass: 'w-18',
         responsiveClass: 'hidden md:inline-block',
         title: 'Total supply',
         align: 'text-right',
@@ -51,7 +51,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     {
         id: 'totalDemand',
         label: 'Demand',
-        widthClass: 'w-14',
+        widthClass: 'w-18',
         responsiveClass: 'hidden md:inline-block',
         title: 'Total demand',
         align: 'text-right',
@@ -60,7 +60,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     {
         id: 'totalSold',
         label: 'Sold',
-        widthClass: 'w-12',
+        widthClass: 'w-18',
         responsiveClass: 'hidden sm:inline-block',
         title: 'Total sold',
         align: 'text-right',

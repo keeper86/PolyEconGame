@@ -11,7 +11,6 @@ import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import BidTable from '../BidTable';
-import MarketSummaryCards from '../MarketSummaryCards';
 import OfferTable from '../OfferTable';
 import PopulationDemandChart from '../PopulationDemandChart';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
@@ -70,11 +69,6 @@ function ResourceMarketContent({
                     <div className='my-3 border-t' />
                 </>
             )}
-
-            <h4 className='text-sm font-semibold mb-2'>Current state</h4>
-            <MarketSummaryCards market={market} />
-
-            <div className='my-3 border-t' />
 
             <h4 className='text-sm font-semibold mb-1'>Offer detail</h4>
             <p className='text-xs text-muted-foreground mb-2'>
