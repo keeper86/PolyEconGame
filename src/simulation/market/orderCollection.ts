@@ -1,8 +1,7 @@
-import { INITIAL_FOOD_PRICE } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
-import { getAvailableStorageCapacity, lockIntoEscrow, queryStorageFacility } from '../planet/storage';
+import { lockIntoEscrow, queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
-import { clampPrice, validatedBidQuantity } from './validation';
+import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
     const books = new Map<string, AskOrder[]>();
@@ -14,28 +13,22 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
-            if (!offer.offerPrice) {
-                continue;
-            }
-            const resource = offer.resource;
             const free = queryStorageFacility(assets.storageFacility, resourceName);
-
-            // Retainment-based: sell everything above the retained floor.
-            // Falls back to the legacy fixed offerQuantity when retainment is not set.
-            const quantity =
-                offer.offerRetainment !== undefined
-                    ? Math.max(0, free - offer.offerRetainment)
-                    : Math.min(offer.offerQuantity ?? 0, free);
-
-            if (quantity <= 0) {
+            
+            // Use the new validation function
+            const validatedOffer = validateAndPrepareSellOffer(offer, free);
+            
+            if (!validatedOffer) {
+                // Update counters for invalid/zero quantity offers
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
                 offer.lastPlacedQty = 0;
                 continue;
             }
 
+            const { price: askPrice, quantity } = validatedOffer;
+            
             offer.lastPlacedQty = quantity;
-            const askPrice = clampPrice(offer.offerPrice);
             lockIntoEscrow(assets.storageFacility, resourceName, quantity);
 
             let book = books.get(resourceName);
@@ -45,9 +38,9 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
             }
             book.push({
                 agent,
-                resource,
+                resource: offer.resource,
                 askPrice,
-                quantity: quantity,
+                quantity,
                 filled: 0,
                 revenue: 0,
             });
@@ -67,27 +60,21 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         }
 
         // Gather all valid bids and their maximum possible cost.
-        const pendingBids: { resourceName: string; qty: number; price: number }[] = [];
+        const pendingBids: { resourceName: string; qty: number; price: number; maxCost: number }[] = [];
         let totalMaxCost = 0;
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
-            // Storage-target-based: buy enough to reach the target level.
-            // Falls back to the legacy fixed bidQuantity when target is not set.
-            // Cap by available storage capacity so we never bid for more than we can store.
-            const storageCapacity = getAvailableStorageCapacity(assets.storageFacility, bid.resource);
-            const rawQty = Math.min(
-                storageCapacity,
-                bid.bidStorageTarget !== undefined
-                    ? Math.max(0, bid.bidStorageTarget - queryStorageFacility(assets.storageFacility, resourceName))
-                    : (bid.bidQuantity ?? 0),
-            );
-            const qty = validatedBidQuantity(rawQty, bid.resource.form);
-            if (qty <= 0) {
+            const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+            
+            // Use the new validation function
+            const validatedBid = validateAndPrepareBuyBid(bid, assets, currentInventory);
+            
+            if (!validatedBid) {
                 continue;
             }
-            const price = clampPrice(bid.bidPrice ?? INITIAL_FOOD_PRICE);
-            const maxCost = qty * price;
-            pendingBids.push({ resourceName, qty, price });
+
+            const { price, quantity: qty, maxCost } = validatedBid;
+            pendingBids.push({ resourceName, qty, price, maxCost });
             totalMaxCost += maxCost;
         }
 
@@ -103,10 +90,12 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
 
         for (const { resourceName, qty, price } of pendingBids) {
             const bid = assets.market.buy[resourceName]!;
-            const scaledQty = validatedBidQuantity(qty * scaleFactor, bid.resource.form);
+            const scaledQty = Math.max(0, qty * scaleFactor);
+            
             if (scaledQty <= 0) {
                 continue;
             }
+            
             bid.lastEffectiveQty = scaledQty;
             const cost = scaledQty * price;
             holdAmount += cost;

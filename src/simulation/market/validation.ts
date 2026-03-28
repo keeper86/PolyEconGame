@@ -1,5 +1,5 @@
 import { FOOD_PRICE_FLOOR as PRICE_FLOOR, FOOD_PRICE_CEIL as PRICE_CEIL, EPSILON } from '../constants';
-import type { Resource, AgentPlanetAssets } from '../planet/planet';
+import type { Resource, AgentPlanetAssets, AgentMarketOfferState, AgentMarketBidState } from '../planet/planet';
 import { getAvailableStorageCapacity, queryStorageFacility } from '../planet/storage';
 import type { BuyBid } from '../../server/controller/user';
 
@@ -156,4 +156,105 @@ export function validatedBidQuantity(qty: number, _form: string): number {
         return 0;
     }
     return qty;
+}
+
+/**
+ * Validates and prepares a sell offer for order collection.
+ * Returns validated and clamped price & quantity, or null if the offer is invalid.
+ * Logs warnings for invalid offers.
+ */
+export function validateAndPrepareSellOffer(
+    offer: AgentMarketOfferState,
+    availableStock: number,
+): { price: number; quantity: number } | null {
+    // Calculate effective quantity based on retainment if set
+    const effectiveQuantity = offer.offerRetainment !== undefined
+        ? Math.max(0, availableStock - offer.offerRetainment)
+        : (offer.offerQuantity ?? 0);
+
+    // Validate the offer
+    const validation = validateSellOffer(
+        offer.offerPrice,
+        effectiveQuantity,
+        offer.resource,
+        availableStock
+    );
+    
+    if (!validation.isValid) {
+        console.warn(`Invalid sell offer for ${offer.resource.name}: ${validation.error}`);
+        return null;
+    }
+
+    // If price is undefined, we can't create an order
+    if (offer.offerPrice === undefined) {
+        console.warn(`Sell offer for ${offer.resource.name} has no price`);
+        return null;
+    }
+
+    // If quantity is zero or negative after validation, skip
+    if (effectiveQuantity <= 0) {
+        return null;
+    }
+
+    return {
+        price: clampPrice(offer.offerPrice),
+        quantity: effectiveQuantity
+    };
+}
+
+/**
+ * Validates and prepares a buy bid for order collection.
+ * Returns validated and clamped price & quantity, or null if the bid is invalid.
+ * Logs warnings for invalid bids.
+ */
+export function validateAndPrepareBuyBid(
+    bid: AgentMarketBidState,
+    assets: Pick<AgentPlanetAssets, 'storageFacility' | 'deposits'>,
+    currentInventory: number,
+): { price: number; quantity: number; maxCost: number } | null {
+    // Calculate effective quantity based on storage target if set
+    const effectiveQuantity = bid.bidStorageTarget !== undefined
+        ? Math.max(0, bid.bidStorageTarget - currentInventory)
+        : (bid.bidQuantity ?? 0);
+
+    // Cap by available storage capacity
+    const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, bid.resource);
+    const cappedQuantity = Math.min(effectiveQuantity, availableStorageCapacity);
+
+    // Use validatedBidQuantity to ensure non-negative
+    const validatedQuantity = validatedBidQuantity(cappedQuantity, bid.resource.form);
+    
+    // Use default price if not set
+    const price = bid.bidPrice !== undefined ? bid.bidPrice : 0;
+    
+    // Validate the bid
+    const validation = validateBuyBid(
+        { bidPrice: price, bidQuantity: validatedQuantity },
+        bid.resource,
+        assets
+    );
+    
+    if (!validation.isValid) {
+        console.warn(`Invalid buy bid for ${bid.resource.name}: ${validation.error}`);
+        return null;
+    }
+
+    // If price is 0 or undefined after validation, we can't create an order
+    if (price <= 0) {
+        console.warn(`Buy bid for ${bid.resource.name} has invalid price: ${price}`);
+        return null;
+    }
+
+    // If quantity is zero after validation, skip
+    if (validatedQuantity <= 0) {
+        return null;
+    }
+
+    const maxCost = validatedQuantity * price;
+    
+    return {
+        price: clampPrice(price),
+        quantity: validatedQuantity,
+        maxCost
+    };
 }

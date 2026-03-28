@@ -58,9 +58,9 @@ export function advanceTick(gameState: GameState) {
 
         productionTick(planetAgents, planet);
 
-        automaticPricing(planetAgents, planet);
-
         automaticLoanRepayment(planetAgents, planet);
+
+        automaticPricing(planetAgents, planet);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(planetAgents, planet);

@@ -41,6 +41,7 @@ function makeIronSmelterAgent(id: string) {
     const storage = makeStorageFacility({ planetId: PLANET_ID, id: `storage-${id}` });
 
     const agent = makeAgent(id, PLANET_ID);
+    agent.assets[PLANET_ID].deposits = 1_000_000;
     agent.assets[PLANET_ID].productionFacilities = [facility];
     agent.assets[PLANET_ID].storageFacility = storage;
     return agent;
@@ -58,6 +59,7 @@ function makeMachineryAgent(id: string) {
     const storage = makeStorageFacility({ planetId: PLANET_ID, id: `storage-${id}` });
 
     const agent = makeAgent(id, PLANET_ID);
+    agent.assets[PLANET_ID].deposits = 1_000_000;
     agent.assets[PLANET_ID].productionFacilities = [facility];
     agent.assets[PLANET_ID].storageFacility = storage;
     return agent;

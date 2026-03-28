@@ -797,7 +797,7 @@ export const consumerElectronicsFactory = (planetId: string, id: string): Produc
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: electronicComponentResourceType, quantity: 0.1 },
+        { resource: electronicComponentResourceType, quantity: 20 },
         { resource: plasticResourceType, quantity: 30 },
         { resource: glassResourceType, quantity: 30 },
         { resource: packagingResourceType, quantity: 2 },
@@ -821,8 +821,8 @@ export const machineryFactory = (planetId: string, id: string): ProductionFacili
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: steelResourceType, quantity: 80 },
-        { resource: electronicComponentResourceType, quantity: 0.1 },
+        { resource: steelResourceType, quantity: 90 },
+        { resource: electronicComponentResourceType, quantity: 10 },
         { resource: plasticResourceType, quantity: 20 },
     ],
     produces: [{ resource: machineryResourceType, quantity: 50 }],
@@ -848,7 +848,7 @@ export const vehicleFactory = (planetId: string, id: string): ProductionFacility
         { resource: aluminumResourceType, quantity: 5 },
         { resource: plasticResourceType, quantity: 10 },
         { resource: glassResourceType, quantity: 2 },
-        { resource: electronicComponentResourceType, quantity: 0.005 },
+        { resource: electronicComponentResourceType, quantity: 2 },
         { resource: fabricResourceType, quantity: 5 },
         { resource: machineryResourceType, quantity: 10 },
     ],

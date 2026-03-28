@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { automaticPricing } from './automaticPricing';
+import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import {
     agriculturalProductResourceType,
@@ -132,6 +133,10 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
 });
 
 describe('automaticPricing — offer price tâtonnement', () => {
+    // Each test that exercises adjustOfferPrice must start from the same PRNG
+    // state so that the (1 + 0.01 * nextRandom()) noise term is deterministic.
+    beforeEach(() => seedRng(42));
+
     it('sets initial offer price from marketPrices when no prior price exists', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'well', scale: 1 });
         facility.needs = [];
@@ -157,7 +162,8 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_UP);
+        // factor = (1 + 0.01 * nextRandom()) * PRICE_ADJUST_MAX_UP with seed 42
+        expect(newPrice).toBeCloseTo(10.58886696775211, 5);
     });
 
     it('applies PRICE_ADJUST_MAX_DOWN when nothing was sold despite having stock (zero sell-through)', () => {
@@ -168,10 +174,11 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_DOWN);
+        // factor = (1 + 0.01 * nextRandom()) * PRICE_ADJUST_MAX_DOWN with seed 42
+        expect(newPrice).toBeCloseTo(9.580403447013813, 5);
     });
 
-    it('does not change price when sell-through equals the target', () => {
+    it('has small price drift when sell-through equals the target (±1% noise from PRNG)', () => {
         const TARGET_SELL_THROUGH = 0.9;
         const PRICE = 10;
         const STOCK = 1000;
@@ -181,7 +188,8 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeCloseTo(PRICE, 5);
+        // sellThroughFactor(TARGET) == 1, so only the (1 + 0.01 * r) noise survives; seed 42
+        expect(newPrice).toBeCloseTo(10.084635207382961, 5);
     });
 
     it('recovers quickly from the price floor under persistent full sell-through', () => {
@@ -245,6 +253,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
 
         const agent = makeAgent('co', PLANET_ID);
         agent.automated = true;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.assets[PLANET_ID].productionFacilities = [facility];
         agent.assets[PLANET_ID].storageFacility = makeStorageWith({});
 
