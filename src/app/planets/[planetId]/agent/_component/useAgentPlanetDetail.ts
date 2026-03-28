@@ -24,6 +24,7 @@ export type AgentPlanetAssets = {
             [resourceName: string]: {
                 offerPrice?: number;
                 offerQuantity?: number;
+                offerRetainment?: number;
                 lastSold?: number;
                 lastRevenue?: number;
                 priceDirection?: number;
@@ -34,6 +35,7 @@ export type AgentPlanetAssets = {
             [resourceName: string]: {
                 bidPrice?: number;
                 bidQuantity?: number;
+                bidStorageTarget?: number;
                 lastBought?: number;
                 lastSpent?: number;
                 storageFullWarning?: boolean;

@@ -14,13 +14,18 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
-            if (!offer.offerQuantity || !offer.offerPrice) {
+            if (!offer.offerPrice) {
                 continue;
             }
             const resource = offer.resource;
             const free = queryStorageFacility(assets.storageFacility, resourceName);
 
-            const quantity = Math.min(offer.offerQuantity, free);
+            // Retainment-based: sell everything above the retained floor.
+            // Falls back to the legacy fixed offerQuantity when retainment is not set.
+            const quantity =
+                offer.offerRetainment !== undefined
+                    ? Math.max(0, free - offer.offerRetainment)
+                    : Math.min(offer.offerQuantity ?? 0, free);
             const maybeFloorQty = resource.form === 'pieces' ? Math.floor(quantity) : quantity;
 
             if (maybeFloorQty <= 0) {
@@ -67,7 +72,13 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         let totalMaxCost = 0;
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
-            const qty = validatedBidQuantity(bid.bidQuantity ?? 0, bid.resource.form);
+            // Storage-target-based: buy enough to reach the target level.
+            // Falls back to the legacy fixed bidQuantity when target is not set.
+            const rawQty =
+                bid.bidStorageTarget !== undefined
+                    ? Math.max(0, bid.bidStorageTarget - queryStorageFacility(assets.storageFacility, resourceName))
+                    : (bid.bidQuantity ?? 0);
+            const qty = validatedBidQuantity(rawQty, bid.resource.form);
             if (qty <= 0) {
                 continue;
             }

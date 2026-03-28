@@ -276,6 +276,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                             if (update.offerQuantity !== undefined && update.offerQuantity >= 0) {
                                 offer.offerQuantity = update.offerQuantity;
                             }
+                            if (update.offerRetainment !== undefined && update.offerRetainment >= 0) {
+                                offer.offerRetainment = update.offerRetainment;
+                            }
                             if (update.automated !== undefined) {
                                 offer.automated = update.automated;
                             }
@@ -329,6 +332,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                             }
                             if (update.bidQuantity !== undefined && update.bidQuantity >= 0) {
                                 bid.bidQuantity = update.bidQuantity;
+                            }
+                            if (update.bidStorageTarget !== undefined && update.bidStorageTarget >= 0) {
+                                bid.bidStorageTarget = update.bidStorageTarget;
                             }
                             if (update.automated !== undefined) {
                                 bid.automated = update.automated;

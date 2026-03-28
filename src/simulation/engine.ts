@@ -48,17 +48,17 @@ export function advanceTick(gameState: GameState) {
             }
         }
 
-        preProductionFinancialTick(planetAgents, planet);
-
-        productionTick(planetAgents, planet);
-
-        automaticPricing(planetAgents, planet);
-
         //updateAgentProductionScale(planetAgents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 
         marketTick(planetAgents, planet);
+
+        preProductionFinancialTick(planetAgents, planet);
+
+        productionTick(planetAgents, planet);
+
+        automaticPricing(planetAgents, planet);
 
         automaticLoanRepayment(planetAgents, planet);
 

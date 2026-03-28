@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { AlertCircle, Bot, CheckCircle2, ShoppingCart, Tag } from 'lucide-react';
+import Link from 'next/link';
+import { AlertCircle, Bot, CheckCircle2, ShoppingCart, Tag, ExternalLink } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ import type { AgentPlanetAssets } from './useAgentPlanetDetail';
 export type MarketBidEntry = {
     bidPrice?: number;
     bidQuantity?: number;
+    bidStorageTarget?: number;
     lastBought?: number;
     lastSpent?: number;
     storageFullWarning?: boolean;
@@ -38,6 +40,7 @@ export type MarketBidEntry = {
 export type MarketOfferEntry = {
     offerPrice?: number;
     offerQuantity?: number;
+    offerRetainment?: number;
     lastSold?: number;
     lastRevenue?: number;
     priceDirection?: number;
@@ -46,10 +49,12 @@ export type MarketOfferEntry = {
 
 type LocalResourceState = {
     offerPrice: string;
-    offerQuantity: string;
+    /** Retainment: keep at least this many units; sell qty = max(0, inventory - retainment). */
+    offerRetainment: string;
     offerAutomated: boolean;
     bidPrice: string;
-    bidQuantity: string;
+    /** Storage target: fill up to this; buy qty = max(0, target - inventory). */
+    bidStorageTarget: string;
     bidAutomated: boolean;
     // UI-only helpers — not sent to server
     targetBufferTicks: string;
@@ -78,6 +83,39 @@ function priceArrow(dir?: number): { label: string; className: string } {
     return { label: '→', className: 'text-muted-foreground' };
 }
 
+/**
+ * Color class for the effective buy quantity.
+ * Green = target met (order inactive), yellow = partially stocked, red = far below target.
+ */
+function buyFulfillmentClass(inventory: number, storageTarget: number): string {
+    if (storageTarget <= 0) {
+        return '';
+    }
+    const ratio = inventory / storageTarget;
+    if (ratio >= 1) {
+        return 'text-green-600 dark:text-green-400';
+    }
+    if (ratio >= 0.5) {
+        return 'text-yellow-600 dark:text-yellow-400';
+    }
+    return 'text-red-500 dark:text-red-400';
+}
+
+/**
+ * Color class for the effective sell quantity.
+ * Green = plenty above retainment (active sell), yellow = small surplus, red = nothing to sell (inactive).
+ */
+function sellFulfillmentClass(inventory: number, retainment: number): string {
+    const effective = Math.max(0, inventory - retainment);
+    if (effective <= 0) {
+        return 'text-red-500 dark:text-red-400';
+    }
+    if (retainment <= 0 || effective > retainment) {
+        return 'text-green-600 dark:text-green-400';
+    }
+    return 'text-yellow-600 dark:text-yellow-400';
+}
+
 /** Sum of consumption per tick (across all facilities) for a given input resource. */
 function consumptionPerTick(facilities: ProductionFacility[], resourceName: string): number {
     return facilities.reduce((sum, f) => {
@@ -97,6 +135,11 @@ function productionPerTick(facilities: ProductionFacility[], resourceName: strin
 /** Get resource object by name */
 function getResourceByName(resourceName: string) {
     return ALL_RESOURCES.find((r) => r.name === resourceName);
+}
+
+/** Convert resource name to URL slug (inverse of slugToResourceName) */
+function resourceNameToSlug(resourceName: string): string {
+    return resourceName.toLowerCase().replace(/\s+/g, '-');
 }
 
 /** Build the deduplicated list of resources to show. */
@@ -162,10 +205,10 @@ function buildInitialState(
         const offer = sellOffers[name];
         result[name] = {
             offerPrice: offer?.offerPrice !== undefined ? String(offer.offerPrice) : '',
-            offerQuantity: offer?.offerQuantity !== undefined ? String(Math.round(offer.offerQuantity)) : '',
+            offerRetainment: offer?.offerRetainment !== undefined ? String(Math.round(offer.offerRetainment)) : '',
             offerAutomated: offer?.automated ?? false,
             bidPrice: bid?.bidPrice !== undefined ? String(bid.bidPrice) : '',
-            bidQuantity: bid?.bidQuantity !== undefined ? String(Math.round(bid.bidQuantity)) : '',
+            bidStorageTarget: bid?.bidStorageTarget !== undefined ? String(Math.round(bid.bidStorageTarget)) : '',
             bidAutomated: bid?.automated ?? false,
             targetBufferTicks: '',
         };
@@ -187,6 +230,9 @@ function ResourceTrigger({
     offer?: MarketOfferEntry;
 }): React.ReactElement {
     const arrow = priceArrow(offer?.priceDirection);
+    const { planetId } = useParams() as { planetId: string };
+    const slug = resourceNameToSlug(name);
+    const marketUrl = `/planets/${encodeURIComponent(planetId)}/market/${slug}`;
 
     return (
         <div className='flex flex-1 items-center gap-3 min-w-0 py-1'>
@@ -204,8 +250,18 @@ function ResourceTrigger({
                 />
             </div>
 
-            {/* Resource name */}
-            <span className='text-sm font-medium truncate min-w-0 flex-1'>{name}</span>
+            {/* Resource name with market link */}
+            <div className='flex items-center gap-1.5 min-w-0 flex-1'>
+                <span className='text-sm font-medium truncate'>{name}</span>
+                <Link
+                    href={marketUrl as never}
+                    onClick={(e) => e.stopPropagation()}
+                    className='shrink-0 text-muted-foreground hover:text-foreground transition-colors'
+                    title={`Open ${name} market page`}
+                >
+                    <ExternalLink className='h-3 w-3' />
+                </Link>
+            </div>
 
             {/* KPI pills */}
             <div className='flex items-center gap-3 text-[11px] tabular-nums text-muted-foreground shrink-0'>
@@ -323,28 +379,32 @@ function ResourceAccordionItem({
 
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
-    // Buffer calculator: suggested bid quantity
+    // Buffer calculator: translate ticks → storage target
     const targetBuffer = parseFloat(local.targetBufferTicks);
-    const suggestedBidQty =
-        isFacilityInput && !isNaN(targetBuffer) && targetBuffer >= 0
-            ? Math.max(0, targetBuffer * consumedPerTick - inventoryQty)
-            : null;
+    const suggestedStorageTarget =
+        isFacilityInput && !isNaN(targetBuffer) && targetBuffer >= 0 ? Math.ceil(targetBuffer * consumedPerTick) : null;
 
-    // Sell quantity quick-set presets based on available stock
-    const sellPresets = inventoryQty > 0
-        ? ([
-            { label: '10%', qty: Math.max(1, Math.floor(inventoryQty * 0.1)) },
-            { label: '50%', qty: Math.max(1, Math.floor(inventoryQty * 0.5)) },
-            { label: '100%', qty: Math.floor(inventoryQty) },
-          ] as const)
-        : null;
+    // Effective quantities derived from retainment / storage-target settings
+    const effectiveBuyQty =
+        bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : undefined;
+    const effectiveSellQty =
+        offer?.offerRetainment !== undefined ? Math.max(0, inventoryQty - offer.offerRetainment) : undefined;
+
+    // Retainment presets for sell: 0 = sell all, or N ticks of production
+    const retainmentPresets =
+        isFacilityOutput && producedPerTick > 0
+            ? ([
+                  { label: '0', qty: 0 },
+                  { label: '5 ticks', qty: Math.ceil(producedPerTick * 5) },
+                  { label: '10 ticks', qty: Math.ceil(producedPerTick * 10) },
+              ] as const)
+            : inventoryQty > 0
+              ? ([{ label: '0', qty: 0 }] as const)
+              : null;
 
     // Sell section is only active when there's something to sell
     const canSell =
-        inventoryQty > 0 ||
-        isFacilityOutput ||
-        offer?.offerPrice !== undefined ||
-        offer?.offerQuantity !== undefined;
+        inventoryQty > 0 || isFacilityOutput || offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
     // ── Validation + save ──────────────────────────────────────────────
     const handleSave = () => {
@@ -358,14 +418,15 @@ function ResourceAccordionItem({
         }
 
         const offerPrice = parseFloat(local.offerPrice);
-        const offerQty = parseFloat(local.offerQuantity);
+        const offerRetainment = parseFloat(local.offerRetainment);
         const bidPrice = parseFloat(local.bidPrice);
-        const bidQty = parseFloat(local.bidQuantity);
+        const bidStorageTarget = parseFloat(local.bidStorageTarget);
 
-        if (!isNaN(offerPrice) || !isNaN(offerQty)) {
+        // Validate sell price only (retainment just needs to be ≥ 0)
+        if (!isNaN(offerPrice)) {
             const validation = validateSellOffer(
                 !isNaN(offerPrice) ? offerPrice : undefined,
-                !isNaN(offerQty) ? offerQty : undefined,
+                undefined,
                 resource,
                 inventoryQty,
             );
@@ -375,13 +436,9 @@ function ResourceAccordionItem({
             }
         }
 
-        if (!isNaN(bidPrice) || !isNaN(bidQty)) {
-            const validation = validateBuyBid(
-                !isNaN(bidPrice) ? bidPrice : undefined,
-                !isNaN(bidQty) ? bidQty : undefined,
-                resource,
-                deposits,
-            );
+        // Validate bid price only (storage target just needs to be ≥ 0; deposit check skipped since qty is dynamic)
+        if (!isNaN(bidPrice)) {
+            const validation = validateBuyBid(!isNaN(bidPrice) ? bidPrice : undefined, undefined, resource, deposits);
             if (!validation.isValid) {
                 let errorText = validation.error;
                 if (errorText && errorText.includes('Insufficient deposits')) {
@@ -392,19 +449,19 @@ function ResourceAccordionItem({
             }
         }
 
-        const sellPayload: Record<string, { offerPrice?: number; offerQuantity?: number; automated?: boolean }> = {
+        const sellPayload: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }> = {
             [resourceName]: {
                 ...(local.offerAutomated !== (offer?.automated ?? false) && { automated: local.offerAutomated }),
                 ...(!isNaN(offerPrice) && offerPrice >= FOOD_PRICE_FLOOR && { offerPrice }),
-                ...(!isNaN(offerQty) && offerQty >= 0 && { offerQuantity: offerQty }),
+                ...(!isNaN(offerRetainment) && offerRetainment >= 0 && { offerRetainment }),
             },
         };
 
-        const buyPayload: Record<string, { bidPrice?: number; bidQuantity?: number; automated?: boolean }> = {
+        const buyPayload: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }> = {
             [resourceName]: {
                 ...(local.bidAutomated !== (bid?.automated ?? false) && { automated: local.bidAutomated }),
                 ...(!isNaN(bidPrice) && bidPrice > 0 && { bidPrice }),
-                ...(!isNaN(bidQty) && bidQty >= 0 && { bidQuantity: bidQty }),
+                ...(!isNaN(bidStorageTarget) && bidStorageTarget >= 0 && { bidStorageTarget }),
             },
         };
 
@@ -412,7 +469,11 @@ function ResourceAccordionItem({
         buyMutation.mutate({ agentId, planetId, bids: buyPayload });
     };
 
-    const totalBidCost = (bid?.bidPrice ?? 0) * (bid?.bidQuantity ?? 0);
+    const totalBidCost =
+        (bid?.bidPrice ?? 0) *
+        (bid?.bidStorageTarget !== undefined
+            ? Math.max(0, bid.bidStorageTarget - inventoryQty)
+            : (bid?.bidQuantity ?? 0));
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
 
     return (
@@ -422,7 +483,6 @@ function ResourceAccordionItem({
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-5'>
-
                     {/* ── Market KPI strip ── */}
                     {market && (
                         <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
@@ -432,11 +492,15 @@ function ResourceAccordionItem({
                             </span>
                             <span>
                                 Demand{' '}
-                                <span className='font-semibold text-foreground'>{formatNumbers(market.totalDemand)}</span>
+                                <span className='font-semibold text-foreground'>
+                                    {formatNumbers(market.totalDemand)}
+                                </span>
                             </span>
                             <span>
                                 Supply{' '}
-                                <span className='font-semibold text-foreground'>{formatNumbers(market.totalSupply)}</span>
+                                <span className='font-semibold text-foreground'>
+                                    {formatNumbers(market.totalSupply)}
+                                </span>
                             </span>
                             {(isFacilityOutput || producedPerTick > 0) && (
                                 <span>
@@ -522,29 +586,39 @@ function ResourceAccordionItem({
                                 )}
                             </div>
 
-                            {/* Quantity to buy box + buffer calculator */}
+                            {/* Storage-target box + buffer calculator */}
                             <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                                 <Label
-                                    htmlFor={`bid-qty-${resourceName}`}
+                                    htmlFor={`bid-target-${resourceName}`}
                                     className='text-[11px] text-muted-foreground'
                                 >
-                                    Quantity to buy
+                                    Storage target
                                 </Label>
                                 <Input
-                                    id={`bid-qty-${resourceName}`}
+                                    id={`bid-target-${resourceName}`}
                                     type='number'
                                     min={0}
                                     step={1}
                                     placeholder={
-                                        bid?.bidQuantity !== undefined
-                                            ? String(Math.round(bid.bidQuantity))
-                                            : 'e.g. 100'
+                                        bid?.bidStorageTarget !== undefined
+                                            ? String(Math.round(bid.bidStorageTarget))
+                                            : 'e.g. 500'
                                     }
-                                    value={local.bidQuantity}
+                                    value={local.bidStorageTarget}
                                     disabled={local.bidAutomated || saving}
-                                    onChange={(e) => onLocalChange(resourceName, { bidQuantity: e.target.value })}
+                                    onChange={(e) => onLocalChange(resourceName, { bidStorageTarget: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
+                                {/* Effective buy qty with fulfillment colour */}
+                                {bid?.bidStorageTarget !== undefined && effectiveBuyQty !== undefined && (
+                                    <div
+                                        className={`text-[11px] tabular-nums font-medium ${buyFulfillmentClass(inventoryQty, bid.bidStorageTarget)}`}
+                                    >
+                                        {effectiveBuyQty === 0
+                                            ? 'Target met — order inactive'
+                                            : `Buy ${formatNumbers(effectiveBuyQty)} / tick`}
+                                    </div>
+                                )}
                                 {isFacilityInput && (
                                     <div className='space-y-1 text-[11px] text-muted-foreground'>
                                         <div>
@@ -558,7 +632,7 @@ function ResourceAccordionItem({
                                                 htmlFor={`buf-ticks-${resourceName}`}
                                                 className='text-[11px] text-muted-foreground shrink-0'
                                             >
-                                                Buffer (ticks)
+                                                Target (ticks)
                                             </Label>
                                             <Input
                                                 id={`buf-ticks-${resourceName}`}
@@ -575,9 +649,9 @@ function ResourceAccordionItem({
                                                 }
                                                 className='h-6 w-16 text-[11px] tabular-nums'
                                             />
-                                            {suggestedBidQty !== null && (
+                                            {suggestedStorageTarget !== null && (
                                                 <>
-                                                    <span>→ {formatNumbers(suggestedBidQty)}</span>
+                                                    <span>→ {formatNumbers(suggestedStorageTarget)}</span>
                                                     <Button
                                                         variant='outline'
                                                         size='sm'
@@ -585,7 +659,7 @@ function ResourceAccordionItem({
                                                         disabled={local.bidAutomated || saving}
                                                         onClick={() =>
                                                             onLocalChange(resourceName, {
-                                                                bidQuantity: String(Math.ceil(suggestedBidQty)),
+                                                                bidStorageTarget: String(suggestedStorageTarget),
                                                             })
                                                         }
                                                     >
@@ -690,35 +764,44 @@ function ResourceAccordionItem({
                                 )}
                             </div>
 
-                            {/* Quantity to sell box + % presets */}
+                            {/* Retainment box + presets */}
                             <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                                 <Label
-                                    htmlFor={`offer-qty-${resourceName}`}
+                                    htmlFor={`offer-retainment-${resourceName}`}
                                     className='text-[11px] text-muted-foreground'
                                 >
-                                    Quantity to sell
+                                    Retainment (keep ≥)
                                 </Label>
                                 <Input
-                                    id={`offer-qty-${resourceName}`}
+                                    id={`offer-retainment-${resourceName}`}
                                     type='number'
                                     min={0}
-                                    max={inventoryQty}
                                     step={1}
                                     placeholder={
-                                        offer?.offerQuantity !== undefined
-                                            ? String(Math.round(offer.offerQuantity))
-                                            : 'e.g. 100'
+                                        offer?.offerRetainment !== undefined
+                                            ? String(Math.round(offer.offerRetainment))
+                                            : 'e.g. 0'
                                     }
-                                    value={local.offerQuantity}
+                                    value={local.offerRetainment}
                                     disabled={local.offerAutomated || saving}
-                                    onChange={(e) => onLocalChange(resourceName, { offerQuantity: e.target.value })}
+                                    onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
-                                {sellPresets && !local.offerAutomated && (
+                                {/* Effective sell qty with fulfillment colour */}
+                                {offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
+                                    <div
+                                        className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
+                                    >
+                                        {effectiveSellQty === 0
+                                            ? 'Nothing to sell — order inactive'
+                                            : `Sell ${formatNumbers(effectiveSellQty)} / tick`}
+                                    </div>
+                                )}
+                                {retainmentPresets && !local.offerAutomated && (
                                     <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
-                                        <span className='shrink-0'>Stock: {formatNumbers(inventoryQty)}</span>
+                                        <span className='shrink-0'>Keep:</span>
                                         <div className='flex gap-1 ml-auto'>
-                                            {sellPresets.map(({ label, qty }) => (
+                                            {retainmentPresets.map(({ label, qty }) => (
                                                 <Button
                                                     key={label}
                                                     variant='outline'
@@ -726,7 +809,9 @@ function ResourceAccordionItem({
                                                     className='h-5 text-[10px] px-1.5 py-0'
                                                     disabled={saving}
                                                     onClick={() =>
-                                                        onLocalChange(resourceName, { offerQuantity: String(qty) })
+                                                        onLocalChange(resourceName, {
+                                                            offerRetainment: String(qty),
+                                                        })
                                                     }
                                                 >
                                                     {label}
@@ -763,12 +848,12 @@ function ResourceAccordionItem({
                                     <CheckCircle2 className='h-3.5 w-3.5' /> {successMsg}
                                 </span>
                             )}
-                        {errorMsg && (
-                            <span className='text-xs text-destructive flex items-center gap-1'>
-                                <AlertCircle className='h-3.5 w-3.5' />
-                                <span dangerouslySetInnerHTML={{ __html: errorMsg }} />
-                            </span>
-                        )}
+                            {errorMsg && (
+                                <span className='text-xs text-destructive flex items-center gap-1'>
+                                    <AlertCircle className='h-3.5 w-3.5' />
+                                    <span dangerouslySetInnerHTML={{ __html: errorMsg }} />
+                                </span>
+                            )}
                         </div>
                         <Button size='sm' onClick={handleSave} disabled={saving}>
                             {saving ? 'Saving…' : 'Save'}

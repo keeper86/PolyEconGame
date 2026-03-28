@@ -69,7 +69,10 @@ export function workerSetWorkerAllocationTargets(opts: {
 export function workerSetSellOffers(opts: {
     agentId: string;
     planetId: string;
-    offers: Record<string, { offerPrice?: number; offerQuantity?: number; automated?: boolean }>;
+    offers: Record<
+        string,
+        { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
+    >;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, offers, timeoutMs } = opts;
@@ -83,7 +86,7 @@ export function workerSetSellOffers(opts: {
 export function workerSetBuyBids(opts: {
     agentId: string;
     planetId: string;
-    bids: Record<string, { bidPrice?: number; bidQuantity?: number; automated?: boolean }>;
+    bids: Record<string, { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }>;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, bids, timeoutMs } = opts;

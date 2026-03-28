@@ -429,6 +429,8 @@ export const setSellOffers = () => {
                         offerPrice: z.number().positive().optional(),
                         /** Units to offer for sale this tick. 0 = withdraw offer. */
                         offerQuantity: z.number().min(0).optional(),
+                        /** Keep at least this many units — sell qty = max(0, inventory − retainment). */
+                        offerRetainment: z.number().min(0).optional(),
                         /** When true, the auto-pricing engine manages this offer each tick. */
                         automated: z.boolean().optional(),
                     }),
@@ -449,7 +451,7 @@ export const setSellOffers = () => {
 
             // Validate each offer using the shared validation module
             for (const [resourceName, offer] of Object.entries(input.offers)) {
-                const resource = ALL_RESOURCES.find(r => r.name === resourceName);
+                const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
                 if (!resource) {
                     throw new TRPCError({
                         code: 'BAD_REQUEST',
@@ -462,21 +464,22 @@ export const setSellOffers = () => {
                 if (!agent) {
                     throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
                 }
-                
+
                 const assets = agent.assets[input.planetId];
                 if (!assets) {
                     throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
                 }
-                
+
                 const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
-                
+
+                // Validate price only when using retainment (qty is computed dynamically)
                 const validation = validateSellOffer(
                     offer.offerPrice,
-                    offer.offerQuantity,
+                    offer.offerRetainment !== undefined ? undefined : offer.offerQuantity,
                     resource,
-                    inventoryQty
+                    inventoryQty,
                 );
-                
+
                 if (!validation.isValid) {
                     throw new TRPCError({
                         code: 'BAD_REQUEST',
@@ -509,6 +512,8 @@ export const setBuyBids = () => {
                     z.object({
                         bidPrice: z.number().positive().optional(),
                         bidQuantity: z.number().min(0).optional(),
+                        /** Fill storage up to this level — bid qty = max(0, target − inventory). */
+                        bidStorageTarget: z.number().min(0).optional(),
                         /** When true, the auto-pricing engine manages this bid each tick. */
                         automated: z.boolean().optional(),
                     }),
@@ -529,7 +534,7 @@ export const setBuyBids = () => {
 
             // Validate each bid using the shared validation module
             for (const [resourceName, bid] of Object.entries(input.bids)) {
-                const resource = ALL_RESOURCES.find(r => r.name === resourceName);
+                const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
                 if (!resource) {
                     throw new TRPCError({
                         code: 'BAD_REQUEST',
@@ -542,21 +547,23 @@ export const setBuyBids = () => {
                 if (!agent) {
                     throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
                 }
-                
+
                 const assets = agent.assets[input.planetId];
                 if (!assets) {
                     throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
                 }
-                
+
                 const deposits = assets.deposits;
-                
+
+                // For storage-target bids the actual qty is computed dynamically;
+                // skip deposit check since we can't know the effective qty yet.
                 const validation = validateBuyBid(
                     bid.bidPrice,
-                    bid.bidQuantity,
+                    bid.bidStorageTarget !== undefined ? undefined : bid.bidQuantity,
                     resource,
-                    deposits
+                    deposits,
                 );
-                
+
                 if (!validation.isValid) {
                     throw new TRPCError({
                         code: 'BAD_REQUEST',
