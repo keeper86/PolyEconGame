@@ -4,7 +4,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
 import BankPanel from './BankPanel';
-import IntergenerationalTransferChart from './IntergenerationalTransferChart';
+import AgentFinancialPanel from './AgentFinancialPanel';
 
 export default function PlanetEconomyPage() {
     const params = useParams();
@@ -30,7 +30,7 @@ export default function PlanetEconomyPage() {
                 wagePerEdu={economy.wagePerEdu ?? undefined}
                 priceLevel={economy.priceLevel ?? undefined}
             />
-            <IntergenerationalTransferChart lastTransferMatrix={economy.lastTransferMatrix} />
+            <AgentFinancialPanel />
         </div>
     );
 }

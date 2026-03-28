@@ -2,20 +2,19 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useTRPC } from '@/lib/trpc';
 import { productImage } from '@/lib/mapResource';
-import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import { ArrowLeft } from 'lucide-react';
-import MarketSummaryCards from '../MarketSummaryCards';
-import OrderBookChart from '../OrderBookChart';
-import OfferTable from '../OfferTable';
+import Image from 'next/image';
+import { useParams, useRouter } from 'next/navigation';
 import BidTable from '../BidTable';
+import MarketSummaryCards from '../MarketSummaryCards';
+import OfferTable from '../OfferTable';
 import PopulationDemandChart from '../PopulationDemandChart';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import { formatNumbers } from '@/lib/utils';
 
 const FOOD_RESOURCE_NAME = agriculturalProductResourceType.name;
 
@@ -74,23 +73,6 @@ function ResourceMarketContent({
 
             <h4 className='text-sm font-semibold mb-2'>Current state</h4>
             <MarketSummaryCards market={market} />
-
-            <div className='my-3 border-t' />
-
-            <h4 className='text-sm font-semibold mb-1'>Merit-order supply stack</h4>
-            <p className='text-xs text-muted-foreground mb-2'>
-                Sellers sorted cheapest-first. Bars show offer price; colour indicates sell-through (green = fully sold,
-                amber = marginal, grey = unsold). The dashed line is last tick&apos;s clearing price.
-            </p>
-            <Card className='mb-4'>
-                <CardContent className='pt-3'>
-                    <OrderBookChart
-                        offers={market.offers}
-                        totalDemand={market.totalDemand}
-                        clearingPrice={market.clearingPrice}
-                    />
-                </CardContent>
-            </Card>
 
             <div className='my-3 border-t' />
 

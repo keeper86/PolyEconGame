@@ -62,7 +62,12 @@ function Stat({
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export default function AgentFinancialPanel({ deposits, loans, lastWageBill, foodMarket }: Props): React.ReactElement {
+export default function AgentFinancialOverview({
+    deposits,
+    loans,
+    lastWageBill,
+    foodMarket,
+}: Props): React.ReactElement {
     const netPosition = deposits - loans;
     const retainedThreshold = lastWageBill * RETAINED_EARNINGS_THRESHOLD;
     const excessDeposits = Math.max(0, deposits - retainedThreshold);
