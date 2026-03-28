@@ -14,7 +14,6 @@ import {
 import { RETAINED_EARNINGS_THRESHOLD } from '@/simulation/constants';
 import type { AgentMarketOfferState } from '@/simulation/planet/planet';
 import { formatNumbers } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
 /* ------------------------------------------------------------------ */
@@ -76,128 +75,121 @@ export default function AgentFinancialOverview({
     const cashCoversTicks = lastWageBill > 0 && deposits > 0 ? Math.floor(deposits / lastWageBill) : null;
 
     return (
-        <Card>
-            <CardHeader className='pb-2 pt-3 px-3'>
-                <CardTitle className='text-sm font-semibold flex items-center gap-2'>
-                    <Landmark className='h-4 w-4 text-muted-foreground' />
-                    Financial Position
-                </CardTitle>
-            </CardHeader>
+        <div className='space-y-3'>
+            {/* Balance sheet */}
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
+                <Stat
+                    label='Firm deposits'
+                    value={formatNumbers(deposits)}
+                    icon={<Coins className='h-3 w-3' />}
+                    valueClassName={deposits < 0 ? 'text-red-500' : deposits === 0 ? 'text-muted-foreground' : ''}
+                />
+                <Stat
+                    label='Outstanding loans'
+                    value={formatNumbers(loans)}
+                    icon={<TrendingDown className='h-3 w-3' />}
+                    valueClassName={loans > 0 ? 'text-amber-500' : 'text-muted-foreground'}
+                />
+                <Stat
+                    label='Net position (deposits − loans)'
+                    value={formatNumbers(netPosition)}
+                    icon={netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />}
+                    valueClassName={netPosition < 0 ? 'text-red-500' : netPosition > 0 ? 'text-green-600' : ''}
+                />
+            </div>
 
-            <CardContent className='px-3 pb-3 space-y-3'>
-                {/* Balance sheet */}
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
-                    <Stat
-                        label='Firm deposits'
-                        value={formatNumbers(deposits)}
-                        icon={<Coins className='h-3 w-3' />}
-                        valueClassName={deposits < 0 ? 'text-red-500' : deposits === 0 ? 'text-muted-foreground' : ''}
-                    />
-                    <Stat
-                        label='Outstanding loans'
-                        value={formatNumbers(loans)}
-                        icon={<TrendingDown className='h-3 w-3' />}
-                        valueClassName={loans > 0 ? 'text-amber-500' : 'text-muted-foreground'}
-                    />
-                    <Stat
-                        label='Net position (deposits − loans)'
-                        value={formatNumbers(netPosition)}
-                        icon={netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />}
-                        valueClassName={netPosition < 0 ? 'text-red-500' : netPosition > 0 ? 'text-green-600' : ''}
-                    />
-                </div>
-
-                {/* Wage bill & cash flow */}
-                {lastWageBill > 0 && (
-                    <>
-                        <Separator />
-                        <div>
-                            <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
-                                <Landmark className='h-3 w-3' />
-                                Cash flow
-                            </div>
-                            <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
-                                <Stat
-                                    label='Last wage bill / tick'
-                                    value={formatNumbers(lastWageBill)}
-                                    icon={<ArrowDownRight className='h-3 w-3' />}
-                                    valueClassName='text-amber-500'
-                                />
-                                {cashCoversTicks !== null && (
-                                    <Stat
-                                        label='Ticks of cash coverage'
-                                        value={cashCoversTicks}
-                                        icon={<TrendingUp className='h-3 w-3' />}
-                                        valueClassName={cashCoversTicks < 2 ? 'text-red-500' : 'text-green-600'}
-                                    />
-                                )}
-                                <Stat
-                                    label={`Retained threshold (${RETAINED_EARNINGS_THRESHOLD}× wage bill)`}
-                                    value={formatNumbers(retainedThreshold)}
-                                    icon={<Minus className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Excess deposits (avail. for repayment)'
-                                    value={formatNumbers(excessDeposits)}
-                                    icon={<ArrowUpRight className='h-3 w-3' />}
-                                    valueClassName={excessDeposits > 0 ? 'text-green-600' : 'text-muted-foreground'}
-                                />
-                            </div>
+            {/* Wage bill & cash flow */}
+            {lastWageBill > 0 && (
+                <>
+                    <Separator />
+                    <div>
+                        <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
+                            <Landmark className='h-3 w-3' />
+                            Cash flow
                         </div>
-                    </>
-                )}
-
-                {/* Food market */}
-                {foodMarket && (
-                    <>
-                        <Separator />
-                        <div>
-                            <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
-                                <ShoppingCart className='h-3 w-3' />
-                                Food market
-                            </div>
-                            <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
-                                {foodMarket.offerPrice != null && (
-                                    <Stat label='Offer price' value={formatNumbers(foodMarket.offerPrice)} />
-                                )}
-                                {foodMarket.offerQuantity != null && (
-                                    <Stat label='Offer quantity' value={formatNumbers(foodMarket.offerQuantity)} />
-                                )}
-                                {foodMarket.lastSold != null && (
-                                    <Stat label='Last sold (qty)' value={formatNumbers(foodMarket.lastSold)} />
-                                )}
-                                {foodMarket.lastRevenue != null && (
-                                    <Stat
-                                        label='Last revenue'
-                                        value={formatNumbers(foodMarket.lastRevenue)}
-                                        icon={<Coins className='h-3 w-3' />}
-                                        valueClassName={foodMarket.lastRevenue > 0 ? 'text-green-600' : 'text-muted-foreground'}
-                                    />
-                                )}
-                                {foodMarket.priceDirection != null && (
-                                    <Stat
-                                        label='Price direction'
-                                        value={
-                                            foodMarket.priceDirection > 0
-                                                ? `↑ +${foodMarket.priceDirection.toFixed(4)}`
-                                                : foodMarket.priceDirection < 0
-                                                  ? `↓ ${foodMarket.priceDirection.toFixed(4)}`
-                                                  : '→ 0'
-                                        }
-                                        valueClassName={
-                                            foodMarket.priceDirection > 0
-                                                ? 'text-green-600'
-                                                : foodMarket.priceDirection < 0
-                                                  ? 'text-red-500'
-                                                  : ''
-                                        }
-                                    />
-                                )}
-                            </div>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
+                            <Stat
+                                label='Last wage bill / tick'
+                                value={formatNumbers(lastWageBill)}
+                                icon={<ArrowDownRight className='h-3 w-3' />}
+                                valueClassName='text-amber-500'
+                            />
+                            {cashCoversTicks !== null && (
+                                <Stat
+                                    label='Ticks of cash coverage'
+                                    value={cashCoversTicks}
+                                    icon={<TrendingUp className='h-3 w-3' />}
+                                    valueClassName={cashCoversTicks < 2 ? 'text-red-500' : 'text-green-600'}
+                                />
+                            )}
+                            <Stat
+                                label={`Retained threshold (${RETAINED_EARNINGS_THRESHOLD}× wage bill)`}
+                                value={formatNumbers(retainedThreshold)}
+                                icon={<Minus className='h-3 w-3' />}
+                            />
+                            <Stat
+                                label='Excess deposits (avail. for repayment)'
+                                value={formatNumbers(excessDeposits)}
+                                icon={<ArrowUpRight className='h-3 w-3' />}
+                                valueClassName={excessDeposits > 0 ? 'text-green-600' : 'text-muted-foreground'}
+                            />
                         </div>
-                    </>
-                )}
-            </CardContent>
-        </Card>
+                    </div>
+                </>
+            )}
+
+            {/* Food market */}
+            {foodMarket && (
+                <>
+                    <Separator />
+                    <div>
+                        <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
+                            <ShoppingCart className='h-3 w-3' />
+                            Food market
+                        </div>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
+                            {foodMarket.offerPrice != null && (
+                                <Stat label='Offer price' value={formatNumbers(foodMarket.offerPrice)} />
+                            )}
+                            {foodMarket.offerQuantity != null && (
+                                <Stat label='Offer quantity' value={formatNumbers(foodMarket.offerQuantity)} />
+                            )}
+                            {foodMarket.lastSold != null && (
+                                <Stat label='Last sold (qty)' value={formatNumbers(foodMarket.lastSold)} />
+                            )}
+                            {foodMarket.lastRevenue != null && (
+                                <Stat
+                                    label='Last revenue'
+                                    value={formatNumbers(foodMarket.lastRevenue)}
+                                    icon={<Coins className='h-3 w-3' />}
+                                    valueClassName={
+                                        foodMarket.lastRevenue > 0 ? 'text-green-600' : 'text-muted-foreground'
+                                    }
+                                />
+                            )}
+                            {foodMarket.priceDirection != null && (
+                                <Stat
+                                    label='Price direction'
+                                    value={
+                                        foodMarket.priceDirection > 0
+                                            ? `↑ +${foodMarket.priceDirection.toFixed(4)}`
+                                            : foodMarket.priceDirection < 0
+                                              ? `↓ ${foodMarket.priceDirection.toFixed(4)}`
+                                              : '→ 0'
+                                    }
+                                    valueClassName={
+                                        foodMarket.priceDirection > 0
+                                            ? 'text-green-600'
+                                            : foodMarket.priceDirection < 0
+                                              ? 'text-red-500'
+                                              : ''
+                                    }
+                                />
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
     );
 }

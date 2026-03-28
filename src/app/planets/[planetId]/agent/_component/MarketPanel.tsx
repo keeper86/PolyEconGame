@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -16,13 +17,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTRPC } from '@/lib/trpc';
 import { productImage } from '@/lib/mapResource';
-import { formatNumbers } from '@/lib/utils';
+import { cn, formatNumbers } from '@/lib/utils';
 import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
 
 import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
 import type { AgentPlanetAssets } from './useAgentPlanetDetail';
+import type { MarketOverviewRow } from '@/server/controller/planet';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -143,6 +145,55 @@ function resourceNameToSlug(resourceName: string): string {
     return resourceName.toLowerCase().replace(/\s+/g, '-');
 }
 
+/* ------------------------------------------------------------------ */
+/*  Market status classification                                       */
+/* ------------------------------------------------------------------ */
+
+type MarketStatus = 'balanced' | 'mostly' | 'partial-shortage' | 'shortage' | 'oversupply' | 'no-demand';
+
+const OVERSUPPLY_RATIO_THRESHOLD = 2;
+
+function classifyMarket(row: MarketOverviewRow): MarketStatus {
+    const { totalSupply, totalDemand, fillRatio } = row;
+    if (totalDemand === 0 && totalSupply > 0) {
+        return 'no-demand';
+    }
+    if (totalDemand > 0 && totalSupply / totalDemand >= OVERSUPPLY_RATIO_THRESHOLD) {
+        return 'oversupply';
+    }
+    if (fillRatio >= 0.999) {
+        return 'balanced';
+    }
+    if (fillRatio >= 0.8) {
+        return 'mostly';
+    }
+    if (fillRatio >= 0.5) {
+        return 'partial-shortage';
+    }
+    return 'shortage';
+}
+
+const MARKET_STATUS_CONFIG: Record<MarketStatus, { label: string; className: string }> = {
+    'balanced': { label: 'Full', className: 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30' },
+    'mostly': {
+        label: 'Mostly',
+        className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+    },
+    'partial-shortage': {
+        label: 'Partial',
+        className: 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30',
+    },
+    'shortage': { label: 'Shortage', className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30' },
+    'oversupply': {
+        label: 'Oversupply',
+        className: 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30',
+    },
+    'no-demand': {
+        label: 'No demand',
+        className: 'bg-slate-500/20 text-slate-500 dark:text-slate-400 border-slate-500/30',
+    },
+};
+
 /** Build the deduplicated list of resources to show. */
 function buildResourceList(
     facilities: ProductionFacility[],
@@ -225,18 +276,21 @@ function ResourceTrigger({
     name,
     bid,
     offer,
+    overviewRow,
 }: {
     name: string;
     bid?: MarketBidEntry;
     offer?: MarketOfferEntry;
+    overviewRow?: MarketOverviewRow;
 }): React.ReactElement {
-    const arrow = priceArrow(offer?.priceDirection);
     const { planetId } = useParams() as { planetId: string };
     const slug = resourceNameToSlug(name);
     const marketUrl = `/planets/${encodeURIComponent(planetId)}/market/${slug}`;
+    const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
+    const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
 
     return (
-        <div className='flex flex-1 items-center gap-3 min-w-0 py-1'>
+        <div className='flex flex-1 items-center gap-2 min-w-0 py-1'>
             {/* Resource icon */}
             <div className='relative h-6 w-6 shrink-0'>
                 <Image
@@ -252,7 +306,7 @@ function ResourceTrigger({
             </div>
 
             {/* Resource name with market link */}
-            <div className='flex items-center gap-1.5 min-w-0 flex-1'>
+            <div className='flex items-center gap-1 min-w-0 w-28 shrink-0'>
                 <span className='text-sm font-medium truncate'>{name}</span>
                 <Link
                     href={marketUrl as never}
@@ -264,36 +318,53 @@ function ResourceTrigger({
                 </Link>
             </div>
 
-            {/* KPI pills */}
-            <div className='flex items-center gap-3 text-[11px] tabular-nums text-muted-foreground shrink-0'>
-                {/* BUY side */}
-                {(bid?.lastBought !== undefined || bid?.bidPrice !== undefined) && (
-                    <span className='flex items-center gap-1'>
-                        <ShoppingCart className='h-3 w-3' />
-                        {bid.bidPrice !== undefined && <span>{bid.bidPrice.toFixed(2)}</span>}
-                        {bid.lastBought !== undefined && (
-                            <span className='text-blue-600 dark:text-blue-400'>{formatNumbers(bid.lastBought)}</span>
-                        )}
-                        {bid.automated && <Bot className='h-3 w-3 text-purple-500' />}
-                        {bid.storageFullWarning && (
-                            <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5'>
-                                full
+            {/* Market overview stats — mirrors the Overview table columns */}
+            <div className='flex flex-1 items-center justify-end gap-3 text-[11px] tabular-nums text-muted-foreground'>
+                {overviewRow ? (
+                    <>
+                        <span className='font-medium text-foreground' title='Clearing price'>
+                            {overviewRow.clearingPrice.toFixed(2)}
+                        </span>
+                        <span className='hidden sm:inline' title='Total production'>
+                            {formatNumbers(overviewRow.totalProduction)}
+                        </span>
+                        <span className='hidden md:inline' title='Total supply'>
+                            {formatNumbers(overviewRow.totalSupply)}
+                        </span>
+                        <span className='hidden md:inline' title='Total demand'>
+                            {formatNumbers(overviewRow.totalDemand)}
+                        </span>
+                        <span className='hidden sm:inline' title='Total sold'>
+                            {formatNumbers(overviewRow.totalSold)}
+                        </span>
+                        {statusConfig && (
+                            <Badge
+                                variant='outline'
+                                className={cn('text-[9px] px-1 py-0 h-4 shrink-0', statusConfig.className)}
+                            >
+                                {statusConfig.label}
                             </Badge>
                         )}
+                    </>
+                ) : (
+                    /* Fallback when market has no activity yet */
+                    <span className='italic'>no data</span>
+                )}
+                {/* Agent auto-manage indicators */}
+                {bid?.automated && (
+                    <span title='Buy auto-managed'>
+                        <Bot className='h-3 w-3 text-purple-500 shrink-0' />
                     </span>
                 )}
-
-                {/* SELL side */}
-                {(offer?.lastSold !== undefined || offer?.offerPrice !== undefined) && (
-                    <span className='flex items-center gap-1'>
-                        <Tag className='h-3 w-3' />
-                        {offer.offerPrice !== undefined && <span>{offer.offerPrice.toFixed(2)}</span>}
-                        {offer.lastSold !== undefined && (
-                            <span className='text-green-600 dark:text-green-400'>{formatNumbers(offer.lastSold)}</span>
-                        )}
-                        {arrow.label && <span className={arrow.className}>{arrow.label}</span>}
-                        {offer.automated && <Bot className='h-3 w-3 text-purple-500' />}
+                {offer?.automated && (
+                    <span title='Sell auto-managed'>
+                        <Bot className='h-3 w-3 text-purple-500 shrink-0' />
                     </span>
+                )}
+                {bid?.storageFullWarning && (
+                    <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5 shrink-0'>
+                        full
+                    </Badge>
                 )}
             </div>
         </div>
@@ -310,14 +381,16 @@ function ResourceAccordionItem({
     assets,
     local,
     onLocalChange,
-    isOpen,
+    _isOpen,
+    overviewRow,
 }: {
     resourceName: string;
     agentId: string;
     assets: AgentPlanetAssets;
     local: LocalResourceState;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
-    isOpen: boolean;
+    _isOpen: boolean;
+    overviewRow?: MarketOverviewRow;
 }): React.ReactElement {
     const bid = assets.market?.buy[resourceName];
     const offer = assets.market?.sell[resourceName];
@@ -334,15 +407,6 @@ function ResourceAccordionItem({
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const resource = getResourceByName(resourceName);
-
-    // ── Market KPI query — only polls while this item is open ──────────
-    const { data: marketData } = useQuery({
-        ...trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName }),
-        enabled: isOpen,
-        staleTime: 1_000,
-        refetchInterval: isOpen ? 900 : false,
-    });
-    const market = marketData?.market;
 
     // ── Mutations ──────────────────────────────────────────────────────
     const sellMutation = useMutation(
@@ -476,30 +540,14 @@ function ResourceAccordionItem({
     return (
         <AccordionItem value={resourceName}>
             <AccordionTrigger className='hover:no-underline px-1'>
-                <ResourceTrigger name={resourceName} bid={bid} offer={offer} />
+                <ResourceTrigger name={resourceName} bid={bid} offer={offer} overviewRow={overviewRow} />
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-5'>
-                    {/* ── Market KPI strip ── */}
-                    {market && (
+                    {/* ── Agent production / consumption context ── */}
+                    {(isFacilityInput || isFacilityOutput) && (
                         <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
-                            <span>
-                                Clearing{' '}
-                                <span className='font-semibold text-foreground'>{market.clearingPrice.toFixed(2)}</span>
-                            </span>
-                            <span>
-                                Demand{' '}
-                                <span className='font-semibold text-foreground'>
-                                    {formatNumbers(market.totalDemand)}
-                                </span>
-                            </span>
-                            <span>
-                                Supply{' '}
-                                <span className='font-semibold text-foreground'>
-                                    {formatNumbers(market.totalSupply)}
-                                </span>
-                            </span>
-                            {(isFacilityOutput || producedPerTick > 0) && (
+                            {isFacilityOutput && (
                                 <span>
                                     My production{' '}
                                     <span className='font-semibold text-foreground'>
@@ -507,17 +555,14 @@ function ResourceAccordionItem({
                                     </span>
                                 </span>
                             )}
-                            <span
-                                className={
-                                    market.fillRatio >= 0.9
-                                        ? 'text-green-600 dark:text-green-400'
-                                        : market.fillRatio < 0.5
-                                          ? 'text-red-500 dark:text-red-400'
-                                          : 'text-yellow-600 dark:text-yellow-400'
-                                }
-                            >
-                                Fill {Math.round(market.fillRatio * 100)}%
-                            </span>
+                            {isFacilityInput && (
+                                <span>
+                                    My consumption{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumbers(consumedPerTick)}/tick
+                                    </span>
+                                </span>
+                            )}
                         </div>
                     )}
 
@@ -563,9 +608,9 @@ function ResourceAccordionItem({
                                     onChange={(e) => onLocalChange(resourceName, { bidPrice: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
-                                {market && !local.bidAutomated && (
+                                {overviewRow && !local.bidAutomated && (
                                     <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                                        <span>Clearing: {market.clearingPrice.toFixed(2)}</span>
+                                        <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
                                         <Button
                                             variant='outline'
                                             size='sm'
@@ -573,7 +618,7 @@ function ResourceAccordionItem({
                                             disabled={saving}
                                             onClick={() =>
                                                 onLocalChange(resourceName, {
-                                                    bidPrice: market.clearingPrice.toFixed(2),
+                                                    bidPrice: overviewRow.clearingPrice.toFixed(2),
                                                 })
                                             }
                                         >
@@ -741,9 +786,9 @@ function ResourceAccordionItem({
                                     onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
                                     className='h-8 text-sm tabular-nums'
                                 />
-                                {market && !local.offerAutomated && (
+                                {overviewRow && !local.offerAutomated && (
                                     <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                                        <span>Clearing: {market.clearingPrice.toFixed(2)}</span>
+                                        <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
                                         <Button
                                             variant='outline'
                                             size='sm'
@@ -751,7 +796,7 @@ function ResourceAccordionItem({
                                             disabled={saving}
                                             onClick={() =>
                                                 onLocalChange(resourceName, {
-                                                    offerPrice: market.clearingPrice.toFixed(2),
+                                                    offerPrice: overviewRow.clearingPrice.toFixed(2),
                                                 })
                                             }
                                         >
@@ -867,9 +912,22 @@ function ResourceAccordionItem({
 
 export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
     const [showAll, setShowAll] = useState(false);
-    const [openItem, setOpenItem] = useState<string>('');
+    const [openItems, setOpenItems] = useState<string[]>([]);
+    const trpc = useTRPC();
 
     const { productionFacilities, storageFacility, market } = assets;
+
+    // ── Hoisted market overview query ──────────────────────────────────
+    const { data: overviewData } = useSimulationQuery(
+        trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId: _planetId }),
+    );
+    const overviewRows: Record<string, MarketOverviewRow> = useMemo(() => {
+        const map: Record<string, MarketOverviewRow> = {};
+        for (const row of overviewData?.rows ?? []) {
+            map[row.resourceName] = row;
+        }
+        return map;
+    }, [overviewData]);
 
     const buyBids = market?.buy ?? {};
     const sellOffers = market?.sell ?? {};
@@ -934,25 +992,46 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                         No resources to display. Build a facility or enable &quot;Show all resources&quot;.
                     </p>
                 ) : (
-                    <Accordion
-                        type='single'
-                        collapsible
-                        value={openItem}
-                        onValueChange={setOpenItem}
-                        className='w-full'
-                    >
-                        {resources.map(({ name }) => (
-                            <ResourceAccordionItem
-                                key={name}
-                                resourceName={name}
-                                agentId={agentId}
-                                assets={assets}
-                                local={localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]}
-                                onLocalChange={handleLocalChange}
-                                isOpen={openItem === name}
-                            />
-                        ))}
-                    </Accordion>
+                    <>
+                        {/* Column header — mirrors the overview table */}
+                        <div className='flex items-center gap-2 px-1 text-[10px] font-medium text-muted-foreground select-none'>
+                            {/* Offset for icon + name area */}
+                            <div className='w-6 shrink-0' />
+                            <div className='w-28 shrink-0' />
+                            <div className='flex flex-1 items-center justify-end gap-3 pr-6'>
+                                <span title='Clearing price'>Price</span>
+                                <span className='hidden sm:inline' title='Total production'>
+                                    Prod
+                                </span>
+                                <span className='hidden md:inline' title='Total supply'>
+                                    Supply
+                                </span>
+                                <span className='hidden md:inline' title='Total demand'>
+                                    Demand
+                                </span>
+                                <span className='hidden sm:inline' title='Total sold'>
+                                    Sold
+                                </span>
+                                <span>Fill</span>
+                            </div>
+                        </div>
+                        <Accordion type='multiple' value={openItems} onValueChange={setOpenItems} className='w-full'>
+                            {resources.map(({ name }) => (
+                                <ResourceAccordionItem
+                                    key={name}
+                                    resourceName={name}
+                                    agentId={agentId}
+                                    assets={assets}
+                                    local={
+                                        localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]
+                                    }
+                                    onLocalChange={handleLocalChange}
+                                    _isOpen={openItems.includes(name)}
+                                    overviewRow={overviewRows[name]}
+                                />
+                            ))}
+                        </Accordion>
+                    </>
                 )}
             </CardContent>
         </Card>
