@@ -1,12 +1,5 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useParams } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
-import { AlertCircle, Bot, CheckCircle2, ShoppingCart, Tag, ExternalLink } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -15,16 +8,22 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useTRPC } from '@/lib/trpc';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { productImage } from '@/lib/mapResource';
+import { useTRPC } from '@/lib/trpc';
 import { cn, formatNumbers } from '@/lib/utils';
 import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, Bot, CheckCircle2, ShoppingCart, Tag } from 'lucide-react';
+import Image from 'next/image';
+import { useParams } from 'next/navigation';
+import React, { useEffect, useMemo, useState } from 'react';
 
-import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
-import type { AgentPlanetAssets } from './useAgentPlanetDetail';
 import type { MarketOverviewRow } from '@/server/controller/planet';
+import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
+import type { AgentPlanetAssets } from './useAgentPlanetDetail';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -283,15 +282,14 @@ function ResourceTrigger({
     offer?: MarketOfferEntry;
     overviewRow?: MarketOverviewRow;
 }): React.ReactElement {
-    const { planetId } = useParams() as { planetId: string };
-    const slug = resourceNameToSlug(name);
-    const marketUrl = `/planets/${encodeURIComponent(planetId)}/market/${slug}`;
     const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
     const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
+    const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
+    const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
     return (
-        <div className='flex flex-1 items-center gap-2 min-w-0 py-1'>
-            {/* Resource icon */}
+        <div className='flex flex-1 items-center gap-2 min-w-0'>
+            {/* Icon */}
             <div className='relative h-6 w-6 shrink-0'>
                 <Image
                     src={productImage(name)}
@@ -300,73 +298,107 @@ function ResourceTrigger({
                     sizes='24px'
                     className='object-contain'
                     onError={() => {
-                        /* silently skip missing icons */
+                        /* silently skip */
                     }}
                 />
             </div>
 
-            {/* Resource name with market link */}
-            <div className='flex items-center gap-1 min-w-0 w-28 shrink-0'>
+            {/* Name + market link + order indicators */}
+            <div className='flex-1 min-w-0 flex items-center gap-1'>
                 <span className='text-sm font-medium truncate'>{name}</span>
-                <Link
-                    href={marketUrl as never}
-                    onClick={(e) => e.stopPropagation()}
-                    className='shrink-0 text-muted-foreground hover:text-foreground transition-colors'
-                    title={`Open ${name} market page`}
-                >
-                    <ExternalLink className='h-3 w-3' />
-                </Link>
+                {(hasActiveBid || hasActiveOffer || bid?.automated || offer?.automated || bid?.storageFullWarning) && (
+                    <div className='flex items-center gap-0.5 ml-0.5 shrink-0'>
+                        {hasActiveBid && (
+                            <span
+                                className='h-1.5 w-1.5 rounded-full bg-blue-500'
+                                title={bid?.automated ? 'Auto buy' : 'Active buy bid'}
+                            />
+                        )}
+                        {hasActiveOffer && (
+                            <span
+                                className='h-1.5 w-1.5 rounded-full bg-green-500'
+                                title={offer?.automated ? 'Auto sell' : 'Active sell offer'}
+                            />
+                        )}
+                        {(bid?.automated || offer?.automated) && <Bot className='h-3 w-3 text-purple-500' />}
+                        {bid?.storageFullWarning && (
+                            <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5'>
+                                full
+                            </Badge>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Market overview stats — mirrors the Overview table columns */}
-            <div className='flex flex-1 items-center justify-end gap-3 text-[11px] tabular-nums text-muted-foreground'>
-                {overviewRow ? (
-                    <>
-                        <span className='font-medium text-foreground' title='Clearing price'>
-                            {overviewRow.clearingPrice.toFixed(2)}
-                        </span>
-                        <span className='hidden sm:inline' title='Total production'>
-                            {formatNumbers(overviewRow.totalProduction)}
-                        </span>
-                        <span className='hidden md:inline' title='Total supply'>
-                            {formatNumbers(overviewRow.totalSupply)}
-                        </span>
-                        <span className='hidden md:inline' title='Total demand'>
-                            {formatNumbers(overviewRow.totalDemand)}
-                        </span>
-                        <span className='hidden sm:inline' title='Total sold'>
-                            {formatNumbers(overviewRow.totalSold)}
-                        </span>
+            {/* ── Market stats — fixed-width columns, aligned with header ── */}
+            {overviewRow ? (
+                <>
+                    <span
+                        className='w-14 text-right text-[11px] tabular-nums font-semibold text-foreground shrink-0'
+                        title='Clearing price'
+                    >
+                        {overviewRow.clearingPrice.toFixed(2)}
+                    </span>
+                    <span
+                        className={cn(
+                            'w-12 text-right text-[11px] tabular-nums shrink-0 hidden sm:inline-block',
+                            overviewRow.totalProduction === 0 ? 'text-muted-foreground/30' : 'text-muted-foreground',
+                        )}
+                        title='Total production'
+                    >
+                        {formatNumbers(overviewRow.totalProduction)}
+                    </span>
+                    <span
+                        className={cn(
+                            'w-14 text-right text-[11px] tabular-nums shrink-0 hidden md:inline-block',
+                            overviewRow.totalSupply === 0 ? 'text-muted-foreground/30' : 'text-muted-foreground',
+                        )}
+                        title='Total supply'
+                    >
+                        {formatNumbers(overviewRow.totalSupply)}
+                    </span>
+                    <span
+                        className={cn(
+                            'w-14 text-right text-[11px] tabular-nums shrink-0 hidden md:inline-block',
+                            overviewRow.totalDemand === 0 ? 'text-muted-foreground/30' : 'text-muted-foreground',
+                        )}
+                        title='Total demand'
+                    >
+                        {formatNumbers(overviewRow.totalDemand)}
+                    </span>
+                    <span
+                        className={cn(
+                            'w-12 text-right text-[11px] tabular-nums shrink-0 hidden sm:inline-block',
+                            overviewRow.totalSold === 0 ? 'text-muted-foreground/30' : 'text-muted-foreground',
+                        )}
+                        title='Total sold'
+                    >
+                        {formatNumbers(overviewRow.totalSold)}
+                    </span>
+                    <div className='w-[4.5rem] shrink-0 flex justify-end' title='Market fill status'>
                         {statusConfig && (
                             <Badge
                                 variant='outline'
-                                className={cn('text-[9px] px-1 py-0 h-4 shrink-0', statusConfig.className)}
+                                className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}
                             >
                                 {statusConfig.label}
                             </Badge>
                         )}
-                    </>
-                ) : (
-                    /* Fallback when market has no activity yet */
-                    <span className='italic'>no data</span>
-                )}
-                {/* Agent auto-manage indicators */}
-                {bid?.automated && (
-                    <span title='Buy auto-managed'>
-                        <Bot className='h-3 w-3 text-purple-500 shrink-0' />
-                    </span>
-                )}
-                {offer?.automated && (
-                    <span title='Sell auto-managed'>
-                        <Bot className='h-3 w-3 text-purple-500 shrink-0' />
-                    </span>
-                )}
-                {bid?.storageFullWarning && (
-                    <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5 shrink-0'>
-                        full
-                    </Badge>
-                )}
-            </div>
+                    </div>
+                </>
+            ) : (
+                /* No overview data yet — preserve column widths so rows don't shift */
+                <>
+                    <div className='w-14 shrink-0' />
+                    <div className='w-12 shrink-0 hidden sm:block' />
+                    <div className='w-14 shrink-0 hidden md:block' />
+                    <div className='w-14 shrink-0 hidden md:block' />
+                    <div className='w-12 shrink-0 hidden sm:block' />
+                    <div className='w-[4.5rem] shrink-0 flex justify-end'>
+                        <span className='text-[10px] text-muted-foreground/30 italic'>—</span>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
@@ -544,28 +576,6 @@ function ResourceAccordionItem({
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-5'>
-                    {/* ── Agent production / consumption context ── */}
-                    {(isFacilityInput || isFacilityOutput) && (
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
-                            {isFacilityOutput && (
-                                <span>
-                                    My production{' '}
-                                    <span className='font-semibold text-foreground'>
-                                        {formatNumbers(producedPerTick)}/tick
-                                    </span>
-                                </span>
-                            )}
-                            {isFacilityInput && (
-                                <span>
-                                    My consumption{' '}
-                                    <span className='font-semibold text-foreground'>
-                                        {formatNumbers(consumedPerTick)}/tick
-                                    </span>
-                                </span>
-                            )}
-                        </div>
-                    )}
-
                     {/* ── BUY section ── */}
                     <div className='space-y-3'>
                         <div className='flex items-center justify-between'>
@@ -587,6 +597,16 @@ function ResourceAccordionItem({
                                 />
                             </div>
                         </div>
+                        {isFacilityInput && (
+                            <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
+                                <span>
+                                    Max capacity consumption{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumbers(consumedPerTick)}/tick
+                                    </span>
+                                </span>
+                            </div>
+                        )}
 
                         <div className='grid grid-cols-2 gap-3'>
                             {/* Max price box */}
@@ -649,7 +669,7 @@ function ResourceAccordionItem({
                                     value={local.bidStorageTarget}
                                     disabled={local.bidAutomated || saving}
                                     onChange={(e) => onLocalChange(resourceName, { bidStorageTarget: e.target.value })}
-                                    className='h-8 text-sm tabular-nums'
+                                    className='h-8 w-32 text-sm tabular-nums'
                                 />
                                 {/* Effective buy qty with fulfillment colour */}
                                 {bid?.bidStorageTarget !== undefined && effectiveBuyQty !== undefined && (
@@ -689,14 +709,13 @@ function ResourceAccordionItem({
                                                         targetBufferTicks: e.target.value,
                                                     })
                                                 }
-                                                className='h-6 w-16 text-[11px] tabular-nums'
+                                                className='h-6 w-32 text-[11px] tabular-nums'
                                             />
                                             {suggestedStorageTarget !== null && (
                                                 <>
                                                     <span>→ {formatNumbers(suggestedStorageTarget)}</span>
                                                     <Button
                                                         variant='outline'
-                                                        size='sm'
                                                         className='h-6 text-[11px] px-1.5'
                                                         disabled={local.bidAutomated || saving}
                                                         onClick={() =>
@@ -763,6 +782,17 @@ function ResourceAccordionItem({
                                 />
                             </div>
                         </div>
+
+                        {isFacilityOutput && (
+                            <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
+                                <span>
+                                    Max capacity production{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumbers(producedPerTick)}/tick
+                                    </span>
+                                </span>
+                            </div>
+                        )}
 
                         <div className='grid grid-cols-2 gap-3'>
                             {/* Price / unit box */}
@@ -993,27 +1023,32 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                     </p>
                 ) : (
                     <>
-                        {/* Column header — mirrors the overview table */}
-                        <div className='flex items-center gap-2 px-1 text-[10px] font-medium text-muted-foreground select-none'>
-                            {/* Offset for icon + name area */}
-                            <div className='w-6 shrink-0' />
-                            <div className='w-28 shrink-0' />
-                            <div className='flex flex-1 items-center justify-end gap-3 pr-6'>
-                                <span title='Clearing price'>Price</span>
-                                <span className='hidden sm:inline' title='Total production'>
+                        {/* ── Column header — same flex + gap-2 + column widths as ResourceTrigger ── */}
+                        <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
+                            <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
+                                <div className='w-6 shrink-0' />
+                                <span className='flex-1 min-w-0'>Resource</span>
+                                <span className='w-14 text-right' title='Clearing price'>
+                                    Price
+                                </span>
+                                <span className='w-12 text-right hidden sm:block' title='Total production'>
                                     Prod
                                 </span>
-                                <span className='hidden md:inline' title='Total supply'>
+                                <span className='w-14 text-right hidden md:block' title='Total supply'>
                                     Supply
                                 </span>
-                                <span className='hidden md:inline' title='Total demand'>
+                                <span className='w-14 text-right hidden md:block' title='Total demand'>
                                     Demand
                                 </span>
-                                <span className='hidden sm:inline' title='Total sold'>
+                                <span className='w-12 text-right hidden sm:block' title='Total sold'>
                                     Sold
                                 </span>
-                                <span>Fill</span>
+                                <span className='w-[4.5rem] text-right' title='Market fill'>
+                                    Fill
+                                </span>
                             </div>
+                            {/* spacer matching ChevronDown w-4 in AccordionTrigger */}
+                            <div className='w-4 shrink-0' />
                         </div>
                         <Accordion type='multiple' value={openItems} onValueChange={setOpenItems} className='w-full'>
                             {resources.map(({ name }) => (
