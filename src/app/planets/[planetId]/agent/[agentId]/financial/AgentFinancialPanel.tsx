@@ -1,11 +1,12 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import AgentFinancialOverview from '@/app/planets/[planetId]/agent/_component/AgentFinancialPanel';
+
 import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
+import AgentFinancialOverview from '../../_component/AgentFinancialOverview';
 
 export default function AgentFinancialPanel() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();

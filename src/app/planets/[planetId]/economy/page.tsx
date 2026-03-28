@@ -3,8 +3,8 @@
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
-import BankPanel from './BankPanel';
-import AgentFinancialPanel from './AgentFinancialPanel';
+import BankPanel from '../agent/[agentId]/financial/BankPanel';
+import AgentFinancialPanel from '../agent/[agentId]/financial/AgentFinancialPanel';
 
 export default function PlanetEconomyPage() {
     const params = useParams();
@@ -25,11 +25,7 @@ export default function PlanetEconomyPage() {
 
     return (
         <div className='space-y-4'>
-            <BankPanel
-                bank={economy.bank}
-                wagePerEdu={economy.wagePerEdu ?? undefined}
-                priceLevel={economy.priceLevel ?? undefined}
-            />
+            <BankPanel bank={economy.bank} priceLevel={economy.priceLevel ?? undefined} />
             <AgentFinancialPanel />
         </div>
     );

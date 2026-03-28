@@ -5,6 +5,7 @@ import {
     FlaskConical,
     Gamepad,
     Home,
+    Landmark,
     Package,
     ShoppingCartIcon,
     User,
@@ -166,6 +167,12 @@ export type AgentSubPage = {
     label: string;
     icon: LucideIcon;
 };
+
+export const PLANET_SUB_PAGES: AgentSubPage[] = [
+    { segment: 'economy', label: 'Economy', icon: EuroIcon },
+    { segment: 'market', label: 'Market', icon: ShoppingCartIcon },
+    { segment: 'claims', label: 'Claims', icon: Landmark },
+];
 
 export const AGENT_SUB_PAGES: AgentSubPage[] = [
     { segment: 'workforce', label: 'Workforce', icon: Users },
