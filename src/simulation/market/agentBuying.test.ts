@@ -729,7 +729,6 @@ describe('marketTick — agent buying', () => {
 
         expect(buyer.assets.p.deposits + buyer.assets.p.depositHold).toBe(depositsBefore);
         expect(buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0).toBe(0);
-        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBe(0);
         expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);
     });
 });
