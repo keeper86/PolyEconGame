@@ -239,7 +239,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
         expect(offerQty).toBeCloseTo(0.22);
     });
 
-    it('bidQuantity is set to raw shortfall without integer rounding', () => {
+    it('bidStorageTarget is set to raw input buffer target without integer rounding', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'clothing-fac', scale: 1 });
         facility.needs = [{ resource: clothingResourceType, quantity: 10 }];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -254,7 +254,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        const bidQty = agent.assets[PLANET_ID].market?.buy[clothingResourceType.name]?.bidQuantity ?? -1;
-        expect(bidQty).toBeGreaterThan(0);
+        const bidStorageTarget = agent.assets[PLANET_ID].market?.buy[clothingResourceType.name]?.bidStorageTarget ?? -1;
+        expect(bidStorageTarget).toBeGreaterThan(0);
     });
 });

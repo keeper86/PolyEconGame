@@ -139,27 +139,31 @@ describe('automaticPricing — buy side', () => {
         expect(agent.assets.p.market?.buy[arableLandResourceType.name]).toBeUndefined();
     });
 
-    it('sets bidQuantity to cover the buffer shortfall when storage is empty', () => {
+    it('sets bidStorageTarget to the full input buffer target when storage is empty', () => {
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
         // facility needs 100/tick × scale 1 × 30-tick buffer = 3000
-        expect(bid.bidQuantity).toBeGreaterThan(0);
-        expect(bid.bidQuantity).toBe(100 * 1 * 30);
+        expect(bid.bidStorageTarget).toBeGreaterThan(0);
+        expect(bid.bidStorageTarget).toBe(100 * 1 * 30);
     });
 
-    it('reduces bidQuantity by the amount already in storage', () => {
+    it('keeps bidStorageTarget at the full buffer target regardless of current inventory', () => {
         const buyer = makeSteelProducer();
         putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, 500);
 
         automaticPricing(agentMap(buyer), planet);
 
+        // The storage target is the desired inventory level, not the remaining shortfall.
+        // Effective buy quantity (target − inventory) is computed dynamically each tick.
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidQuantity).toBe(Math.max(0, 100 * 1 * 30 - 500));
+        expect(bid.bidStorageTarget).toBe(100 * 1 * 30);
+        const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(Math.max(0, 100 * 1 * 30 - 500));
     });
 
-    it('sets bidQuantity to 0 when buffer is already fully covered by storage', () => {
+    it('effective buy quantity is 0 when buffer is already fully covered by storage', () => {
         const buyer = makeSteelProducer();
         const fullBuffer = 100 * 1 * 30;
         putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, fullBuffer + 100);
@@ -167,7 +171,9 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidQuantity).toBe(0);
+        const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        // Storage target is still set (300), but effective qty = target − inventory = 0
+        expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(0);
     });
 
     it('bootstraps bidPrice from market price on first tick', () => {
@@ -222,9 +228,10 @@ describe('automaticPricing — buy side', () => {
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        const firstBidQty = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
-
-        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidQty;
+        // Simulate fully filled: lastEffectiveQty = storage target (storage empty), lastBought = same
+        const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget;
 
         automaticPricing(agentMap(buyer), planet);
 
@@ -238,9 +245,10 @@ describe('automaticPricing — buy side', () => {
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        const firstBidQty = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
-
-        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidQty / 2;
+        // Simulate half-filled: lastEffectiveQty = storage target, lastBought = half
+        const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget / 2;
 
         automaticPricing(agentMap(buyer), planet);
 
@@ -278,7 +286,8 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         for (let i = 0; i < 200; i++) {
-            const demanded = buyer.assets.p.market!.buy[COAL]!.bidQuantity ?? 1;
+            const demanded = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 1;
+            buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = demanded;
             buyer.assets.p.market!.buy[COAL]!.lastBought = demanded / 2;
             automaticPricing(agentMap(buyer), planet);
         }
@@ -315,7 +324,8 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(0);
+        // storageTarget is set to 0 when output buffer is full (no point buying inputs)
+        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBe(0);
     });
 
     it('resumes input buying once output inventory drops below the output buffer ceiling', () => {
@@ -325,7 +335,7 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBeGreaterThan(0);
+        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBeGreaterThan(0);
     });
 
     it('suppresses input buying per facility independently when one facility output is full', () => {
@@ -342,8 +352,10 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
+        // Facility 1 (steel) has full output buffer → contributes 0 to target.
+        // Facility 2 (food) still needs coal → target = 200 * 1 * 30 = 6000 > 0.
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidQuantity).toBeGreaterThan(0);
+        expect(bid.bidStorageTarget).toBeGreaterThan(0);
     });
 });
 
@@ -523,7 +535,8 @@ describe('marketTick — agent buying', () => {
         const firstBought = buyer.assets.p.market!.buy[COAL]!.lastBought;
         expect(firstBought).toBeGreaterThan(0);
 
-        buyer.assets.p.market!.buy[COAL]!.bidQuantity = 0;
+        // Zero the storage target so the bid becomes inactive in the next tick.
+        buyer.assets.p.market!.buy[COAL]!.bidStorageTarget = 0;
 
         marketTick(agentMap(seller, buyer), planet);
         expect(buyer.assets.p.market!.buy[COAL]!.lastBought).toBe(0);
@@ -575,37 +588,36 @@ describe('marketTick — agent buying', () => {
         expect(coalBought).toBeLessThanOrEqual(5);
     });
 
-    it('fill rate in second tick uses previous demand (bidQuantity), not current shortfall', () => {
+    it('fill rate in second tick uses previous demand (lastEffectiveQty), not current shortfall', () => {
         const buyer = makeSteelProducer();
         buyer.assets.p.deposits = 1_000_000;
         automaticPricing(agentMap(buyer), planet);
 
-        const firstBidQuantity = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
+        // Storage target = full buffer (3000), storage is empty so effective qty = 3000.
+        const firstBidStorageTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        const firstEffectiveQty = firstBidStorageTarget; // inventory = 0
 
         // First tick: only partial fill — half of demand is filled
-        const partialSeller = makeCoalSeller(Math.floor(firstBidQuantity / 2), 1.0, 'partial-seller');
+        const partialSeller = makeCoalSeller(Math.floor(firstEffectiveQty / 2), 1.0, 'partial-seller');
         marketTick(agentMap(partialSeller, buyer), planet);
+        // collectAgentBids sets lastEffectiveQty = firstEffectiveQty (full demand placed)
 
         // automaticPricing after first tick computes the adjusted bid price using
-        // lastBought (=firstBidQuantity/2) vs previousDemand (=firstBidQuantity).
-        // Fill rate = 0.5 → price should rise.
+        // lastBought (≈firstEffectiveQty/2) vs lastEffectiveQty (=firstEffectiveQty).
+        // Fill rate ≈ 0.5 → price should rise.
         automaticPricing(agentMap(buyer), planet);
         const priceAfterFirstTick = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
         expect(priceAfterFirstTick).toBeGreaterThan(1.0);
 
-        // After automaticPricing, bidQuantity reflects the remaining shortfall,
-        // which is smaller than firstBidQuantity (some stock was accumulated).
-        const secondBidQuantity = buyer.assets.p.market!.buy[COAL]!.bidQuantity!;
-        expect(secondBidQuantity).toBeLessThan(firstBidQuantity);
+        // After automaticPricing, bidStorageTarget is still the full buffer (3000).
+        // The effective qty = target − current inventory, which is now smaller.
+        const coalInStorage = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        const secondEffectiveQty = Math.max(0, buyer.assets.p.market!.buy[COAL]!.bidStorageTarget! - coalInStorage);
+        expect(secondEffectiveQty).toBeLessThan(firstEffectiveQty);
 
-        // Second tick: half of the (now smaller) shortfall is filled.
-        // If the fill rate had been computed from secondBidQuantity (the NEW shortfall)
-        // instead of from firstBidQuantity (the OLD demand), lastBought ≈ secondBidQuantity/2
-        // would give fillRate ≈ 0.5 relative to the new qty, but the price baseline
-        // is already priceAfterFirstTick. With the fix, the rate is computed from
-        // the bid.bidQuantity that was set in the PREVIOUS automaticPricing call
-        // (= secondBidQuantity), not from the shortfall recalculated inside adjustBidPrice.
-        const seller2 = makeCoalSeller(Math.floor(secondBidQuantity / 2), 1.0, 'seller2');
+        // Second tick: half of the (now smaller) effective qty is filled.
+        // Fill rate still ≈ 0.5 → price should keep rising.
+        const seller2 = makeCoalSeller(Math.floor(secondEffectiveQty / 2), 1.0, 'seller2');
         marketTick(agentMap(seller2, buyer), planet);
 
         automaticPricing(agentMap(buyer), planet);

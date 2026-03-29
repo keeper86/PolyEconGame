@@ -6,6 +6,9 @@ import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from '..
 
 /**
  * Handle 'claimResources' action
+ *
+ * TODO: 1) we need to handle all claim-types
+ *     2) this should happen after any actions that modify the planet's resources, such that we always have a consistent view on the available untenanted resources
  */
 export function handleClaimResources(
     state: GameState,
@@ -34,11 +37,7 @@ export function handleClaimResources(
     }
 
     // Collapse all untenanted arable land into one pool
-    const arablePool = collapseUntenantedClaims(
-        planet,
-        arableLandResourceType.name,
-        `${planetId}-arable-unclaimed`,
-    );
+    const arablePool = collapseUntenantedClaims(planet, arableLandResourceType.name, `${planetId}-arable-unclaimed`);
     if (!arablePool || arablePool.quantity < arableLandQuantity) {
         safePostMessage({
             type: 'resourcesClaimFailed',
@@ -49,11 +48,7 @@ export function handleClaimResources(
     }
 
     // Collapse all untenanted water sources into one pool
-    const waterPool = collapseUntenantedClaims(
-        planet,
-        waterSourceResourceType.name,
-        `${planetId}-water-unclaimed`,
-    );
+    const waterPool = collapseUntenantedClaims(planet, waterSourceResourceType.name, `${planetId}-water-unclaimed`);
     if (!waterPool || waterPool.quantity < waterSourceQuantity) {
         safePostMessage({
             type: 'resourcesClaimFailed',
