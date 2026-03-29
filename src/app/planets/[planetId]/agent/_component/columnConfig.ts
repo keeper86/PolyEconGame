@@ -28,7 +28,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         title: 'Current storage quantity',
         align: 'text-right',
         enabled: true,
-        priority: 3,
+        priority: 2,
     },
     {
         id: 'clearingPrice',
@@ -37,7 +37,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         title: 'Clearing price',
         align: 'text-right',
         enabled: true,
-        priority: 1,
+        priority: 3,
     },
     {
         id: 'totalProduction',
@@ -46,7 +46,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         title: 'Total production',
         align: 'text-right',
         enabled: true,
-        priority: 5,
+        priority: 7,
     },
     {
         id: 'totalSupply',
@@ -64,7 +64,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         title: 'Total demand',
         align: 'text-right',
         enabled: true,
-        priority: 7,
+        priority: 5,
     },
     {
         id: 'totalSold',
@@ -82,7 +82,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         title: 'Market fill status',
         align: 'text-right',
         enabled: true,
-        priority: 2,
+        priority: 1,
     },
 ];
 

@@ -52,7 +52,8 @@ export default function SellSection({
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
     // Check if sell section has any dirty fields
-    const hasDirtySellFields = local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment || local.dirtyFields.offerAutomated;
+    const hasDirtySellFields =
+        local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment || local.dirtyFields.offerAutomated;
 
     // Helper function to get field styling based on dirty state
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {

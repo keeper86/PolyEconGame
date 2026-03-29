@@ -8,7 +8,14 @@ import { classifyMarket } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
 import { getColumnClasses } from '../../../_component/columnConfig';
 
-export default function ResourceTrigger({ name, bid, offer, overviewRow, storageQuantity, visibleColumns }: ResourceTriggerProps): React.ReactElement {
+export default function ResourceTrigger({
+    name,
+    bid,
+    offer,
+    overviewRow,
+    storageQuantity,
+    visibleColumns,
+}: ResourceTriggerProps): React.ReactElement {
     const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
     const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
