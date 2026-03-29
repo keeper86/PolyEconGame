@@ -5,6 +5,7 @@ import {
     workerSetWorkerAllocationTargets,
     workerSetSellOffers,
     workerCancelSellOffer,
+    workerCancelBuyBid,
     workerSetBuyBids,
     workerClaimResources,
     workerBuildFacility,
@@ -533,6 +534,43 @@ export const cancelSellOffer = () => {
             );
 
             await workerCancelSellOffer({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                resourceName: input.resourceName,
+            });
+        });
+};
+
+/**
+ * Cancel (remove) a buy bid for a specific resource on said planet.
+ */
+export const cancelBuyBid = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                resourceName: z.string().min(1),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'cancel-buy-bid' },
+                `User ${userId} cancelling buy bid for agent ${input.agentId} on planet ${input.planetId} resource ${input.resourceName}`,
+            );
+
+            await workerCancelBuyBid({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,

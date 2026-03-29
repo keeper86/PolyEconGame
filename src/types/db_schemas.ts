@@ -2,6 +2,7 @@
 // Do not touch them, or risk, your modifications being lost.
 
 export enum Table {
+    AgentMonthlyHistory = 'agent_monthly_history',
     GameSnapshots = 'game_snapshots',
     KnexMigrations = 'knex_migrations',
     KnexMigrationsLock = 'knex_migrations_lock',
@@ -10,11 +11,26 @@ export enum Table {
 }
 
 export type Tables = {
+    agent_monthly_history: AgentMonthlyHistory;
     game_snapshots: GameSnapshots;
     knex_migrations: KnexMigrations;
     knex_migrations_lock: KnexMigrationsLock;
     planet_population_history: PlanetPopulationHistory;
     user_data: UserData;
+};
+
+export type AgentMonthlyHistory = {
+    id: string;
+    tick: string;
+    planet_id: string;
+    agent_id: string;
+    net_balance: number;
+    monthly_net_income: number;
+    total_workers: number;
+    production_value: number | null;
+    facility_count: number | null;
+    storage_value: number | null;
+    created_at: Date;
 };
 
 export type GameSnapshots = {

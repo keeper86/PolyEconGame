@@ -181,7 +181,21 @@ export default function ResourceAccordionItem({
         }),
     );
 
-    const buySaving = buyMutation.isPending;
+    const cancelBuyBidMutation = useMutation(
+        trpc.cancelBuyBid.mutationOptions({
+            onSuccess: () => {
+                setBuySuccessMsg('Buy bid cancelled.');
+                setBuyErrorMsg(null);
+                void queryClient.invalidateQueries({ queryKey: trpc.simulation.getAgentPlanetDetail.queryKey() });
+            },
+            onError: (err) => {
+                setBuyErrorMsg(err instanceof Error ? err.message : 'Failed to cancel bid');
+                setBuySuccessMsg(null);
+            },
+        }),
+    );
+
+    const buySaving = buyMutation.isPending || cancelBuyBidMutation.isPending;
     const sellSaving = sellMutation.isPending || cancelSellOfferMutation.isPending;
 
     // ── Buy save handler ──────────────────────────────────────────────
@@ -328,6 +342,7 @@ export default function ResourceAccordionItem({
                         onLocalChange={onLocalChange}
                         onSaveBuy={handleSaveBuy}
                         onResetBuy={handleResetBuy}
+                        onCancelBid={() => cancelBuyBidMutation.mutate({ agentId, planetId, resourceName })}
                         onAutomationChange={handleBuyAutomationChange}
                         buySaving={buySaving}
                         buySuccessMsg={buySuccessMsg}

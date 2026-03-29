@@ -4,7 +4,9 @@ import {
     getLatestGameSnapshot,
     insertGameSnapshot,
     insertPlanetPopulationHistory,
+    insertAgentMonthlyHistory,
     pruneGameSnapshots,
+    pruneAgentMonthlyHistory,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { Agent, GameState } from './planet/planet';
@@ -312,6 +314,38 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         safePostMessage({ type: 'sellOfferCancelled', requestId, agentId });
                         break;
                     }
+                    case 'cancelBuyBid': {
+                        const { requestId, agentId, planetId, resourceName } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'buyBidCancelFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'buyBidCancelFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        const bid = assets.market?.buy[resourceName];
+                        if (bid) {
+                            delete bid.bidPrice;
+                            delete bid.bidQuantity;
+                            delete bid.bidStorageTarget;
+                            delete bid.automated;
+                            bid.lastBought = 0;
+                            bid.lastSpent = 0;
+                            bid.lastEffectiveQty = 0;
+                        }
+                        console.log(
+                            `[worker] Buy bid cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`,
+                        );
+                        safePostMessage({ type: 'buyBidCancelled', requestId, agentId });
+                        break;
+                    }
                     case 'setBuyBids': {
                         const { requestId, agentId, planetId, bids } = action;
                         const agent = state.agents.get(agentId);
@@ -595,6 +629,102 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     }
 
     // -----------------------------------------------------------------
+    // Agent monthly history tracking
+    // -----------------------------------------------------------------
+
+    // Track agent deposits at the start of each month to calculate monthly net income
+    const agentMonthlyDeposits = new Map<string, Map<string, number>>(); // agentId -> planetId -> deposits
+
+    /**
+     * Update agent monthly history at month boundaries (every 30 ticks).
+     */
+    function updateAgentMonthlyHistory(gs: GameState, tick: number): void {
+        const agentRows = [...gs.agents.values()].flatMap((agent) => {
+            return Object.entries(agent.assets).map(([planetId, assets]) => {
+                const currentDeposits = assets.deposits;
+                const currentLoans = assets.loans;
+                const netBalance = currentDeposits - currentLoans;
+
+                // Calculate monthly net income (change in deposits over the month)
+                let monthlyNetIncome = 0;
+
+                if (agentMonthlyDeposits.has(agent.id)) {
+                    const planetDeposits = agentMonthlyDeposits.get(agent.id)!;
+                    if (planetDeposits.has(planetId)) {
+                        const previousDeposits = planetDeposits.get(planetId)!;
+                        monthlyNetIncome = currentDeposits - previousDeposits;
+                    }
+                }
+
+                // Update stored deposits for next month
+                if (!agentMonthlyDeposits.has(agent.id)) {
+                    agentMonthlyDeposits.set(agent.id, new Map());
+                }
+                agentMonthlyDeposits.get(agent.id)!.set(planetId, currentDeposits);
+
+                // Calculate total workers
+                const totalWorkers = Object.values(assets.allocatedWorkers || {}).reduce(
+                    (sum, count) => sum + (count || 0),
+                    0,
+                );
+
+                // Calculate additional metrics
+                const facilityCount = assets.productionFacilities?.length || 0;
+
+                // Calculate storage value (sum of all stored resources)
+                let storageValue = 0;
+                if (assets.storageFacility?.currentInStorage) {
+                    for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
+                        if (entry?.quantity) {
+                            storageValue += entry.quantity; // Simplified - could use market prices
+                        }
+                    }
+                }
+
+                // Calculate production value from last tick
+                let productionValue = 0;
+                if (assets.productionFacilities) {
+                    for (const facility of assets.productionFacilities) {
+                        if (facility.lastTickResults?.lastProduced) {
+                            for (const qty of Object.values(facility.lastTickResults.lastProduced)) {
+                                productionValue += qty; // Simplified - could use market prices
+                            }
+                        }
+                    }
+                }
+
+                return {
+                    tick,
+                    planet_id: planetId,
+                    agent_id: agent.id,
+                    net_balance: netBalance,
+                    monthly_net_income: monthlyNetIncome,
+                    total_workers: totalWorkers,
+                    production_value: productionValue,
+                    facility_count: facilityCount,
+                    storage_value: storageValue,
+                };
+            });
+        });
+
+        // Store agent rows for later insertion with the snapshot
+        pendingAgentMonthlyRows.push(...agentRows);
+    }
+
+    // Store agent monthly rows until snapshot time
+    const pendingAgentMonthlyRows: Array<{
+        tick: number;
+        planet_id: string;
+        agent_id: string;
+        net_balance: number;
+        monthly_net_income: number;
+        total_workers: number;
+        production_value: number;
+        facility_count: number;
+        storage_value: number;
+    }> = [];
+
+    // -----------------------------------------------------------------
     // Cold snapshot persistence (async, non-blocking)
     // -----------------------------------------------------------------
 
@@ -644,6 +774,23 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 }));
                 await insertPlanetPopulationHistory(db, populationRows);
 
+                // Insert agent monthly history if we have pending rows
+                if (pendingAgentMonthlyRows.length > 0) {
+                    await insertAgentMonthlyHistory(db, pendingAgentMonthlyRows);
+                    console.log(
+                        `[worker] Saved ${pendingAgentMonthlyRows.length} agent monthly history rows for tick ${tick}`,
+                    );
+                    pendingAgentMonthlyRows.length = 0; // Clear the array
+
+                    // Prune old agent monthly history (keep only last 12 months = 1 year)
+                    const prunedAgentHistory = await pruneAgentMonthlyHistory(db);
+                    if (prunedAgentHistory > 0) {
+                        console.log(
+                            `[worker] Pruned ${prunedAgentHistory} old agent monthly history rows (older than 1 year)`,
+                        );
+                    }
+                }
+
                 if (SNAPSHOT_MAX_RETAINED > 0) {
                     const pruned = await pruneGameSnapshots(db, SNAPSHOT_MAX_RETAINED);
                     if (pruned > 0) {
@@ -684,6 +831,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             // This is O(1) structural-sharing; query handlers can read it
             // without risk of seeing a half-updated state.
             currentSnapshot = toImmutableGameState(state);
+
+            // Update agent monthly history at month boundaries (every 30 ticks)
+            if (state.tick % 30 === 0) {
+                updateAgentMonthlyHistory(state, state.tick);
+            }
 
             // Periodically persist a cold snapshot for crash recovery.
             if (state.tick % SNAPSHOT_INTERVAL_TICKS === 1) {
@@ -943,6 +1095,24 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'cancelSellOffer', requestId, agentId, planetId, resourceName });
+            return;
+        }
+
+        if (msg.type === 'cancelBuyBid') {
+            const { requestId, agentId, planetId, resourceName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'buyBidCancelFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'buyBidCancelFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'cancelBuyBid', requestId, agentId, planetId, resourceName });
             return;
         }
 

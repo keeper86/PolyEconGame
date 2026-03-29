@@ -125,6 +125,7 @@ export type BuySectionProps = {
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
     onSaveBuy: () => void;
     onResetBuy: () => void;
+    onCancelBid: () => void;
     onAutomationChange: (automated: boolean) => void;
     buySaving: boolean;
     buySuccessMsg: string | null;

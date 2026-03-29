@@ -18,6 +18,7 @@ export default function BuySection({
     onLocalChange,
     onSaveBuy,
     onResetBuy,
+    onCancelBid,
     onAutomationChange,
     buySaving,
     buySuccessMsg,
@@ -29,6 +30,8 @@ export default function BuySection({
 
     const isFacilityInput = consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
+
+    const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
 
     // Buffer calculator: translate ticks → storage target
     const targetBuffer = parseFloat(local.targetBufferTicks);
@@ -69,6 +72,17 @@ export default function BuySection({
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                 </span>
                 <div className='flex items-center gap-2'>
+                    {hasActiveBid && (
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive'
+                            disabled={buySaving}
+                            onClick={onCancelBid}
+                        >
+                            Cancel bid
+                        </Button>
+                    )}
                     <Label
                         htmlFor={`bid-auto-${resourceName}`}
                         className='text-[11px] text-muted-foreground cursor-pointer'
