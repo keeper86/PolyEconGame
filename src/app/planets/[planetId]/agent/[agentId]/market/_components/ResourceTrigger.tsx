@@ -65,7 +65,7 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow }: Resou
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0'>
             {/* Icon */}
-            <ProductIcon productName={name} size={24} />
+            <ProductIcon productName={name} size={32} />
 
             {/* Name + market link + order indicators */}
             <div className='flex-1 min-w-0 flex items-center gap-1'>

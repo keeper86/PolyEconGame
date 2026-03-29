@@ -2,6 +2,13 @@ import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { AgentPlanetAssets } from '../../../_component/useAgentPlanetDetail';
 
 /* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Time-to-live for feedback messages in milliseconds */
+export const TTL_FEEDBACK = 5_000; // 5 seconds
+
+/* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -36,6 +43,24 @@ export type LocalResourceState = {
     bidAutomated: boolean;
     // UI-only helpers — not sent to server
     targetBufferTicks: string;
+
+    // Dirty state tracking
+    dirtyFields: {
+        offerPrice: boolean;
+        offerRetainment: boolean;
+        offerAutomated: boolean;
+        bidPrice: boolean;
+        bidStorageTarget: boolean;
+        bidAutomated: boolean;
+    };
+
+    // Saved state snapshots for comparison
+    savedOfferPrice: string;
+    savedOfferRetainment: string;
+    savedOfferAutomated: boolean;
+    savedBidPrice: string;
+    savedBidStorageTarget: string;
+    savedBidAutomated: boolean;
 };
 
 export type Props = {
@@ -95,7 +120,12 @@ export type BuySectionProps = {
     assets: AgentPlanetAssets;
     overviewRow?: MarketOverviewRow;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
-    saving: boolean;
+    onSaveBuy: () => void;
+    onResetBuy: () => void;
+    onAutomationChange: (automated: boolean) => void;
+    buySaving: boolean;
+    buySuccessMsg: string | null;
+    buyErrorMsg: string | null;
 };
 
 export type SellSectionProps = {
@@ -105,6 +135,11 @@ export type SellSectionProps = {
     assets: AgentPlanetAssets;
     overviewRow?: MarketOverviewRow;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
-    saving: boolean;
+    onSaveSell: () => void;
+    onResetSell: () => void;
     onCancelOffer: () => void;
+    onAutomationChange: (automated: boolean) => void;
+    sellSaving: boolean;
+    sellSuccessMsg: string | null;
+    sellErrorMsg: string | null;
 };

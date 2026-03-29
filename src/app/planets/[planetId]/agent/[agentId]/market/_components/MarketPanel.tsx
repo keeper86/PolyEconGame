@@ -93,10 +93,40 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     }, [JSON.stringify(buyBids), JSON.stringify(sellOffers), JSON.stringify(resources.map((r) => r.name))]);
 
     const handleLocalChange = (name: string, patch: Partial<import('./marketTypes').LocalResourceState>) => {
-        setLocalStates((prev) => ({
-            ...prev,
-            [name]: { ...(prev[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]), ...patch },
-        }));
+        setLocalStates((prev) => {
+            const current = prev[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name];
+
+            // Create updated state with patch
+            const updated = { ...current, ...patch };
+
+            // Update dirty fields based on what changed
+            const dirtyFields = { ...current.dirtyFields };
+
+            // Update dirty fields for each field that was patched
+            if ('offerPrice' in patch) {
+                dirtyFields.offerPrice = patch.offerPrice !== current.savedOfferPrice;
+            }
+            if ('offerRetainment' in patch) {
+                dirtyFields.offerRetainment = patch.offerRetainment !== current.savedOfferRetainment;
+            }
+            if ('offerAutomated' in patch) {
+                dirtyFields.offerAutomated = patch.offerAutomated !== current.savedOfferAutomated;
+            }
+            if ('bidPrice' in patch) {
+                dirtyFields.bidPrice = patch.bidPrice !== current.savedBidPrice;
+            }
+            if ('bidStorageTarget' in patch) {
+                dirtyFields.bidStorageTarget = patch.bidStorageTarget !== current.savedBidStorageTarget;
+            }
+            if ('bidAutomated' in patch) {
+                dirtyFields.bidAutomated = patch.bidAutomated !== current.savedBidAutomated;
+            }
+
+            return {
+                ...prev,
+                [name]: { ...updated, dirtyFields },
+            };
+        });
     };
 
     const columns = getEnabledColumns();

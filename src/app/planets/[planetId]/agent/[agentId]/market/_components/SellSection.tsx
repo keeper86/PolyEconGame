@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tag } from 'lucide-react';
+import { Tag, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,8 +16,13 @@ export default function SellSection({
     assets,
     overviewRow,
     onLocalChange,
-    saving,
+    onSaveSell,
+    onResetSell,
     onCancelOffer,
+    onAutomationChange,
+    sellSaving,
+    sellSuccessMsg,
+    sellErrorMsg,
 }: SellSectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
@@ -46,6 +51,21 @@ export default function SellSection({
 
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
+    // Check if sell section has any dirty fields
+    const hasDirtySellFields = local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment || local.dirtyFields.offerAutomated;
+
+    // Helper function to get field styling based on dirty state
+    const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
+        const baseClass = 'h-8 text-sm tabular-nums';
+        if (isDisabled) {
+            return `${baseClass} opacity-50`;
+        }
+        if (local.dirtyFields[fieldName]) {
+            return `${baseClass} border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30`;
+        }
+        return baseClass;
+    };
+
     return (
         <div className={`space-y-3 ${!canSell ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className='flex items-center justify-between'>
@@ -61,7 +81,7 @@ export default function SellSection({
                             variant='ghost'
                             size='sm'
                             className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive'
-                            disabled={saving}
+                            disabled={sellSaving}
                             onClick={onCancelOffer}
                         >
                             Cancel offer
@@ -76,8 +96,8 @@ export default function SellSection({
                     <Switch
                         id={`offer-auto-${resourceName}`}
                         checked={local.offerAutomated}
-                        disabled={saving || !canSell}
-                        onCheckedChange={(v) => onLocalChange(resourceName, { offerAutomated: v })}
+                        disabled={sellSaving || !canSell}
+                        onCheckedChange={(v) => onAutomationChange(v)}
                     />
                 </div>
             </div>
@@ -104,9 +124,9 @@ export default function SellSection({
                         step='any'
                         placeholder={offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'}
                         value={local.offerPrice}
-                        disabled={local.offerAutomated || saving}
+                        disabled={local.offerAutomated || sellSaving}
                         onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
-                        className='h-8 text-sm tabular-nums'
+                        className={getFieldClassName('offerPrice', local.offerAutomated || sellSaving)}
                     />
                     {overviewRow && !local.offerAutomated && (
                         <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
@@ -115,7 +135,7 @@ export default function SellSection({
                                 variant='outline'
                                 size='sm'
                                 className='h-5 text-[10px] px-1.5 py-0'
-                                disabled={saving}
+                                disabled={sellSaving}
                                 onClick={() =>
                                     onLocalChange(resourceName, {
                                         offerPrice: overviewRow.clearingPrice.toFixed(2),
@@ -142,9 +162,9 @@ export default function SellSection({
                             offer?.offerRetainment !== undefined ? String(Math.round(offer.offerRetainment)) : 'e.g. 0'
                         }
                         value={local.offerRetainment}
-                        disabled={local.offerAutomated || saving}
+                        disabled={local.offerAutomated || sellSaving}
                         onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
-                        className='h-8 text-sm tabular-nums'
+                        className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
                     />
                     {/* Effective sell qty with fulfillment colour */}
                     {offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
@@ -166,7 +186,7 @@ export default function SellSection({
                                         variant='outline'
                                         size='sm'
                                         className='h-5 text-[10px] px-1.5 py-0'
-                                        disabled={saving}
+                                        disabled={sellSaving}
                                         onClick={() =>
                                             onLocalChange(resourceName, {
                                                 offerRetainment: String(qty),
@@ -193,6 +213,45 @@ export default function SellSection({
                         })()}
                 </div>
             )}
+
+            {/* Sell section save button and feedback */}
+            <div className='flex items-center justify-between gap-3 pt-2'>
+                <div className='flex items-center gap-3'>
+                    {sellSuccessMsg && (
+                        <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
+                            <CheckCircle2 className='h-3.5 w-3.5' /> {sellSuccessMsg}
+                        </span>
+                    )}
+                    {sellErrorMsg && (
+                        <span className='text-xs text-destructive flex items-center gap-1'>
+                            <AlertCircle className='h-3.5 w-3.5' />
+                            <span dangerouslySetInnerHTML={{ __html: sellErrorMsg }} />
+                        </span>
+                    )}
+                </div>
+                <div className='flex items-center gap-2'>
+                    {hasDirtySellFields && (
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            className='h-7 text-[11px] px-2'
+                            onClick={onResetSell}
+                            disabled={sellSaving}
+                        >
+                            <RotateCcw className='h-3 w-3 mr-1' />
+                            Reset
+                        </Button>
+                    )}
+                    <Button
+                        size='sm'
+                        className='h-7 text-[11px] px-3'
+                        onClick={onSaveSell}
+                        disabled={!hasDirtySellFields || sellSaving}
+                    >
+                        {sellSaving ? 'Saving…' : 'Save Sell'}
+                    </Button>
+                </div>
+            </div>
         </div>
     );
 }
