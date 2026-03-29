@@ -106,4 +106,5 @@ export type SellSectionProps = {
     overviewRow?: MarketOverviewRow;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
     saving: boolean;
+    onCancelOffer: () => void;
 };

@@ -54,6 +54,13 @@ export type InboundMessage =
               { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
           >;
       }
+    | {
+          type: 'cancelSellOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          resourceName: string;
+      }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -81,6 +88,8 @@ export type OutboundMessage =
     | { type: 'sellOffersFailed'; requestId: string; reason: string }
     | { type: 'buyBidsSet'; requestId: string; agentId: string }
     | { type: 'buyBidsFailed'; requestId: string; reason: string }
+    | { type: 'sellOfferCancelled'; requestId: string; agentId: string }
+    | { type: 'sellOfferCancelFailed'; requestId: string; reason: string }
     | { type: 'resourcesClaimed'; requestId: string; agentId: string; arableClaimId: string; waterClaimId: string }
     | { type: 'resourcesClaimFailed'; requestId: string; reason: string }
     | { type: 'facilityBuilt'; requestId: string; agentId: string; facilityId: string }
@@ -151,4 +160,11 @@ export type PendingAction =
               string,
               { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
           >;
+      }
+    | {
+          type: 'cancelSellOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          resourceName: string;
       };

@@ -17,6 +17,7 @@ export default function SellSection({
     overviewRow,
     onLocalChange,
     saving,
+    onCancelOffer,
 }: SellSectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
@@ -43,6 +44,8 @@ export default function SellSection({
     const canSell =
         inventoryQty > 0 || isFacilityOutput || offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
+    const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
+
     return (
         <div className={`space-y-3 ${!canSell ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className='flex items-center justify-between'>
@@ -53,6 +56,17 @@ export default function SellSection({
                     )}
                 </span>
                 <div className='flex items-center gap-2'>
+                    {hasActiveOffer && (
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive'
+                            disabled={saving}
+                            onClick={onCancelOffer}
+                        >
+                            Cancel offer
+                        </Button>
+                    )}
                     <Label
                         htmlFor={`offer-auto-${resourceName}`}
                         className='text-[11px] text-muted-foreground cursor-pointer'

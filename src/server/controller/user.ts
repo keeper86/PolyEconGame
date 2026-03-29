@@ -4,6 +4,7 @@ import {
     workerSetAutomation,
     workerSetWorkerAllocationTargets,
     workerSetSellOffers,
+    workerCancelSellOffer,
     workerSetBuyBids,
     workerClaimResources,
     workerBuildFacility,
@@ -498,6 +499,43 @@ export const setSellOffers = () => {
                 agentId: input.agentId,
                 planetId: input.planetId,
                 offers: input.offers,
+            });
+        });
+};
+
+/**
+ * Cancel (remove) a sell offer for a specific resource on said planet.
+ */
+export const cancelSellOffer = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                resourceName: z.string().min(1),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'cancel-sell-offer' },
+                `User ${userId} cancelling sell offer for agent ${input.agentId} on planet ${input.planetId} resource ${input.resourceName}`,
+            );
+
+            await workerCancelSellOffer({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                resourceName: input.resourceName,
             });
         });
 };

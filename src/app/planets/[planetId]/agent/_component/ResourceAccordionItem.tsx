@@ -62,7 +62,21 @@ export default function ResourceAccordionItem({
         }),
     );
 
-    const saving = sellMutation.isPending || buyMutation.isPending;
+    const cancelSellOfferMutation = useMutation(
+        trpc.cancelSellOffer.mutationOptions({
+            onSuccess: () => {
+                setSuccessMsg('Sell offer cancelled.');
+                setErrorMsg(null);
+                void queryClient.invalidateQueries({ queryKey: trpc.simulation.getAgentPlanetDetail.queryKey() });
+            },
+            onError: (err) => {
+                setErrorMsg(err instanceof Error ? err.message : 'Failed to cancel offer');
+                setSuccessMsg(null);
+            },
+        }),
+    );
+
+    const saving = sellMutation.isPending || buyMutation.isPending || cancelSellOfferMutation.isPending;
 
     // ── Validation + save ──────────────────────────────────────────────
     const handleSave = () => {
@@ -155,6 +169,7 @@ export default function ResourceAccordionItem({
                         overviewRow={overviewRow}
                         onLocalChange={onLocalChange}
                         saving={saving}
+                        onCancelOffer={() => cancelSellOfferMutation.mutate({ agentId, planetId, resourceName })}
                     />
 
                     {/* ── Save button + feedback + market details toggle in same row ── */}
