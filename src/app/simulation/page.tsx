@@ -431,13 +431,13 @@ offerQuantity = current storage inventory for this resource`}
                     </p>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>Buffer Target &amp; Shortfall</h3>
-                        <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-{`INPUT_BUFFER_TARGET_TICKS = 30
+                    <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                        {`INPUT_BUFFER_TARGET_TICKS = 30
 
 targetQty = inputQuantity × facilityScale × 30
 shortfall = max(0, targetQty − currentInventory)
 bidStorageTarget = currentInventory + shortfall`}
-                        </pre>
+                    </pre>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>Bid Price — Tâtonnement with Break-Even Ceiling</h3>
                     <p>

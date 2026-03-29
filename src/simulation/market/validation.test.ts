@@ -145,13 +145,21 @@ describe('market validation', () => {
 
         it('returns invalid when quantity exceeds available storage capacity', () => {
             // Coal: volumePerQuantity=0.7 → volume=35 gives capacity 50; massPerQuantity=1 → mass=50 gives capacity 50
-            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, makeAssets(1000, 35, 50));
+            const result = validateBuyBid(
+                { bidPrice: 2.0, bidStorageTarget: 100 },
+                coalResource,
+                makeAssets(1000, 35, 50),
+            );
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Quantity exceeds available storage capacity');
         });
 
         it('returns valid when quantity equals available storage capacity', () => {
-            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 50 }, coalResource, makeAssets(1000, 35, 50));
+            const result = validateBuyBid(
+                { bidPrice: 2.0, bidStorageTarget: 50 },
+                coalResource,
+                makeAssets(1000, 35, 50),
+            );
             expect(result.isValid).toBe(true);
         });
 

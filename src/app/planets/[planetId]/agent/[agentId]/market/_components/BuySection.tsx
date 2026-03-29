@@ -44,9 +44,7 @@ export default function BuySection({
 
     const totalBidCost =
         (bid?.bidPrice ?? 0) *
-        (bid?.bidStorageTarget !== undefined
-            ? Math.max(0, bid.bidStorageTarget - inventoryQty)
-            : 0);
+        (bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : 0);
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
 
     // Check if buy section has any dirty fields

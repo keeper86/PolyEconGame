@@ -49,10 +49,7 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<
-              string,
-              { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }
-          >;
+          bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
       }
     | {
           type: 'cancelSellOffer';
@@ -165,10 +162,7 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<
-              string,
-              { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }
-          >;
+          bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
       }
     | {
           type: 'cancelSellOffer';

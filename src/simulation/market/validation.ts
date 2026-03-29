@@ -241,9 +241,7 @@ export function validateAndPrepareBuyBid(
 
     // Calculate effective quantity from storage target
     const effectiveQuantity =
-        bid.bidStorageTarget !== undefined
-            ? Math.max(0, bid.bidStorageTarget - currentInventory)
-            : 0;
+        bid.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - currentInventory) : 0;
 
     // Cap by available storage capacity
     const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, bid.resource);

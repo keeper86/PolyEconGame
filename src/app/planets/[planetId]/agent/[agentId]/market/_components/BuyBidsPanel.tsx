@@ -139,7 +139,9 @@ export default function BuyBidsPanel({
         }
 
         if (Object.keys(bids).length === 0) {
-            setErrorMsg('No valid bid data to save. Enter a price > 0 or storage target ≥ 0 for at least one resource.');
+            setErrorMsg(
+                'No valid bid data to save. Enter a price > 0 or storage target ≥ 0 for at least one resource.',
+            );
             return;
         }
 

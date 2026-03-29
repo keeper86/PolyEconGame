@@ -92,9 +92,7 @@ export function handleCancelSellOffer(
     if (assets.market?.sell) {
         delete assets.market.sell[resourceName];
     }
-    console.log(
-        `[worker] Sell offer cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`,
-    );
+    console.log(`[worker] Sell offer cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`);
     safePostMessage({ type: 'sellOfferCancelled', requestId, agentId });
 }
 
@@ -130,9 +128,7 @@ export function handleCancelBuyBid(
         bid.lastSpent = 0;
         bid.lastEffectiveQty = 0;
     }
-    console.log(
-        `[worker] Buy bid cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`,
-    );
+    console.log(`[worker] Buy bid cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`);
     safePostMessage({ type: 'buyBidCancelled', requestId, agentId });
 }
 
