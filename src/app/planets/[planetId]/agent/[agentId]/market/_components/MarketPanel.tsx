@@ -13,13 +13,13 @@ import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { Props } from './marketTypes';
 import { buildResourceList, buildInitialState, getResourceByName } from './marketHelpers';
 import ResourceAccordionItem from './ResourceAccordionItem';
-import { getHeaderColumnClasses } from '../../../_component/columnConfig';
+import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from '../../../_component/columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { useVisibleColumns } from '../../../_component/useVisibleColumns';
 
 // Fixed pixel overhead for non-column content in each row:
-// card p-3 (24) + trigger px-1 (8) + icon w-6/32px (32) + gap-2 (8) + min name (80) + gap-2 (8) + chevron w-4 (16) ≈ 176
-const COLUMN_AREA_OVERHEAD = 180;
+// card p-3 (24) + trigger px-1 (8) + icon (32) + gap-2 (8) + label (LABEL_COLUMN_WIDTH) + gap-2 (8) + chevron w-4 (16) = 96 + LABEL_COLUMN_WIDTH
+const COLUMN_AREA_OVERHEAD = 96 + LABEL_COLUMN_WIDTH;
 
 // Helper function to group resources by level
 function groupResourcesByLevel(resources: { name: string }[]): Map<string, { name: string }[]> {
@@ -212,7 +212,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                 <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
                                     <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
                                         <div className='w-6 shrink-0' />
-                                        <span className='flex-1 min-w-0'>Resource</span>
+                                        <span className='flex-1 min-w-0 truncate'>Resource</span>
                                         {visibleColumns.map((column) => (
                                             <span
                                                 key={column.id}

@@ -94,7 +94,7 @@ export default function ResourceTrigger({
             <ProductIcon productName={name} size={32} />
 
             {/* Name + market link + order indicators */}
-            <div className='flex-1 min-w-0 flex items-center gap-1'>
+            <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>
                 <span className='text-sm font-medium truncate'>{name}</span>
                 {(hasActiveBid ||
                     hasActiveOffer ||

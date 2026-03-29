@@ -3,6 +3,16 @@
  * This provides a single source of truth for column widths, visibility, and other properties.
  */
 
+/** Fixed pixel width for the resource label column */
+export const LABEL_COLUMN_WIDTH = 145;
+
+/**
+ * Get the Tailwind width class for the label column
+ */
+export function getLabelColumnWidthClass(): string {
+    return `w-[${LABEL_COLUMN_WIDTH}px]`;
+}
+
 export interface ColumnConfig {
     /** Unique identifier for the column */
     id: string;
