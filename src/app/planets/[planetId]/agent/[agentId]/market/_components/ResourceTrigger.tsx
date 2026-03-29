@@ -96,7 +96,12 @@ export default function ResourceTrigger({
             {/* Name + market link + order indicators */}
             <div className='flex-1 min-w-0 flex items-center gap-1'>
                 <span className='text-sm font-medium truncate'>{name}</span>
-                {(hasActiveBid || hasActiveOffer || bid?.automated || offer?.automated || bid?.storageFullWarning) && (
+                {(hasActiveBid ||
+                    hasActiveOffer ||
+                    bid?.automated ||
+                    offer?.automated ||
+                    bid?.storageFullWarning ||
+                    bid?.storageScaleWarning) && (
                     <div className='flex items-center gap-0.5 ml-0.5 shrink-0'>
                         {hasActiveBid && (
                             <span
@@ -114,6 +119,14 @@ export default function ResourceTrigger({
                         {bid?.storageFullWarning && (
                             <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5'>
                                 full
+                            </Badge>
+                        )}
+                        {bid?.storageScaleWarning && (
+                            <Badge
+                                variant='outline'
+                                className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
+                            >
+                                {bid.storageScaleWarning === 'scaled' ? 'storage' : 'no space'}
                             </Badge>
                         )}
                     </div>

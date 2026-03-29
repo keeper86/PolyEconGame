@@ -109,7 +109,13 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
             buyState.lastSpent = (buyState.lastSpent ?? 0) + costForStored;
 
             if (storageFull) {
-                buyState.bidQuantity = 0;
+                if (process.env.SIM_DEBUG === '1') {
+                    console.warn(
+                        `[settlement] storageFull reached for agent=${bid.agent.id} resource=${bid.resource.name}. ` +
+                            `This should have been prevented by order validation. ` +
+                            `actuallyStored=${actuallyStored}, bid.filled=${bid.filled}`,
+                    );
+                }
                 buyState.storageFullWarning = true;
             }
         }

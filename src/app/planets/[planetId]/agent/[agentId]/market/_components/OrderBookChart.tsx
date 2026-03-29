@@ -34,7 +34,7 @@ export type OfferEntry = {
     agentId: string;
     agentName: string;
     offerPrice: number;
-    offerQuantity: number;
+    lastPlacedQuantity: number;
     lastSold: number;
     sellThrough: number;
 };
@@ -78,12 +78,12 @@ function buildChartBars(offers: OfferEntry[]): ChartBar[] {
     let cum = 0;
     return sorted.map((o) => {
         const start = cum;
-        cum += o.offerQuantity;
+        cum += o.lastPlacedQuantity;
         return {
             name: o.agentName,
             agentId: o.agentId,
             price: o.offerPrice,
-            quantity: o.offerQuantity,
+            quantity: o.lastPlacedQuantity,
             cumulativeStart: start,
             cumulativeEnd: cum,
             sellThrough: o.sellThrough,

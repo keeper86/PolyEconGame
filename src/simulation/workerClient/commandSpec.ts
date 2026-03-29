@@ -96,6 +96,19 @@ export const cancelSellOfferSpec: CommandSpec<
     extract: () => undefined,
 };
 
+type CancelBuyBidSuccess = Extract<OutboundMessage, { type: 'buyBidCancelled' }>;
+type CancelBuyBidFailure = Extract<OutboundMessage, { type: 'buyBidCancelFailed' }>;
+export const cancelBuyBidSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelBuyBid' }>,
+    CancelBuyBidSuccess,
+    CancelBuyBidFailure,
+    void
+> = {
+    successType: 'buyBidCancelled',
+    failureType: 'buyBidCancelFailed',
+    extract: () => undefined,
+};
+
 type SetBuyBidsSuccess = Extract<OutboundMessage, { type: 'buyBidsSet' }>;
 type SetBuyBidsFailure = Extract<OutboundMessage, { type: 'buyBidsFailed' }>;
 export const setBuyBidsSpec: CommandSpec<

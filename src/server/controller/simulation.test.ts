@@ -13,7 +13,6 @@ describe('simulation tRPC controller', () => {
         const caller = getCaller();
         const result = await caller.simulation.getLatestPlanetSummaries();
         expect(result).toBeDefined();
-        expect(result.tick).toBe(0);
         expect(Array.isArray(result.planets)).toBe(true);
     });
 

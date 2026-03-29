@@ -14,17 +14,17 @@ export const TTL_FEEDBACK = 5_000; // 5 seconds
 
 export type MarketBidEntry = {
     bidPrice?: number;
-    bidQuantity?: number;
     bidStorageTarget?: number;
     lastBought?: number;
     lastSpent?: number;
     storageFullWarning?: boolean;
+    depositScaleWarning?: 'scaled' | 'dropped';
+    storageScaleWarning?: 'scaled' | 'dropped';
     automated?: boolean;
 };
 
 export type MarketOfferEntry = {
     offerPrice?: number;
-    offerQuantity?: number;
     offerRetainment?: number;
     lastSold?: number;
     lastRevenue?: number;
@@ -52,6 +52,14 @@ export type LocalResourceState = {
         bidPrice: boolean;
         bidStorageTarget: boolean;
         bidAutomated: boolean;
+    };
+
+    // Validation errors
+    validationErrors: {
+        offerPrice?: string;
+        offerRetainment?: string;
+        bidPrice?: string;
+        bidStorageTarget?: string;
     };
 
     // Saved state snapshots for comparison
@@ -125,6 +133,7 @@ export type BuySectionProps = {
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
     onSaveBuy: () => void;
     onResetBuy: () => void;
+    onCancelBid: () => void;
     onAutomationChange: (automated: boolean) => void;
     buySaving: boolean;
     buySuccessMsg: string | null;

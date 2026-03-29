@@ -5,6 +5,7 @@ import {
     workerSetWorkerAllocationTargets,
     workerSetSellOffers,
     workerCancelSellOffer,
+    workerCancelBuyBid,
     workerSetBuyBids,
     workerClaimResources,
     workerBuildFacility,
@@ -430,8 +431,6 @@ export const setSellOffers = () => {
                     z.object({
                         /** Price per unit (currency). Must be > 0. */
                         offerPrice: z.number().positive().optional(),
-                        /** Units to offer for sale this tick. 0 = withdraw offer. */
-                        offerQuantity: z.number().min(0).optional(),
                         /** Keep at least this many units — sell qty = max(0, inventory − retainment). */
                         offerRetainment: z.number().min(0).optional(),
                         /** When true, the auto-pricing engine manages this offer each tick. */
@@ -475,12 +474,8 @@ export const setSellOffers = () => {
                 // Use queryStorageFacility to get non-escrowed stock
                 const inventoryQty = queryStorageFacility(sellAssets.storageFacility, resourceName);
 
-                // Validate price only when using retainment (qty is computed dynamically)
-                const validation = validateSellOffer(
-                    offer.offerPrice,
-                    offer.offerRetainment !== undefined ? undefined : offer.offerQuantity,
-                    inventoryQty,
-                );
+                // Validate price (quantity is computed dynamically from retainment)
+                const validation = validateSellOffer(offer.offerPrice, inventoryQty);
 
                 if (!validation.isValid) {
                     throw new TRPCError({
@@ -540,9 +535,45 @@ export const cancelSellOffer = () => {
         });
 };
 
+/**
+ * Cancel (remove) a buy bid for a specific resource on said planet.
+ */
+export const cancelBuyBid = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                resourceName: z.string().min(1),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'cancel-buy-bid' },
+                `User ${userId} cancelling buy bid for agent ${input.agentId} on planet ${input.planetId} resource ${input.resourceName}`,
+            );
+
+            await workerCancelBuyBid({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                resourceName: input.resourceName,
+            });
+        });
+};
+
 const buyBid = z.object({
     bidPrice: z.number().positive().optional(),
-    bidQuantity: z.number().min(0).optional(),
     bidStorageTarget: z.number().min(0).optional(),
     automated: z.boolean().optional(),
 });

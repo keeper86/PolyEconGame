@@ -6,7 +6,7 @@ import { formatNumbers } from '@/lib/utils';
 
 export type PopulationBidEntry = {
     bidPrice: number;
-    bidQuantity: number;
+    demandedQuantity: number;
     lastBought: number;
     fillRatio: number;
     lastSpent: number;
@@ -38,7 +38,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payl
                 Bid Price: <span className='font-mono'>{formatNumbers(d.bidPrice)}</span>
             </p>
             <p>
-                Demanded: <span className='font-mono'>{formatNumbers(d.bidQuantity)}</span> t
+                Demanded: <span className='font-mono'>{formatNumbers(d.demandedQuantity)}</span> t
             </p>
             <p>
                 Bought: <span className='font-mono'>{formatNumbers(d.lastBought)}</span> t (

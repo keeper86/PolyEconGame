@@ -44,6 +44,7 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
                 exactUsedByEdu: {},
                 totalUsedByEdu: {},
                 lastProduced: {},
+                lastConsumed: {},
             },
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -71,13 +72,13 @@ function giveHouseholdsWealth(planet: Planet, wealthPerPerson: number): number {
 }
 
 /** Helper: set a food offer on an agent for the agricultural product resource. */
-function setFoodOffer(agent: Agent, offerPrice: number, offerQuantity?: number, lastSold?: number): void {
+function setFoodOffer(agent: Agent, offerPrice: number, lastSold?: number): void {
     agent.assets.p.market = {
         sell: {
             [FOOD]: {
                 resource: agriculturalProductResourceType,
                 offerPrice,
-                offerQuantity,
+                offerRetainment: 0,
                 lastSold,
             },
         },
@@ -196,7 +197,7 @@ describe('foodMarketTick', () => {
         // Supply: only enough for the rich cohort (small supply)
         const supplyQty = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK * richCat.total * 0.5;
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, supplyQty);
-        setFoodOffer(foodAgent, 0.5, supplyQty);
+        setFoodOffer(foodAgent, 0.5);
 
         const poorFoodBefore = poorCat.inventory[FOOD] ?? 0;
         const richFoodBefore = richCat.inventory[FOOD] ?? 0;
@@ -220,8 +221,8 @@ describe('foodMarketTick', () => {
         putIntoStorageFacility(cheapAgent.assets.p.storageFacility, agriculturalProductResourceType, 100);
         putIntoStorageFacility(expensiveAgent.assets.p.storageFacility, agriculturalProductResourceType, 100);
 
-        setFoodOffer(cheapAgent, 1.0, 100);
-        setFoodOffer(expensiveAgent, 5.0, 100);
+        setFoodOffer(cheapAgent, 1.0);
+        setFoodOffer(expensiveAgent, 5.0);
 
         // Households need bid prices ≥ cheap ask (1.0).
         // bidPrice = wealth / desiredPerPerson = wealth / (FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK)
@@ -244,7 +245,7 @@ describe('foodMarketTick', () => {
     it('bid below ask price → no trade occurs', () => {
         // Agent asks very high; households cannot afford
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 500);
-        setFoodOffer(foodAgent, 1_000_000, 500);
+        setFoodOffer(foodAgent, 1_000_000);
 
         const totalPop = giveHouseholdsWealth(planet, 0.001); // tiny wealth
         planet.bank.householdDeposits = totalPop * 0.001;
@@ -279,7 +280,7 @@ describe('foodMarketTick', () => {
 
     it('monetary conservation: householdDeposits decrease equals agent deposit increase', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 1000);
-        setFoodOffer(foodAgent, 1.0, 1000);
+        setFoodOffer(foodAgent, 1.0);
         foodAgent.assets.p.deposits = 0;
 
         const totalPop = giveHouseholdsWealth(planet, 100);
@@ -313,7 +314,7 @@ describe('foodMarketTick', () => {
 
     it('volume-weighted average price is updated', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 1000);
-        setFoodOffer(foodAgent, 2.5, 1000);
+        setFoodOffer(foodAgent, 2.5);
 
         // Give households wealth
         const totalPop = giveHouseholdsWealth(planet, 100);
@@ -328,7 +329,7 @@ describe('foodMarketTick', () => {
 
     it('persists lastMarketResult snapshot on planet', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 500);
-        setFoodOffer(foodAgent, 1.0, 500);
+        setFoodOffer(foodAgent, 1.0);
 
         const totalPop = giveHouseholdsWealth(planet, 50);
         planet.bank.householdDeposits = totalPop * 50;
@@ -353,7 +354,7 @@ describe('foodMarketTick', () => {
         // Tiny supply relative to population demand
         const tinySupply = 0.001;
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, tinySupply);
-        setFoodOffer(foodAgent, 1.0, tinySupply);
+        setFoodOffer(foodAgent, 1.0);
 
         const totalPop = giveHouseholdsWealth(planet, 100);
         planet.bank.householdDeposits = totalPop * 100;
@@ -367,7 +368,7 @@ describe('foodMarketTick', () => {
     it('lastMarketResult.unsoldSupply is positive when demand is insufficient', () => {
         // Massive supply, households have almost no wealth → little demand
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 1e6);
-        setFoodOffer(foodAgent, 1.0, 1e6);
+        setFoodOffer(foodAgent, 1.0);
 
         const totalPop = giveHouseholdsWealth(planet, 0.00001); // near-zero wealth
         planet.bank.householdDeposits = totalPop * 0.00001;
@@ -396,12 +397,13 @@ describe('updateAgentPricing', () => {
         automaticPricing(agentMap(foodAgent), planet);
 
         expect(foodAgent.assets.p.market?.sell[FOOD]?.offerPrice).toBe(INITIAL_FOOD_PRICE);
-        expect(foodAgent.assets.p.market?.sell[FOOD]?.offerQuantity).toBe(100);
+        // With retainment 0, effective quantity should be 100
+        // The actual quantity is calculated from retainment, not stored
     });
 
     it('lowers price when excess supply (produced > sold)', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 100);
-        setFoodOffer(foodAgent, 2.0, undefined, 20); // only 20% sold → price too high
+        setFoodOffer(foodAgent, 2.0, 20); // only 20% sold → price too high
 
         automaticPricing(agentMap(foodAgent), planet);
 
@@ -410,7 +412,7 @@ describe('updateAgentPricing', () => {
 
     it('raises price when excess demand (produced < sold)', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
-        setFoodOffer(foodAgent, 1.0, undefined, 50); // sold more than produced (from buffer)
+        setFoodOffer(foodAgent, 1.0, 50); // sold more than produced (from buffer)
 
         automaticPricing(agentMap(foodAgent), planet);
 
@@ -419,7 +421,7 @@ describe('updateAgentPricing', () => {
 
     it('does not set price below FOOD_PRICE_FLOOR', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 10000);
-        setFoodOffer(foodAgent, 0.02, undefined, 0);
+        setFoodOffer(foodAgent, 0.02, 0);
 
         automaticPricing(agentMap(foodAgent), planet);
 
@@ -429,7 +431,7 @@ describe('updateAgentPricing', () => {
     it('does not raise price when agent has nothing to offer and last sold is from a prior tick', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
         // Simulate: previously sold 1550 units, but current stock is empty → supply-constrained
-        setFoodOffer(foodAgent, 0.73, 0, 1550);
+        setFoodOffer(foodAgent, 0.73, 1550);
 
         automaticPricing(agentMap(foodAgent), planet);
 
@@ -439,7 +441,7 @@ describe('updateAgentPricing', () => {
 
     it('raises price when agent has no stock and also sold nothing (intermittent production)', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 0);
-        setFoodOffer(foodAgent, 2.0, 0, 0);
+        setFoodOffer(foodAgent, 2.0, 0);
 
         automaticPricing(agentMap(foodAgent), planet);
 
@@ -465,7 +467,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
                 [CLOTHING]: {
                     resource: clothingResourceType,
                     offerPrice: 0.01,
-                    offerQuantity: 1e6,
+                    offerRetainment: 0,
                 },
             },
             buy: {},
@@ -481,7 +483,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
                 [FOOD]: {
                     resource: agriculturalProductResourceType,
                     offerPrice: price,
-                    offerQuantity: 1e6,
+                    offerRetainment: 0,
                 },
             },
             buy: {},

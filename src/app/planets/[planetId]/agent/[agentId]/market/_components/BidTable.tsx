@@ -7,7 +7,7 @@ export type BidRow = {
     agentId: string;
     agentName: string;
     bidPrice: number;
-    bidQuantity: number;
+    demandedQuantity: number;
     lastBought: number;
     fillRatio: number;
     lastSpent: number;
@@ -54,7 +54,7 @@ export default function BidTable({ bids }: Props): React.ReactElement {
                             <td className='py-1 pr-2 text-right tabular-nums font-mono'>
                                 {formatNumbers(row.bidPrice)}
                             </td>
-                            <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.bidQuantity)}</td>
+                            <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.demandedQuantity)}</td>
                             <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.lastBought)}</td>
                             <td className={cn('py-1 pr-2 text-right tabular-nums', fillRatioClass(row.fillRatio))}>
                                 {(row.fillRatio * 100).toFixed(0)}%

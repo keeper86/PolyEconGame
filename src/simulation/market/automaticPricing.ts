@@ -9,7 +9,7 @@ import {
     EPSILON,
 } from '../constants';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
-import { getAvailableStorageCapacity, queryStorageFacility } from '../planet/storage';
+import { queryStorageFacility } from '../planet/storage';
 import { nextRandom } from '../utils/stochasticRound';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
@@ -105,8 +105,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
-            const rawSellableQty = Math.max(0, inventoryQty - reserved);
-            const sellableQty = rawSellableQty;
 
             if (!assets.market.sell[resource.name]) {
                 assets.market.sell[resource.name] = { resource, automated: true };
@@ -114,19 +112,20 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const offer = assets.market.sell[resource.name];
             offer.resource = resource;
+            offer.offerRetainment = reserved; // Keep at least the reserved amount
 
             const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
-            adjustOfferPrice(offer, sellableQty, initialPrice);
+            adjustOfferPrice(offer, inventoryQty, initialPrice);
         }
     }
 
-    // Aggregate shortfall per input resource across all facilities before placing
-    // buy orders. A facility whose output buffer is full contributes 0 to that
-    // resource's shortfall, but must not suppress the aggregate for other facilities
-    // that still need it.
-    const aggregatedShortfall = new Map<
+    // Aggregate the desired storage target per input resource across all facilities.
+    // A facility whose output buffer is full contributes 0 to its inputs' storage
+    // target (no point buying more inputs when outputs can't leave storage), but
+    // must not suppress the aggregate for other facilities that still need the resource.
+    const aggregatedBuyTargets = new Map<
         string,
-        { resource: (typeof assets.productionFacilities)[number]['needs'][number]['resource']; shortfall: number }
+        { resource: (typeof assets.productionFacilities)[number]['needs'][number]['resource']; storageTarget: number }
     >();
     for (const facility of assets.productionFacilities) {
         const outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
@@ -139,20 +138,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
-            const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
-            const targetQty = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
-            const facilityShortfall = outputBufferFull ? 0 : Math.max(0, targetQty - inventoryQty);
+            const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
 
-            const existing = aggregatedShortfall.get(resource.name);
+            const existing = aggregatedBuyTargets.get(resource.name);
             if (existing) {
-                existing.shortfall += facilityShortfall;
+                existing.storageTarget += facilityTarget;
             } else {
-                aggregatedShortfall.set(resource.name, { resource, shortfall: facilityShortfall });
+                aggregatedBuyTargets.set(resource.name, { resource, storageTarget: facilityTarget });
             }
         }
     }
 
-    for (const [resourceName, { resource, shortfall }] of aggregatedShortfall) {
+    for (const [resourceName, { resource, storageTarget }] of aggregatedBuyTargets) {
         // For human-controlled agents only auto-adjust entries explicitly flagged
         if (!agent.automated && assets.market.buy[resourceName]?.automated !== true) {
             continue;
@@ -164,62 +161,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const bid = assets.market.buy[resourceName];
         bid.resource = resource;
 
+        const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+        const shortfall = Math.max(0, storageTarget - currentInventory);
+
         const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
         const ceiling = inputValueCeiling.get(resourceName);
-        adjustBidPrice(bid, shortfall, marketPrice, ceiling);
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, ceiling);
 
-        // --- Validity guards (ensure collectAgentBids never rejects this bid) ---
-
-        // 1. Price must be a finite positive number >= PRICE_FLOOR.
-        //    adjustBidPrice should guarantee this, but NaN/Infinity can leak in
-        //    from degenerate ceiling calculations, so we clamp defensively.
+        // Validity guard: price must be a finite positive number >= PRICE_FLOOR.
+        // adjustBidPrice should guarantee this, but NaN/Infinity can leak in from
+        // degenerate ceiling calculations, so we clamp defensively.
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);
-        }
-
-        // 2. Cap quantity by available storage capacity so the final clamped
-        //    value never falls into the 0 < qty < EPSILON range that the
-        //    validator rejects as "Quantity is too small".
-        if (bid.bidQuantity && bid.bidQuantity > 0) {
-            const availableStorage = getAvailableStorageCapacity(assets.storageFacility, resource);
-            if (bid.bidQuantity > availableStorage) {
-                bid.bidQuantity = availableStorage;
-            }
-        }
-
-        // 3. Snap any tiny-but-nonzero quantity to zero.
-        if (bid.bidQuantity !== undefined && bid.bidQuantity > 0 && bid.bidQuantity < EPSILON) {
-            bid.bidQuantity = 0;
-        }
-    }
-
-    // --- Aggregate deposit cap ---
-    // validateBuyBid rejects any single bid whose cost (qty × price) exceeds
-    // total deposits.  When multiple bids compete for the same pool the
-    // per-bid checks above can each pass individually while the aggregate
-    // still exceeds deposits.  Mirror collectAgentBids' proportional
-    // scale-down here so every bid is guaranteed to pass the validator.
-    let totalBidCost = 0;
-    for (const [resourceName] of aggregatedShortfall) {
-        const bid = assets.market.buy[resourceName];
-        if (!bid?.bidQuantity || bid.bidQuantity <= 0 || !bid.bidPrice) {
-            continue;
-        }
-        totalBidCost += bid.bidQuantity * bid.bidPrice;
-    }
-    if (totalBidCost > assets.deposits) {
-        // Use a tiny relative safety margin so that (qty * price) after scaling
-        // never rounds up past deposits due to floating-point imprecision.
-        const scaleFactor = (assets.deposits * (1 - 1e-9)) / totalBidCost;
-        for (const [resourceName] of aggregatedShortfall) {
-            const bid = assets.market.buy[resourceName];
-            if (!bid?.bidQuantity || bid.bidQuantity <= 0) {
-                continue;
-            }
-            bid.bidQuantity *= scaleFactor;
-            if (bid.bidQuantity < EPSILON) {
-                bid.bidQuantity = 0;
-            }
         }
     }
 }
@@ -254,14 +207,7 @@ function sellThroughFactor(sellThrough: number): number {
     }
 }
 
-function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number, initialPrice: number): void {
-    // Ensure quantity is either 0 or >= EPSILON
-    if (newOfferQuantity > 0 && newOfferQuantity < EPSILON) {
-        offer.offerQuantity = 0;
-    } else {
-        offer.offerQuantity = newOfferQuantity;
-    }
-
+function adjustOfferPrice(offer: AgentMarketOfferState, inventoryQty: number, initialPrice: number): void {
     const sold = offer.lastSold;
     const price = offer.offerPrice;
 
@@ -270,9 +216,13 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
-    // When the agent has no stock this tick (supply-constrained), treat it as
+    // Calculate effective sell quantity based on retainment
+    const retainment = offer.offerRetainment ?? 0;
+    const effectiveQuantity = Math.max(0, inventoryQty - retainment);
+
+    // When the agent has no stock to sell this tick (supply-constrained), treat it as
     // full sell-through: the good is scarce and the price should rise.
-    if (offer.offerQuantity === 0) {
+    if (effectiveQuantity === 0) {
         const factor = sellThroughFactor(1);
         const newPrice = price * factor;
         // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
@@ -284,7 +234,7 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
-    const sellThrough = sold / offer.offerQuantity;
+    const sellThrough = sold / effectiveQuantity;
     const factor = (1 + 0.01 * nextRandom()) * sellThroughFactor(sellThrough);
     const newPrice = price * factor;
 
@@ -320,37 +270,48 @@ function fillRateFactor(fillRate: number): number {
 function adjustBidPrice(
     bid: AgentMarketBidState,
     shortfall: number,
+    storageTarget: number,
     marketPrice: number,
     breakEvenCeiling?: number,
 ): void {
-    const previousDemand = bid.bidQuantity;
-
-    // Ensure quantity is either 0 or >= EPSILON
-    if (shortfall <= 0) {
-        bid.bidQuantity = 0;
-        // Don't set price to 0 - keep existing price or use market price
+    // Handle extremely small shortfalls - treat as no demand
+    if (shortfall > 0 && shortfall < EPSILON) {
+        // No meaningful demand, set storage target to current inventory level
+        // This prevents creating bids with quantities that would fail validation
+        bid.bidStorageTarget = storageTarget - shortfall; // Effectively current inventory
+        // Keep existing price or initialize it from market price
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
-            // Use market price or break-even ceiling, but ensure at least PRICE_FLOOR
             const newPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
         return;
     }
 
-    // Ensure quantity is at least EPSILON
-    const effectiveShortfall = Math.max(shortfall, EPSILON);
-    bid.bidQuantity = effectiveShortfall;
+    // Set the storage target — same field as the human player, so that disabling
+    // automation leaves a fully visible, correctly bounded bid in the UI.
+    bid.bidStorageTarget = storageTarget;
+
+    if (shortfall <= 0) {
+        // No demand. Keep existing price or initialize it from market price.
+        if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
+            const newPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
+            bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
+        }
+        return;
+    }
 
     // If bid price is undefined, 0, or negative, initialize it
     if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
         bid.bidPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
-        // Ensure price is at least PRICE_FLOOR
         bid.bidPrice = Math.max(PRICE_FLOOR, bid.bidPrice);
         return;
     }
 
     const lastBought = bid.lastBought ?? 0;
-    const lastDemanded = previousDemand ?? effectiveShortfall;
+    // lastEffectiveQty is the quantity actually placed in the order book last tick
+    // by collectAgentBids (after proportional deposit scaling). It is a better
+    // denominator for fill-rate than the raw shortfall, which changes each tick.
+    const lastDemanded = bid.lastEffectiveQty ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
     const factor = fillRateFactor(fillRate);

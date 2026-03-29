@@ -193,6 +193,9 @@ export function buildInitialState(
                 bidAutomated: false,
             },
 
+            // Validation errors - empty initially
+            validationErrors: {},
+
             // Saved state snapshots
             savedOfferPrice: offerPrice,
             savedOfferRetainment: offerRetainment,

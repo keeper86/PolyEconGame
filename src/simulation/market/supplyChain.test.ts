@@ -79,7 +79,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const bid = smelter.assets[PLANET_ID].market?.buy[ironOreResourceType.name];
         expect(bid).toBeDefined();
-        expect(bid!.bidQuantity).toBeGreaterThan(0);
+        expect(bid!.bidStorageTarget).toBeGreaterThan(0);
 
         // Break-even ceiling = (100 steel × 3.0) / 150 iron ore = 2.0
         // Bid price must not exceed ceiling (2.0) but must be ≥ market price (1.0)
@@ -102,7 +102,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
         expect(steelBid).toBeDefined();
-        expect(steelBid!.bidQuantity).toBeGreaterThan(0);
+        expect(steelBid!.bidStorageTarget).toBeGreaterThan(0);
 
         // With no machinery price, fallback = total input cost per output unit:
         // (80 × 3.0 + 10 × 15.0 + 20 × 2.0) / 50 = (240 + 150 + 40) / 50 = 430 / 50 = 8.6
@@ -143,9 +143,9 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
 
-        // Full buffer shortfall = MACHINERY_FACTORY_STEEL_QTY × scale(1) × INPUT_BUFFER_TARGET_TICKS
-        const expectedShortfall = MACHINERY_FACTORY_STEEL_QTY * 1 * INPUT_BUFFER_TARGET_TICKS;
-        expect(steelBid!.bidQuantity).toBe(expectedShortfall);
+        // Full buffer target = MACHINERY_FACTORY_STEEL_QTY × scale(1) × INPUT_BUFFER_TARGET_TICKS
+        const expectedStorageTarget = MACHINERY_FACTORY_STEEL_QTY * 1 * INPUT_BUFFER_TARGET_TICKS;
+        expect(steelBid!.bidStorageTarget).toBe(expectedStorageTarget);
     });
 
     it('two-tier chain: iron smelter produces steel that machinery factory bids for', () => {

@@ -401,18 +401,20 @@ pollution += pollutionPerTick × scale × overallEfficiency`}
                     <p>
                         After production, each automated agent sets its offer price for every resource it produces. The
                         algorithm is a <strong>gradient-descent tâtonnement</strong> that adjusts price based on the
-                        previous tick&apos;s sell-through ratio. The offer quantity equals the full current inventory.
+                        previous tick&apos;s sell-through ratio. The effective sell quantity is calculated as inventory
+                        minus a retainment amount (reserved for production inputs).
                     </p>
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`TARGET_SELL_THROUGH = 0.90   (aim to sell 90 % of offer per tick)
 ADJUSTMENT_SPEED    = 0.20
 
-sellThrough  = lastSold / offerQuantity
+effectiveQuantity = max(0, inventory - offerRetainment)
+sellThrough  = lastSold / effectiveQuantity
 excessDemand = sellThrough − TARGET_SELL_THROUGH
 factor       = clamp(1 + 0.20 × excessDemand, 0.95, 1.05)
 newPrice     = clamp(price × factor, 0.01, 1_000_000)
 
-offerQuantity = current storage inventory for this resource`}
+offerRetainment = reserved amount for production inputs (calculated from facility needs)`}
                     </pre>
                     <p className='mt-2 text-sm text-muted-foreground'>
                         Price evolution from 1.0 for three sell-through scenarios over 80 ticks:
@@ -436,7 +438,7 @@ offerQuantity = current storage inventory for this resource`}
 
 targetQty = inputQuantity × facilityScale × 30
 shortfall = max(0, targetQty − currentInventory)
-bidQuantity = shortfall`}
+bidStorageTarget = currentInventory + shortfall`}
                     </pre>
 
                     <h3 className='text-xl font-semibold mt-6 mb-2'>Bid Price — Tâtonnement with Break-Even Ceiling</h3>

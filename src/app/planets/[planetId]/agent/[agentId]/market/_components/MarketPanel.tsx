@@ -4,6 +4,7 @@ import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -83,15 +84,53 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         buildInitialState(resources, buyBids, sellOffers),
     );
 
+    const hasAnyDirty = useMemo(
+        () => Object.values(localStates).some((s) => Object.values(s.dirtyFields).some(Boolean)),
+        [localStates],
+    );
+
+    useNavigationGuard(hasAnyDirty);
+
     // Re-sync local state when server data changes (a new tick arrived)
     useEffect(() => {
         setLocalStates((prev) => {
             const next = buildInitialState(resources, buyBids, sellOffers);
-            // Preserve in-progress UI-only fields
             for (const name of Object.keys(next)) {
                 const p = prev[name];
-                if (p) {
-                    next[name].targetBufferTicks = p.targetBufferTicks;
+                if (!p) {
+                    continue;
+                }
+
+                // Always preserve UI-only fields that are never sent to the server
+                next[name].targetBufferTicks = p.targetBufferTicks;
+
+                // For each dirty field: keep the user's unsaved input but re-evaluate
+                // dirtiness against the fresh server baseline (savedXxx in `next`).
+                // After a successful save the server echoes back the saved value, so
+                // the comparison will produce false and the dirty indicator clears.
+                if (p.dirtyFields.offerPrice) {
+                    next[name].offerPrice = p.offerPrice;
+                    next[name].dirtyFields.offerPrice = p.offerPrice !== next[name].savedOfferPrice;
+                }
+                if (p.dirtyFields.offerRetainment) {
+                    next[name].offerRetainment = p.offerRetainment;
+                    next[name].dirtyFields.offerRetainment = p.offerRetainment !== next[name].savedOfferRetainment;
+                }
+                if (p.dirtyFields.offerAutomated) {
+                    next[name].offerAutomated = p.offerAutomated;
+                    next[name].dirtyFields.offerAutomated = p.offerAutomated !== next[name].savedOfferAutomated;
+                }
+                if (p.dirtyFields.bidPrice) {
+                    next[name].bidPrice = p.bidPrice;
+                    next[name].dirtyFields.bidPrice = p.bidPrice !== next[name].savedBidPrice;
+                }
+                if (p.dirtyFields.bidStorageTarget) {
+                    next[name].bidStorageTarget = p.bidStorageTarget;
+                    next[name].dirtyFields.bidStorageTarget = p.bidStorageTarget !== next[name].savedBidStorageTarget;
+                }
+                if (p.dirtyFields.bidAutomated) {
+                    next[name].bidAutomated = p.bidAutomated;
+                    next[name].dirtyFields.bidAutomated = p.bidAutomated !== next[name].savedBidAutomated;
                 }
             }
             return next;

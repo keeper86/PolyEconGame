@@ -24,10 +24,7 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<
-              string,
-              { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
-          >;
+          offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
       }
     | {
           type: 'claimResources';
@@ -49,13 +46,17 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<
-              string,
-              { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
-          >;
+          bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
       }
     | {
           type: 'cancelSellOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          resourceName: string;
+      }
+    | {
+          type: 'cancelBuyBid';
           requestId: string;
           agentId: string;
           planetId: string;
@@ -90,6 +91,8 @@ export type OutboundMessage =
     | { type: 'buyBidsFailed'; requestId: string; reason: string }
     | { type: 'sellOfferCancelled'; requestId: string; agentId: string }
     | { type: 'sellOfferCancelFailed'; requestId: string; reason: string }
+    | { type: 'buyBidCancelled'; requestId: string; agentId: string }
+    | { type: 'buyBidCancelFailed'; requestId: string; reason: string }
     | { type: 'resourcesClaimed'; requestId: string; agentId: string; arableClaimId: string; waterClaimId: string }
     | { type: 'resourcesClaimFailed'; requestId: string; reason: string }
     | { type: 'facilityBuilt'; requestId: string; agentId: string; facilityId: string }
@@ -131,10 +134,7 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<
-              string,
-              { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
-          >;
+          offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
       }
     | {
           type: 'claimResources';
@@ -156,13 +156,17 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<
-              string,
-              { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
-          >;
+          bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
       }
     | {
           type: 'cancelSellOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          resourceName: string;
+      }
+    | {
+          type: 'cancelBuyBid';
           requestId: string;
           agentId: string;
           planetId: string;

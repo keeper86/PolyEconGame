@@ -54,11 +54,6 @@ function makeWaterProducerWithPriorOffer(priorPrice: number, lastSold: number, o
 
 describe('automaticPricing — sell offer respects own input reserves', () => {
     it('does not offer for sale the portion of inventory reserved for own facility inputs', () => {
-        // Food-processing plant produces Agricultural Product.
-        // Beverage plant consumes Agricultural Product (quantity 200, scale 10).
-        // Storage holds 5000 units of agri-product.
-        // Reserved buffer = 200 * 10 * 30 = 60 000 → exceeds stock, so offerQuantity must be 0.
-
         const producer = makeProductionFacility({ none: 1 }, { id: 'proc', scale: 10 });
         producer.needs = [];
         producer.produces = [{ resource: agriculturalProductResourceType, quantity: 1000 }];
@@ -78,8 +73,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // buffer = 200 * 10 * 30 = 60 000 > 5 000 available → nothing to sell
-        expect(offer?.offerQuantity).toBe(0);
+        // buffer = 200 * 10 * 30 = 60 000 > 5 000 available → retainment should be 60,000
+        expect(offer?.offerRetainment).toBe(60_000);
     });
 
     it('offers surplus above the reserved buffer', () => {
@@ -103,8 +98,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // 65 000 − 60 000 reserved = 5 000 sellable
-        expect(offer?.offerQuantity).toBe(5_000);
+        // 65 000 − 60 000 reserved = 5 000 sellable, retainment should be 60,000
+        expect(offer?.offerRetainment).toBe(60_000);
     });
 
     it('still offers full inventory when no facility needs that resource as input', () => {
@@ -123,7 +118,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[waterResourceType.name];
-        expect(offer?.offerQuantity).toBe(3_000);
+        // No facility needs water as input, so retainment should be 0
+        expect(offer?.offerRetainment).toBe(0);
     });
 });
 
@@ -218,7 +214,7 @@ describe('automaticPricing — offer price tâtonnement', () => {
 });
 
 describe('automaticPricing — pieces resource quantities are continuous', () => {
-    it('offerQuantity is set to raw sellable quantity without integer rounding', () => {
+    it('offerRetainment is set to raw reserved quantity without integer rounding', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'clothing-fac', scale: 1 });
         facility.needs = [{ resource: fabricResourceType, quantity: 80 }];
         facility.produces = [{ resource: clothingResourceType, quantity: 6_000 }];
@@ -235,11 +231,12 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        const offerQty = agent.assets[PLANET_ID].market?.sell[clothingResourceType.name]?.offerQuantity ?? -1;
-        expect(offerQty).toBeCloseTo(0.22);
+        const offerRetainment = agent.assets[PLANET_ID].market?.sell[clothingResourceType.name]?.offerRetainment ?? -1;
+        // No facility needs clothing as input, so retainment should be 0
+        expect(offerRetainment).toBe(0);
     });
 
-    it('bidQuantity is set to raw shortfall without integer rounding', () => {
+    it('bidStorageTarget is set to raw input buffer target without integer rounding', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'clothing-fac', scale: 1 });
         facility.needs = [{ resource: clothingResourceType, quantity: 10 }];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -254,7 +251,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        const bidQty = agent.assets[PLANET_ID].market?.buy[clothingResourceType.name]?.bidQuantity ?? -1;
-        expect(bidQty).toBeGreaterThan(0);
+        const bidStorageTarget = agent.assets[PLANET_ID].market?.buy[clothingResourceType.name]?.bidStorageTarget ?? -1;
+        expect(bidStorageTarget).toBeGreaterThan(0);
     });
 });

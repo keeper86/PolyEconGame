@@ -18,6 +18,7 @@ export default function BuySection({
     onLocalChange,
     onSaveBuy,
     onResetBuy,
+    onCancelBid,
     onAutomationChange,
     buySaving,
     buySuccessMsg,
@@ -30,6 +31,8 @@ export default function BuySection({
     const isFacilityInput = consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
+    const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
+
     // Buffer calculator: translate ticks → storage target
     const targetBuffer = parseFloat(local.targetBufferTicks);
     const suggestedStorageTarget =
@@ -41,20 +44,31 @@ export default function BuySection({
 
     const totalBidCost =
         (bid?.bidPrice ?? 0) *
-        (bid?.bidStorageTarget !== undefined
-            ? Math.max(0, bid.bidStorageTarget - inventoryQty)
-            : (bid?.bidQuantity ?? 0));
+        (bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : 0);
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
 
     // Check if buy section has any dirty fields
     const hasDirtyBuyFields =
         local.dirtyFields.bidPrice || local.dirtyFields.bidStorageTarget || local.dirtyFields.bidAutomated;
 
-    // Helper function to get field styling based on dirty state
+    // Check if there are any validation errors
+    const hasValidationErrors = local.validationErrors.bidPrice || local.validationErrors.bidStorageTarget;
+
+    // Helper function to get field styling based on dirty state and validation
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
         const baseClass = 'h-8 text-sm tabular-nums';
         if (isDisabled) {
             return `${baseClass} opacity-50`;
+        }
+        const hasError =
+            fieldName === 'bidPrice'
+                ? !!local.validationErrors.bidPrice
+                : fieldName === 'bidStorageTarget'
+                  ? !!local.validationErrors.bidStorageTarget
+                  : false;
+
+        if (hasError) {
+            return `${baseClass} border-red-500 bg-red-50 dark:bg-red-950/30`;
         }
         if (local.dirtyFields[fieldName]) {
             return `${baseClass} border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30`;
@@ -69,6 +83,17 @@ export default function BuySection({
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                 </span>
                 <div className='flex items-center gap-2'>
+                    {hasActiveBid && (
+                        <Button
+                            variant='ghost'
+                            size='sm'
+                            className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive'
+                            disabled={buySaving}
+                            onClick={onCancelBid}
+                        >
+                            Cancel bid
+                        </Button>
+                    )}
                     <Label
                         htmlFor={`bid-auto-${resourceName}`}
                         className='text-[11px] text-muted-foreground cursor-pointer'
@@ -226,6 +251,35 @@ export default function BuySection({
                 </Alert>
             )}
 
+            {bid?.depositScaleWarning && (
+                <Alert variant={bid.depositScaleWarning === 'dropped' ? 'destructive' : 'default'} className='py-2'>
+                    <AlertCircle className='h-3.5 w-3.5' />
+                    <AlertDescription className='text-xs'>
+                        {bid.depositScaleWarning === 'dropped'
+                            ? 'No deposits available — bid was not placed last tick.'
+                            : 'Bid was proportionally scaled down due to insufficient deposits.'}
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {/* Validation error messages */}
+            {(local.validationErrors.bidPrice || local.validationErrors.bidStorageTarget) && (
+                <div className='space-y-1'>
+                    {local.validationErrors.bidPrice && (
+                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                            <AlertCircle className='h-3 w-3' />
+                            Price: {local.validationErrors.bidPrice}
+                        </div>
+                    )}
+                    {local.validationErrors.bidStorageTarget && (
+                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                            <AlertCircle className='h-3 w-3' />
+                            Storage target: {local.validationErrors.bidStorageTarget}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Buy section save button and feedback */}
             <div className='flex items-center justify-between gap-3 pt-2'>
                 <div className='flex items-center gap-3'>
@@ -258,7 +312,7 @@ export default function BuySection({
                         size='sm'
                         className='h-7 text-[11px] px-3'
                         onClick={onSaveBuy}
-                        disabled={!hasDirtyBuyFields || buySaving}
+                        disabled={!hasDirtyBuyFields || !!hasValidationErrors || buySaving}
                     >
                         {buySaving ? 'Saving…' : 'Save Buy'}
                     </Button>
