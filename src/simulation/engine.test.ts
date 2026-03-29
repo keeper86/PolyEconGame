@@ -112,6 +112,7 @@ describe('engine basic behavior', () => {
         const neededResource: Resource = {
             name: 'Needed Resource',
             form: 'solid',
+            level: 'raw',
             volumePerQuantity: 1,
             massPerQuantity: 1,
         };
@@ -153,6 +154,7 @@ describe('engine basic behavior', () => {
         const neededResource: Resource = {
             name: 'Needed Resource',
             form: 'solid',
+            level: 'refined',
             volumePerQuantity: 1,
             massPerQuantity: 1,
         };

@@ -39,6 +39,7 @@ describe('environmentTick', () => {
                         type: {
                             name: 'Iron',
                             form: 'solid',
+                            level: 'raw',
                             volumePerQuantity: 0.3,
                             massPerQuantity: 1,
                         },

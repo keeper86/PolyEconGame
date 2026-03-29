@@ -278,6 +278,19 @@ function adjustBidPrice(
     marketPrice: number,
     breakEvenCeiling?: number,
 ): void {
+    // Handle extremely small shortfalls - treat as no demand
+    if (shortfall > 0 && shortfall < EPSILON) {
+        // No meaningful demand, set storage target to current inventory level
+        // This prevents creating bids with quantities that would fail validation
+        bid.bidStorageTarget = storageTarget - shortfall; // Effectively current inventory
+        // Keep existing price or initialize it from market price
+        if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
+            const newPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
+            bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
+        }
+        return;
+    }
+
     // Set the storage target — same field as the human player, so that disabling
     // automation leaves a fully visible, correctly bounded bid in the UI.
     bid.bidStorageTarget = storageTarget;

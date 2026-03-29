@@ -44,6 +44,7 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
                 exactUsedByEdu: {},
                 totalUsedByEdu: {},
                 lastProduced: {},
+                lastConsumed: {},
             },
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },

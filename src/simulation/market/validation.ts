@@ -60,7 +60,7 @@ export function validateSellOffer(
         }
 
         if (quantity > 0 && quantity < EPSILON) {
-            return { isValid: false, error: 'Quantity is too small' };
+            return { isValid: false, error: `Quantity must be at least ${EPSILON}` };
         }
 
         // Check against available stock
@@ -117,7 +117,7 @@ function validateBidFields(
         }
 
         if (quantity > 0 && quantity < EPSILON) {
-            return { isValid: false, error: 'Quantity is too small' };
+            return { isValid: false, error: `Quantity must be at least ${EPSILON}` };
         }
 
         if (quantity > availableStorageCapacity + EPSILON) {
@@ -180,9 +180,10 @@ export function clampPrice(price: number): number {
 
 /**
  * Clamps a quantity to non-negative. Used in the market clearing process.
+ * Snaps quantities smaller than EPSILON to 0 to prevent "quantity too small" warnings.
  */
 export function validatedBidQuantity(qty: number, _form: string): number {
-    if (qty <= 0) {
+    if (qty < EPSILON) {
         return 0;
     }
     return qty;

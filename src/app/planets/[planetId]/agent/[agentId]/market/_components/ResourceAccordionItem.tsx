@@ -130,6 +130,71 @@ export default function ResourceAccordionItem({
         };
     }, [sellErrorMsg]);
 
+    // ── Real-time validation ──────────────────────────────────────────
+    useEffect(() => {
+        if (!resource) {
+            return;
+        }
+
+        const validationErrors: typeof local.validationErrors = {};
+
+        // Validate sell offer price
+        if (local.offerPrice !== '') {
+            const offerPrice = parseFloat(local.offerPrice);
+            if (!isNaN(offerPrice)) {
+                const validation = validateSellOffer(offerPrice, undefined, inventoryQty);
+                if (!validation.isValid) {
+                    validationErrors.offerPrice = validation.error;
+                }
+            }
+        }
+
+        // Validate sell retainment (must be non-negative)
+        if (local.offerRetainment !== '') {
+            const offerRetainment = parseFloat(local.offerRetainment);
+            if (!isNaN(offerRetainment) && offerRetainment < 0) {
+                validationErrors.offerRetainment = 'Retainment must be non-negative';
+            }
+        }
+
+        // Validate buy bid price
+        if (local.bidPrice !== '') {
+            const bidPrice = parseFloat(local.bidPrice);
+            if (!isNaN(bidPrice)) {
+                // Use validateBidFields indirectly through validateBuyBid
+                const validation = validateBuyBid({ bidPrice, bidStorageTarget: undefined }, resource, assets);
+                if (!validation.isValid) {
+                    validationErrors.bidPrice = validation.error;
+                }
+            }
+        }
+
+        // Validate buy storage target (must be non-negative)
+        if (local.bidStorageTarget !== '') {
+            const bidStorageTarget = parseFloat(local.bidStorageTarget);
+            if (!isNaN(bidStorageTarget) && bidStorageTarget < 0) {
+                validationErrors.bidStorageTarget = 'Storage target must be non-negative';
+            }
+        }
+
+        // Update validation errors if they changed
+        if (JSON.stringify(validationErrors) !== JSON.stringify(local.validationErrors)) {
+            onLocalChange(resourceName, { validationErrors });
+        }
+    }, [
+        local.offerPrice,
+        local.offerRetainment,
+        local.bidPrice,
+        local.bidStorageTarget,
+        resource,
+        inventoryQty,
+        assets,
+        local,
+        resourceName,
+        onLocalChange,
+        local.validationErrors,
+    ]);
+
     // ── Mutations ──────────────────────────────────────────────────────
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({

@@ -54,6 +54,14 @@ export type LocalResourceState = {
         bidAutomated: boolean;
     };
 
+    // Validation errors
+    validationErrors: {
+        offerPrice?: string;
+        offerRetainment?: string;
+        bidPrice?: string;
+        bidStorageTarget?: string;
+    };
+
     // Saved state snapshots for comparison
     savedOfferPrice: string;
     savedOfferRetainment: string;

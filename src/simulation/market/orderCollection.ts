@@ -2,6 +2,7 @@ import type { Agent, Planet } from '../planet/planet';
 import { lockIntoEscrow, queryStorageFacility } from '../planet/storage';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';
+import { EPSILON } from '../constants';
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
     const books = new Map<string, AskOrder[]>();
@@ -95,10 +96,15 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             // Apply a 0.99 safety margin only when deposit-scaling is active to avoid
             // rounding-induced overspend. Unrestrained bids are placed at full quantity.
             const safeScale = isDepositLimited ? 0.99 * scaleFactor : scaleFactor;
-            const scaledQty = Math.max(0, qty * safeScale);
+            let scaledQty = Math.max(0, qty * safeScale);
+
+            // Snap quantities smaller than EPSILON to 0 to prevent "quantity too small" warnings
+            if (scaledQty > 0 && scaledQty < EPSILON) {
+                scaledQty = 0;
+            }
 
             if (scaledQty <= 0) {
-                // Bid dropped entirely due to exhausted deposits — warn human players
+                // Bid dropped entirely due to exhausted deposits or snapped to 0 — warn human players
                 if (!agent.automated && isDepositLimited) {
                     bid.depositScaleWarning = 'dropped';
                 }

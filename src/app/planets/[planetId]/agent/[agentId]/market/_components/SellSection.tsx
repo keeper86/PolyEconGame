@@ -55,11 +55,24 @@ export default function SellSection({
     const hasDirtySellFields =
         local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment || local.dirtyFields.offerAutomated;
 
-    // Helper function to get field styling based on dirty state
+    // Check if there are any validation errors
+    const hasValidationErrors = local.validationErrors.offerPrice || local.validationErrors.offerRetainment;
+
+    // Helper function to get field styling based on dirty state and validation
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
         const baseClass = 'h-8 text-sm tabular-nums';
         if (isDisabled) {
             return `${baseClass} opacity-50`;
+        }
+        const hasError =
+            fieldName === 'offerPrice'
+                ? !!local.validationErrors.offerPrice
+                : fieldName === 'offerRetainment'
+                  ? !!local.validationErrors.offerRetainment
+                  : false;
+
+        if (hasError) {
+            return `${baseClass} border-red-500 bg-red-50 dark:bg-red-950/30`;
         }
         if (local.dirtyFields[fieldName]) {
             return `${baseClass} border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30`;
@@ -215,6 +228,24 @@ export default function SellSection({
                 </div>
             )}
 
+            {/* Validation error messages */}
+            {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
+                <div className='space-y-1'>
+                    {local.validationErrors.offerPrice && (
+                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                            <AlertCircle className='h-3 w-3' />
+                            Price: {local.validationErrors.offerPrice}
+                        </div>
+                    )}
+                    {local.validationErrors.offerRetainment && (
+                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                            <AlertCircle className='h-3 w-3' />
+                            Retainment: {local.validationErrors.offerRetainment}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Sell section save button and feedback */}
             <div className='flex items-center justify-between gap-3 pt-2'>
                 <div className='flex items-center gap-3'>
@@ -247,7 +278,7 @@ export default function SellSection({
                         size='sm'
                         className='h-7 text-[11px] px-3'
                         onClick={onSaveSell}
-                        disabled={!hasDirtySellFields || sellSaving}
+                        disabled={!hasDirtySellFields || !!hasValidationErrors || sellSaving}
                     >
                         {sellSaving ? 'Saving…' : 'Save Sell'}
                     </Button>

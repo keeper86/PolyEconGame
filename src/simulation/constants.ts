@@ -195,4 +195,4 @@ export const GENERATION_KERNEL_N = 2;
  * Set to 30 % of food target (vs 55 % for working age).
  */
 export const ELDERLY_FLOOR_FRACTION = 0;
-export const EPSILON = 1e-9;
+export const EPSILON = 1e-4;
