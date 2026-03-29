@@ -1,9 +1,8 @@
 import React from 'react';
-import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
 import { cn, formatNumbers } from '@/lib/utils';
-import { productImage } from '@/lib/mapResource';
+import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
 import { classifyMarket } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
@@ -66,18 +65,7 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow }: Resou
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0'>
             {/* Icon */}
-            <div className='relative h-6 w-6 shrink-0'>
-                <Image
-                    src={productImage(name)}
-                    alt={name}
-                    fill
-                    sizes='24px'
-                    className='object-contain'
-                    onError={() => {
-                        /* silently skip */
-                    }}
-                />
-            </div>
+            <ProductIcon productName={name} size={24} />
 
             {/* Name + market link + order indicators */}
             <div className='flex-1 min-w-0 flex items-center gap-1'>

@@ -10,9 +10,26 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { Props } from './marketTypes';
-import { buildResourceList, buildInitialState } from './marketHelpers';
+import { buildResourceList, buildInitialState, getResourceByName } from './marketHelpers';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { getEnabledColumns, getHeaderColumnClasses } from './columnConfig';
+import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
+
+// Helper function to group resources by level
+function groupResourcesByLevel(resources: { name: string }[]): Map<string, { name: string }[]> {
+    const groups = new Map<string, { name: string }[]>();
+    for (const resource of resources) {
+        const resourceObj = getResourceByName(resource.name);
+        const level = resourceObj?.level ?? 'raw'; // Default to 'raw' if level not found
+        const existing = groups.get(level) ?? [];
+        existing.push(resource);
+        groups.set(level, existing);
+    }
+    return groups;
+}
+
+// Level order for display
+const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'consumerGood'];
 
 export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
     const [showAll, setShowAll] = useState(false);
@@ -43,6 +60,17 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [showAll, buyBidKeys, sellOfferKeys, productionFacilities.length],
     );
+
+    // Group resources by level
+    const resourceGroups = useMemo(() => {
+        const groups = groupResourcesByLevel(resources);
+        // Filter to only include levels that have resources and sort by LEVEL_ORDER
+        return LEVEL_ORDER.filter((level) => groups.has(level)).map((level) => ({
+            level,
+            label: RESOURCE_LEVEL_LABELS[level as keyof typeof RESOURCE_LEVEL_LABELS] ?? level,
+            resources: groups.get(level)!,
+        }));
+    }, [resources]);
 
     const [localStates, setLocalStates] = useState<Record<string, import('./marketTypes').LocalResourceState>>(() =>
         buildInitialState(resources, buyBids, sellOffers),
@@ -93,49 +121,60 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                     tick.
                 </p>
 
-                {resources.length === 0 ? (
+                {resourceGroups.length === 0 ? (
                     <p className='text-sm text-muted-foreground'>
                         No resources to display. Build a facility or enable &quot;Show all resources&quot;.
                     </p>
                 ) : (
-                    <>
-                        {/* ── Column header — using column configuration ── */}
-                        <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
-                            <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
-                                <div className='w-6 shrink-0' />
-                                <span className='flex-1 min-w-0'>Resource</span>
-                                {columns.map((column) => (
-                                    <span
-                                        key={column.id}
-                                        className={getHeaderColumnClasses(column.id)}
-                                        title={column.title}
-                                    >
-                                        {column.label}
-                                    </span>
-                                ))}
+                    <div className='space-y-6'>
+                        {resourceGroups.map(({ level, label, resources: levelResources }) => (
+                            <div key={level} className='space-y-2'>
+                                {/* Level header */}
+                                <div className='px-1'>
+                                    <h3 className='text-sm font-semibold text-foreground'>{label}</h3>
+                                </div>
+
+                                {/* ── Column header — using column configuration ── */}
+                                <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
+                                    <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
+                                        <div className='w-6 shrink-0' />
+                                        <span className='flex-1 min-w-0'>Resource</span>
+                                        {columns.map((column) => (
+                                            <span
+                                                key={column.id}
+                                                className={getHeaderColumnClasses(column.id)}
+                                                title={column.title}
+                                            >
+                                                {column.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    {/* spacer matching ChevronDown w-4 in AccordionTrigger */}
+                                    <div className='w-4 shrink-0' />
+                                </div>
+
+                                <Accordion type='multiple' value={openItems} onValueChange={setOpenItems} className='w-full'>
+                                    {levelResources.map(({ name }) => (
+                                        <ResourceAccordionItem
+                                            key={name}
+                                            resourceName={name}
+                                            agentId={agentId}
+                                            assets={assets}
+                                            local={
+                                                localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]
+                                            }
+                                            onLocalChange={handleLocalChange}
+                                            _isOpen={openItems.includes(name)}
+                                            overviewRow={overviewRows[name]}
+                                        />
+                                    ))}
+                                </Accordion>
                             </div>
-                            {/* spacer matching ChevronDown w-4 in AccordionTrigger */}
-                            <div className='w-4 shrink-0' />
-                        </div>
-                        <Accordion type='multiple' value={openItems} onValueChange={setOpenItems} className='w-full'>
-                            {resources.map(({ name }) => (
-                                <ResourceAccordionItem
-                                    key={name}
-                                    resourceName={name}
-                                    agentId={agentId}
-                                    assets={assets}
-                                    local={
-                                        localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]
-                                    }
-                                    onLocalChange={handleLocalChange}
-                                    _isOpen={openItems.includes(name)}
-                                    overviewRow={overviewRows[name]}
-                                />
-                            ))}
-                        </Accordion>
-                    </>
+                        ))}
+                    </div>
                 )}
             </CardContent>
         </Card>
     );
 }
+

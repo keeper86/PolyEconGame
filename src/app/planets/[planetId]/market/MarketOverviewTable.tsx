@@ -3,11 +3,10 @@
 import React from 'react';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { productImage } from '@/lib/mapResource';
+import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumbers } from '@/lib/utils';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import type { MarketOverviewRow } from '@/server/controller/planet';
-import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -129,16 +128,7 @@ export default function MarketOverviewTable({ planetId, onSelect }: Props): Reac
                                     >
                                         <TableCell className='font-medium'>
                                             <div className='flex items-center gap-2'>
-                                                <Image
-                                                    src={productImage(row.resourceName)}
-                                                    alt={row.resourceName}
-                                                    width={28}
-                                                    height={28}
-                                                    className='object-contain flex-shrink-0'
-                                                    onError={(e) => {
-                                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                                    }}
-                                                />
+                                                <ProductIcon productName={row.resourceName} size={28} />
                                                 <span className='text-xs leading-tight'>{row.resourceName}</span>
                                             </div>
                                         </TableCell>

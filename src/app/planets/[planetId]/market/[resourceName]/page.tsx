@@ -2,13 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { productImage } from '@/lib/mapResource';
+import { ProductIcon } from '@/components/client/ProductIcon';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import { ArrowLeft } from 'lucide-react';
-import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import BidTable from '../BidTable';
 import OfferTable from '../OfferTable';
@@ -145,17 +144,7 @@ export default function ResourceMarketPage() {
                     <ArrowLeft className='h-4 w-4' />
                     All markets
                 </button>
-                {resourceName && (
-                    <div className='relative h-6 w-6'>
-                        <Image
-                            src={productImage(resourceName)}
-                            sizes='(max-width: 80px) 100vw, (max-width: 80px) 50vw,(max-width: 80px) 33vw'
-                            alt={resourceName}
-                            fill
-                            className='object-contain'
-                        />
-                    </div>
-                )}
+                {resourceName && <ProductIcon productName={resourceName} size={24} />}
                 {resourceName && <h2 className='text-base font-semibold'>{resourceName} Market</h2>}
             </div>
 
