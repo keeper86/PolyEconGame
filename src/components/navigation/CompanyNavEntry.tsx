@@ -2,11 +2,9 @@ import { usePlanetId } from '@/hooks/usePlanetId';
 import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
-import { Building2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { route } from 'nextjs-routes';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../ui/sidebar';
 import { JoinGameDialog } from './JoinGameDialog';
 
@@ -55,19 +53,6 @@ export function CompanyNavEntry() {
 
     return (
         <SidebarMenuItem>
-            <SidebarMenuButton asChild size='default' className='text-md w-full' onClick={handleClick}>
-                <Link
-                    href={route({
-                        pathname: activePlanetId
-                            ? (`/planets/${encodeURIComponent(activePlanetId)}/agent/[agentId]` as never)
-                            : '/agents/[agentId]',
-                        query: { agentId },
-                    })}
-                >
-                    <Building2 width={20} height={20} />
-                    <span>{companyName}</span>
-                </Link>
-            </SidebarMenuButton>
             <SidebarMenu className='pl-2 pt-1'>
                 {AGENT_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
                     const href = activePlanetId
