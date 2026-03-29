@@ -127,11 +127,13 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     // -----------------------------------------------------------------
 
     const pendingActions: PendingAction[] = [];
+    let processingTick = false; // True during advanceTick + snapshot creation
 
     /**
      * Apply every queued action to `state` in FIFO order.
-     * Called once per tick, right before `advanceTick`, so the snapshot
-     * is only updated in the normal post-tick path rather than ad-hoc.
+     * Called in two contexts:
+     * 1. Eagerly when actions arrive (if not processingTick)
+     * 2. At tick boundary before advanceTick (mandatory full drain)
      */
     function drainActionQueue(): void {
         if (pendingActions.length === 0) {
@@ -401,11 +403,15 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             if (!running) {
                 return;
             }
+
+            // Start tick processing - prevent eager draining during tick
+            processingTick = true;
+
             const start = Date.now();
             state.tick += 1;
 
-            // Apply all queued user-driven state mutations before advancing
-            // the tick, so they take effect as part of this tick's snapshot.
+            // CRITICAL: Full drain at tick boundary before advanceTick
+            // Ensures all actions present at tick start are applied in this tick
             drainActionQueue();
 
             try {
@@ -428,6 +434,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             if (state.tick % SNAPSHOT_INTERVAL_TICKS === 1) {
                 spawnSnapshotTask(currentSnapshot, state.tick);
             }
+
+            // End tick processing - allow eager draining again
 
             const elapsedMs = Date.now() - start;
             if (state.tick % 17 === 0) {
@@ -595,9 +603,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 });
                 return;
             }
-            // Enqueue the validated action — it will be applied to state
-            // (and the snapshot updated) at the start of the next tick.
+            // Enqueue the validated action
             pendingActions.push({ type: 'createAgent', requestId, agentId, agentName, planetId });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -617,6 +628,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'requestLoan', requestId, agentId, planetId, amount });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -632,6 +647,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 agentId,
                 automateWorkerAllocation,
             });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -650,6 +669,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setWorkerAllocationTargets', requestId, agentId, planetId, targets });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -664,6 +687,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setSellOffers', requestId, agentId, planetId, offers });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -682,6 +709,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'cancelSellOffer', requestId, agentId, planetId, resourceName });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -700,6 +731,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'cancelBuyBid', requestId, agentId, planetId, resourceName });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -714,6 +749,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setBuyBids', requestId, agentId, planetId, bids });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -743,6 +782,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 arableLandQuantity,
                 waterSourceQuantity,
             });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
@@ -757,6 +800,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'buildFacility', requestId, agentId, planetId, facilityKey });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
             return;
         }
 
