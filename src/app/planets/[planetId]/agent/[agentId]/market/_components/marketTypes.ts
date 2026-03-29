@@ -19,6 +19,7 @@ export type MarketBidEntry = {
     lastSpent?: number;
     storageFullWarning?: boolean;
     depositScaleWarning?: 'scaled' | 'dropped';
+    storageScaleWarning?: 'scaled' | 'dropped';
     automated?: boolean;
 };
 

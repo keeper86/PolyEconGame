@@ -20,6 +20,7 @@ export type BuyBidEntry = {
     lastBought?: number;
     lastSpent?: number;
     storageFullWarning?: boolean;
+    storageScaleWarning?: 'scaled' | 'dropped';
 };
 
 type LocalBid = {
@@ -158,6 +159,7 @@ export default function BuyBidsPanel({
 
     const depositsInsufficient = totalBidCost > 0 && deposits < totalBidCost;
     const anyStorageFull = inputResources.some(({ name }) => buyBids[name]?.storageFullWarning);
+    const anyStorageScaled = inputResources.some(({ name }) => buyBids[name]?.storageScaleWarning);
 
     return (
         <Collapsible open={expanded} onOpenChange={setExpanded}>
@@ -180,6 +182,14 @@ export default function BuyBidsPanel({
                             {anyStorageFull && (
                                 <Badge variant='destructive' className='text-[10px] px-1.5 py-0'>
                                     Storage full
+                                </Badge>
+                            )}
+                            {anyStorageScaled && (
+                                <Badge
+                                    variant='outline'
+                                    className='text-[10px] px-1.5 py-0 bg-amber-500 text-amber-950 border-amber-600'
+                                >
+                                    Storage limited
                                 </Badge>
                             )}
                         </div>
@@ -226,6 +236,16 @@ export default function BuyBidsPanel({
                                                             className='text-[10px] px-1.5 py-0'
                                                         >
                                                             Storage full — bid excluded
+                                                        </Badge>
+                                                    )}
+                                                    {snap?.storageScaleWarning && (
+                                                        <Badge
+                                                            variant='outline'
+                                                            className='text-[10px] px-1.5 py-0 bg-amber-500 text-amber-950 border-amber-600'
+                                                        >
+                                                            {snap.storageScaleWarning === 'scaled'
+                                                                ? 'Storage limited'
+                                                                : 'No space'}
                                                         </Badge>
                                                     )}
                                                 </div>

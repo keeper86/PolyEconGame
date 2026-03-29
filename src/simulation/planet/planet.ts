@@ -304,6 +304,13 @@ export type AgentMarketBidState = {
      * Cleared at the start of each tick by resetAgentBuyCounters.
      */
     depositScaleWarning?: 'scaled' | 'dropped';
+    /**
+     * Set by collectAgentBids for human-controlled agents when storage capacity scaling occurred.
+     * 'scaled' = bid was placed at reduced quantity due to insufficient storage capacity (warning).
+     * 'dropped' = no storage capacity available, bid was not placed at all (error).
+     * Cleared at the start of each tick by resetAgentBuyCounters.
+     */
+    storageScaleWarning?: 'scaled' | 'dropped';
     /** When true, the automatic pricing engine manages this bid each tick. */
     automated?: boolean;
 };
