@@ -9,7 +9,7 @@ import {
     pruneAgentMonthlyHistory,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
-import type { Agent, GameState } from './planet/planet';
+import type { GameState } from './planet/planet';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
@@ -17,16 +17,14 @@ import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepos
 import { createInitialGameState } from './utils/initialWorld';
 import knexConfig from '../../knexfile.js';
 import { computeLoanConditions } from './financial/loanConditions';
-import { FOOD_PRICE_FLOOR as PRICE_FLOOR } from './constants';
 import { agriculturalProductResourceType } from './planet/resources';
-import { arableLandResourceType, waterSourceResourceType } from './planet/landBoundResources';
-import { makeAgent } from './utils/testHelper';
-import { collapseUntenantedClaims } from './utils/entities';
-import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from './utils/initialWorld';
-import { facilityByName } from './planet/facilityCatalog';
-import { ALL_RESOURCES } from './planet/resourceCatalog';
 export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
+import { handleAgentAction } from './workerClient/agentActions';
+import { handleFinancialAction } from './workerClient/financialActions';
+import { handleMarketAction } from './workerClient/marketActions';
+import { handleResourceAction } from './workerClient/resourceActions';
+import { handleFacilityAction } from './workerClient/facilityActions';
 
 interface TaskPayload {
     command: string;
@@ -144,437 +142,26 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         for (const action of actions) {
             try {
                 switch (action.type) {
-                    case 'createAgent': {
-                        const { requestId, agentId, agentName, planetId } = action;
-
-                        const newAgent: Agent = makeAgent(agentId, planetId, agentName);
-                        newAgent.automated = false; // explicitly mark user-created agents as non-automated
-                        newAgent.automateWorkerAllocation = false; // start with manual control
-                        state.agents.set(agentId, newAgent);
-                        console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
-                        safePostMessage({ type: 'agentCreated', requestId, agentId });
+                    case 'createAgent':
+                    case 'setAutomation':
+                    case 'setWorkerAllocationTargets':
+                        handleAgentAction(state, action, safePostMessage);
                         break;
-                    }
-                    case 'requestLoan': {
-                        const { requestId, agentId, planetId, amount } = action;
-                        const agent = state.agents.get(agentId);
-                        const planet = state.planets.get(planetId);
-                        if (!agent || !planet) {
-                            safePostMessage({
-                                type: 'loanDenied',
-                                requestId,
-                                reason: 'Agent or planet not found',
-                            });
-                            break;
-                        }
-                        // Re-check credit conditions at application time to guard
-                        // against race conditions (e.g. conditions changed between
-                        // getLoanConditions query and the actual request).
-                        const conditions = computeLoanConditions(agent, planet);
-                        if (amount <= 0 || amount > conditions.maxLoanAmount) {
-                            safePostMessage({
-                                type: 'loanDenied',
-                                requestId,
-                                reason: `Requested amount ${amount} exceeds approved limit ${conditions.maxLoanAmount}`,
-                            });
-                            break;
-                        }
-                        // TODO: unify with automatic loan for wages and move to wealthOps
-                        const assets = agent.assets[planetId];
-                        assets.deposits += amount;
-                        assets.loans += amount;
-                        planet.bank.loans += amount;
-                        planet.bank.deposits += amount;
-                        planet.bank.equity = planet.bank.deposits - planet.bank.loans;
-                        console.log(`[worker] Loan of ${amount} granted to agent '${agentId}' on planet '${planetId}'`);
-                        safePostMessage({ type: 'loanGranted', requestId, agentId, amount });
+                    case 'requestLoan':
+                        handleFinancialAction(state, action, safePostMessage);
                         break;
-                    }
-                    case 'setAutomation': {
-                        const { requestId, agentId, automateWorkerAllocation } = action;
-                        const agent = state.agents.get(agentId);
-                        if (!agent) {
-                            safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found' });
-                            break;
-                        }
-                        agent.automateWorkerAllocation = automateWorkerAllocation;
-                        console.log(
-                            `[worker] Automation updated for agent '${agentId}': ` +
-                                `workerAllocation=${automateWorkerAllocation}`,
-                        );
-                        safePostMessage({ type: 'automationSet', requestId, agentId });
+                    case 'setSellOffers':
+                    case 'cancelSellOffer':
+                    case 'cancelBuyBid':
+                    case 'setBuyBids':
+                        handleMarketAction(state, action, safePostMessage);
                         break;
-                    }
-                    case 'setWorkerAllocationTargets': {
-                        const { requestId, agentId, planetId, targets } = action;
-                        const agent = state.agents.get(agentId);
-                        if (!agent) {
-                            safePostMessage({ type: 'workerAllocationFailed', requestId, reason: 'Agent not found' });
-                            break;
-                        }
-                        const assets = agent.assets[planetId];
-                        if (!assets) {
-                            safePostMessage({
-                                type: 'workerAllocationFailed',
-                                requestId,
-                                reason: `Agent has no assets on planet '${planetId}'`,
-                            });
-                            break;
-                        }
-                        // Merge provided targets into allocatedWorkers (missing levels stay unchanged)
-                        for (const [edu, count] of Object.entries(targets)) {
-                            if (typeof count === 'number' && count >= 0) {
-                                (assets.allocatedWorkers as Record<string, number>)[edu] = count;
-                            }
-                        }
-                        console.log(
-                            `[worker] Worker allocation targets updated for agent '${agentId}' on '${planetId}'`,
-                        );
-                        safePostMessage({ type: 'workerAllocationSet', requestId, agentId });
+                    case 'claimResources':
+                        handleResourceAction(state, action, safePostMessage);
                         break;
-                    }
-                    case 'setSellOffers': {
-                        const { requestId, agentId, planetId, offers } = action;
-                        const agent = state.agents.get(agentId);
-                        if (!agent) {
-                            safePostMessage({ type: 'sellOffersFailed', requestId, reason: 'Agent not found' });
-                            break;
-                        }
-                        const assets = agent.assets[planetId];
-                        if (!assets) {
-                            safePostMessage({
-                                type: 'sellOffersFailed',
-                                requestId,
-                                reason: `Agent has no assets on planet '${planetId}'`,
-                            });
-                            break;
-                        }
-                        if (!assets.market) {
-                            assets.market = { sell: {}, buy: {} };
-                        }
-                        for (const [resourceName, update] of Object.entries(offers)) {
-                            if (!assets.market.sell[resourceName]) {
-                                let resource = null;
-                                outerLoop: for (const facility of assets.productionFacilities) {
-                                    for (const p of facility.produces) {
-                                        if (p.resource.name === resourceName) {
-                                            resource = p.resource;
-                                            break outerLoop;
-                                        }
-                                    }
-                                }
-                                if (!resource) {
-                                    resource = assets.storageFacility.currentInStorage[resourceName]?.resource ?? null;
-                                }
-                                if (!resource) {
-                                    continue;
-                                }
-                                assets.market.sell[resourceName] = { resource };
-                            }
-                            const offer = assets.market.sell[resourceName];
-                            if (update.offerPrice !== undefined && update.offerPrice > 0) {
-                                offer.offerPrice = Math.max(PRICE_FLOOR, update.offerPrice);
-                            }
-                            if (update.offerQuantity !== undefined && update.offerQuantity >= 0) {
-                                offer.offerQuantity = update.offerQuantity;
-                            }
-                            if (update.offerRetainment !== undefined && update.offerRetainment >= 0) {
-                                offer.offerRetainment = update.offerRetainment;
-                            }
-                            if (update.automated !== undefined) {
-                                offer.automated = update.automated;
-                            }
-                        }
-                        console.log(`[worker] Sell offers updated for agent '${agentId}' on '${planetId}'`);
-                        safePostMessage({ type: 'sellOffersSet', requestId, agentId });
+                    case 'buildFacility':
+                        handleFacilityAction(state, action, safePostMessage);
                         break;
-                    }
-                    case 'cancelSellOffer': {
-                        const { requestId, agentId, planetId, resourceName } = action;
-                        const agent = state.agents.get(agentId);
-                        if (!agent) {
-                            safePostMessage({ type: 'sellOfferCancelFailed', requestId, reason: 'Agent not found' });
-                            break;
-                        }
-                        const assets = agent.assets[planetId];
-                        if (!assets) {
-                            safePostMessage({
-                                type: 'sellOfferCancelFailed',
-                                requestId,
-                                reason: `Agent has no assets on planet '${planetId}'`,
-                            });
-                            break;
-                        }
-                        if (assets.market?.sell) {
-                            delete assets.market.sell[resourceName];
-                        }
-                        console.log(
-                            `[worker] Sell offer cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`,
-                        );
-                        safePostMessage({ type: 'sellOfferCancelled', requestId, agentId });
-                        break;
-                    }
-                    case 'cancelBuyBid': {
-                        const { requestId, agentId, planetId, resourceName } = action;
-                        const agent = state.agents.get(agentId);
-                        if (!agent) {
-                            safePostMessage({ type: 'buyBidCancelFailed', requestId, reason: 'Agent not found' });
-                            break;
-                        }
-                        const assets = agent.assets[planetId];
-                        if (!assets) {
-                            safePostMessage({
-                                type: 'buyBidCancelFailed',
-                                requestId,
-                                reason: `Agent has no assets on planet '${planetId}'`,
-                            });
-                            break;
-                        }
-                        const bid = assets.market?.buy[resourceName];
-                        if (bid) {
-                            delete bid.bidPrice;
-                            delete bid.bidQuantity;
-                            delete bid.bidStorageTarget;
-                            delete bid.automated;
-                            bid.lastBought = 0;
-                            bid.lastSpent = 0;
-                            bid.lastEffectiveQty = 0;
-                        }
-                        console.log(
-                            `[worker] Buy bid cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`,
-                        );
-                        safePostMessage({ type: 'buyBidCancelled', requestId, agentId });
-                        break;
-                    }
-                    case 'setBuyBids': {
-                        const { requestId, agentId, planetId, bids } = action;
-                        const agent = state.agents.get(agentId);
-                        if (!agent) {
-                            safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found' });
-                            break;
-                        }
-                        const assets = agent.assets[planetId];
-                        if (!assets) {
-                            safePostMessage({
-                                type: 'buyBidsFailed',
-                                requestId,
-                                reason: `Agent has no assets on planet '${planetId}'`,
-                            });
-                            break;
-                        }
-                        if (!assets.market) {
-                            assets.market = { sell: {}, buy: {} };
-                        }
-                        for (const [resourceName, update] of Object.entries(bids)) {
-                            if (!assets.market.buy[resourceName]) {
-                                let resource = null;
-                                outerBidLoop: for (const facility of assets.productionFacilities) {
-                                    for (const n of facility.needs) {
-                                        if (n.resource.name === resourceName) {
-                                            resource = n.resource;
-                                            break outerBidLoop;
-                                        }
-                                    }
-                                }
-                                if (!resource) {
-                                    // Fall back to the global resource catalog for free-trading bids
-                                    resource = ALL_RESOURCES.find((r) => r.name === resourceName) ?? null;
-                                }
-                                if (!resource) {
-                                    continue;
-                                }
-                                assets.market.buy[resourceName] = { resource };
-                            }
-                            const bid = assets.market.buy[resourceName];
-                            if (update.bidPrice !== undefined && update.bidPrice > 0) {
-                                bid.bidPrice = update.bidPrice;
-                            }
-                            if (update.bidQuantity !== undefined && update.bidQuantity >= 0) {
-                                bid.bidQuantity = update.bidQuantity;
-                            }
-                            if (update.bidStorageTarget !== undefined && update.bidStorageTarget >= 0) {
-                                bid.bidStorageTarget = update.bidStorageTarget;
-                            }
-                            if (update.automated !== undefined) {
-                                bid.automated = update.automated;
-                            }
-                        }
-                        console.log(`[worker] Buy bids updated for agent '${agentId}' on '${planetId}'`);
-                        safePostMessage({ type: 'buyBidsSet', requestId, agentId });
-                        break;
-                    }
-                    case 'claimResources': {
-                        const { requestId, agentId, planetId, arableLandQuantity, waterSourceQuantity } = action;
-                        const agent = state.agents.get(agentId);
-                        const planet = state.planets.get(planetId);
-                        if (!agent || !planet) {
-                            safePostMessage({
-                                type: 'resourcesClaimFailed',
-                                requestId,
-                                reason: 'Agent or planet not found',
-                            });
-                            break;
-                        }
-                        const assets = agent.assets[planetId];
-                        if (!assets) {
-                            safePostMessage({
-                                type: 'resourcesClaimFailed',
-                                requestId,
-                                reason: `Agent has no assets on planet '${planetId}'`,
-                            });
-                            break;
-                        }
-
-                        // Collapse all untenanted arable land into one pool
-                        const arablePool = collapseUntenantedClaims(
-                            planet,
-                            arableLandResourceType.name,
-                            `${planetId}-arable-unclaimed`,
-                        );
-                        if (!arablePool || arablePool.quantity < arableLandQuantity) {
-                            safePostMessage({
-                                type: 'resourcesClaimFailed',
-                                requestId,
-                                reason: `Not enough untenanted arable land — requested ${arableLandQuantity}, available ${arablePool?.quantity ?? 0}`,
-                            });
-                            break;
-                        }
-
-                        // Collapse all untenanted water sources into one pool
-                        const waterPool = collapseUntenantedClaims(
-                            planet,
-                            waterSourceResourceType.name,
-                            `${planetId}-water-unclaimed`,
-                        );
-                        if (!waterPool || waterPool.quantity < waterSourceQuantity) {
-                            safePostMessage({
-                                type: 'resourcesClaimFailed',
-                                requestId,
-                                reason: `Not enough untenanted water sources — requested ${waterSourceQuantity}, available ${waterPool?.quantity ?? 0}`,
-                            });
-                            break;
-                        }
-
-                        // Create new claim IDs for this agent
-                        const arableClaimId = `${planetId}-arable-${agentId}`;
-                        const waterClaimId = `${planetId}-water-${agentId}`;
-
-                        // Split arable land off the pool
-                        const arableRatio = arableLandQuantity / arablePool.maximumCapacity;
-                        const newArableClaim = {
-                            id: arableClaimId,
-                            type: arableLandResourceType,
-                            quantity: arableLandQuantity,
-                            regenerationRate: arablePool.regenerationRate * arableRatio,
-                            maximumCapacity: arableLandQuantity,
-                            claimAgentId: arablePool.claimAgentId,
-                            tenantAgentId: agentId,
-                            tenantCostInCoins: Math.floor(arableLandQuantity * 0.01),
-                        };
-                        arablePool.quantity -= arableLandQuantity;
-                        arablePool.regenerationRate -= newArableClaim.regenerationRate;
-                        arablePool.maximumCapacity -= arableLandQuantity;
-                        planet.resources[arableLandResourceType.name].push(newArableClaim);
-
-                        // Split water source off the pool
-                        const waterRatio = waterSourceQuantity / waterPool.maximumCapacity;
-                        const newWaterClaim = {
-                            id: waterClaimId,
-                            type: waterSourceResourceType,
-                            quantity: waterSourceQuantity,
-                            regenerationRate: waterPool.regenerationRate * waterRatio,
-                            maximumCapacity: waterSourceQuantity,
-                            claimAgentId: waterPool.claimAgentId,
-                            tenantAgentId: agentId,
-                            tenantCostInCoins: Math.floor(waterSourceQuantity * 0.005),
-                        };
-                        waterPool.quantity -= waterSourceQuantity;
-                        waterPool.regenerationRate -= newWaterClaim.regenerationRate;
-                        waterPool.maximumCapacity -= waterSourceQuantity;
-                        planet.resources[waterSourceResourceType.name].push(newWaterClaim);
-
-                        // Register the tenancy on the agent's assets
-                        assets.resourceTenancies.push(arableClaimId, waterClaimId);
-
-                        // Add the government claim owner's claim list if it exists
-                        const govAgent = arablePool.claimAgentId ? state.agents.get(arablePool.claimAgentId) : null;
-                        if (govAgent) {
-                            const govAssets = govAgent.assets[planetId];
-                            if (govAssets) {
-                                govAssets.resourceClaims.push(arableClaimId, waterClaimId);
-                            }
-                        }
-
-                        // Build production facilities if the agent doesn't already have them
-                        const hasWaterFacility = assets.productionFacilities.some((f) =>
-                            f.needs.some((n) => n.resource.name === waterSourceResourceType.name),
-                        );
-                        const hasAgriFacility = assets.productionFacilities.some((f) =>
-                            f.needs.some((n) => n.resource.name === arableLandResourceType.name),
-                        );
-
-                        const waterScale = waterSourceQuantity / 1000;
-                        const agriScale = arableLandQuantity / 1000;
-
-                        if (!hasWaterFacility) {
-                            const waterFacility = makeWaterExtraction(planetId, agentId, waterScale);
-                            assets.productionFacilities.push(waterFacility);
-                        }
-                        if (!hasAgriFacility) {
-                            const agriFacility = makeAgriculturalProduction(planetId, agentId, agriScale);
-                            assets.productionFacilities.push(agriFacility);
-                        }
-
-                        // Build storage if the agent doesn't have one yet
-                        if (!assets.storageFacility) {
-                            assets.storageFacility = makeStorage({
-                                planetId,
-                                id: `${agentId}-storage`,
-                                name: `${agentId} Storage`,
-                            });
-                        }
-
-                        console.log(
-                            `[worker] Agent '${agentId}' claimed ${arableLandQuantity} arable land and ` +
-                                `${waterSourceQuantity} water source on planet '${planetId}'`,
-                        );
-                        safePostMessage({ type: 'resourcesClaimed', requestId, agentId, arableClaimId, waterClaimId });
-                        break;
-                    }
-                    case 'buildFacility': {
-                        const { requestId, agentId, planetId, facilityKey } = action;
-                        const agent = state.agents.get(agentId);
-                        if (!agent) {
-                            safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found' });
-                            break;
-                        }
-                        const assets = agent.assets[planetId];
-                        if (!assets) {
-                            safePostMessage({
-                                type: 'facilityBuildFailed',
-                                requestId,
-                                reason: `Agent has no assets on planet '${planetId}'`,
-                            });
-                            break;
-                        }
-                        const catalogEntry = facilityByName.get(facilityKey);
-                        if (!catalogEntry) {
-                            safePostMessage({
-                                type: 'facilityBuildFailed',
-                                requestId,
-                                reason: `Unknown facility '${facilityKey}'`,
-                            });
-                            break;
-                        }
-                        const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-                        const newFacility = catalogEntry.factory(planetId, facilityId);
-                        newFacility.scale = 1;
-                        newFacility.maxScale = 1;
-                        assets.productionFacilities.push(newFacility);
-                        console.log(`[worker] Agent '${agentId}' built '${facilityKey}' on planet '${planetId}'`);
-                        safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId });
-                        break;
-                    }
                 }
             } catch (err) {
                 console.error(`[worker] Failed to apply pending action '${action.type}':`, err);
