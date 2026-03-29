@@ -48,7 +48,7 @@ export default async function RootLayout({
                         <AppProviders session={session}>
                             <SidebarProvider>
                                 <AppSidebar />
-                                <SidebarInset>
+                                <SidebarInset className='min-w-0'>
                                     <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
                                         <div className='flex items-center gap-2 '>
                                             <SidebarTrigger className='-ml-1' />
@@ -60,7 +60,7 @@ export default async function RootLayout({
                                             <ModeToggle />
                                         </div>
                                     </header>
-                                    <main className='flex-1 p-2 sm:p-4 overflow-x-auto break-words'>{children}</main>
+                                    <main className='flex-1 p-2 sm:p-4 overflow-x-hidden break-words'>{children}</main>
                                     <Footer />
                                 </SidebarInset>
                                 <BackToTopButton />

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { facilityImage, productImage } from '@/lib/mapResource';
+import { FacilityIcon } from '@/components/client/FacilityIcon';
+import { ProductIcon } from '@/components/client/ProductIcon';
 import { useTRPC } from '@/lib/trpc';
 import {
     FACILITY_LEVELS,
@@ -16,7 +17,6 @@ import {
 import type { ProductionFacility } from '@/simulation/planet/storage';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
-import Image from 'next/image';
 import React, { useMemo, useState } from 'react';
 import { formatNumbers } from '@/lib/utils';
 
@@ -40,16 +40,9 @@ function FacilityCard({
         <>
             <h4 className='text-xl font-semibold leading-tight'>{facility.name}</h4>
             <div className='flex flex-row items-start gap-3'>
-                <Image
-                    src={facilityImage(facility.name)}
-                    alt={facility.name}
-                    width={300}
-                    height={200}
-                    className='object-contain'
-                    onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                    }}
-                />
+                <div className='relative w-48 h-32'>
+                    <FacilityIcon facilityName={facility.name} size={128} />
+                </div>
 
                 <div className='min-w-0 flex-1'>
                     <p className='text-xs text-muted-foreground mt-0.5'>
@@ -71,16 +64,7 @@ function FacilityCard({
                                     key={resource.name}
                                     className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1'
                                 >
-                                    <Image
-                                        src={productImage(resource.name)}
-                                        alt={resource.name}
-                                        width={64}
-                                        height={64}
-                                        className='object-contain flex-shrink-0'
-                                        onError={(e) => {
-                                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                        }}
-                                    />
+                                    <ProductIcon productName={resource.name} size={24} />
                                     {resource.name} ×{formatNumbers(quantity)}
                                 </span>
                             ))}
@@ -97,16 +81,7 @@ function FacilityCard({
                                     key={resource.name}
                                     className='inline-flex items-center gap-1.5 rounded bg-primary/10 px-2 py-1 text-primary'
                                 >
-                                    <Image
-                                        src={productImage(resource.name)}
-                                        alt={resource.name}
-                                        width={64}
-                                        height={64}
-                                        className='object-contain flex-shrink-0'
-                                        onError={(e) => {
-                                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                        }}
-                                    />
+                                    <ProductIcon productName={resource.name} size={24} />
                                     {resource.name} ×{formatNumbers(quantity)}
                                 </span>
                             ))}

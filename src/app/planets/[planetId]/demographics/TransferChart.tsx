@@ -1,30 +1,50 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ReferenceLine } from 'recharts';
 import { CHILD_MAX_AGE, ELDERLY_MIN_AGE } from '@/simulation/constants';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import ChartCard from '../../_components/ChartCard';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { PopulationTransferMatrix } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { formatNumbers } from '@/lib/utils';
-
-type ViewMode = 'occupation' | 'education';
+import { useIsSmallScreen } from '@/hooks/useMobile';
+import type { GroupMode } from './demographicsTypes';
 
 type Props = {
     title: string;
     matrix: PopulationTransferMatrix | undefined;
-    yMin?: number;
-    yMax?: number;
+    viewMode: GroupMode;
 };
 
-export default function TransferChart({ title, matrix, yMin, yMax }: Props): React.ReactElement {
-    const [viewMode, setViewMode] = useState<ViewMode>('occupation');
+// Stable module-level key lists (used as merge keys)
+const OCC_MERGE_KEYS = [...OCCUPATIONS.map((occ) => OCC_LABELS[occ]), '_total'];
+const EDU_MERGE_KEYS = [...educationLevelKeys.map((edu) => EDU_LABELS[edu]), '_total'];
 
-    const lastOccData = useRef<Record<string, number | string>[]>([]);
-    const lastEduData = useRef<Record<string, number | string>[]>([]);
+function mergePairs(rows: Record<string, number>[], keys: string[]): Record<string, number>[] {
+    const result: Record<string, number>[] = [];
+    for (let i = 0; i < rows.length; i += 2) {
+        const a = rows[i];
+        const b = rows[i + 1];
+        if (!b) {
+            result.push(a);
+            continue;
+        }
+        const merged: Record<string, number> = { age: a.age };
+        for (const key of keys) {
+            merged[key] = (a[key] ?? 0) + (b[key] ?? 0);
+        }
+        result.push(merged);
+    }
+    return result;
+}
+
+export default function TransferChart({ title, matrix, viewMode }: Props): React.ReactElement {
+    const isSmallScreen = useIsSmallScreen();
+
+    const lastOccData = useRef<Record<string, number>[]>([]);
+    const lastEduData = useRef<Record<string, number>[]>([]);
     const lastYDomain = useRef<[number, number]>([-1, 1]);
 
     const { occData, eduData, totalReceived, totalGiven } = useMemo(() => {
@@ -32,15 +52,15 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             return { occData: lastOccData.current, eduData: lastEduData.current, totalReceived: 0, totalGiven: 0 };
         }
 
-        const occRows: Record<string, number | string>[] = [];
-        const eduRows: Record<string, number | string>[] = [];
+        const occRows: Record<string, number>[] = [];
+        const eduRows: Record<string, number>[] = [];
         let received = 0;
         let given = 0;
 
         for (let age = 0; age < matrix.length; age++) {
             const cohort = matrix[age];
 
-            const occRow: Record<string, number | string> = { age };
+            const occRow: Record<string, number> = { age };
             let ageTotal = 0;
             for (const occ of OCCUPATIONS) {
                 let sum = 0;
@@ -53,7 +73,7 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
             occRow._total = ageTotal;
             occRows.push(occRow);
 
-            const eduRow: Record<string, number | string> = { age };
+            const eduRow: Record<string, number> = { age };
             let eduAgeTotal = 0;
             for (const edu of educationLevelKeys) {
                 let sum = 0;
@@ -85,19 +105,25 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
         }
     }, [occData, eduData]);
 
+    // Down-sample on small screens by merging adjacent age pairs
+    const displayOccData = useMemo(
+        () => (isSmallScreen ? mergePairs(occData, OCC_MERGE_KEYS) : occData),
+        [occData, isSmallScreen],
+    );
+    const displayEduData = useMemo(
+        () => (isSmallScreen ? mergePairs(eduData, EDU_MERGE_KEYS) : eduData),
+        [eduData, isSmallScreen],
+    );
+
+    const chartData = viewMode === 'occupation' ? displayOccData : displayEduData;
+
     const yDomain = useMemo<[number, number]>(() => {
-        if (typeof yMin === 'number' && typeof yMax === 'number') {
-            const domain: [number, number] = [yMin, yMax];
-            lastYDomain.current = domain;
-            return domain;
-        }
-        const data = viewMode === 'occupation' ? occData : eduData;
-        if (data.length === 0) {
+        if (chartData.length === 0) {
             return lastYDomain.current;
         }
         let min = 0;
         let max = 0;
-        for (const row of data) {
+        for (const row of chartData) {
             const v = Number(row._total ?? 0);
             if (v < min) {
                 min = v;
@@ -110,30 +136,15 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
         const domain: [number, number] = [min - pad, max + pad];
         lastYDomain.current = domain;
         return domain;
-    }, [occData, eduData, viewMode, yMin, yMax]);
+    }, [chartData]);
 
     const hasData = totalReceived > 0 || totalGiven > 0;
-    const chartData = viewMode === 'occupation' ? occData : eduData;
 
     return (
-        <ChartCard
-            title={title}
-            primaryControls={
-                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-                    <TabsList className='h-7'>
-                        <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                            By occupation
-                        </TabsTrigger>
-                        <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                            By education
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            }
-        >
+        <ChartCard title={title}>
             {/* Summary stats */}
             <div
-                className={`flex gap-3 text-[10px] mb-2 ${hasData ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}
+                className={`flex flex-wrap gap-3 text-[10px] mb-2 ${hasData ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}
             >
                 {hasData ? (
                     <>
@@ -168,7 +179,7 @@ export default function TransferChart({ title, matrix, yMin, yMax }: Props): Rea
                             if (!active || !payload || payload.length === 0) {
                                 return null;
                             }
-                            const row = payload[0]?.payload as Record<string, number | string> | undefined;
+                            const row = payload[0]?.payload as Record<string, number> | undefined;
                             if (!row) {
                                 return null;
                             }

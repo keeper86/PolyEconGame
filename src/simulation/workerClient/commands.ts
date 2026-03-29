@@ -6,6 +6,7 @@ import {
     setAutomationSpec,
     setWorkerAllocationTargetsSpec,
     setSellOffersSpec,
+    cancelSellOfferSpec,
     setBuyBidsSpec,
     claimResourcesSpec,
     buildFacilitySpec,
@@ -79,6 +80,20 @@ export function workerSetSellOffers(opts: {
     return sendCommandSpec(
         { type: 'setSellOffers', requestId: randomUUID(), agentId, planetId, offers },
         setSellOffersSpec,
+        timeoutMs,
+    );
+}
+
+export function workerCancelSellOffer(opts: {
+    agentId: string;
+    planetId: string;
+    resourceName: string;
+    timeoutMs?: number;
+}): Promise<void> {
+    const { agentId, planetId, resourceName, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'cancelSellOffer', requestId: randomUUID(), agentId, planetId, resourceName },
+        cancelSellOfferSpec,
         timeoutMs,
     );
 }

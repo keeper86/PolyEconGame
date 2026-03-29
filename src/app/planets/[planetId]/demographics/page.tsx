@@ -15,6 +15,7 @@ import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_component
 import type { GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
 import FoodBufferChart from './FoodBufferChart';
+import IntergenerationalTransferChart from './IntergenerationalTransferChart';
 import NutritionHeatmapChart from './NutritionHeatmapChart';
 import PlanetDemography from './PlanetDemography';
 import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
@@ -259,6 +260,8 @@ export default function PlanetDemographicsPage() {
             </span>
             {wealthCards}
             <WealthDistributionChart rows={rows} groupMode={group} />
+
+            <IntergenerationalTransferChart lastTransferMatrix={data.data.lastTransferMatrix} group={group} />
 
             <div className='my-3 border-t' />
 

@@ -1,14 +1,12 @@
+import { usePlanetId } from '@/hooks/usePlanetId';
+import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
-import { Building2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { route } from 'nextjs-routes';
+import { usePathname } from 'next/navigation';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../ui/sidebar';
 import { JoinGameDialog } from './JoinGameDialog';
-import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
-import { usePlanetId } from '@/hooks/usePlanetId';
 
 export function CompanyNavEntry() {
     const { status } = useSession();
@@ -23,15 +21,6 @@ export function CompanyNavEntry() {
 
     const agentId = userQuery.data?.agentId;
 
-    const agentQuery = useQuery(
-        trpc.simulation.getAgentDetail.queryOptions(
-            { agentId: agentId ?? '' },
-            {
-                enabled: status === 'authenticated' && !!agentId,
-            },
-        ),
-    );
-
     if (status !== 'authenticated') {
         return null;
     }
@@ -44,9 +33,6 @@ export function CompanyNavEntry() {
         );
     }
 
-    const agent = agentQuery.data?.agent;
-    const companyName = agent?.name ?? 'My Company';
-
     const handleClick = () => {
         if (isMobile) {
             setOpenMobile(false);
@@ -55,19 +41,6 @@ export function CompanyNavEntry() {
 
     return (
         <SidebarMenuItem>
-            <SidebarMenuButton asChild size='default' className='text-md w-full' onClick={handleClick}>
-                <Link
-                    href={route({
-                        pathname: activePlanetId
-                            ? (`/planets/${encodeURIComponent(activePlanetId)}/agent/[agentId]` as never)
-                            : '/agents/[agentId]',
-                        query: { agentId },
-                    })}
-                >
-                    <Building2 width={20} height={20} />
-                    <span>{companyName}</span>
-                </Link>
-            </SidebarMenuButton>
             <SidebarMenu className='pl-2 pt-1'>
                 {AGENT_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
                     const href = activePlanetId

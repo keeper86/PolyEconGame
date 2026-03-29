@@ -274,16 +274,26 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
     // full sell-through: the good is scarce and the price should rise.
     if (offer.offerQuantity === 0) {
         const factor = sellThroughFactor(1);
-        offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, price * factor));
+        const newPrice = price * factor;
+        // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
+        if (!isFinite(newPrice) || newPrice <= 0) {
+            offer.offerPrice = PRICE_FLOOR;
+        } else {
+            offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
+        }
         return;
     }
 
     const sellThrough = sold / offer.offerQuantity;
     const factor = (1 + 0.01 * nextRandom()) * sellThroughFactor(sellThrough);
+    const newPrice = price * factor;
 
-    const priceCeil = PRICE_CEIL;
-    const priceFloor = PRICE_FLOOR;
-    offer.offerPrice = Math.min(priceCeil, Math.max(priceFloor, price * factor));
+    // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
+    if (!isFinite(newPrice) || newPrice <= 0) {
+        offer.offerPrice = PRICE_FLOOR;
+    } else {
+        offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
+    }
 }
 
 /**
@@ -346,5 +356,12 @@ function adjustBidPrice(
     const factor = fillRateFactor(fillRate);
 
     const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : PRICE_CEIL;
-    bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(priceCeil, bid.bidPrice * factor));
+    const newPrice = bid.bidPrice * factor;
+
+    // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
+    if (!isFinite(newPrice) || newPrice <= 0) {
+        bid.bidPrice = PRICE_FLOOR;
+    } else {
+        bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(priceCeil, newPrice));
+    }
 }

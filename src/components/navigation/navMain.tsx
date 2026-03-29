@@ -74,7 +74,7 @@ export function NavMain() {
                     return null;
                 })}
                 <PlanetsNavEntry />
-                <Separator className='my-4' />
+                <Separator className='my-2' />
                 <CompanyNavEntry />
             </SidebarMenu>
         </nav>

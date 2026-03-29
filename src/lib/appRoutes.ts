@@ -168,8 +168,8 @@ export type AgentSubPage = {
 };
 
 export const AGENT_SUB_PAGES: AgentSubPage[] = [
+    { segment: 'financial', label: 'Finances', icon: EuroIcon },
     { segment: 'workforce', label: 'Workforce', icon: Users },
-    { segment: 'financial', label: 'Financial', icon: EuroIcon },
     { segment: 'production', label: 'Production', icon: Package },
     { segment: 'storage', label: 'Storage', icon: Warehouse },
     { segment: 'market', label: 'Market', icon: ShoppingCartIcon },

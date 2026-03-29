@@ -495,6 +495,7 @@ export const getPlanetDemographicsFull = () =>
                         ),
                         priceLevel: z.number(),
                         starvationLevel: z.number(),
+                        lastTransferMatrix: z.array(z.any()),
                     })
                     .nullable(),
             }),
@@ -515,6 +516,7 @@ export const getPlanetDemographicsFull = () =>
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
                     priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
+                    lastTransferMatrix: planet.population.lastTransferMatrix,
                 },
             };
         });

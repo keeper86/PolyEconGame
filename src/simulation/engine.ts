@@ -53,13 +53,13 @@ export function advanceTick(gameState: GameState) {
 
         intergenerationalTransfersForPlanet(planet);
 
+        automaticPricing(planetAgents, planet);
+
         marketTick(planetAgents, planet);
 
         productionTick(planetAgents, planet);
 
         automaticLoanRepayment(planetAgents, planet);
-
-        automaticPricing(planetAgents, planet);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(planetAgents, planet);

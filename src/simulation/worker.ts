@@ -287,6 +287,31 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         safePostMessage({ type: 'sellOffersSet', requestId, agentId });
                         break;
                     }
+                    case 'cancelSellOffer': {
+                        const { requestId, agentId, planetId, resourceName } = action;
+                        const agent = state.agents.get(agentId);
+                        if (!agent) {
+                            safePostMessage({ type: 'sellOfferCancelFailed', requestId, reason: 'Agent not found' });
+                            break;
+                        }
+                        const assets = agent.assets[planetId];
+                        if (!assets) {
+                            safePostMessage({
+                                type: 'sellOfferCancelFailed',
+                                requestId,
+                                reason: `Agent has no assets on planet '${planetId}'`,
+                            });
+                            break;
+                        }
+                        if (assets.market?.sell) {
+                            delete assets.market.sell[resourceName];
+                        }
+                        console.log(
+                            `[worker] Sell offer cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`,
+                        );
+                        safePostMessage({ type: 'sellOfferCancelled', requestId, agentId });
+                        break;
+                    }
                     case 'setBuyBids': {
                         const { requestId, agentId, planetId, bids } = action;
                         const agent = state.agents.get(agentId);
@@ -900,6 +925,24 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setSellOffers', requestId, agentId, planetId, offers });
+            return;
+        }
+
+        if (msg.type === 'cancelSellOffer') {
+            const { requestId, agentId, planetId, resourceName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'sellOfferCancelFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'sellOfferCancelFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'cancelSellOffer', requestId, agentId, planetId, resourceName });
             return;
         }
 
