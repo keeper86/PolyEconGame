@@ -35,6 +35,14 @@ export function handleRequestLoan(
     }
     // TODO: unify with automatic loan for wages and move to wealthOps
     const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'loanDenied',
+            requestId,
+            reason: `Agent '${agentId}' has no asset record for planet '${planetId}'`,
+        });
+        return;
+    }
     assets.deposits += amount;
     assets.loans += amount;
     planet.bank.loans += amount;

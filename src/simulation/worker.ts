@@ -548,7 +548,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     // Message handler
     // -----------------------------------------------------------------
 
-    messagePort?.on('message', (msg: InboundMessage) => {
+    messagePort?.on('message', async (msg: InboundMessage) => {
         if (msg.type === 'ping') {
             const reply: OutboundMessage = { type: 'pong', tick: state.tick };
             safePostMessage(reply);
@@ -557,7 +557,25 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
         if (msg.type === 'shutdown') {
             running = false;
-            console.log('[worker] Received shutdown request — exiting gracefully');
+            console.log('[worker] Received shutdown request — cleaning up resources');
+
+            // Clean up database connection
+            if (snapshotDb) {
+                try {
+                    await snapshotDb.destroy();
+                    console.log('[worker] Database connection closed');
+                } catch (err) {
+                    console.error('[worker] Error closing database connection:', err);
+                }
+            }
+
+            // Remove event listeners
+            process.removeAllListeners('uncaughtException');
+            if (messagePort) {
+                messagePort.removeAllListeners('message');
+            }
+
+            console.log('[worker] Exiting gracefully');
             try {
                 setTimeout(() => process.exit(0), 50);
             } catch (_e) {

@@ -32,11 +32,18 @@ export function useNavigationGuard(isActive: boolean): void {
         // Only the native browser dialog works here; Sonner cannot intercept this.
         const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
             e.preventDefault();
+            // Required by many browsers to trigger the native "Leave site?" dialog.
+            e.returnValue = '';
         };
         window.addEventListener('beforeunload', beforeUnloadHandler);
 
         // ── 2. <Link> / anchor click navigation ───────────────────────────────
         const clickHandler = (e: MouseEvent) => {
+            // Let through: non-primary button, modifier keys (open in new tab/window), etc.
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
+                return;
+            }
+
             // Walk up from the click target to find the nearest <a> element.
             let el = e.target as HTMLElement | null;
             while (el && el.tagName !== 'A') {
@@ -46,10 +53,13 @@ export function useNavigationGuard(isActive: boolean): void {
                 return;
             }
 
-            const href = (el as HTMLAnchorElement).href;
-            if (!href) {
+            const anchor = el as HTMLAnchorElement;
+            // Let through: new-tab links, download links, or non-href anchors.
+            if (anchor.target === '_blank' || anchor.hasAttribute('download') || !anchor.href) {
                 return;
             }
+
+            const href = anchor.href;
 
             try {
                 const target = new URL(href);

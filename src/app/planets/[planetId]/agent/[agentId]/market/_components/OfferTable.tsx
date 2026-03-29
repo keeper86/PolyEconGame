@@ -40,7 +40,7 @@ function sellThroughClass(st: number): string {
     return 'text-muted-foreground';
 }
 
-export default function OfferTable({ offers, clearingPrice }: Props): React.ReactElement {
+function OfferTableComponent({ offers, clearingPrice }: Props): React.ReactElement {
     if (offers.length === 0) {
         return <p className='text-xs text-muted-foreground py-2'>No food sellers this tick.</p>;
     }
@@ -118,3 +118,5 @@ export default function OfferTable({ offers, clearingPrice }: Props): React.Reac
         </div>
     );
 }
+
+export default React.memo(OfferTableComponent);
