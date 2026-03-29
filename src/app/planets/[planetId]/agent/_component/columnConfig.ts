@@ -166,18 +166,23 @@ export function calculateTotalWidth(columns: ColumnConfig[]): number {
 }
 
 /**
- * Get visible columns based on available width
+ * Get visible columns based on available width.
+ * Each column is 72px wide with gap-2 (8px) between them.
  */
 export function getVisibleColumns(availableWidth: number): ColumnConfig[] {
     const allColumns = getEnabledColumnsByPriority(); // Sorted by priority (highest first)
+    const COLUMN_WIDTH = 72;
+    const GAP = 8; // gap-2 = 8px between each column
+
     const visible: ColumnConfig[] = [];
     let currentWidth = 0;
 
     for (const column of allColumns) {
-        const columnWidth = 72; // All our columns are w-[72px] = 72px
-        if (currentWidth + columnWidth <= availableWidth) {
+        // First column needs no leading gap; subsequent columns add a gap
+        const needed = visible.length === 0 ? COLUMN_WIDTH : COLUMN_WIDTH + GAP;
+        if (currentWidth + needed <= availableWidth) {
             visible.push(column);
-            currentWidth += columnWidth;
+            currentWidth += needed;
         } else {
             break; // Can't fit more columns
         }

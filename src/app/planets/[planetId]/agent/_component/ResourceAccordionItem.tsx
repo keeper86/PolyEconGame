@@ -24,6 +24,7 @@ export default function ResourceAccordionItem({
     onLocalChange,
     _isOpen,
     overviewRow,
+    visibleColumns,
 }: ResourceAccordionItemProps): React.ReactElement {
     const bid = assets.market?.buy[resourceName];
     const offer = assets.market?.sell[resourceName];
@@ -313,6 +314,7 @@ export default function ResourceAccordionItem({
                     offer={offer}
                     overviewRow={overviewRow}
                     storageQuantity={inventoryQty}
+                    visibleColumns={visibleColumns}
                 />
             </AccordionTrigger>
             <AccordionContent>

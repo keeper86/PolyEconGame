@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { Props } from './marketTypes';
@@ -14,7 +14,11 @@ import { buildResourceList, buildInitialState, getResourceByName } from './marke
 import ResourceAccordionItem from '../../../_component/ResourceAccordionItem';
 import { getHeaderColumnClasses } from '../../../_component/columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
-import { useVisibleColumnsFallback } from '../../../_component/useVisibleColumns';
+import { useVisibleColumns } from '../../../_component/useVisibleColumns';
+
+// Fixed pixel overhead for non-column content in each row:
+// card p-3 (24) + trigger px-1 (8) + icon w-6/32px (32) + gap-2 (8) + min name (80) + gap-2 (8) + chevron w-4 (16) ≈ 176
+const COLUMN_AREA_OVERHEAD = 180;
 
 // Helper function to group resources by level
 function groupResourcesByLevel(resources: { name: string }[]): Map<string, { name: string }[]> {
@@ -33,6 +37,8 @@ function groupResourcesByLevel(resources: { name: string }[]): Map<string, { nam
 const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'consumerGood'];
 
 export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
+    const cardRef = useRef<HTMLDivElement>(null);
+    const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
     const [showAll, setShowAll] = useState(false);
     const [openItems, setOpenItems] = useState<string[]>([]);
     const trpc = useTRPC();
@@ -130,11 +136,8 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         });
     };
 
-    // Get visible columns for header (using fallback since we don't have container ref here)
-    const visibleColumns = useVisibleColumnsFallback();
-
     return (
-        <Card>
+        <Card ref={cardRef}>
             <CardContent className='p-3 space-y-3'>
                 {/* Top bar */}
                 <div className='flex items-center justify-between gap-3'>
@@ -204,6 +207,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                             onLocalChange={handleLocalChange}
                                             _isOpen={openItems.includes(name)}
                                             overviewRow={overviewRows[name]}
+                                            visibleColumns={visibleColumns}
                                         />
                                     ))}
                                 </Accordion>

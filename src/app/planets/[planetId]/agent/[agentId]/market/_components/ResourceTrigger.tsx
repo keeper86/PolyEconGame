@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
 import { cn, formatNumbers } from '@/lib/utils';
@@ -7,17 +7,12 @@ import type { ResourceTriggerProps } from './marketTypes';
 import { classifyMarket } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
 import { getColumnClasses } from '../../../_component/columnConfig';
-import { useVisibleColumns } from '../../../_component/useVisibleColumns';
 
-export default function ResourceTrigger({ name, bid, offer, overviewRow, storageQuantity }: ResourceTriggerProps): React.ReactElement {
+export default function ResourceTrigger({ name, bid, offer, overviewRow, storageQuantity, visibleColumns }: ResourceTriggerProps): React.ReactElement {
     const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
     const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
-    
-    // Use container ref for responsive column calculation
-    const containerRef = useRef<HTMLDivElement>(null);
-    const visibleColumns = useVisibleColumns(containerRef);
 
     // Helper to get value for a column
     const getColumnValue = (columnId: string) => {
@@ -87,7 +82,7 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow, storage
     };
 
     return (
-        <div ref={containerRef} className='flex flex-1 items-center gap-2 min-w-0'>
+        <div className='flex flex-1 items-center gap-2 min-w-0 overflow-hidden'>
             {/* Icon */}
             <ProductIcon productName={name} size={32} />
 
@@ -119,40 +114,33 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow, storage
             </div>
 
             {/* ── Market stats — using dynamic column configuration ── */}
-            {visibleColumns.length > 0 ? (
-                <>
-                    {visibleColumns.map((column) => {
-                        const value = getColumnValue(column.id);
-                        const isMarketFillColumn = column.id === 'marketFill';
-                        const numericValue = getNumericValue(column.id);
+            {visibleColumns.map((column) => {
+                const value = getColumnValue(column.id);
+                const isMarketFillColumn = column.id === 'marketFill';
+                const numericValue = getNumericValue(column.id);
 
-                        return isMarketFillColumn ? (
-                            <div
-                                key={column.id}
-                                className={cn(getColumnClasses(column.id), 'flex justify-end')}
-                                title={column.title}
-                            >
-                                {value}
-                            </div>
-                        ) : (
-                            <span
-                                key={column.id}
-                                className={cn(
-                                    getColumnClasses(column.id),
-                                    'text-[11px] tabular-nums',
-                                    getTextColorClass(column.id, numericValue),
-                                )}
-                                title={column.title}
-                            >
-                                {value || (overviewRow ? '—' : '')}
-                            </span>
-                        );
-                    })}
-                </>
-            ) : (
-                /* No columns visible — show placeholder */
-                <span className='text-[10px] text-muted-foreground/30 italic'>No columns fit</span>
-            )}
+                return isMarketFillColumn ? (
+                    <div
+                        key={column.id}
+                        className={cn(getColumnClasses(column.id), 'flex justify-end')}
+                        title={column.title}
+                    >
+                        {value}
+                    </div>
+                ) : (
+                    <span
+                        key={column.id}
+                        className={cn(
+                            getColumnClasses(column.id),
+                            'text-[11px] tabular-nums',
+                            getTextColorClass(column.id, numericValue),
+                        )}
+                        title={column.title}
+                    >
+                        {value || (overviewRow ? '—' : '')}
+                    </span>
+                );
+            })}
         </div>
     );
 }

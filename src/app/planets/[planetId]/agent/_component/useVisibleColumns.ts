@@ -5,9 +5,12 @@ import type { ColumnConfig } from './columnConfig';
 import { getVisibleColumns as getVisibleColumnsFromConfig } from './columnConfig';
 
 /**
- * Hook to get visible columns based on container width
+ * Hook to get visible columns based on container width.
+ * @param containerRef - ref to the container element to observe
+ * @param overhead - fixed pixel amount to subtract from the container width before
+ *                   calculating columns (accounts for icon, name, padding, chevron)
  */
-export function useVisibleColumns(containerRef: React.RefObject<HTMLElement | null>): ColumnConfig[] {
+export function useVisibleColumns(containerRef: React.RefObject<HTMLElement | null>, overhead = 0): ColumnConfig[] {
     const [visibleColumns, setVisibleColumns] = useState<ColumnConfig[]>([]);
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
@@ -18,8 +21,8 @@ export function useVisibleColumns(containerRef: React.RefObject<HTMLElement | nu
 
         const updateVisibleColumns = () => {
             if (containerRef.current) {
-                const containerWidth = containerRef.current.clientWidth;
-                const visible = getVisibleColumnsFromConfig(containerWidth);
+                const columnSpace = Math.max(0, containerRef.current.clientWidth - overhead);
+                const visible = getVisibleColumnsFromConfig(columnSpace);
                 setVisibleColumns(visible);
             }
         };
@@ -36,7 +39,7 @@ export function useVisibleColumns(containerRef: React.RefObject<HTMLElement | nu
                 resizeObserverRef.current.disconnect();
             }
         };
-    }, [containerRef]);
+    }, [containerRef, overhead]);
 
     return visibleColumns;
 }
