@@ -6,10 +6,10 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import React from 'react';
-import BidTable from '../../market/BidTable';
-import OfferTable from '../../market/OfferTable';
-import PopulationDemandChart from '../../market/PopulationDemandChart';
-import FoodPriceHistoryChart from '../../market/[resourceName]/FoodPriceHistoryChart';
+import BidTable from '../../../../market/BidTable';
+import OfferTable from '../../../../market/OfferTable';
+import PopulationDemandChart from '../../../../market/PopulationDemandChart';
+import FoodPriceHistoryChart from '../../../../market/[resourceName]/FoodPriceHistoryChart';
 
 const FOOD_RESOURCE_NAME = agriculturalProductResourceType.name;
 

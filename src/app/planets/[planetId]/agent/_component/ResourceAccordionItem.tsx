@@ -9,12 +9,12 @@ import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
 import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
-import type { ResourceAccordionItemProps } from './marketTypes';
-import { getResourceByName } from './marketHelpers';
-import ResourceTrigger from './ResourceTrigger';
-import BuySection from './BuySection';
-import SellSection from './SellSection';
-import MarketDetailsSection from './MarketDetailsSection';
+import type { ResourceAccordionItemProps } from '../[agentId]/market/_components/marketTypes';
+import { getResourceByName } from '../[agentId]/market/_components/marketHelpers';
+import ResourceTrigger from '../[agentId]/market/_components/ResourceTrigger';
+import BuySection from '../[agentId]/market/_components/BuySection';
+import SellSection from '../[agentId]/market/_components/SellSection';
+import MarketDetailsSection from '../[agentId]/market/_components/MarketDetailsSection';
 
 export default function ResourceAccordionItem({
     resourceName,

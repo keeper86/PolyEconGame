@@ -2,7 +2,7 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
-import MarketPanel from '@/app/planets/[planetId]/agent/_component/MarketPanel';
+import MarketPanel from './_components/MarketPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 
 export default function MarketPage() {

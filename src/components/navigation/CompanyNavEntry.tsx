@@ -21,15 +21,6 @@ export function CompanyNavEntry() {
 
     const agentId = userQuery.data?.agentId;
 
-    const agentQuery = useQuery(
-        trpc.simulation.getAgentDetail.queryOptions(
-            { agentId: agentId ?? '' },
-            {
-                enabled: status === 'authenticated' && !!agentId,
-            },
-        ),
-    );
-
     if (status !== 'authenticated') {
         return null;
     }
@@ -41,9 +32,6 @@ export function CompanyNavEntry() {
             </SidebarMenuItem>
         );
     }
-
-    const agent = agentQuery.data?.agent;
-    const companyName = agent?.name ?? 'My Company';
 
     const handleClick = () => {
         if (isMobile) {

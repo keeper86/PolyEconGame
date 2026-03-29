@@ -6,7 +6,7 @@ import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
 import { classifyMarket } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
-import { getEnabledColumns, getColumnClasses } from './columnConfig';
+import { getEnabledColumns, getColumnClasses } from '../../../_component/columnConfig';
 
 export default function ResourceTrigger({ name, bid, offer, overviewRow }: ResourceTriggerProps): React.ReactElement {
     const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;

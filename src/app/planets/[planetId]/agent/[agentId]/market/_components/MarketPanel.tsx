@@ -11,8 +11,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { Props } from './marketTypes';
 import { buildResourceList, buildInitialState, getResourceByName } from './marketHelpers';
-import ResourceAccordionItem from './ResourceAccordionItem';
-import { getEnabledColumns, getHeaderColumnClasses } from './columnConfig';
+import ResourceAccordionItem from '../../../_component/ResourceAccordionItem';
+import { getEnabledColumns, getHeaderColumnClasses } from '../../../_component/columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 
 // Helper function to group resources by level
@@ -153,7 +153,12 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                     <div className='w-4 shrink-0' />
                                 </div>
 
-                                <Accordion type='multiple' value={openItems} onValueChange={setOpenItems} className='w-full'>
+                                <Accordion
+                                    type='multiple'
+                                    value={openItems}
+                                    onValueChange={setOpenItems}
+                                    className='w-full'
+                                >
                                     {levelResources.map(({ name }) => (
                                         <ResourceAccordionItem
                                             key={name}
@@ -161,7 +166,8 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                             agentId={agentId}
                                             assets={assets}
                                             local={
-                                                localStates[name] ?? buildInitialState([{ name }], buyBids, sellOffers)[name]
+                                                localStates[name] ??
+                                                buildInitialState([{ name }], buyBids, sellOffers)[name]
                                             }
                                             onLocalChange={handleLocalChange}
                                             _isOpen={openItems.includes(name)}
@@ -177,4 +183,3 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         </Card>
     );
 }
-
