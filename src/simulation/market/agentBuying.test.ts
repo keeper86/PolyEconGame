@@ -485,7 +485,7 @@ describe('marketTick — agent buying', () => {
                 [COAL]: {
                     resource: coalResourceType,
                     bidPrice: 999,
-                    bidQuantity: 1,
+                    bidStorageTarget: 1,
                 },
             },
         };
@@ -498,7 +498,7 @@ describe('marketTick — agent buying', () => {
                 [COAL]: {
                     resource: coalResourceType,
                     bidPrice: 0.01,
-                    bidQuantity: 1,
+                    bidStorageTarget: 1,
                 },
             },
         };
@@ -679,7 +679,7 @@ describe('marketTick — agent buying', () => {
                 [COAL]: {
                     resource: coalResourceType,
                     bidPrice: 5.0,
-                    bidQuantity: 100,
+                    bidStorageTarget: 100,
                 },
             },
         };
@@ -692,9 +692,8 @@ describe('marketTick — agent buying', () => {
 
         expect(coalReceived).toBeCloseTo(50, 1);
         expect(depositsSpent).toBeCloseTo(coalReceived * 1.0, 5);
-        // With validation consolidation, bid quantity is capped at storage capacity during collection
-        // so the original bidQuantity remains unchanged in the agent's state
-        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(100);
+        // With validation consolidation, bid storage target remains unchanged in the agent's state
+        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBe(100);
         // Storage is not full because we only bid for what we can store (50 units)
         expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBeUndefined();
     });
@@ -708,7 +707,7 @@ describe('marketTick — agent buying', () => {
         });
         buyer.assets.p.market = {
             sell: {},
-            buy: { [COAL]: { resource: coalResourceType, bidPrice: 5.0, bidQuantity: 100 } },
+            buy: { [COAL]: { resource: coalResourceType, bidPrice: 5.0, bidStorageTarget: 100 } },
         };
 
         const holdAmount = 500;
@@ -730,7 +729,7 @@ describe('marketTick — agent buying', () => {
 
         expect(buyer.assets.p.deposits + buyer.assets.p.depositHold).toBe(depositsBefore);
         expect(buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0).toBe(0);
-        expect(buyer.assets.p.market!.buy[COAL]!.bidQuantity).toBe(0);
+        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBe(0);
         expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);
     });
 });

@@ -14,11 +14,11 @@ export const TTL_FEEDBACK = 5_000; // 5 seconds
 
 export type MarketBidEntry = {
     bidPrice?: number;
-    bidQuantity?: number;
     bidStorageTarget?: number;
     lastBought?: number;
     lastSpent?: number;
     storageFullWarning?: boolean;
+    depositScaleWarning?: 'scaled' | 'dropped';
     automated?: boolean;
 };
 

@@ -46,7 +46,7 @@ export default function BuySection({
         (bid?.bidPrice ?? 0) *
         (bid?.bidStorageTarget !== undefined
             ? Math.max(0, bid.bidStorageTarget - inventoryQty)
-            : (bid?.bidQuantity ?? 0));
+            : 0);
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
 
     // Check if buy section has any dirty fields
@@ -236,6 +236,17 @@ export default function BuySection({
                     <AlertCircle className='h-3.5 w-3.5' />
                     <AlertDescription className='text-xs'>
                         Bid cost ({formatNumbers(totalBidCost)}) exceeds available deposits ({formatNumbers(deposits)}).
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {bid?.depositScaleWarning && (
+                <Alert variant={bid.depositScaleWarning === 'dropped' ? 'destructive' : 'default'} className='py-2'>
+                    <AlertCircle className='h-3.5 w-3.5' />
+                    <AlertDescription className='text-xs'>
+                        {bid.depositScaleWarning === 'dropped'
+                            ? 'No deposits available — bid was not placed last tick.'
+                            : 'Bid was proportionally scaled down due to insufficient deposits.'}
                     </AlertDescription>
                 </Alert>
             )}

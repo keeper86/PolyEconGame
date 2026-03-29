@@ -53,7 +53,7 @@ function makeBuyerWithDeposits(
     agent.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', id: `storage-${id}` });
     agent.assets.p.market = {
         sell: {},
-        buy: { [resourceName]: { resource, bidPrice: price, bidQuantity: qty } },
+        buy: { [resourceName]: { resource, bidPrice: price, bidStorageTarget: qty } },
     };
     return agent;
 }
@@ -142,7 +142,7 @@ describe('market escrow — seller-side', () => {
                 [COAL]: { resource: coalResourceType, offerPrice: 1.0, offerQuantity: 50 },
             },
             buy: {
-                [MACHINERY]: { resource: machineryResourceType, bidPrice: 12.0, bidQuantity: 3 },
+                [MACHINERY]: { resource: machineryResourceType, bidPrice: 12.0, bidStorageTarget: 3 },
             },
         };
 
@@ -172,8 +172,8 @@ describe('market escrow — buyer-side deposit hold', () => {
         agent.assets.p.market = {
             sell: {},
             buy: {
-                [COAL]: { resource: coalResourceType, bidPrice: 1.0, bidQuantity: 30 },
-                [MACHINERY]: { resource: machineryResourceType, bidPrice: 1.0, bidQuantity: 30 },
+                [COAL]: { resource: coalResourceType, bidPrice: 1.0, bidStorageTarget: 30 },
+                [MACHINERY]: { resource: machineryResourceType, bidPrice: 1.0, bidStorageTarget: 30 },
             },
         };
 
@@ -263,7 +263,7 @@ describe('market input validation — pieces resources', () => {
         agent.assets.p.market = {
             sell: {},
             buy: {
-                [VEHICLE]: { resource: vehicleResourceType, bidPrice: 10.0, bidQuantity: 4.9 },
+                [VEHICLE]: { resource: vehicleResourceType, bidPrice: 10.0, bidStorageTarget: 4.9 },
             },
         };
 
@@ -279,7 +279,7 @@ describe('market input validation — pieces resources', () => {
         agent.assets.p.market = {
             sell: {},
             buy: {
-                [VEHICLE]: { resource: vehicleResourceType, bidPrice: 10.0, bidQuantity: 0.3 },
+                [VEHICLE]: { resource: vehicleResourceType, bidPrice: 10.0, bidStorageTarget: 0.3 },
             },
         };
 

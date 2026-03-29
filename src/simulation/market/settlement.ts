@@ -109,7 +109,6 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
             buyState.lastSpent = (buyState.lastSpent ?? 0) + costForStored;
 
             if (storageFull) {
-                buyState.bidQuantity = 0;
                 buyState.storageFullWarning = true;
             }
         }

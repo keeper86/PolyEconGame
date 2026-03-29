@@ -588,7 +588,7 @@ type AgentBidEntry = {
     agentId: string;
     agentName: string;
     bidPrice: number;
-    bidQuantity: number;
+    demandedQuantity: number;
     lastBought: number;
     fillRatio: number;
     lastSpent: number;
@@ -622,7 +622,7 @@ function buildAgentBids(agents: Agent[], planetId: string, resourceName: string)
             agentId: agent.id,
             agentName: agent.name,
             bidPrice,
-            bidQuantity: effectiveQty,
+            demandedQuantity: effectiveQty,
             lastBought,
             fillRatio,
             lastSpent,
@@ -637,7 +637,7 @@ const agentBidSchema = z.object({
     agentId: z.string(),
     agentName: z.string(),
     bidPrice: z.number(),
-    bidQuantity: z.number(),
+    demandedQuantity: z.number(),
     lastBought: z.number(),
     fillRatio: z.number(),
     lastSpent: z.number(),
@@ -659,7 +659,7 @@ const marketSnapshotSchema = z.object({
         .array(
             z.object({
                 bidPrice: z.number(),
-                bidQuantity: z.number(),
+                demandedQuantity: z.number(),
                 lastBought: z.number(),
                 fillRatio: z.number(),
                 lastSpent: z.number(),
@@ -703,12 +703,12 @@ export const getPlanetMarket = () =>
 
             const offers = buildAgentOffers(agents, input.planetId, input.resourceName);
             const bids = buildAgentBids(agents, input.planetId, input.resourceName);
-            const agentDemand = bids.reduce((s, b) => s + b.bidQuantity, 0);
+            const agentDemand = bids.reduce((s, b) => s + b.demandedQuantity, 0);
             const populationDemand = Math.max(0, totalDemand - agentDemand);
 
             const populationBids: {
                 bidPrice: number;
-                bidQuantity: number;
+                demandedQuantity: number;
                 lastBought: number;
                 fillRatio: number;
                 lastSpent: number;
@@ -718,7 +718,7 @@ export const getPlanetMarket = () =>
                     const fillRatio = bin.quantity > 0 ? Math.min(1, bin.filled / bin.quantity) : 0;
                     populationBids.push({
                         bidPrice: bin.bidPrice,
-                        bidQuantity: bin.quantity,
+                        demandedQuantity: bin.quantity,
                         lastBought: bin.filled,
                         fillRatio,
                         lastSpent: bin.cost,

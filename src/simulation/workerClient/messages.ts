@@ -51,7 +51,7 @@ export type InboundMessage =
           planetId: string;
           bids: Record<
               string,
-              { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
+              { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }
           >;
       }
     | {
@@ -167,7 +167,7 @@ export type PendingAction =
           planetId: string;
           bids: Record<
               string,
-              { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }
+              { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }
           >;
       }
     | {

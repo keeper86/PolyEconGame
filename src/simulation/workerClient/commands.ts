@@ -116,7 +116,7 @@ export function workerCancelBuyBid(opts: {
 export function workerSetBuyBids(opts: {
     agentId: string;
     planetId: string;
-    bids: Record<string, { bidPrice?: number; bidQuantity?: number; bidStorageTarget?: number; automated?: boolean }>;
+    bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, bids, timeoutMs } = opts;

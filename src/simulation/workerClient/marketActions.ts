@@ -124,7 +124,6 @@ export function handleCancelBuyBid(
     const bid = assets.market?.buy[resourceName];
     if (bid) {
         delete bid.bidPrice;
-        delete bid.bidQuantity;
         delete bid.bidStorageTarget;
         delete bid.automated;
         bid.lastBought = 0;
@@ -186,9 +185,6 @@ export function handleSetBuyBids(
         const bid = assets.market.buy[resourceName];
         if (update.bidPrice !== undefined && update.bidPrice > 0) {
             bid.bidPrice = update.bidPrice;
-        }
-        if (update.bidQuantity !== undefined && update.bidQuantity >= 0) {
-            bid.bidQuantity = update.bidQuantity;
         }
         if (update.bidStorageTarget !== undefined && update.bidStorageTarget >= 0) {
             bid.bidStorageTarget = update.bidStorageTarget;

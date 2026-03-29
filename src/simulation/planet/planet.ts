@@ -286,15 +286,9 @@ export type AgentMarketBidState = {
      */
     bidPrice?: number;
     /**
-     * Quantity demanded this tick (units).
-     * When `bidStorageTarget` is set this field is ignored in favour of the
-     * dynamic computation `max(0, bidStorageTarget − inventory)`.
-     */
-    bidQuantity?: number;
-    /**
      * Fill storage up to this level — bid quantity per tick is computed
      * dynamically as `max(0, bidStorageTarget − inventory)`.
-     * Takes precedence over `bidQuantity` when set.  Human-settable.
+     * Human-settable.
      */
     bidStorageTarget?: number;
     /** Units actually purchased during the last market clearing tick. */
@@ -310,6 +304,13 @@ export type AgentMarketBidState = {
      * the resource. Cleared each tick when there is capacity available.
      */
     storageFullWarning?: boolean;
+    /**
+     * Set by collectAgentBids for human-controlled agents when deposit scaling occurred.
+     * 'scaled' = bid was placed at reduced quantity due to insufficient deposits (warning).
+     * 'dropped' = no deposits available, bid was not placed at all (error).
+     * Cleared at the start of each tick by resetAgentBuyCounters.
+     */
+    depositScaleWarning?: 'scaled' | 'dropped';
     /** When true, the automatic pricing engine manages this bid each tick. */
     automated?: boolean;
 };

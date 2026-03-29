@@ -580,7 +580,6 @@ export const cancelBuyBid = () => {
 
 const buyBid = z.object({
     bidPrice: z.number().positive().optional(),
-    bidQuantity: z.number().min(0).optional(),
     bidStorageTarget: z.number().min(0).optional(),
     automated: z.boolean().optional(),
 });

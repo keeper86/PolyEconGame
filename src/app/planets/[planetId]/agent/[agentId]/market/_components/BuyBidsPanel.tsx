@@ -16,7 +16,7 @@ import type { ProductionFacility } from '@/simulation/planet/storage';
 
 export type BuyBidEntry = {
     bidPrice?: number;
-    bidQuantity?: number;
+    bidStorageTarget?: number;
     lastBought?: number;
     lastSpent?: number;
     storageFullWarning?: boolean;
@@ -24,7 +24,7 @@ export type BuyBidEntry = {
 
 type LocalBid = {
     bidPrice: string;
-    bidQuantity: string;
+    bidStorageTarget: string;
 };
 
 type Props = {
@@ -62,7 +62,7 @@ function buildLocalBids(
         const entry = buyBids[name];
         result[name] = {
             bidPrice: entry?.bidPrice !== undefined ? String(entry.bidPrice) : '',
-            bidQuantity: entry?.bidQuantity !== undefined ? String(Math.round(entry.bidQuantity)) : '',
+            bidStorageTarget: entry?.bidStorageTarget !== undefined ? String(Math.round(entry.bidStorageTarget)) : '',
         };
     }
     return result;
@@ -111,10 +111,10 @@ export default function BuyBidsPanel({
         }),
     );
 
-    const handleChange = (resource: string, field: 'bidPrice' | 'bidQuantity', value: string) => {
+    const handleChange = (resource: string, field: 'bidPrice' | 'bidStorageTarget', value: string) => {
         setLocalBids((prev) => ({
             ...prev,
-            [resource]: { ...(prev[resource] ?? { bidPrice: '', bidQuantity: '' }), [field]: value },
+            [resource]: { ...(prev[resource] ?? { bidPrice: '', bidStorageTarget: '' }), [field]: value },
         }));
     };
 
@@ -122,16 +122,16 @@ export default function BuyBidsPanel({
         setSuccessMsg(null);
         setErrorMsg(null);
 
-        const bids: Record<string, { bidPrice?: number; bidQuantity?: number }> = {};
+        const bids: Record<string, { bidPrice?: number; bidStorageTarget?: number }> = {};
         for (const [resource, lo] of Object.entries(localBids)) {
-            const entry: { bidPrice?: number; bidQuantity?: number } = {};
+            const entry: { bidPrice?: number; bidStorageTarget?: number } = {};
             const price = parseFloat(lo.bidPrice);
-            const qty = parseFloat(lo.bidQuantity);
+            const target = parseFloat(lo.bidStorageTarget);
             if (!isNaN(price) && price > 0) {
                 entry.bidPrice = price;
             }
-            if (!isNaN(qty) && qty >= 0) {
-                entry.bidQuantity = qty;
+            if (!isNaN(target) && target >= 0) {
+                entry.bidStorageTarget = target;
             }
             if (Object.keys(entry).length > 0) {
                 bids[resource] = entry;
@@ -139,7 +139,7 @@ export default function BuyBidsPanel({
         }
 
         if (Object.keys(bids).length === 0) {
-            setErrorMsg('No valid bid data to save. Enter a price > 0 or quantity ≥ 0 for at least one resource.');
+            setErrorMsg('No valid bid data to save. Enter a price > 0 or storage target ≥ 0 for at least one resource.');
             return;
         }
 
@@ -149,8 +149,9 @@ export default function BuyBidsPanel({
     const totalBidCost = inputResources.reduce((sum, { name }) => {
         const snap = buyBids[name];
         const price = snap?.bidPrice ?? 0;
-        const qty = snap?.bidQuantity ?? 0;
-        return sum + price * qty;
+        const target = snap?.bidStorageTarget ?? 0;
+        // Note: This is an approximation - actual cost depends on current inventory
+        return sum + price * target;
     }, 0);
 
     const depositsInsufficient = totalBidCost > 0 && deposits < totalBidCost;
@@ -211,7 +212,7 @@ export default function BuyBidsPanel({
                             <div className='space-y-4'>
                                 {inputResources.map(({ name: resource }) => {
                                     const snap = buyBids[resource];
-                                    const lo = localBids[resource] ?? { bidPrice: '', bidQuantity: '' };
+                                    const lo = localBids[resource] ?? { bidPrice: '', bidStorageTarget: '' };
                                     return (
                                         <div key={resource} className='space-y-2'>
                                             <div className='flex items-center justify-between gap-2'>
@@ -264,25 +265,25 @@ export default function BuyBidsPanel({
                                                 </div>
                                                 <div className='space-y-1'>
                                                     <Label
-                                                        htmlFor={`bid-qty-${resource}`}
+                                                        htmlFor={`bid-target-${resource}`}
                                                         className='text-[11px] text-muted-foreground'
                                                     >
-                                                        Quantity to demand
+                                                        Storage target
                                                     </Label>
                                                     <Input
-                                                        id={`bid-qty-${resource}`}
+                                                        id={`bid-target-${resource}`}
                                                         type='number'
                                                         min={0}
                                                         step={1}
                                                         placeholder={
-                                                            snap?.bidQuantity !== undefined
-                                                                ? String(Math.round(snap.bidQuantity))
-                                                                : 'e.g. 100'
+                                                            snap?.bidStorageTarget !== undefined
+                                                                ? String(Math.round(snap.bidStorageTarget))
+                                                                : 'e.g. 500'
                                                         }
-                                                        value={lo.bidQuantity}
+                                                        value={lo.bidStorageTarget}
                                                         disabled={automatePricing || mutation.isPending}
                                                         onChange={(e) =>
-                                                            handleChange(resource, 'bidQuantity', e.target.value)
+                                                            handleChange(resource, 'bidStorageTarget', e.target.value)
                                                         }
                                                         className='h-8 text-sm tabular-nums'
                                                     />

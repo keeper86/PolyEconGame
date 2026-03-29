@@ -34,11 +34,11 @@ export type AgentPlanetAssets = {
         buy: {
             [resourceName: string]: {
                 bidPrice?: number;
-                bidQuantity?: number;
                 bidStorageTarget?: number;
                 lastBought?: number;
                 lastSpent?: number;
                 storageFullWarning?: boolean;
+                depositScaleWarning?: 'scaled' | 'dropped';
                 automated?: boolean;
             };
         };

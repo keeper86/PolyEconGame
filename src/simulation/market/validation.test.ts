@@ -84,47 +84,47 @@ describe('market validation', () => {
         const clothingResource = clothingResourceType;
 
         it('returns valid for a normal buy bid', () => {
-            const result = validateBuyBid({ bidPrice: 2.0, bidQuantity: 100 }, coalResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, makeAssets(1000));
             expect(result.isValid).toBe(true);
             expect(result.error).toBeUndefined();
         });
 
         it('returns invalid for price 0', () => {
-            const result = validateBuyBid({ bidPrice: 0, bidQuantity: 100 }, coalResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: 0, bidStorageTarget: 100 }, coalResource, makeAssets(1000));
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Price must be greater than 0');
         });
 
         it('returns invalid for negative price', () => {
-            const result = validateBuyBid({ bidPrice: -1, bidQuantity: 100 }, coalResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: -1, bidStorageTarget: 100 }, coalResource, makeAssets(1000));
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Price must be greater than 0');
         });
 
         it('returns invalid for negative quantity', () => {
-            const result = validateBuyBid({ bidPrice: 2.0, bidQuantity: -10 }, coalResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: -10 }, coalResource, makeAssets(1000));
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Quantity must be non-negative');
         });
 
         it('returns invalid when cost exceeds deposits', () => {
-            const result = validateBuyBid({ bidPrice: 2.0, bidQuantity: 600 }, coalResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 600 }, coalResource, makeAssets(1000));
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Insufficient deposits');
         });
 
         it('returns valid for pieces resource with integer quantity', () => {
-            const result = validateBuyBid({ bidPrice: 10, bidQuantity: 5 }, clothingResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: 10, bidStorageTarget: 5 }, clothingResource, makeAssets(1000));
             expect(result.isValid).toBe(true);
         });
 
         it('returns valid for pieces resource with fractional quantity', () => {
-            const result = validateBuyBid({ bidPrice: 10, bidQuantity: 5.5 }, clothingResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: 10, bidStorageTarget: 5.5 }, clothingResource, makeAssets(1000));
             expect(result.isValid).toBe(true);
         });
 
         it('returns valid when price is undefined but quantity is defined', () => {
-            const result = validateBuyBid({ bidQuantity: 100 }, coalResource, makeAssets(1000));
+            const result = validateBuyBid({ bidStorageTarget: 100 }, coalResource, makeAssets(1000));
             expect(result.isValid).toBe(true);
         });
 
@@ -139,24 +139,24 @@ describe('market validation', () => {
         });
 
         it('returns valid when quantity is 0', () => {
-            const result = validateBuyBid({ bidPrice: 2.0, bidQuantity: 0 }, coalResource, makeAssets(1000));
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 0 }, coalResource, makeAssets(1000));
             expect(result.isValid).toBe(true);
         });
 
         it('returns invalid when quantity exceeds available storage capacity', () => {
             // Coal: volumePerQuantity=0.7 → volume=35 gives capacity 50; massPerQuantity=1 → mass=50 gives capacity 50
-            const result = validateBuyBid({ bidPrice: 2.0, bidQuantity: 100 }, coalResource, makeAssets(1000, 35, 50));
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, makeAssets(1000, 35, 50));
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Quantity exceeds available storage capacity');
         });
 
         it('returns valid when quantity equals available storage capacity', () => {
-            const result = validateBuyBid({ bidPrice: 2.0, bidQuantity: 50 }, coalResource, makeAssets(1000, 35, 50));
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 50 }, coalResource, makeAssets(1000, 35, 50));
             expect(result.isValid).toBe(true);
         });
 
         it('returns valid when storage capacity is unlimited', () => {
-            const result = validateBuyBid({ bidPrice: 2.0, bidQuantity: 100 }, coalResource, makeAssets(200));
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, makeAssets(200));
             expect(result.isValid).toBe(true);
         });
 

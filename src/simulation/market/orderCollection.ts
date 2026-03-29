@@ -85,15 +85,20 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
 
         // Scale all bids proportionally if the agent cannot afford the full set.
         const availableDeposits = assets.deposits;
-        const scaleFactor = totalMaxCost > availableDeposits ? availableDeposits / totalMaxCost : 1;
+        const isDepositLimited = totalMaxCost > availableDeposits;
+        const scaleFactor = isDepositLimited ? (availableDeposits > 0 ? availableDeposits / totalMaxCost : 0) : 1;
 
         let holdAmount = 0;
 
         for (const { resourceName, qty, price } of pendingBids) {
             const bid = assets.market.buy[resourceName]!;
-            const scaledQty = Math.max(0, qty * scaleFactor);
+            const scaledQty = Math.max(0, qty * (0.99 * scaleFactor));
 
             if (scaledQty <= 0) {
+                // Bid dropped entirely due to exhausted deposits — warn human players
+                if (!agent.automated && isDepositLimited) {
+                    bid.depositScaleWarning = 'dropped';
+                }
                 continue;
             }
 
@@ -101,6 +106,30 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             bid.lastBidPrice = price;
             const cost = scaledQty * price;
             holdAmount += cost;
+
+            // Record scaling feedback for human players
+            if (!agent.automated) {
+                bid.depositScaleWarning = isDepositLimited ? 'scaled' : undefined;
+            }
+
+            if (process.env.SIM_DEBUG === '1') {
+                if (!isFinite(price) || price <= 0) {
+                    throw new Error(
+                        `Invalid bid price entering order book: agent=${agent.id} resource=${resourceName} price=${price}`,
+                    );
+                }
+                if (!isFinite(scaledQty) || scaledQty <= 0) {
+                    throw new Error(
+                        `Invalid bid quantity entering order book: agent=${agent.id} resource=${resourceName} qty=${scaledQty}`,
+                    );
+                }
+                const holdSoFar = holdAmount;
+                if (!isFinite(cost) || holdSoFar > availableDeposits + 1e-9) {
+                    throw new Error(
+                        `Cumulative bid cost exceeds available deposits: agent=${agent.id} resource=${resourceName} holdAmount=${holdSoFar} deposits=${availableDeposits}`,
+                    );
+                }
+            }
 
             let book = books.get(resourceName);
             if (!book) {
@@ -135,6 +164,7 @@ export function resetAgentBuyCounters(agents: Map<string, Agent>, planet: Planet
             bid.lastBought = 0;
             bid.lastSpent = 0;
             bid.lastEffectiveQty = 0;
+            bid.depositScaleWarning = undefined;
         }
     });
 }

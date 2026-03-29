@@ -73,20 +73,15 @@ export function validateSellOffer(
 }
 
 /**
- * Validates a buy bid price and quantity.
- * Returns validation result with error message if invalid.
- * If price or quantity is undefined, it's considered valid (user might be changing only one field).
+ * Validates buy bid price and quantity fields (range checks only).
+ * No deposit check — that is a multi-bid aggregate concern handled by collectAgentBids.
+ * Used internally by validateBuyBid and validateAndPrepareBuyBid.
  */
-export function validateBuyBid(
-    bid: BuyBid,
-    resource: Resource,
-    assets: Pick<AgentPlanetAssets, 'storageFacility' | 'deposits'>,
+function validateBidFields(
+    bidPrice: number | undefined,
+    quantity: number | undefined,
+    availableStorageCapacity: number,
 ): ValidationResult {
-    const { bidPrice, bidStorageTarget, bidQuantity } = bid;
-    const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, resource);
-    const currentInventory = queryStorageFacility(assets.storageFacility, resource.name);
-    const quantity = bidStorageTarget !== undefined ? Math.max(0, bidStorageTarget - currentInventory) : bidQuantity;
-
     // If both are undefined, nothing to validate
     if (bidPrice === undefined && quantity === undefined) {
         return { isValid: true };
@@ -133,7 +128,29 @@ export function validateBuyBid(
         }
     }
 
-    // Check if agent can afford the bid (only if both price and quantity are provided)
+    return { isValid: true };
+}
+
+/**
+ * Full user-facing validation of a buy bid: field ranges + deposit affordability.
+ * Used by the server controller and the UI.
+ */
+export function validateBuyBid(
+    bid: BuyBid,
+    resource: Resource,
+    assets: Pick<AgentPlanetAssets, 'storageFacility' | 'deposits'>,
+): ValidationResult {
+    const { bidPrice, bidStorageTarget } = bid;
+    const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, resource);
+    const currentInventory = queryStorageFacility(assets.storageFacility, resource.name);
+    const quantity = bidStorageTarget !== undefined ? Math.max(0, bidStorageTarget - currentInventory) : 0;
+
+    const fieldResult = validateBidFields(bidPrice, quantity, availableStorageCapacity);
+    if (!fieldResult.isValid) {
+        return fieldResult;
+    }
+
+    // Deposit affordability (only if both price and quantity are provided)
     if (bidPrice !== undefined && quantity !== undefined) {
         const maxCost = quantity * bidPrice;
         if (maxCost > assets.deposits + EPSILON) {
@@ -207,54 +224,45 @@ export function validateAndPrepareSellOffer(
 
 /**
  * Validates and prepares a buy bid for order collection.
- * Returns validated and clamped price & quantity, or null if the bid is invalid.
- * Logs warnings for invalid bids.
+ * Returns validated and clamped price & quantity, or null if the bid is inactive/invalid.
+ *
+ * Only field-level rules (price range, quantity range, storage capacity) are checked.
+ * Deposit affordability is handled by collectAgentBids via proportional multi-bid scaling.
  */
 export function validateAndPrepareBuyBid(
     bid: AgentMarketBidState,
     assets: Pick<AgentPlanetAssets, 'storageFacility' | 'deposits'>,
     currentInventory: number,
 ): { price: number; quantity: number; maxCost: number } | null {
-    // Calculate effective quantity based on storage target if set
+    // No valid price means the bid has not been configured yet — skip silently.
+    if (!bid.bidPrice || bid.bidPrice <= 0 || !isFinite(bid.bidPrice)) {
+        return null;
+    }
+
+    // Calculate effective quantity from storage target
     const effectiveQuantity =
         bid.bidStorageTarget !== undefined
             ? Math.max(0, bid.bidStorageTarget - currentInventory)
-            : (bid.bidQuantity ?? 0);
+            : 0;
 
     // Cap by available storage capacity
     const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, bid.resource);
     const cappedQuantity = Math.min(effectiveQuantity, availableStorageCapacity);
 
-    // Use validatedBidQuantity to ensure non-negative
-    const validatedQuantity = validatedBidQuantity(cappedQuantity, bid.resource.form);
-
-    // Use default price if not set
-    const price = bid.bidPrice !== undefined ? bid.bidPrice : 0;
-
-    // Validate the bid
-    const validation = validateBuyBid({ bidPrice: price, bidQuantity: validatedQuantity }, bid.resource, assets);
-
+    // Validate price and quantity ranges (no deposit check — handled by collectAgentBids)
+    const validation = validateBidFields(bid.bidPrice, cappedQuantity, availableStorageCapacity);
     if (!validation.isValid) {
         console.warn(`Invalid buy bid for ${bid.resource.name}: ${validation.error}`);
         return null;
     }
 
-    // If price is 0 or undefined after validation, we can't create an order
-    if (price <= 0) {
-        console.warn(`Buy bid for ${bid.resource.name} has invalid price: ${price}`);
-        return null;
-    }
-
-    // If quantity is zero after validation, skip
+    const validatedQuantity = validatedBidQuantity(cappedQuantity, bid.resource.form);
     if (validatedQuantity <= 0) {
         return null;
     }
 
+    const price = clampPrice(bid.bidPrice);
     const maxCost = validatedQuantity * price;
 
-    return {
-        price: clampPrice(price),
-        quantity: validatedQuantity,
-        maxCost,
-    };
+    return { price, quantity: validatedQuantity, maxCost };
 }
