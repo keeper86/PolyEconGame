@@ -11,7 +11,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { Props } from './marketTypes';
 import { buildResourceList, buildInitialState, getResourceByName } from './marketHelpers';
-import ResourceAccordionItem from '../../../_component/ResourceAccordionItem';
+import ResourceAccordionItem from './ResourceAccordionItem';
 import { getHeaderColumnClasses } from '../../../_component/columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { useVisibleColumns } from '../../../_component/useVisibleColumns';
