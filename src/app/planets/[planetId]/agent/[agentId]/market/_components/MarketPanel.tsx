@@ -12,8 +12,9 @@ import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { Props } from './marketTypes';
 import { buildResourceList, buildInitialState, getResourceByName } from './marketHelpers';
 import ResourceAccordionItem from '../../../_component/ResourceAccordionItem';
-import { getEnabledColumns, getHeaderColumnClasses } from '../../../_component/columnConfig';
+import { getHeaderColumnClasses } from '../../../_component/columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
+import { useVisibleColumnsFallback } from '../../../_component/useVisibleColumns';
 
 // Helper function to group resources by level
 function groupResourcesByLevel(resources: { name: string }[]): Map<string, { name: string }[]> {
@@ -129,7 +130,8 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         });
     };
 
-    const columns = getEnabledColumns();
+    // Get visible columns for header (using fallback since we don't have container ref here)
+    const visibleColumns = useVisibleColumnsFallback();
 
     return (
         <Card>
@@ -169,7 +171,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                     <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
                                         <div className='w-6 shrink-0' />
                                         <span className='flex-1 min-w-0'>Resource</span>
-                                        {columns.map((column) => (
+                                        {visibleColumns.map((column) => (
                                             <span
                                                 key={column.id}
                                                 className={getHeaderColumnClasses(column.id)}

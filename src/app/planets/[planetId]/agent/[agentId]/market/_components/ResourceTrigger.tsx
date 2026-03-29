@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
 import { cn, formatNumbers } from '@/lib/utils';
@@ -6,32 +6,34 @@ import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
 import { classifyMarket } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
-import { getEnabledColumns, getColumnClasses } from '../../../_component/columnConfig';
+import { getColumnClasses } from '../../../_component/columnConfig';
+import { useVisibleColumns } from '../../../_component/useVisibleColumns';
 
-export default function ResourceTrigger({ name, bid, offer, overviewRow }: ResourceTriggerProps): React.ReactElement {
+export default function ResourceTrigger({ name, bid, offer, overviewRow, storageQuantity }: ResourceTriggerProps): React.ReactElement {
     const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
     const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
-    const columns = getEnabledColumns();
+    
+    // Use container ref for responsive column calculation
+    const containerRef = useRef<HTMLDivElement>(null);
+    const visibleColumns = useVisibleColumns(containerRef);
 
     // Helper to get value for a column
     const getColumnValue = (columnId: string) => {
-        if (!overviewRow) {
-            return null;
-        }
-
         switch (columnId) {
+            case 'currentStorage':
+                return storageQuantity !== undefined ? formatNumbers(storageQuantity) : null;
             case 'clearingPrice':
-                return formatNumbers(overviewRow.clearingPrice);
+                return overviewRow ? formatNumbers(overviewRow.clearingPrice) : null;
             case 'totalProduction':
-                return formatNumbers(overviewRow.totalProduction);
+                return overviewRow ? formatNumbers(overviewRow.totalProduction) : null;
             case 'totalSupply':
-                return formatNumbers(overviewRow.totalSupply);
+                return overviewRow ? formatNumbers(overviewRow.totalSupply) : null;
             case 'totalDemand':
-                return formatNumbers(overviewRow.totalDemand);
+                return overviewRow ? formatNumbers(overviewRow.totalDemand) : null;
             case 'totalSold':
-                return formatNumbers(overviewRow.totalSold);
+                return overviewRow ? formatNumbers(overviewRow.totalSold) : null;
             case 'marketFill':
                 return statusConfig ? (
                     <Badge variant='outline' className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}>
@@ -50,6 +52,8 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow }: Resou
         }
 
         switch (columnId) {
+            case 'currentStorage':
+                return 'text-foreground font-medium';
             case 'clearingPrice':
                 return 'text-foreground font-semibold';
             case 'totalProduction':
@@ -62,8 +66,28 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow }: Resou
         }
     };
 
+    // Get numeric value for a column
+    const getNumericValue = (columnId: string): number => {
+        switch (columnId) {
+            case 'currentStorage':
+                return storageQuantity ?? 0;
+            case 'clearingPrice':
+                return overviewRow?.clearingPrice ?? 0;
+            case 'totalProduction':
+                return overviewRow?.totalProduction ?? 0;
+            case 'totalSupply':
+                return overviewRow?.totalSupply ?? 0;
+            case 'totalDemand':
+                return overviewRow?.totalDemand ?? 0;
+            case 'totalSold':
+                return overviewRow?.totalSold ?? 0;
+            default:
+                return 0;
+        }
+    };
+
     return (
-        <div className='flex flex-1 items-center gap-2 min-w-0'>
+        <div ref={containerRef} className='flex flex-1 items-center gap-2 min-w-0'>
             {/* Icon */}
             <ProductIcon productName={name} size={32} />
 
@@ -94,13 +118,13 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow }: Resou
                 )}
             </div>
 
-            {/* ── Market stats — using column configuration ── */}
-            {overviewRow ? (
+            {/* ── Market stats — using dynamic column configuration ── */}
+            {visibleColumns.length > 0 ? (
                 <>
-                    {columns.map((column) => {
+                    {visibleColumns.map((column) => {
                         const value = getColumnValue(column.id);
                         const isMarketFillColumn = column.id === 'marketFill';
-                        const numericValue = overviewRow[column.id as keyof typeof overviewRow] as number;
+                        const numericValue = getNumericValue(column.id);
 
                         return isMarketFillColumn ? (
                             <div
@@ -120,24 +144,14 @@ export default function ResourceTrigger({ name, bid, offer, overviewRow }: Resou
                                 )}
                                 title={column.title}
                             >
-                                {value}
+                                {value || (overviewRow ? '—' : '')}
                             </span>
                         );
                     })}
                 </>
             ) : (
-                /* No overview data yet — preserve column widths so rows don't shift */
-                <>
-                    {columns.map((column) =>
-                        column.id === 'marketFill' ? (
-                            <div key={column.id} className={cn(getColumnClasses(column.id), 'flex justify-end')}>
-                                <span className='text-[10px] text-muted-foreground/30 italic'>—</span>
-                            </div>
-                        ) : (
-                            <div key={column.id} className={getColumnClasses(column.id)} />
-                        ),
-                    )}
-                </>
+                /* No columns visible — show placeholder */
+                <span className='text-[10px] text-muted-foreground/30 italic'>No columns fit</span>
             )}
         </div>
     );

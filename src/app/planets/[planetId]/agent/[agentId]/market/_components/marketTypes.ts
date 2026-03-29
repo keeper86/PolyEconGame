@@ -101,6 +101,7 @@ export type ResourceTriggerProps = {
     bid?: MarketBidEntry;
     offer?: MarketOfferEntry;
     overviewRow?: MarketOverviewRow;
+    storageQuantity?: number;
 };
 
 export type ResourceAccordionItemProps = {

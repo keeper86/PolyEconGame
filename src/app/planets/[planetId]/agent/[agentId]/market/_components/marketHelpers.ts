@@ -166,14 +166,14 @@ export function buildInitialState(
     for (const { name } of resources) {
         const bid = buyBids[name];
         const offer = sellOffers[name];
-        
+
         const offerPrice = offer?.offerPrice !== undefined ? String(offer.offerPrice) : '';
         const offerRetainment = offer?.offerRetainment !== undefined ? String(Math.round(offer.offerRetainment)) : '';
         const offerAutomated = offer?.automated ?? false;
         const bidPrice = bid?.bidPrice !== undefined ? String(bid.bidPrice) : '';
         const bidStorageTarget = bid?.bidStorageTarget !== undefined ? String(Math.round(bid.bidStorageTarget)) : '';
         const bidAutomated = bid?.automated ?? false;
-        
+
         result[name] = {
             offerPrice,
             offerRetainment,
@@ -182,7 +182,7 @@ export function buildInitialState(
             bidStorageTarget,
             bidAutomated,
             targetBufferTicks: '',
-            
+
             // Dirty state tracking - all false initially
             dirtyFields: {
                 offerPrice: false,
@@ -192,7 +192,7 @@ export function buildInitialState(
                 bidStorageTarget: false,
                 bidAutomated: false,
             },
-            
+
             // Saved state snapshots
             savedOfferPrice: offerPrice,
             savedOfferRetainment: offerRetainment,

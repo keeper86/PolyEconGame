@@ -307,7 +307,13 @@ export default function ResourceAccordionItem({
     return (
         <AccordionItem value={resourceName}>
             <AccordionTrigger className='hover:no-underline px-1'>
-                <ResourceTrigger name={resourceName} bid={bid} offer={offer} overviewRow={overviewRow} />
+                <ResourceTrigger
+                    name={resourceName}
+                    bid={bid}
+                    offer={offer}
+                    overviewRow={overviewRow}
+                    storageQuantity={inventoryQty}
+                />
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-5'>
