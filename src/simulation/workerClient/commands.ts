@@ -71,10 +71,7 @@ export function workerSetWorkerAllocationTargets(opts: {
 export function workerSetSellOffers(opts: {
     agentId: string;
     planetId: string;
-    offers: Record<
-        string,
-        { offerPrice?: number; offerQuantity?: number; offerRetainment?: number; automated?: boolean }
-    >;
+    offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, offers, timeoutMs } = opts;

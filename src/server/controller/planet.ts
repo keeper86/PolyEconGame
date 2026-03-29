@@ -529,7 +529,7 @@ type AgentOfferEntry = {
     agentId: string;
     agentName: string;
     offerPrice: number;
-    offerQuantity: number;
+    lastPlacedQuantity: number;
     lastSold: number;
     sellThrough: number;
     lastRevenue: number;
@@ -550,12 +550,12 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
         }
 
         const offerPrice = offer.lastOfferPrice ?? offer.offerPrice ?? INITIAL_FOOD_PRICE;
-        const offerQuantity = offer.lastPlacedQty ?? offer.offerQuantity ?? 0;
+        const lastPlacedQuantity = offer.lastPlacedQty ?? 0;
         const lastSold = offer.lastSold ?? 0;
         const lastRevenue = offer.lastRevenue ?? 0;
-        const sellThrough = offerQuantity > 0 ? Math.min(1, lastSold / offerQuantity) : 0;
+        const sellThrough = lastPlacedQuantity > 0 ? Math.min(1, lastSold / lastPlacedQuantity) : 0;
 
-        if (offerQuantity <= 0 && lastSold <= 0) {
+        if (lastPlacedQuantity <= 0 && lastSold <= 0) {
             continue;
         }
 
@@ -563,7 +563,7 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
             agentId: agent.id,
             agentName: agent.name,
             offerPrice,
-            offerQuantity,
+            lastPlacedQuantity,
             lastSold,
             sellThrough,
             lastRevenue,
@@ -578,7 +578,7 @@ const agentOfferSchema = z.object({
     agentId: z.string(),
     agentName: z.string(),
     offerPrice: z.number(),
-    offerQuantity: z.number(),
+    lastPlacedQuantity: z.number(),
     lastSold: z.number(),
     sellThrough: z.number(),
     lastRevenue: z.number(),

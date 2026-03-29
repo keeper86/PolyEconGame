@@ -16,57 +16,31 @@ export interface ValidationResult {
 }
 
 /**
- * Validates a sell offer price and quantity.
+ * Validates a sell offer price.
  * Returns validation result with error message if invalid.
- * If price or quantity is undefined, it's considered valid (user might be changing only one field).
+ * If price is undefined, it's considered valid (user might be changing only one field).
  */
-export function validateSellOffer(
-    price: number | undefined,
-    quantity: number | undefined,
-    availableStock: number,
-): ValidationResult {
-    // If both are undefined, nothing to validate
-    if (price === undefined && quantity === undefined) {
+export function validateSellOffer(price: number | undefined, _availableStock: number): ValidationResult {
+    // If price is undefined, nothing to validate
+    if (price === undefined) {
         return { isValid: true };
     }
 
-    // Price validation (only if provided)
-    if (price !== undefined) {
-        if (isNaN(price)) {
-            return { isValid: false, error: 'Price must be a valid number' };
-        }
-
-        if (price <= 0) {
-            return { isValid: false, error: 'Price must be greater than 0' };
-        }
-
-        if (price < PRICE_FLOOR) {
-            return { isValid: false, error: `Price must be at least ${PRICE_FLOOR}` };
-        }
-
-        if (price > PRICE_CEIL) {
-            return { isValid: false, error: `Price must not exceed ${PRICE_CEIL}` };
-        }
+    // Price validation
+    if (isNaN(price)) {
+        return { isValid: false, error: 'Price must be a valid number' };
     }
 
-    // Quantity validation (only if provided)
-    if (quantity !== undefined) {
-        if (isNaN(quantity)) {
-            return { isValid: false, error: 'Quantity must be a valid number' };
-        }
+    if (price <= 0) {
+        return { isValid: false, error: 'Price must be greater than 0' };
+    }
 
-        if (quantity < 0) {
-            return { isValid: false, error: 'Quantity must be non-negative' };
-        }
+    if (price < PRICE_FLOOR) {
+        return { isValid: false, error: `Price must be at least ${PRICE_FLOOR}` };
+    }
 
-        if (quantity > 0 && quantity < EPSILON) {
-            return { isValid: false, error: `Quantity must be at least ${EPSILON}` };
-        }
-
-        // Check against available stock
-        if (quantity > availableStock + EPSILON) {
-            return { isValid: false, error: `Quantity exceeds available stock (${availableStock.toFixed(2)})` };
-        }
+    if (price > PRICE_CEIL) {
+        return { isValid: false, error: `Price must not exceed ${PRICE_CEIL}` };
     }
 
     return { isValid: true };
@@ -198,14 +172,12 @@ export function validateAndPrepareSellOffer(
     offer: AgentMarketOfferState,
     availableStock: number,
 ): { price: number; quantity: number } | null {
-    // Calculate effective quantity based on retainment if set
+    // Calculate effective quantity based on retainment
     const effectiveQuantity =
-        offer.offerRetainment !== undefined
-            ? Math.max(0, availableStock - offer.offerRetainment)
-            : (offer.offerQuantity ?? 0);
+        offer.offerRetainment !== undefined ? Math.max(0, availableStock - offer.offerRetainment) : 0;
 
     // Validate the offer
-    const validation = validateSellOffer(offer.offerPrice, effectiveQuantity, availableStock);
+    const validation = validateSellOffer(offer.offerPrice, availableStock);
 
     if (!validation.isValid) {
         console.warn(`Invalid sell offer for ${offer.resource.name}: ${validation.error}`);

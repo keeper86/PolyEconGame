@@ -142,7 +142,7 @@ export default function ResourceAccordionItem({
         if (local.offerPrice !== '') {
             const offerPrice = parseFloat(local.offerPrice);
             if (!isNaN(offerPrice)) {
-                const validation = validateSellOffer(offerPrice, undefined, inventoryQty);
+                const validation = validateSellOffer(offerPrice, inventoryQty);
                 if (!validation.isValid) {
                     validationErrors.offerPrice = validation.error;
                 }
@@ -322,7 +322,7 @@ export default function ResourceAccordionItem({
 
         // Validate sell price only (retainment just needs to be ≥ 0)
         if (!isNaN(offerPrice)) {
-            const validation = validateSellOffer(!isNaN(offerPrice) ? offerPrice : undefined, undefined, inventoryQty);
+            const validation = validateSellOffer(!isNaN(offerPrice) ? offerPrice : undefined, inventoryQty);
             if (!validation.isValid) {
                 setSellErrorMsg(`Sell validation failed: ${validation.error}`);
                 return;

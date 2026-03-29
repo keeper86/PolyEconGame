@@ -24,7 +24,6 @@ export type MarketBidEntry = {
 
 export type MarketOfferEntry = {
     offerPrice?: number;
-    offerQuantity?: number;
     offerRetainment?: number;
     lastSold?: number;
     lastRevenue?: number;

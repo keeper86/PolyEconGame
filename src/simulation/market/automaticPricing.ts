@@ -105,8 +105,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
-            const rawSellableQty = Math.max(0, inventoryQty - reserved);
-            const sellableQty = rawSellableQty;
 
             if (!assets.market.sell[resource.name]) {
                 assets.market.sell[resource.name] = { resource, automated: true };
@@ -114,9 +112,10 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const offer = assets.market.sell[resource.name];
             offer.resource = resource;
+            offer.offerRetainment = reserved; // Keep at least the reserved amount
 
             const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
-            adjustOfferPrice(offer, sellableQty, initialPrice);
+            adjustOfferPrice(offer, inventoryQty, initialPrice);
         }
     }
 
@@ -208,14 +207,7 @@ function sellThroughFactor(sellThrough: number): number {
     }
 }
 
-function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number, initialPrice: number): void {
-    // Ensure quantity is either 0 or >= EPSILON
-    if (newOfferQuantity > 0 && newOfferQuantity < EPSILON) {
-        offer.offerQuantity = 0;
-    } else {
-        offer.offerQuantity = newOfferQuantity;
-    }
-
+function adjustOfferPrice(offer: AgentMarketOfferState, inventoryQty: number, initialPrice: number): void {
     const sold = offer.lastSold;
     const price = offer.offerPrice;
 
@@ -224,9 +216,13 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
-    // When the agent has no stock this tick (supply-constrained), treat it as
+    // Calculate effective sell quantity based on retainment
+    const retainment = offer.offerRetainment ?? 0;
+    const effectiveQuantity = Math.max(0, inventoryQty - retainment);
+
+    // When the agent has no stock to sell this tick (supply-constrained), treat it as
     // full sell-through: the good is scarce and the price should rise.
-    if (offer.offerQuantity === 0) {
+    if (effectiveQuantity === 0) {
         const factor = sellThroughFactor(1);
         const newPrice = price * factor;
         // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
@@ -238,7 +234,7 @@ function adjustOfferPrice(offer: AgentMarketOfferState, newOfferQuantity: number
         return;
     }
 
-    const sellThrough = sold / offer.offerQuantity;
+    const sellThrough = sold / effectiveQuantity;
     const factor = (1 + 0.01 * nextRandom()) * sellThroughFactor(sellThrough);
     const newPrice = price * factor;
 

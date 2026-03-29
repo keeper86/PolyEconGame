@@ -151,8 +151,8 @@ export default function AgentFinancialOverview({
                             {foodMarket.offerPrice != null && (
                                 <Stat label='Offer price' value={formatNumbers(foodMarket.offerPrice)} />
                             )}
-                            {foodMarket.offerQuantity != null && (
-                                <Stat label='Offer quantity' value={formatNumbers(foodMarket.offerQuantity)} />
+                            {foodMarket.offerRetainment != null && (
+                                <Stat label='Retainment' value={formatNumbers(foodMarket.offerRetainment)} />
                             )}
                             {foodMarket.lastSold != null && (
                                 <Stat label='Last sold (qty)' value={formatNumbers(foodMarket.lastSold)} />

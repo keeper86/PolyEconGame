@@ -18,7 +18,7 @@ export type OfferRow = {
     agentId: string;
     agentName: string;
     offerPrice: number;
-    offerQuantity: number;
+    lastPlacedQuantity: number;
     lastSold: number;
     sellThrough: number;
     lastRevenue: number;
@@ -98,7 +98,7 @@ export default function OfferTable({ offers, clearingPrice }: Props): React.Reac
                                     {formatNumbers(row.offerPrice)}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums'>
-                                    {formatNumbers(row.offerQuantity)}
+                                    {formatNumbers(row.lastPlacedQuantity)}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.lastSold)}</td>
                                 <td

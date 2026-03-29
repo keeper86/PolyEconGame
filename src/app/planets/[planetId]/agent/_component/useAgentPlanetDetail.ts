@@ -23,7 +23,6 @@ export type AgentPlanetAssets = {
         sell: {
             [resourceName: string]: {
                 offerPrice?: number;
-                offerQuantity?: number;
                 offerRetainment?: number;
                 lastSold?: number;
                 lastRevenue?: number;

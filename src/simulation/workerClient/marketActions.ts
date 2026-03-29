@@ -52,9 +52,6 @@ export function handleSetSellOffers(
         if (update.offerPrice !== undefined && update.offerPrice > 0) {
             offer.offerPrice = Math.max(PRICE_FLOOR, update.offerPrice);
         }
-        if (update.offerQuantity !== undefined && update.offerQuantity >= 0) {
-            offer.offerQuantity = update.offerQuantity;
-        }
         if (update.offerRetainment !== undefined && update.offerRetainment >= 0) {
             offer.offerRetainment = update.offerRetainment;
         }

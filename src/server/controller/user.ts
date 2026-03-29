@@ -431,8 +431,6 @@ export const setSellOffers = () => {
                     z.object({
                         /** Price per unit (currency). Must be > 0. */
                         offerPrice: z.number().positive().optional(),
-                        /** Units to offer for sale this tick. 0 = withdraw offer. */
-                        offerQuantity: z.number().min(0).optional(),
                         /** Keep at least this many units — sell qty = max(0, inventory − retainment). */
                         offerRetainment: z.number().min(0).optional(),
                         /** When true, the auto-pricing engine manages this offer each tick. */
@@ -476,12 +474,8 @@ export const setSellOffers = () => {
                 // Use queryStorageFacility to get non-escrowed stock
                 const inventoryQty = queryStorageFacility(sellAssets.storageFacility, resourceName);
 
-                // Validate price only when using retainment (qty is computed dynamically)
-                const validation = validateSellOffer(
-                    offer.offerPrice,
-                    offer.offerRetainment !== undefined ? undefined : offer.offerQuantity,
-                    inventoryQty,
-                );
+                // Validate price (quantity is computed dynamically from retainment)
+                const validation = validateSellOffer(offer.offerPrice, inventoryQty);
 
                 if (!validation.isValid) {
                     throw new TRPCError({

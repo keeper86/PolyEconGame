@@ -71,7 +71,7 @@ function makeCoalSeller(coalStock: number, askPrice: number, id = 'coal-seller',
             [COAL]: {
                 resource: coalResourceType,
                 offerPrice: askPrice,
-                offerQuantity: coalStock,
+                offerRetainment: 0,
             },
         },
         buy: {},
@@ -639,7 +639,7 @@ describe('marketTick — agent buying', () => {
                 [FOOD]: {
                     resource: agriculturalProductResourceType,
                     offerPrice: 1.0,
-                    offerQuantity: 10000,
+                    offerRetainment: 0,
                 },
             },
             buy: {},

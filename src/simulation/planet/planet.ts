@@ -246,16 +246,9 @@ export type AgentMarketOfferState = {
      */
     offerPrice?: number;
     /**
-     * Quantity offered for sale this tick (units).
-     * Drawn from the agent's storage facility.
-     * When `offerRetainment` is set this field is ignored in favour of the
-     * dynamic computation `max(0, inventory − offerRetainment)`.
-     */
-    offerQuantity?: number;
-    /**
      * Keep at least this many units in storage — sell quantity per tick is
-     * computed dynamically as `max(0, freeInventory − offerRetainment)`.
-     * Takes precedence over `offerQuantity` when set.  Human-settable.
+     * computed dynamically as `max(0, inventory − offerRetainment)`.
+     * Human-settable.
      */
     offerRetainment?: number;
     /** Units actually sold during the last market clearing tick. */
