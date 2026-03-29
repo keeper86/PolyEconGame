@@ -141,6 +141,12 @@ export function validateBuyBid(
     assets: Pick<AgentPlanetAssets, 'storageFacility' | 'deposits'>,
 ): ValidationResult {
     const { bidPrice, bidStorageTarget } = bid;
+
+    // Validate bidStorageTarget before clamping — a negative target is always invalid.
+    if (bidStorageTarget !== undefined && bidStorageTarget < 0) {
+        return { isValid: false, error: 'Quantity must be non-negative' };
+    }
+
     const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, resource);
     const currentInventory = queryStorageFacility(assets.storageFacility, resource.name);
     const quantity = bidStorageTarget !== undefined ? Math.max(0, bidStorageTarget - currentInventory) : 0;

@@ -92,7 +92,10 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
 
         for (const { resourceName, qty, price } of pendingBids) {
             const bid = assets.market.buy[resourceName]!;
-            const scaledQty = Math.max(0, qty * (0.99 * scaleFactor));
+            // Apply a 0.99 safety margin only when deposit-scaling is active to avoid
+            // rounding-induced overspend. Unrestrained bids are placed at full quantity.
+            const safeScale = isDepositLimited ? 0.99 * scaleFactor : scaleFactor;
+            const scaledQty = Math.max(0, qty * safeScale);
 
             if (scaledQty <= 0) {
                 // Bid dropped entirely due to exhausted deposits — warn human players
