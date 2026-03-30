@@ -16,22 +16,22 @@ export function settleHouseholds(
     // Map resource name to service name
     let serviceName: 'grocery' | 'retail' | 'logistics' | 'healthcare' | 'construction' | 'administrative';
     switch (resourceName) {
-        case 'groceryService':
+        case 'Grocery Service':
             serviceName = 'grocery';
             break;
-        case 'healthcareService':
+        case 'Healthcare Service':
             serviceName = 'healthcare';
             break;
-        case 'administrativeService':
+        case 'Administrative Service':
             serviceName = 'administrative';
             break;
-        case 'logisticsService':
+        case 'Logistics Service':
             serviceName = 'logistics';
             break;
-        case 'retailService':
+        case 'Retail Service':
             serviceName = 'retail';
             break;
-        case 'constructionService':
+        case 'Construction Service':
             serviceName = 'construction';
             break;
         default:

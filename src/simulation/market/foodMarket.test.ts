@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
-    FOOD_BUFFER_TARGET_TICKS,
-    FOOD_PER_PERSON_PER_TICK,
-    INITIAL_FOOD_PRICE,
+    GROCERY_BUFFER_TARGET_TICKS,
+    SERVICE_PER_PERSON_PER_TICK,
+    INITIAL_SERVICE_PRICE,
     PRICE_ADJUST_MAX_UP,
 } from '../constants';
 import { putIntoStorageFacility } from '../planet/storage';
@@ -12,27 +12,27 @@ import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
-import { agriculturalProductResourceType, clothingResourceType } from '../planet/resources';
+import { groceryServiceResourceType, retailServiceResourceType } from '../planet/services';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const FOOD = agriculturalProductResourceType.name;
-const CLOTHING = clothingResourceType.name;
+const GROCERY_SERVICE = groceryServiceResourceType.name;
+const RETAIL_SERVICE = retailServiceResourceType.name;
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
     return makeGS(planet, agents, 1);
 }
 
-function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
+function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
     const agent = makeAgent(id);
-    // Add a food-producing facility
+    // Add a grocery service-producing facility
     agent.assets.p.productionFacilities = [
         {
             planetId: 'p',
-            id: 'food-fac',
-            name: 'Food Farm',
+            id: 'grocery-fac',
+            name: 'Grocery Store',
             maxScale: 1000,
             scale: 1,
             powerConsumptionPerTick: 0,
@@ -49,7 +49,7 @@ function makeAgentWithFoodFacility(id = 'food-agent'): Agent {
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },
             needs: [],
-            produces: [{ resource: agriculturalProductResourceType, quantity: 1000 }],
+            produces: [{ resource: groceryServiceResourceType, quantity: 1000 }],
         },
     ];
     return agent;
@@ -495,8 +495,11 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         let total = 0;
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
-                // Clothing is still stored in inventory for now
-                total += cat.inventory[CLOTHING] ?? 0;
+                // Clothing is consumed as retail service, check retail service buffer
+                // Convert buffer ticks to units: buffer * SERVICE_PER_PERSON_PER_TICK * population
+                const retailBuffer = cat.services.retail.buffer;
+                const retailUnits = retailBuffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
+                total += retailUnits;
             }),
         );
         return total;

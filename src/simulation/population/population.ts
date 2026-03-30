@@ -109,9 +109,6 @@ export type PopulationCategory = {
         administrative: ServiceState;
     };
 
-    // Inventory for non-service resources (e.g., clothing, furniture, etc.)
-    inventory: Record<string, number>;
-
     deaths: DeathStats;
     disabilities: DisabilityStats;
     retirements: RetirementStats;

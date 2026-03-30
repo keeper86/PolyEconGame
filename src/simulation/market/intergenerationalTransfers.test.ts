@@ -81,7 +81,8 @@ function placePeople(
     const cat = planet.population.demography[age][occ][edu].novice;
     cat.total = total;
     cat.wealth = { mean: opts?.wealthMean ?? 0, variance: 0 };
-    cat.inventory = { [FOOD]: opts?.foodStock ?? 0 };
+    // Set grocery service buffer instead of food inventory
+    cat.services.grocery.buffer = opts?.foodStock ?? 0;
 }
 
 /** Read back the total wealth at one (age, occ, edu) across all skills. */
@@ -346,7 +347,8 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
         const partialFood = (foodTarget * 100) / 2; // 50 % stocked
         planet.population.demography[1].unoccupied.none.novice.total = 100;
         planet.population.demography[1].unoccupied.none.novice.wealth = { mean: 0, variance: 0 };
-        planet.population.demography[1].unoccupied.none.novice.inventory = { [FOOD]: partialFood };
+        // Set grocery service buffer instead of food inventory
+        planet.population.demography[1].unoccupied.none.novice.services.grocery.buffer = partialFood;
 
         intergenerationalTransfersForPlanet(planet);
 
