@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
     GROCERY_BUFFER_TARGET_TICKS,
+    GROCERY_PER_PERSON_PER_TICK,
     SERVICE_PER_PERSON_PER_TICK,
-    INITIAL_SERVICE_PRICE,
+    INITIAL_GROCERY_PRICE,
     PRICE_ADJUST_MAX_UP,
 } from '../constants';
 import { putIntoStorageFacility } from '../planet/storage';
@@ -13,6 +14,8 @@ import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation 
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 import { groceryServiceResourceType, retailServiceResourceType } from '../planet/services';
+import { agriculturalProductResourceType } from '../planet/resources';
+import { clothingResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -90,13 +93,13 @@ function setFoodOffer(agent: Agent, offerPrice: number, lastSold?: number): void
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('foodMarketTick', () => {
+describe('groceryMarketTick', () => {
     let planet: Planet;
-    let foodAgent: Agent;
+    let groceryAgent: Agent;
 
     beforeEach(() => {
         planet = makePlanetWithPopulation({ none: 1000 }).planet;
-        foodAgent = makeAgentWithFoodFacility();
+        groceryAgent = makeAgentWithGroceryServiceFacility();
     });
 
     it('runs without error on fresh planet', () => {

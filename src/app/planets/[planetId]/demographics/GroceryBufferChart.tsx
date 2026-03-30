@@ -152,7 +152,7 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
     const { data, yDomain } = useMemo(() => {
-                const rawData: ChartRow[] = rows
+        const rawData: ChartRow[] = rows
             .map((r) => {
                 const row: ChartRow = { age: r.age };
                 let ageHasData = false;

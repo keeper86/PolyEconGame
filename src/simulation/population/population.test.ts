@@ -281,9 +281,7 @@ describe('transferPopulation', () => {
         // Transferring 100 out of 200 → fraction = 0.5
         // bufferTransfer = 10 * 0.5 = 5
         expect(src.services.grocery.buffer).toBeCloseTo(5, 0);
-        expect(
-            planet.population.demography[25].employed.primary.novice.services.grocery.buffer,
-        ).toBeCloseTo(5, 0);
+        expect(planet.population.demography[25].employed.primary.novice.services.grocery.buffer).toBeCloseTo(5, 0);
     });
 
     it('conserves total across transfer', () => {

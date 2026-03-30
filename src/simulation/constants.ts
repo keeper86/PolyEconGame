@@ -2,10 +2,13 @@ export const START_YEAR = 2200;
 export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
-export const FOOD_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR; // tons per person per tick
+export const GROCERY_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR; // grocery service units per person per tick
 
 /** Service consumption per person per tick (1 unit/person/tick for all services) */
 export const SERVICE_PER_PERSON_PER_TICK = 1;
+
+// Backward compatibility alias - TODO: Remove after refactoring
+export const FOOD_PER_PERSON_PER_TICK = GROCERY_PER_PERSON_PER_TICK;
 
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
@@ -25,20 +28,22 @@ export const isMonthBoundary = (tick: number): boolean => tick > 0 && tick % TIC
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
 
 // ---------------------------------------------------------------------------
-// Food market constants
+// Grocery service market constants
 // ---------------------------------------------------------------------------
 
 /**
- * Household food buffer target expressed in ticks of consumption.
- * foodTarget per person = FOOD_BUFFER_TARGET_TICKS × FOOD_PER_PERSON_PER_TICK
+ * Household grocery service buffer target expressed in ticks of consumption.
+ * groceryTarget per person = GROCERY_BUFFER_TARGET_TICKS × GROCERY_PER_PERSON_PER_TICK
  */
-export const FOOD_BUFFER_TARGET_TICKS = 30;
+export const GROCERY_BUFFER_TARGET_TICKS = 30;
+
+// Backward compatibility alias - TODO: Remove after refactoring
+export const FOOD_BUFFER_TARGET_TICKS = GROCERY_BUFFER_TARGET_TICKS;
 
 /**
  * Service buffer targets expressed in ticks of consumption.
  * Each service has its own buffer target for household inventory management.
  */
-export const GROCERY_BUFFER_TARGET_TICKS = 30;
 export const HEALTHCARE_BUFFER_TARGET_TICKS = 30;
 export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 30;
 export const LOGISTICS_BUFFER_TARGET_TICKS = 30;
@@ -46,25 +51,32 @@ export const RETAIL_BUFFER_TARGET_TICKS = 30;
 export const CONSTRUCTION_BUFFER_TARGET_TICKS = 30;
 
 /**
- * Price adjustment rate when inventory is *below* target (scarcity → price rises).
+ * Price adjustment rate when grocery service inventory is *below* target (scarcity → price rises).
  */
-export const FOOD_PRICE_ALPHA = 0.002;
+export const GROCERY_PRICE_ALPHA = 0.002;
 
 /**
- * Price adjustment rate when inventory is *above* target (surplus → price falls).
+ * Price adjustment rate when grocery service inventory is *above* target (surplus → price falls).
  */
-export const FOOD_PRICE_BETA = 0.001;
+export const GROCERY_PRICE_BETA = 0.001;
 
 /**
- * Minimum food price (prevents zero or negative prices).
+ * Minimum grocery service price (prevents zero or negative prices).
  */
-export const FOOD_PRICE_FLOOR = 0.01;
-export const FOOD_PRICE_CEIL = 1000000.0;
+export const GROCERY_PRICE_FLOOR = 0.01;
+export const GROCERY_PRICE_CEIL = 1000000.0;
 
 /**
- * Initial food price per unit (currency units per ton of agricultural product).
+ * Initial grocery service price per unit (currency units per service unit).
  */
-export const INITIAL_FOOD_PRICE = 1.0;
+export const INITIAL_GROCERY_PRICE = 1.0;
+
+// Backward compatibility aliases - TODO: Remove after refactoring
+export const FOOD_PRICE_ALPHA = GROCERY_PRICE_ALPHA;
+export const FOOD_PRICE_BETA = GROCERY_PRICE_BETA;
+export const FOOD_PRICE_FLOOR = GROCERY_PRICE_FLOOR;
+export const FOOD_PRICE_CEIL = GROCERY_PRICE_CEIL;
+export const INITIAL_FOOD_PRICE = INITIAL_GROCERY_PRICE;
 
 /**
  * Initial service price per unit (currency units per service unit).

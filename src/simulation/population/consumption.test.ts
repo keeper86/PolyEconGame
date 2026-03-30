@@ -1,4 +1,4 @@
-    /**
+/**
  * population/consumption.test.ts
  *
  * Unit tests for the consumption sub-system: starvation level tracking
@@ -8,13 +8,9 @@
  * time-constant of STARVATION_ADJUST_TICKS.
  */
 
-import { describe, it, expect } from 'vitest';
-import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeServices } from './consumption';
-import { SERVICE_PER_PERSON_PER_TICK } from '../constants';
+import { describe, expect, it } from 'vitest';
 import { makePopulation } from '../utils/testHelper';
-import { groceryServiceResourceType } from '../planet/services';
-
-const GROCERY_SERVICE = groceryServiceResourceType.name;
+import { STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeServices, updateStarvationLevel } from './consumption';
 
 describe('updateStarvationLevel', () => {
     it('returns 0 when fully served and not starving', () => {

@@ -1,5 +1,4 @@
-import { SERVICE_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
-import { groceryServiceResourceType } from '../planet/services';
+import { TICKS_PER_YEAR } from '../constants';
 import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import { STARVATION_ACUTE_POWER } from './mortality';

@@ -32,14 +32,14 @@
  * deficiencies may have other effects in the future.
  */
 
-import { SERVICE_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
+import { SERVICE_PER_PERSON_PER_TICK } from '../constants';
 import {
+    administrativeServiceResourceType,
+    constructionServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
-    administrativeServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
-    constructionServiceResourceType,
 } from '../planet/services';
 import { forEachPopulationCohort, type Population } from './population';
 

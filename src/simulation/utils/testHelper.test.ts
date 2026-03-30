@@ -278,7 +278,6 @@ describe('makeStorageFacility', () => {
     });
 });
 
-
 describe('makeProductionFacility', () => {
     it('creates facility with worker requirements', () => {
         const pf = makeProductionFacility({ none: 10, primary: 5 });

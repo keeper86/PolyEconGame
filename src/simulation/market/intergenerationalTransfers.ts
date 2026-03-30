@@ -1,9 +1,9 @@
 import {
-    FOOD_BUFFER_TARGET_TICKS,
-    FOOD_PER_PERSON_PER_TICK,
+    GROCERY_BUFFER_TARGET_TICKS,
+    GROCERY_PER_PERSON_PER_TICK,
     GENERATION_GAP,
     GENERATION_KERNEL_N,
-    INITIAL_FOOD_PRICE,
+    INITIAL_GROCERY_PRICE,
     MIN_EMPLOYABLE_AGE,
     SUPPORT_WEIGHT_SIGMA,
     SERVICE_PER_PERSON_PER_TICK,
@@ -33,7 +33,7 @@ interface SurplusSnapshot {
 
 /** Per-age aggregated dependent need. */
 interface DependentNeed {
-    /** Total currency needed to fill food stock to the target level. */
+    /** Total currency needed to fill grocery service buffer to the target level. */
     totalNeed: number;
     /** Total dependent population at this age. */
     totalPop: number;
@@ -46,8 +46,8 @@ interface DependentNeed {
 interface CellAggregate {
     pop: number;
     wealth: GaussianMoments;
-    /** Total food stock (Agricultural Product) across all skill sub-cells. */
-    foodStock: number;
+    /** Total grocery service buffer (in service units) across all skill sub-cells. */
+    groceryBuffer: number;
 }
 
 /**
@@ -71,7 +71,7 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
         for (const occ of OCCUPATIONS) {
             ageCells[occ] = {} as { [L in EducationLevelType]: CellAggregate };
             for (const edu of educationLevelKeys) {
-                ageCells[occ][edu] = { pop: 0, wealth: { mean: 0, variance: 0 }, foodStock: 0 };
+                ageCells[occ][edu] = { pop: 0, wealth: { mean: 0, variance: 0 }, groceryBuffer: 0 };
             }
         }
 
@@ -83,9 +83,9 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             const cell = ageCells[occ][edu];
             cell.wealth = mergeGaussianMoments(cell.pop, cell.wealth, n, cat.wealth);
             cell.pop += n;
-            // Convert grocery service buffer ticks to equivalent food units
+            // Convert grocery service buffer ticks to equivalent service units
             // buffer ticks * SERVICE_PER_PERSON_PER_TICK * n = total service units
-            cell.foodStock += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * n;
+            cell.groceryBuffer += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * n;
         });
 
         cache[age] = ageCells;
@@ -167,12 +167,12 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
 
-    // Price level converts physical food units into wealth (currency) units.
+    // Price level converts grocery service units into wealth (currency) units.
     // Defaults to 1.0 when not yet set.
-    const foodPrice = planet.marketPrices[groceryServiceResourceType.name] ?? INITIAL_FOOD_PRICE;
+    const groceryPrice = planet.marketPrices[groceryServiceResourceType.name] ?? INITIAL_GROCERY_PRICE;
 
-    const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
-    const baseFoodCost = foodTargetPerPerson * foodPrice;
+    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * GROCERY_PER_PERSON_PER_TICK;
+    const baseGroceryCost = groceryTargetPerPerson * groceryPrice;
 
     // Build the aggregate cache once — eliminates repeated SKILL iterations in
     // every nested loop below (aggregatePopulation / aggregateWealth /
@@ -200,7 +200,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 if (age < MIN_EMPLOYABLE_AGE) {
                     continue;
                 }
-                const raw = effectiveSurplus(wealth.mean, wealth.variance, baseFoodCost, pop);
+                const raw = effectiveSurplus(wealth.mean, wealth.variance, baseGroceryCost, pop);
                 totalSurplus += raw;
                 totalSupporterPop += pop;
             }
@@ -218,13 +218,13 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
             for (const occ of OCCUPATIONS) {
                 for (const edu of educationLevelKeys) {
-                    const { pop, foodStock } = cache[age][occ][edu];
+                    const { pop, groceryBuffer } = cache[age][occ][edu];
                     if (pop <= 0) {
                         continue;
                     }
-                    const perCapitaFoodStock = foodStock / pop;
-                    const gap = Math.max(0, targetPerPerson - perCapitaFoodStock);
-                    totalNeed += gap * foodPrice * pop;
+                    const perCapitaGroceryBuffer = groceryBuffer / pop;
+                    const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
+                    totalNeed += gap * groceryPrice * pop;
                     totalPop += pop;
                 }
             }
@@ -234,7 +234,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
         return needs;
     };
 
-    const survivalNeeds = computeDependentNeeds(foodTargetPerPerson);
+    const survivalNeeds = computeDependentNeeds(groceryTargetPerPerson);
     const remaining = survivalSurplusSnapshot.map((s) => s.totalSurplus);
 
     for (const [age, dependentNeed] of survivalNeeds.entries()) {
@@ -289,7 +289,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
         // Track actual debits to ensure credit matches exactly.
         let actualTotalDebited = 0;
         for (const { supAge, amount } of transfers) {
-            const debited = debitSupporters(cache, demography, supAge, amount, baseFoodCost, transferMatrix);
+            const debited = debitSupporters(cache, demography, supAge, amount, baseGroceryCost, transferMatrix);
             remaining[supAge] -= debited;
             actualTotalDebited += debited;
         }
@@ -298,7 +298,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
             continue;
         }
 
-        creditDependents(cache, demography, age, actualTotalDebited, foodTargetPerPerson, foodPrice, transferMatrix);
+        creditDependents(cache, demography, age, actualTotalDebited, groceryTargetPerPerson, groceryPrice, transferMatrix);
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -377,7 +377,7 @@ function creditDependents(
     age: number,
     amount: number,
     targetPerPerson: number,
-    foodPrice: number,
+    groceryPrice: number,
     transferMatrix?: PopulationTransferMatrix,
 ): void {
     if (amount <= 0) {
@@ -397,13 +397,13 @@ function creditDependents(
 
     for (const occ of OCCUPATIONS) {
         for (const edu of educationLevelKeys) {
-            const { pop, foodStock, wealth } = cache[age][occ][edu];
+            const { pop, groceryBuffer, wealth } = cache[age][occ][edu];
             if (pop <= 0) {
                 continue;
             }
-            const perCapitaFoodStock = foodStock / pop;
-            const gap = Math.max(0, targetPerPerson - perCapitaFoodStock);
-            const costGap = gap * foodPrice;
+            const perCapitaGroceryBuffer = groceryBuffer / pop;
+            const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
+            const costGap = gap * groceryPrice;
             const selfFund = Math.max(0, wealth.mean);
             const need = Math.max(0, costGap - selfFund) * pop;
             cells.push({ occ, edu, pop, need });

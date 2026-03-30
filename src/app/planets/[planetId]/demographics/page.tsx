@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
-import FoodBufferChart from './FoodBufferChart';
+import GroceryBufferChart from './GroceryBufferChart';
 import IntergenerationalTransferChart from './IntergenerationalTransferChart';
 import NutritionHeatmapChart from './NutritionHeatmapChart';
 import PlanetDemography from './PlanetDemography';
@@ -266,7 +266,7 @@ export default function PlanetDemographicsPage() {
             <div className='my-3 border-t' />
 
             <NutritionHeatmapChart rows={rows} groupMode={group} />
-            <FoodBufferChart rows={rows} groupMode={group} />
+            <GroceryBufferChart rows={rows} groupMode={group} />
         </>
     );
 }

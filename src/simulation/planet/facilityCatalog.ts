@@ -41,12 +41,6 @@ import {
     textileMill,
     vehicleFactory,
     waterExtractionFacility,
-    administrativeCenter,
-    constructionCompany,
-    groceryStore,
-    healthcareClinic,
-    logisticsCompany,
-    retailStore,
 } from './facilities';
 
 export type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
