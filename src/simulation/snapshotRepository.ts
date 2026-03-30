@@ -48,7 +48,7 @@ export const computeGlobalStarvation = (planet: Planet): number => {
                 for (const skill of SKILL) {
                     const cat = cohort[occ][edu][skill];
                     if (cat.total > 0) {
-                        totalStarvation += cat.starvationLevel * cat.total;
+                        totalStarvation += cat.services.grocery.starvationLevel * cat.total;
                         totalPop += cat.total;
                     }
                 }

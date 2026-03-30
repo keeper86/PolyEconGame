@@ -594,9 +594,9 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: agriculturalProductResourceType, quantity: 50 },
+        { resource: agriculturalProductResourceType, quantity: 20 },
         { resource: packagingResourceType, quantity: 1 },
-        { resource: chemicalResourceType, quantity: 80 },
+        { resource: chemicalResourceType, quantity: 100 },
         { resource: waterResourceType, quantity: 100 },
     ],
     produces: [{ resource: pharmaceuticalResourceType, quantity: 10 }],
@@ -618,8 +618,8 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: agriculturalProductResourceType, quantity: 100 },
-        { resource: packagingResourceType, quantity: 20 },
+        { resource: agriculturalProductResourceType, quantity: 60 },
+        { resource: packagingResourceType, quantity: 10 },
         { resource: waterResourceType, quantity: 100 },
     ],
     produces: [{ resource: processedFoodResourceType, quantity: 80 }],
@@ -1096,13 +1096,35 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: processedFoodResourceType, quantity: 50 },
-        { resource: beverageResourceType, quantity: 50 },
+        { resource: processedFoodResourceType, quantity: 20 },
+        { resource: beverageResourceType, quantity: 10 },
         { resource: packagingResourceType, quantity: 10 },
         { resource: logisticsServiceResourceType, quantity: 20 },
         { resource: administrativeServiceResourceType, quantity: 1 },
     ],
     produces: [{ resource: groceryServiceResourceType, quantity: 100 }],
+});
+
+export const groceryStore = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Grocery Store' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.3,
+    workerRequirement: {
+        none: 20,
+        primary: 50,
+        secondary: 40,
+        tertiary: 0,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: agriculturalProductResourceType, quantity: 100 },
+        { resource: waterSourceResourceType, quantity: 40 },
+    ],
+    produces: [{ resource: groceryServiceResourceType, quantity: 50 }],
 });
 
 export const retailChain = (planetId: string, id: string): ProductionFacility => ({
@@ -1130,6 +1152,30 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
     produces: [{ resource: retailServiceResourceType, quantity: 100 }],
 });
 
+export const retailStore = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Retail Store' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.3,
+    workerRequirement: {
+        none: 20,
+        primary: 50,
+        secondary: 30,
+        tertiary: 0,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: consumerElectronicsResourceType, quantity: 10 },
+        { resource: clothingResourceType, quantity: 10 },
+        { resource: furnitureResourceType, quantity: 20 },
+        { resource: logisticsServiceResourceType, quantity: 10 },
+    ],
+    produces: [{ resource: retailServiceResourceType, quantity: 50 }],
+});
+
 export const hospital = (planetId: string, id: string): ProductionFacility => ({
     planetId,
     id,
@@ -1146,7 +1192,7 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: pharmaceuticalResourceType, quantity: 20 },
+        { resource: pharmaceuticalResourceType, quantity: 1 },
         { resource: logisticsServiceResourceType, quantity: 10 },
         { resource: administrativeServiceResourceType, quantity: 3 },
     ],

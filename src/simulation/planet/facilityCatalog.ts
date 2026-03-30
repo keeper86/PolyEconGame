@@ -41,6 +41,12 @@ import {
     textileMill,
     vehicleFactory,
     waterExtractionFacility,
+    administrativeCenter,
+    constructionCompany,
+    groceryStore,
+    healthcareClinic,
+    logisticsCompany,
+    retailStore,
 } from './facilities';
 
 export type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
@@ -103,14 +109,14 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(vehicleFactory),
 ];
 
-export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'consumerGood'];
+export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 
 export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     source: 'Source',
     raw: 'Raw Extraction',
     refined: 'Refinement',
     manufactured: 'Manufacturing',
-    consumerGood: 'Consumer Goods',
+    services: 'Services',
 };
 
 export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntry[]> = {
@@ -118,7 +124,7 @@ export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntr
     raw: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'raw'),
     refined: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'refined'),
     manufactured: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'manufactured'),
-    consumerGood: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'consumerGood'),
+    services: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'services'),
 };
 
 export const facilityByName: ReadonlyMap<string, FacilityCatalogEntry> = new Map(

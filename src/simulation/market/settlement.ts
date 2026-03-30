@@ -2,6 +2,7 @@ import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '.
 import type { Planet } from '../planet/planet';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
+import { SERVICE_PER_PERSON_PER_TICK } from '../constants';
 
 export function settleHouseholds(
     planet: Planet,
@@ -11,6 +12,32 @@ export function settleHouseholds(
     bidCosts: number[],
 ): void {
     const demography = planet.population.demography;
+
+    // Map resource name to service name
+    let serviceName: 'grocery' | 'retail' | 'logistics' | 'healthcare' | 'construction' | 'administrative';
+    switch (resourceName) {
+        case 'groceryService':
+            serviceName = 'grocery';
+            break;
+        case 'healthcareService':
+            serviceName = 'healthcare';
+            break;
+        case 'administrativeService':
+            serviceName = 'administrative';
+            break;
+        case 'logisticsService':
+            serviceName = 'logistics';
+            break;
+        case 'retailService':
+            serviceName = 'retail';
+            break;
+        case 'constructionService':
+            serviceName = 'construction';
+            break;
+        default:
+            // Not a service resource
+            return;
+    }
 
     for (let i = 0; i < bidOrders.length; i++) {
         const filled = bidFilled[i];
@@ -22,7 +49,12 @@ export function settleHouseholds(
         const category = demography[record.age][record.occ][record.edu][record.skill];
         const perPersonCost = record.population > 0 ? bidCosts[i] / record.population : 0;
 
-        category.inventory[resourceName] = (category.inventory[resourceName] ?? 0) + filled;
+        // Convert filled units to buffer ticks
+        // filled is in units, buffer is in ticks worth of service
+        // buffer ticks = filled / (SERVICE_PER_PERSON_PER_TICK * category.total)
+        const bufferTicks = filled / (SERVICE_PER_PERSON_PER_TICK * category.total);
+        category.services[serviceName].buffer += bufferTicks;
+
         debitConsumptionPurchase(planet.bank, category, perPersonCost);
     }
 }

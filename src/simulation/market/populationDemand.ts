@@ -1,7 +1,12 @@
-import { 
-    FOOD_BUFFER_TARGET_TICKS, 
-    SERVICE_PER_PERSON_PER_TICK, 
-    INITIAL_SERVICE_PRICE
+import {
+    SERVICE_PER_PERSON_PER_TICK,
+    INITIAL_SERVICE_PRICE,
+    GROCERY_BUFFER_TARGET_TICKS,
+    HEALTHCARE_BUFFER_TARGET_TICKS,
+    ADMINISTRATIVE_BUFFER_TARGET_TICKS,
+    LOGISTICS_BUFFER_TARGET_TICKS,
+    RETAIL_BUFFER_TARGET_TICKS,
+    CONSTRUCTION_BUFFER_TARGET_TICKS,
 } from '../constants';
 import type { Planet, Resource } from '../planet/planet';
 import {
@@ -10,7 +15,7 @@ import {
     administrativeServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
-    constructionServiceResourceType
+    constructionServiceResourceType,
 } from '../planet/services';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
@@ -44,15 +49,15 @@ function registerDemand(resource: Resource, rule: DemandRule): void {
 // Service demand rules
 // ------------------------------------------------------------------
 
-const serviceTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
-
 /**
- * Generic service demand rule factory.
- * Households try to maintain a buffer of service units (capped at 30 days worth).
+ * Service demand rule factory with service-specific buffer targets.
+ * Households try to maintain a buffer of service units (capped at target ticks worth).
  * Only grocery service deficiency causes starvation; other services may have
  * other effects in the future.
  */
-function makeServiceDemandRule(): DemandRule {
+function makeServiceDemandRule(bufferTargetTicks: number): DemandRule {
+    const serviceTargetPerPerson = bufferTargetTicks * SERVICE_PER_PERSON_PER_TICK;
+
     return ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice }) => {
         const desiredPerPerson = Math.max(0, serviceTargetPerPerson - inventoryPerPerson);
         if (desiredPerPerson <= 0) {
@@ -77,13 +82,13 @@ function makeServiceDemandRule(): DemandRule {
     };
 }
 
-// Register all service demand rules
-registerDemand(groceryServiceResourceType, makeServiceDemandRule());
-registerDemand(healthcareServiceResourceType, makeServiceDemandRule());
-registerDemand(administrativeServiceResourceType, makeServiceDemandRule());
-registerDemand(logisticsServiceResourceType, makeServiceDemandRule());
-registerDemand(retailServiceResourceType, makeServiceDemandRule());
-registerDemand(constructionServiceResourceType, makeServiceDemandRule());
+// Register all service demand rules with their specific buffer targets
+registerDemand(groceryServiceResourceType, makeServiceDemandRule(GROCERY_BUFFER_TARGET_TICKS));
+registerDemand(healthcareServiceResourceType, makeServiceDemandRule(HEALTHCARE_BUFFER_TARGET_TICKS));
+registerDemand(administrativeServiceResourceType, makeServiceDemandRule(ADMINISTRATIVE_BUFFER_TARGET_TICKS));
+registerDemand(logisticsServiceResourceType, makeServiceDemandRule(LOGISTICS_BUFFER_TARGET_TICKS));
+registerDemand(retailServiceResourceType, makeServiceDemandRule(RETAIL_BUFFER_TARGET_TICKS));
+registerDemand(constructionServiceResourceType, makeServiceDemandRule(CONSTRUCTION_BUFFER_TARGET_TICKS));
 
 // Note: Consumer goods have been phased out in favor of services.
 // The makeConsumerGoodRule function has been removed as services are now
@@ -208,6 +213,32 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
     const referencePrice = planet.marketPrices[resourceName] ?? INITIAL_SERVICE_PRICE;
     const bidOrders: BidOrder[] = [];
 
+    // Map resource name to service name
+    let serviceName: string;
+    switch (resourceName) {
+        case groceryServiceResourceType.name:
+            serviceName = 'grocery';
+            break;
+        case healthcareServiceResourceType.name:
+            serviceName = 'healthcare';
+            break;
+        case administrativeServiceResourceType.name:
+            serviceName = 'administrative';
+            break;
+        case logisticsServiceResourceType.name:
+            serviceName = 'logistics';
+            break;
+        case retailServiceResourceType.name:
+            serviceName = 'retail';
+            break;
+        case constructionServiceResourceType.name:
+            serviceName = 'construction';
+            break;
+        default:
+            // Not a service resource
+            return [];
+    }
+
     planet.population.demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
             const pop = category.total;
@@ -222,7 +253,10 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
                 );
             }
 
-            const inventoryPerPerson = (category.inventory[resourceName] ?? 0) / pop;
+            // Calculate inventory per person from service buffer
+            // Buffer is stored as ticks worth of service, convert to units per person
+            const serviceBuffer = category.services[serviceName as keyof typeof category.services]?.buffer ?? 0;
+            const inventoryPerPerson = serviceBuffer * SERVICE_PER_PERSON_PER_TICK;
 
             const { quantity: totalQty, reservationPrice } = rule({
                 population: pop,

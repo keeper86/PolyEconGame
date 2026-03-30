@@ -211,7 +211,8 @@ export function createPopulation(total: number): Population {
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {
-                category.inventory[groceryServiceResourceType.name] = 3 * category.total * serviceBufferPerPerson;
+                // Initialize with 3 ticks worth of grocery service buffer
+                category.services.grocery.buffer = 3;
             }
         });
     }

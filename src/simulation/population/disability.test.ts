@@ -155,7 +155,7 @@ describe('applyDisability (population-level)', () => {
 
         const planetStarved = makePlanet();
         planetStarved.population.demography[30].unoccupied.none.novice.total = 100000;
-        planetStarved.population.demography[30].unoccupied.none.novice.starvationLevel = 1;
+        planetStarved.population.demography[30].unoccupied.none.novice.services.grocery.starvationLevel = 1;
 
         applyDisability(planetNoStarv, createWorkforceEventAccumulator());
         applyDisability(planetStarved, createWorkforceEventAccumulator());

@@ -152,21 +152,21 @@ describe('foodMarketTick', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 1e6);
         automaticPricing(agentMap(foodAgent), planet);
 
-        // zero out existing food stock explicitly (should already be zero)
+        // zero out existing food buffer explicitly (should already be zero)
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
-                cat.inventory = {};
+                cat.services.grocery.buffer = 0;
             }),
         );
 
         marketTick(agentMap(foodAgent), planet);
 
-        // after tick, avg inventory per person should equal the single buffer target
-        const expected = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        // after tick, avg buffer per person should equal the single buffer target
+        const expected = FOOD_BUFFER_TARGET_TICKS;
         // Population lives at ages 14–64 (MIN_EMPLOYABLE_AGE upwards); age 0 is empty.
         const cat = planet.population.demography[14].unoccupied.none.novice;
         expect(cat.total).toBeGreaterThan(0); // sanity: cell is populated
-        expect((cat.inventory[FOOD] ?? 0) / cat.total).toBeCloseTo(expected, 5);
+        expect(cat.services.grocery.buffer / cat.total).toBeCloseTo(expected, 5);
     });
 
     it('price-priority: highest-bid cohort buys before lower-bid cohort', () => {
@@ -180,7 +180,7 @@ describe('foodMarketTick', () => {
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
                 cat.wealth = { mean: 0, variance: 0 };
-                cat.inventory = {};
+                cat.services.grocery.buffer = 0;
             }),
         );
 
@@ -199,17 +199,17 @@ describe('foodMarketTick', () => {
         putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, supplyQty);
         setFoodOffer(foodAgent, 0.5);
 
-        const poorFoodBefore = poorCat.inventory[FOOD] ?? 0;
-        const richFoodBefore = richCat.inventory[FOOD] ?? 0;
+        const poorFoodBefore = poorCat.services.grocery.buffer;
+        const richFoodBefore = richCat.services.grocery.buffer;
 
         marketTick(agentMap(foodAgent), planet);
 
         // Rich cohort should have received food (higher bid wins priority)
-        expect(richCat.inventory[FOOD] ?? 0).toBeGreaterThan(richFoodBefore);
+        expect(richCat.services.grocery.buffer).toBeGreaterThan(richFoodBefore);
         // Poor cohort may receive nothing (shortage → price priority excludes them)
         // At least rich received at least as much as poor
-        expect((richCat.inventory[FOOD] ?? 0) - richFoodBefore).toBeGreaterThanOrEqual(
-            (poorCat.inventory[FOOD] ?? 0) - poorFoodBefore,
+        expect(richCat.services.grocery.buffer - richFoodBefore).toBeGreaterThanOrEqual(
+            poorCat.services.grocery.buffer - poorFoodBefore,
         );
     });
 
@@ -306,7 +306,7 @@ describe('foodMarketTick', () => {
         for (let age = 0; age < demography.length; age++) {
             forEachPopulationCohort(demography[age], (cat) => {
                 if (cat.total > 0) {
-                    expect(cat.inventory[FOOD] ?? 0).toBeGreaterThanOrEqual(0);
+                    expect(cat.services.grocery.buffer).toBeGreaterThanOrEqual(0);
                 }
             });
         }
@@ -495,13 +495,14 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         let total = 0;
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
+                // Clothing is still stored in inventory for now
                 total += cat.inventory[CLOTHING] ?? 0;
             }),
         );
         return total;
     }
 
-    function setupPlanet(foodInventoryPerPerson: number) {
+    function setupPlanet(foodBufferPerPerson: number) {
         const { planet } = makePlanetWithPopulation({ none: 50_000 });
         const totalPop = planet.population.demography.reduce((s, cohort) => {
             let n = 0;
@@ -514,7 +515,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
             forEachPopulationCohort(cohort, (cat) => {
                 if (cat.total > 0) {
                     cat.wealth = { mean: WEALTH_PER_PERSON, variance: 0 };
-                    cat.inventory[FOOD] = foodInventoryPerPerson * cat.total;
+                    cat.services.grocery.buffer = foodBufferPerPerson * cat.total;
                 }
             }),
         );
@@ -525,7 +526,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
     }
 
     it('full food buffer → wealth intact → normal clothing demand', () => {
-        const fullBuffer = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const fullBuffer = FOOD_BUFFER_TARGET_TICKS;
         const planet = setupPlanet(fullBuffer);
         const clothingAgent = makeClothingAgent();
 
@@ -567,7 +568,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
     });
 
     it('empty food buffer + no food seller → wealth intact → clothing demand unaffected', () => {
-        const fullBuffer = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const fullBuffer = FOOD_BUFFER_TARGET_TICKS;
         const planetWithFullFood = setupPlanet(fullBuffer);
         const planetWithNoFood = setupPlanet(0);
 

@@ -6,6 +6,7 @@ import {
     INITIAL_FOOD_PRICE,
     MIN_EMPLOYABLE_AGE,
     SUPPORT_WEIGHT_SIGMA,
+    SERVICE_PER_PERSON_PER_TICK,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import type { Planet } from '../planet/planet';
@@ -82,7 +83,9 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             const cell = ageCells[occ][edu];
             cell.wealth = mergeGaussianMoments(cell.pop, cell.wealth, n, cat.wealth);
             cell.pop += n;
-            cell.foodStock += cat.inventory[groceryServiceResourceType.name] ?? 0;
+            // Convert grocery service buffer ticks to equivalent food units
+            // buffer ticks * SERVICE_PER_PERSON_PER_TICK * n = total service units
+            cell.foodStock += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * n;
         });
 
         cache[age] = ageCells;

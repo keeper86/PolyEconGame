@@ -12,7 +12,7 @@ function averageStarvationLevel(population: Population): number {
     for (const cohort of population.demography) {
         forEachPopulationCohort(cohort, (cat) => {
             if (cat.total > 0) {
-                weightedStarvation += cat.starvationLevel * cat.total;
+                weightedStarvation += cat.services.grocery.starvationLevel * cat.total;
                 totalPop += cat.total;
             }
         });
@@ -76,9 +76,8 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
         // Newborns arrive with a small grocery service buffer gifted by their "neighbors" to get them started.
-        const groceryServiceName = groceryServiceResourceType.name;
-        cat.inventory[groceryServiceName] =
-            (cat.inventory[groceryServiceName] ?? 0) + birthsThisTick * 10 * SERVICE_PER_PERSON_PER_TICK;
+        // 10 ticks worth of grocery service buffer
+        cat.services.grocery.buffer += birthsThisTick * 10;
     }
 }
 

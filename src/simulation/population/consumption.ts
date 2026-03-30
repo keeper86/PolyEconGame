@@ -84,8 +84,8 @@ export interface ConsumptionResult {
  * Compute how much of each service a population consumes this tick and update the
  * population's starvation level accordingly.
  *
- * The function *mutates* the population's inventory (removes consumed services)
- * and the population's `starvationLevel`.
+ * The function *mutates* the population's service buffers (removes consumed services)
+ * and updates service starvation levels (only grocery affects actual starvation).
  */
 export function consumeServices(population: Population) {
     population.demography.forEach((cohort) => {
@@ -97,24 +97,66 @@ export function consumeServices(population: Population) {
             const populationCount = category.total;
             const serviceDemand = populationCount * SERVICE_PER_PERSON_PER_TICK;
 
-            // Track grocery service consumption for starvation calculation
-            const groceryStock = category.inventory[groceryServiceResourceType.name] ?? 0;
-            const groceryConsumed = Math.min(groceryStock, serviceDemand);
+            // Convert buffer ticks to units for consumption calculation
+            // buffer represents ticks worth of service, so units = buffer * SERVICE_PER_PERSON_PER_TICK * population
+            // But actually, buffer is already in units? Let me check the design...
+            // Based on the design: buffer represents ticks worth of service for the entire category
+            // So available units = buffer * SERVICE_PER_PERSON_PER_TICK
+
+            // For grocery service
+            const groceryBuffer = category.services.grocery.buffer;
+            const groceryUnitsAvailable = groceryBuffer * SERVICE_PER_PERSON_PER_TICK * populationCount;
+            const groceryConsumed = Math.min(groceryUnitsAvailable, serviceDemand);
             const consumptionFactor = groceryConsumed / serviceDemand;
 
-            // Update grocery service inventory and starvation level
-            category.inventory[groceryServiceResourceType.name] = groceryStock - groceryConsumed;
-            category.starvationLevel = updateStarvationLevel(category.starvationLevel, consumptionFactor);
+            // Update grocery buffer (convert consumed units back to buffer ticks)
+            const bufferConsumed = groceryConsumed / (SERVICE_PER_PERSON_PER_TICK * populationCount);
+            category.services.grocery.buffer = Math.max(0, groceryBuffer - bufferConsumed);
+
+            // Update grocery starvation level
+            category.services.grocery.starvationLevel = updateStarvationLevel(
+                category.services.grocery.starvationLevel,
+                consumptionFactor,
+            );
 
             // Consume all other services (but only grocery affects starvation)
+            // Note: We need to map service resource types to service names in the services object
             for (const serviceResource of ALL_SERVICE_RESOURCES) {
                 if (serviceResource.name === groceryServiceResourceType.name) {
                     continue; // Already handled above
                 }
 
-                const serviceStock = category.inventory[serviceResource.name] ?? 0;
-                const serviceConsumed = Math.min(serviceStock, serviceDemand);
-                category.inventory[serviceResource.name] = serviceStock - serviceConsumed;
+                // Map resource type to service name
+                let serviceName: keyof typeof category.services;
+                switch (serviceResource.name) {
+                    case healthcareServiceResourceType.name:
+                        serviceName = 'healthcare';
+                        break;
+                    case administrativeServiceResourceType.name:
+                        serviceName = 'administrative';
+                        break;
+                    case logisticsServiceResourceType.name:
+                        serviceName = 'logistics';
+                        break;
+                    case retailServiceResourceType.name:
+                        serviceName = 'retail';
+                        break;
+                    case constructionServiceResourceType.name:
+                        serviceName = 'construction';
+                        break;
+                    default:
+                        continue; // Unknown service
+                }
+
+                const serviceBuffer = category.services[serviceName].buffer;
+                const serviceUnitsAvailable = serviceBuffer * SERVICE_PER_PERSON_PER_TICK * populationCount;
+                const serviceConsumed = Math.min(serviceUnitsAvailable, serviceDemand);
+
+                // Update service buffer
+                const serviceBufferConsumed = serviceConsumed / (SERVICE_PER_PERSON_PER_TICK * populationCount);
+                category.services[serviceName].buffer = Math.max(0, serviceBuffer - serviceBufferConsumed);
+                // Note: Other services' starvation levels are not updated here
+                // They track deficiency but don't affect mortality/fertility
             }
         });
     });
@@ -145,13 +187,18 @@ export function updateStarvationLevel(currentLevel: number, consumptionFactor: n
  * Returns the number of ticks worth of service available.
  */
 export function getServiceBufferTicks(
-    category: { inventory: Record<string, number> },
+    category: { services: Record<string, { buffer: number }> },
     serviceName: string,
     population: number,
 ): number {
     if (population === 0) {
         return 0;
     }
-    const stock = category.inventory[serviceName] ?? 0;
-    return stock / (population * SERVICE_PER_PERSON_PER_TICK);
+    // The buffer is already stored as ticks worth of service for the entire category
+    // So we just return the buffer value directly
+    const serviceState = category.services[serviceName];
+    if (!serviceState) {
+        return 0;
+    }
+    return serviceState.buffer;
 }

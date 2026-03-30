@@ -35,6 +35,17 @@ export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICK
 export const FOOD_BUFFER_TARGET_TICKS = 30;
 
 /**
+ * Service buffer targets expressed in ticks of consumption.
+ * Each service has its own buffer target for household inventory management.
+ */
+export const GROCERY_BUFFER_TARGET_TICKS = 30;
+export const HEALTHCARE_BUFFER_TARGET_TICKS = 30;
+export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 30;
+export const LOGISTICS_BUFFER_TARGET_TICKS = 30;
+export const RETAIL_BUFFER_TARGET_TICKS = 30;
+export const CONSTRUCTION_BUFFER_TARGET_TICKS = 30;
+
+/**
  * Price adjustment rate when inventory is *below* target (scarcity → price rises).
  */
 export const FOOD_PRICE_ALPHA = 0.002;

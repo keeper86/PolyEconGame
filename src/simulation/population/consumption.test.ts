@@ -1,4 +1,4 @@
-/**
+    /**
  * population/consumption.test.ts
  *
  * Unit tests for the consumption sub-system: starvation level tracking
@@ -103,40 +103,39 @@ describe('updateStarvationLevel', () => {
 });
 
 describe('consumeServices (per-category model)', () => {
-    it('consumes grocery service from category inventory and updates starvation', () => {
+    it('consumes grocery service from category buffer and updates starvation', () => {
         const pop = makePopulation();
         const populationCount = 360;
-        const perTickDemand = populationCount * SERVICE_PER_PERSON_PER_TICK; // = 360 service units
 
-        // Place people and give them enough grocery service
+        // Place people and give them enough grocery service buffer
         pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.inventory = { [GROCERY_SERVICE]: 500 };
-        pop.demography[30].unoccupied.none.novice.starvationLevel = 0.5;
+        pop.demography[30].unoccupied.none.novice.services.grocery.buffer = 10; // 10 ticks worth
+        pop.demography[30].unoccupied.none.novice.services.grocery.starvationLevel = 0.5;
 
         consumeServices(pop);
 
         const cat = pop.demography[30].unoccupied.none.novice;
-        // inventory should be reduced by consumption
-        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBeCloseTo(500 - perTickDemand, 10);
+        // buffer should be reduced by 1 tick
+        expect(cat.services.grocery.buffer).toBeCloseTo(9, 10);
         // starvation level should recover (was 0.5, now well-served)
-        expect(cat.starvationLevel).toBeLessThan(0.5);
+        expect(cat.services.grocery.starvationLevel).toBeLessThan(0.5);
     });
 
-    it('increases starvation when grocery service is insufficient', () => {
+    it('increases starvation when grocery service buffer is insufficient', () => {
         const pop = makePopulation();
         const populationCount = 360;
 
         pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.inventory = { [GROCERY_SERVICE]: 100 }; // less than demand
-        pop.demography[30].unoccupied.none.novice.starvationLevel = 0;
+        pop.demography[30].unoccupied.none.novice.services.grocery.buffer = 0; // no buffer
+        pop.demography[30].unoccupied.none.novice.services.grocery.starvationLevel = 0;
 
         consumeServices(pop);
 
         const cat = pop.demography[30].unoccupied.none.novice;
-        // inventory should be drained
-        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBeCloseTo(0, 10);
+        // buffer should remain 0
+        expect(cat.services.grocery.buffer).toBe(0);
         // starvation should increase from 0
-        expect(cat.starvationLevel).toBeGreaterThan(0);
+        expect(cat.services.grocery.starvationLevel).toBeGreaterThan(0);
     });
 
     it('handles zero population in a category gracefully', () => {
@@ -145,43 +144,43 @@ describe('consumeServices (per-category model)', () => {
         consumeServices(pop);
 
         // Should not throw; starvation should remain 0
-        expect(pop.demography[0].education.none.novice.starvationLevel).toBe(0);
+        expect(pop.demography[0].education.none.novice.services.grocery.starvationLevel).toBe(0);
     });
 
-    it('handles zero service stock gracefully', () => {
+    it('handles zero service buffer gracefully', () => {
         const pop = makePopulation();
         pop.demography[20].unoccupied.none.novice.total = 100;
-        pop.demography[20].unoccupied.none.novice.inventory[GROCERY_SERVICE] = 0;
-        pop.demography[20].unoccupied.none.novice.starvationLevel = 0;
+        pop.demography[20].unoccupied.none.novice.services.grocery.buffer = 0;
+        pop.demography[20].unoccupied.none.novice.services.grocery.starvationLevel = 0;
 
         consumeServices(pop);
 
         const cat = pop.demography[20].unoccupied.none.novice;
-        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBe(0);
+        expect(cat.services.grocery.buffer).toBe(0);
         // starvation should increase since no service
-        expect(cat.starvationLevel).toBeGreaterThan(0);
+        expect(cat.services.grocery.starvationLevel).toBeGreaterThan(0);
     });
 
     it('consumes all services, not just grocery', () => {
         const pop = makePopulation();
         const populationCount = 100;
-        const perTickDemand = populationCount * SERVICE_PER_PERSON_PER_TICK;
 
         pop.demography[25].employed.tertiary.expert.total = populationCount;
-        pop.demography[25].employed.tertiary.expert.inventory = {
-            [GROCERY_SERVICE]: 200,
-            'Healthcare Service': 150,
-            'Administrative Service': 100,
-            'Logistics Service': 50
-        };
+        // Set buffers for all services
+        pop.demography[25].employed.tertiary.expert.services.grocery.buffer = 10;
+        pop.demography[25].employed.tertiary.expert.services.healthcare.buffer = 8;
+        pop.demography[25].employed.tertiary.expert.services.retail.buffer = 6;
+        pop.demography[25].employed.tertiary.expert.services.logistics.buffer = 4;
+        pop.demography[25].employed.tertiary.expert.services.construction.buffer = 2;
 
         consumeServices(pop);
 
         const cat = pop.demography[25].employed.tertiary.expert;
-        // All services should be consumed, but not more than available
-        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBeCloseTo(200 - perTickDemand, 10);
-        expect(cat.inventory['Healthcare Service'] ?? 0).toBeCloseTo(150 - perTickDemand, 10);
-        expect(cat.inventory['Administrative Service'] ?? 0).toBeCloseTo(100 - perTickDemand, 10);
-        expect(cat.inventory['Logistics Service'] ?? 0).toBeCloseTo(0, 10); // Only 50 available, can't consume 100
+        // All service buffers should be reduced by 1 tick
+        expect(cat.services.grocery.buffer).toBeCloseTo(9, 10);
+        expect(cat.services.healthcare.buffer).toBeCloseTo(7, 10);
+        expect(cat.services.retail.buffer).toBeCloseTo(5, 10);
+        expect(cat.services.logistics.buffer).toBeCloseTo(3, 10);
+        expect(cat.services.construction.buffer).toBeCloseTo(1, 10);
     });
 });
