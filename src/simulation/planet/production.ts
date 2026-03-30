@@ -32,22 +32,20 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
 
 const CONSUMPTION_MISMATCH_TOLERANCE = 1e-9;
 
-export const emptyServicesStorage = (agents: Map<string, Agent>, planet: Planet): void => {
-    agents.forEach((agent) => {
-        const assets = agent.assets[planet.id];
-        if (!assets) {
-            return;
-        }
-        const storage = assets.storageFacility;
-        if (!storage) {
-            return;
-        }
+const emptyServicesStorage = (agent: Agent, planet: Planet): void => {
+    const assets = agent.assets[planet.id];
+    if (!assets) {
+        return;
+    }
+    const storage = assets.storageFacility;
+    if (!storage) {
+        return;
+    }
 
-        ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
-            if (storage.currentInStorage[serviceName]) {
-                removeFromStorageFacility(storage, serviceName, storage.currentInStorage[serviceName].quantity);
-            }
-        });
+    ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
+        if (storage.currentInStorage[serviceName]) {
+            removeFromStorageFacility(storage, serviceName, storage.currentInStorage[serviceName].quantity);
+        }
     });
 };
 
@@ -154,6 +152,10 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         const { byFacility } = waterFill(allSlots, workerPool, ageProd, effectiveDemandBySlot);
 
+        // we calculated resource constraints with last round services. We now empty service storage
+        // This makes services un-storable but allows producing services and using them next ticks production.
+        emptyServicesStorage(agent, planet);
+
         assets.productionFacilities.forEach((facility, fi) => {
             const { resourceEfficiencyMap } = facilityMeta[fi];
             const facilityResult = byFacility.get(fi);
@@ -204,7 +206,11 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                             );
                         }
                     } else {
-                        const removed = removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
+                        // services are resetted before this loop, to allow being used as input but are only 1-tick lived
+                        const removed =
+                            need.resource.form === 'services'
+                                ? consumed
+                                : removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
                         actualConsumed[need.resource.name] = removed;
                         if (removed < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
                             console.warn(

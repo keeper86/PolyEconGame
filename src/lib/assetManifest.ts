@@ -186,7 +186,6 @@ export const assetManifest = {
     products_limestone: '/images/products/limestone.webp',
     products_limestone_deposit: '/images/products/limestone_deposit.webp',
     products_logs: '/images/products/logs.webp',
-    products_lubricant: '/images/products/lubricant.webp',
     products_lumber: '/images/products/lumber.webp',
     products_machinery: '/images/products/machinery.webp',
     products_natural_gas: '/images/products/natural_gas.webp',

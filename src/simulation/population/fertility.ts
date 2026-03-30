@@ -75,8 +75,12 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
         // Newborns arrive with a small grocery service buffer gifted by their "neighbors" to get them started.
-        // 10 ticks worth of grocery service buffer
-        cat.services.grocery.buffer += birthsThisTick * 10;
+        // 10 ticks worth of grocery service buffer per newborn.  Distribute the
+        // total gifted ticks across the (new) cohort so the buffer remains a
+        // per-person metric (weighted average), matching how wealth is handled.
+        const prevBuffer = cat.services.grocery.buffer;
+        const giftedTicksTotal = birthsThisTick * 10;
+        cat.services.grocery.buffer = prevTotal > 0 ? (prevTotal * prevBuffer + giftedTicksTotal) / newTotal : 10;
     }
 }
 

@@ -7,6 +7,11 @@ import {
     LOGISTICS_BUFFER_TARGET_TICKS,
     RETAIL_BUFFER_TARGET_TICKS,
     CONSTRUCTION_BUFFER_TARGET_TICKS,
+    HEALTHCARE_STARVATION_SUPPRESSION,
+    LOGISTICS_STARVATION_SUPPRESSION,
+    ADMINISTRATIVE_STARVATION_SUPPRESSION,
+    RETAIL_STARVATION_SUPPRESSION,
+    CONSTRUCTION_STARVATION_SUPPRESSION,
 } from '../constants';
 import type { Planet, Resource } from '../planet/planet';
 import {
@@ -24,14 +29,21 @@ import type { BidOrder } from './marketTypes';
 // Demand rule registry
 // ---------------------------------------------------------------------------
 /**
- * A demand rule returns the desired total purchase quantity for a whole cohort
- * and its reservation price, given the cohort's current wealth.
+ * A demand rule returns the desired total purchase quantity for a cohort
+ * and its reservation price, given the cohort's current state.
+ *
+ * `groceryStarvationLevel` [0, 1] carries the accumulated physiological
+ * deprivation of the cohort.  Non-grocery rules use it to suppress demand:
+ * starving households redirect all spending toward food and stop buying
+ * discretionary services.
  */
 type DemandRule = (params: {
     population: number;
     wealthMeanPerPerson: number;
     inventoryPerPerson: number;
     referencePrice: number;
+    /** Accumulated grocery starvation level [0, 1] from the cohort state. */
+    groceryStarvationLevel: number;
 }) => {
     /** Total desired purchase quantity for the cohort (>= 0). */
     quantity: number;
@@ -45,67 +57,195 @@ function registerDemand(resource: Resource, rule: DemandRule): void {
     demandRules.set(resource.name, { rule });
 }
 
-// ------------------------------------------------------------------
-// Service demand rules
-// ------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Civil-only service demand rules
+// Population is the sole buyer in these markets.
+// ---------------------------------------------------------------------------
 
 /**
- * Service demand rule factory with service-specific buffer targets.
- * Households try to maintain a buffer of service units (capped at target ticks worth).
- * Only grocery service deficiency causes starvation; other services may have
- * other effects in the future.
+ * Grocery service — the survival necessity.
+ *
+ * Households target a 3-month buffer.  No starvation suppression applies
+ * (this IS the service that drives starvation).  Reservation price grows
+ * proportionally with wealth, reflecting willingness to pay for food.
  */
-function makeServiceDemandRule(bufferTargetTicks: number): DemandRule {
-    const serviceTargetPerPerson = bufferTargetTicks * SERVICE_PER_PERSON_PER_TICK;
-
-    return ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice }) => {
-        const desiredPerPerson = Math.max(0, serviceTargetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-        if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-        if (!Number.isFinite(wealthMeanPerPerson) || wealthMeanPerPerson < 0) {
+registerDemand(
+    groceryServiceResourceType,
+    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice }) => {
+        const targetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
+        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const affordableQty = wealthMeanPerPerson / referencePrice;
-        const effectiveQtyPerPerson = Math.min(desiredPerPerson, Math.max(0, affordableQty));
+        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
+        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
+        return { quantity: quantityPerPerson * population, reservationPrice };
+    },
+);
 
-        if (!Number.isFinite(effectiveQtyPerPerson) || effectiveQtyPerPerson < 0) {
+/**
+ * Healthcare service — medical care and treatment.
+ *
+ * Health needs persist even under food scarcity, but starving cohorts
+ * inevitably deprioritise medical spending.
+ * Suppression: {@link HEALTHCARE_STARVATION_SUPPRESSION} (30 % at full starvation).
+ */
+registerDemand(
+    healthcareServiceResourceType,
+    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
+        const suppression = 1 - HEALTHCARE_STARVATION_SUPPRESSION * groceryStarvationLevel;
+        const targetPerPerson = HEALTHCARE_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
+        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
+        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
             return { quantity: 0, reservationPrice: 0 };
         }
 
-        const reservationPrice = desiredPerPerson > 0 ? wealthMeanPerPerson / desiredPerPerson : 0;
-        return { quantity: effectiveQtyPerPerson * population, reservationPrice };
-    };
-}
+        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
+        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
+        return { quantity: quantityPerPerson * population, reservationPrice };
+    },
+);
 
-// Register all service demand rules with their specific buffer targets
-registerDemand(groceryServiceResourceType, makeServiceDemandRule(GROCERY_BUFFER_TARGET_TICKS));
-registerDemand(healthcareServiceResourceType, makeServiceDemandRule(HEALTHCARE_BUFFER_TARGET_TICKS));
-registerDemand(administrativeServiceResourceType, makeServiceDemandRule(ADMINISTRATIVE_BUFFER_TARGET_TICKS));
-registerDemand(logisticsServiceResourceType, makeServiceDemandRule(LOGISTICS_BUFFER_TARGET_TICKS));
-registerDemand(retailServiceResourceType, makeServiceDemandRule(RETAIL_BUFFER_TARGET_TICKS));
-registerDemand(constructionServiceResourceType, makeServiceDemandRule(CONSTRUCTION_BUFFER_TARGET_TICKS));
+/**
+ * Retail service — consumer shopping for goods and personal items.
+ *
+ * Purely discretionary; the first service cut when starvation rises.
+ * Suppression: {@link RETAIL_STARVATION_SUPPRESSION} (80 % at full starvation).
+ */
+registerDemand(
+    retailServiceResourceType,
+    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
+        const suppression = 1 - RETAIL_STARVATION_SUPPRESSION * groceryStarvationLevel;
+        const targetPerPerson = RETAIL_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
+        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
+        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
 
-// Note: Consumer goods have been phased out in favor of services.
-// The makeConsumerGoodRule function has been removed as services are now
-// the primary consumption layer for the population.
+        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
+        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
+        return { quantity: quantityPerPerson * population, reservationPrice };
+    },
+);
+
 // ---------------------------------------------------------------------------
-// Priority order for sequential household settlement.
-// Services are cleared and settled first; household wealth is debited before
-// discretionary bids are generated, so no cohort can over-commit.
-// Resources not in this list (agent-only markets) are cleared afterwards.
+// Agent-shared service demand rules
+// Agents (firms) also bid in these markets; household demand is independent
+// but prices are jointly determined with agent demand.
 // ---------------------------------------------------------------------------
-export const householdDemandPriority: string[] = [
+
+/**
+ * Logistics service — transport, freight and distribution for daily life.
+ *
+ * Households need logistics for deliveries and commuting.  Partially reduced
+ * under food scarcity as fewer discretionary trips occur.
+ * Also consumed by agents for supply chain operations.
+ * Suppression: {@link LOGISTICS_STARVATION_SUPPRESSION} (50 % at full starvation).
+ */
+registerDemand(
+    logisticsServiceResourceType,
+    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
+        const suppression = 1 - LOGISTICS_STARVATION_SUPPRESSION * groceryStarvationLevel;
+        const targetPerPerson = LOGISTICS_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
+        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
+        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+
+        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
+        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
+        return { quantity: quantityPerPerson * population, reservationPrice };
+    },
+);
+
+/**
+ * Administrative service — government, finance, legal and civic services.
+ *
+ * Households need administrative services for permits, banking and official
+ * matters.  These are deferred but not abandoned when starving.
+ * Also consumed by agents for operations and compliance.
+ * Suppression: {@link ADMINISTRATIVE_STARVATION_SUPPRESSION} (70 % at full starvation).
+ */
+registerDemand(
+    administrativeServiceResourceType,
+    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
+        const suppression = 1 - ADMINISTRATIVE_STARVATION_SUPPRESSION * groceryStarvationLevel;
+        const targetPerPerson = ADMINISTRATIVE_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
+        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
+        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+
+        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
+        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
+        return { quantity: quantityPerPerson * population, reservationPrice };
+    },
+);
+
+/**
+ * Construction service — housing maintenance, repair and improvement.
+ *
+ * The most deferrable household expenditure: housing can deteriorate for
+ * months before it becomes critical.  Demand collapses almost entirely
+ * when the population is starving.
+ * Also consumed by agents for facility building and maintenance.
+ * Suppression: {@link CONSTRUCTION_STARVATION_SUPPRESSION} (90 % at full starvation).
+ */
+registerDemand(
+    constructionServiceResourceType,
+    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
+        const suppression = 1 - CONSTRUCTION_STARVATION_SUPPRESSION * groceryStarvationLevel;
+        const targetPerPerson = CONSTRUCTION_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
+        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
+        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
+            return { quantity: 0, reservationPrice: 0 };
+        }
+
+        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
+        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
+        return { quantity: quantityPerPerson * population, reservationPrice };
+    },
+);
+
+// ---------------------------------------------------------------------------
+// Service classification
+// ---------------------------------------------------------------------------
+
+/**
+ * Services consumed exclusively by the population.
+ * Agents do not bid in these markets.
+ */
+export const CIVIL_ONLY_SERVICE_NAMES: string[] = [
     groceryServiceResourceType.name,
     healthcareServiceResourceType.name,
-    administrativeServiceResourceType.name,
-    logisticsServiceResourceType.name,
     retailServiceResourceType.name,
+];
+
+/**
+ * Services consumed by both population and agents (firms).
+ * Household and firm bids compete in the same order book.
+ */
+export const AGENT_SHARED_SERVICE_NAMES: string[] = [
+    logisticsServiceResourceType.name,
+    administrativeServiceResourceType.name,
     constructionServiceResourceType.name,
+];
+
+// ---------------------------------------------------------------------------
+// Priority order for sequential household settlement.
+// Services are cleared and settled in this order; household wealth is debited
+// before the next service's bids are generated, so no cohort can over-commit.
+// Resources not in this list (agent-only markets) are cleared afterwards.
+// Order: survival first, discretionary last.
+// ---------------------------------------------------------------------------
+export const householdDemandPriority: string[] = [
+    groceryServiceResourceType.name, // survival: always first
+    healthcareServiceResourceType.name, // essential: health
+    logisticsServiceResourceType.name, // necessary: daily movement
+    administrativeServiceResourceType.name, // necessary: civic participation
+    retailServiceResourceType.name, // discretionary: shopping
+    constructionServiceResourceType.name, // discretionary: most deferrable
 ];
 
 // ---------------------------------------------------------------------------
@@ -263,6 +403,7 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
                 wealthMeanPerPerson: wm.mean,
                 inventoryPerPerson,
                 referencePrice,
+                groceryStarvationLevel: category.services.grocery.starvationLevel,
             });
 
             if (!Number.isFinite(totalQty) || totalQty < 0) {

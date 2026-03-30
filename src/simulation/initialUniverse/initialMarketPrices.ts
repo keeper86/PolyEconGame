@@ -1,7 +1,5 @@
 import {
     agriculturalProductResourceType,
-    aluminumResourceType,
-    bauxiteResourceType,
     beverageResourceType,
     brickResourceType,
     cementResourceType,
@@ -24,7 +22,6 @@ import {
     ironOreResourceType,
     limestoneResourceType,
     logsResourceType,
-    lubricantResourceType,
     lumberResourceType,
     machineryResourceType,
     naturalGasResourceType,
@@ -35,7 +32,6 @@ import {
     plasticResourceType,
     potashResourceType,
     processedFoodResourceType,
-    rareEarthOreResourceType,
     sandResourceType,
     steelResourceType,
     stoneResourceType,
@@ -68,9 +64,7 @@ export const initialMarketPrices: Record<string, number> = {
     [naturalGasResourceType.name]: 1.5,
     [logsResourceType.name]: 1.0,
     [stoneResourceType.name]: 0.5,
-    [bauxiteResourceType.name]: 0.8,
     [copperOreResourceType.name]: 1.5,
-    [rareEarthOreResourceType.name]: 3.0,
     [sandResourceType.name]: 0.5,
     [limestoneResourceType.name]: 0.5,
     [clayResourceType.name]: 0.5,
@@ -81,14 +75,12 @@ export const initialMarketPrices: Record<string, number> = {
     // Tier 1 processed — recipe cost + processing margin
     [steelResourceType.name]: 3.0, // 150 iron ore + 30 coal → 100 steel
     [lumberResourceType.name]: 2.0, // 300 logs → 200 lumber
-    [aluminumResourceType.name]: 4.0, // 800 bauxite → 200 aluminum
     [copperResourceType.name]: 2.5, // 120 copper ore + 20 coal → 100 copper
     [glassResourceType.name]: 1.5, // 80 sand + 20 limestone + 30 coal → 100 glass
     [cementResourceType.name]: 2.0, // 60 limestone + 15 clay + 10 coal → 50 cement
     [plasticResourceType.name]: 2.0, // oil refinery by-product
     [chemicalResourceType.name]: 2.0, // oil refinery by-product
     [fuelResourceType.name]: 2.5, // oil refinery
-    [lubricantResourceType.name]: 3.0, // oil refinery
     [brickResourceType.name]: 1.0, // 120 clay + 10 coal → 110 brick
     [fertilizerResourceType.name]: 2.0, // 25 natural gas + 25 phosphate → 50 fertilizer
     // Tier 2 processed
@@ -108,10 +100,10 @@ export const initialMarketPrices: Record<string, number> = {
     [vehicleResourceType.name]: 15.0, // 10 steel + 5 aluminum + ... → 10 vehicles
     [pharmaceuticalResourceType.name]: 50.0, // 100 agri + 80 chemical + 100 water → 10 pharma
     // Tier 5 services
-    [groceryServiceResourceType.name]: 5.0,
-    [healthcareServiceResourceType.name]: 5.0,
-    [administrativeServiceResourceType.name]: 5.0,
-    [logisticsServiceResourceType.name]: 5.0,
-    [retailServiceResourceType.name]: 5.0,
-    [constructionServiceResourceType.name]: 5.0,
+    [groceryServiceResourceType.name]: 50.0,
+    [healthcareServiceResourceType.name]: 50.0,
+    [administrativeServiceResourceType.name]: 50.0,
+    [logisticsServiceResourceType.name]: 50.0,
+    [retailServiceResourceType.name]: 50.0,
+    [constructionServiceResourceType.name]: 50.0,
 };

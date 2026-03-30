@@ -46,6 +46,28 @@ export const RETAIL_BUFFER_TARGET_TICKS = 30;
 export const CONSTRUCTION_BUFFER_TARGET_TICKS = 30;
 
 /**
+ * Starvation suppression factors for non-grocery services.
+ *
+ * When a cohort's grocery starvation level is S ∈ [0, 1], the effective
+ * buffer target for each service is multiplied by (1 − factor × S).
+ *
+ * This models the economic reality that starving households redirect all
+ * available wealth towards food, collapsing demand for everything else.
+ * Services closest to survival (healthcare) retain more demand; purely
+ * discretionary services (construction, retail) are cut nearly to zero.
+ */
+/** Healthcare remains partially in demand even when starving — medical needs persist. */
+export const HEALTHCARE_STARVATION_SUPPRESSION = 0.3;
+/** Logistics (transport, deliveries) is still partially needed for basic daily movement. */
+export const LOGISTICS_STARVATION_SUPPRESSION = 0.5;
+/** Administrative (permits, banking, civic) is deferred but not entirely abandoned. */
+export const ADMINISTRATIVE_STARVATION_SUPPRESSION = 0.7;
+/** Retail (consumer shopping) is highly discretionary and mostly cut when starving. */
+export const RETAIL_STARVATION_SUPPRESSION = 0.8;
+/** Construction (housing improvement) is the most deferrable household expenditure. */
+export const CONSTRUCTION_STARVATION_SUPPRESSION = 0.9;
+
+/**
  * Price adjustment rate when grocery service inventory is *below* target (scarcity → price rises).
  */
 export const GROCERY_PRICE_ALPHA = 0.002;

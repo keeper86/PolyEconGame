@@ -6,7 +6,7 @@ import { marketTick } from './market/market';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
-import { emptyServicesStorage as expireServiceInventory, productionTick } from './planet/production';
+import { productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
@@ -56,8 +56,6 @@ export function advanceTick(gameState: GameState) {
         automaticPricing(planetAgents, planet);
 
         marketTick(planetAgents, planet);
-
-        expireServiceInventory(planetAgents, planet);
 
         productionTick(planetAgents, planet);
 

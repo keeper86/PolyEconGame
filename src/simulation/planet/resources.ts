@@ -64,24 +64,8 @@ export const stoneResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const bauxiteResourceType: Resource = {
-    name: 'Bauxite',
-    form: 'solid',
-    level: 'raw',
-    volumePerQuantity: 0.4, // m³ per ton
-    massPerQuantity: 1,
-};
-
 export const copperOreResourceType: Resource = {
     name: 'Copper Ore',
-    form: 'solid',
-    level: 'raw',
-    volumePerQuantity: 0.3,
-    massPerQuantity: 1,
-};
-
-export const rareEarthOreResourceType: Resource = {
-    name: 'Rare Earth Ore',
     form: 'solid',
     level: 'raw',
     volumePerQuantity: 0.3,
@@ -120,14 +104,6 @@ export const steelResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const aluminumResourceType: Resource = {
-    name: 'Aluminum',
-    form: 'solid',
-    level: 'refined',
-    volumePerQuantity: 0.4,
-    massPerQuantity: 1,
-};
-
 export const copperResourceType: Resource = {
     name: 'Copper',
     form: 'solid',
@@ -157,14 +133,6 @@ export const fuelResourceType: Resource = {
     form: 'liquid',
     level: 'refined',
     volumePerQuantity: 1.3,
-    massPerQuantity: 1,
-};
-
-export const lubricantResourceType: Resource = {
-    name: 'Lubricant',
-    form: 'liquid',
-    level: 'refined',
-    volumePerQuantity: 1.1,
     massPerQuantity: 1,
 };
 
