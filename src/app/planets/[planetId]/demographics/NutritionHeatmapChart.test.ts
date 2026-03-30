@@ -15,11 +15,16 @@
  * classifies each group by its population-weighted average starvation.
  */
 
-import { describe, it, expect } from 'vitest';
-import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import type { AggRow } from '@/app/planets/[planetId]/demographics/demographicsTypes';
-import { SERVICE_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from '@/app/planets/[planetId]/demographics/demographicsTypes';
+import {
+    GV_FOOD,
+    GV_POP,
+    GV_STARV,
+    SERVICE_TARGET_PER_PERSON,
+} from '@/app/planets/[planetId]/demographics/demographicsTypes';
+import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { OCCUPATIONS } from '@/simulation/population/population';
+import { describe, expect, it } from 'vitest';
 
 // ---- Replicate component structure ----
 
@@ -36,11 +41,21 @@ type BandKey = (typeof BANDS)[number]['key'];
 
 /** Replicate the component's single-arg classifyBand (starvation level → band index). */
 function classifyBand(starvationLevel: number): number {
-    if (starvationLevel > 0.9) return 0;
-    if (starvationLevel > 0.75) return 1;
-    if (starvationLevel > 0.5) return 2;
-    if (starvationLevel > 0.25) return 3;
-    if (starvationLevel > 0.05) return 4;
+    if (starvationLevel > 0.9) {
+        return 0;
+    }
+    if (starvationLevel > 0.75) {
+        return 1;
+    }
+    if (starvationLevel > 0.5) {
+        return 2;
+    }
+    if (starvationLevel > 0.25) {
+        return 3;
+    }
+    if (starvationLevel > 0.05) {
+        return 4;
+    }
     return 5;
 }
 
@@ -74,7 +89,9 @@ function computeChartData(rows: AggRow[], groupKeys: readonly string[]): ChartRo
             ageTotalPop += gPop;
         }
 
-        if (ageTotalPop > 0) result.push(row);
+        if (ageTotalPop > 0) {
+            result.push(row);
+        }
     }
     return result;
 }
@@ -125,12 +142,7 @@ function computeGlobalStats(chartData: ChartRow[], groupKeys: readonly string[])
 const TEST_GROUP_KEYS = [...OCCUPATIONS] as string[];
 
 /** Create an AggRow with all population in the first group (education). */
-function makeAggRow(
-    age: number,
-    pop: number,
-    totalFoodStock: number,
-    weightedStarvation: number,
-): AggRow {
+function makeAggRow(age: number, pop: number, totalFoodStock: number, weightedStarvation: number): AggRow {
     return {
         age,
         total: pop,
@@ -258,10 +270,7 @@ describe('NutritionHeatmapChart — computeChartData', () => {
     });
 
     it('SERVICE_TARGET_PER_PERSON matches GROCERY_BUFFER_TARGET_TICKS × SERVICE_PER_PERSON_PER_TICK', () => {
-        expect(SERVICE_TARGET_PER_PERSON).toBeCloseTo(
-            GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK,
-            10,
-        );
+        expect(SERVICE_TARGET_PER_PERSON).toBeCloseTo(GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK, 10);
     });
 
     it('mixed ages: each age classified independently', () => {
@@ -277,5 +286,3 @@ describe('NutritionHeatmapChart — computeChartData', () => {
         expect(stats.starvingFrac).toBeCloseTo(300 / 800, 6);
     });
 });
-
-import { educationLevelKeys } from '@/simulation/population/education';

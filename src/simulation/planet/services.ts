@@ -3,8 +3,8 @@ import type { Resource } from './planet';
 const serviceResourceDefault = {
     form: 'services' as const,
     level: 'services' as const,
-    volumePerQuantity: Number.MAX_SAFE_INTEGER,
-    massPerQuantity: Number.MAX_SAFE_INTEGER,
+    volumePerQuantity: 0,
+    massPerQuantity: 0, // services hold 1 tick, but do not consume physical storage space or mass
 };
 
 export const logisticsServiceResourceType: Resource = {
@@ -36,3 +36,12 @@ export const healthcareServiceResourceType: Resource = {
     ...serviceResourceDefault,
     name: 'Healthcare Service',
 };
+
+export const ALL_SERVICE_RESOURCE_TYPE_NAMES = [
+    logisticsServiceResourceType.name,
+    constructionServiceResourceType.name,
+    administrativeServiceResourceType.name,
+    groceryServiceResourceType.name,
+    retailServiceResourceType.name,
+    healthcareServiceResourceType.name,
+];

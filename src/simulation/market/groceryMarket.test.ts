@@ -2,25 +2,24 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
     GROCERY_BUFFER_TARGET_TICKS,
-    SERVICE_PER_PERSON_PER_TICK,
     INITIAL_GROCERY_PRICE,
     PRICE_ADJUST_MAX_UP,
+    SERVICE_PER_PERSON_PER_TICK,
 } from '../constants';
-import { putIntoStorageFacility } from '../planet/storage';
 import type { Agent, GameState, Planet } from '../planet/planet';
+import { clothingResourceType } from '../planet/resources';
+import { groceryServiceResourceType } from '../planet/services';
+import { putIntoStorageFacility } from '../planet/storage';
 import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
-import { groceryServiceResourceType, retailServiceResourceType } from '../planet/services';
-import { clothingResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 const GROCERY_SERVICE = groceryServiceResourceType.name;
-const RETAIL_SERVICE = retailServiceResourceType.name;
 const CLOTHING = clothingResourceType.name;
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
@@ -438,7 +437,9 @@ describe('updateAgentPricing', () => {
         automaticPricing(agentMap(groceryAgent), planet);
 
         // supply = 0 → treated as full shortage → price rises by PRICE_ADJUST_MAX_UP
-        expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(0.73 * PRICE_ADJUST_MAX_UP);
+        expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(
+            0.73 * PRICE_ADJUST_MAX_UP,
+        );
     });
 
     it('raises price when agent has no stock and also sold nothing (intermittent production)', () => {

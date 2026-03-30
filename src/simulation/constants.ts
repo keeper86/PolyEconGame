@@ -30,9 +30,10 @@ export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICK
 
 /**
  * Household grocery service buffer target expressed in ticks of consumption.
- * groceryTarget per person = GROCERY_BUFFER_TARGET_TICKS × GROCERY_PER_PERSON_PER_TICK
+ * Population tries to maintain this many ticks worth of grocery service.
+ * 3 months = 3 × TICKS_PER_MONTH = 90 ticks.
  */
-export const GROCERY_BUFFER_TARGET_TICKS = 30;
+export const GROCERY_BUFFER_TARGET_TICKS = 3 * TICKS_PER_MONTH;
 
 /**
  * Service buffer targets expressed in ticks of consumption.

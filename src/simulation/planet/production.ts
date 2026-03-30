@@ -9,6 +9,8 @@ import type { Agent, Planet } from './planet';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './storage';
 import { waterFill } from './waterFill';
 import type { WorkerSlot } from './waterFill';
+import { administrativeCenter } from './facilities';
+import { administrativeServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
 
 // ---------------------------------------------------------------------------
 // Local helpers
@@ -30,6 +32,25 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
 }
 
 const CONSUMPTION_MISMATCH_TOLERANCE = 1e-9;
+
+export const emptyServicesStorage = (agents: Map<string, Agent>, planet: Planet): void => {
+    agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            return;
+        }
+        const storage = assets.storageFacility;
+        if (!storage) {
+            return;
+        }
+
+        ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
+            if (storage.currentInStorage[serviceName]) {
+                removeFromStorageFacility(storage, serviceName, storage.currentInStorage[serviceName].quantity);
+            }
+        });
+    });
+};
 
 export function productionTick(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {

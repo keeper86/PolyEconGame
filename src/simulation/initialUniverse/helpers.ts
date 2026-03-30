@@ -1,4 +1,4 @@
-import { TICKS_PER_YEAR } from '../constants';
+import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
 import type { Resource } from '../planet/planet';
 import {
@@ -209,8 +209,9 @@ export function createPopulation(total: number): Population {
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {
-                // Initialize with 3 ticks worth of grocery service buffer
-                category.services.grocery.buffer = 3;
+                // Initialize with a full buffer so the population has 3 months of
+                // grocery coverage before starvation can begin.
+                category.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS;
             }
         });
     }

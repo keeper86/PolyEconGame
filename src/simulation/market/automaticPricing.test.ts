@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PRICE_ADJUST_MAX_UP, GROCERY_PRICE_CEIL as PRICE_CEIL, GROCERY_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
+import {
+    PRICE_ADJUST_MAX_UP,
+    GROCERY_PRICE_CEIL as PRICE_CEIL,
+    GROCERY_PRICE_FLOOR as PRICE_FLOOR,
+} from '../constants';
 import {
     agriculturalProductResourceType,
     clothingResourceType,

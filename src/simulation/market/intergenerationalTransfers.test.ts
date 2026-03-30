@@ -27,7 +27,12 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK, GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
+import {
+    GROCERY_BUFFER_TARGET_TICKS,
+    SERVICE_PER_PERSON_PER_TICK,
+    GENERATION_GAP,
+    SUPPORT_WEIGHT_SIGMA,
+} from '../constants';
 import type { Planet } from '../planet/planet';
 
 import { educationLevelKeys } from '../population/education';
