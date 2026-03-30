@@ -37,6 +37,11 @@ export const healthcareServiceResourceType: Resource = {
     name: 'Healthcare Service',
 };
 
+export const educationServiceResourceType: Resource = {
+    ...serviceResourceDefault,
+    name: 'Education Service',
+};
+
 export const ALL_SERVICE_RESOURCE_TYPE_NAMES = [
     logisticsServiceResourceType.name,
     constructionServiceResourceType.name,
@@ -44,4 +49,5 @@ export const ALL_SERVICE_RESOURCE_TYPE_NAMES = [
     groceryServiceResourceType.name,
     retailServiceResourceType.name,
     healthcareServiceResourceType.name,
+    educationServiceResourceType.name,
 ];

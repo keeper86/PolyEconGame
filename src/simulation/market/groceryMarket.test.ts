@@ -7,8 +7,7 @@ import {
     SERVICE_PER_PERSON_PER_TICK,
 } from '../constants';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { clothingResourceType } from '../planet/resources';
-import { groceryServiceResourceType } from '../planet/services';
+import { groceryServiceResourceType, retailServiceResourceType } from '../planet/services';
 import { putIntoStorageFacility } from '../planet/storage';
 import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
@@ -20,7 +19,7 @@ import { marketTick } from './market';
 // ---------------------------------------------------------------------------
 
 const GROCERY_SERVICE = groceryServiceResourceType.name;
-const CLOTHING = clothingResourceType.name;
+const RETAIL_SERVICE = retailServiceResourceType.name;
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
     return makeGS(planet, agents, 1);
@@ -227,11 +226,10 @@ describe('groceryMarketTick', () => {
 
         // Households need bid prices ≥ cheap ask (1.0).
         // bidPrice = wealth / desiredPerPerson = wealth / GROCERY_BUFFER_TARGET_TICKS
-        // desiredPerPerson = 30 → wealth must be > 30 to bid above 1.0
-        // Use wealth = 50 → bidPrice ≈ 1.67 → can afford cheap (ask=1.0) but not expensive (ask=5.0)
-        const totalPop = giveHouseholdsWealth(planet, 50);
-        planet.bank.householdDeposits = totalPop * 50;
-        planet.bank.deposits = totalPop * 50;
+        // Use wealth = 150 → bidPrice = 150/90 ≈ 1.67 → can afford cheap (ask=1.0) but not expensive (ask=5.0)
+        const totalPop = giveHouseholdsWealth(planet, 150);
+        planet.bank.householdDeposits = totalPop * 150;
+        planet.bank.deposits = totalPop * 150;
 
         marketTick(agentMap(cheapAgent, expensiveAgent), planet);
 
@@ -317,10 +315,11 @@ describe('groceryMarketTick', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1000);
         setGroceryOffer(groceryAgent, 2.5);
 
-        // Give households wealth
-        const totalPop = giveHouseholdsWealth(planet, 100);
-        planet.bank.householdDeposits = totalPop * 100;
-        planet.bank.deposits = totalPop * 100;
+        // Give households enough wealth to bid above the ask price (2.5).
+        // bidPrice = wealth / GROCERY_BUFFER_TARGET_TICKS → need wealth > 2.5 * 90 = 225
+        const totalPop = giveHouseholdsWealth(planet, 300);
+        planet.bank.householdDeposits = totalPop * 300;
+        planet.bank.deposits = totalPop * 300;
 
         marketTick(agentMap(groceryAgent), planet);
 
@@ -457,19 +456,26 @@ describe('updateAgentPricing', () => {
 // ---------------------------------------------------------------------------
 
 describe('sequential settlement: food is settled before discretionary goods', () => {
-    // With sequential settlement, food is cleared and wealth debited before
-    // clothing bids are generated.  A cohort that spends all remaining wealth
-    // on food has nothing left for clothing.
-    const WEALTH_PER_PERSON = 0.02;
+    // With sequential settlement, grocery is cleared and wealth debited before
+    // retail service bids are generated.  A cohort that spends all remaining
+    // wealth on groceries has nothing left for retail.
+    //
+    // Wealth calibration:
+    //   bidPrice = wealth / desiredPerPerson
+    //   desiredGrocery = GROCERY_BUFFER_TARGET_TICKS (90), price floor = 0.01 → need wealth > 0.9
+    //   desiredRetail  = RETAIL_BUFFER_TARGET_TICKS  (30), price floor = 0.01 → need wealth > 0.3
+    //   Use WEALTH_PER_PERSON = 2.0 so households can afford both services with headroom.
+    const WEALTH_PER_PERSON = 2.0;
+    const SERVICE_PRICE = 0.01; // = GROCERY_PRICE_FLOOR
 
-    function makeClothingAgent(id = 'clothing-agent'): Agent {
+    function makeRetailServiceAgent(id = 'retail-agent'): Agent {
         const agent = makeAgent(id);
-        putIntoStorageFacility(agent.assets.p.storageFacility, clothingResourceType, 1e6);
+        putIntoStorageFacility(agent.assets.p.storageFacility, retailServiceResourceType, 1e6);
         agent.assets.p.market = {
             sell: {
-                [CLOTHING]: {
-                    resource: clothingResourceType,
-                    offerPrice: 0.01,
+                [RETAIL_SERVICE]: {
+                    resource: retailServiceResourceType,
+                    offerPrice: SERVICE_PRICE,
                     offerRetainment: 0,
                 },
             },
@@ -478,7 +484,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         return agent;
     }
 
-    function makeGroceryServiceAgent(id = 'grocery-agent', price = 0.02): Agent {
+    function makeGroceryServiceAgent(id = 'grocery-agent', price = SERVICE_PRICE): Agent {
         const agent = makeAgent(id);
         putIntoStorageFacility(agent.assets.p.storageFacility, groceryServiceResourceType, 1e6);
         agent.assets.p.market = {
@@ -494,21 +500,18 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         return agent;
     }
 
-    function totalClothingBought(planet: Planet): number {
+    function totalRetailServiceBought(planet: Planet): number {
         let total = 0;
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
-                // Clothing is consumed as retail service, check retail service buffer
-                // Convert buffer ticks to units: buffer * SERVICE_PER_PERSON_PER_TICK * population
-                const retailBuffer = cat.services.retail.buffer;
-                const retailUnits = retailBuffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
-                total += retailUnits;
+                // buffer is in ticks; convert to units: buffer * SERVICE_PER_PERSON_PER_TICK * population
+                total += cat.services.retail.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
             }),
         );
         return total;
     }
 
-    function setupPlanet(foodBufferPerPerson: number) {
+    function setupPlanet(groceryBufferPerPerson: number) {
         const { planet } = makePlanetWithPopulation({ none: 50_000 });
         const totalPop = planet.population.demography.reduce((s, cohort) => {
             let n = 0;
@@ -521,43 +524,44 @@ describe('sequential settlement: food is settled before discretionary goods', ()
             forEachPopulationCohort(cohort, (cat) => {
                 if (cat.total > 0) {
                     cat.wealth = { mean: WEALTH_PER_PERSON, variance: 0 };
-                    cat.services.grocery.buffer = foodBufferPerPerson;
+                    cat.services.grocery.buffer = groceryBufferPerPerson;
                 }
             }),
         );
         planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
         planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
-        planet.marketPrices[CLOTHING] = 0.01;
+        planet.marketPrices[GROCERY_SERVICE] = SERVICE_PRICE;
+        planet.marketPrices[RETAIL_SERVICE] = SERVICE_PRICE;
         return planet;
     }
 
-    it('full food buffer → wealth intact → normal clothing demand', () => {
+    it('full grocery buffer → wealth intact → normal retail service demand', () => {
         const fullBuffer = GROCERY_BUFFER_TARGET_TICKS;
         const planet = setupPlanet(fullBuffer);
-        const clothingAgent = makeClothingAgent();
+        const retailAgent = makeRetailServiceAgent();
 
-        marketTick(agentMap(clothingAgent), planet);
+        marketTick(agentMap(retailAgent), planet);
 
-        expect(totalClothingBought(planet)).toBeGreaterThan(0);
+        expect(totalRetailServiceBought(planet)).toBeGreaterThan(0);
     });
 
-    it('empty food buffer + food available → food spending reduces clothing budget', () => {
-        // Verify that food is settled (wealth debited) before clothing bids are
+    it('empty grocery buffer + food available → grocery spending reduces retail budget', () => {
+        // Verify that grocery is settled (wealth debited) before retail bids are
         // generated by checking that total household wealth is lower when both
-        // food and clothing are available vs. only clothing.
+        // grocery and retail are available vs. only retail.
         const planet = setupPlanet(0);
-        const planetClothingOnly = setupPlanet(0);
+        const planetRetailOnly = setupPlanet(0);
 
-        const groceryAgent = makeGroceryServiceAgent('grocery-agent', 0.01);
+        const groceryAgent = makeGroceryServiceAgent();
 
         marketTick(
             new Map([
                 ['grocery-agent', groceryAgent],
-                ['clothing-agent', makeClothingAgent()],
+                ['retail-agent', makeRetailServiceAgent()],
             ]),
             planet,
         );
-        marketTick(agentMap(makeClothingAgent('c-only')), planetClothingOnly);
+        marketTick(agentMap(makeRetailServiceAgent('r-only')), planetRetailOnly);
 
         const totalWealth = (p: Planet) => {
             let w = 0;
@@ -569,20 +573,20 @@ describe('sequential settlement: food is settled before discretionary goods', ()
             return w;
         };
 
-        // Food purchase drains more total wealth than clothing purchase alone
-        expect(totalWealth(planet)).toBeLessThan(totalWealth(planetClothingOnly));
+        // Grocery purchase drains more total wealth than retail purchase alone
+        expect(totalWealth(planet)).toBeLessThan(totalWealth(planetRetailOnly));
     });
 
-    it('empty food buffer + no food seller → wealth intact → clothing demand unaffected', () => {
+    it('empty grocery buffer + no food seller → wealth intact → retail service demand unaffected', () => {
         const fullBuffer = GROCERY_BUFFER_TARGET_TICKS;
         const planetWithFullFood = setupPlanet(fullBuffer);
         const planetWithNoFood = setupPlanet(0);
 
-        marketTick(agentMap(makeClothingAgent('c1')), planetWithFullFood);
-        marketTick(agentMap(makeClothingAgent('c2')), planetWithNoFood);
+        marketTick(agentMap(makeRetailServiceAgent('r1')), planetWithFullFood);
+        marketTick(agentMap(makeRetailServiceAgent('r2')), planetWithNoFood);
 
-        // No food to buy → no wealth debited → clothing demand should still be non-zero
-        expect(totalClothingBought(planetWithNoFood)).toBeGreaterThan(0);
-        expect(totalClothingBought(planetWithFullFood)).toBeGreaterThan(0);
+        // No grocery to buy → no wealth debited → retail demand should still be non-zero
+        expect(totalRetailServiceBought(planetWithNoFood)).toBeGreaterThan(0);
+        expect(totalRetailServiceBought(planetWithFullFood)).toBeGreaterThan(0);
     });
 });

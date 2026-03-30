@@ -65,6 +65,7 @@ import {
 } from './resources';
 import {
     administrativeServiceResourceType,
+    educationServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
@@ -1193,11 +1194,58 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: pharmaceuticalResourceType, quantity: 1 },
+        { resource: pharmaceuticalResourceType, quantity: 2 },
+        { resource: chemicalResourceType, quantity: 20 },
         { resource: logisticsServiceResourceType, quantity: 10 },
         { resource: administrativeServiceResourceType, quantity: 3 },
     ],
     produces: [{ resource: healthcareServiceResourceType, quantity: 100 }],
+});
+
+export const school = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'School' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.4,
+    workerRequirement: {
+        none: 10,
+        primary: 20,
+        secondary: 30,
+        tertiary: 50,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: paperResourceType, quantity: 20 },
+        { resource: furnitureResourceType, quantity: 2 },
+        { resource: administrativeServiceResourceType, quantity: 2 },
+    ],
+    produces: [{ resource: educationServiceResourceType, quantity: 30 }],
+});
+
+export const university = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'University' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.6,
+    workerRequirement: {
+        none: 20,
+        primary: 30,
+        secondary: 50,
+        tertiary: 100,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: paperResourceType, quantity: 30 },
+        { resource: furnitureResourceType, quantity: 5 },
+        { resource: administrativeServiceResourceType, quantity: 6 },
+    ],
+    produces: [{ resource: educationServiceResourceType, quantity: 100 }],
 });
 
 export type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
@@ -1269,6 +1317,8 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(retailChain),
     entry(retailStore),
     entry(hospital),
+    entry(school),
+    entry(university),
 ];
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 

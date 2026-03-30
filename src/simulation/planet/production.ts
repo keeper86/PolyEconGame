@@ -1,16 +1,15 @@
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import { SKILL } from '../population/population';
 import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { stochasticRound } from '../utils/stochasticRound';
+import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 import type { Agent, Planet } from './planet';
+import { ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './storage';
-import { waterFill } from './waterFill';
 import type { WorkerSlot } from './waterFill';
-import { administrativeCenter } from './facilities';
-import { administrativeServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
+import { waterFill } from './waterFill';
 
 // ---------------------------------------------------------------------------
 // Local helpers
