@@ -1,4 +1,4 @@
-import { FOOD_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
+import { TICKS_PER_YEAR } from '../constants';
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
 import type { Resource } from '../planet/planet';
 import {
@@ -8,7 +8,6 @@ import {
     type ResourceClaim,
     type ResourceQuantity,
 } from '../planet/planet';
-import { groceryServiceResourceType } from '../planet/services';
 import type { ProductionFacility, StorageFacility } from '../planet/storage';
 import {
     MAX_AGE,
@@ -207,7 +206,6 @@ export function createPopulation(total: number): Population {
         }
     }
 
-    const serviceBufferPerPerson = FOOD_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {

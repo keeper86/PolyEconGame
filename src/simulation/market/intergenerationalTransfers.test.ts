@@ -27,7 +27,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
+import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK, GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
 import type { Planet } from '../planet/planet';
 
 import { educationLevelKeys } from '../population/education';
@@ -40,9 +40,9 @@ import {
     sumTransferMatrix,
     supportWeight,
 } from './intergenerationalTransfers';
-import { agriculturalProductResourceType } from '../planet/resources';
+import { groceryServiceResourceType } from '../planet/services';
 
-const FOOD = agriculturalProductResourceType.name;
+const GROCERY_SERVICE = groceryServiceResourceType.name;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -81,8 +81,8 @@ function placePeople(
     const cat = planet.population.demography[age][occ][edu].novice;
     cat.total = total;
     cat.wealth = { mean: opts?.wealthMean ?? 0, variance: 0 };
-    // Set grocery service buffer instead of food inventory
-    cat.services.grocery.buffer = opts?.foodStock ?? 0;
+    // Set grocery service buffer (per person, in ticks) from total food stock
+    cat.services.grocery.buffer = total > 0 ? (opts?.foodStock ?? 0) / total : 0;
 }
 
 /** Read back the total wealth at one (age, occ, edu) across all skills. */
@@ -268,7 +268,7 @@ describe('intergenerationalTransfersForPlanet – no-op scenarios', () => {
 
     it('does nothing when all food stocks are already at or above target', () => {
         const planet = makePlanet();
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         // Parent-age people: wealthy, food stock already full.
         placePeople(planet, 40, 1000, { wealthMean: 500, foodStock: foodTarget * 1000 });
@@ -282,8 +282,8 @@ describe('intergenerationalTransfersForPlanet – no-op scenarios', () => {
 
     it('does nothing when potential supporters have no surplus above the floor', () => {
         const planet = makePlanet();
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
-        const baseFoodCost = foodTarget * (planet.marketPrices[FOOD] ?? 1.0);
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+        const baseFoodCost = foodTarget * (planet.marketPrices[GROCERY_SERVICE] ?? 1.0);
 
         // Supporters at survival floor — no surplus.
         placePeople(planet, 35, 500, { wealthMean: baseFoodCost, foodStock: foodTarget * 500 });
@@ -305,10 +305,10 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
     let planet: Planet;
     const PARENT_AGE = GENERATION_GAP; // ~25
     const INFANT_AGE = 0;
-    const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+    const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
     beforeEach(() => {
-        planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
+        planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
         // Parents: wealthy, food fully stocked — plenty of surplus.
         placePeople(planet, PARENT_AGE, 1000, {
             wealthMean: 1000,
@@ -366,8 +366,8 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
 
 describe('intergenerationalTransfersForPlanet – elderly support', () => {
     it('elderly with empty food stocks receive wealth from working-age adults', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         const WORKING_AGE = 40;
         const ELDERLY_AGE = WORKING_AGE + GENERATION_GAP; // ~65
@@ -391,8 +391,8 @@ describe('intergenerationalTransfersForPlanet – elderly support', () => {
     });
 
     it('zero-sum is maintained for the elderly scenario', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         placePeople(planet, 40, 2000, { wealthMean: 500, foodStock: foodTarget * 2000 });
         placePeople(planet, 65, 300, { wealthMean: 0, foodStock: 0 });
@@ -411,8 +411,8 @@ describe('intergenerationalTransfersForPlanet – elderly support', () => {
 
 describe('intergenerationalTransfersForPlanet – wealth conservation', () => {
     it('total wealth is conserved across a multi-age population', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         // Seed several age groups with varying wealth and food stocks.
         placePeople(planet, 0, 100, { wealthMean: 0, foodStock: 0 });
@@ -431,8 +431,8 @@ describe('intergenerationalTransfersForPlanet – wealth conservation', () => {
     });
 
     it('lastTransferMatrix is zero-sum after a complex run', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         placePeople(planet, 0, 100, { wealthMean: 0, foodStock: 0 });
         placePeople(planet, 30, 500, { wealthMean: 300, foodStock: foodTarget * 500 });
@@ -452,9 +452,9 @@ describe('intergenerationalTransfersForPlanet – wealth conservation', () => {
 
 describe('intergenerationalTransfersForPlanet – insufficient surplus', () => {
     it('makes no transfer when all potential supporters are at or below the survival floor', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
-        const floor = foodTarget * (planet.marketPrices[FOOD] ?? 1.0);
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+        const floor = foodTarget * (planet.marketPrices[GROCERY_SERVICE] ?? 1.0);
 
         // Supporters exactly at the floor — effective surplus is 0.
         placePeople(planet, 30, 500, { wealthMean: floor, foodStock: foodTarget * 500 });
@@ -471,8 +471,8 @@ describe('intergenerationalTransfersForPlanet – insufficient surplus', () => {
         // Use a very small demography where the only needy age is the
         // supporter itself — age difference 0. supportWeight(0) > 0, so to truly
         // have no support we place needy people at an age with zero supporters nearby.
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         // Rich person at age 50 — but nobody needy exists.
         placePeople(planet, 50, 1000, { wealthMean: 500, foodStock: foodTarget * 1000 });
@@ -490,8 +490,8 @@ describe('intergenerationalTransfersForPlanet – insufficient surplus', () => {
 
 describe('intergenerationalTransfersForPlanet – support weight preference', () => {
     it('age group closer to GENERATION_GAP from needy contributes more than a distant group', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         const INFANT_AGE = 0;
         // Two potential supporter groups of equal wealth:
@@ -538,8 +538,8 @@ describe('intergenerationalTransfersForPlanet – lastTransferMatrix', () => {
     });
 
     it('matrix entries are negative for givers and positive for receivers', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         const PARENT_AGE = GENERATION_GAP;
         const INFANT_AGE = 0;
@@ -577,8 +577,8 @@ describe('intergenerationalTransfersForPlanet – lastTransferMatrix', () => {
     });
 
     it('matrix is all zeros when nobody needs support', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         // Everyone has full food stock.
         placePeople(planet, 30, 500, { wealthMean: 100, foodStock: foodTarget * 500 });
@@ -596,8 +596,8 @@ describe('intergenerationalTransfersForPlanet – lastTransferMatrix', () => {
     });
 
     it('matrix cell for infant age is positive (received) after a transfer', () => {
-        const planet = makePlanet({ marketPrices: { [FOOD]: 1.0 } });
-        const foodTarget = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        const foodTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
         const PARENT_AGE = GENERATION_GAP;
         placePeople(planet, PARENT_AGE, 1000, { wealthMean: 1000, foodStock: foodTarget * 1000 });

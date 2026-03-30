@@ -7,9 +7,6 @@ export const GROCERY_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR; // grocery servic
 /** Service consumption per person per tick (1 unit/person/tick for all services) */
 export const SERVICE_PER_PERSON_PER_TICK = 1;
 
-// Backward compatibility alias - TODO: Remove after refactoring
-export const FOOD_PER_PERSON_PER_TICK = GROCERY_PER_PERSON_PER_TICK;
-
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
@@ -36,9 +33,6 @@ export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICK
  * groceryTarget per person = GROCERY_BUFFER_TARGET_TICKS × GROCERY_PER_PERSON_PER_TICK
  */
 export const GROCERY_BUFFER_TARGET_TICKS = 30;
-
-// Backward compatibility alias - TODO: Remove after refactoring
-export const FOOD_BUFFER_TARGET_TICKS = GROCERY_BUFFER_TARGET_TICKS;
 
 /**
  * Service buffer targets expressed in ticks of consumption.
@@ -70,13 +64,6 @@ export const GROCERY_PRICE_CEIL = 1000000.0;
  * Initial grocery service price per unit (currency units per service unit).
  */
 export const INITIAL_GROCERY_PRICE = 1.0;
-
-// Backward compatibility aliases - TODO: Remove after refactoring
-export const FOOD_PRICE_ALPHA = GROCERY_PRICE_ALPHA;
-export const FOOD_PRICE_BETA = GROCERY_PRICE_BETA;
-export const FOOD_PRICE_FLOOR = GROCERY_PRICE_FLOOR;
-export const FOOD_PRICE_CEIL = GROCERY_PRICE_CEIL;
-export const INITIAL_FOOD_PRICE = INITIAL_GROCERY_PRICE;
 
 /**
  * Initial service price per unit (currency units per service unit).

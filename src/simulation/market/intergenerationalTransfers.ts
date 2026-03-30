@@ -1,12 +1,11 @@
 import {
-    GROCERY_BUFFER_TARGET_TICKS,
-    GROCERY_PER_PERSON_PER_TICK,
     GENERATION_GAP,
     GENERATION_KERNEL_N,
+    GROCERY_BUFFER_TARGET_TICKS,
     INITIAL_GROCERY_PRICE,
     MIN_EMPLOYABLE_AGE,
-    SUPPORT_WEIGHT_SIGMA,
     SERVICE_PER_PERSON_PER_TICK,
+    SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import type { Planet } from '../planet/planet';
@@ -171,7 +170,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     // Defaults to 1.0 when not yet set.
     const groceryPrice = planet.marketPrices[groceryServiceResourceType.name] ?? INITIAL_GROCERY_PRICE;
 
-    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * GROCERY_PER_PERSON_PER_TICK;
+    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
     const baseGroceryCost = groceryTargetPerPerson * groceryPrice;
 
     // Build the aggregate cache once — eliminates repeated SKILL iterations in
@@ -298,7 +297,15 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
             continue;
         }
 
-        creditDependents(cache, demography, age, actualTotalDebited, groceryTargetPerPerson, groceryPrice, transferMatrix);
+        creditDependents(
+            cache,
+            demography,
+            age,
+            actualTotalDebited,
+            groceryTargetPerPerson,
+            groceryPrice,
+            transferMatrix,
+        );
     }
 
     if (process.env.NODE_ENV !== 'production') {

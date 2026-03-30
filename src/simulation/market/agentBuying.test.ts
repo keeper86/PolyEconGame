@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { INITIAL_FOOD_PRICE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
+import { INITIAL_GROCERY_PRICE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import { putIntoStorageFacility } from '../planet/storage';
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
@@ -186,14 +186,14 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeCloseTo(2.0);
     });
 
-    it('uses INITIAL_FOOD_PRICE as fallback when no market price is set', () => {
+    it('uses INITIAL_GROCERY_PRICE as fallback when no market price is set', () => {
         delete planet.marketPrices[COAL];
         planet.marketPrices[steelResourceType.name] = 4.0; // ceiling = (50×4)/100 = 2.0 — non-binding
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidPrice).toBeCloseTo(INITIAL_FOOD_PRICE);
+        expect(bid.bidPrice).toBeCloseTo(INITIAL_GROCERY_PRICE);
     });
 
     it('uses planet.marketPrices as initial bid price when available', () => {

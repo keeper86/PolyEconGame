@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PRICE_ADJUST_MAX_UP, FOOD_PRICE_CEIL as PRICE_CEIL, FOOD_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
+import { PRICE_ADJUST_MAX_UP, GROCERY_PRICE_CEIL as PRICE_CEIL, GROCERY_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
@@ -203,7 +203,7 @@ describe('automaticPricing — offer price tâtonnement', () => {
         expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_UP);
     });
 
-    it('does not exceed FOOD_PRICE_CEIL', () => {
+    it('does not exceed GROCERY_PRICE_CEIL', () => {
         const STOCK = 1000;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE_CEIL, STOCK, STOCK);
 

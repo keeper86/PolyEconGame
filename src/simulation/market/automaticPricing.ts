@@ -1,7 +1,7 @@
 import {
-    FOOD_PRICE_CEIL as PRICE_CEIL,
-    FOOD_PRICE_FLOOR as PRICE_FLOOR,
-    INITIAL_FOOD_PRICE,
+    GROCERY_PRICE_CEIL as PRICE_CEIL,
+    GROCERY_PRICE_FLOOR as PRICE_FLOOR,
+    INITIAL_GROCERY_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
@@ -65,18 +65,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     //
     // For outputs without a market price yet, we fall back to the total input cost per
     // output unit (break-even floor). This prevents the ceiling from collapsing to
-    // INITIAL_FOOD_PRICE when a downstream product has never been traded.
+    // INITIAL_GROCERY_PRICE when a downstream product has never been traded.
     const inputValueCeiling = new Map<string, number>();
     for (const facility of assets.productionFacilities) {
         const tradedInputCostPerScale = facility.needs.reduce((sum, { resource, quantity }) => {
             if (resource.form === 'landBoundResource') {
                 return sum;
             }
-            return sum + quantity * (planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE);
+            return sum + quantity * (planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE);
         }, 0);
         const totalOutputQty = facility.produces.reduce((sum, p) => sum + p.quantity, 0);
         const inputCostFallbackPerOutputUnit =
-            totalOutputQty > 0 ? tradedInputCostPerScale / totalOutputQty : INITIAL_FOOD_PRICE;
+            totalOutputQty > 0 ? tradedInputCostPerScale / totalOutputQty : INITIAL_GROCERY_PRICE;
 
         const outputRevenuePerScale = facility.produces.reduce((sum, p) => {
             const knownPrice = planet.marketPrices[p.resource.name];
@@ -114,7 +114,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             offer.resource = resource;
             offer.offerRetainment = reserved; // Keep at least the reserved amount
 
-            const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
+            const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
             adjustOfferPrice(offer, inventoryQty, initialPrice);
         }
     }
@@ -164,7 +164,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
-        const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
+        const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_GROCERY_PRICE;
         const ceiling = inputValueCeiling.get(resourceName);
         adjustBidPrice(bid, shortfall, storageTarget, marketPrice, ceiling);
 

@@ -3,289 +3,279 @@
  *
  * Unit test for the data transformation logic used by NutritionHeatmapChart.
  *
- * The chart classifies each population cell using a **two-tier** scheme:
- *   1. Starvation bands — based on the physiological starvationLevel (S):
- *      severe (S > 0.9), moderate (S > 0.3), light (S > 0)
- *   2. Food-security bands — based on instantaneous buffer ratio (when S = 0):
- *      food insecure (buffer < 10%), adequate (buffer < 100%), full buffer (≥ 100%)
+ * The chart classifies each group using a **six-band starvation-only** scheme:
+ *   fatalStarvation    (S > 0.9)
+ *   severeStarvation   (S > 0.75)
+ *   seriousStarvation  (S > 0.5)
+ *   moderateStarvation (S > 0.25)
+ *   lightStarvation    (S > 0.05)
+ *   noStarvation       (S ≤ 0.05)
+ *
+ * The component receives AggRow[] from the server (not raw demography) and
+ * classifies each group by its population-weighted average starvation.
  */
 
 import { describe, it, expect } from 'vitest';
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK } from '@/simulation/constants';
-import { educationLevelKeys } from '@/simulation/population/education';
-import type { EducationLevelType } from '@/simulation/population/education';
-import type { Occupation, Skill, PopulationCategory, Cohort } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL, createEmptyPopulationCohort } from '@/simulation/population/population';
+import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
+import type { AggRow } from '@/app/planets/[planetId]/demographics/demographicsTypes';
+import { SERVICE_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from '@/app/planets/[planetId]/demographics/demographicsTypes';
+import { OCCUPATIONS } from '@/simulation/population/population';
 
-const FOOD = 'Agricultural Product';
-
-// ---- Replicate chart constants ----
-const FOOD_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+// ---- Replicate component structure ----
 
 const BANDS = [
-    { key: 'severeStarvation', label: 'Severe starvation' },
-    { key: 'moderateStarvation', label: 'Moderate starvation' },
-    { key: 'lightStarvation', label: 'Light starvation' },
-    { key: 'foodInsecure', label: 'Food insecure' },
-    { key: 'adequate', label: 'Adequate' },
-    { key: 'fullBuffer', label: 'Full buffer' },
+    { key: 'fatalStarvation', label: 'Fatal' },
+    { key: 'severeStarvation', label: 'Severe' },
+    { key: 'seriousStarvation', label: 'Serious' },
+    { key: 'moderateStarvation', label: 'Moderate' },
+    { key: 'lightStarvation', label: 'Light' },
+    { key: 'noStarvation', label: 'None' },
 ] as const;
 
 type BandKey = (typeof BANDS)[number]['key'];
 
-/** Two-tier classification: starvation level first, then buffer ratio. */
-function classifyBand(starvationLevel: number, bufferRatio: number): number {
-    if (starvationLevel > 0.9) {
-        return 0;
-    }
-    if (starvationLevel > 0.3) {
-        return 1;
-    }
-    if (starvationLevel > 0) {
-        return 2;
-    }
-    if (bufferRatio < 0.1) {
-        return 3;
-    }
-    if (bufferRatio < 1.0) {
-        return 4;
-    }
+/** Replicate the component's single-arg classifyBand (starvation level → band index). */
+function classifyBand(starvationLevel: number): number {
+    if (starvationLevel > 0.9) return 0;
+    if (starvationLevel > 0.75) return 1;
+    if (starvationLevel > 0.5) return 2;
+    if (starvationLevel > 0.25) return 3;
+    if (starvationLevel > 0.05) return 4;
     return 5;
 }
 
-type ChartRow = {
-    age: number;
-    pop: number;
-    severeStarvation: number;
-    moderateStarvation: number;
-    lightStarvation: number;
-    foodInsecure: number;
-    adequate: number;
-    fullBuffer: number;
-    avgBufferRatio: number;
-    avgStarvationLevel: number;
-    acuteStarvationFrac: number;
-};
+type ChartRow = Record<string, number>;
 
-/** Replicate the useMemo computation from NutritionHeatmapChart. */
-function computeChartData(
-    demography: Cohort<PopulationCategory>[],
-    filterEdu: EducationLevelType | null = null,
-    filterOcc: Occupation | null = null,
-): ChartRow[] {
-    const rows: ChartRow[] = [];
-    const edus: readonly EducationLevelType[] = filterEdu ? [filterEdu] : educationLevelKeys;
-    const occs: readonly Occupation[] = filterOcc ? [filterOcc] : ([...OCCUPATIONS] as Occupation[]);
+/** Replicate the component's useMemo logic using AggRow[] input. */
+function computeChartData(rows: AggRow[], groupKeys: readonly string[]): ChartRow[] {
+    const result: ChartRow[] = [];
+    for (const r of rows) {
+        const row: ChartRow = { age: r.age };
+        let ageTotalPop = 0;
 
-    for (let age = 0; age < demography.length; age++) {
-        const cohort = demography[age];
-        if (!cohort) {
-            continue;
-        }
+        for (let gi = 0; gi < groupKeys.length; gi++) {
+            const gk = groupKeys[gi];
+            const gv = r.groupValues[gi];
+            const gPop = gv[GV_POP];
+            const totalFood = gv[GV_FOOD];
+            const weightedStarv = gv[GV_STARV];
 
-        const bandPops: number[] = new Array(BANDS.length).fill(0);
-        let totalPop = 0;
-        let weightedRatio = 0;
-        let weightedStarvation = 0;
-        let acutePop = 0;
+            const avgStarvation = gPop > 0 && weightedStarv > 0 ? weightedStarv / gPop : 0;
+            const avgStock = gPop > 0 ? totalFood / gPop : 0;
+            const avgBuffer = SERVICE_TARGET_PER_PERSON > 0 ? avgStock / SERVICE_TARGET_PER_PERSON : 0;
 
-        for (const occ of occs) {
-            for (const edu of edus) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    if (cat.total <= 0) {
-                        continue;
-                    }
-
-                    const stock = cat.inventory[FOOD] ?? 0;
-                    const bufferRatio = FOOD_TARGET_PER_PERSON > 0 ? stock / (FOOD_TARGET_PER_PERSON * cat.total) : 0;
-
-                    totalPop += cat.total;
-                    weightedRatio += cat.total * bufferRatio;
-                    weightedStarvation += cat.total * cat.starvationLevel;
-                    bandPops[classifyBand(cat.starvationLevel, bufferRatio)] += cat.total;
-
-                    if (stock < FOOD_PER_PERSON_PER_TICK * cat.total) {
-                        acutePop += cat.total;
-                    }
-                }
+            const bandIdx = classifyBand(avgStarvation);
+            for (let bi = 0; bi < BANDS.length; bi++) {
+                row[`${gk}_${BANDS[bi].key}`] = bi === bandIdx ? gPop : 0;
             }
+            row[`${gk}_total`] = gPop;
+            row[`${gk}_avgStarvation`] = avgStarvation;
+            row[`${gk}_avgBuffer`] = avgBuffer;
+            ageTotalPop += gPop;
         }
 
-        rows.push({
-            age,
-            pop: totalPop,
-            severeStarvation: bandPops[0],
-            moderateStarvation: bandPops[1],
-            lightStarvation: bandPops[2],
-            foodInsecure: bandPops[3],
-            adequate: bandPops[4],
-            fullBuffer: bandPops[5],
-            avgBufferRatio: totalPop > 0 ? weightedRatio / totalPop : 0,
-            avgStarvationLevel: totalPop > 0 ? weightedStarvation / totalPop : 0,
-            acuteStarvationFrac: totalPop > 0 ? acutePop / totalPop : 0,
-        });
+        if (ageTotalPop > 0) result.push(row);
     }
-    return rows;
+    return result;
 }
 
-/** Compute global stats from chart data, matching the component's rendering. */
-function computeGlobalStats(chartData: ChartRow[]) {
-    const totalPop = chartData.reduce((s, d) => s + d.pop, 0);
-    const globalAvgStarvation =
-        totalPop > 0 ? chartData.reduce((s, d) => s + d.avgStarvationLevel * d.pop, 0) / totalPop : 0;
-    const globalAvgRatio = totalPop > 0 ? chartData.reduce((s, d) => s + d.avgBufferRatio * d.pop, 0) / totalPop : 0;
-    const globalBands = BANDS.map((b) => chartData.reduce((s, d) => s + (d[b.key as BandKey] as number), 0));
-    const globalStarvingPop = globalBands[0] + globalBands[1] + globalBands[2];
+/** Compute global stats aggregated across all chart rows. */
+function computeGlobalStats(chartData: ChartRow[], groupKeys: readonly string[]) {
+    let totalPop = 0;
+    let totalStarving = 0;
+    let wStarv = 0;
+    let wBuffer = 0;
+    const bandTotals: Record<BandKey, number> = {
+        fatalStarvation: 0,
+        severeStarvation: 0,
+        seriousStarvation: 0,
+        moderateStarvation: 0,
+        lightStarvation: 0,
+        noStarvation: 0,
+    };
+
+    for (const row of chartData) {
+        for (const gk of groupKeys) {
+            const gPop = row[`${gk}_total`] ?? 0;
+            totalPop += gPop;
+            for (const b of BANDS) {
+                const cnt = row[`${gk}_${b.key}`] ?? 0;
+                (bandTotals as Record<string, number>)[b.key] += cnt;
+            }
+            // bands 0-4 = starving (all except noStarvation which is index 5)
+            const starvingInRow = BANDS.slice(0, 5).reduce((s, b) => s + (row[`${gk}_${b.key}`] ?? 0), 0);
+            totalStarving += starvingInRow;
+            wStarv += gPop * (row[`${gk}_avgStarvation`] ?? 0);
+            wBuffer += gPop * (row[`${gk}_avgBuffer`] ?? 0);
+        }
+    }
 
     return {
         totalPop,
-        globalAvgStarvation,
-        globalAvgRatio,
-        globalBands,
-        globalStarvingPop,
-        starvingFrac: totalPop > 0 ? globalStarvingPop / totalPop : 0,
+        totalStarving,
+        starvingFrac: totalPop > 0 ? totalStarving / totalPop : 0,
+        globalAvgStarvation: totalPop > 0 ? wStarv / totalPop : 0,
+        globalAvgBuffer: totalPop > 0 ? wBuffer / totalPop : 0,
+        bandTotals,
     };
 }
 
-/** Helper: create a population with one cell. */
-function makePopulation(
+// --- Test data helpers ---
+
+const TEST_GROUP_KEYS = [...OCCUPATIONS] as string[];
+
+/** Create an AggRow with all population in the first group (education). */
+function makeAggRow(
     age: number,
-    occ: Occupation,
-    edu: EducationLevelType,
-    skill: Skill,
-    total: number,
-    foodStock: number,
-    starvationLevel = 0,
-): { demography: Cohort<PopulationCategory>[] } {
-    const demography = Array.from({ length: Math.max(age + 1, 1) }, () => createEmptyPopulationCohort());
-    demography[age][occ][edu][skill].total = total;
-    demography[age][occ][edu][skill].inventory = { [FOOD]: foodStock };
-    demography[age][occ][edu][skill].starvationLevel = starvationLevel;
-    return { demography };
+    pop: number,
+    totalFoodStock: number,
+    weightedStarvation: number,
+): AggRow {
+    return {
+        age,
+        total: pop,
+        occ: [pop, 0, 0, 0],
+        edu: [pop, 0, 0, 0],
+        groupValues: [
+            [pop, totalFoodStock, weightedStarvation, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ],
+    };
 }
 
-describe('NutritionHeatmapChart — two-tier classification', () => {
-    it('classifies healthy + full buffer as fullBuffer', () => {
-        const target = FOOD_TARGET_PER_PERSON * 1000;
-        const pop = makePopulation(30, 'employed', 'primary', 'novice', 1000, target, 0);
-        const data = computeChartData(pop.demography);
-        const stats = computeGlobalStats(data);
+describe('NutritionHeatmapChart — classifyBand (starvation-only, single arg)', () => {
+    it('S > 0.9 → fatalStarvation (band 0)', () => {
+        expect(classifyBand(0.91)).toBe(0);
+        expect(classifyBand(1.0)).toBe(0);
+    });
 
-        expect(stats.globalBands[5]).toBe(1000); // fullBuffer
-        expect(stats.globalStarvingPop).toBe(0);
-        expect(stats.globalAvgRatio).toBeCloseTo(1.0, 3);
+    it('S > 0.75 and ≤ 0.9 → severeStarvation (band 1)', () => {
+        expect(classifyBand(0.9)).toBe(1);
+        expect(classifyBand(0.76)).toBe(1);
+    });
+
+    it('S > 0.5 and ≤ 0.75 → seriousStarvation (band 2)', () => {
+        expect(classifyBand(0.75)).toBe(2);
+        expect(classifyBand(0.51)).toBe(2);
+    });
+
+    it('S > 0.25 and ≤ 0.5 → moderateStarvation (band 3)', () => {
+        expect(classifyBand(0.5)).toBe(3);
+        expect(classifyBand(0.26)).toBe(3);
+    });
+
+    it('S > 0.05 and ≤ 0.25 → lightStarvation (band 4)', () => {
+        expect(classifyBand(0.25)).toBe(4);
+        expect(classifyBand(0.06)).toBe(4);
+    });
+
+    it('S ≤ 0.05 → noStarvation (band 5)', () => {
+        expect(classifyBand(0.05)).toBe(5);
+        expect(classifyBand(0.0)).toBe(5);
+    });
+
+    it('all thresholds are exclusive on the upper end', () => {
+        expect(classifyBand(0.9)).not.toBe(0); // exactly 0.9 is NOT fatal
+        expect(classifyBand(0.75)).not.toBe(1); // exactly 0.75 is NOT severe
+    });
+});
+
+describe('NutritionHeatmapChart — computeChartData', () => {
+    it('no starvation + full buffer → noStarvation band', () => {
+        const foodStock = SERVICE_TARGET_PER_PERSON * 1000; // full buffer for 1000 people
+        const row = makeAggRow(30, 1000, foodStock, 0);
+        const data = computeChartData([row], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
+
+        expect(stats.bandTotals.noStarvation).toBe(1000);
+        expect(stats.totalStarving).toBe(0);
+        expect(stats.globalAvgBuffer).toBeCloseTo(1.0, 3);
         expect(stats.globalAvgStarvation).toBe(0);
     });
 
-    it('classifies S=0 + no food as food insecure', () => {
-        // S=0 but zero food stock → food insecure (NOT starving)
-        const pop = makePopulation(30, 'employed', 'primary', 'novice', 1000, 0, 0);
-        const data = computeChartData(pop.demography);
-        const stats = computeGlobalStats(data);
+    it('S = 0.95 → fatalStarvation regardless of buffer', () => {
+        const foodStock = SERVICE_TARGET_PER_PERSON * 1000; // full buffer
+        const weightedStarv = 0.95 * 1000;
+        const row = makeAggRow(30, 1000, foodStock, weightedStarv);
+        const data = computeChartData([row], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
 
-        expect(stats.globalBands[3]).toBe(1000); // food insecure
-        expect(stats.globalStarvingPop).toBe(0); // NOT starving (S=0)
-    });
-
-    it('classifies S>0.9 as severe starvation regardless of buffer', () => {
-        // High starvation level but has food (recovering)
-        const target = FOOD_TARGET_PER_PERSON * 1000;
-        const pop = makePopulation(30, 'employed', 'primary', 'novice', 1000, target * 2, 0.95);
-        const data = computeChartData(pop.demography);
-        const stats = computeGlobalStats(data);
-
-        expect(stats.globalBands[0]).toBe(1000); // severe starvation (S > 0.9)
-        expect(stats.globalStarvingPop).toBe(1000);
-        expect(stats.globalAvgRatio).toBeCloseTo(2.0, 3); // buffer is 200%
+        expect(stats.bandTotals.fatalStarvation).toBe(1000);
+        expect(stats.totalStarving).toBe(1000);
         expect(stats.globalAvgStarvation).toBeCloseTo(0.95, 3);
+        expect(stats.globalAvgBuffer).toBeCloseTo(1.0, 3); // high buffer but still fatal
     });
 
-    it('classifies S=0.5 as moderate starvation', () => {
-        const pop = makePopulation(30, 'employed', 'primary', 'novice', 1000, 0, 0.5);
-        const data = computeChartData(pop.demography);
-        const stats = computeGlobalStats(data);
+    it('S = 0.8 → severeStarvation', () => {
+        const row = makeAggRow(30, 500, 0, 0.8 * 500);
+        const data = computeChartData([row], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
 
-        expect(stats.globalBands[1]).toBe(1000); // moderate starvation
-        expect(stats.globalStarvingPop).toBe(1000);
+        expect(stats.bandTotals.severeStarvation).toBe(500);
+        expect(stats.totalStarving).toBe(500);
     });
 
-    it('classifies S=0.1 as light starvation', () => {
-        const pop = makePopulation(30, 'employed', 'primary', 'novice', 1000, 0, 0.1);
-        const data = computeChartData(pop.demography);
-        const stats = computeGlobalStats(data);
+    it('S = 0.6 → seriousStarvation', () => {
+        const row = makeAggRow(30, 200, 0, 0.6 * 200);
+        const data = computeChartData([row], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
 
-        expect(stats.globalBands[2]).toBe(1000); // light starvation (0 < S ≤ 0.3)
-        expect(stats.globalStarvingPop).toBe(1000);
+        expect(stats.bandTotals.seriousStarvation).toBe(200);
     });
 
-    it('classifies S=0 + buffer=50% as adequate', () => {
-        const target = FOOD_TARGET_PER_PERSON * 1000;
-        const pop = makePopulation(30, 'employed', 'primary', 'novice', 1000, target * 0.5, 0);
-        const data = computeChartData(pop.demography);
-        const stats = computeGlobalStats(data);
+    it('S = 0.3 → moderateStarvation', () => {
+        const row = makeAggRow(30, 400, 0, 0.3 * 400);
+        const data = computeChartData([row], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
 
-        expect(stats.globalBands[4]).toBe(1000); // adequate
-        expect(stats.globalStarvingPop).toBe(0);
+        expect(stats.bandTotals.moderateStarvation).toBe(400);
     });
 
-    it('the old impossible state is now consistent', () => {
-        // The previously impossible scenario: high avg buffer + 100% "starving".
-        // With the new semantics, people with S=0 and buffer=105% are NOT starving.
-        // Only people with S>0 are in starvation bands.
-        const demography = Array.from({ length: 31 }, () => createEmptyPopulationCohort());
+    it('S = 0.1 → lightStarvation', () => {
+        const row = makeAggRow(30, 300, 0, 0.1 * 300);
+        const data = computeChartData([row], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
 
-        // Half the population: S=0, 200% buffer → should be fullBuffer
-        demography[30].employed.primary.novice.total = 500;
-        demography[30].employed.primary.novice.inventory = { [FOOD]: 500 * FOOD_TARGET_PER_PERSON * 2 };
-        demography[30].employed.primary.novice.starvationLevel = 0;
-
-        // Other half: S=0.1 (recovering), 50% buffer → should be lightStarvation
-        demography[30].unoccupied.none.novice.total = 500;
-        demography[30].unoccupied.none.novice.inventory = { [FOOD]: 500 * FOOD_TARGET_PER_PERSON * 0.5 };
-        demography[30].unoccupied.none.novice.starvationLevel = 0.1;
-
-        const data = computeChartData(demography);
-        const stats = computeGlobalStats(data);
-
-        // avg buffer = (500×2.0 + 500×0.5) / 1000 = 1.25 = 125%
-        expect(stats.globalAvgRatio).toBeCloseTo(1.25, 3);
-        // starving fraction = 500/1000 = 50% (only the S>0 group)
-        expect(stats.starvingFrac).toBe(0.5);
-        // These are now consistent: high buffer + only partial starving
-        expect(stats.globalBands[5]).toBe(500); // fullBuffer
-        expect(stats.globalBands[2]).toBe(500); // light starvation
+        expect(stats.bandTotals.lightStarvation).toBe(300);
     });
 
-    it('handles zero-population ages correctly', () => {
-        const demography = Array.from({ length: 31 }, () => createEmptyPopulationCohort());
-        demography[30].employed.primary.novice.total = 100;
-        demography[30].employed.primary.novice.inventory = { [FOOD]: 100 * FOOD_TARGET_PER_PERSON };
-        demography[30].employed.primary.novice.starvationLevel = 0;
-
-        const data = computeChartData(demography);
-        const stats = computeGlobalStats(data);
-
-        expect(stats.totalPop).toBe(100);
-        expect(stats.globalAvgRatio).toBeCloseTo(1.0, 3);
-        expect(stats.globalStarvingPop).toBe(0);
+    it('empty rows are skipped (zero-population ages excluded)', () => {
+        const zeroRow = makeAggRow(20, 0, 0, 0);
+        const data = computeChartData([zeroRow], TEST_GROUP_KEYS);
+        expect(data).toHaveLength(0);
     });
 
-    it('classifyBand boundary cases', () => {
-        expect(classifyBand(0.95, 2.0)).toBe(0); // S>0.9 → severe
-        expect(classifyBand(0.9, 2.0)).toBe(1); // S=0.9 (not >0.9) → moderate
-        expect(classifyBand(0.5, 2.0)).toBe(1); // S>0.3 → moderate
-        expect(classifyBand(0.3, 2.0)).toBe(2); // S=0.3 (not >0.3) → light
-        expect(classifyBand(0.01, 0)).toBe(2); // S>0 → light
-        expect(classifyBand(0, 0)).toBe(3); // S=0, buffer<0.1 → food insecure
-        expect(classifyBand(0, 0.05)).toBe(3); // S=0, buffer<0.1 → food insecure
-        expect(classifyBand(0, 0.1)).toBe(4); // S=0, 0.1≤buffer<1.0 → adequate
-        expect(classifyBand(0, 0.99)).toBe(4); // S=0, buffer<1.0 → adequate
-        expect(classifyBand(0, 1.0)).toBe(5); // S=0, buffer≥1.0 → full buffer
-        expect(classifyBand(0, 5.0)).toBe(5); // S=0, buffer≥1.0 → full buffer
+    it('avgBuffer correctly reflects grocery stock ratio', () => {
+        const pop = 1000;
+        const foodStock = SERVICE_TARGET_PER_PERSON * pop * 0.5; // 50% of target
+        const row = makeAggRow(30, pop, foodStock, 0);
+        const data = computeChartData([row], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
+
+        expect(stats.globalAvgBuffer).toBeCloseTo(0.5, 3);
     });
 
-    it('FOOD_TARGET_PER_PERSON has expected value', () => {
-        expect(FOOD_TARGET_PER_PERSON).toBeCloseTo(1 / 12, 10);
+    it('SERVICE_TARGET_PER_PERSON matches GROCERY_BUFFER_TARGET_TICKS × SERVICE_PER_PERSON_PER_TICK', () => {
+        expect(SERVICE_TARGET_PER_PERSON).toBeCloseTo(
+            GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK,
+            10,
+        );
+    });
+
+    it('mixed ages: each age classified independently', () => {
+        const age30 = makeAggRow(30, 500, SERVICE_TARGET_PER_PERSON * 500, 0); // no starvation
+        const age50 = makeAggRow(50, 300, 0, 0.95 * 300); // fatal starvation
+        const data = computeChartData([age30, age50], TEST_GROUP_KEYS);
+        const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
+
+        expect(data).toHaveLength(2);
+        expect(stats.bandTotals.noStarvation).toBe(500);
+        expect(stats.bandTotals.fatalStarvation).toBe(300);
+        expect(stats.totalStarving).toBe(300);
+        expect(stats.starvingFrac).toBeCloseTo(300 / 800, 6);
     });
 });
+
+import { educationLevelKeys } from '@/simulation/population/education';

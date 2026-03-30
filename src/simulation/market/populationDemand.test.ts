@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { FOOD_BUFFER_TARGET_TICKS, INITIAL_SERVICE_PRICE } from '../constants';
+import { GROCERY_BUFFER_TARGET_TICKS, INITIAL_SERVICE_PRICE } from '../constants';
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
 import { forEachPopulationCohort } from '../population/population';
 import { makePlanetWithPopulation } from '../utils/testHelper';
@@ -90,7 +90,7 @@ describe('buildPopulationDemandForResource', () => {
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
                         cat.wealth = { mean: 100, variance: 0 };
-                        cat.services.grocery.buffer = FOOD_BUFFER_TARGET_TICKS;
+                        cat.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS;
                     }
                 }),
             );

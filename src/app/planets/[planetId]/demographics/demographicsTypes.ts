@@ -9,7 +9,7 @@
  * no further aggregation is needed on the client.
  */
 
-import { FOOD_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
+import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 
 export type GroupMode = 'occupation' | 'education';
 
@@ -41,7 +41,7 @@ export type AggRow = {
     ];
 };
 
-export const SERVICE_TARGET_PER_PERSON = FOOD_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+export const SERVICE_TARGET_PER_PERSON = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
 /** Index into groupValues tuple: population count. */
 export const GV_POP = 0 as const;

@@ -10,7 +10,7 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
-import { INITIAL_FOOD_PRICE } from '../../simulation/constants';
+import { INITIAL_GROCERY_PRICE } from '../../simulation/constants';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { Skill } from '../../simulation/population/population';
@@ -273,8 +273,8 @@ function buildFoodDemography(planet: Planet): FoodCohort[] {
                     const cat = cohort[occ][edu][skill];
                     slimCohort[occ][edu][skill] = {
                         total: cat.total,
-                        foodStock: cat.inventory[groceryServiceResourceType.name] ?? 0,
-                        starvationLevel: cat.starvationLevel,
+                        foodStock: cat.services.grocery.buffer * cat.total,
+                        starvationLevel: cat.services.grocery.starvationLevel,
                     };
                 }
             }
@@ -433,8 +433,8 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                             continue;
                         }
                         gPop += cat.total;
-                        gFoodStock += cat.inventory[groceryServiceResourceType.name] ?? 0;
-                        gWeightedStarvation += cat.total * cat.starvationLevel;
+                        gFoodStock += cat.services.grocery.buffer * cat.total;
+                        gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                     }
                 }
@@ -549,7 +549,7 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
             continue;
         }
 
-        const offerPrice = offer.lastOfferPrice ?? offer.offerPrice ?? INITIAL_FOOD_PRICE;
+        const offerPrice = offer.lastOfferPrice ?? offer.offerPrice ?? INITIAL_GROCERY_PRICE;
         const lastPlacedQuantity = offer.lastPlacedQty ?? 0;
         const lastSold = offer.lastSold ?? 0;
         const lastRevenue = offer.lastRevenue ?? 0;
