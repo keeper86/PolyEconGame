@@ -10,6 +10,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import {
+    administrativeCenter,
     agriculturalProductionFacility,
     beveragePlant,
     cementPlant,
@@ -19,12 +20,18 @@ import {
     copperSmelter,
     foodProcessingPlant,
     glassFactory,
+    groceryChain,
+    hospital,
     ironExtractionFacility,
     ironSmelter,
     loggingCamp,
+    logisticsHub,
     oilRefinery,
     oilWell,
+    packagingPlant,
+    retailChain,
     sawmill,
+    school,
     waterExtractionFacility,
 } from '../planet/facilities';
 import type { Agent, Planet } from '../planet/planet';
@@ -255,7 +262,104 @@ function buildGuneIndustrialAgents(): Agent[] {
         storage: makeStorage({ planetId: 'gune', id: 'gune-food-storage', name: 'Gune Foods Storage' }),
     });
 
-    return [timberAgent, foodAgent];
+    const bev1 = beveragePlant('gune', 'gune-beverage-plant');
+    bev1.scale = 3;
+    bev1.maxScale = 3;
+    const pkg1 = packagingPlant('gune', 'gune-packaging-plant');
+    pkg1.scale = 3;
+    pkg1.maxScale = 3;
+    const beverageAgent = makeAgent({
+        id: 'gune-consumer-goods',
+        name: 'Gune Consumer Goods',
+        associatedPlanetId: 'gune',
+        planetId: 'gune',
+        facilities: [bev1, pkg1],
+        storage: makeStorage({ planetId: 'gune', id: 'gune-consumer-storage', name: 'Gune Consumer Goods Storage' }),
+    });
+
+    const adm1 = administrativeCenter('gune', 'gune-admin-center');
+    adm1.scale = 50;
+    adm1.maxScale = 50;
+    const adminAgent = makeAgent({
+        id: 'gune-admin-services',
+        name: 'Gune Administrative Services',
+        associatedPlanetId: 'gune',
+        planetId: 'gune',
+        facilities: [adm1],
+        storage: makeStorage({ planetId: 'gune', id: 'gune-admin-storage', name: 'Gune Admin Storage' }),
+    });
+
+    const log1 = logisticsHub('gune', 'gune-logistics-hub');
+    log1.scale = 30;
+    log1.maxScale = 30;
+    const logisticsAgent = makeAgent({
+        id: 'gune-logistics-corp',
+        name: 'Gune Logistics Corp',
+        associatedPlanetId: 'gune',
+        planetId: 'gune',
+        facilities: [log1],
+        storage: makeStorage({ planetId: 'gune', id: 'gune-logistics-storage', name: 'Gune Logistics Storage' }),
+    });
+
+    const groc1 = groceryChain('gune', 'gune-grocery-chain');
+    groc1.scale = 50;
+    groc1.maxScale = 50;
+    const groceryAgent = makeAgent({
+        id: 'gune-grocery-corp',
+        name: 'Gune Grocery Corp',
+        associatedPlanetId: 'gune',
+        planetId: 'gune',
+        facilities: [groc1],
+        storage: makeStorage({ planetId: 'gune', id: 'gune-grocery-storage', name: 'Gune Grocery Storage' }),
+    });
+
+    const ret1 = retailChain('gune', 'gune-retail-chain');
+    ret1.scale = 20;
+    ret1.maxScale = 20;
+    const retailAgent = makeAgent({
+        id: 'gune-retail-corp',
+        name: 'Gune Retail Corp',
+        associatedPlanetId: 'gune',
+        planetId: 'gune',
+        facilities: [ret1],
+        storage: makeStorage({ planetId: 'gune', id: 'gune-retail-storage', name: 'Gune Retail Storage' }),
+    });
+
+    const hosp1 = hospital('gune', 'gune-hospital');
+    hosp1.scale = 20;
+    hosp1.maxScale = 20;
+    const hospitalAgent = makeAgent({
+        id: 'gune-healthcare-corp',
+        name: 'Gune Healthcare Corp',
+        associatedPlanetId: 'gune',
+        planetId: 'gune',
+        facilities: [hosp1],
+        storage: makeStorage({ planetId: 'gune', id: 'gune-healthcare-storage', name: 'Gune Healthcare Storage' }),
+    });
+
+    const sch1 = school('gune', 'gune-school');
+    sch1.scale = 15;
+    sch1.maxScale = 15;
+    const educationAgent = makeAgent({
+        id: 'gune-education-corp',
+        name: 'Gune Education Corp',
+        associatedPlanetId: 'gune',
+        planetId: 'gune',
+        facilities: [sch1],
+        storage: makeStorage({ planetId: 'gune', id: 'gune-education-storage', name: 'Gune Education Storage' }),
+    });
+
+    return [
+        timberAgent,
+        foodAgent,
+        beverageAgent,
+        adminAgent,
+        logisticsAgent,
+        groceryAgent,
+        retailAgent,
+        hospitalAgent,
+        educationAgent,
+    ];
 }
 
 // ============================================================================
@@ -283,16 +387,135 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
     const c2 = coalPowerPlant('icedonia', 'icedonia-polar-power-plant');
     c2.scale = 10;
     c2.maxScale = 10;
-    return [
-        makeAgent({
-            id: 'icedonia-polar-energy',
-            name: 'Polar Energy Corp',
-            associatedPlanetId: 'icedonia',
+    const energyAgent = makeAgent({
+        id: 'icedonia-polar-energy',
+        name: 'Polar Energy Corp',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [c1, c2],
+        storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-polar-storage', name: 'Polar Energy Storage' }),
+        tenancies: [coalId],
+    });
+
+    const fp1 = foodProcessingPlant('icedonia', 'icedonia-food-plant');
+    fp1.scale = 3;
+    fp1.maxScale = 3;
+    const bev1 = beveragePlant('icedonia', 'icedonia-beverage-plant');
+    bev1.scale = 2;
+    bev1.maxScale = 2;
+    const pkg1 = packagingPlant('icedonia', 'icedonia-packaging-plant');
+    pkg1.scale = 2;
+    pkg1.maxScale = 2;
+    const consumerAgent = makeAgent({
+        id: 'icedonia-consumer-goods',
+        name: 'Icedonia Consumer Goods',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [fp1, bev1, pkg1],
+        storage: makeStorage({
             planetId: 'icedonia',
-            facilities: [c1, c2],
-            storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-polar-storage', name: 'Polar Energy Storage' }),
-            tenancies: [coalId],
+            id: 'icedonia-consumer-storage',
+            name: 'Icedonia Consumer Storage',
         }),
+    });
+
+    const adm1 = administrativeCenter('icedonia', 'icedonia-admin-center');
+    adm1.scale = 20;
+    adm1.maxScale = 20;
+    const adminAgent = makeAgent({
+        id: 'icedonia-admin-services',
+        name: 'Icedonia Administrative Services',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [adm1],
+        storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-admin-storage', name: 'Icedonia Admin Storage' }),
+    });
+
+    const log1 = logisticsHub('icedonia', 'icedonia-logistics-hub');
+    log1.scale = 10;
+    log1.maxScale = 10;
+    const logisticsAgent = makeAgent({
+        id: 'icedonia-logistics-corp',
+        name: 'Icedonia Logistics Corp',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [log1],
+        storage: makeStorage({
+            planetId: 'icedonia',
+            id: 'icedonia-logistics-storage',
+            name: 'Icedonia Logistics Storage',
+        }),
+    });
+
+    const groc1 = groceryChain('icedonia', 'icedonia-grocery-chain');
+    groc1.scale = 20;
+    groc1.maxScale = 20;
+    const groceryAgent = makeAgent({
+        id: 'icedonia-grocery-corp',
+        name: 'Icedonia Grocery Corp',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [groc1],
+        storage: makeStorage({
+            planetId: 'icedonia',
+            id: 'icedonia-grocery-storage',
+            name: 'Icedonia Grocery Storage',
+        }),
+    });
+
+    const ret1 = retailChain('icedonia', 'icedonia-retail-chain');
+    ret1.scale = 8;
+    ret1.maxScale = 8;
+    const retailAgent = makeAgent({
+        id: 'icedonia-retail-corp',
+        name: 'Icedonia Retail Corp',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [ret1],
+        storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-retail-storage', name: 'Icedonia Retail Storage' }),
+    });
+
+    const hosp1 = hospital('icedonia', 'icedonia-hospital');
+    hosp1.scale = 8;
+    hosp1.maxScale = 8;
+    const hospitalAgent = makeAgent({
+        id: 'icedonia-healthcare-corp',
+        name: 'Icedonia Healthcare Corp',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [hosp1],
+        storage: makeStorage({
+            planetId: 'icedonia',
+            id: 'icedonia-healthcare-storage',
+            name: 'Icedonia Healthcare Storage',
+        }),
+    });
+
+    const sch1 = school('icedonia', 'icedonia-school');
+    sch1.scale = 6;
+    sch1.maxScale = 6;
+    const educationAgent = makeAgent({
+        id: 'icedonia-education-corp',
+        name: 'Icedonia Education Corp',
+        associatedPlanetId: 'icedonia',
+        planetId: 'icedonia',
+        facilities: [sch1],
+        storage: makeStorage({
+            planetId: 'icedonia',
+            id: 'icedonia-education-storage',
+            name: 'Icedonia Education Storage',
+        }),
+    });
+
+    return [
+        energyAgent,
+        consumerAgent,
+        adminAgent,
+        logisticsAgent,
+        groceryAgent,
+        retailAgent,
+        hospitalAgent,
+        educationAgent,
     ];
 }
 
@@ -346,7 +569,117 @@ function buildPandaraIndustrialAgents(): Agent[] {
         storage: makeStorage({ planetId: 'pandara', id: 'pandara-food-storage', name: 'Pandara Food Storage' }),
     });
 
-    return [steelAgent, foodAgent];
+    const pkg1 = packagingPlant('pandara', 'pandara-packaging-plant');
+    pkg1.scale = 15;
+    pkg1.maxScale = 15;
+    const packagingAgent = makeAgent({
+        id: 'pandara-packaging-corp',
+        name: 'Pandara Packaging Corp',
+        associatedPlanetId: 'pandara',
+        planetId: 'pandara',
+        facilities: [pkg1],
+        storage: makeStorage({
+            planetId: 'pandara',
+            id: 'pandara-packaging-storage',
+            name: 'Pandara Packaging Storage',
+        }),
+    });
+
+    const adm1 = administrativeCenter('pandara', 'pandara-admin-center');
+    adm1.scale = 300;
+    adm1.maxScale = 300;
+    const adminAgent = makeAgent({
+        id: 'pandara-admin-services',
+        name: 'Pandara Administrative Services',
+        associatedPlanetId: 'pandara',
+        planetId: 'pandara',
+        facilities: [adm1],
+        storage: makeStorage({ planetId: 'pandara', id: 'pandara-admin-storage', name: 'Pandara Admin Storage' }),
+    });
+
+    const log1 = logisticsHub('pandara', 'pandara-logistics-hub');
+    log1.scale = 150;
+    log1.maxScale = 150;
+    const logisticsAgent = makeAgent({
+        id: 'pandara-logistics-corp',
+        name: 'Pandara Logistics Corp',
+        associatedPlanetId: 'pandara',
+        planetId: 'pandara',
+        facilities: [log1],
+        storage: makeStorage({
+            planetId: 'pandara',
+            id: 'pandara-logistics-storage',
+            name: 'Pandara Logistics Storage',
+        }),
+    });
+
+    const groc1 = groceryChain('pandara', 'pandara-grocery-chain');
+    groc1.scale = 300;
+    groc1.maxScale = 300;
+    const groceryAgent = makeAgent({
+        id: 'pandara-grocery-corp',
+        name: 'Pandara Grocery Corp',
+        associatedPlanetId: 'pandara',
+        planetId: 'pandara',
+        facilities: [groc1],
+        storage: makeStorage({ planetId: 'pandara', id: 'pandara-grocery-storage', name: 'Pandara Grocery Storage' }),
+    });
+
+    const ret1 = retailChain('pandara', 'pandara-retail-chain');
+    ret1.scale = 120;
+    ret1.maxScale = 120;
+    const retailAgent = makeAgent({
+        id: 'pandara-retail-corp',
+        name: 'Pandara Retail Corp',
+        associatedPlanetId: 'pandara',
+        planetId: 'pandara',
+        facilities: [ret1],
+        storage: makeStorage({ planetId: 'pandara', id: 'pandara-retail-storage', name: 'Pandara Retail Storage' }),
+    });
+
+    const hosp1 = hospital('pandara', 'pandara-hospital');
+    hosp1.scale = 120;
+    hosp1.maxScale = 120;
+    const hospitalAgent = makeAgent({
+        id: 'pandara-healthcare-corp',
+        name: 'Pandara Healthcare Corp',
+        associatedPlanetId: 'pandara',
+        planetId: 'pandara',
+        facilities: [hosp1],
+        storage: makeStorage({
+            planetId: 'pandara',
+            id: 'pandara-healthcare-storage',
+            name: 'Pandara Healthcare Storage',
+        }),
+    });
+
+    const sch1 = school('pandara', 'pandara-school');
+    sch1.scale = 100;
+    sch1.maxScale = 100;
+    const educationAgent = makeAgent({
+        id: 'pandara-education-corp',
+        name: 'Pandara Education Corp',
+        associatedPlanetId: 'pandara',
+        planetId: 'pandara',
+        facilities: [sch1],
+        storage: makeStorage({
+            planetId: 'pandara',
+            id: 'pandara-education-storage',
+            name: 'Pandara Education Storage',
+        }),
+    });
+
+    return [
+        steelAgent,
+        foodAgent,
+        packagingAgent,
+        adminAgent,
+        logisticsAgent,
+        groceryAgent,
+        retailAgent,
+        hospitalAgent,
+        educationAgent,
+    ];
 }
 
 // ============================================================================
@@ -414,7 +747,127 @@ function buildParadiesIndustrialAgents(): Agent[] {
         tenancies: [sandId],
     });
 
-    return [refineryAgent, glassAgent];
+    const fp1 = foodProcessingPlant('paradies', 'paradies-food-plant');
+    fp1.scale = 8;
+    fp1.maxScale = 8;
+    const bev1 = beveragePlant('paradies', 'paradies-beverage-plant');
+    bev1.scale = 5;
+    bev1.maxScale = 5;
+    const pkg1 = packagingPlant('paradies', 'paradies-packaging-plant');
+    pkg1.scale = 5;
+    pkg1.maxScale = 5;
+    const consumerAgent = makeAgent({
+        id: 'paradies-consumer-goods',
+        name: 'Paradies Consumer Goods',
+        associatedPlanetId: 'paradies',
+        planetId: 'paradies',
+        facilities: [fp1, bev1, pkg1],
+        storage: makeStorage({
+            planetId: 'paradies',
+            id: 'paradies-consumer-storage',
+            name: 'Paradies Consumer Storage',
+        }),
+    });
+
+    const adm1 = administrativeCenter('paradies', 'paradies-admin-center');
+    adm1.scale = 80;
+    adm1.maxScale = 80;
+    const adminAgent = makeAgent({
+        id: 'paradies-admin-services',
+        name: 'Paradies Administrative Services',
+        associatedPlanetId: 'paradies',
+        planetId: 'paradies',
+        facilities: [adm1],
+        storage: makeStorage({ planetId: 'paradies', id: 'paradies-admin-storage', name: 'Paradies Admin Storage' }),
+    });
+
+    const log1 = logisticsHub('paradies', 'paradies-logistics-hub');
+    log1.scale = 40;
+    log1.maxScale = 40;
+    const logisticsAgent = makeAgent({
+        id: 'paradies-logistics-corp',
+        name: 'Paradies Logistics Corp',
+        associatedPlanetId: 'paradies',
+        planetId: 'paradies',
+        facilities: [log1],
+        storage: makeStorage({
+            planetId: 'paradies',
+            id: 'paradies-logistics-storage',
+            name: 'Paradies Logistics Storage',
+        }),
+    });
+
+    const groc1 = groceryChain('paradies', 'paradies-grocery-chain');
+    groc1.scale = 80;
+    groc1.maxScale = 80;
+    const groceryAgent = makeAgent({
+        id: 'paradies-grocery-corp',
+        name: 'Paradies Grocery Corp',
+        associatedPlanetId: 'paradies',
+        planetId: 'paradies',
+        facilities: [groc1],
+        storage: makeStorage({
+            planetId: 'paradies',
+            id: 'paradies-grocery-storage',
+            name: 'Paradies Grocery Storage',
+        }),
+    });
+
+    const ret1 = retailChain('paradies', 'paradies-retail-chain');
+    ret1.scale = 30;
+    ret1.maxScale = 30;
+    const retailAgent = makeAgent({
+        id: 'paradies-retail-corp',
+        name: 'Paradies Retail Corp',
+        associatedPlanetId: 'paradies',
+        planetId: 'paradies',
+        facilities: [ret1],
+        storage: makeStorage({ planetId: 'paradies', id: 'paradies-retail-storage', name: 'Paradies Retail Storage' }),
+    });
+
+    const hosp1 = hospital('paradies', 'paradies-hospital');
+    hosp1.scale = 30;
+    hosp1.maxScale = 30;
+    const hospitalAgent = makeAgent({
+        id: 'paradies-healthcare-corp',
+        name: 'Paradies Healthcare Corp',
+        associatedPlanetId: 'paradies',
+        planetId: 'paradies',
+        facilities: [hosp1],
+        storage: makeStorage({
+            planetId: 'paradies',
+            id: 'paradies-healthcare-storage',
+            name: 'Paradies Healthcare Storage',
+        }),
+    });
+
+    const sch1 = school('paradies', 'paradies-school');
+    sch1.scale = 25;
+    sch1.maxScale = 25;
+    const educationAgent = makeAgent({
+        id: 'paradies-education-corp',
+        name: 'Paradies Education Corp',
+        associatedPlanetId: 'paradies',
+        planetId: 'paradies',
+        facilities: [sch1],
+        storage: makeStorage({
+            planetId: 'paradies',
+            id: 'paradies-education-storage',
+            name: 'Paradies Education Storage',
+        }),
+    });
+
+    return [
+        refineryAgent,
+        glassAgent,
+        consumerAgent,
+        adminAgent,
+        logisticsAgent,
+        groceryAgent,
+        retailAgent,
+        hospitalAgent,
+        educationAgent,
+    ];
 }
 
 // ============================================================================
@@ -464,7 +917,111 @@ function buildSuerteIndustrialAgents(): Agent[] {
         storage: makeStorage({ planetId: 'suerte', id: 'suerte-cement-storage', name: 'Suerte Cement Storage' }),
     });
 
-    return [copperAgent, cementAgent];
+    const fp1 = foodProcessingPlant('suerte', 'suerte-food-plant');
+    fp1.scale = 15;
+    fp1.maxScale = 15;
+    const bev1 = beveragePlant('suerte', 'suerte-beverage-plant');
+    bev1.scale = 8;
+    bev1.maxScale = 8;
+    const pkg1 = packagingPlant('suerte', 'suerte-packaging-plant');
+    pkg1.scale = 8;
+    pkg1.maxScale = 8;
+    const consumerAgent = makeAgent({
+        id: 'suerte-consumer-goods',
+        name: 'Suerte Consumer Goods',
+        associatedPlanetId: 'suerte',
+        planetId: 'suerte',
+        facilities: [fp1, bev1, pkg1],
+        storage: makeStorage({ planetId: 'suerte', id: 'suerte-consumer-storage', name: 'Suerte Consumer Storage' }),
+    });
+
+    const adm1 = administrativeCenter('suerte', 'suerte-admin-center');
+    adm1.scale = 150;
+    adm1.maxScale = 150;
+    const adminAgent = makeAgent({
+        id: 'suerte-admin-services',
+        name: 'Suerte Administrative Services',
+        associatedPlanetId: 'suerte',
+        planetId: 'suerte',
+        facilities: [adm1],
+        storage: makeStorage({ planetId: 'suerte', id: 'suerte-admin-storage', name: 'Suerte Admin Storage' }),
+    });
+
+    const log1 = logisticsHub('suerte', 'suerte-logistics-hub');
+    log1.scale = 75;
+    log1.maxScale = 75;
+    const logisticsAgent = makeAgent({
+        id: 'suerte-logistics-corp',
+        name: 'Suerte Logistics Corp',
+        associatedPlanetId: 'suerte',
+        planetId: 'suerte',
+        facilities: [log1],
+        storage: makeStorage({ planetId: 'suerte', id: 'suerte-logistics-storage', name: 'Suerte Logistics Storage' }),
+    });
+
+    const groc1 = groceryChain('suerte', 'suerte-grocery-chain');
+    groc1.scale = 150;
+    groc1.maxScale = 150;
+    const groceryAgent = makeAgent({
+        id: 'suerte-grocery-corp',
+        name: 'Suerte Grocery Corp',
+        associatedPlanetId: 'suerte',
+        planetId: 'suerte',
+        facilities: [groc1],
+        storage: makeStorage({ planetId: 'suerte', id: 'suerte-grocery-storage', name: 'Suerte Grocery Storage' }),
+    });
+
+    const ret1 = retailChain('suerte', 'suerte-retail-chain');
+    ret1.scale = 60;
+    ret1.maxScale = 60;
+    const retailAgent = makeAgent({
+        id: 'suerte-retail-corp',
+        name: 'Suerte Retail Corp',
+        associatedPlanetId: 'suerte',
+        planetId: 'suerte',
+        facilities: [ret1],
+        storage: makeStorage({ planetId: 'suerte', id: 'suerte-retail-storage', name: 'Suerte Retail Storage' }),
+    });
+
+    const hosp1 = hospital('suerte', 'suerte-hospital');
+    hosp1.scale = 60;
+    hosp1.maxScale = 60;
+    const hospitalAgent = makeAgent({
+        id: 'suerte-healthcare-corp',
+        name: 'Suerte Healthcare Corp',
+        associatedPlanetId: 'suerte',
+        planetId: 'suerte',
+        facilities: [hosp1],
+        storage: makeStorage({
+            planetId: 'suerte',
+            id: 'suerte-healthcare-storage',
+            name: 'Suerte Healthcare Storage',
+        }),
+    });
+
+    const sch1 = school('suerte', 'suerte-school');
+    sch1.scale = 50;
+    sch1.maxScale = 50;
+    const educationAgent = makeAgent({
+        id: 'suerte-education-corp',
+        name: 'Suerte Education Corp',
+        associatedPlanetId: 'suerte',
+        planetId: 'suerte',
+        facilities: [sch1],
+        storage: makeStorage({ planetId: 'suerte', id: 'suerte-education-storage', name: 'Suerte Education Storage' }),
+    });
+
+    return [
+        copperAgent,
+        cementAgent,
+        consumerAgent,
+        adminAgent,
+        logisticsAgent,
+        groceryAgent,
+        retailAgent,
+        hospitalAgent,
+        educationAgent,
+    ];
 }
 
 // ============================================================================

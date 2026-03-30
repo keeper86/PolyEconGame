@@ -18,6 +18,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import {
+    administrativeCenter,
     agriculturalProductionFacility,
     aluminumSmelter,
     bauxiteMine,
@@ -30,6 +31,7 @@ import {
     coalPowerPlant,
     concretePlant,
     consumerElectronicsFactory,
+    constructionService,
     copperMine,
     copperSmelter,
     cottonFarm,
@@ -38,24 +40,31 @@ import {
     foodProcessingPlant,
     furnitureFactory,
     glassFactory,
+    groceryChain,
+    hospital,
     ironExtractionFacility,
     ironSmelter,
     limestoneQuarry,
     loggingCamp,
+    logisticsHub,
     machineryFactory,
     naturalGasWell,
     oilRefinery,
     oilWell,
+    packagingPlant,
     paperMill,
     pesticidePlant,
     pharmaceuticalPlant,
     phosphateMine,
     potashMine,
     rareEarthMine,
+    retailChain,
     sandMine,
     sawmill,
+    school,
     stoneQuarry,
     textileMill,
+    university,
     vehicleFactory,
     waterExtractionFacility,
 } from '../planet/facilities';
@@ -262,6 +271,54 @@ const vehicleSpecs: MfgSpec[] = [
     { id: 'automotion-corp', name: 'Automotion Corp' },
     { id: 'drivetech-motors', name: 'DriveTech Motors' },
     { id: 'precision-parts', name: 'Precision Parts Co' },
+];
+
+const packagingSpecs: MfgSpec[] = [
+    { id: 'pack-global', name: 'PackGlobal Corp' },
+    { id: 'wrap-world', name: 'Wrap World Inc' },
+];
+
+const adminSpecs: MfgSpec[] = [
+    { id: 'global-admin-services', name: 'Global Admin Services' },
+    { id: 'civic-solutions', name: 'Civic Solutions Corp' },
+    { id: 'metro-admin-group', name: 'Metro Admin Group' },
+];
+
+const logisticsSpecs: MfgSpec[] = [
+    { id: 'swift-logistics', name: 'Swift Logistics Corp' },
+    { id: 'global-freight', name: 'Global Freight Ltd' },
+    { id: 'nexus-distribution', name: 'Nexus Distribution Inc' },
+];
+
+const grocerySpecs: MfgSpec[] = [
+    { id: 'freshmart-chain', name: 'FreshMart Chain' },
+    { id: 'world-grocery', name: 'World Grocery Corp' },
+    { id: 'daily-basket', name: 'Daily Basket Inc' },
+    { id: 'metro-grocers', name: 'Metro Grocers Ltd' },
+];
+
+const retailSpecs: MfgSpec[] = [
+    { id: 'omni-retail', name: 'OmniRetail Corp' },
+    { id: 'global-shops', name: 'Global Shops Ltd' },
+    { id: 'prime-retail-chain', name: 'Prime Retail Chain' },
+];
+
+const healthcareSpecs: MfgSpec[] = [
+    { id: 'healthnet-corp', name: 'HealthNet Corp' },
+    { id: 'global-care-ltd', name: 'Global Care Ltd' },
+    { id: 'metro-health-group', name: 'Metro Health Group' },
+];
+
+const constructionSvcSpecs: MfgSpec[] = [
+    { id: 'buildright-services', name: 'BuildRight Services' },
+    { id: 'urban-construct-co', name: 'Urban Construct Co' },
+    { id: 'global-builders', name: 'Global Builders Corp' },
+];
+
+const educationSpecs: MfgSpec[] = [
+    { id: 'edu-network-corp', name: 'Edu Network Corp' },
+    { id: 'knowledge-global', name: 'Knowledge Global Ltd' },
+    { id: 'campus-systems', name: 'Campus Systems Inc' },
 ];
 
 export function buildEarth(): { planet: Planet; agents: Agent[] } {
@@ -1763,6 +1820,191 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 planetId: EARTH_ID,
                 id: 'precision-parts-storage',
                 name: 'Precision Parts Storage',
+            }),
+        }),
+    );
+
+    // --- Packaging plants (buy paper + plastic from market) ---
+    for (const spec of packagingSpecs) {
+        const f1 = packagingPlant(EARTH_ID, `${spec.id}-packaging`);
+        f1.scale = 100;
+        f1.maxScale = 100;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Administrative centers (buy paper + consumer electronics from market) ---
+    for (const spec of adminSpecs) {
+        const f1 = administrativeCenter(EARTH_ID, `${spec.id}-admin`);
+        f1.scale = 5000;
+        f1.maxScale = 5000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Logistics hubs (buy vehicle + fuel from market; need admin service) ---
+    for (const spec of logisticsSpecs) {
+        const f1 = logisticsHub(EARTH_ID, `${spec.id}-logistics`);
+        f1.scale = 2000;
+        f1.maxScale = 2000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Grocery chains (buy processed food + beverage + packaging from market; need logistics + admin services) ---
+    for (const spec of grocerySpecs) {
+        const f1 = groceryChain(EARTH_ID, `${spec.id}-grocery`);
+        f1.scale = 2000;
+        f1.maxScale = 2000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Retail chains (buy consumer electronics + clothing + furniture from market; need logistics + admin services) ---
+    for (const spec of retailSpecs) {
+        const f1 = retailChain(EARTH_ID, `${spec.id}-retail`);
+        f1.scale = 1000;
+        f1.maxScale = 1000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Hospitals (buy pharma + chemicals from market; need logistics + admin services) ---
+    for (const spec of healthcareSpecs) {
+        const f1 = hospital(EARTH_ID, `${spec.id}-hospital`);
+        f1.scale = 1000;
+        f1.maxScale = 1000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Construction services (buy concrete + steel + machinery from market; need admin + logistics services) ---
+    for (const spec of constructionSvcSpecs) {
+        const f1 = constructionService(EARTH_ID, `${spec.id}-construction`);
+        f1.scale = 500;
+        f1.maxScale = 500;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Education providers (buy paper + furniture from market; need admin service) ---
+    const [eduNetwork, knowledgeGlobal, campusSystems] = educationSpecs;
+
+    const en1 = school(EARTH_ID, `${eduNetwork.id}-school`);
+    en1.scale = 500;
+    en1.maxScale = 500;
+    const en2 = university(EARTH_ID, `${eduNetwork.id}-university`);
+    en2.scale = 300;
+    en2.maxScale = 300;
+    agents.push(
+        makeAgent({
+            id: eduNetwork.id,
+            name: eduNetwork.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [en1, en2],
+            storage: makeStorage({
+                planetId: EARTH_ID,
+                id: `${eduNetwork.id}-storage`,
+                name: `${eduNetwork.name} Storage`,
+            }),
+        }),
+    );
+
+    const kg1 = school(EARTH_ID, `${knowledgeGlobal.id}-school`);
+    kg1.scale = 400;
+    kg1.maxScale = 400;
+    const kg2 = university(EARTH_ID, `${knowledgeGlobal.id}-university`);
+    kg2.scale = 200;
+    kg2.maxScale = 200;
+    agents.push(
+        makeAgent({
+            id: knowledgeGlobal.id,
+            name: knowledgeGlobal.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [kg1, kg2],
+            storage: makeStorage({
+                planetId: EARTH_ID,
+                id: `${knowledgeGlobal.id}-storage`,
+                name: `${knowledgeGlobal.name} Storage`,
+            }),
+        }),
+    );
+
+    const edu3s = school(EARTH_ID, `${campusSystems.id}-school`);
+    edu3s.scale = 300;
+    edu3s.maxScale = 300;
+    const edu3u = university(EARTH_ID, `${campusSystems.id}-university`);
+    edu3u.scale = 150;
+    edu3u.maxScale = 150;
+    agents.push(
+        makeAgent({
+            id: campusSystems.id,
+            name: campusSystems.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [edu3s, edu3u],
+            storage: makeStorage({
+                planetId: EARTH_ID,
+                id: `${campusSystems.id}-storage`,
+                name: `${campusSystems.name} Storage`,
             }),
         }),
     );

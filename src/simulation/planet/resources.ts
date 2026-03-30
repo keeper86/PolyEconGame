@@ -304,6 +304,14 @@ export const furnitureResourceType: Resource = {
     massPerQuantity: 1,
 };
 
+export const siliconWaferResourceType: Resource = {
+    name: 'Silicon Wafer',
+    form: 'pieces',
+    level: 'refined',
+    volumePerQuantity: 0.5,
+    massPerQuantity: 1,
+};
+
 export const electronicComponentResourceType: Resource = {
     name: 'Electronic Component',
     form: 'pieces',

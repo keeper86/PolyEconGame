@@ -6,13 +6,21 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import {
+    administrativeCenter,
     agriculturalProductionFacility,
+    beveragePlant,
     coalMine,
     coalPowerPlant,
     foodProcessingPlant,
+    groceryChain,
+    hospital,
     ironExtractionFacility,
     ironSmelter,
+    logisticsHub,
+    packagingPlant,
     pharmaceuticalPlant,
+    retailChain,
+    school,
     waterExtractionFacility,
 } from '../planet/facilities';
 import type { Agent, Planet } from '../planet/planet';
@@ -230,6 +238,126 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [ph1],
             storage: makeStorage({ planetId: AC_ID, id: 'ac-pharma-colony-storage', name: 'Colony Pharma Storage' }),
+        }),
+    );
+
+    // Beverage plant (needed for grocery chains)
+    const bev1 = beveragePlant(AC_ID, 'ac-beverage-plant');
+    bev1.scale = 20;
+    bev1.maxScale = 20;
+    agents.push(
+        makeAgent({
+            id: 'ac-beverage-corp',
+            name: 'AC Beverage Corp',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [bev1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-beverage-storage', name: 'AC Beverage Storage' }),
+        }),
+    );
+
+    // Packaging plant (needed for grocery chains and food processing)
+    const pkg1 = packagingPlant(AC_ID, 'ac-packaging-plant');
+    pkg1.scale = 10;
+    pkg1.maxScale = 10;
+    agents.push(
+        makeAgent({
+            id: 'ac-packaging-corp',
+            name: 'AC Packaging Corp',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [pkg1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-packaging-storage', name: 'AC Packaging Storage' }),
+        }),
+    );
+
+    // Administrative center
+    const adm1 = administrativeCenter(AC_ID, 'ac-admin-center');
+    adm1.scale = 100;
+    adm1.maxScale = 100;
+    agents.push(
+        makeAgent({
+            id: 'ac-admin-services',
+            name: 'AC Administrative Services',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [adm1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-admin-storage', name: 'AC Admin Storage' }),
+        }),
+    );
+
+    // Logistics hub
+    const log1 = logisticsHub(AC_ID, 'ac-logistics-hub');
+    log1.scale = 50;
+    log1.maxScale = 50;
+    agents.push(
+        makeAgent({
+            id: 'ac-logistics-corp',
+            name: 'AC Logistics Corp',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [log1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-logistics-storage', name: 'AC Logistics Storage' }),
+        }),
+    );
+
+    // Grocery chain
+    const groc1 = groceryChain(AC_ID, 'ac-grocery-chain');
+    groc1.scale = 100;
+    groc1.maxScale = 100;
+    agents.push(
+        makeAgent({
+            id: 'ac-grocery-corp',
+            name: 'AC Grocery Corp',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [groc1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-grocery-storage', name: 'AC Grocery Storage' }),
+        }),
+    );
+
+    // Retail chain
+    const ret1 = retailChain(AC_ID, 'ac-retail-chain');
+    ret1.scale = 50;
+    ret1.maxScale = 50;
+    agents.push(
+        makeAgent({
+            id: 'ac-retail-corp',
+            name: 'AC Retail Corp',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [ret1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-retail-storage', name: 'AC Retail Storage' }),
+        }),
+    );
+
+    // Hospital (healthcare service)
+    const hosp1 = hospital(AC_ID, 'ac-hospital');
+    hosp1.scale = 30;
+    hosp1.maxScale = 30;
+    agents.push(
+        makeAgent({
+            id: 'ac-healthcare-corp',
+            name: 'AC Healthcare Corp',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [hosp1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-healthcare-storage', name: 'AC Healthcare Storage' }),
+        }),
+    );
+
+    // School (education service)
+    const sch1 = school(AC_ID, 'ac-school');
+    sch1.scale = 20;
+    sch1.maxScale = 20;
+    agents.push(
+        makeAgent({
+            id: 'ac-education-corp',
+            name: 'AC Education Corp',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [sch1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-education-storage', name: 'AC Education Storage' }),
         }),
     );
 
