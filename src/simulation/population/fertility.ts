@@ -1,5 +1,5 @@
-import { FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
-import { agriculturalProductResourceType } from '../planet/resources';
+import { SERVICE_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
+import { groceryServiceResourceType } from '../planet/services';
 import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import { STARVATION_ACUTE_POWER } from './mortality';
@@ -75,9 +75,10 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         cat.wealth.mean = prevTotal > 0 ? (prevTotal * cat.wealth.mean) / newTotal : 0;
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
-        // Newborns arrive with a small food stock gifted by their "neighbors" to get them started.
-        cat.inventory[agriculturalProductResourceType.name] =
-            (cat.inventory[agriculturalProductResourceType.name] ?? 0) + birthsThisTick * 10 * FOOD_PER_PERSON_PER_TICK;
+        // Newborns arrive with a small grocery service buffer gifted by their "neighbors" to get them started.
+        const groceryServiceName = groceryServiceResourceType.name;
+        cat.inventory[groceryServiceName] =
+            (cat.inventory[groceryServiceName] ?? 0) + birthsThisTick * 10 * SERVICE_PER_PERSON_PER_TICK;
     }
 }
 

@@ -35,7 +35,7 @@ function groupResourcesByLevel(resources: { name: string }[]): Map<string, { nam
 }
 
 // Level order for display
-const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'consumerGood'];
+const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services'] as const;
 
 export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);

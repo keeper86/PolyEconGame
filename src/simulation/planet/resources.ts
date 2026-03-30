@@ -18,8 +18,8 @@ export const waterResourceType: Resource = {
 
 export const agriculturalProductResourceType: Resource = {
     name: 'Agricultural Product',
-    form: 'frozenGoods',
-    level: 'consumerGood',
+    form: 'solid',
+    level: 'raw',
     volumePerQuantity: 0.5, // 1 ton of agricultural product takes up 0.5 cubic meters
     massPerQuantity: 1, // 1 ton of agricultural product has a mass of 1 ton
 };
@@ -152,27 +152,11 @@ export const chemicalResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const gasolineResourceType: Resource = {
-    name: 'Gasoline',
+export const fuelResourceType: Resource = {
+    name: 'Fuel',
     form: 'liquid',
     level: 'refined',
     volumePerQuantity: 1.3,
-    massPerQuantity: 1,
-};
-
-export const dieselResourceType: Resource = {
-    name: 'Diesel',
-    form: 'liquid',
-    level: 'refined',
-    volumePerQuantity: 1.2,
-    massPerQuantity: 1,
-};
-
-export const jetFuelResourceType: Resource = {
-    name: 'Jet Fuel',
-    form: 'liquid',
-    level: 'refined',
-    volumePerQuantity: 1.2,
     massPerQuantity: 1,
 };
 
@@ -181,14 +165,6 @@ export const lubricantResourceType: Resource = {
     form: 'liquid',
     level: 'refined',
     volumePerQuantity: 1.1,
-    massPerQuantity: 1,
-};
-
-export const asphaltResourceType: Resource = {
-    name: 'Asphalt',
-    form: 'solid', // semi-solid
-    level: 'refined',
-    volumePerQuantity: 0.9,
     massPerQuantity: 1,
 };
 
@@ -267,7 +243,7 @@ export const pesticideResourceType: Resource = {
 export const pharmaceuticalResourceType: Resource = {
     name: 'Pharmaceutical',
     form: 'pieces',
-    level: 'consumerGood',
+    level: 'manufactured',
     volumePerQuantity: 10.0,
     massPerQuantity: 1,
 };
@@ -275,7 +251,7 @@ export const pharmaceuticalResourceType: Resource = {
 export const processedFoodResourceType: Resource = {
     name: 'Processed Food',
     form: 'frozenGoods',
-    level: 'consumerGood',
+    level: 'manufactured',
     volumePerQuantity: 0.6,
     massPerQuantity: 1,
 };
@@ -283,7 +259,7 @@ export const processedFoodResourceType: Resource = {
 export const beverageResourceType: Resource = {
     name: 'Beverage',
     form: 'liquid',
-    level: 'consumerGood',
+    level: 'manufactured',
     volumePerQuantity: 1.0,
     massPerQuantity: 1,
 };
@@ -315,7 +291,7 @@ export const fabricResourceType: Resource = {
 export const clothingResourceType: Resource = {
     name: 'Clothing',
     form: 'pieces',
-    level: 'consumerGood',
+    level: 'manufactured',
     volumePerQuantity: 50.0,
     massPerQuantity: 1,
 };
@@ -323,7 +299,7 @@ export const clothingResourceType: Resource = {
 export const furnitureResourceType: Resource = {
     name: 'Furniture',
     form: 'pieces',
-    level: 'consumerGood',
+    level: 'manufactured',
     volumePerQuantity: 20.0,
     massPerQuantity: 1,
 };
@@ -339,7 +315,7 @@ export const electronicComponentResourceType: Resource = {
 export const consumerElectronicsResourceType: Resource = {
     name: 'Consumer Electronics',
     form: 'pieces',
-    level: 'consumerGood',
+    level: 'manufactured',
     volumePerQuantity: 5.0,
     massPerQuantity: 1,
 };
@@ -372,14 +348,6 @@ export const packagingResourceType: Resource = {
     name: 'Packaging Material',
     form: 'solid',
     level: 'manufactured',
-    volumePerQuantity: 0.5,
-    massPerQuantity: 0.5,
-};
-
-export const energyResourceType: Resource = {
-    name: 'Energy',
-    form: 'energy',
-    level: 'manufactured',
-    volumePerQuantity: 0,
-    massPerQuantity: 0, // energy doesn't have mass/ store is emptied at begin of tick
+    volumePerQuantity: 1,
+    massPerQuantity: 1,
 };

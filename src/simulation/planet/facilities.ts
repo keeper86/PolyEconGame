@@ -30,7 +30,6 @@ import {
     clayResourceType,
     agriculturalProductResourceType,
     aluminumResourceType,
-    asphaltResourceType,
     beverageResourceType,
     brickResourceType,
     cementResourceType,
@@ -39,15 +38,13 @@ import {
     consumerElectronicsResourceType,
     copperResourceType,
     cottonResourceType,
-    dieselResourceType,
     electronicComponentResourceType,
     fabricResourceType,
     fertilizerResourceType,
     furnitureResourceType,
-    gasolineResourceType,
+    fuelResourceType,
     glassResourceType,
     ironOreResourceType,
-    jetFuelResourceType,
     lubricantResourceType,
     lumberResourceType,
     machineryResourceType,
@@ -65,6 +62,13 @@ import {
     constructionResourceType,
     packagingResourceType,
 } from './resources';
+import {
+    administrativeServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    logisticsServiceResourceType,
+    retailServiceResourceType,
+} from './services';
 import type { ProductionFacility } from './storage';
 
 const zeroLastTicksResults = {
@@ -410,13 +414,10 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
     produces: [
-        { resource: gasolineResourceType, quantity: 60 },
-        { resource: dieselResourceType, quantity: 40 },
-        { resource: jetFuelResourceType, quantity: 20 },
+        { resource: fuelResourceType, quantity: 100 },
         { resource: lubricantResourceType, quantity: 10 },
-        { resource: asphaltResourceType, quantity: 30 },
-        { resource: plasticResourceType, quantity: 20 },
-        { resource: chemicalResourceType, quantity: 20 },
+        { resource: plasticResourceType, quantity: 40 },
+        { resource: chemicalResourceType, quantity: 50 },
     ],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -864,9 +865,9 @@ export const agriculturalProductionFacility = (planetId: string, id: string): Pr
     scale: 1,
     powerConsumptionPerTick: 1,
     workerRequirement: {
-        none: 20,
-        primary: 10,
-        secondary: 6,
+        none: 30,
+        primary: 20,
+        secondary: 10,
         tertiary: 0,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
@@ -912,9 +913,9 @@ export const waterExtractionFacility = (planetId: string, id: string): Productio
 
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 4,
-        primary: 2,
-        secondary: 0,
+        none: 5,
+        primary: 5,
+        secondary: 5,
         tertiary: 0,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
@@ -956,7 +957,6 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: asphaltResourceType, quantity: 30 },
         { resource: brickResourceType, quantity: 50 },
         { resource: concreteResourceType, quantity: 60 },
         { resource: lumberResourceType, quantity: 20 },
@@ -1009,6 +1009,150 @@ export const coalPowerPlant = (planetId: string, id: string): ProductionFacility
     produces: [],
 });
 
+export const administrativeCenter = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Administrative Center' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.5,
+    workerRequirement: {
+        none: 20,
+        primary: 30,
+        secondary: 50,
+        tertiary: 10,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: paperResourceType, quantity: 20 },
+        { resource: consumerElectronicsResourceType, quantity: 5 },
+    ],
+    produces: [{ resource: administrativeServiceResourceType, quantity: 100 }],
+});
+
+export const logisticsHub = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Logistics Hub' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.2,
+    workerRequirement: {
+        none: 30,
+        primary: 60,
+        secondary: 10,
+        tertiary: 1,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+
+    needs: [
+        { resource: vehicleResourceType, quantity: 0.5 },
+        { resource: fuelResourceType, quantity: 1.0 },
+        { resource: administrativeServiceResourceType, quantity: 1 },
+    ],
+    produces: [{ resource: logisticsServiceResourceType, quantity: 100 }],
+});
+
+export const constructionService = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Construction Service' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.3,
+    workerRequirement: {
+        none: 40,
+        primary: 40,
+        secondary: 20,
+        tertiary: 4,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: concreteResourceType, quantity: 60 },
+        { resource: steelResourceType, quantity: 20 },
+        { resource: machineryResourceType, quantity: 1 },
+        { resource: administrativeServiceResourceType, quantity: 1 },
+        { resource: logisticsServiceResourceType, quantity: 1 },
+    ],
+    produces: [{ resource: constructionResourceType, quantity: 100 }],
+});
+
+export const groceryChain = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Grocery Chain' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.4,
+    workerRequirement: {
+        none: 30,
+        primary: 50,
+        secondary: 15,
+        tertiary: 1,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: processedFoodResourceType, quantity: 50 },
+        { resource: beverageResourceType, quantity: 50 },
+        { resource: packagingResourceType, quantity: 10 },
+        { resource: logisticsServiceResourceType, quantity: 20 },
+        { resource: administrativeServiceResourceType, quantity: 1 },
+    ],
+    produces: [{ resource: groceryServiceResourceType, quantity: 100 }],
+});
+
+export const retailChain = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Retail Chain' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.4,
+    workerRequirement: {
+        none: 30,
+        primary: 50,
+        secondary: 15,
+        tertiary: 5,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: consumerElectronicsResourceType, quantity: 20 },
+        { resource: clothingResourceType, quantity: 20 },
+        { resource: furnitureResourceType, quantity: 30 },
+        { resource: logisticsServiceResourceType, quantity: 20 },
+        { resource: administrativeServiceResourceType, quantity: 1 },
+    ],
+    produces: [{ resource: retailServiceResourceType, quantity: 100 }],
+});
+
+export const hospital = (planetId: string, id: string): ProductionFacility => ({
+    planetId,
+    id,
+    name: 'Hospital' as const,
+    maxScale: 1,
+    scale: 1,
+    lastTickResults: { ...zeroLastTicksResults },
+    powerConsumptionPerTick: 0.6,
+    workerRequirement: {
+        none: 20,
+        primary: 20,
+        secondary: 30,
+        tertiary: 50,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    needs: [
+        { resource: pharmaceuticalResourceType, quantity: 20 },
+        { resource: logisticsServiceResourceType, quantity: 10 },
+        { resource: administrativeServiceResourceType, quantity: 3 },
+    ],
+    produces: [{ resource: healthcareServiceResourceType, quantity: 100 }],
+});
+
 export const facilityMap = {
     coalMine,
     oilWell,
@@ -1050,5 +1194,11 @@ export const facilityMap = {
     intensiveFarmFacility,
     waterExtractionFacility,
     ironExtractionFacility,
-    coalPowerPlant, // added power plant
+    coalPowerPlant,
+    administrativeCenter,
+    logisticsHub,
+    constructionService,
+    groceryChain,
+    retailChain,
+    hospital,
 } as const;

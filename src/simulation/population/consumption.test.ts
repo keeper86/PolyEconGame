@@ -1,27 +1,27 @@
 /**
- * population/nutrition.test.ts
+ * population/consumption.test.ts
  *
- * Unit tests for the nutrition sub-system: starvation level tracking
- * with equilibrium-convergence model and per-category food consumption.
+ * Unit tests for the consumption sub-system: starvation level tracking
+ * with equilibrium-convergence model and per-category service consumption.
  *
- * S converges towards the food shortfall (1 − nutritionalFactor) with a
+ * S converges towards the grocery service shortfall (1 − consumptionFactor) with a
  * time-constant of STARVATION_ADJUST_TICKS.
  */
 
 import { describe, it, expect } from 'vitest';
-import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeFood } from './nutrition';
-import { FOOD_PER_PERSON_PER_TICK } from '../constants';
+import { updateStarvationLevel, STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeServices } from './consumption';
+import { SERVICE_PER_PERSON_PER_TICK } from '../constants';
 import { makePopulation } from '../utils/testHelper';
-import { agriculturalProductResourceType } from '../planet/resources';
+import { groceryServiceResourceType } from '../planet/services';
 
-const FOOD = agriculturalProductResourceType.name;
+const GROCERY_SERVICE = groceryServiceResourceType.name;
 
 describe('updateStarvationLevel', () => {
-    it('returns 0 when fully fed and not starving', () => {
+    it('returns 0 when fully served and not starving', () => {
         expect(updateStarvationLevel(0, 1.0)).toBe(0);
     });
 
-    it('increases starvation when nutritionalFactor < 1', () => {
+    it('increases starvation when consumptionFactor < 1', () => {
         const result = updateStarvationLevel(0, 0);
         expect(result).toBeGreaterThan(0);
         // First tick: delta = (1 − 0) / STARVATION_ADJUST_TICKS
@@ -29,7 +29,7 @@ describe('updateStarvationLevel', () => {
     });
 
     it('converges towards equilibrium = shortfall', () => {
-        // With 50% food, equilibrium = 0.5
+        // With 50% grocery service, equilibrium = 0.5
         let level = 0;
         for (let t = 0; t < 300; t++) {
             level = updateStarvationLevel(level, 0.5);
@@ -37,7 +37,7 @@ describe('updateStarvationLevel', () => {
         expect(level).toBeCloseTo(0.5, 2);
     });
 
-    it('converges to 0.9 with 10% food', () => {
+    it('converges to 0.9 with 10% grocery service', () => {
         let level = 0;
         for (let t = 0; t < 300; t++) {
             level = updateStarvationLevel(level, 0.1);
@@ -50,25 +50,25 @@ describe('updateStarvationLevel', () => {
         expect(result).toBeLessThanOrEqual(STARVATION_MAX_LEVEL);
     });
 
-    it('recovers when fully fed', () => {
+    it('recovers when fully served', () => {
         const startLevel = 0.5;
         const result = updateStarvationLevel(startLevel, 1.0);
         expect(result).toBeLessThan(startLevel);
     });
 
-    it('recovers when food exceeds equilibrium', () => {
-        // Currently at S=0.8, now getting 80% food (equilibrium=0.2)
+    it('recovers when service exceeds equilibrium', () => {
+        // Currently at S=0.8, now getting 80% service (equilibrium=0.2)
         const result = updateStarvationLevel(0.8, 0.8);
         expect(result).toBeLessThan(0.8);
     });
 
     it('does not recover below 0', () => {
-        const result = updateStarvationLevel(0.001, 10); // over-fed
+        const result = updateStarvationLevel(0.001, 10); // over-served
         expect(result).toBeGreaterThanOrEqual(0);
     });
 
     it('reaches ~63% of equilibrium in STARVATION_ADJUST_TICKS (exponential approach)', () => {
-        // Starting from 0, with no food (equilibrium=1), after STARVATION_ADJUST_TICKS
+        // Starting from 0, with no service (equilibrium=1), after STARVATION_ADJUST_TICKS
         // ticks we should be near 1 − (1 − 1/N)^N ≈ 1 − 1/e ≈ 0.632
         let level = 0;
         for (let t = 0; t < STARVATION_ADJUST_TICKS; t++) {
@@ -89,52 +89,52 @@ describe('updateStarvationLevel', () => {
         expect(level).toBeLessThan(0.4);
     });
 
-    it('stays at current level when food matches current starvation (equilibrium = current)', () => {
-        // If S=0.3 and nutritionalFactor=0.7, equilibrium=0.3, delta=0
+    it('stays at current level when service matches current starvation (equilibrium = current)', () => {
+        // If S=0.3 and consumptionFactor=0.7, equilibrium=0.3, delta=0
         const result = updateStarvationLevel(0.3, 0.7);
         expect(result).toBeCloseTo(0.3, 10);
     });
 
-    it('rises when food gets worse than current equilibrium', () => {
-        // S=0.2, food drops to 50% (equilibrium=0.5), S should rise
+    it('rises when service gets worse than current equilibrium', () => {
+        // S=0.2, service drops to 50% (equilibrium=0.5), S should rise
         const result = updateStarvationLevel(0.2, 0.5);
         expect(result).toBeGreaterThan(0.2);
     });
 });
 
-describe('consumeFood (per-category model)', () => {
-    it('consumes food from category foodStock and updates starvation', () => {
+describe('consumeServices (per-category model)', () => {
+    it('consumes grocery service from category inventory and updates starvation', () => {
         const pop = makePopulation();
         const populationCount = 360;
-        const perTickDemand = populationCount * FOOD_PER_PERSON_PER_TICK; // = 1 ton
+        const perTickDemand = populationCount * SERVICE_PER_PERSON_PER_TICK; // = 360 service units
 
-        // Place people and give them enough food
+        // Place people and give them enough grocery service
         pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.inventory = { [FOOD]: 5 };
+        pop.demography[30].unoccupied.none.novice.inventory = { [GROCERY_SERVICE]: 500 };
         pop.demography[30].unoccupied.none.novice.starvationLevel = 0.5;
 
-        consumeFood(pop);
+        consumeServices(pop);
 
         const cat = pop.demography[30].unoccupied.none.novice;
         // inventory should be reduced by consumption
-        expect(cat.inventory[FOOD] ?? 0).toBeCloseTo(5 - perTickDemand, 10);
-        // starvation level should recover (was 0.5, now well-fed)
+        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBeCloseTo(500 - perTickDemand, 10);
+        // starvation level should recover (was 0.5, now well-served)
         expect(cat.starvationLevel).toBeLessThan(0.5);
     });
 
-    it('increases starvation when food is insufficient', () => {
+    it('increases starvation when grocery service is insufficient', () => {
         const pop = makePopulation();
         const populationCount = 360;
 
         pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.inventory = { [FOOD]: 0.2 }; // less than demand
+        pop.demography[30].unoccupied.none.novice.inventory = { [GROCERY_SERVICE]: 100 }; // less than demand
         pop.demography[30].unoccupied.none.novice.starvationLevel = 0;
 
-        consumeFood(pop);
+        consumeServices(pop);
 
         const cat = pop.demography[30].unoccupied.none.novice;
         // inventory should be drained
-        expect(cat.inventory[FOOD] ?? 0).toBeCloseTo(0, 10);
+        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBeCloseTo(0, 10);
         // starvation should increase from 0
         expect(cat.starvationLevel).toBeGreaterThan(0);
     });
@@ -142,23 +142,46 @@ describe('consumeFood (per-category model)', () => {
     it('handles zero population in a category gracefully', () => {
         const pop = makePopulation();
         // All categories are zero by default
-        consumeFood(pop);
+        consumeServices(pop);
 
         // Should not throw; starvation should remain 0
         expect(pop.demography[0].education.none.novice.starvationLevel).toBe(0);
     });
 
-    it('handles zero food stock gracefully', () => {
+    it('handles zero service stock gracefully', () => {
         const pop = makePopulation();
         pop.demography[20].unoccupied.none.novice.total = 100;
-        pop.demography[20].unoccupied.none.novice.inventory[FOOD] = 0;
+        pop.demography[20].unoccupied.none.novice.inventory[GROCERY_SERVICE] = 0;
         pop.demography[20].unoccupied.none.novice.starvationLevel = 0;
 
-        consumeFood(pop);
+        consumeServices(pop);
 
         const cat = pop.demography[20].unoccupied.none.novice;
-        expect(cat.inventory[FOOD] ?? 0).toBe(0);
-        // starvation should increase since no food
+        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBe(0);
+        // starvation should increase since no service
         expect(cat.starvationLevel).toBeGreaterThan(0);
+    });
+
+    it('consumes all services, not just grocery', () => {
+        const pop = makePopulation();
+        const populationCount = 100;
+        const perTickDemand = populationCount * SERVICE_PER_PERSON_PER_TICK;
+
+        pop.demography[25].employed.tertiary.expert.total = populationCount;
+        pop.demography[25].employed.tertiary.expert.inventory = {
+            [GROCERY_SERVICE]: 200,
+            'Healthcare Service': 150,
+            'Administrative Service': 100,
+            'Logistics Service': 50
+        };
+
+        consumeServices(pop);
+
+        const cat = pop.demography[25].employed.tertiary.expert;
+        // All services should be consumed, but not more than available
+        expect(cat.inventory[GROCERY_SERVICE] ?? 0).toBeCloseTo(200 - perTickDemand, 10);
+        expect(cat.inventory['Healthcare Service'] ?? 0).toBeCloseTo(150 - perTickDemand, 10);
+        expect(cat.inventory['Administrative Service'] ?? 0).toBeCloseTo(100 - perTickDemand, 10);
+        expect(cat.inventory['Logistics Service'] ?? 0).toBeCloseTo(0, 10); // Only 50 available, can't consume 100
     });
 });

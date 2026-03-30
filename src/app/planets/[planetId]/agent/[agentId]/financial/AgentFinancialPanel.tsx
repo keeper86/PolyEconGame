@@ -5,7 +5,6 @@ import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/Agen
 import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import AgentFinancialOverview from '../../_component/AgentFinancialOverview';
 
 export default function AgentFinancialPanel() {
@@ -26,7 +25,6 @@ export default function AgentFinancialPanel() {
                         deposits={assets.deposits ?? 0}
                         loans={assets.loans ?? 0}
                         lastWageBill={assets.lastWageBill ?? 0}
-                        foodMarket={assets.market?.sell[agriculturalProductResourceType.name]}
                     />
                     <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} />
                 </div>

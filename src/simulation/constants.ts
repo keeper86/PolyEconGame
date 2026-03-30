@@ -4,6 +4,9 @@ export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
 export const FOOD_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR; // tons per person per tick
 
+/** Service consumption per person per tick (1 unit/person/tick for all services) */
+export const SERVICE_PER_PERSON_PER_TICK = 1;
+
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
@@ -26,16 +29,10 @@ export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICK
 // ---------------------------------------------------------------------------
 
 /**
- * Household food buffer target expressed as days of consumption.
- * Each cohort-class will try to maintain this many days of food stock.
- */
-export const FOOD_BUFFER_TARGET_DAYS = 30;
-
-/**
  * Household food buffer target expressed in ticks of consumption.
  * foodTarget per person = FOOD_BUFFER_TARGET_TICKS × FOOD_PER_PERSON_PER_TICK
  */
-export const FOOD_BUFFER_TARGET_TICKS = FOOD_BUFFER_TARGET_DAYS;
+export const FOOD_BUFFER_TARGET_TICKS = 30;
 
 /**
  * Price adjustment rate when inventory is *below* target (scarcity → price rises).
@@ -57,6 +54,12 @@ export const FOOD_PRICE_CEIL = 1000000.0;
  * Initial food price per unit (currency units per ton of agricultural product).
  */
 export const INITIAL_FOOD_PRICE = 1.0;
+
+/**
+ * Initial service price per unit (currency units per service unit).
+ * Services require more infrastructure and labor than basic food.
+ */
+export const INITIAL_SERVICE_PRICE = 5.0;
 
 /**
  * Firm inventory target expressed as a multiple of one tick's production output.

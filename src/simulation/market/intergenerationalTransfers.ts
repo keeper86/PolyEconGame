@@ -8,8 +8,8 @@ import {
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
-import { agriculturalProductResourceType } from '../planet/resources';
 import type { Planet } from '../planet/planet';
+import { groceryServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
@@ -82,7 +82,7 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             const cell = ageCells[occ][edu];
             cell.wealth = mergeGaussianMoments(cell.pop, cell.wealth, n, cat.wealth);
             cell.pop += n;
-            cell.foodStock += cat.inventory[agriculturalProductResourceType.name] ?? 0;
+            cell.foodStock += cat.inventory[groceryServiceResourceType.name] ?? 0;
         });
 
         cache[age] = ageCells;
@@ -166,7 +166,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
     // Price level converts physical food units into wealth (currency) units.
     // Defaults to 1.0 when not yet set.
-    const foodPrice = planet.marketPrices[agriculturalProductResourceType.name] ?? INITIAL_FOOD_PRICE;
+    const foodPrice = planet.marketPrices[groceryServiceResourceType.name] ?? INITIAL_FOOD_PRICE;
 
     const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
     const baseFoodCost = foodTargetPerPerson * foodPrice;

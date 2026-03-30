@@ -428,12 +428,11 @@ export interface GameState {
     agents: Map<string, Agent>;
 }
 
-export type ResourceProcessLevel = 'source' | 'raw' | 'refined' | 'manufactured' | 'consumerGood';
+export type ResourceProcessLevel = 'source' | 'raw' | 'refined' | 'manufactured' | 'services';
 
 export type Resource = {
     name: string;
-    // solids, liquids, frozenGoods and gases count quantity in tons, persons/pieces count quantity in pieces and
-    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource' | 'energy';
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource' | 'services';
     level: ResourceProcessLevel; // raw, refined, manufactured, consumerGood
     volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
     massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)

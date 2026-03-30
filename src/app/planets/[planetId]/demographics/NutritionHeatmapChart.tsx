@@ -10,7 +10,7 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
+import { SERVICE_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 
 // ─── Nutrition bands ──────────────────────────────────────────────────────────
 
@@ -267,7 +267,7 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
 
                 const avgStarvation = gPop > 0 && weightedStarv > 0 ? weightedStarv / gPop : 0;
                 const avgStock = gPop > 0 ? totalFood / gPop : 0;
-                const avgBuffer = FOOD_TARGET_PER_PERSON > 0 ? avgStock / FOOD_TARGET_PER_PERSON : 0;
+                const avgBuffer = SERVICE_TARGET_PER_PERSON > 0 ? avgStock / SERVICE_TARGET_PER_PERSON : 0;
 
                 const bandIdx = classifyBand(avgStarvation);
                 for (let bi = 0; bi < BANDS.length; bi++) {

@@ -1,39 +1,16 @@
 'use client';
 
-import React from 'react';
-import {
-    ArrowDownRight,
-    ArrowUpRight,
-    Coins,
-    Landmark,
-    Minus,
-    ShoppingCart,
-    TrendingDown,
-    TrendingUp,
-} from 'lucide-react';
-import { RETAINED_EARNINGS_THRESHOLD } from '@/simulation/constants';
-import type { AgentMarketOfferState } from '@/simulation/planet/planet';
-import { formatNumbers } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+import { formatNumbers } from '@/lib/utils';
+import { RETAINED_EARNINGS_THRESHOLD } from '@/simulation/constants';
+import { ArrowDownRight, ArrowUpRight, Coins, Landmark, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import React from 'react';
 
 type Props = {
-    /** Firm deposit balance on this planet (currency units). */
     deposits: number;
-    /** Outstanding loan principal on this planet (currency units). */
     loans: number;
-    /** Actual wage bill computed by the last pre-production financial tick. */
     lastWageBill: number;
-    /** Per-agent food market pricing & history. */
-    foodMarket?: Partial<AgentMarketOfferState>;
 };
-
-/* ------------------------------------------------------------------ */
-/*  Stat row                                                           */
-/* ------------------------------------------------------------------ */
 
 function Stat({
     label,
@@ -63,12 +40,7 @@ function Stat({
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export default function AgentFinancialOverview({
-    deposits,
-    loans,
-    lastWageBill,
-    foodMarket,
-}: Props): React.ReactElement {
+export default function AgentFinancialOverview({ deposits, loans, lastWageBill }: Props): React.ReactElement {
     const netPosition = deposits - loans;
     const retainedThreshold = lastWageBill * RETAINED_EARNINGS_THRESHOLD;
     const excessDeposits = Math.max(0, deposits - retainedThreshold);
@@ -133,59 +105,6 @@ export default function AgentFinancialOverview({
                                 icon={<ArrowUpRight className='h-3 w-3' />}
                                 valueClassName={excessDeposits > 0 ? 'text-green-600' : 'text-muted-foreground'}
                             />
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* Food market */}
-            {foodMarket && (
-                <>
-                    <Separator />
-                    <div>
-                        <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
-                            <ShoppingCart className='h-3 w-3' />
-                            Food market
-                        </div>
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
-                            {foodMarket.offerPrice != null && (
-                                <Stat label='Offer price' value={formatNumbers(foodMarket.offerPrice)} />
-                            )}
-                            {foodMarket.offerRetainment != null && (
-                                <Stat label='Retainment' value={formatNumbers(foodMarket.offerRetainment)} />
-                            )}
-                            {foodMarket.lastSold != null && (
-                                <Stat label='Last sold (qty)' value={formatNumbers(foodMarket.lastSold)} />
-                            )}
-                            {foodMarket.lastRevenue != null && (
-                                <Stat
-                                    label='Last revenue'
-                                    value={formatNumbers(foodMarket.lastRevenue)}
-                                    icon={<Coins className='h-3 w-3' />}
-                                    valueClassName={
-                                        foodMarket.lastRevenue > 0 ? 'text-green-600' : 'text-muted-foreground'
-                                    }
-                                />
-                            )}
-                            {foodMarket.priceDirection != null && (
-                                <Stat
-                                    label='Price direction'
-                                    value={
-                                        foodMarket.priceDirection > 0
-                                            ? `↑ +${foodMarket.priceDirection.toFixed(4)}`
-                                            : foodMarket.priceDirection < 0
-                                              ? `↓ ${foodMarket.priceDirection.toFixed(4)}`
-                                              : '→ 0'
-                                    }
-                                    valueClassName={
-                                        foodMarket.priceDirection > 0
-                                            ? 'text-green-600'
-                                            : foodMarket.priceDirection < 0
-                                              ? 'text-red-500'
-                                              : ''
-                                    }
-                                />
-                            )}
                         </div>
                     </div>
                 </>

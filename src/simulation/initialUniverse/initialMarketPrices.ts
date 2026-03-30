@@ -1,10 +1,12 @@
 import {
     agriculturalProductResourceType,
     aluminumResourceType,
-    asphaltResourceType,
+    bauxiteResourceType,
     beverageResourceType,
     brickResourceType,
+    cementResourceType,
     chemicalResourceType,
+    clayResourceType,
     clothingResourceType,
     coalResourceType,
     concreteResourceType,
@@ -13,15 +15,13 @@ import {
     copperResourceType,
     cottonResourceType,
     crudeOilResourceType,
-    dieselResourceType,
     electronicComponentResourceType,
     fabricResourceType,
     fertilizerResourceType,
+    fuelResourceType,
     furnitureResourceType,
-    gasolineResourceType,
     glassResourceType,
     ironOreResourceType,
-    jetFuelResourceType,
     limestoneResourceType,
     logsResourceType,
     lubricantResourceType,
@@ -41,10 +41,15 @@ import {
     stoneResourceType,
     vehicleResourceType,
     waterResourceType,
-    cementResourceType,
-    bauxiteResourceType,
-    clayResourceType,
 } from '../planet/resources';
+import {
+    administrativeServiceResourceType,
+    constructionServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    logisticsServiceResourceType,
+    retailServiceResourceType,
+} from '../planet/services';
 
 /**
  * Baseline market prices seeded for all resources at universe creation.
@@ -82,11 +87,8 @@ export const initialMarketPrices: Record<string, number> = {
     [cementResourceType.name]: 2.0, // 60 limestone + 15 clay + 10 coal → 50 cement
     [plasticResourceType.name]: 2.0, // oil refinery by-product
     [chemicalResourceType.name]: 2.0, // oil refinery by-product
-    [gasolineResourceType.name]: 2.5, // oil refinery
-    [dieselResourceType.name]: 2.5, // oil refinery
-    [jetFuelResourceType.name]: 3.0, // oil refinery
+    [fuelResourceType.name]: 2.5, // oil refinery
     [lubricantResourceType.name]: 3.0, // oil refinery
-    [asphaltResourceType.name]: 1.5, // oil refinery
     [brickResourceType.name]: 1.0, // 120 clay + 10 coal → 110 brick
     [fertilizerResourceType.name]: 2.0, // 25 natural gas + 25 phosphate → 50 fertilizer
     // Tier 2 processed
@@ -105,4 +107,11 @@ export const initialMarketPrices: Record<string, number> = {
     [machineryResourceType.name]: 15.0, // 80 steel + 10 electronic component + 20 plastic → 50
     [vehicleResourceType.name]: 15.0, // 10 steel + 5 aluminum + ... → 10 vehicles
     [pharmaceuticalResourceType.name]: 50.0, // 100 agri + 80 chemical + 100 water → 10 pharma
+    // Tier 5 services
+    [groceryServiceResourceType.name]: 5.0,
+    [healthcareServiceResourceType.name]: 5.0,
+    [administrativeServiceResourceType.name]: 5.0,
+    [logisticsServiceResourceType.name]: 5.0,
+    [retailServiceResourceType.name]: 5.0,
+    [constructionServiceResourceType.name]: 5.0,
 };

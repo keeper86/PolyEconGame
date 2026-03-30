@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import React from 'react';
 import BidTable from './BidTable';
 import OfferTable from './OfferTable';
 import PopulationDemandChart from './PopulationDemandChart';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
+import { groceryServiceResourceType } from '@/simulation/planet/services';
 
-const FOOD_RESOURCE_NAME = agriculturalProductResourceType.name;
+const FOOD_RESOURCE_NAME = groceryServiceResourceType.name;
 
 interface MarketDetailsSectionProps {
     planetId: string;

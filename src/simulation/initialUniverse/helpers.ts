@@ -1,5 +1,5 @@
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
-import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import { FOOD_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
+import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
 import type { Resource } from '../planet/planet';
 import {
     createEmptyDemographicEventCounters,
@@ -8,15 +8,15 @@ import {
     type ResourceClaim,
     type ResourceQuantity,
 } from '../planet/planet';
+import { groceryServiceResourceType } from '../planet/services';
+import type { ProductionFacility, StorageFacility } from '../planet/storage';
 import {
-    type Population,
     MAX_AGE,
     createEmptyPopulationCohort,
     forEachPopulationCohort,
+    type Population,
 } from '../population/population';
 import { makeWorkforceDemography } from '../utils/testHelper';
-import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
-import { agriculturalProductResourceType } from '../planet/resources';
 
 export type ResourceClaimEntry = ResourceQuantity & ResourceClaim;
 
@@ -207,11 +207,11 @@ export function createPopulation(total: number): Population {
         }
     }
 
-    const foodBufferPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
+    const serviceBufferPerPerson = FOOD_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {
-                category.inventory[agriculturalProductResourceType.name] = 3 * category.total * foodBufferPerPerson;
+                category.inventory[groceryServiceResourceType.name] = 3 * category.total * serviceBufferPerPerson;
             }
         });
     }

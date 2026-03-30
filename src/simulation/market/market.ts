@@ -1,7 +1,7 @@
-import { EPSILON, INITIAL_FOOD_PRICE } from '../constants';
+import { EPSILON } from '../constants';
+import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/storage';
-import { agriculturalProductResourceType } from '../planet/resources';
 import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';
 import { binHouseholdBids, buildPopulationDemandForResource, householdDemandPriority } from './populationDemand';
@@ -72,7 +72,7 @@ function clearResourceMarket(
     const agentDemand = agentBids.reduce((s, b) => s + b.quantity, 0);
     const totalDemand = householdDemand + agentDemand;
 
-    const referencePrice = referencePriceFor(planet, resourceName);
+    const referencePrice = initialMarketPrices[resourceName] ?? 1;
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
         // No trades possible: release any escrowed goods back to free stock
@@ -135,11 +135,4 @@ function clearResourceMarket(
         unsoldSupply,
         populationBids: binHouseholdBids(householdBids, householdBidFilled, householdBidCosts),
     };
-}
-
-function referencePriceFor(planet: Planet, resourceName: string): number {
-    return (
-        planet.marketPrices[resourceName] ??
-        (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1)
-    );
 }

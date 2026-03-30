@@ -9,7 +9,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import { EuroIcon, Landmark } from 'lucide-react';
 import BankPanel from './BankPanel';
 
@@ -55,7 +54,6 @@ export default function FinancialPage() {
                             deposits={assets.deposits ?? 0}
                             loans={assets.loans ?? 0}
                             lastWageBill={assets.lastWageBill ?? 0}
-                            foodMarket={assets.market?.sell[agriculturalProductResourceType.name]}
                         />
                         <Separator />
                         <p className='text-sm font-semibold flex items-center gap-2'>

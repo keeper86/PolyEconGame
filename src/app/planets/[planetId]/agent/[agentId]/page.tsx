@@ -7,7 +7,6 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { formatNumbers } from '@/lib/utils';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 import Link from 'next/link';
 import { route } from 'nextjs-routes';
 
@@ -46,16 +45,6 @@ export default function AgentPlanetOverviewPage() {
                             )}
                         />
                         <QuickStatCard label='Deposits' value={formatNumbers(assets.deposits ?? 0)} />
-                        <QuickStatCard
-                            label='Food price'
-                            value={
-                                assets.market?.sell[agriculturalProductResourceType.name]?.offerPrice !== undefined
-                                    ? formatNumbers(
-                                          assets.market.sell[agriculturalProductResourceType.name]!.offerPrice!,
-                                      )
-                                    : '—'
-                            }
-                        />
                     </div>
 
                     <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>
