@@ -31,7 +31,8 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/planets/[planetId]/claims", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
     | StaticRoute<"/pong">
-    | StaticRoute<"/simulation">;
+    | StaticRoute<"/simulation">
+    | StaticRoute<"/supply-chain">;
 
   interface StaticRoute<Pathname> {
     pathname: Pathname;

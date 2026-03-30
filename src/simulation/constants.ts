@@ -31,19 +31,19 @@ export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICK
 /**
  * Household grocery service buffer target expressed in ticks of consumption.
  * Population tries to maintain this many ticks worth of grocery service.
- * 3 months = 3 × TICKS_PER_MONTH = 90 ticks.
+ * 1 month = TICKS_PER_MONTH ticks.
  */
-export const GROCERY_BUFFER_TARGET_TICKS = 3 * TICKS_PER_MONTH;
+export const GROCERY_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
 
 /**
  * Service buffer targets expressed in ticks of consumption.
  * Each service has its own buffer target for household inventory management.
  */
-export const HEALTHCARE_BUFFER_TARGET_TICKS = 30;
-export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 30;
-export const LOGISTICS_BUFFER_TARGET_TICKS = 30;
-export const RETAIL_BUFFER_TARGET_TICKS = 30;
-export const CONSTRUCTION_BUFFER_TARGET_TICKS = 30;
+export const HEALTHCARE_BUFFER_TARGET_TICKS = 2;
+export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 1;
+export const LOGISTICS_BUFFER_TARGET_TICKS = 3;
+export const RETAIL_BUFFER_TARGET_TICKS = 3;
+export const CONSTRUCTION_BUFFER_TARGET_TICKS = 1;
 
 /**
  * Starvation suppression factors for non-grocery services.
@@ -57,15 +57,15 @@ export const CONSTRUCTION_BUFFER_TARGET_TICKS = 30;
  * discretionary services (construction, retail) are cut nearly to zero.
  */
 /** Healthcare remains partially in demand even when starving — medical needs persist. */
-export const HEALTHCARE_STARVATION_SUPPRESSION = 0.3;
+export const HEALTHCARE_STARVATION_SUPPRESSION = 0.4;
 /** Logistics (transport, deliveries) is still partially needed for basic daily movement. */
-export const LOGISTICS_STARVATION_SUPPRESSION = 0.5;
+export const LOGISTICS_STARVATION_SUPPRESSION = 0.6;
 /** Administrative (permits, banking, civic) is deferred but not entirely abandoned. */
-export const ADMINISTRATIVE_STARVATION_SUPPRESSION = 0.7;
+export const ADMINISTRATIVE_STARVATION_SUPPRESSION = 0.8;
 /** Retail (consumer shopping) is highly discretionary and mostly cut when starving. */
-export const RETAIL_STARVATION_SUPPRESSION = 0.8;
+export const RETAIL_STARVATION_SUPPRESSION = 0.9;
 /** Construction (housing improvement) is the most deferrable household expenditure. */
-export const CONSTRUCTION_STARVATION_SUPPRESSION = 0.9;
+export const CONSTRUCTION_STARVATION_SUPPRESSION = 1.0;
 
 /**
  * Price adjustment rate when grocery service inventory is *below* target (scarcity → price rises).

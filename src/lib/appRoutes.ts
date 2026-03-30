@@ -5,6 +5,7 @@ import {
     FlaskConical,
     Gamepad,
     Home,
+    Network,
     Package,
     ShoppingCartIcon,
     User,
@@ -78,6 +79,15 @@ export const APP_ROUTES = {
         isPublic: true,
         isSecondaryNav: true,
         description: 'Scientific description of the simulation model with mathematical formulations',
+    },
+    supplyChain: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        path: '/supply-chain' as any,
+        label: 'Supply Chain',
+        icon: Network,
+        isPublic: true,
+        isMainNav: true,
+        description: 'Interactive supply chain balance calculator and dependency visualiser',
     },
 } as const satisfies RouteManifest;
 
