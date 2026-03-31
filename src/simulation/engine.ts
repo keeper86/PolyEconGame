@@ -4,6 +4,7 @@ import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { marketTick } from './market/market';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
+import { updateAgentProductionScale } from './planet/automaticProductionScale';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
 import { productionTick } from './planet/production';
@@ -49,7 +50,7 @@ export function advanceTick(gameState: GameState) {
         }
         preProductionFinancialTick(planetAgents, planet);
 
-        //updateAgentProductionScale(planetAgents, planet);
+        updateAgentProductionScale(planetAgents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 

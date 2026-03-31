@@ -57,45 +57,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
-    // Pre-compute the break-even input price ceiling for each traded input resource.
-    // For each unit of input, the maximum rational price equals the revenue it contributes
-    // to the facility's output: Σ(output_qty × output_price) / input_qty.
-    // When a resource is used across multiple facilities, we take the highest ceiling
-    // (the agent values it at whatever facility extracts the most value from it).
-    //
-    // For outputs without a market price yet, we fall back to the total input cost per
-    // output unit (break-even floor). This prevents the ceiling from collapsing to
-    // INITIAL_GROCERY_PRICE when a downstream product has never been traded.
-    const inputValueCeiling = new Map<string, number>();
-    for (const facility of assets.productionFacilities) {
-        const tradedInputCostPerScale = facility.needs.reduce((sum, { resource, quantity }) => {
-            if (resource.form === 'landBoundResource') {
-                return sum;
-            }
-            return sum + quantity * (planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE);
-        }, 0);
-        const totalOutputQty = facility.produces.reduce((sum, p) => sum + p.quantity, 0);
-        const inputCostFallbackPerOutputUnit =
-            totalOutputQty > 0 ? tradedInputCostPerScale / totalOutputQty : INITIAL_GROCERY_PRICE;
-
-        const outputRevenuePerScale = facility.produces.reduce((sum, p) => {
-            const knownPrice = planet.marketPrices[p.resource.name];
-            const price = knownPrice ?? inputCostFallbackPerOutputUnit;
-            return sum + p.quantity * price;
-        }, 0);
-
-        for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource' || quantity <= 0) {
-                continue;
-            }
-            const ceiling = outputRevenuePerScale / quantity;
-            const existing = inputValueCeiling.get(resource.name) ?? 0;
-            if (ceiling > existing) {
-                inputValueCeiling.set(resource.name, ceiling);
-            }
-        }
-    }
-
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
             // For human-controlled agents only auto-adjust entries explicitly flagged
@@ -165,8 +126,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
         const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_GROCERY_PRICE;
-        const ceiling = inputValueCeiling.get(resourceName);
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, ceiling);
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice);
 
         // Validity guard: price must be a finite positive number >= PRICE_FLOOR.
         // adjustBidPrice should guarantee this, but NaN/Infinity can leak in from
