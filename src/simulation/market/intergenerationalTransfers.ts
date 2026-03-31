@@ -227,8 +227,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                     // When the buffer is depleted, dependents must pay at a premium in
                     // the market. Use urgency-adjusted price so the transfer reflects
                     // the effective cost of filling an empty buffer.
-                    const bufferFill =
-                        targetPerPerson > 0 ? Math.min(1, perCapitaGroceryBuffer / targetPerPerson) : 1;
+                    const bufferFill = targetPerPerson > 0 ? Math.min(1, perCapitaGroceryBuffer / targetPerPerson) : 1;
                     const urgencyGroceryPrice = groceryPrice / Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL);
                     totalNeed += gap * urgencyGroceryPrice * pop;
                     totalPop += pop;
@@ -419,8 +418,7 @@ function creditDependents(
             const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
             // Match demand urgency: an empty buffer means the dependent must pay
             // a market premium, so the transfer amount is scaled accordingly.
-            const bufferFill =
-                targetPerPerson > 0 ? Math.min(1, perCapitaGroceryBuffer / targetPerPerson) : 1;
+            const bufferFill = targetPerPerson > 0 ? Math.min(1, perCapitaGroceryBuffer / targetPerPerson) : 1;
             const costGap = gap * (groceryPrice / Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL));
             const selfFund = Math.max(0, wealth.mean);
             const need = Math.max(0, costGap - selfFund) * pop;
