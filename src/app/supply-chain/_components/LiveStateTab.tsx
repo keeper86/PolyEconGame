@@ -15,8 +15,12 @@ import { computeSupplyChainBalance } from './computeBalance';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmt(n: number): string {
-    if (Math.abs(n) >= 1_000_000) { return `${(n / 1_000_000).toFixed(1)}M`; }
-    if (Math.abs(n) >= 1_000) { return `${(n / 1_000).toFixed(1)}k`; }
+    if (Math.abs(n) >= 1_000_000) {
+        return `${(n / 1_000_000).toFixed(1)}M`;
+    }
+    if (Math.abs(n) >= 1_000) {
+        return `${(n / 1_000).toFixed(1)}k`;
+    }
     return n.toFixed(1);
 }
 
@@ -25,8 +29,12 @@ function pct(ratio: number): string {
 }
 
 function effColor(eff: number): string {
-    if (eff >= 0.95) { return 'text-green-600'; }
-    if (eff >= 0.7) { return 'text-amber-600'; }
+    if (eff >= 0.95) {
+        return 'text-green-600';
+    }
+    if (eff >= 0.7) {
+        return 'text-amber-600';
+    }
     return 'text-red-600';
 }
 
@@ -166,11 +174,7 @@ function aggregateFacilities(agents: Agent[]): FacilityAggRow[] {
         }
 
         const mainBottleneck: FacilityAggRow['mainBottleneck'] =
-            worstWorkerEff < worstResourceEff
-                ? 'workers'
-                : worstResourceEff < 0.995
-                  ? 'resources'
-                  : 'none';
+            worstWorkerEff < worstResourceEff ? 'workers' : worstResourceEff < 0.995 ? 'resources' : 'none';
 
         rows.push({
             name,
@@ -220,7 +224,9 @@ function buildResourceActuals(
     for (const rn of allResources) {
         const actual = actualByResource[rn] ?? 0;
         const theoretical = theoreticalByResource[rn] ?? 0;
-        if (theoretical === 0 && actual === 0) { continue; }
+        if (theoretical === 0 && actual === 0) {
+            continue;
+        }
         result.push({
             resourceName: rn,
             actualProducedPerTick: actual,
@@ -333,10 +339,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
     );
 
     const tick = agentData?.tick ?? 0;
-    const agents = useMemo(
-        () => (agentData?.agents.map((a) => a.agentSummary as Agent) ?? []) as Agent[],
-        [agentData],
-    );
+    const agents = useMemo(() => (agentData?.agents.map((a) => a.agentSummary as Agent) ?? []) as Agent[], [agentData]);
     const livePop = planetData?.planets.reduce((s, p) => s + p.populationTotal, 0) ?? 0;
 
     const facilityRows = useMemo(() => aggregateFacilities(agents), [agents]);
@@ -374,11 +377,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
     const worstResources = resourceActuals.filter((r) => r.theoreticalMaxPerTick > 0 && r.effectivenessRatio < 0.99);
 
     if (isLoading && tick === 0) {
-        return (
-            <div className='py-8 text-center text-sm text-muted-foreground'>
-                Connecting to simulation…
-            </div>
-        );
+        return <div className='py-8 text-center text-sm text-muted-foreground'>Connecting to simulation…</div>;
     }
 
     if (!isLoading && totalAgents === 0) {
@@ -400,12 +399,10 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                     Agents: <span className='font-mono font-semibold'>{totalAgents}</span>
                 </span>
                 <span>
-                    Population:{' '}
-                    <span className='font-mono font-semibold'>{livePop.toLocaleString()}</span>
+                    Population: <span className='font-mono font-semibold'>{livePop.toLocaleString()}</span>
                 </span>
                 <span>
-                    Facility types:{' '}
-                    <span className='font-mono font-semibold'>{facilityRows.length}</span>
+                    Facility types: <span className='font-mono font-semibold'>{facilityRows.length}</span>
                 </span>
                 <div className='ml-auto'>
                     <Button
@@ -502,14 +499,13 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                         <div className='space-y-1.5'>
                             {worstResources.slice(0, 12).map((r) => (
                                 <div key={r.resourceName} className='flex items-center gap-2'>
-                                    <span className='text-xs w-52 shrink-0 truncate font-medium'>
-                                        {r.resourceName}
-                                    </span>
+                                    <span className='text-xs w-52 shrink-0 truncate font-medium'>{r.resourceName}</span>
                                     <div className='flex-1'>
                                         <EffBar eff={r.effectivenessRatio} />
                                     </div>
                                     <span className='text-[10px] text-muted-foreground w-28 text-right shrink-0'>
-                                        {fmt(r.actualProducedPerTick)}&nbsp;/&nbsp;{fmt(r.theoreticalMaxPerTick)}&nbsp;/tick
+                                        {fmt(r.actualProducedPerTick)}&nbsp;/&nbsp;{fmt(r.theoreticalMaxPerTick)}
+                                        &nbsp;/tick
                                     </span>
                                 </div>
                             ))}

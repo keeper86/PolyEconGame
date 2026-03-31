@@ -1,6 +1,7 @@
 import {
     SERVICE_PER_PERSON_PER_TICK,
     INITIAL_SERVICE_PRICE,
+    MIN_SERVICE_BUFFER_FILL,
     GROCERY_BUFFER_TARGET_TICKS,
     HEALTHCARE_BUFFER_TARGET_TICKS,
     ADMINISTRATIVE_BUFFER_TARGET_TICKS,
@@ -27,7 +28,9 @@ export type ServiceDefinition = {
     readonly bufferTargetTicks: number;
     readonly consumptionRatePerPersonPerTick: number;
     /**
-     * Reservation price = marketPrice × willingnessMultiplier.
+     * Base willingness-to-pay factor at full buffer.
+     * Effective reservation price = marketPrice × willingnessMultiplier / bufferFill,
+     * capped by MIN_SERVICE_BUFFER_FILL (≈ 100× at empty buffer, 1× at full).
      * > 1 = inelastic (households pay above market), < 1 = elastic.
      */
     readonly willingnessMultiplier: number;
@@ -231,7 +234,13 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 remainingWealth -= quantityPerPerson * referencePrice;
 
-                const reservationPrice = referencePrice * def.willingnessMultiplier;
+                // When the buffer is depleted, households bid above the baseline multiplier
+                // so they can match sellers even during scarcity or price-discovery bootstrap.
+                // At bufferFill=0 (empty): price = willingnessMultiplier / MIN_SERVICE_BUFFER_FILL (~100× base)
+                // At bufferFill=1 (full):  price = willingnessMultiplier × referencePrice (normal)
+                const bufferFill = def.bufferTargetTicks > 0 ? Math.min(1, serviceBuffer / def.bufferTargetTicks) : 1;
+                const reservationPrice =
+                    (referencePrice * def.willingnessMultiplier) / Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL);
 
                 const bids = allBids.get(def.resource.name)!;
                 bids.push({

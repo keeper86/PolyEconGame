@@ -207,7 +207,7 @@ const TARGETS: Record<string, FacilityTarget> = {
     vehicleFactory: { totalScale: 32_296, agentCount: 5 },
     intensiveFarmFacility: { totalScale: 324_074, agentCount: 12 },
     packagingPlant: { totalScale: 611_111, agentCount: 12 },
-    administrativeCenter: { totalScale: 6_142_889, agentCount: 12 },
+    administrativeCenter: { totalScale: 2_142_889, agentCount: 12 },
     logisticsHub: { totalScale: 3_391_111, agentCount: 12 },
     constructionService: { totalScale: 1_333_333, agentCount: 12 },
     groceryChain: { totalScale: 1_333_333, agentCount: 12 },

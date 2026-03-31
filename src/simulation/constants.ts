@@ -56,6 +56,17 @@ export const GROCERY_PRICE_CEIL = 1000000.0;
 export const INITIAL_GROCERY_PRICE = 1.0;
 
 /**
+ * Minimum buffer fill fraction used to compute the urgency multiplier in
+ * household demand bids and intergenerational transfer needs.
+ *
+ *   effectiveMultiplier = willingnessMultiplier / max(bufferFill, MIN_SERVICE_BUFFER_FILL)
+ *
+ * At empty buffer (fill = 0): urgency ≈ 1 / 0.01 = 100×.
+ * At full  buffer (fill = 1): urgency = 1× (base willingness).
+ */
+export const MIN_SERVICE_BUFFER_FILL = 0.01;
+
+/**
  * Initial service price per unit (currency units per service unit).
  * Services require more infrastructure and labor than basic food.
  */
