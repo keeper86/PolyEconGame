@@ -184,19 +184,11 @@ function adjustOfferPrice(offer: AgentMarketOfferState, inventoryQty: number, in
     // When the agent has no stock to sell this tick (supply-constrained), treat it as
     // full sell-through: the good is scarce and the price should rise.
     if (effectiveQuantity === 0) {
-        const factor = sellThroughFactor(1);
-        const newPrice = price * factor;
-        // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
-        if (!isFinite(newPrice) || newPrice <= 0) {
-            offer.offerPrice = PRICE_FLOOR;
-        } else {
-            offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
-        }
         return;
     }
 
     const sellThrough = sold / effectiveQuantity;
-    const factor = (1 + 0.01 * nextRandom()) * sellThroughFactor(sellThrough);
+    const factor = sellThroughFactor(sellThrough);
     const newPrice = price * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity

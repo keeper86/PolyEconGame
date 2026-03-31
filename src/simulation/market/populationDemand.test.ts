@@ -1,3 +1,36 @@
+import { test, expect } from 'vitest';
+import { buildPopulationDemand } from './populationDemand';
+import { createEmptyPopulationCohort } from '../population/population';
+import { groceryServiceResourceType } from '../planet/services';
+
+test('buildPopulationDemand produces finite reservation prices for empty buffers', () => {
+    // Minimal planet stub for the test
+    const planet: any = {
+        marketPrices: {
+            [groceryServiceResourceType.name]: 1,
+        },
+        population: {
+            demography: [],
+        },
+    };
+
+    // create two age cohorts: newborns (age 0) and adults (age 30)
+    const newbornCohort = createEmptyPopulationCohort({ total: 100, wealth: { mean: 50, variance: 1 }, services: { grocery: { buffer: 0, starvationLevel: 0 }, retail: { buffer: 0, starvationLevel: 0 }, logistics: { buffer: 0, starvationLevel: 0 }, healthcare: { buffer: 0, starvationLevel: 0 }, construction: { buffer: 0, starvationLevel: 0 }, administrative: { buffer: 0, starvationLevel: 0 }, }, });
+    const adultCohort = createEmptyPopulationCohort({ total: 100, wealth: { mean: 1000, variance: 1 }, services: { grocery: { buffer: 1000, starvationLevel: 0 }, retail: { buffer: 1000, starvationLevel: 0 }, logistics: { buffer: 1000, starvationLevel: 0 }, healthcare: { buffer: 1000, starvationLevel: 0 }, construction: { buffer: 1000, starvationLevel: 0 }, administrative: { buffer: 1000, starvationLevel: 0 }, }, });
+
+    // demography is an array indexed by age
+    planet.population.demography[0] = newbornCohort;
+    planet.population.demography[30] = adultCohort;
+
+    const bidsMap = buildPopulationDemand(planet as any);
+    const bids = bidsMap.get(groceryServiceResourceType.name) ?? [];
+    expect(bids.length).toBeGreaterThan(0);
+    for (const b of bids) {
+        expect(typeof b.bidPrice).toBe('number');
+        expect(Number.isFinite(b.bidPrice)).toBe(true);
+        expect(b.bidPrice).toBeGreaterThanOrEqual(0);
+    }
+});
 import { describe, expect, it } from 'vitest';
 
 import { GROCERY_BUFFER_TARGET_TICKS, INITIAL_SERVICE_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../constants';

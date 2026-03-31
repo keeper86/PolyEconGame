@@ -239,7 +239,8 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 // At bufferFill=0 (empty): price = willingnessMultiplier / MIN_SERVICE_BUFFER_FILL (~100× base)
                 // At bufferFill=1 (full):  price = willingnessMultiplier × referencePrice (normal)
                 const bufferFill = def.bufferTargetTicks > 0 ? Math.min(1, serviceBuffer / def.bufferTargetTicks) : 1;
-                const reservationPrice = (referencePrice * def.willingnessMultiplier) / bufferFill;
+                const effectiveBufferFill = Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL);
+                const reservationPrice = (referencePrice * def.willingnessMultiplier) / effectiveBufferFill;
 
                 const bids = allBids.get(def.resource.name)!;
                 bids.push({
