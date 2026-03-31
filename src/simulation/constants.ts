@@ -2,10 +2,9 @@ export const START_YEAR = 2200;
 export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
-export const GROCERY_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR; // grocery service units per person per tick
 
 /** Service consumption per person per tick (1 unit/person/tick for all services) */
-export const SERVICE_PER_PERSON_PER_TICK = 1;
+export const SERVICE_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR;
 
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
@@ -39,43 +38,11 @@ export const GROCERY_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
  * Service buffer targets expressed in ticks of consumption.
  * Each service has its own buffer target for household inventory management.
  */
-export const HEALTHCARE_BUFFER_TARGET_TICKS = 2;
-export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 1;
-export const LOGISTICS_BUFFER_TARGET_TICKS = 3;
-export const RETAIL_BUFFER_TARGET_TICKS = 3;
-export const CONSTRUCTION_BUFFER_TARGET_TICKS = 1;
-
-/**
- * Starvation suppression factors for non-grocery services.
- *
- * When a cohort's grocery starvation level is S ∈ [0, 1], the effective
- * buffer target for each service is multiplied by (1 − factor × S).
- *
- * This models the economic reality that starving households redirect all
- * available wealth towards food, collapsing demand for everything else.
- * Services closest to survival (healthcare) retain more demand; purely
- * discretionary services (construction, retail) are cut nearly to zero.
- */
-/** Healthcare remains partially in demand even when starving — medical needs persist. */
-export const HEALTHCARE_STARVATION_SUPPRESSION = 0.4;
-/** Logistics (transport, deliveries) is still partially needed for basic daily movement. */
-export const LOGISTICS_STARVATION_SUPPRESSION = 0.6;
-/** Administrative (permits, banking, civic) is deferred but not entirely abandoned. */
-export const ADMINISTRATIVE_STARVATION_SUPPRESSION = 0.8;
-/** Retail (consumer shopping) is highly discretionary and mostly cut when starving. */
-export const RETAIL_STARVATION_SUPPRESSION = 0.9;
-/** Construction (housing improvement) is the most deferrable household expenditure. */
-export const CONSTRUCTION_STARVATION_SUPPRESSION = 1.0;
-
-/**
- * Price adjustment rate when grocery service inventory is *below* target (scarcity → price rises).
- */
-export const GROCERY_PRICE_ALPHA = 0.002;
-
-/**
- * Price adjustment rate when grocery service inventory is *above* target (surplus → price falls).
- */
-export const GROCERY_PRICE_BETA = 0.001;
+export const HEALTHCARE_BUFFER_TARGET_TICKS = 4;
+export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 3;
+export const LOGISTICS_BUFFER_TARGET_TICKS = 4;
+export const RETAIL_BUFFER_TARGET_TICKS = 10;
+export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
 
 /**
  * Minimum grocery service price (prevents zero or negative prices).

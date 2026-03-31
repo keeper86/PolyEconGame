@@ -7,11 +7,6 @@ import {
     LOGISTICS_BUFFER_TARGET_TICKS,
     RETAIL_BUFFER_TARGET_TICKS,
     CONSTRUCTION_BUFFER_TARGET_TICKS,
-    HEALTHCARE_STARVATION_SUPPRESSION,
-    LOGISTICS_STARVATION_SUPPRESSION,
-    ADMINISTRATIVE_STARVATION_SUPPRESSION,
-    RETAIL_STARVATION_SUPPRESSION,
-    CONSTRUCTION_STARVATION_SUPPRESSION,
 } from '../constants';
 import type { Planet, Resource } from '../planet/planet';
 import {
@@ -23,230 +18,73 @@ import {
     constructionServiceResourceType,
 } from '../planet/services';
 import { forEachPopulationCohort } from '../population/population';
+import type { ServiceName } from '../population/population';
 import type { BidOrder } from './marketTypes';
 
-// ---------------------------------------------------------------------------
-// Demand rule registry
-// ---------------------------------------------------------------------------
-/**
- * A demand rule returns the desired total purchase quantity for a cohort
- * and its reservation price, given the cohort's current state.
- *
- * `groceryStarvationLevel` [0, 1] carries the accumulated physiological
- * deprivation of the cohort.  Non-grocery rules use it to suppress demand:
- * starving households redirect all spending toward food and stop buying
- * discretionary services.
- */
-type DemandRule = (params: {
-    population: number;
-    wealthMeanPerPerson: number;
-    inventoryPerPerson: number;
-    referencePrice: number;
-    /** Accumulated grocery starvation level [0, 1] from the cohort state. */
-    groceryStarvationLevel: number;
-}) => {
-    /** Total desired purchase quantity for the cohort (>= 0). */
-    quantity: number;
-    /** Reservation price (currency / unit). */
-    reservationPrice: number;
+export type ServiceDefinition = {
+    readonly resource: Resource;
+    readonly serviceKey: ServiceName;
+    readonly bufferTargetTicks: number;
+    readonly consumptionRatePerPersonPerTick: number;
+    /**
+     * Reservation price = marketPrice × willingnessMultiplier.
+     * > 1 = inelastic (households pay above market), < 1 = elastic.
+     */
+    readonly willingnessMultiplier: number;
 };
-type DemandEntry = { rule: DemandRule };
-export const demandRules = new Map<string, DemandEntry>();
 
-function registerDemand(resource: Resource, rule: DemandRule): void {
-    demandRules.set(resource.name, { rule });
-}
-
-// ---------------------------------------------------------------------------
-// Civil-only service demand rules
-// Population is the sole buyer in these markets.
-// ---------------------------------------------------------------------------
-
-/**
- * Grocery service — the survival necessity.
- *
- * Households target a 3-month buffer.  No starvation suppression applies
- * (this IS the service that drives starvation).  Reservation price grows
- * proportionally with wealth, reflecting willingness to pay for food.
- */
-registerDemand(
-    groceryServiceResourceType,
-    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice }) => {
-        const targetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
-        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
-        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
-        return { quantity: quantityPerPerson * population, reservationPrice };
+export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
+    {
+        resource: groceryServiceResourceType,
+        serviceKey: 'grocery',
+        bufferTargetTicks: GROCERY_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 4.0, // survival necessity — highly inelastic
     },
-);
-
-/**
- * Healthcare service — medical care and treatment.
- *
- * Health needs persist even under food scarcity, but starving cohorts
- * inevitably deprioritise medical spending.
- * Suppression: {@link HEALTHCARE_STARVATION_SUPPRESSION} (30 % at full starvation).
- */
-registerDemand(
-    healthcareServiceResourceType,
-    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
-        const suppression = 1 - HEALTHCARE_STARVATION_SUPPRESSION * groceryStarvationLevel;
-        const targetPerPerson = HEALTHCARE_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
-        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
-        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
-        return { quantity: quantityPerPerson * population, reservationPrice };
+    {
+        resource: healthcareServiceResourceType,
+        serviceKey: 'healthcare',
+        bufferTargetTicks: HEALTHCARE_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 2.0, // essential health — inelastic
     },
-);
-
-/**
- * Retail service — consumer shopping for goods and personal items.
- *
- * Purely discretionary; the first service cut when starvation rises.
- * Suppression: {@link RETAIL_STARVATION_SUPPRESSION} (80 % at full starvation).
- */
-registerDemand(
-    retailServiceResourceType,
-    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
-        const suppression = 1 - RETAIL_STARVATION_SUPPRESSION * groceryStarvationLevel;
-        const targetPerPerson = RETAIL_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
-        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
-        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
-        return { quantity: quantityPerPerson * population, reservationPrice };
+    {
+        resource: logisticsServiceResourceType,
+        serviceKey: 'logistics',
+        bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 1.0, // necessary — moderately inelastic
     },
-);
-
-// ---------------------------------------------------------------------------
-// Agent-shared service demand rules
-// Agents (firms) also bid in these markets; household demand is independent
-// but prices are jointly determined with agent demand.
-// ---------------------------------------------------------------------------
-
-/**
- * Logistics service — transport, freight and distribution for daily life.
- *
- * Households need logistics for deliveries and commuting.  Partially reduced
- * under food scarcity as fewer discretionary trips occur.
- * Also consumed by agents for supply chain operations.
- * Suppression: {@link LOGISTICS_STARVATION_SUPPRESSION} (50 % at full starvation).
- */
-registerDemand(
-    logisticsServiceResourceType,
-    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
-        const suppression = 1 - LOGISTICS_STARVATION_SUPPRESSION * groceryStarvationLevel;
-        const targetPerPerson = LOGISTICS_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
-        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
-        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
-        return { quantity: quantityPerPerson * population, reservationPrice };
+    {
+        resource: retailServiceResourceType,
+        serviceKey: 'retail',
+        bufferTargetTicks: RETAIL_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 0.9, // discretionary — unit-elastic
     },
-);
-
-/**
- * Administrative service — government, finance, legal and civic services.
- *
- * Households need administrative services for permits, banking and official
- * matters.  These are deferred but not abandoned when starving.
- * Also consumed by agents for operations and compliance.
- * Suppression: {@link ADMINISTRATIVE_STARVATION_SUPPRESSION} (70 % at full starvation).
- */
-registerDemand(
-    administrativeServiceResourceType,
-    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
-        const suppression = 1 - ADMINISTRATIVE_STARVATION_SUPPRESSION * groceryStarvationLevel;
-        const targetPerPerson = ADMINISTRATIVE_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
-        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
-        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
-        return { quantity: quantityPerPerson * population, reservationPrice };
+    {
+        resource: constructionServiceResourceType,
+        serviceKey: 'construction',
+        bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 0.6, // most deferrable — elastic
     },
-);
-
-/**
- * Construction service — housing maintenance, repair and improvement.
- *
- * The most deferrable household expenditure: housing can deteriorate for
- * months before it becomes critical.  Demand collapses almost entirely
- * when the population is starving.
- * Also consumed by agents for facility building and maintenance.
- * Suppression: {@link CONSTRUCTION_STARVATION_SUPPRESSION} (90 % at full starvation).
- */
-registerDemand(
-    constructionServiceResourceType,
-    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice, groceryStarvationLevel }) => {
-        const suppression = 1 - CONSTRUCTION_STARVATION_SUPPRESSION * groceryStarvationLevel;
-        const targetPerPerson = CONSTRUCTION_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * suppression;
-        const desiredPerPerson = Math.max(0, targetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0 || referencePrice <= 0 || wealthMeanPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const quantityPerPerson = Math.min(desiredPerPerson, wealthMeanPerPerson / referencePrice);
-        const reservationPrice = wealthMeanPerPerson / desiredPerPerson;
-        return { quantity: quantityPerPerson * population, reservationPrice };
+    {
+        resource: administrativeServiceResourceType,
+        serviceKey: 'administrative',
+        bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 0.5, // necessary — mildly inelastic
     },
-);
-
-// ---------------------------------------------------------------------------
-// Service classification
-// ---------------------------------------------------------------------------
-
-/**
- * Services consumed exclusively by the population.
- * Agents do not bid in these markets.
- */
-export const CIVIL_ONLY_SERVICE_NAMES: string[] = [
-    groceryServiceResourceType.name,
-    healthcareServiceResourceType.name,
-    retailServiceResourceType.name,
 ];
 
-/**
- * Services consumed by both population and agents (firms).
- * Household and firm bids compete in the same order book.
- */
-export const AGENT_SHARED_SERVICE_NAMES: string[] = [
-    logisticsServiceResourceType.name,
-    administrativeServiceResourceType.name,
-    constructionServiceResourceType.name,
-];
+/** O(1) lookup by resource name — used by settlement and consumption. */
+export const SERVICE_DEFINITION_BY_RESOURCE_NAME = new Map<string, ServiceDefinition>(
+    SERVICE_DEFINITIONS.map((def) => [def.resource.name, def]),
+);
 
-// ---------------------------------------------------------------------------
-// Priority order for sequential household settlement.
-// Services are cleared and settled in this order; household wealth is debited
-// before the next service's bids are generated, so no cohort can over-commit.
-// Resources not in this list (agent-only markets) are cleared afterwards.
-// Order: survival first, discretionary last.
-// ---------------------------------------------------------------------------
-export const householdDemandPriority: string[] = [
-    groceryServiceResourceType.name, // survival: always first
-    healthcareServiceResourceType.name, // essential: health
-    logisticsServiceResourceType.name, // necessary: daily movement
-    administrativeServiceResourceType.name, // necessary: civic participation
-    retailServiceResourceType.name, // discretionary: shopping
-    constructionServiceResourceType.name, // discretionary: most deferrable
-];
+// Priority order derived from the definition array order.
+export const householdDemandPriority: string[] = SERVICE_DEFINITIONS.map((d) => d.resource.name);
 
 // ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
@@ -341,43 +179,15 @@ export function binHouseholdBids(bids: BidOrder[], filled: number[], costs: numb
 }
 
 // ---------------------------------------------------------------------------
-// Build population demand for a single resource, using current cohort wealth
+// Build all population demand in a single sequential-budget pass
+//
+// For each cohort the services are processed in householdDemandPriority order.
+// Each service draws from the cohort's remaining wealth after higher-priority
+// purchases, so food always wins over healthcare, healthcare over retail, etc.
+// Reservation price = referencePrice × willingnessMultiplier (stable signal).
 // ---------------------------------------------------------------------------
-export function buildPopulationDemandForResource(planet: Planet, resourceName: string): BidOrder[] {
-    const entry = demandRules.get(resourceName);
-    if (!entry) {
-        return [];
-    }
-    const { rule } = entry;
-
-    const referencePrice = planet.marketPrices[resourceName] ?? INITIAL_SERVICE_PRICE;
-    const bidOrders: BidOrder[] = [];
-
-    // Map resource name to service name
-    let serviceName: string;
-    switch (resourceName) {
-        case groceryServiceResourceType.name:
-            serviceName = 'grocery';
-            break;
-        case healthcareServiceResourceType.name:
-            serviceName = 'healthcare';
-            break;
-        case administrativeServiceResourceType.name:
-            serviceName = 'administrative';
-            break;
-        case logisticsServiceResourceType.name:
-            serviceName = 'logistics';
-            break;
-        case retailServiceResourceType.name:
-            serviceName = 'retail';
-            break;
-        case constructionServiceResourceType.name:
-            serviceName = 'construction';
-            break;
-        default:
-            // Not a service resource
-            return [];
-    }
+export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
+    const allBids = new Map<string, BidOrder[]>(SERVICE_DEFINITIONS.map((def) => [def.resource.name, []]));
 
     planet.population.demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -393,47 +203,50 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
                 );
             }
 
-            // Calculate inventory per person from service buffer
-            // Buffer is stored as ticks worth of service, convert to units per person
-            const serviceBuffer = category.services[serviceName as keyof typeof category.services]?.buffer ?? 0;
-            const inventoryPerPerson = serviceBuffer * SERVICE_PER_PERSON_PER_TICK;
+            let remainingWealth = wm.mean;
 
-            const { quantity: totalQty, reservationPrice } = rule({
-                population: pop,
-                wealthMeanPerPerson: wm.mean,
-                inventoryPerPerson,
-                referencePrice,
-                groceryStarvationLevel: category.services.grocery.starvationLevel,
-            });
+            for (const def of SERVICE_DEFINITIONS) {
+                if (remainingWealth <= 0) {
+                    break;
+                }
 
-            if (!Number.isFinite(totalQty) || totalQty < 0) {
-                console.log('warn: non-finite totalQty in buildPopulationDemandForResource', {
+                const referencePrice = planet.marketPrices[def.resource.name] ?? INITIAL_SERVICE_PRICE;
+                if (referencePrice <= 0) {
+                    continue;
+                }
+
+                const serviceBuffer = category.services[def.serviceKey]?.buffer ?? 0;
+                const rate = def.consumptionRatePerPersonPerTick;
+                const desiredPerPerson = rate * Math.max(0, def.bufferTargetTicks - serviceBuffer);
+
+                if (desiredPerPerson <= 0) {
+                    continue;
+                }
+
+                const affordable = remainingWealth / referencePrice;
+                const quantityPerPerson = Math.min(desiredPerPerson, affordable);
+                if (quantityPerPerson <= 0) {
+                    continue;
+                }
+
+                remainingWealth -= quantityPerPerson * referencePrice;
+
+                const reservationPrice = referencePrice * def.willingnessMultiplier;
+
+                const bids = allBids.get(def.resource.name)!;
+                bids.push({
                     age,
                     edu,
                     occ,
                     skill,
-                    resourceName,
-                    totalQty,
+                    population: pop,
+                    bidPrice: reservationPrice,
+                    quantity: quantityPerPerson * pop,
+                    wealthMoments: wm,
                 });
-                return;
             }
-
-            if (totalQty <= 0) {
-                return;
-            }
-
-            bidOrders.push({
-                age,
-                edu,
-                occ,
-                skill,
-                population: pop,
-                bidPrice: reservationPrice,
-                quantity: totalQty,
-                wealthMoments: wm,
-            });
         }),
     );
 
-    return bidOrders;
+    return allBids;
 }

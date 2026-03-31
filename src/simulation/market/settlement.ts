@@ -2,7 +2,7 @@ import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '.
 import type { Planet } from '../planet/planet';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
-import { SERVICE_PER_PERSON_PER_TICK } from '../constants';
+import { SERVICE_DEFINITION_BY_RESOURCE_NAME } from './populationDemand';
 
 export function settleHouseholds(
     planet: Planet,
@@ -49,10 +49,10 @@ export function settleHouseholds(
         const category = demography[record.age][record.occ][record.edu][record.skill];
         const perPersonCost = record.population > 0 ? bidCosts[i] / record.population : 0;
 
-        // Convert filled units to buffer ticks
-        // filled is in units, buffer is in ticks worth of service
-        // buffer ticks = filled / (SERVICE_PER_PERSON_PER_TICK * category.total)
-        const bufferTicks = filled / (SERVICE_PER_PERSON_PER_TICK * category.total);
+        // Convert filled units to buffer ticks using the per-service consumption rate.
+        // bufferTicks = filled / (rate × population)
+        const rate = SERVICE_DEFINITION_BY_RESOURCE_NAME.get(resourceName)?.consumptionRatePerPersonPerTick ?? 1;
+        const bufferTicks = filled / (rate * category.total);
         category.services[serviceName].buffer += bufferTicks;
 
         debitConsumptionPurchase(planet.bank, category, perPersonCost);

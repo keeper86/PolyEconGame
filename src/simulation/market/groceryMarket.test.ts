@@ -7,7 +7,13 @@ import {
     SERVICE_PER_PERSON_PER_TICK,
 } from '../constants';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { groceryServiceResourceType, retailServiceResourceType } from '../planet/services';
+import {
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    administrativeServiceResourceType,
+    logisticsServiceResourceType,
+    retailServiceResourceType,
+} from '../planet/services';
 import { putIntoStorageFacility } from '../planet/storage';
 import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
@@ -456,15 +462,15 @@ describe('updateAgentPricing', () => {
 // ---------------------------------------------------------------------------
 
 describe('sequential settlement: food is settled before discretionary goods', () => {
-    // With sequential settlement, grocery is cleared and wealth debited before
-    // retail service bids are generated.  A cohort that spends all remaining
-    // wealth on groceries has nothing left for retail.
+    // Under the budget-constrained sequential model, buildPopulationDemand
+    // allocates wealth in householdDemandPriority order.  Grocery is always
+    // first, so a cohort that spends all remaining wealth on groceries has
+    // nothing left for downstream services like retail.
     //
-    // Wealth calibration:
-    //   bidPrice = wealth / desiredPerPerson
-    //   desiredGrocery = GROCERY_BUFFER_TARGET_TICKS (90), price floor = 0.01 → need wealth > 0.9
-    //   desiredRetail  = RETAIL_BUFFER_TARGET_TICKS  (30), price floor = 0.01 → need wealth > 0.3
-    //   Use WEALTH_PER_PERSON = 2.0 so households can afford both services with headroom.
+    // Wealth calibration: all service prices are set to SERVICE_PRICE = 0.01
+    // so that no single intermediate service (healthcare, logistics, admin)
+    // consumes the full budget before retail is reached.
+    // WEALTH_PER_PERSON = 2.0 gives enough headroom to buy all services.
     const WEALTH_PER_PERSON = 2.0;
     const SERVICE_PRICE = 0.01; // = GROCERY_PRICE_FLOOR
 
@@ -530,7 +536,12 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         );
         planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
         planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
+        // Set all service prices cheap so intermediate services (healthcare,
+        // logistics, admin) don't consume the entire retail budget.
         planet.marketPrices[GROCERY_SERVICE] = SERVICE_PRICE;
+        planet.marketPrices[healthcareServiceResourceType.name] = SERVICE_PRICE;
+        planet.marketPrices[logisticsServiceResourceType.name] = SERVICE_PRICE;
+        planet.marketPrices[administrativeServiceResourceType.name] = SERVICE_PRICE;
         planet.marketPrices[RETAIL_SERVICE] = SERVICE_PRICE;
         return planet;
     }
