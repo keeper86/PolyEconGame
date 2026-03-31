@@ -99,7 +99,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
-            const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget = resource.form === 'services' ? 1 : INPUT_BUFFER_TARGET_TICKS;
+            const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * bufferTarget;
 
             const existing = aggregatedBuyTargets.get(resource.name);
             if (existing) {

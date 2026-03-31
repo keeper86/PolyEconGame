@@ -16,6 +16,7 @@ import DependencyGraph from './DependencyGraph';
 import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/simulation/planet/facilities';
 import { solveSupplyChain, type SolverObjective, type SolverResult } from './solver';
 import { computeBottlenecks } from './bottleneck';
+import { LiveStateTab } from './LiveStateTab';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -758,6 +759,7 @@ export default function SupplyChainTool() {
                     <TabsTrigger value='facilities'>Facilities ({balance.facilities.length})</TabsTrigger>
                     <TabsTrigger value='graph'>Dependency Graph</TabsTrigger>
                     <TabsTrigger value='solver'>Auto-Solver</TabsTrigger>
+                    <TabsTrigger value='live'>Live State</TabsTrigger>
                 </TabsList>
 
                 {/* ── DASHBOARD ── */}
@@ -986,6 +988,11 @@ export default function SupplyChainTool() {
                 {/* ── SOLVER ── */}
                 <TabsContent value='solver' className='mt-4'>
                     <SolverTab population={population} onApplyScales={(newScales) => setScales(newScales)} />
+                </TabsContent>
+
+                {/* ── LIVE STATE ── */}
+                <TabsContent value='live' className='mt-4'>
+                    <LiveStateTab onApplyScales={(newScales) => setScales(newScales)} />
                 </TabsContent>
             </Tabs>
         </div>

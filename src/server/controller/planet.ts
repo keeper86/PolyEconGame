@@ -10,7 +10,7 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
-import { INITIAL_GROCERY_PRICE } from '../../simulation/constants';
+import { INITIAL_GROCERY_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { Skill } from '../../simulation/population/population';
@@ -273,7 +273,9 @@ function buildFoodDemography(planet: Planet): FoodCohort[] {
                     const cat = cohort[occ][edu][skill];
                     slimCohort[occ][edu][skill] = {
                         total: cat.total,
-                        foodStock: cat.services.grocery.buffer * cat.total,
+                        // Convert buffer (ticks) → service units so callers can
+                        // compare against SERVICE_TARGET_PER_PERSON (= 1.0 unit).
+                        foodStock: cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total,
                         starvationLevel: cat.services.grocery.starvationLevel,
                     };
                 }
@@ -433,7 +435,9 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                             continue;
                         }
                         gPop += cat.total;
-                        gFoodStock += cat.services.grocery.buffer * cat.total;
+                        // Convert buffer (ticks) → service units so the client
+                        // ratio = gFoodStock/pop / SERVICE_TARGET_PER_PERSON normalises correctly.
+                        gFoodStock += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
                         gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                     }

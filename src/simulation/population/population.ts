@@ -226,27 +226,27 @@ export const transferPopulation = (
         // Zero-sum wealth transfer between cells — householdDeposits unchanged.
         mergeWealthInto(toCategory, fromCategory, transferMaximum);
 
-        // Transfer proportional service buffers
+        // Transfer proportional service buffers.
+        // `buffer` is "coverage ticks for the group" — a per-capita-equivalent metric
+        // (analogous to wealth.mean).  Physical food per person is buffer × rate, so
+        // when transferring people, the FROM group's coverage is unchanged and the TO
+        // group receives a weighted average of its own buffer and the FROM buffer.
+        const toCurrentTotal = toCategory.total;
+        const toNewTotal = toCurrentTotal + transferMaximum;
         for (const serviceName of Object.keys(fromCategory.services) as ServiceName[]) {
             const fromService = fromCategory.services[serviceName];
             const toService = toCategory.services[serviceName];
 
-            if (fromCategory.total > 0) {
-                const bufferPerPerson = fromService.buffer / fromCategory.total;
-                const bufferTransfer = bufferPerPerson * transferMaximum;
-
-                // Update destination buffer
-                toCategory.services[serviceName] = {
-                    buffer: toService.buffer + bufferTransfer,
-                    starvationLevel: toService.starvationLevel, // Keep destination starvation level
-                };
-
-                // Update source buffer
-                fromCategory.services[serviceName] = {
-                    buffer: fromService.buffer - bufferTransfer,
-                    starvationLevel: fromService.starvationLevel,
-                };
-            }
+            // Weighted average: each arriving person carries fromService.buffer ticks.
+            toCategory.services[serviceName] = {
+                buffer:
+                    toNewTotal > 0
+                        ? (toService.buffer * toCurrentTotal + fromService.buffer * transferMaximum) / toNewTotal
+                        : fromService.buffer,
+                starvationLevel: toService.starvationLevel,
+            };
+            // FROM buffer is unchanged — conservation holds because food per-capita
+            // is preserved on both sides.
         }
 
         toCategory.total += transferMaximum;

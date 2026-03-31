@@ -11,33 +11,16 @@ export function settleHouseholds(
     bidFilled: number[],
     bidCosts: number[],
 ): void {
-    const demography = planet.population.demography;
-
-    // Map resource name to service name
-    let serviceName: 'grocery' | 'retail' | 'logistics' | 'healthcare' | 'construction' | 'administrative';
-    switch (resourceName) {
-        case 'Grocery Service':
-            serviceName = 'grocery';
-            break;
-        case 'Healthcare Service':
-            serviceName = 'healthcare';
-            break;
-        case 'Administrative Service':
-            serviceName = 'administrative';
-            break;
-        case 'Logistics Service':
-            serviceName = 'logistics';
-            break;
-        case 'Retail Service':
-            serviceName = 'retail';
-            break;
-        case 'Construction Service':
-            serviceName = 'construction';
-            break;
-        default:
-            // Not a service resource
-            return;
+    // Derive serviceKey and rate from the single source of truth.
+    // Returns early for non-service resources (no entry in the map).
+    const def = SERVICE_DEFINITION_BY_RESOURCE_NAME.get(resourceName);
+    if (!def) {
+        return;
     }
+    const serviceName = def.serviceKey;
+    const rate = def.consumptionRatePerPersonPerTick;
+
+    const demography = planet.population.demography;
 
     for (let i = 0; i < bidOrders.length; i++) {
         const filled = bidFilled[i];
@@ -51,7 +34,6 @@ export function settleHouseholds(
 
         // Convert filled units to buffer ticks using the per-service consumption rate.
         // bufferTicks = filled / (rate × population)
-        const rate = SERVICE_DEFINITION_BY_RESOURCE_NAME.get(resourceName)?.consumptionRatePerPersonPerTick ?? 1;
         const bufferTicks = filled / (rate * category.total);
         category.services[serviceName].buffer += bufferTicks;
 

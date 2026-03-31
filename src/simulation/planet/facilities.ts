@@ -1005,7 +1005,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
 
     needs: [
         { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 30.0 },
+        { resource: fuelResourceType, quantity: 10.0 },
         { resource: administrativeServiceResourceType, quantity: 5 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 100 }],
@@ -1045,17 +1045,17 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
     lastTickResults: { ...zeroLastTicksResults },
     powerConsumptionPerTick: 0.4,
     workerRequirement: {
-        none: 50,
-        primary: 50,
-        secondary: 30,
-        tertiary: 1,
+        none: 60,
+        primary: 60,
+        secondary: 40,
+        tertiary: 2,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
         { resource: processedFoodResourceType, quantity: 30 },
         { resource: beverageResourceType, quantity: 20 },
         { resource: packagingResourceType, quantity: 5 },
-        { resource: logisticsServiceResourceType, quantity: 20 },
+        { resource: logisticsServiceResourceType, quantity: 5 },
         { resource: administrativeServiceResourceType, quantity: 5 },
     ],
     produces: [{ resource: groceryServiceResourceType, quantity: 200 }],

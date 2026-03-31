@@ -536,13 +536,15 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         );
         planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
         planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
-        // Set all service prices cheap so intermediate services (healthcare,
-        // logistics, admin) don't consume the entire retail budget.
+        // Set intermediate service prices cheap so healthcare/logistics/admin
+        // don't consume the entire budget before retail is reached.
+        // Retail is intentionally left unset: it defaults to INITIAL_SERVICE_PRICE
+        // so that reservationPrice (= refPrice × 0.9) exceeds the offer price.
+        // Setting retail to SERVICE_PRICE would make bidPrice < offerPrice (0.9×0.01 < 0.01).
         planet.marketPrices[GROCERY_SERVICE] = SERVICE_PRICE;
         planet.marketPrices[healthcareServiceResourceType.name] = SERVICE_PRICE;
         planet.marketPrices[logisticsServiceResourceType.name] = SERVICE_PRICE;
         planet.marketPrices[administrativeServiceResourceType.name] = SERVICE_PRICE;
-        planet.marketPrices[RETAIL_SERVICE] = SERVICE_PRICE;
         return planet;
     }
 
