@@ -4,7 +4,7 @@ export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
 
 /** Service consumption per person per tick (1 unit/person/tick for all services) */
-export const SERVICE_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR;
+export const SERVICE_PER_PERSON_PER_TICK = 1 / 30;
 
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;

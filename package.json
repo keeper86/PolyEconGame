@@ -75,6 +75,7 @@
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-unicorn": "^60.0.0",
         "immutable": "^5.1.4",
+        "javascript-lp-solver": "^1.0.3",
         "jsonwebtoken": "^9.0.2",
         "knex": "^3.1.0",
         "knex-types": "^0.5.0",

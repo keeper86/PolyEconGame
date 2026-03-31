@@ -114,13 +114,13 @@ export const oilWell = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
         none: 10,
-        primary: 20,
-        secondary: 10,
+        primary: 25,
+        secondary: 15,
         tertiary: 2,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: oilReservoirResourceType, quantity: 100 }],
-    produces: [{ resource: crudeOilResourceType, quantity: 100 }],
+    needs: [{ resource: oilReservoirResourceType, quantity: 300 }],
+    produces: [{ resource: crudeOilResourceType, quantity: 300 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -624,10 +624,10 @@ export const cottonFarm = (planetId: string, id: string): ProductionFacility => 
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: arableLandResourceType, quantity: 100 },
+        { resource: arableLandResourceType, quantity: 200 },
         { resource: waterResourceType, quantity: 80 },
     ],
-    produces: [{ resource: cottonResourceType, quantity: 20 }],
+    produces: [{ resource: cottonResourceType, quantity: 100 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -1005,8 +1005,8 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
 
     needs: [
         { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 20.0 },
-        { resource: administrativeServiceResourceType, quantity: 1 },
+        { resource: fuelResourceType, quantity: 30.0 },
+        { resource: administrativeServiceResourceType, quantity: 5 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 100 }],
 });
@@ -1045,43 +1045,20 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
     lastTickResults: { ...zeroLastTicksResults },
     powerConsumptionPerTick: 0.4,
     workerRequirement: {
-        none: 30,
+        none: 50,
         primary: 50,
-        secondary: 15,
+        secondary: 30,
         tertiary: 1,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
-        { resource: processedFoodResourceType, quantity: 20 },
-        { resource: beverageResourceType, quantity: 10 },
-        { resource: packagingResourceType, quantity: 3 },
+        { resource: processedFoodResourceType, quantity: 30 },
+        { resource: beverageResourceType, quantity: 20 },
+        { resource: packagingResourceType, quantity: 5 },
         { resource: logisticsServiceResourceType, quantity: 20 },
-        { resource: administrativeServiceResourceType, quantity: 1 },
+        { resource: administrativeServiceResourceType, quantity: 5 },
     ],
-    produces: [{ resource: groceryServiceResourceType, quantity: 100 }],
-});
-
-// kind of exception; we want food to be producable without long supply chains if necessary. It's inefficient and costs much labor
-export const groceryStore = (planetId: string, id: string): ProductionFacility => ({
-    planetId,
-    id,
-    name: 'Grocery Store' as const,
-    maxScale: 1,
-    scale: 1,
-    lastTickResults: { ...zeroLastTicksResults },
-    powerConsumptionPerTick: 0.3,
-    workerRequirement: {
-        none: 100,
-        primary: 60,
-        secondary: 40,
-        tertiary: 0,
-    },
-    pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [
-        { resource: agriculturalProductResourceType, quantity: 100 },
-        { resource: waterSourceResourceType, quantity: 40 },
-    ],
-    produces: [{ resource: groceryServiceResourceType, quantity: 50 }],
+    produces: [{ resource: groceryServiceResourceType, quantity: 200 }],
 });
 
 export const retailChain = (planetId: string, id: string): ProductionFacility => ({
@@ -1093,21 +1070,21 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
     lastTickResults: { ...zeroLastTicksResults },
     powerConsumptionPerTick: 0.4,
     workerRequirement: {
-        none: 30,
-        primary: 50,
-        secondary: 15,
+        none: 50,
+        primary: 60,
+        secondary: 30,
         tertiary: 5,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
         { resource: consumerElectronicsResourceType, quantity: 10 },
-        { resource: clothingResourceType, quantity: 20 },
-        { resource: furnitureResourceType, quantity: 20 },
-        { resource: packagingResourceType, quantity: 3 },
+        { resource: clothingResourceType, quantity: 30 },
+        { resource: furnitureResourceType, quantity: 30 },
+        { resource: packagingResourceType, quantity: 10 },
         { resource: logisticsServiceResourceType, quantity: 20 },
-        { resource: administrativeServiceResourceType, quantity: 1 },
+        { resource: administrativeServiceResourceType, quantity: 5 },
     ],
-    produces: [{ resource: retailServiceResourceType, quantity: 100 }],
+    produces: [{ resource: retailServiceResourceType, quantity: 150 }],
 });
 
 export const hospital = (planetId: string, id: string): ProductionFacility => ({
@@ -1131,7 +1108,7 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
         { resource: logisticsServiceResourceType, quantity: 10 },
         { resource: administrativeServiceResourceType, quantity: 3 },
     ],
-    produces: [{ resource: healthcareServiceResourceType, quantity: 100 }],
+    produces: [{ resource: healthcareServiceResourceType, quantity: 300 }],
 });
 
 export const school = (planetId: string, id: string): ProductionFacility => ({
@@ -1154,7 +1131,7 @@ export const school = (planetId: string, id: string): ProductionFacility => ({
         { resource: furnitureResourceType, quantity: 2 },
         { resource: administrativeServiceResourceType, quantity: 2 },
     ],
-    produces: [{ resource: educationServiceResourceType, quantity: 30 }],
+    produces: [{ resource: educationServiceResourceType, quantity: 50 }],
 });
 
 export const university = (planetId: string, id: string): ProductionFacility => ({
@@ -1177,7 +1154,7 @@ export const university = (planetId: string, id: string): ProductionFacility => 
         { resource: furnitureResourceType, quantity: 5 },
         { resource: administrativeServiceResourceType, quantity: 6 },
     ],
-    produces: [{ resource: educationServiceResourceType, quantity: 100 }],
+    produces: [{ resource: educationServiceResourceType, quantity: 300 }],
 });
 
 export type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
@@ -1242,11 +1219,11 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(logisticsHub),
     entry(constructionService),
     entry(groceryChain),
-    entry(groceryStore),
     entry(retailChain),
     entry(hospital),
     entry(school),
     entry(university),
+    entry(siliconWaferFactory),
 ];
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 

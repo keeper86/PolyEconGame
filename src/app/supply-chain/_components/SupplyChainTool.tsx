@@ -10,9 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { computeSupplyChainBalance, type FacilityInfo, type ResourceBalance } from './computeBalance';
 import DependencyGraph from './DependencyGraph';
-import { FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/simulation/planet/facilities';
+import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/simulation/planet/facilities';
+import { solveSupplyChain, type SolverObjective, type SolverResult } from './solver';
+import { computeBottlenecks } from './bottleneck';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -148,6 +151,512 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
     );
 }
 
+// ─── BottleneckPanel ─────────────────────────────────────────────────────────
+
+function CoverageBar({ ratio }: { ratio: number }) {
+    const pct = Math.min(100, ratio * 100);
+    const color = ratio >= 1 ? 'bg-green-500' : ratio >= 0.7 ? 'bg-amber-500' : 'bg-red-500';
+    return (
+        <div className='flex items-center gap-2'>
+            <div className='flex-1 bg-muted rounded-full h-1.5 overflow-hidden'>
+                <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+            </div>
+            <span
+                className={`font-mono text-xs w-12 text-right ${
+                    ratio >= 1 ? 'text-green-600' : ratio >= 0.7 ? 'text-amber-600' : 'text-red-600'
+                }`}
+            >
+                {ratio === Infinity ? '∞' : `${Math.round(pct)}%`}
+            </span>
+        </div>
+    );
+}
+
+function BottleneckPanel({
+    balance,
+    scales,
+    population,
+}: {
+    balance: ReturnType<typeof computeSupplyChainBalance>;
+    scales: Record<string, number>;
+    population: number;
+}) {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const reports = useMemo(() => computeBottlenecks(balance, scales, population), [balance, scales, population]);
+
+    if (population <= 0) {
+        return null;
+    }
+
+    function toggleExpand(name: string) {
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(name)) {
+                next.delete(name);
+            } else {
+                next.add(name);
+            }
+            return next;
+        });
+    }
+
+    return (
+        <Card>
+            <CardHeader className='pb-2 pt-3 px-4'>
+                <CardTitle className='text-sm font-semibold'>Bottleneck Detection</CardTitle>
+            </CardHeader>
+            <CardContent className='px-4 pb-3 space-y-1'>
+                {reports.map((r) => (
+                    <div key={r.serviceResource} className='space-y-1'>
+                        <button
+                            className='w-full text-left'
+                            onClick={() => {
+                                if (r.limitingInputs.length > 0) {
+                                    toggleExpand(r.serviceResource);
+                                }
+                            }}
+                        >
+                            <div className='flex items-center gap-2'>
+                                <span className='text-xs font-medium w-44 shrink-0 truncate'>{r.serviceResource}</span>
+                                <div className='flex-1'>
+                                    <CoverageBar ratio={r.coverageRatio} />
+                                </div>
+                                <span className='text-[10px] text-muted-foreground w-20 text-right shrink-0'>
+                                    {fmt(r.supplyPerTick)}&nbsp;/&nbsp;{fmt(r.demandPerTick)}&nbsp;/t
+                                </span>
+                                {r.limitingInputs.length > 0 && (
+                                    <span className='text-muted-foreground text-xs w-3'>
+                                        {expanded.has(r.serviceResource) ? '▲' : '▼'}
+                                    </span>
+                                )}
+                            </div>
+                        </button>
+
+                        {expanded.has(r.serviceResource) && r.limitingInputs.length > 0 && (
+                            <div className='ml-4 space-y-0.5 border-l pl-3'>
+                                {r.limitingInputs.map((inp, idx) => (
+                                    <div key={inp.resourceName} className='flex items-center gap-2'>
+                                        <span
+                                            className={`text-[11px] w-40 truncate ${
+                                                idx === 0 && inp.coverageRatio < 1 ? 'font-semibold text-red-600' : ''
+                                            }`}
+                                        >
+                                            {inp.resourceName}
+                                        </span>
+                                        <div className='flex-1'>
+                                            <CoverageBar
+                                                ratio={inp.coverageRatio === Infinity ? 1 : inp.coverageRatio}
+                                            />
+                                        </div>
+                                        <span className='text-[10px] text-muted-foreground w-24 text-right shrink-0'>
+                                            {inp.availablePerTick === Infinity ? '∞' : fmt(inp.availablePerTick)}
+                                            &nbsp;/&nbsp;{fmt(inp.requiredPerTick)}&nbsp;/t
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ─── SolverTab ────────────────────────────────────────────────────────────────
+
+const OBJECTIVE_LABELS: Record<SolverObjective, string> = {
+    scale: 'Minimise Total Scale',
+    labor: 'Minimise Total Workers',
+    power: 'Minimise Power Consumption',
+};
+
+function SolverTab({
+    population,
+    onApplyScales,
+}: {
+    population: number;
+    onApplyScales: (scales: Record<string, number>) => void;
+}) {
+    // Build initial allowed-facilities set (all enabled by default)
+    const allFacilityNames = useMemo(() => ALL_FACILITY_ENTRIES.map((e) => e.factory('tool', 'preview').name), []);
+    const [allowed, setAllowed] = useState<Set<string>>(() => new Set(allFacilityNames));
+    const [objective, setObjective] = useState<SolverObjective>('scale');
+    const [solving, setSolving] = useState(false);
+    const [result, setResult] = useState<SolverResult | null>(null);
+
+    // Group facilities by primary output level for the checkbox UI
+    const facilitiesByLevel = useMemo(() => {
+        const grouped: Record<string, string[]> = {};
+        for (const entry of ALL_FACILITY_ENTRIES) {
+            const name = entry.factory('tool', 'preview').name;
+            const level = entry.primaryOutputLevel;
+            if (!grouped[level]) {
+                grouped[level] = [];
+            }
+            grouped[level].push(name);
+        }
+        return grouped;
+    }, []);
+
+    function toggleFacility(name: string) {
+        setAllowed((prev) => {
+            const next = new Set(prev);
+            if (next.has(name)) {
+                next.delete(name);
+            } else {
+                next.add(name);
+            }
+            return next;
+        });
+    }
+
+    function toggleLevel(level: string, enable: boolean) {
+        setAllowed((prev) => {
+            const next = new Set(prev);
+            for (const name of facilitiesByLevel[level] ?? []) {
+                if (enable) {
+                    next.add(name);
+                } else {
+                    next.delete(name);
+                }
+            }
+            return next;
+        });
+    }
+
+    function handleSolve() {
+        setSolving(true);
+        setResult(null);
+        // Defer to next tick so React re-renders the loading state first
+        setTimeout(() => {
+            try {
+                const res = solveSupplyChain({ population, allowedFacilities: allowed, objective });
+                setResult(res);
+            } finally {
+                setSolving(false);
+            }
+        }, 0);
+    }
+
+    const resultFacilities = result
+        ? ALL_FACILITY_ENTRIES.map((e) => {
+              const f = e.factory('tool', 'preview');
+              return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };
+          }).filter((x) => x.scale > 0)
+        : [];
+
+    return (
+        <div className='space-y-6'>
+            {/* Objective selector */}
+            <div className='space-y-2'>
+                <Label className='font-semibold'>Objective</Label>
+                <div className='flex flex-wrap gap-2'>
+                    {(['scale', 'labor', 'power'] as const).map((obj) => (
+                        <button
+                            key={obj}
+                            onClick={() => setObjective(obj)}
+                            className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                                objective === obj
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'border-border hover:bg-muted'
+                            }`}
+                        >
+                            {OBJECTIVE_LABELS[obj]}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Allowed facilities */}
+            <div className='space-y-3'>
+                <Label className='font-semibold'>Allowed Facilities</Label>
+                {([...FACILITY_LEVELS, 'source'] as const).map((level) => {
+                    const names = facilitiesByLevel[level];
+                    if (!names || names.length === 0) {
+                        return null;
+                    }
+                    const allOn = names.every((n) => allowed.has(n));
+                    const allOff = names.every((n) => !allowed.has(n));
+                    return (
+                        <div key={level} className='space-y-1.5'>
+                            <div className='flex items-center gap-2'>
+                                <span
+                                    className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                                        LEVEL_BADGE[level] ?? 'bg-gray-200'
+                                    }`}
+                                >
+                                    {(FACILITY_LEVEL_LABELS as Record<string, string>)[level] ?? level}
+                                </span>
+                                <button
+                                    className='text-[11px] text-primary underline'
+                                    onClick={() => toggleLevel(level, true)}
+                                    disabled={allOn}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    className='text-[11px] text-primary underline'
+                                    onClick={() => toggleLevel(level, false)}
+                                    disabled={allOff}
+                                >
+                                    None
+                                </button>
+                            </div>
+                            <div className='flex flex-wrap gap-x-4 gap-y-1 pl-2'>
+                                {names.map((name) => (
+                                    <label key={name} className='flex items-center gap-1.5 text-sm cursor-pointer'>
+                                        <Checkbox
+                                            checked={allowed.has(name)}
+                                            onCheckedChange={() => toggleFacility(name)}
+                                        />
+                                        {name}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Solve button */}
+            <Button onClick={handleSolve} disabled={solving || population <= 0}>
+                {solving ? 'Solving…' : 'Solve'}
+            </Button>
+            {population <= 0 && <p className='text-sm text-muted-foreground'>Set a population above 0 to solve.</p>}
+
+            {/* Results */}
+            {result && (
+                <div className='space-y-4'>
+                    {result.status === 'infeasible' ? (
+                        <div className='space-y-3'>
+                            <Card className='border-red-300 bg-red-50/50 dark:bg-red-950/20'>
+                                <CardContent className='px-4 py-3'>
+                                    <p className='text-sm font-semibold text-red-600'>⚠ No feasible solution found</p>
+                                    <p className='text-xs text-muted-foreground mt-1'>
+                                        The LP solver could not satisfy all constraints simultaneously. See diagnostics
+                                        below.
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            {result.diagnostic && (
+                                <Card>
+                                    <CardHeader className='pb-2 pt-3 px-4'>
+                                        <CardTitle className='text-sm'>Infeasibility Diagnostics</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className='px-4 pb-3 space-y-4 text-sm'>
+                                        {/* Power constraint check */}
+                                        <div>
+                                            <p className='font-medium mb-1'>Power constraint</p>
+                                            {result.diagnostic.feasibleWithoutPower ? (
+                                                <p className='text-amber-700 text-xs'>
+                                                    ✓ Feasible when power constraint is removed →{' '}
+                                                    <strong>power balance is blocking the solution.</strong> You need a
+                                                    Coal Power Plant (or other power producer) in the allowed
+                                                    facilities.
+                                                </p>
+                                            ) : (
+                                                <p className='text-xs text-muted-foreground'>
+                                                    Still infeasible without power constraint — power is not the root
+                                                    cause.
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Per-service breakdown */}
+                                        <div>
+                                            <p className='font-medium mb-1'>Service constraints</p>
+                                            <div className='space-y-1'>
+                                                {result.diagnostic.per_service.map((s) => {
+                                                    const ok =
+                                                        s.feasibleInIsolation &&
+                                                        s.hasProducer &&
+                                                        s.constraintRegistered;
+                                                    return (
+                                                        <div
+                                                            key={s.serviceName}
+                                                            className={`flex flex-wrap items-start gap-x-3 gap-y-0.5 text-xs rounded px-2 py-1 ${ok ? 'bg-green-50 dark:bg-green-950/20' : 'bg-red-50 dark:bg-red-950/20'}`}
+                                                        >
+                                                            <span className='font-medium w-44'>{s.serviceName}</span>
+                                                            <span
+                                                                className={
+                                                                    s.hasProducer ? 'text-green-700' : 'text-red-600'
+                                                                }
+                                                            >
+                                                                {s.hasProducer
+                                                                    ? '✓ has producer'
+                                                                    : '✗ NO producer in allowed facilities'}
+                                                            </span>
+                                                            <span
+                                                                className={
+                                                                    s.constraintRegistered
+                                                                        ? 'text-green-700'
+                                                                        : 'text-amber-600'
+                                                                }
+                                                            >
+                                                                {s.constraintRegistered
+                                                                    ? '✓ constraint registered'
+                                                                    : '⚠ constraint NOT in model'}
+                                                            </span>
+                                                            <span
+                                                                className={
+                                                                    s.feasibleInIsolation
+                                                                        ? 'text-green-700'
+                                                                        : 'text-red-600'
+                                                                }
+                                                            >
+                                                                {s.feasibleInIsolation
+                                                                    ? '✓ feasible alone'
+                                                                    : '✗ infeasible even alone'}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Unproducable resources */}
+                                        {result.diagnostic.unproducableResources.length > 0 && (
+                                            <div>
+                                                <p className='font-medium mb-1 text-red-700'>
+                                                    Resources with no producer in allowed facilities
+                                                </p>
+                                                <div className='flex flex-wrap gap-1'>
+                                                    {result.diagnostic.unproducableResources.map((r) => (
+                                                        <span
+                                                            key={r}
+                                                            className='bg-red-100 dark:bg-red-900/30 border border-red-300 rounded px-1.5 py-0.5 text-xs text-red-700'
+                                                        >
+                                                            {r}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            {/* Service coverage summary */}
+                            <Card>
+                                <CardHeader className='pb-2 pt-3 px-4'>
+                                    <CardTitle className='text-sm'>Service Coverage</CardTitle>
+                                </CardHeader>
+                                <CardContent className='px-4 pb-3 space-y-1'>
+                                    {Object.entries(result.serviceCoverage).map(([svc, ratio]) => (
+                                        <div key={svc} className='flex items-center gap-2'>
+                                            <span className='text-xs w-44 shrink-0 truncate'>{svc}</span>
+                                            <div className='flex-1'>
+                                                <CoverageBar ratio={ratio} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+
+                            {/* Facility scale table */}
+                            <div className='space-y-2'>
+                                <div className='flex items-center justify-between'>
+                                    <Label className='font-semibold'>
+                                        Recommended Scales ({resultFacilities.length} facilities)
+                                    </Label>
+                                    <Button size='sm' onClick={() => onApplyScales(result.scales)}>
+                                        Apply Scales
+                                    </Button>
+                                </div>
+                                <div className='border rounded-lg overflow-auto'>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Facility</TableHead>
+                                                <TableHead className='text-right'>Scale</TableHead>
+                                                <TableHead className='text-right'>Workers</TableHead>
+                                                <TableHead className='text-right'>Power/tick</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {resultFacilities.map(({ name, scale, facility }) => {
+                                                const workers =
+                                                    ((facility.workerRequirement.none ?? 0) +
+                                                        (facility.workerRequirement.primary ?? 0) +
+                                                        (facility.workerRequirement.secondary ?? 0) +
+                                                        (facility.workerRequirement.tertiary ?? 0)) *
+                                                    scale;
+                                                return (
+                                                    <TableRow key={name}>
+                                                        <TableCell className='text-sm'>{name}</TableCell>
+                                                        <TableCell className='text-right font-mono text-sm'>
+                                                            {scale.toFixed(2)}
+                                                        </TableCell>
+                                                        <TableCell className='text-right font-mono text-sm'>
+                                                            {fmt(workers)}
+                                                        </TableCell>
+                                                        <TableCell
+                                                            className={`text-right font-mono text-sm ${
+                                                                facility.powerConsumptionPerTick < 0
+                                                                    ? 'text-green-600'
+                                                                    : ''
+                                                            }`}
+                                                        >
+                                                            {facility.powerConsumptionPerTick < 0 ? '+' : ''}
+                                                            {fmt(Math.abs(facility.powerConsumptionPerTick) * scale)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {result.workerTotals && (
+                                    <Card>
+                                        <CardHeader className='pb-2 pt-3 px-4'>
+                                            <CardTitle className='text-sm'>Worker Totals</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className='px-4 pb-3'>
+                                            <div className='flex flex-wrap items-center gap-4'>
+                                                <div className='text-sm'>
+                                                    Unskilled:{' '}
+                                                    <span className='font-mono'>{fmt(result.workerTotals.none)}</span>
+                                                </div>
+                                                <div className='text-sm'>
+                                                    Primary:{' '}
+                                                    <span className='font-mono'>
+                                                        {fmt(result.workerTotals.primary)}
+                                                    </span>
+                                                </div>
+                                                <div className='text-sm'>
+                                                    Secondary:{' '}
+                                                    <span className='font-mono'>
+                                                        {fmt(result.workerTotals.secondary)}
+                                                    </span>
+                                                </div>
+                                                <div className='text-sm'>
+                                                    Tertiary:{' '}
+                                                    <span className='font-mono'>
+                                                        {fmt(result.workerTotals.tertiary)}
+                                                    </span>
+                                                </div>
+                                                <div className='ml-auto text-sm font-semibold'>
+                                                    Total:{' '}
+                                                    <span className='font-mono'>{fmt(result.workerTotals.total)}</span>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── SupplyChainTool ─────────────────────────────────────────────────────────
 
 export default function SupplyChainTool() {
@@ -248,6 +757,7 @@ export default function SupplyChainTool() {
                     <TabsTrigger value='dashboard'>Dashboard</TabsTrigger>
                     <TabsTrigger value='facilities'>Facilities ({balance.facilities.length})</TabsTrigger>
                     <TabsTrigger value='graph'>Dependency Graph</TabsTrigger>
+                    <TabsTrigger value='solver'>Auto-Solver</TabsTrigger>
                 </TabsList>
 
                 {/* ── DASHBOARD ── */}
@@ -319,6 +829,9 @@ export default function SupplyChainTool() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Bottleneck detection */}
+                    <BottleneckPanel balance={balance} scales={scales} population={population} />
 
                     {/* Deficit alerts */}
                     {deficits.length > 0 && (
@@ -468,6 +981,11 @@ export default function SupplyChainTool() {
                 {/* ── GRAPH ── */}
                 <TabsContent value='graph' className='mt-4'>
                     <DependencyGraph scales={scales} facilities={balance.facilities} balanceByName={balanceByName} />
+                </TabsContent>
+
+                {/* ── SOLVER ── */}
+                <TabsContent value='solver' className='mt-4'>
+                    <SolverTab population={population} onApplyScales={(newScales) => setScales(newScales)} />
                 </TabsContent>
             </Tabs>
         </div>

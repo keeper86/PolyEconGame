@@ -66,14 +66,14 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         resource: constructionServiceResourceType,
         serviceKey: 'construction',
         bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 2,
         willingnessMultiplier: 0.6, // most deferrable — elastic
     },
     {
         resource: administrativeServiceResourceType,
         serviceKey: 'administrative',
         bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 1.5,
         willingnessMultiplier: 0.5, // necessary — mildly inelastic
     },
 ];
