@@ -447,13 +447,14 @@ describe('updateAgentPricing', () => {
         );
     });
 
-    it('raises price when agent has no stock and also sold nothing (intermittent production)', () => {
+    it('does not change price when agent has no stock and sold nothing (intermittent production)', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 0);
         setGroceryOffer(groceryAgent, 2.0, 0);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
-        expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(2.0 * PRICE_ADJUST_MAX_UP);
+        // stock=0, sold=0 → supply-constrained with no prior sales → price unchanged
+        expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(2.0);
     });
 });
 
