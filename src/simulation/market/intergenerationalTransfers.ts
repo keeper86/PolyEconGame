@@ -170,7 +170,14 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const groceryPrice = planet.marketPrices[groceryServiceResourceType.name];
 
     const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
-    const baseGroceryCost = groceryTargetPerPerson * groceryPrice;
+
+    // Floor for surplus eligibility: one tick's food cost.
+    // Workers only hold ~one tick's wage in wealth at transfer time (wages are earned
+    // each tick and spent buying food the same tick). Using the full-buffer cost
+    // (groceryTargetPerPerson × price = 30×) as a floor always blocked them because
+    // their wealth never exceeded that threshold → effectiveSurplus was always 0.
+    // A per-tick floor lets any worker with more than their immediate food need give.
+    const baseGroceryCost = SERVICE_PER_PERSON_PER_TICK * groceryPrice;
 
     // Build the aggregate cache once — eliminates repeated SKILL iterations in
     // every nested loop below (aggregatePopulation / aggregateWealth /
