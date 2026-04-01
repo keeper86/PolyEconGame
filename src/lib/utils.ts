@@ -23,10 +23,7 @@ export const formatNumbers = (n: number | null | undefined): string => {
         [1_000, 'k'],
     ];
     for (const [value, suffix] of abbreviations) {
-        if (Math.abs(n) < 1000) {
-            break;
-        }
-        if (Math.abs(n) * 10 >= value) {
+        if (Math.abs(n) * 1.05 >= value) {
             currentSuffix = suffix;
             currentNumber = n / value;
             break;
