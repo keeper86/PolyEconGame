@@ -860,8 +860,8 @@ function computePlanetProduction(agents: Agent[], planetId: string): Record<stri
     return production;
 }
 
-function computePlanetConsumption(agents: Agent[], planetId: string): Record<string, number> {
-    const consumption: Record<string, number> = {};
+function computePlanetConsumption(agents: Agent[], planetId: string, planet: Planet): Record<string, number> {
+    const consumption: Record<string, number> = { ...planet.population.lastConsumption };
     for (const agent of agents) {
         const assets = agent.assets[planetId];
         if (!assets) {
@@ -897,7 +897,7 @@ export const getPlanetMarketOverview = () =>
             }
 
             const production = computePlanetProduction(agents, input.planetId);
-            const consumption = computePlanetConsumption(agents, input.planetId);
+            const consumption = computePlanetConsumption(agents, input.planetId, planet);
 
             const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
                 const result = planet.lastMarketResult[resource.name];

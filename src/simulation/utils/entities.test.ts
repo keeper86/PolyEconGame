@@ -14,7 +14,7 @@ function makePlanetWithResources(): Planet {
         id: 'p',
         name: 'P',
         position: { x: 0, y: 0, z: 0 },
-        population: { demography: [] },
+        population: { demography: [], lastConsumption: {} },
         governmentId: gov.id,
         resources: {
             [arableLandResourceType.name]: [

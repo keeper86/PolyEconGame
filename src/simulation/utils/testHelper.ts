@@ -167,6 +167,7 @@ export function makePopulation(): Population {
         demography: makePopulationDemography(),
         summedPopulation: makePopulationCohort(),
         lastTransferMatrix: [],
+        lastConsumption: {},
     };
 }
 

@@ -123,6 +123,8 @@ export type Population = {
     demography: Cohort<PopulationCategory>[];
     summedPopulation: Cohort<PopulationCategory>;
     lastTransferMatrix: PopulationTransferMatrix;
+    /** Total units consumed by the population per resource this tick (resource name → units). */
+    lastConsumption: { [resourceName: string]: number };
 };
 
 // ---------------------------------------------------------------------------

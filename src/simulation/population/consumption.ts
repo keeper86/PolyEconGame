@@ -11,8 +11,9 @@ export interface ConsumptionResult {
 }
 
 export function consumeServices(population: Population) {
+    population.lastConsumption = {};
     population.demography.forEach((cohort) => {
-        return forEachPopulationCohort(cohort, (category) => {
+        return forEachPopulationCohort(cohort, (category, occ) => {
             if (category.total === 0) {
                 return;
             }
@@ -27,6 +28,12 @@ export function consumeServices(population: Population) {
                 const consumed = Math.min(available, demand);
                 const bufferConsumed = consumed / (rate * pop);
                 serviceState.buffer = Math.max(0, serviceState.buffer - bufferConsumed);
+
+                if (def.serviceKey === 'education' && occ !== 'education') {
+                    console.warn(`Non-education occupation consuming education service: ${occ}`);
+                }
+                population.lastConsumption[def.resource.name] =
+                    (population.lastConsumption[def.resource.name] ?? 0) + consumed;
 
                 if (def.serviceKey === 'grocery') {
                     const consumptionFactor = consumed / demand;

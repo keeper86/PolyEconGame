@@ -45,13 +45,6 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         willingnessMultiplier: 4.0, // survival necessity — highly inelastic
     },
     {
-        resource: educationServiceResourceType,
-        serviceKey: 'education',
-        bufferTargetTicks: 20,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 3,
-        willingnessMultiplier: 0.7, // important but deferrable — elastic
-    },
-    {
         resource: healthcareServiceResourceType,
         serviceKey: 'healthcare',
         bufferTargetTicks: HEALTHCARE_BUFFER_TARGET_TICKS,
@@ -64,6 +57,13 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
         willingnessMultiplier: 1.0, // necessary — moderately inelastic
+    },
+    {
+        resource: educationServiceResourceType,
+        serviceKey: 'education',
+        bufferTargetTicks: 20,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 1.0, // important but deferrable — elastic
     },
     {
         resource: retailServiceResourceType,
