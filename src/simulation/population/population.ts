@@ -181,22 +181,6 @@ export function forEachServiceState(
     }
 }
 
-export function mergePopulationCategory(dst: PopulationCategory, src: PopulationCategory, count: number): void {
-    if (count <= 0) {
-        return;
-    }
-    // Zero-sum wealth transfer: householdDeposits unchanged.
-    mergeWealthInto(dst, src, count);
-    forEachServiceState(src, (serviceName, serviceState) => {
-        const srcBufferPerPerson = serviceState.buffer / src.total;
-        dst.services[serviceName] = {
-            buffer: (dst.services[serviceName]?.buffer ?? 0) + srcBufferPerPerson * count,
-            starvationLevel: dst.services[serviceName]?.starvationLevel ?? 0,
-        };
-    });
-    dst.total += count;
-}
-
 export type TransferResult = {
     /** Number of people actually moved (capped at source total). */
     count: number;
@@ -299,15 +283,15 @@ export const populationSumFunction = (a: PopulationCategory, b: PopulationCatego
         const totalPeople = a.total + b.total;
 
         if (totalPeople > 0) {
-            // Sum buffers
-            const totalBuffer = serviceA.buffer + serviceB.buffer;
+            // `buffer` is per-capita coverage ticks — use a population-weighted average.
+            const weightedBuffer = (serviceA.buffer * a.total + serviceB.buffer * b.total) / totalPeople;
 
             // Weighted average of starvation levels
             const weightedStarvation =
                 (a.total * serviceA.starvationLevel + b.total * serviceB.starvationLevel) / totalPeople;
 
             services[serviceName] = {
-                buffer: totalBuffer,
+                buffer: weightedBuffer,
                 starvationLevel: Math.min(1, weightedStarvation),
             };
         } else {

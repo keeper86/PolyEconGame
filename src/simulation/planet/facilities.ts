@@ -807,7 +807,7 @@ export const ironExtractionFacility = (planetId: string, id: string): Production
         tertiary: 1,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: ironOreDepositResourceType, quantity: 400 }],
+    needs: [{ resource: ironOreDepositResourceType, quantity: 0.4 }],
     produces: [{ resource: ironOreResourceType, quantity: 400 }],
 });
 
