@@ -1,7 +1,6 @@
 import {
     agriculturalProductResourceType,
     beverageResourceType,
-    brickResourceType,
     cementResourceType,
     chemicalResourceType,
     clayResourceType,
@@ -75,9 +74,7 @@ export const initialMarketPrices: Record<string, number> = {
     [cementResourceType.name]: 2.0, // 60 limestone + 15 clay + 10 coal → 50 cement
     [plasticResourceType.name]: 2.0, // oil refinery by-product
     [chemicalResourceType.name]: 2.0, // oil refinery by-product
-    [fuelResourceType.name]: 2.5, // oil refinery
-    [brickResourceType.name]: 1.0, // 120 clay + 10 coal → 110 brick
-    // Tier 2 processed
+    [fuelResourceType.name]: 2.5, // oil refinery    // Tier 2 processed
     [fabricResourceType.name]: 3.0, // 120 cotton + 30 water → 100 fabric
     [processedFoodResourceType.name]: 2.5, // 200 agri + 100 water → 150 processed food
     [beverageResourceType.name]: 1.5, // 80 water + 20 agri → 100 beverage

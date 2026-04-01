@@ -326,14 +326,9 @@ function traceOriginFrom(
     };
 }
 
-function computeOriginMap(
-    rows: FacilityAggRow[],
-    resourceActuals: ResourceActualRow[],
-): Map<string, OriginResult> {
+function computeOriginMap(rows: FacilityAggRow[], resourceActuals: ResourceActualRow[]): Map<string, OriginResult> {
     const rowsMap = new Map(rows.map((r) => [r.name, r]));
-    const resourceProductionRatios = new Map(
-        resourceActuals.map((r) => [r.resourceName, r.effectivenessRatio]),
-    );
+    const resourceProductionRatios = new Map(resourceActuals.map((r) => [r.resourceName, r.effectivenessRatio]));
     const result = new Map<string, OriginResult>();
 
     for (const row of rows) {
@@ -474,7 +469,8 @@ function OriginBadge({ facilityName, originMap }: { facilityName: string; origin
         }
         let tooltipText = '';
         if (origin.rootType === 'workers') {
-            tooltipText = 'Root cause: insufficient workers. Fixing staffing here will unblock all downstream facilities.';
+            tooltipText =
+                'Root cause: insufficient workers. Fixing staffing here will unblock all downstream facilities.';
         } else if (origin.rootType === 'resource_shortage') {
             tooltipText = `Root cause: "${origin.rootResource}" is not being produced in sufficient quantity (${Math.round((origin.rootResourceProductionRatio ?? 0) * 100)}% of theoretical max). Build more upstream production capacity.`;
         } else {
@@ -484,10 +480,7 @@ function OriginBadge({ facilityName, originMap }: { facilityName: string; origin
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Badge
-                            variant='outline'
-                            className={`${meta.badgeClass} text-[10px] font-semibold cursor-help`}
-                        >
+                        <Badge variant='outline' className={`${meta.badgeClass} text-[10px] font-semibold cursor-help`}>
                             <span className='max-w-44 truncate'>
                                 {meta.icon} {rootLabel}
                             </span>
@@ -842,8 +835,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                                         <span className='font-semibold'>{rootFacility}</span>
                                         <span className='text-muted-foreground ml-1.5'>
                                             {rootType === 'workers' && '(worker shortage)'}
-                                            {rootType === 'resource_shortage' &&
-                                                `(supply shortage: ${rootResource})`}
+                                            {rootType === 'resource_shortage' && `(supply shortage: ${rootResource})`}
                                             {rootType === 'market_failure' &&
                                                 `(not trading: ${rootResource} is produced but not purchased)`}
                                         </span>
@@ -942,8 +934,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                                         className='cursor-pointer select-none'
                                         onClick={() => toggleFacSort('origin')}
                                     >
-                                        Origin{' '}
-                                        <SortIcon column='origin' sortKey={facSort.key} dir={facSort.dir} />
+                                        Origin <SortIcon column='origin' sortKey={facSort.key} dir={facSort.dir} />
                                     </TableHead>
                                     <TableHead
                                         className='cursor-pointer select-none'

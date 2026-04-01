@@ -1,6 +1,7 @@
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     AUTOMATED_COST_FLOOR_MARKUP,
+    COST_SPRING_STRENGTH,
     EPSILON,
     INITIAL_GROCERY_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
@@ -64,6 +65,11 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     // Pre-compute estimated cost floors for each produced resource.
     const costFloors = buildCostFloors(assets, planet);
+
+    // Pre-compute weighted profitability gap per input resource.
+    // Used by the cost spring to nudge bid prices downward when facility
+    // costs exceed output revenue (symmetric to the output price spring).
+    const inputProfitGaps = buildInputProfitGaps(assets, planet);
 
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
@@ -135,7 +141,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
         const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_GROCERY_PRICE;
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice);
+        const profitGap = inputProfitGaps.get(resourceName) ?? 0;
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap);
 
         // Validity guard: price must be a finite positive number >= PRICE_FLOOR.
         // adjustBidPrice should guarantee this, but NaN/Infinity can leak in from
@@ -232,6 +239,79 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet): Map<string,
     return costFloors;
 }
 
+/**
+ * For each input resource, compute a weighted-average profitability gap across
+ * all facilities that consume it:
+ *
+ *   gap_facility = max(0, totalCost / outputRevenue − 1)
+ *
+ * where totalCost = Σ(inputPrice × qty × scale) + Σ(wage × workers × scale)
+ * and outputRevenue = Σ(marketPrice[out] × qty × scale).
+ *
+ * The gap is weighted by the facility's consumption of that input (qty × scale).
+ * A gap of 0.3 means the facility's costs are 30 % above its output revenue.
+ *
+ * Returns: input resource name → weighted-average profitability gap (≥ 0).
+ * Profitable facilities (gap = 0) do not contribute to the spring.
+ */
+function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet): Map<string, number> {
+    const weightedGapSum = new Map<string, number>();
+    const weightSum = new Map<string, number>();
+
+    for (const facility of assets.productionFacilities) {
+        if (facility.produces.length === 0) {
+            continue;
+        }
+
+        let outputRevenue = 0;
+        for (const { resource: out, quantity } of facility.produces) {
+            const p = planet.marketPrices[out.name] ?? INITIAL_GROCERY_PRICE;
+            outputRevenue += p * quantity * facility.scale;
+        }
+        if (outputRevenue <= 0) {
+            continue;
+        }
+
+        let totalCost = 0;
+        for (const { resource, quantity } of facility.needs) {
+            if (resource.form === 'landBoundResource') {
+                continue;
+            }
+            const p = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
+            totalCost += p * quantity * facility.scale;
+        }
+        for (const edu of educationLevelKeys) {
+            const req = facility.workerRequirement[edu] ?? 0;
+            if (req <= 0) {
+                continue;
+            }
+            const wage = planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
+            totalCost += wage * req * facility.scale;
+        }
+
+        const gap = Math.max(0, totalCost / outputRevenue - 1);
+        if (gap === 0) {
+            continue; // profitable — spring is off
+        }
+
+        for (const { resource, quantity } of facility.needs) {
+            if (resource.form === 'landBoundResource') {
+                continue;
+            }
+            const w = quantity * facility.scale;
+            weightedGapSum.set(resource.name, (weightedGapSum.get(resource.name) ?? 0) + gap * w);
+            weightSum.set(resource.name, (weightSum.get(resource.name) ?? 0) + w);
+        }
+    }
+
+    const result = new Map<string, number>();
+    for (const [name, wgs] of weightedGapSum) {
+        const wt = weightSum.get(name) ?? 1;
+        result.set(name, wt > 0 ? wgs / wt : 0);
+    }
+    return result;
+}
+
 // ---------------------------------------------------------------------------
 // Tâtonnement price adjustment helpers
 // ---------------------------------------------------------------------------
@@ -312,6 +392,16 @@ function adjustOfferPrice(
         }
     }
 
+    // Cost spring (output side): additive upward correction proportional to how far
+    // the current price sits below the production cost floor.  At the floor the
+    // spring is zero; it grows linearly as price falls further below.  This is the
+    // error-correction term from ABM price-dynamics literature (cf. EURACE, Dosi
+    // et al.): a signal coupling rising input costs to output prices.
+    if (costFloor > PRICE_FLOOR && price > 0) {
+        const deviation = Math.max(0, costFloor / price - 1);
+        factor += COST_SPRING_STRENGTH * deviation;
+    }
+
     const newPrice = price * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
@@ -343,7 +433,13 @@ function fillRateFactor(fillRate: number): number {
     }
 }
 
-function adjustBidPrice(bid: AgentMarketBidState, shortfall: number, storageTarget: number, marketPrice: number): void {
+function adjustBidPrice(
+    bid: AgentMarketBidState,
+    shortfall: number,
+    storageTarget: number,
+    marketPrice: number,
+    profitabilityGap: number = 0,
+): void {
     // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
         // No meaningful demand, set storage target to current inventory level
@@ -384,7 +480,12 @@ function adjustBidPrice(bid: AgentMarketBidState, shortfall: number, storageTarg
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
-    const factor = fillRateFactor(fillRate);
+    // Cost spring (input side): subtract a correction proportional to the
+    // facility profitability gap, nudging bid prices downward when the agent's
+    // total production costs exceed its output revenue.  Symmetric to the
+    // output-side spring: together they create a restoring force toward
+    // break-even that weakens once profitability is reached.
+    const factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap;
 
     const priceCeil = PRICE_CEIL;
     const newPrice = bid.bidPrice * factor;

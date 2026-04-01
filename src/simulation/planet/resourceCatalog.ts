@@ -2,7 +2,6 @@ import type { Resource, ResourceProcessLevel } from './planet';
 import {
     agriculturalProductResourceType,
     beverageResourceType,
-    brickResourceType,
     cementResourceType,
     chemicalResourceType,
     clayResourceType,
@@ -67,7 +66,6 @@ export const ALL_RESOURCES: Resource[] = [
     lumberResourceType,
     cementResourceType,
     concreteResourceType,
-    brickResourceType,
     glassResourceType,
     pesticideResourceType,
     pharmaceuticalResourceType,

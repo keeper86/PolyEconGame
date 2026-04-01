@@ -131,6 +131,26 @@ export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
 
 /**
+ * Stiffness of the cost-equilibrium spring that couples input and output prices.
+ *
+ * Implements a symmetric error-correction mechanism (cf. von Cramon-Taubadel 1998,
+ * Dosi et al. EURACE): a restoring force proportional to the profitability gap
+ * keeps the supply chain anchored near break-even without hard price floors.
+ *
+ *   Output side: factor += COST_SPRING_STRENGTH × max(0, costFloor/price − 1)
+ *     → upward nudge on offer price when selling below production cost.
+ *
+ *   Input side:  factor −= COST_SPRING_STRENGTH × max(0, totalCost/revenue − 1)
+ *     → downward nudge on bid price when facility costs exceed output revenue.
+ *
+ * Both springs are zero when the facility is profitable, strengthen linearly with
+ * the cost gap, and are additive on top of the normal tâtonnement signal.
+ * Set to 0 to disable.  A value of 0.1 gives a gentle but persistent pull
+ * toward break-even: a 20 % cost overrun adds ~2 % correction per tick.
+ */
+export const COST_SPRING_STRENGTH = 0.01;
+
+/**
  * Sensitivity of the multiplicative price factor to the gradient of M.
  * Larger values make agents change prices faster in response to the metric.
  */
