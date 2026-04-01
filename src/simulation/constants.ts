@@ -61,30 +61,9 @@ export const GROCERY_PRICE_CEIL = 1000000.0;
  */
 export const MIN_SERVICE_BUFFER_FILL = 0.01;
 
-/**
- * Initial service price per unit (currency units per service unit).
- * Services require more infrastructure and labor than basic food.
- */
-export const INITIAL_SERVICE_PRICE = 5.0;
-
-/**
- * Firm inventory target expressed as a multiple of one tick's production output.
- * E.g. 60 means the firm wants to hold 60 ticks (~2 months) worth of production.
- */
-export const FIRM_INVENTORY_TARGET_TICKS = 60;
-
 // ---------------------------------------------------------------------------
 // Per-agent food pricing constants
 // ---------------------------------------------------------------------------
-
-/**
- * Weight of the inventory-penalty term in the pricing AI metric.
- *
- * The agent minimises:  M = (produced − sold)² − INVENTORY_PENALTY_WEIGHT × inventory
- *
- * A higher value makes agents prefer keeping inventory low (sell more aggressively).
- */
-export const INVENTORY_PENALTY_WEIGHT = 0.5;
 
 /**
  * Maximum multiplicative price adjustment per tick (upward).
@@ -143,7 +122,7 @@ export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
  * Set to 0 to disable.  A value of 0.1 gives a gentle but persistent pull
  * toward break-even: a 20 % cost overrun adds ~2 % correction per tick.
  */
-export const COST_SPRING_STRENGTH = 0.01;
+export const COST_SPRING_STRENGTH = 0.1;
 
 /**
  * Sensitivity of the multiplicative price factor to the gradient of M.
@@ -167,7 +146,7 @@ export const RETAINED_EARNINGS_THRESHOLD = 1.5;
  * procurement buffer.  Used both in automaticPricing (bid quantity) and in the
  * financial tick (retained-earnings extension + input-buffer loan).
  */
-export const INPUT_BUFFER_TARGET_TICKS = 30;
+export const INPUT_BUFFER_TARGET_TICKS = 10;
 
 /**
  * Maximum output inventory expressed as ticks of production.
@@ -175,7 +154,7 @@ export const INPUT_BUFFER_TARGET_TICKS = 30;
  * supply-constrained by lack of demand: input buying is suppressed entirely
  * until inventory drops below this ceiling.
  */
-export const OUTPUT_BUFFER_MAX_TICKS = 60;
+export const OUTPUT_BUFFER_MAX_TICKS = 5;
 
 // ---------------------------------------------------------------------------
 // Bank credit / loan origination constants

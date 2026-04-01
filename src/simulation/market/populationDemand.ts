@@ -16,6 +16,7 @@ import {
     logisticsServiceResourceType,
     retailServiceResourceType,
     constructionServiceResourceType,
+    educationServiceResourceType,
 } from '../planet/services';
 import { forEachPopulationCohort } from '../population/population';
 import type { ServiceName } from '../population/population';
@@ -42,6 +43,13 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         bufferTargetTicks: GROCERY_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
         willingnessMultiplier: 4.0, // survival necessity — highly inelastic
+    },
+    {
+        resource: educationServiceResourceType,
+        serviceKey: 'education',
+        bufferTargetTicks: 20,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 3,
+        willingnessMultiplier: 0.7, // important but deferrable — elastic
     },
     {
         resource: healthcareServiceResourceType,
@@ -210,6 +218,10 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
             for (const def of SERVICE_DEFINITIONS) {
                 if (remainingWealth <= 0) {
                     break;
+                }
+
+                if (def.serviceKey === 'education' && occ !== 'education') {
+                    continue; // Only education group buys education services
                 }
 
                 const referencePrice = planet.marketPrices[def.resource.name];
