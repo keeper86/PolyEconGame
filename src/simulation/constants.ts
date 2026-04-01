@@ -104,6 +104,33 @@ export const PRICE_ADJUST_MAX_UP = 1.05;
 export const PRICE_ADJUST_MAX_DOWN = 0.95;
 
 /**
+ * Maximum multiplicative price adjustment per tick (downward) when the offer
+ * price is within the cost-floor brake zone.  Much smaller than
+ * PRICE_ADJUST_MAX_DOWN so that prices descend very slowly near production
+ * cost, keeping supply chains alive while downstream demand signals propagate.
+ * e.g. 0.99 means at most 1 % decrease per tick at/near the cost floor.
+ */
+export const PRICE_ADJUST_MAX_DOWN_SOFT = 0.99;
+
+/**
+ * Minimum profit-margin markup added on top of estimated production cost to
+ * derive the soft cost floor for automatic pricing.
+ * e.g. 0.05 → agents target at least 5 % above break-even.
+ */
+export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
+
+export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
+
+/**
+ * Width of the cost-floor brake zone, expressed as a fraction of the floor
+ * price.  Within this zone the maximum downward adjustment is linearly
+ * interpolated from PRICE_ADJUST_MAX_DOWN_SOFT (at the floor) to
+ * PRICE_ADJUST_MAX_DOWN (at the top of the zone).
+ * e.g. 0.2 → brake zone spans from costFloor to costFloor × 1.2.
+ */
+export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
+
+/**
  * Sensitivity of the multiplicative price factor to the gradient of M.
  * Larger values make agents change prices faster in response to the metric.
  */

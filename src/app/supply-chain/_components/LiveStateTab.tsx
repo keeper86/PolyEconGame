@@ -239,6 +239,116 @@ function buildResourceActuals(
     return result.sort((a, b) => a.effectivenessRatio - b.effectivenessRatio);
 }
 
+// ─── Origin bottleneck tracing ────────────────────────────────────────────────
+
+// Static supply-chain dependency graph – computed once at module load.
+// Calling with empty scales still populates `producedBy`/`consumedBy` correctly.
+const _STATIC_SC = computeSupplyChainBalance({}, 0);
+const RESOURCE_PRODUCERS: Map<string, string[]> = new Map(
+    _STATIC_SC.resources.map((r) => [r.resourceName, r.producedBy]),
+);
+
+type OriginResult = {
+    rootFacility: string;
+    /**
+     * - `workers`          – not enough staff assigned
+     * - `resource_shortage`– the input resource is not being produced in sufficient quantity
+     * - `market_failure`   – the resource IS produced at scale but isn't reaching consumers
+     *                        (price mismatch, missing buy orders, etc.)
+     */
+    rootType: 'workers' | 'resource_shortage' | 'market_failure';
+    rootResource?: string;
+    /** Upstream production effectiveness (0-1) when rootType is market_failure. */
+    rootResourceProductionRatio?: number;
+    /** True when THIS facility is the root cause (not a downstream victim). */
+    isRoot: boolean;
+};
+
+// Production effectiveness threshold above which we consider a resource
+// "available on the market" (i.e. being produced) and any shortage is a
+// market/price failure rather than a physical supply shortage.
+const MARKET_FAILURE_PRODUCTION_THRESHOLD = 0.7;
+
+function traceOriginFrom(
+    facilityName: string,
+    rowsMap: Map<string, FacilityAggRow>,
+    resourceProductionRatios: Map<string, number>,
+    visited: Set<string> = new Set(),
+): Omit<OriginResult, 'isRoot'> | null {
+    if (visited.has(facilityName)) {
+        return null;
+    }
+    visited.add(facilityName);
+
+    const row = rowsMap.get(facilityName);
+    if (!row || row.mainBottleneck === 'none') {
+        return null;
+    }
+
+    if (row.mainBottleneck === 'workers') {
+        return { rootFacility: facilityName, rootType: 'workers' };
+    }
+
+    // Resource bottleneck: trace upstream through the worst constrained input.
+    const worstResource = row.worstResourceName;
+    const producers = RESOURCE_PRODUCERS.get(worstResource) ?? [];
+
+    // Sort bottlenecked upstream producers by worst efficiency first.
+    const bottlenecked = [...producers]
+        .filter((p) => (rowsMap.get(p)?.mainBottleneck ?? 'none') !== 'none')
+        .sort((a, b) => (rowsMap.get(a)?.avgEfficiency ?? 1) - (rowsMap.get(b)?.avgEfficiency ?? 1));
+
+    for (const upstream of bottlenecked) {
+        const result = traceOriginFrom(upstream, rowsMap, resourceProductionRatios, new Set(visited));
+        if (result) {
+            return result;
+        }
+    }
+
+    // No bottlenecked upstream producer found – this facility IS the root cause.
+    // Determine whether the input resource exists in the economy but isn't
+    // being traded (market/price failure) or is simply not produced enough.
+    const productionRatio = resourceProductionRatios.get(worstResource) ?? 0;
+    if (productionRatio >= MARKET_FAILURE_PRODUCTION_THRESHOLD) {
+        // Resource is being produced at scale – consumers can't obtain it.
+        return {
+            rootFacility: facilityName,
+            rootType: 'market_failure',
+            rootResource: worstResource,
+            rootResourceProductionRatio: productionRatio,
+        };
+    }
+    return {
+        rootFacility: facilityName,
+        rootType: 'resource_shortage',
+        rootResource: worstResource,
+        rootResourceProductionRatio: productionRatio,
+    };
+}
+
+function computeOriginMap(
+    rows: FacilityAggRow[],
+    resourceActuals: ResourceActualRow[],
+): Map<string, OriginResult> {
+    const rowsMap = new Map(rows.map((r) => [r.name, r]));
+    const resourceProductionRatios = new Map(
+        resourceActuals.map((r) => [r.resourceName, r.effectivenessRatio]),
+    );
+    const result = new Map<string, OriginResult>();
+
+    for (const row of rows) {
+        if (row.mainBottleneck === 'none') {
+            continue;
+        }
+        const origin = traceOriginFrom(row.name, rowsMap, resourceProductionRatios);
+        if (origin) {
+            result.set(row.name, { ...origin, isRoot: origin.rootFacility === row.name });
+        }
+    }
+
+    return result;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ScaleBar({ scale, maxScale }: { scale: number; maxScale: number }) {
@@ -323,9 +433,104 @@ function BottleneckBadge({ row }: { row: FacilityAggRow }) {
     );
 }
 
+function rootTypeMeta(type: OriginResult['rootType']): {
+    icon: string;
+    badgeClass: string;
+    label: string;
+} {
+    switch (type) {
+        case 'workers':
+            return {
+                icon: '👷',
+                badgeClass: 'text-amber-700 border-amber-500 bg-amber-50 dark:bg-amber-950/30',
+                label: 'worker shortage',
+            };
+        case 'resource_shortage':
+            return {
+                icon: '🏭',
+                badgeClass: 'text-red-700 border-red-500 bg-red-50 dark:bg-red-950/30',
+                label: 'no supply',
+            };
+        case 'market_failure':
+            return {
+                icon: '💸',
+                badgeClass: 'text-purple-700 border-purple-400 bg-purple-50 dark:bg-purple-950/30',
+                label: 'not trading',
+            };
+    }
+}
+
+function OriginBadge({ facilityName, originMap }: { facilityName: string; originMap: Map<string, OriginResult> }) {
+    const origin = originMap.get(facilityName);
+    if (!origin) {
+        return <span className='text-xs text-muted-foreground'>—</span>;
+    }
+
+    if (origin.isRoot) {
+        const meta = rootTypeMeta(origin.rootType);
+        let rootLabel = meta.label;
+        if (origin.rootType !== 'workers') {
+            rootLabel = `${meta.label}: ${origin.rootResource ?? '?'}`;
+        }
+        let tooltipText = '';
+        if (origin.rootType === 'workers') {
+            tooltipText = 'Root cause: insufficient workers. Fixing staffing here will unblock all downstream facilities.';
+        } else if (origin.rootType === 'resource_shortage') {
+            tooltipText = `Root cause: "${origin.rootResource}" is not being produced in sufficient quantity (${Math.round((origin.rootResourceProductionRatio ?? 0) * 100)}% of theoretical max). Build more upstream production capacity.`;
+        } else {
+            tooltipText = `Root cause: "${origin.rootResource}" is being produced at ${Math.round((origin.rootResourceProductionRatio ?? 0) * 100)}% but isn't reaching this facility. Check market prices, buy order limits, or agent cash reserves.`;
+        }
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Badge
+                            variant='outline'
+                            className={`${meta.badgeClass} text-[10px] font-semibold cursor-help`}
+                        >
+                            <span className='max-w-44 truncate'>
+                                {meta.icon} {rootLabel}
+                            </span>
+                        </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <div className='text-xs max-w-64'>{tooltipText}</div>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span className='text-xs cursor-help text-muted-foreground whitespace-nowrap'>
+                        {'↑ '}
+                        <span className='font-medium underline decoration-dotted text-foreground/70'>
+                            {origin.rootFacility}
+                        </span>
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <div className='text-xs max-w-60'>
+                        Downstream victim of <span className='font-medium'>{origin.rootFacility}</span> (
+                        {origin.rootType === 'workers'
+                            ? 'worker shortage'
+                            : origin.rootType === 'market_failure'
+                              ? `${origin.rootResource} not trading`
+                              : `missing supply: ${origin.rootResource}`}
+                        ). Fixing the root cause will resolve this bottleneck automatically.
+                    </div>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+}
+
 // ─── Sorting helpers ──────────────────────────────────────────────────────────
 
-type FacilitySortKey = 'name' | 'instances' | 'scale' | 'efficiency' | 'bottleneck' | 'output';
+type FacilitySortKey = 'name' | 'instances' | 'scale' | 'efficiency' | 'bottleneck' | 'output' | 'origin';
 type ResourceSortKey = 'name' | 'actual' | 'theoretical' | 'effectiveness';
 type SortDir = 'asc' | 'desc';
 
@@ -336,7 +541,12 @@ function SortIcon({ column, sortKey, dir }: { column: string; sortKey: string; d
     return dir === 'asc' ? <ArrowUp className='inline ml-1 h-3 w-3' /> : <ArrowDown className='inline ml-1 h-3 w-3' />;
 }
 
-function sortFacilityRows(rows: FacilityAggRow[], key: FacilitySortKey, dir: SortDir): FacilityAggRow[] {
+function sortFacilityRows(
+    rows: FacilityAggRow[],
+    key: FacilitySortKey,
+    dir: SortDir,
+    originMap?: Map<string, OriginResult>,
+): FacilityAggRow[] {
     const sorted = [...rows].sort((a, b) => {
         switch (key) {
             case 'name':
@@ -358,6 +568,13 @@ function sortFacilityRows(rows: FacilityAggRow[], key: FacilitySortKey, dir: Sor
                 const ta = Object.values(a.totalActualProduced).reduce((s, v) => s + v, 0);
                 const tb = Object.values(b.totalActualProduced).reduce((s, v) => s + v, 0);
                 return ta - tb;
+            }
+            case 'origin': {
+                const oa = originMap?.get(a.name);
+                const ob = originMap?.get(b.name);
+                // none (0) → downstream victim (1) → root cause (2)
+                const rank = (o: OriginResult | undefined) => (!o ? 0 : o.isRoot ? 2 : 1);
+                return rank(oa) - rank(ob);
             }
         }
     });
@@ -428,9 +645,32 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
         [facilityRows, maxScales, livePop],
     );
 
+    const originMap = useMemo(() => computeOriginMap(facilityRows, resourceActuals), [facilityRows, resourceActuals]);
+
+    const rootCausesArray = useMemo(() => {
+        const map = new Map<
+            string,
+            { rootFacility: string; rootType: OriginResult['rootType']; rootResource?: string; victims: string[] }
+        >();
+        for (const [facName, origin] of originMap.entries()) {
+            if (!map.has(origin.rootFacility)) {
+                map.set(origin.rootFacility, {
+                    rootFacility: origin.rootFacility,
+                    rootType: origin.rootType,
+                    rootResource: origin.rootResource,
+                    victims: [],
+                });
+            }
+            if (!origin.isRoot) {
+                map.get(origin.rootFacility)!.victims.push(facName);
+            }
+        }
+        return [...map.values()].sort((a, b) => b.victims.length - a.victims.length);
+    }, [originMap]);
+
     const sortedFacilityRows = useMemo(
-        () => sortFacilityRows(facilityRows, facSort.key, facSort.dir),
-        [facilityRows, facSort],
+        () => sortFacilityRows(facilityRows, facSort.key, facSort.dir, originMap),
+        [facilityRows, facSort, originMap],
     );
     const sortedResourceActuals = useMemo(
         () => sortResourceRows(resourceActuals, resSort.key, resSort.dir),
@@ -567,6 +807,65 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </Card>
             </div>
 
+            {/* Root Cause Bottleneck Analysis */}
+            {rootCausesArray.length > 0 && (
+                <Card className='border-orange-200 dark:border-orange-900'>
+                    <CardHeader className='pb-2 pt-3 px-4'>
+                        <CardTitle className='text-sm font-semibold text-orange-700 dark:text-orange-400'>
+                            🎯 Root Cause Analysis ({rootCausesArray.length} origin
+                            {rootCausesArray.length !== 1 ? 's' : ''})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className='px-4 pb-3'>
+                        <p className='text-xs text-muted-foreground mb-3'>
+                            These are the origin bottlenecks driving supply chain failures. Fixing them will unblock all
+                            downstream facilities.
+                        </p>
+                        <div className='space-y-2'>
+                            {rootCausesArray.map(({ rootFacility, rootType, rootResource, victims }) => (
+                                <div
+                                    key={rootFacility}
+                                    className='flex items-start gap-2 text-xs p-2 rounded border bg-muted/30 border-border'
+                                >
+                                    {(() => {
+                                        const meta = rootTypeMeta(rootType);
+                                        return (
+                                            <Badge
+                                                variant='outline'
+                                                className={`${meta.badgeClass} text-[10px] font-semibold shrink-0 mt-0.5`}
+                                            >
+                                                {meta.icon} root
+                                            </Badge>
+                                        );
+                                    })()}
+                                    <div className='flex-1 min-w-0'>
+                                        <span className='font-semibold'>{rootFacility}</span>
+                                        <span className='text-muted-foreground ml-1.5'>
+                                            {rootType === 'workers' && '(worker shortage)'}
+                                            {rootType === 'resource_shortage' &&
+                                                `(supply shortage: ${rootResource})`}
+                                            {rootType === 'market_failure' &&
+                                                `(not trading: ${rootResource} is produced but not purchased)`}
+                                        </span>
+                                        {victims.length > 0 && (
+                                            <div className='mt-0.5 text-muted-foreground'>
+                                                Blocks:{' '}
+                                                {victims.map((v, i) => (
+                                                    <span key={v}>
+                                                        {i > 0 && ', '}
+                                                        <span className='font-medium text-foreground/70'>{v}</span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Production effectiveness heat-map (worst resources) */}
             {worstResources.length > 0 && (
                 <Card className='border-red-200'>
@@ -641,6 +940,13 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                                     </TableHead>
                                     <TableHead
                                         className='cursor-pointer select-none'
+                                        onClick={() => toggleFacSort('origin')}
+                                    >
+                                        Origin{' '}
+                                        <SortIcon column='origin' sortKey={facSort.key} dir={facSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='cursor-pointer select-none'
                                         onClick={() => toggleFacSort('output')}
                                     >
                                         Actual Output / tick{' '}
@@ -672,6 +978,9 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                                         </TableCell>
                                         <TableCell>
                                             <BottleneckBadge row={row} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <OriginBadge facilityName={row.name} originMap={originMap} />
                                         </TableCell>
                                         <TableCell>
                                             <div className='flex flex-wrap gap-x-3 gap-y-0.5'>

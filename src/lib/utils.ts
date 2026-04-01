@@ -11,12 +11,18 @@ export const formatNumbers = (n: number | null | undefined): string => {
         return '—';
     }
     if (Math.abs(n) < EPSILON) {
-        return '0';
+        if (n === 0) {
+            return '0';
+        }
+        return '<0.001';
     }
 
     let currentNumber = n;
     let currentSuffix = '';
     const abbreviations: [number, string][] = [
+        [1_000_000_000_000_000_000_000, 'S'],
+        [1_000_000_000_000_000_000, 'Qt'],
+        [1_000_000_000_000_000, 'Q'],
         [1_000_000_000_000, 'T'],
         [1_000_000_000, 'B'],
         [1_000_000, 'M'],

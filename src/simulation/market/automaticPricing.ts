@@ -1,14 +1,19 @@
 import {
+    AUTOMATED_COST_FLOOR_BUFFER,
+    AUTOMATED_COST_FLOOR_MARKUP,
     EPSILON,
     INITIAL_GROCERY_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
+    PRICE_ADJUST_MAX_DOWN_SOFT,
     PRICE_ADJUST_MAX_UP,
     GROCERY_PRICE_CEIL as PRICE_CEIL,
     GROCERY_PRICE_FLOOR as PRICE_FLOOR,
 } from '../constants';
-import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
+import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
+import { educationLevelKeys } from '../population/education';
+import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
 import { queryStorageFacility } from '../planet/storage';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
@@ -57,6 +62,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
+    // Pre-compute estimated cost floors for each produced resource.
+    const costFloors = buildCostFloors(assets, planet);
+
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
             // For human-controlled agents only auto-adjust entries explicitly flagged
@@ -76,7 +84,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             offer.offerRetainment = reserved; // Keep at least the reserved amount
 
             const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
-            adjustOfferPrice(offer, inventoryQty, initialPrice);
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloors.get(resource.name) ?? PRICE_FLOOR);
         }
     }
 
@@ -99,7 +107,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
-            const bufferTarget = resource.form === 'services' ? 1 : INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
             const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * bufferTarget;
 
             const existing = aggregatedBuyTargets.get(resource.name);
@@ -139,6 +147,92 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 }
 
 // ---------------------------------------------------------------------------
+// Cost-floor estimation
+// ---------------------------------------------------------------------------
+
+/**
+ * Estimate a per-output-resource production cost floor for an agent's
+ * facilities on this planet.
+ *
+ * For each facility the total per-tick cost (inputs + wages) is allocated
+ * across its outputs using a value-weighted split: the fraction attributed to
+ * output R equals (marketPrice[R] × qty × scale) / totalOutputValue.
+ * Equal split is used as a fallback when no output has a known price.
+ *
+ * Returns: resource name → soft floor = max(PRICE_FLOOR, costPerUnit × (1 + AUTOMATED_COST_FLOOR_MARKUP))
+ */
+function buildCostFloors(assets: AgentPlanetAssets, planet: Planet): Map<string, number> {
+    const accumulated = new Map<string, { totalCost: number; totalUnits: number }>();
+
+    for (const facility of assets.productionFacilities) {
+        if (facility.produces.length === 0) {
+            continue;
+        }
+
+        // Input cost: Σ(marketPrice × qty × scale) for each non-land input
+        let inputCostPerTick = 0;
+        for (const { resource, quantity } of facility.needs) {
+            if (resource.form === 'landBoundResource') {
+                continue;
+            }
+            const price = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
+            inputCostPerTick += price * quantity * facility.scale;
+        }
+
+        // Wage cost: Σ(wage × workerRequirement × scale) per education level
+        let wageCostPerTick = 0;
+        for (const edu of educationLevelKeys) {
+            const req = facility.workerRequirement[edu] ?? 0;
+            if (req <= 0) {
+                continue;
+            }
+            const wage = planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
+            wageCostPerTick += wage * req * facility.scale;
+        }
+
+        const totalCostPerTick = inputCostPerTick + wageCostPerTick;
+
+        // Value-weighted output cost split
+        let totalOutputValue = 0;
+        for (const { resource: out, quantity } of facility.produces) {
+            const price = planet.marketPrices[out.name] ?? INITIAL_GROCERY_PRICE;
+            totalOutputValue += price * quantity * facility.scale;
+        }
+
+        for (const { resource: out, quantity } of facility.produces) {
+            const outPrice = planet.marketPrices[out.name] ?? INITIAL_GROCERY_PRICE;
+            const costShare =
+                totalOutputValue > 0
+                    ? (outPrice * quantity * facility.scale) / totalOutputValue
+                    : 1 / facility.produces.length;
+            const costForOutput = totalCostPerTick * costShare;
+
+            const existing = accumulated.get(out.name);
+            if (existing) {
+                existing.totalCost += costForOutput;
+                existing.totalUnits += quantity * facility.scale;
+            } else {
+                accumulated.set(out.name, {
+                    totalCost: costForOutput,
+                    totalUnits: quantity * facility.scale,
+                });
+            }
+        }
+    }
+
+    const costFloors = new Map<string, number>();
+    for (const [name, { totalCost, totalUnits }] of accumulated) {
+        if (totalUnits <= 0) {
+            costFloors.set(name, PRICE_FLOOR);
+        } else {
+            const costPerUnit = totalCost / totalUnits;
+            costFloors.set(name, Math.max(PRICE_FLOOR, costPerUnit * (1 + AUTOMATED_COST_FLOOR_MARKUP)));
+        }
+    }
+    return costFloors;
+}
+
+// ---------------------------------------------------------------------------
 // Tâtonnement price adjustment helpers
 // ---------------------------------------------------------------------------
 
@@ -168,7 +262,12 @@ function sellThroughFactor(sellThrough: number): number {
     }
 }
 
-function adjustOfferPrice(offer: AgentMarketOfferState, inventoryQty: number, initialPrice: number): void {
+function adjustOfferPrice(
+    offer: AgentMarketOfferState,
+    inventoryQty: number,
+    initialPrice: number,
+    costFloor: number = PRICE_FLOOR,
+): void {
     const sold = offer.lastSold;
     const price = offer.offerPrice;
 
@@ -193,7 +292,26 @@ function adjustOfferPrice(offer: AgentMarketOfferState, inventoryQty: number, in
     }
 
     const sellThrough = sold / effectiveQuantity;
-    const factor = sellThroughFactor(sellThrough);
+    let factor = sellThroughFactor(sellThrough);
+
+    // Soft cost floor: attenuate downward price adjustments near production cost.
+    // Within the brake zone [costFloor, costFloor × (1 + AUTOMATED_COST_FLOOR_BUFFER)]
+    // the maximum downward step is blended from PRICE_ADJUST_MAX_DOWN_SOFT (at the
+    // floor) up to PRICE_ADJUST_MAX_DOWN (at the top of the zone).  Prices can still
+    // fall through the floor — just very slowly — keeping supply chains alive.
+    if (factor < 1 && costFloor > PRICE_FLOOR) {
+        const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER);
+        if (price <= brakeZoneTop) {
+            const t =
+                brakeZoneTop > costFloor
+                    ? Math.max(0, Math.min(1, (price - costFloor) / (brakeZoneTop - costFloor)))
+                    : 0;
+            const effectiveMaxDown =
+                PRICE_ADJUST_MAX_DOWN_SOFT + t * (PRICE_ADJUST_MAX_DOWN - PRICE_ADJUST_MAX_DOWN_SOFT);
+            factor = Math.max(factor, effectiveMaxDown);
+        }
+    }
+
     const newPrice = price * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
@@ -225,13 +343,7 @@ function fillRateFactor(fillRate: number): number {
     }
 }
 
-function adjustBidPrice(
-    bid: AgentMarketBidState,
-    shortfall: number,
-    storageTarget: number,
-    marketPrice: number,
-    breakEvenCeiling?: number,
-): void {
+function adjustBidPrice(bid: AgentMarketBidState, shortfall: number, storageTarget: number, marketPrice: number): void {
     // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
         // No meaningful demand, set storage target to current inventory level
@@ -239,7 +351,7 @@ function adjustBidPrice(
         bid.bidStorageTarget = storageTarget - shortfall; // Effectively current inventory
         // Keep existing price or initialize it from market price
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
-            const newPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
+            const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
         return;
@@ -252,7 +364,7 @@ function adjustBidPrice(
     if (shortfall <= 0) {
         // No demand. Keep existing price or initialize it from market price.
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
-            const newPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
+            const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
         return;
@@ -260,7 +372,7 @@ function adjustBidPrice(
 
     // If bid price is undefined, 0, or negative, initialize it
     if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
-        bid.bidPrice = breakEvenCeiling !== undefined ? Math.min(marketPrice, breakEvenCeiling) : marketPrice;
+        bid.bidPrice = marketPrice;
         bid.bidPrice = Math.max(PRICE_FLOOR, bid.bidPrice);
         return;
     }
@@ -274,7 +386,7 @@ function adjustBidPrice(
 
     const factor = fillRateFactor(fillRate);
 
-    const priceCeil = breakEvenCeiling !== undefined ? breakEvenCeiling : PRICE_CEIL;
+    const priceCeil = PRICE_CEIL;
     const newPrice = bid.bidPrice * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
