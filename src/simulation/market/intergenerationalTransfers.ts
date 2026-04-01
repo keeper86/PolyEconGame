@@ -1,4 +1,6 @@
 import {
+    EDUCATION_BUFFER_TARGET_TICKS,
+    EDUCATION_STARVATION_THRESHOLD,
     GENERATION_GAP,
     GENERATION_KERNEL_N,
     GROCERY_BUFFER_TARGET_TICKS,
@@ -8,7 +10,7 @@ import {
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import type { Planet } from '../planet/planet';
-import { groceryServiceResourceType } from '../planet/services';
+import { educationServiceResourceType, groceryServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
@@ -46,6 +48,10 @@ interface CellAggregate {
     wealth: GaussianMoments;
     /** Total grocery service buffer (in service units) across all skill sub-cells. */
     groceryBuffer: number;
+    /** Population-weighted average grocery starvation level [0, 1]. */
+    groceryStarvationLevel: number;
+    /** Total education service buffer (in service units) across all skill sub-cells. */
+    educationBuffer: number;
 }
 
 /**
@@ -69,7 +75,13 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
         for (const occ of OCCUPATIONS) {
             ageCells[occ] = {} as { [L in EducationLevelType]: CellAggregate };
             for (const edu of educationLevelKeys) {
-                ageCells[occ][edu] = { pop: 0, wealth: { mean: 0, variance: 0 }, groceryBuffer: 0 };
+                ageCells[occ][edu] = {
+                    pop: 0,
+                    wealth: { mean: 0, variance: 0 },
+                    groceryBuffer: 0,
+                    groceryStarvationLevel: 0,
+                    educationBuffer: 0,
+                };
             }
         }
 
@@ -84,7 +96,20 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             // Convert grocery service buffer ticks to equivalent service units
             // buffer ticks * SERVICE_PER_PERSON_PER_TICK * n = total service units
             cell.groceryBuffer += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * n;
+            // Accumulate weighted starvation sum — will be normalised to per-capita below
+            cell.groceryStarvationLevel += cat.services.grocery.starvationLevel * n;
+            cell.educationBuffer += cat.services.education.buffer * SERVICE_PER_PERSON_PER_TICK * n;
         });
+
+        // Normalise weighted starvation sum to a population-weighted average
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                const cell = ageCells[occ][edu];
+                if (cell.pop > 0) {
+                    cell.groceryStarvationLevel /= cell.pop;
+                }
+            }
+        }
 
         cache[age] = ageCells;
     }
@@ -168,8 +193,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     // Price level converts grocery service units into wealth (currency) units.
     // Defaults to 1.0 when not yet set.
     const groceryPrice = planet.marketPrices[groceryServiceResourceType.name];
+    const educationPrice = planet.marketPrices[educationServiceResourceType.name] ?? 1.0;
 
     const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+    const educationTargetPerPerson = EDUCATION_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
     // Floor for surplus eligibility: one tick's food cost.
     // Workers only hold ~one tick's wage in wealth at transfer time (wages are earned
@@ -223,15 +250,23 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
             for (const occ of OCCUPATIONS) {
                 for (const edu of educationLevelKeys) {
-                    const { pop, groceryBuffer, wealth } = cache[age][occ][edu];
+                    const { pop, groceryBuffer, groceryStarvationLevel, educationBuffer, wealth } =
+                        cache[age][occ][edu];
                     if (pop <= 0) {
                         continue;
                     }
                     const perCapitaGroceryBuffer = groceryBuffer / pop;
-                    const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
+                    const groceryGap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
                     // Cost to fill the gap at real market price (no urgency inflation here —
                     // urgency belongs in market demand bids, not in transfer amounts).
-                    const costGap = gap * groceryPrice;
+                    let costGap = groceryGap * groceryPrice;
+                    // Add education cost gap for the education occupation when the household is
+                    // not under food stress. If grocery starvation is high, education is deferred.
+                    if (occ === 'education' && groceryStarvationLevel < EDUCATION_STARVATION_THRESHOLD) {
+                        const perCapitaEducationBuffer = educationBuffer / pop;
+                        const educationGap = Math.max(0, educationTargetPerPerson - perCapitaEducationBuffer);
+                        costGap += educationGap * educationPrice;
+                    }
                     // Subtract existing per-capita wealth so we only transfer what they
                     // genuinely cannot self-fund.
                     const selfFund = Math.max(0, wealth.mean);
@@ -321,6 +356,8 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
             actualTotalDebited,
             groceryTargetPerPerson,
             groceryPrice,
+            educationTargetPerPerson,
+            educationPrice,
             transferMatrix,
         );
     }
@@ -402,6 +439,8 @@ function creditDependents(
     amount: number,
     targetPerPerson: number,
     groceryPrice: number,
+    educationTargetPerPerson: number,
+    educationPrice: number,
     transferMatrix?: PopulationTransferMatrix,
 ): void {
     if (amount <= 0) {
@@ -421,14 +460,20 @@ function creditDependents(
 
     for (const occ of OCCUPATIONS) {
         for (const edu of educationLevelKeys) {
-            const { pop, groceryBuffer, wealth } = cache[age][occ][edu];
+            const { pop, groceryBuffer, groceryStarvationLevel, educationBuffer, wealth } = cache[age][occ][edu];
             if (pop <= 0) {
                 continue;
             }
             const perCapitaGroceryBuffer = groceryBuffer / pop;
-            const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
+            const groceryGap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
             // Real cost at market price — no urgency inflation.
-            const costGap = gap * groceryPrice;
+            let costGap = groceryGap * groceryPrice;
+            // Include education cost for education-occupation cohorts that are not starving.
+            if (occ === 'education' && groceryStarvationLevel < EDUCATION_STARVATION_THRESHOLD) {
+                const perCapitaEducationBuffer = educationBuffer / pop;
+                const educationGap = Math.max(0, educationTargetPerPerson - perCapitaEducationBuffer);
+                costGap += educationGap * educationPrice;
+            }
             const selfFund = Math.max(0, wealth.mean);
             const need = Math.max(0, costGap - selfFund) * pop;
             cells.push({ occ, edu, pop, need });

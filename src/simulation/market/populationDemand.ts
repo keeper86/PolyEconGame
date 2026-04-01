@@ -7,6 +7,7 @@ import {
     LOGISTICS_BUFFER_TARGET_TICKS,
     RETAIL_BUFFER_TARGET_TICKS,
     CONSTRUCTION_BUFFER_TARGET_TICKS,
+    EDUCATION_BUFFER_TARGET_TICKS,
 } from '../constants';
 import type { Planet, Resource } from '../planet/planet';
 import {
@@ -61,7 +62,7 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
     {
         resource: educationServiceResourceType,
         serviceKey: 'education',
-        bufferTargetTicks: 20,
+        bufferTargetTicks: EDUCATION_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
         willingnessMultiplier: 1.0, // important but deferrable — elastic
     },
