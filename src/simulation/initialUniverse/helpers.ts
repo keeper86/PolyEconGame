@@ -211,7 +211,7 @@ export function createPopulation(total: number): Population {
             if (category.total > 0) {
                 // Initialize with a full buffer so the population has 3 months of
                 // grocery coverage before starvation can begin.
-                category.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS * 24;
+                category.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS * 6;
             }
         });
     }
