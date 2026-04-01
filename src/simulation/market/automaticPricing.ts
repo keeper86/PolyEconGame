@@ -484,7 +484,17 @@ function adjustBidPrice(
     // total production costs exceed its output revenue.  Symmetric to the
     // output-side spring: together they create a restoring force toward
     // break-even that weakens once profitability is reached.
-    const factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap;
+    //
+    // The gap penalty is weighted by fill rate so that it is zero when the
+    // agent cannot procure inputs at all (fillRate = 0).  Without this weight,
+    // a downstream processor whose output revenue is near zero (e.g. upstream
+    // markets not yet settled) accumulates an enormous profitability gap that
+    // overcomes the upward fill-rate signal and pins bids at PRICE_FLOOR —
+    // a deadlock the market cannot resolve on its own.  As supply becomes
+    // available (fillRate → TARGET_FILL_RATE) the full cost-awareness
+    // gradually re-engages.
+    const gapWeight = Math.min(1, fillRate / TARGET_FILL_RATE);
+    const factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
 
     const priceCeil = PRICE_CEIL;
     const newPrice = bid.bidPrice * factor;

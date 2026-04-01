@@ -23,12 +23,14 @@ import {
     lumberResourceType,
     machineryResourceType,
     naturalGasResourceType,
+    packagingResourceType,
     paperResourceType,
     pesticideResourceType,
     pharmaceuticalResourceType,
     plasticResourceType,
     processedFoodResourceType,
     sandResourceType,
+    siliconWaferResourceType,
     steelResourceType,
     stoneResourceType,
     vehicleResourceType,
@@ -82,6 +84,8 @@ export const initialMarketPrices: Record<string, number> = {
     [paperResourceType.name]: 2.5, // 150 logs + 50 water → 100 paper
     [pesticideResourceType.name]: 3.5, // 40 chemical → 30 pesticide
     [concreteResourceType.name]: 2.5, // 40 cement + 80 stone + 40 sand + 20 water → 100 concrete
+    [siliconWaferResourceType.name]: 5.0, // 100 sand + 50 coal → 20 silicon wafer
+    [packagingResourceType.name]: 2.0, // 50 paper + 20 plastic → 100 packaging
     // Tier 3 manufactured
     [clothingResourceType.name]: 6.0, // 80 fabric + 10 plastic → 60 clothing
     [furnitureResourceType.name]: 5.0, // 100 lumber + 20 steel + 10 fabric → 100 furniture

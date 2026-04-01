@@ -35,10 +35,12 @@ import {
     vehicleResourceType,
     waterResourceType,
     packagingResourceType,
+    siliconWaferResourceType,
 } from './resources';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
+    educationServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
@@ -76,6 +78,7 @@ export const ALL_RESOURCES: Resource[] = [
     fabricResourceType,
     clothingResourceType,
     furnitureResourceType,
+    siliconWaferResourceType,
     electronicComponentResourceType,
     consumerElectronicsResourceType,
     machineryResourceType,
@@ -87,6 +90,7 @@ export const ALL_RESOURCES: Resource[] = [
     groceryServiceResourceType,
     retailServiceResourceType,
     healthcareServiceResourceType,
+    educationServiceResourceType,
 ] as const;
 
 export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
