@@ -10,7 +10,7 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
-import { INITIAL_GROCERY_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
+import { SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { Skill } from '../../simulation/population/population';
@@ -553,7 +553,10 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
             continue;
         }
 
-        const offerPrice = offer.lastOfferPrice ?? offer.offerPrice ?? INITIAL_GROCERY_PRICE;
+        const offerPrice = offer.lastOfferPrice ?? offer.offerPrice;
+        if (offerPrice === undefined) {
+            continue;
+        }
         const lastPlacedQuantity = offer.lastPlacedQty ?? 0;
         const lastSold = offer.lastSold ?? 0;
         const lastRevenue = offer.lastRevenue ?? 0;
@@ -697,7 +700,7 @@ export const getPlanetMarket = () =>
             }
 
             const result = planet.lastMarketResult[input.resourceName];
-            const clearingPrice = result?.clearingPrice ?? planet.marketPrices[input.resourceName] ?? 1;
+            const clearingPrice = result?.clearingPrice ?? planet.marketPrices[input.resourceName] ?? 0;
             const totalDemand = result?.totalDemand ?? 0;
             const totalSupply = result?.totalSupply ?? 0;
             const totalSold = result?.totalVolume ?? 0;
@@ -898,7 +901,7 @@ export const getPlanetMarketOverview = () =>
 
             const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
                 const result = planet.lastMarketResult[resource.name];
-                const clearingPrice = result?.clearingPrice ?? planet.marketPrices[resource.name] ?? 1;
+                const clearingPrice = result?.clearingPrice ?? planet.marketPrices[resource.name] ?? 0;
                 const totalSupply = result?.totalSupply ?? 0;
                 const totalDemand = result?.totalDemand ?? 0;
                 const totalSold = result?.totalVolume ?? 0;

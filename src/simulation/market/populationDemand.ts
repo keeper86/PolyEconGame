@@ -1,6 +1,5 @@
 import {
     SERVICE_PER_PERSON_PER_TICK,
-    INITIAL_SERVICE_PRICE,
     MIN_SERVICE_BUFFER_FILL,
     GROCERY_BUFFER_TARGET_TICKS,
     HEALTHCARE_BUFFER_TARGET_TICKS,
@@ -213,7 +212,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     break;
                 }
 
-                const referencePrice = planet.marketPrices[def.resource.name] ?? INITIAL_SERVICE_PRICE;
+                const referencePrice = planet.marketPrices[def.resource.name];
                 if (referencePrice <= 0) {
                     continue;
                 }

@@ -51,11 +51,6 @@ export const GROCERY_PRICE_FLOOR = 0.01;
 export const GROCERY_PRICE_CEIL = 1000000.0;
 
 /**
- * Initial grocery service price per unit (currency units per service unit).
- */
-export const INITIAL_GROCERY_PRICE = 1.0;
-
-/**
  * Minimum buffer fill fraction used to compute the urgency multiplier in
  * household demand bids and intergenerational transfer needs.
  *

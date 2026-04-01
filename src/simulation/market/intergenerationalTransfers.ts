@@ -2,7 +2,6 @@ import {
     GENERATION_GAP,
     GENERATION_KERNEL_N,
     GROCERY_BUFFER_TARGET_TICKS,
-    INITIAL_GROCERY_PRICE,
     MIN_EMPLOYABLE_AGE,
     SERVICE_PER_PERSON_PER_TICK,
     SUPPORT_WEIGHT_SIGMA,
@@ -168,7 +167,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
     // Price level converts grocery service units into wealth (currency) units.
     // Defaults to 1.0 when not yet set.
-    const groceryPrice = planet.marketPrices[groceryServiceResourceType.name] ?? INITIAL_GROCERY_PRICE;
+    const groceryPrice = planet.marketPrices[groceryServiceResourceType.name];
 
     const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
     const baseGroceryCost = groceryTargetPerPerson * groceryPrice;

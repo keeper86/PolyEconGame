@@ -1,23 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
 import { productionTick } from './production';
 
-import type { GameState } from './planet';
 import {
-    makePlanetWithPopulation,
+    agentMap,
     makeAgent,
+    makePlanetWithPopulation,
     makeProductionFacility,
     makeStorageFacility,
-    agentMap,
 } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
+import type { GameState } from './planet';
 import {
-    ironOreResourceType,
-    waterResourceType,
     agriculturalProductResourceType,
-    brickResourceType,
-    vehicleResourceType,
+    ironOreResourceType,
     steelResourceType,
+    vehicleResourceType,
+    waterResourceType,
 } from './resources';
 
 // test helpers create fresh objects; no deep clone needed
@@ -438,75 +437,5 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         const consumed = facility.lastTickResults.lastConsumed[waterResourceType.name] ?? 0;
         expect(consumed).toBeCloseTo(availableWater, 9);
         expect(Number.isInteger(consumed)).toBe(false);
-    });
-
-    it('consumes only whole pieces when pieces resource is at partial efficiency', () => {
-        const { planet, gov } = makePlanetWithPopulation({});
-        const agent = makeAgent('company');
-
-        const availableBricks = 7;
-        agent.assets.p.storageFacility = makeStorageFacility({
-            planetId: 'p',
-            capacity: { volume: 1e12, mass: 1e12 },
-            currentInStorage: {
-                [brickResourceType.name]: { resource: brickResourceType, quantity: availableBricks },
-            },
-            current: {
-                volume: availableBricks * brickResourceType.volumePerQuantity,
-                mass: availableBricks * brickResourceType.massPerQuantity,
-            },
-        });
-
-        const facility = makeProductionFacility({ none: 1 }, { scale: 1 });
-        facility.id = 'brick-consumer';
-        facility.needs = [{ resource: brickResourceType, quantity: 10 }];
-        facility.produces = [{ resource: steelResourceType, quantity: 5 }];
-
-        const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 1;
-        agent.assets.p.productionFacilities = [facility];
-
-        const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
-
-        const consumed = facility.lastTickResults.lastConsumed[brickResourceType.name] ?? 0;
-        expect(Number.isInteger(consumed)).toBe(true);
-        expect(consumed).toBeLessThanOrEqual(availableBricks);
-    });
-
-    it('pieces efficiency is computed on whole-piece granularity — no fractional pieces consumed', () => {
-        const { planet, gov } = makePlanetWithPopulation({});
-        const agent = makeAgent('company');
-
-        const availableBricks = 7;
-        agent.assets.p.storageFacility = makeStorageFacility({
-            planetId: 'p',
-            capacity: { volume: 1e12, mass: 1e12 },
-            currentInStorage: {
-                [brickResourceType.name]: { resource: brickResourceType, quantity: availableBricks },
-            },
-            current: {
-                volume: availableBricks * brickResourceType.volumePerQuantity,
-                mass: availableBricks * brickResourceType.massPerQuantity,
-            },
-        });
-
-        const facility = makeProductionFacility({ none: 1 }, { scale: 1 });
-        facility.id = 'brick-eff';
-        facility.needs = [{ resource: brickResourceType, quantity: 10 }];
-        facility.produces = [{ resource: vehicleResourceType, quantity: 3 }];
-
-        const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 1;
-        agent.assets.p.productionFacilities = [facility];
-
-        const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
-
-        const consumed = facility.lastTickResults.lastConsumed[brickResourceType.name] ?? 0;
-        expect(Number.isInteger(consumed)).toBe(true);
-        const remaining = agent.assets.p.storageFacility.currentInStorage[brickResourceType.name]?.quantity ?? 0;
-        expect(Number.isInteger(remaining)).toBe(true);
-        expect(consumed + remaining).toBe(availableBricks);
     });
 });

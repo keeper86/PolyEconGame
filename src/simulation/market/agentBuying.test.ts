@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { GROCERY_PRICE_CEIL as PRICE_CEIL, INITIAL_GROCERY_PRICE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
-import { putIntoStorageFacility } from '../planet/storage';
+import { OUTPUT_BUFFER_MAX_TICKS, GROCERY_PRICE_CEIL as PRICE_CEIL } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
+import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
+import { putIntoStorageFacility } from '../planet/storage';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 import { settleAgentBuyers } from './settlement';
-import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -186,14 +186,14 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeCloseTo(2.0);
     });
 
-    it('uses INITIAL_GROCERY_PRICE as fallback when no market price is set', () => {
-        delete planet.marketPrices[COAL];
+    it('uses seeded market price as initial bid when no prior bid exists', () => {
+        // planet.marketPrices is always populated; coal is 2.0 from beforeEach
         planet.marketPrices[steelResourceType.name] = 4.0; // ceiling = (50×4)/100 = 2.0 — non-binding
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidPrice).toBeCloseTo(INITIAL_GROCERY_PRICE);
+        expect(bid.bidPrice).toBeCloseTo(planet.marketPrices[COAL]); // starts from marketPrices
     });
 
     it('uses planet.marketPrices as initial bid price when available', () => {

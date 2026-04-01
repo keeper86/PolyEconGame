@@ -1,16 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import {
-    GROCERY_BUFFER_TARGET_TICKS,
-    INITIAL_GROCERY_PRICE,
-    PRICE_ADJUST_MAX_UP,
-    SERVICE_PER_PERSON_PER_TICK,
-} from '../constants';
+import { GROCERY_BUFFER_TARGET_TICKS, PRICE_ADJUST_MAX_UP, SERVICE_PER_PERSON_PER_TICK } from '../constants';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import {
+    administrativeServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
-    administrativeServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
@@ -397,12 +392,14 @@ describe('updateAgentPricing', () => {
         makeGameState(planet, groceryAgent);
     });
 
-    it('bootstraps with INITIAL_GROCERY_PRICE on first tick', () => {
+    it('bootstraps offer price from seeded marketPrices on first tick', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 100);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
-        expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.offerPrice).toBe(INITIAL_GROCERY_PRICE);
+        expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.offerPrice).toBe(
+            planet.marketPrices[GROCERY_SERVICE],
+        );
         // With retainment 0, effective quantity should be 100
         // The actual quantity is calculated from retainment, not stored
     });

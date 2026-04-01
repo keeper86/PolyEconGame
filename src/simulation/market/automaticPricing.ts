@@ -3,7 +3,6 @@ import {
     AUTOMATED_COST_FLOOR_MARKUP,
     COST_SPRING_STRENGTH,
     EPSILON,
-    INITIAL_GROCERY_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
@@ -89,7 +88,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             offer.resource = resource;
             offer.offerRetainment = reserved; // Keep at least the reserved amount
 
-            const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
+            const initialPrice = planet.marketPrices[resource.name];
             adjustOfferPrice(offer, inventoryQty, initialPrice, costFloors.get(resource.name) ?? PRICE_FLOOR);
         }
     }
@@ -140,7 +139,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
-        const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_GROCERY_PRICE;
+        const marketPrice = planet.marketPrices[resourceName];
         const profitGap = inputProfitGaps.get(resourceName) ?? 0;
         adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap);
 
@@ -182,7 +181,7 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet): Map<string,
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const price = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
+            const price = planet.marketPrices[resource.name];
             inputCostPerTick += price * quantity * facility.scale;
         }
 
@@ -202,12 +201,12 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet): Map<string,
         // Value-weighted output cost split
         let totalOutputValue = 0;
         for (const { resource: out, quantity } of facility.produces) {
-            const price = planet.marketPrices[out.name] ?? INITIAL_GROCERY_PRICE;
+            const price = planet.marketPrices[out.name];
             totalOutputValue += price * quantity * facility.scale;
         }
 
         for (const { resource: out, quantity } of facility.produces) {
-            const outPrice = planet.marketPrices[out.name] ?? INITIAL_GROCERY_PRICE;
+            const outPrice = planet.marketPrices[out.name];
             const costShare =
                 totalOutputValue > 0
                     ? (outPrice * quantity * facility.scale) / totalOutputValue
@@ -265,7 +264,7 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet): Map<st
 
         let outputRevenue = 0;
         for (const { resource: out, quantity } of facility.produces) {
-            const p = planet.marketPrices[out.name] ?? INITIAL_GROCERY_PRICE;
+            const p = planet.marketPrices[out.name];
             outputRevenue += p * quantity * facility.scale;
         }
         if (outputRevenue <= 0) {
@@ -277,7 +276,7 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet): Map<st
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const p = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
+            const p = planet.marketPrices[resource.name];
             totalCost += p * quantity * facility.scale;
         }
         for (const edu of educationLevelKeys) {

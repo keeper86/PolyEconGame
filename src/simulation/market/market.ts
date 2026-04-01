@@ -1,12 +1,11 @@
 import { EPSILON } from '../constants';
-import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/storage';
+import type { BidOrder } from './marketTypes';
 import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';
 import { binHouseholdBids, buildPopulationDemand, householdDemandPriority } from './populationDemand';
 import { computeMarketSummary, settleAgentBuyers, settleAgentSellers, settleHouseholds } from './settlement';
-import type { BidOrder } from './marketTypes';
 
 export type { BidOrder } from './marketTypes';
 
@@ -74,7 +73,10 @@ function clearResourceMarket(
     const agentDemand = agentBids.reduce((s, b) => s + b.quantity, 0);
     const totalDemand = householdDemand + agentDemand;
 
-    const referencePrice = initialMarketPrices[resourceName] ?? 1;
+    const referencePrice = planet.marketPrices[resourceName];
+    if (referencePrice === undefined) {
+        throw new Error(`Market price for resource ${resourceName} is undefined. Check initialMarketPrices.`);
+    }
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
         // No trades possible: release any escrowed goods back to free stock

@@ -37,6 +37,7 @@ import {
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
+    educationServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
@@ -85,16 +86,16 @@ export const initialMarketPrices: Record<string, number> = {
     [clothingResourceType.name]: 6.0, // 80 fabric + 10 plastic → 60 clothing
     [furnitureResourceType.name]: 5.0, // 100 lumber + 20 steel + 10 fabric → 100 furniture
     [electronicComponentResourceType.name]: 15.0, // 100 sand + 100 copper + 50 rare earth + 100 plastic → 80
-    // Tier 4 complex manufactured
     [consumerElectronicsResourceType.name]: 15.0, // 100 electronic component + 50 plastic + 50 glass → 200
     [machineryResourceType.name]: 15.0, // 80 steel + 10 electronic component + 20 plastic → 50
     [vehicleResourceType.name]: 15.0, // 10 steel + 5 aluminum + ... → 10 vehicles
     [pharmaceuticalResourceType.name]: 50.0, // 100 agri + 80 chemical + 100 water → 10 pharma
-    // Tier 5 services
+    // Tier 4 services
     [groceryServiceResourceType.name]: 50.0,
     [healthcareServiceResourceType.name]: 50.0,
     [administrativeServiceResourceType.name]: 50.0,
     [logisticsServiceResourceType.name]: 50.0,
     [retailServiceResourceType.name]: 50.0,
     [constructionServiceResourceType.name]: 50.0,
+    [educationServiceResourceType.name]: 50.0,
 };

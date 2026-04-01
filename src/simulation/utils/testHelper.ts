@@ -15,6 +15,7 @@
  */
 
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createEmptyDemographicEventCounters,
     type Agent,
@@ -414,7 +415,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         bank: makeBank(),
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
-        marketPrices: {},
+        marketPrices: { ...initialMarketPrices },
         lastMarketResult: {},
         ...overrides,
     };
