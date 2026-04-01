@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTRPC } from '@/lib/trpc';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -322,6 +323,63 @@ function BottleneckBadge({ row }: { row: FacilityAggRow }) {
     );
 }
 
+// ─── Sorting helpers ──────────────────────────────────────────────────────────
+
+type FacilitySortKey = 'name' | 'instances' | 'scale' | 'efficiency' | 'bottleneck' | 'output';
+type ResourceSortKey = 'name' | 'actual' | 'theoretical' | 'effectiveness';
+type SortDir = 'asc' | 'desc';
+
+function SortIcon({ column, sortKey, dir }: { column: string; sortKey: string; dir: SortDir }) {
+    if (column !== sortKey) {
+        return <ArrowUpDown className='inline ml-1 h-3 w-3 opacity-40' />;
+    }
+    return dir === 'asc' ? <ArrowUp className='inline ml-1 h-3 w-3' /> : <ArrowDown className='inline ml-1 h-3 w-3' />;
+}
+
+function sortFacilityRows(rows: FacilityAggRow[], key: FacilitySortKey, dir: SortDir): FacilityAggRow[] {
+    const sorted = [...rows].sort((a, b) => {
+        switch (key) {
+            case 'name':
+                return a.name.localeCompare(b.name);
+            case 'instances':
+                return a.instanceCount - b.instanceCount;
+            case 'scale': {
+                const ra = a.totalMaxScale > 0 ? a.totalScale / a.totalMaxScale : 0;
+                const rb = b.totalMaxScale > 0 ? b.totalScale / b.totalMaxScale : 0;
+                return ra - rb;
+            }
+            case 'efficiency':
+                return a.avgEfficiency - b.avgEfficiency;
+            case 'bottleneck': {
+                const order: Record<FacilityAggRow['mainBottleneck'], number> = { none: 0, workers: 1, resources: 2 };
+                return order[a.mainBottleneck] - order[b.mainBottleneck];
+            }
+            case 'output': {
+                const ta = Object.values(a.totalActualProduced).reduce((s, v) => s + v, 0);
+                const tb = Object.values(b.totalActualProduced).reduce((s, v) => s + v, 0);
+                return ta - tb;
+            }
+        }
+    });
+    return dir === 'asc' ? sorted : sorted.reverse();
+}
+
+function sortResourceRows(rows: ResourceActualRow[], key: ResourceSortKey, dir: SortDir): ResourceActualRow[] {
+    const sorted = [...rows].sort((a, b) => {
+        switch (key) {
+            case 'name':
+                return a.resourceName.localeCompare(b.resourceName);
+            case 'actual':
+                return a.actualProducedPerTick - b.actualProducedPerTick;
+            case 'theoretical':
+                return a.theoreticalMaxPerTick - b.theoreticalMaxPerTick;
+            case 'effectiveness':
+                return a.effectivenessRatio - b.effectivenessRatio;
+        }
+    });
+    return dir === 'asc' ? sorted : sorted.reverse();
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface LiveStateTabProps {
@@ -329,6 +387,19 @@ interface LiveStateTabProps {
 }
 
 export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
+    const [facSort, setFacSort] = useState<{ key: FacilitySortKey; dir: SortDir }>({ key: 'efficiency', dir: 'asc' });
+    const [resSort, setResSort] = useState<{ key: ResourceSortKey; dir: SortDir }>({
+        key: 'effectiveness',
+        dir: 'asc',
+    });
+
+    function toggleFacSort(key: FacilitySortKey) {
+        setFacSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+    }
+    function toggleResSort(key: ResourceSortKey) {
+        setResSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+    }
+
     const trpc = useTRPC();
 
     const { data: agentData, isLoading: agentsLoading } = useSimulationQuery(
@@ -355,6 +426,15 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
     const resourceActuals = useMemo(
         () => buildResourceActuals(facilityRows, maxScales, livePop),
         [facilityRows, maxScales, livePop],
+    );
+
+    const sortedFacilityRows = useMemo(
+        () => sortFacilityRows(facilityRows, facSort.key, facSort.dir),
+        [facilityRows, facSort],
+    );
+    const sortedResourceActuals = useMemo(
+        () => sortResourceRows(resourceActuals, resSort.key, resSort.dir),
+        [resourceActuals, resSort],
     );
 
     const isLoading = agentsLoading || planetsLoading;
@@ -526,16 +606,50 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className='min-w-40'>Facility</TableHead>
-                                    <TableHead className='text-right w-16'>Agents</TableHead>
-                                    <TableHead className='min-w-44'>Scale (used / max)</TableHead>
-                                    <TableHead className='min-w-36'>Avg Efficiency</TableHead>
-                                    <TableHead>Main Bottleneck</TableHead>
-                                    <TableHead>Actual Output / tick</TableHead>
+                                    <TableHead
+                                        className='min-w-40 cursor-pointer select-none'
+                                        onClick={() => toggleFacSort('name')}
+                                    >
+                                        Facility <SortIcon column='name' sortKey={facSort.key} dir={facSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='text-right w-16 cursor-pointer select-none'
+                                        onClick={() => toggleFacSort('instances')}
+                                    >
+                                        Agents <SortIcon column='instances' sortKey={facSort.key} dir={facSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='min-w-44 cursor-pointer select-none'
+                                        onClick={() => toggleFacSort('scale')}
+                                    >
+                                        Scale (used / max){' '}
+                                        <SortIcon column='scale' sortKey={facSort.key} dir={facSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='min-w-36 cursor-pointer select-none'
+                                        onClick={() => toggleFacSort('efficiency')}
+                                    >
+                                        Avg Efficiency{' '}
+                                        <SortIcon column='efficiency' sortKey={facSort.key} dir={facSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='cursor-pointer select-none'
+                                        onClick={() => toggleFacSort('bottleneck')}
+                                    >
+                                        Main Bottleneck{' '}
+                                        <SortIcon column='bottleneck' sortKey={facSort.key} dir={facSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='cursor-pointer select-none'
+                                        onClick={() => toggleFacSort('output')}
+                                    >
+                                        Actual Output / tick{' '}
+                                        <SortIcon column='output' sortKey={facSort.key} dir={facSort.dir} />
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {facilityRows.map((row) => (
+                                {sortedFacilityRows.map((row) => (
                                     <TableRow
                                         key={row.name}
                                         className={
@@ -596,14 +710,37 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Resource</TableHead>
-                                    <TableHead className='text-right'>Actual / tick</TableHead>
-                                    <TableHead className='text-right'>Theoretical max / tick</TableHead>
-                                    <TableHead className='min-w-40'>Effectiveness</TableHead>
+                                    <TableHead
+                                        className='cursor-pointer select-none'
+                                        onClick={() => toggleResSort('name')}
+                                    >
+                                        Resource <SortIcon column='name' sortKey={resSort.key} dir={resSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='text-right cursor-pointer select-none'
+                                        onClick={() => toggleResSort('actual')}
+                                    >
+                                        Actual / tick{' '}
+                                        <SortIcon column='actual' sortKey={resSort.key} dir={resSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='text-right cursor-pointer select-none'
+                                        onClick={() => toggleResSort('theoretical')}
+                                    >
+                                        Theoretical max / tick{' '}
+                                        <SortIcon column='theoretical' sortKey={resSort.key} dir={resSort.dir} />
+                                    </TableHead>
+                                    <TableHead
+                                        className='min-w-40 cursor-pointer select-none'
+                                        onClick={() => toggleResSort('effectiveness')}
+                                    >
+                                        Effectiveness{' '}
+                                        <SortIcon column='effectiveness' sortKey={resSort.key} dir={resSort.dir} />
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {resourceActuals.map((r) => (
+                                {sortedResourceActuals.map((r) => (
                                     <TableRow
                                         key={r.resourceName}
                                         className={
