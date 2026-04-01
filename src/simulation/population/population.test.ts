@@ -265,11 +265,11 @@ describe('transferPopulation', () => {
         expect(dst.wealth.variance).toBeCloseTo(100, 0);
     });
 
-    it('transfers inventory proportionally', () => {
+    it('transfers service buffers preserving per-capita coverage', () => {
         const planet = makePlanet();
         const src = planet.population.demography[25].unoccupied.primary.novice;
         src.total = 200;
-        src.inventory = { 'Agricultural Product': 1000 };
+        src.services.grocery.buffer = 10; // 10 ticks of coverage for the whole group
 
         transferPopulation(
             planet,
@@ -278,12 +278,12 @@ describe('transferPopulation', () => {
             100,
         );
 
-        // Transferring 100 out of 200 → fraction = 0.5
-        // inventoryTransfer = 1000 * 0.5 = 500
-        expect(src.inventory['Agricultural Product'] ?? 0).toBeCloseTo(500, 0);
-        expect(
-            planet.population.demography[25].employed.primary.novice.inventory['Agricultural Product'] ?? 0,
-        ).toBeCloseTo(500, 0);
+        // `buffer` is per-capita coverage ticks (analogous to wealth.mean).
+        // FROM keeps its buffer unchanged — physical food per person is conserved.
+        // TO (empty before) gets the same buffer as FROM via weighted average:
+        //   (0 * 0 + 10 * 100) / (0 + 100) = 10
+        expect(src.services.grocery.buffer).toBeCloseTo(10, 5);
+        expect(planet.population.demography[25].employed.primary.novice.services.grocery.buffer).toBeCloseTo(10, 5);
     });
 
     it('conserves total across transfer', () => {

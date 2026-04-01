@@ -6,7 +6,7 @@ import { calculateDemographicStats } from './demographics';
 import { applyDisability } from './disability';
 import { populationBirthsTick } from './fertility';
 import { applyMortality } from './mortality';
-import { consumeFood } from './nutrition';
+import { consumeServices } from './consumption';
 import { applyRetirement } from './retirement';
 
 /**
@@ -29,7 +29,7 @@ export function populationTick(planet: Planet, workforceEvents: WorkforceEventAc
     applyRetirement(planet);
 
     // After applying mortality/disability/retirement so workforceEvents are still consistent with population
-    consumeFood(population);
+    consumeServices(population);
     populationBirthsTick(population, fertileWomen, planet.environment.pollution);
 }
 

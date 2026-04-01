@@ -9,7 +9,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { Card, CardContent } from '@/components/ui/card';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { FOOD_TARGET_PER_PERSON, GV_FOOD, GV_POP } from './demographicsTypes';
+import { SERVICE_TARGET_PER_PERSON, GV_FOOD, GV_POP } from './demographicsTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
             const aAvgStock = a[`${key}_avgStock`] ?? 0;
             const bAvgStock = b[`${key}_avgStock`] ?? 0;
             const avgStock = totalPop > 0 ? (aAvgStock * aPop + bAvgStock * bPop) / totalPop : 0;
-            const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+            const ratio = avgStock / SERVICE_TARGET_PER_PERSON;
             merged[`${key}_pop`] = totalPop;
             merged[`${key}_avgStock`] = avgStock;
             merged[`${key}_bufferRatio`] = ratio;
@@ -162,7 +162,7 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
                     const pop = gv[GV_POP];
                     const totalFood = gv[GV_FOOD];
                     const avgStock = pop > 0 ? totalFood / pop : 0;
-                    const ratio = avgStock / FOOD_TARGET_PER_PERSON;
+                    const ratio = avgStock / SERVICE_TARGET_PER_PERSON;
                     row[`${key}_pop`] = pop;
                     row[`${key}_avgStock`] = avgStock;
                     row[`${key}_bufferRatio`] = ratio;
@@ -215,7 +215,7 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
         <>
             <span className='mb-2 flex justify-between items-center'>
                 <h4 className='text-sm font-semibold mb-2' id='food'>
-                    Food Buffer
+                    Service Buffer
                 </h4>
                 {colorLegend}
             </span>

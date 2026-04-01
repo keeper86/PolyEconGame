@@ -35,7 +35,7 @@ function groupResourcesByLevel(resources: { name: string }[]): Map<string, { nam
 }
 
 // Level order for display
-const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'consumerGood'];
+const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services'] as const;
 
 export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);
@@ -188,12 +188,6 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                         <Switch id='show-all-resources' checked={showAll} onCheckedChange={setShowAll} />
                     </div>
                 </div>
-
-                <p className='text-xs text-muted-foreground'>
-                    One entry per resource. Expand to set buy bids and sell offers. Toggle{' '}
-                    <span className='font-medium'>Auto-manage</span> to let the AI adjust prices and quantities each
-                    tick.
-                </p>
 
                 {resourceGroups.length === 0 ? (
                     <p className='text-sm text-muted-foreground'>

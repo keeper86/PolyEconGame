@@ -153,7 +153,6 @@ export default function BuyBidsPanel({
         const snap = buyBids[name];
         const price = snap?.bidPrice ?? 0;
         const target = snap?.bidStorageTarget ?? 0;
-        // Note: This is an approximation - actual cost depends on current inventory
         return sum + price * target;
     }, 0);
 

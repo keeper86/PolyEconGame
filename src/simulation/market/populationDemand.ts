@@ -1,145 +1,95 @@
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE, TICKS_PER_YEAR } from '../constants';
+import {
+    SERVICE_PER_PERSON_PER_TICK,
+    INITIAL_SERVICE_PRICE,
+    MIN_SERVICE_BUFFER_FILL,
+    GROCERY_BUFFER_TARGET_TICKS,
+    HEALTHCARE_BUFFER_TARGET_TICKS,
+    ADMINISTRATIVE_BUFFER_TARGET_TICKS,
+    LOGISTICS_BUFFER_TARGET_TICKS,
+    RETAIL_BUFFER_TARGET_TICKS,
+    CONSTRUCTION_BUFFER_TARGET_TICKS,
+} from '../constants';
 import type { Planet, Resource } from '../planet/planet';
 import {
-    agriculturalProductResourceType,
-    processedFoodResourceType,
-    beverageResourceType,
-    clothingResourceType,
-    pharmaceuticalResourceType,
-    furnitureResourceType,
-    consumerElectronicsResourceType,
-    vehicleResourceType,
-    brickResourceType,
-    concreteResourceType,
-} from '../planet/resources';
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    administrativeServiceResourceType,
+    logisticsServiceResourceType,
+    retailServiceResourceType,
+    constructionServiceResourceType,
+} from '../planet/services';
 import { forEachPopulationCohort } from '../population/population';
+import type { ServiceName } from '../population/population';
 import type { BidOrder } from './marketTypes';
 
-// ---------------------------------------------------------------------------
-// Demand rule registry
-// ---------------------------------------------------------------------------
-/**
- * A demand rule returns the desired total purchase quantity for a whole cohort
- * and its reservation price, given the cohort's current wealth.
- */
-type DemandRule = (params: {
-    population: number;
-    wealthMeanPerPerson: number;
-    inventoryPerPerson: number;
-    referencePrice: number;
-}) => {
-    /** Total desired purchase quantity for the cohort (>= 0). */
-    quantity: number;
-    /** Reservation price (currency / unit). */
-    reservationPrice: number;
+export type ServiceDefinition = {
+    readonly resource: Resource;
+    readonly serviceKey: ServiceName;
+    readonly bufferTargetTicks: number;
+    readonly consumptionRatePerPersonPerTick: number;
+    /**
+     * Base willingness-to-pay factor at full buffer.
+     * Effective reservation price = marketPrice × willingnessMultiplier / bufferFill,
+     * capped by MIN_SERVICE_BUFFER_FILL (≈ 100× at empty buffer, 1× at full).
+     * > 1 = inelastic (households pay above market), < 1 = elastic.
+     */
+    readonly willingnessMultiplier: number;
 };
-type DemandEntry = { rule: DemandRule };
-export const demandRules = new Map<string, DemandEntry>();
 
-function registerDemand(resource: Resource, rule: DemandRule): void {
-    demandRules.set(resource.name, { rule });
-}
-// ------------------------------------------------------------------
-// Food (Agricultural Product) — survival priority 1
-// ------------------------------------------------------------------
-const foodTargetPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
-registerDemand(
-    agriculturalProductResourceType,
-    ({ population, wealthMeanPerPerson, inventoryPerPerson, referencePrice }) => {
-        const desiredPerPerson = Math.max(0, foodTargetPerPerson - inventoryPerPerson);
-        if (desiredPerPerson <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-        if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-        if (!Number.isFinite(wealthMeanPerPerson) || wealthMeanPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const affordableQty = wealthMeanPerPerson / referencePrice;
-        const effectiveQtyPerPerson = Math.min(desiredPerPerson, Math.max(0, affordableQty));
-
-        if (!Number.isFinite(effectiveQtyPerPerson) || effectiveQtyPerPerson < 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const reservationPrice = desiredPerPerson > 0 ? wealthMeanPerPerson / desiredPerPerson : 0;
-        return { quantity: effectiveQtyPerPerson * population, reservationPrice };
+export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
+    {
+        resource: groceryServiceResourceType,
+        serviceKey: 'grocery',
+        bufferTargetTicks: GROCERY_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 4.0, // survival necessity — highly inelastic
     },
+    {
+        resource: healthcareServiceResourceType,
+        serviceKey: 'healthcare',
+        bufferTargetTicks: HEALTHCARE_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 2.0, // essential health — inelastic
+    },
+    {
+        resource: logisticsServiceResourceType,
+        serviceKey: 'logistics',
+        bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 1.0, // necessary — moderately inelastic
+    },
+    {
+        resource: retailServiceResourceType,
+        serviceKey: 'retail',
+        bufferTargetTicks: RETAIL_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 0.9, // discretionary — unit-elastic
+    },
+    {
+        resource: constructionServiceResourceType,
+        serviceKey: 'construction',
+        bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 2,
+        willingnessMultiplier: 0.6, // most deferrable — elastic
+    },
+    {
+        resource: administrativeServiceResourceType,
+        serviceKey: 'administrative',
+        bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 1.5,
+        willingnessMultiplier: 0.5, // necessary — mildly inelastic
+    },
+];
+
+/** O(1) lookup by resource name — used by settlement and consumption. */
+export const SERVICE_DEFINITION_BY_RESOURCE_NAME = new Map<string, ServiceDefinition>(
+    SERVICE_DEFINITIONS.map((def) => [def.resource.name, def]),
 );
-// ------------------------------------------------------------------
-// Generic discretionary consumer-good demand rule factory.
-//
-// Households spend a fixed income share on each consumer good,
-// capped by a per-person yearly quantity target.  Wealth passed in
-// already reflects spending on higher-priority goods settled earlier
-// this tick, so no scarcity suppression factor is needed.
-//
-// incomeSharePerTick  - fraction of remaining per-capita wealth spent
-// yearlyQtyPerPerson  - physical cap on how much one person buys/year
-// ------------------------------------------------------------------
-function makeConsumerGoodRule(wealthPerTick: number, yearlyQtyPerPerson: number): DemandRule {
-    const qtyPerTickPerPerson = yearlyQtyPerPerson / TICKS_PER_YEAR;
 
-    return ({ population, wealthMeanPerPerson, referencePrice }) => {
-        if (!Number.isFinite(referencePrice) || referencePrice <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-        if (!Number.isFinite(wealthMeanPerPerson) || wealthMeanPerPerson <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
+// Priority order derived from the definition array order.
+export const householdDemandPriority: string[] = SERVICE_DEFINITIONS.map((d) => d.resource.name);
 
-        const budget = wealthMeanPerPerson * wealthPerTick;
-        const affordableQtyPerPerson = budget / referencePrice;
-        const qtyPerPerson = Math.min(qtyPerTickPerPerson, affordableQtyPerPerson);
-
-        if (qtyPerPerson <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        const totalQty = qtyPerPerson * population;
-
-        if (totalQty <= 0) {
-            return { quantity: 0, reservationPrice: 0 };
-        }
-
-        return { quantity: totalQty, reservationPrice: budget / qtyPerPerson };
-    };
-}
-// Processed Food: secondary staple, strong demand (~0.5 t/person/year).
-registerDemand(processedFoodResourceType, makeConsumerGoodRule(0.003, 0.5));
-// Beverages: moderate demand (~0.2 t/person/year).
-registerDemand(beverageResourceType, makeConsumerGoodRule(0.001, 0.2));
-// Clothing: 1 box of 10 garments/person/year.
-// Clothing: 0.01 t/person/year.
-registerDemand(clothingResourceType, makeConsumerGoodRule(0.002, 0.01));
-// Pharmaceuticals: 0.001 t/person/year.
-registerDemand(pharmaceuticalResourceType, makeConsumerGoodRule(0.001, 0.001));
-// Furniture: 0.02 t/person/year.
-registerDemand(furnitureResourceType, makeConsumerGoodRule(0.001, 0.02));
-// Consumer Electronics: 0.1 t/person/year.
-registerDemand(consumerElectronicsResourceType, makeConsumerGoodRule(0.002, 0.1));
-// Vehicles: 0.03 t/person/year.
-registerDemand(vehicleResourceType, makeConsumerGoodRule(0.001, 0.03));
-// Bricks: 1 t/person/year for construction.
-registerDemand(brickResourceType, makeConsumerGoodRule(0.001, 1));
-registerDemand(concreteResourceType, makeConsumerGoodRule(0.001, 0.1));
-/**
- * Priority order for sequential household settlement.
- * Food is cleared and settled first; household wealth is debited before
- * discretionary bids are generated, so no cohort can over-commit.
- * Resources not in this list (agent-only markets) are cleared afterwards.
- */
-export const householdDemandPriority: string[] = [
-    agriculturalProductResourceType.name,
-    processedFoodResourceType.name,
-    pharmaceuticalResourceType.name,
-    beverageResourceType.name,
-    clothingResourceType.name,
-    furnitureResourceType.name,
-    consumerElectronicsResourceType.name,
-]; // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
 // ---------------------------------------------------------------------------
 export function binHouseholdBids(bids: BidOrder[], filled: number[], costs: number[]) {
@@ -229,18 +179,18 @@ export function binHouseholdBids(bids: BidOrder[], filled: number[], costs: numb
     }
 
     return bins;
-} // ---------------------------------------------------------------------------
-// Build population demand for a single resource, using current cohort wealth
-// ---------------------------------------------------------------------------
-export function buildPopulationDemandForResource(planet: Planet, resourceName: string): BidOrder[] {
-    const entry = demandRules.get(resourceName);
-    if (!entry) {
-        return [];
-    }
-    const { rule } = entry;
+}
 
-    const referencePrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
-    const bidOrders: BidOrder[] = [];
+// ---------------------------------------------------------------------------
+// Build all population demand in a single sequential-budget pass
+//
+// For each cohort the services are processed in householdDemandPriority order.
+// Each service draws from the cohort's remaining wealth after higher-priority
+// purchases, so food always wins over healthcare, healthcare over retail, etc.
+// Reservation price = referencePrice × willingnessMultiplier (stable signal).
+// ---------------------------------------------------------------------------
+export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
+    const allBids = new Map<string, BidOrder[]>(SERVICE_DEFINITIONS.map((def) => [def.resource.name, []]));
 
     planet.population.demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -256,43 +206,56 @@ export function buildPopulationDemandForResource(planet: Planet, resourceName: s
                 );
             }
 
-            const inventoryPerPerson = (category.inventory[resourceName] ?? 0) / pop;
+            let remainingWealth = wm.mean;
 
-            const { quantity: totalQty, reservationPrice } = rule({
-                population: pop,
-                wealthMeanPerPerson: wm.mean,
-                inventoryPerPerson,
-                referencePrice,
-            });
+            for (const def of SERVICE_DEFINITIONS) {
+                if (remainingWealth <= 0) {
+                    break;
+                }
 
-            if (!Number.isFinite(totalQty) || totalQty < 0) {
-                console.log('warn: non-finite totalQty in buildPopulationDemandForResource', {
+                const referencePrice = planet.marketPrices[def.resource.name] ?? INITIAL_SERVICE_PRICE;
+                if (referencePrice <= 0) {
+                    continue;
+                }
+
+                const serviceBuffer = category.services[def.serviceKey]?.buffer ?? 0;
+                const rate = def.consumptionRatePerPersonPerTick;
+                const desiredPerPerson = rate * Math.max(0, def.bufferTargetTicks - serviceBuffer);
+
+                if (desiredPerPerson <= 0) {
+                    continue;
+                }
+
+                const affordable = remainingWealth / referencePrice;
+                const quantityPerPerson = Math.min(desiredPerPerson, affordable);
+                if (quantityPerPerson <= 0) {
+                    continue;
+                }
+
+                remainingWealth -= quantityPerPerson * referencePrice;
+
+                // When the buffer is depleted, households bid above the baseline multiplier
+                // so they can match sellers even during scarcity or price-discovery bootstrap.
+                // At bufferFill=0 (empty): price = willingnessMultiplier / MIN_SERVICE_BUFFER_FILL (~100× base)
+                // At bufferFill=1 (full):  price = willingnessMultiplier × referencePrice (normal)
+                const bufferFill = def.bufferTargetTicks > 0 ? Math.min(1, serviceBuffer / def.bufferTargetTicks) : 1;
+                const effectiveBufferFill = Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL);
+                const reservationPrice = (referencePrice * def.willingnessMultiplier) / effectiveBufferFill;
+
+                const bids = allBids.get(def.resource.name)!;
+                bids.push({
                     age,
                     edu,
                     occ,
                     skill,
-                    resourceName,
-                    totalQty,
+                    population: pop,
+                    bidPrice: reservationPrice,
+                    quantity: quantityPerPerson * pop,
+                    wealthMoments: wm,
                 });
-                return;
             }
-
-            if (totalQty <= 0) {
-                return;
-            }
-
-            bidOrders.push({
-                age,
-                edu,
-                occ,
-                skill,
-                population: pop,
-                bidPrice: reservationPrice,
-                quantity: totalQty,
-                wealthMoments: wm,
-            });
         }),
     );
 
-    return bidOrders;
+    return allBids;
 }

@@ -1,4 +1,4 @@
-import { INITIAL_FOOD_PRICE, INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD } from '../constants';
+import { INITIAL_GROCERY_PRICE, INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD } from '../constants';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -44,7 +44,7 @@ function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): num
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const price = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
+            const price = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
             cost += quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS * price;
         }
     }

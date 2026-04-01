@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { INITIAL_FOOD_PRICE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
+import { GROCERY_PRICE_CEIL as PRICE_CEIL, INITIAL_GROCERY_PRICE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import { putIntoStorageFacility } from '../planet/storage';
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
@@ -186,14 +186,14 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeCloseTo(2.0);
     });
 
-    it('uses INITIAL_FOOD_PRICE as fallback when no market price is set', () => {
+    it('uses INITIAL_GROCERY_PRICE as fallback when no market price is set', () => {
         delete planet.marketPrices[COAL];
         planet.marketPrices[steelResourceType.name] = 4.0; // ceiling = (50×4)/100 = 2.0 — non-binding
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidPrice).toBeCloseTo(INITIAL_FOOD_PRICE);
+        expect(bid.bidPrice).toBeCloseTo(INITIAL_GROCERY_PRICE);
     });
 
     it('uses planet.marketPrices as initial bid price when available', () => {
@@ -264,9 +264,7 @@ describe('automaticPricing — buy side', () => {
         expect(buyer.assets.p.market?.buy).toBeUndefined();
     });
 
-    it('bootstraps bid price no higher than the break-even ceiling', () => {
-        // Steel facility: 100 coal → 50 steel
-        // With steel market price 4.0, break-even for coal = (50 × 4) / 100 = 2.0
+    it('bootstraps bid price from the current market price', () => {
         planet.marketPrices[COAL] = 3.0;
         planet.marketPrices[steelResourceType.name] = 4.0;
 
@@ -274,16 +272,16 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidPrice).toBeLessThanOrEqual(2.0);
+        expect(bid.bidPrice).toBeCloseTo(3.0);
     });
 
-    it('bid price does not exceed the break-even ceiling after repeated partially-filled ticks', () => {
-        // Steel at price 6.0 → ceiling = (50 × 6) / 100 = 3.0
+    it('raises bid price with repeated partially-filled ticks, bounded by PRICE_CEIL', () => {
         planet.marketPrices[COAL] = 1.0;
         planet.marketPrices[steelResourceType.name] = 6.0;
 
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
+        const initialBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
         for (let i = 0; i < 200; i++) {
             const demanded = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 1;
@@ -293,7 +291,8 @@ describe('automaticPricing — buy side', () => {
         }
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidPrice).toBeLessThanOrEqual(3.0 + 1e-9);
+        expect(bid.bidPrice).toBeGreaterThan(initialBidPrice);
+        expect(bid.bidPrice).toBeLessThanOrEqual(PRICE_CEIL);
     });
 
     it('break-even ceiling uses sum of all facility outputs for the same input', () => {
@@ -652,11 +651,11 @@ describe('marketTick — agent buying', () => {
 
         const allAgents = agentMap(foodAgent, coalSeller, steelMaker);
 
-        const householdFoodBefore = planet.population.demography[14].unoccupied.none.novice.inventory[FOOD] ?? 0;
+        const householdFoodBefore = planet.population.demography[14].unoccupied.none.novice.services.grocery.buffer;
 
         marketTick(allAgents, planet);
 
-        const householdFoodAfter = planet.population.demography[14].unoccupied.none.novice.inventory[FOOD] ?? 0;
+        const householdFoodAfter = planet.population.demography[14].unoccupied.none.novice.services.grocery.buffer;
 
         expect(householdFoodAfter).toBeGreaterThanOrEqual(householdFoodBefore);
     });

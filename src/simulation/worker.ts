@@ -1,30 +1,30 @@
 import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
+import knexConfig from '../../knexfile.js';
 import { advanceTick, seedRng } from './engine';
+import { computeLoanConditions } from './financial/loanConditions';
 import {
     getLatestGameSnapshot,
+    insertAgentMonthlyHistory,
     insertGameSnapshot,
     insertPlanetPopulationHistory,
-    insertAgentMonthlyHistory,
-    pruneGameSnapshots,
     pruneAgentMonthlyHistory,
+    pruneGameSnapshots,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { GameState } from './planet/planet';
+import { groceryServiceResourceType } from './planet/services';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
-import knexConfig from '../../knexfile.js';
-import { computeLoanConditions } from './financial/loanConditions';
-import { agriculturalProductResourceType } from './planet/resources';
-export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
-import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import { handleAgentAction } from './workerClient/agentActions';
+import { handleFacilityAction } from './workerClient/facilityActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
+import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import { handleResourceAction } from './workerClient/resourceActions';
-import { handleFacilityAction } from './workerClient/facilityActions';
+export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 
 interface TaskPayload {
     command: string;
@@ -359,7 +359,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     planet_id: planet.id,
                     population: computePopulationTotal(planet),
                     starvation_level: clampTiny(computeGlobalStarvation(planet)),
-                    food_price: clampTiny(planet.marketPrices[agriculturalProductResourceType.name] ?? 0),
+                    food_price: clampTiny(planet.marketPrices[groceryServiceResourceType.name] ?? 0),
                 }));
                 await insertPlanetPopulationHistory(db, populationRows);
 

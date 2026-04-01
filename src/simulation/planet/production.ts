@@ -1,14 +1,15 @@
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import { SKILL } from '../population/population';
 import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
 import { stochasticRound } from '../utils/stochasticRound';
+import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 import type { Agent, Planet } from './planet';
+import { ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './storage';
-import { waterFill } from './waterFill';
 import type { WorkerSlot } from './waterFill';
+import { waterFill } from './waterFill';
 
 // ---------------------------------------------------------------------------
 // Local helpers
@@ -30,6 +31,28 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
 }
 
 const CONSUMPTION_MISMATCH_TOLERANCE = 1e-9;
+
+const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
+    const assets = agent.assets[planet.id];
+    if (!assets) {
+        return;
+    }
+    const storage = assets.storageFacility;
+    if (!storage) {
+        return;
+    }
+
+    // services decay very fast and aggressive. This is for two reasons:
+    ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
+        if (storage.currentInStorage[serviceName]) {
+            removeFromStorageFacility(
+                storage,
+                serviceName,
+                Math.ceil(storage.currentInStorage[serviceName].quantity * 0.5),
+            );
+        }
+    });
+};
 
 export function productionTick(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -134,6 +157,10 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         const { byFacility } = waterFill(allSlots, workerPool, ageProd, effectiveDemandBySlot);
 
+        // we calculated resource constraints with last round services. We now empty service storage
+        // This makes services un-storable but allows producing services and using them next ticks production.
+        depreciateServicesStorage(agent, planet);
+
         assets.productionFacilities.forEach((facility, fi) => {
             const { resourceEfficiencyMap } = facilityMeta[fi];
             const facilityResult = byFacility.get(fi);
@@ -184,7 +211,13 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                             );
                         }
                     } else {
-                        const removed = removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
+                        const consumeInputs = removeFromStorageFacility(
+                            assets.storageFacility,
+                            need.resource.name,
+                            consumed,
+                        );
+                        // services are resetted before this loop, to allow being used as input but are only 1-tick lived
+                        const removed = need.resource.form === 'services' ? consumed : consumeInputs;
                         actualConsumed[need.resource.name] = removed;
                         if (removed < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
                             console.warn(

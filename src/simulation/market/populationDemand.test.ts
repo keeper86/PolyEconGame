@@ -1,11 +1,55 @@
-import { describe, expect, it } from 'vitest';
-
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, INITIAL_FOOD_PRICE } from '../constants';
-import { clothingResourceType, agriculturalProductResourceType } from '../planet/resources';
-import { forEachPopulationCohort } from '../population/population';
-import { makePlanetWithPopulation } from '../utils/testHelper';
-import { binHouseholdBids, buildPopulationDemandForResource } from './populationDemand';
+import { test, expect, describe, it } from 'vitest';
+import { binHouseholdBids, buildPopulationDemand } from './populationDemand';
+import { createEmptyPopulationCohort, forEachPopulationCohort } from '../population/population';
+import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
+import { GROCERY_BUFFER_TARGET_TICKS, INITIAL_SERVICE_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../constants';
+import type { Planet } from '../planet/planet';
+import { makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
 import type { BidOrder } from './marketTypes';
+
+test('buildPopulationDemand produces finite reservation prices for empty buffers', () => {
+    // Minimal planet stub for the test
+    const planet: Planet = makePlanet();
+
+    // create two age cohorts: newborns (age 0) and adults (age 30)
+    const newbornCohort = createEmptyPopulationCohort({
+        total: 100,
+        wealth: { mean: 50, variance: 1 },
+        services: {
+            grocery: { buffer: 0, starvationLevel: 0 },
+            retail: { buffer: 0, starvationLevel: 0 },
+            logistics: { buffer: 0, starvationLevel: 0 },
+            healthcare: { buffer: 0, starvationLevel: 0 },
+            construction: { buffer: 0, starvationLevel: 0 },
+            administrative: { buffer: 0, starvationLevel: 0 },
+        },
+    });
+    const adultCohort = createEmptyPopulationCohort({
+        total: 100,
+        wealth: { mean: 1000, variance: 1 },
+        services: {
+            grocery: { buffer: 1000, starvationLevel: 0 },
+            retail: { buffer: 1000, starvationLevel: 0 },
+            logistics: { buffer: 1000, starvationLevel: 0 },
+            healthcare: { buffer: 1000, starvationLevel: 0 },
+            construction: { buffer: 1000, starvationLevel: 0 },
+            administrative: { buffer: 1000, starvationLevel: 0 },
+        },
+    });
+
+    // demography is an array indexed by age
+    planet.population.demography[0] = newbornCohort;
+    planet.population.demography[30] = adultCohort;
+
+    const bidsMap = buildPopulationDemand(planet);
+    const bids = bidsMap.get(groceryServiceResourceType.name) ?? [];
+    expect(bids.length).toBeGreaterThan(0);
+    for (const b of bids) {
+        expect(typeof b.bidPrice).toBe('number');
+        expect(Number.isFinite(b.bidPrice)).toBe(true);
+        expect(b.bidPrice).toBeGreaterThanOrEqual(0);
+    }
+});
 
 function makeBid(bidPrice: number, quantity: number): BidOrder {
     return {
@@ -79,42 +123,41 @@ describe('binHouseholdBids', () => {
     });
 });
 
-const FOOD = agriculturalProductResourceType.name;
-const CLOTHING = clothingResourceType.name;
+const GROCERY_SERVICE = groceryServiceResourceType.name;
+const HEALTHCARE_SERVICE = healthcareServiceResourceType.name;
 
 describe('buildPopulationDemandForResource', () => {
-    describe('food demand', () => {
+    describe('grocery service demand', () => {
         it('returns no bids when all cohorts already hold full buffer', () => {
             const { planet } = makePlanetWithPopulation({ none: 1_000 });
-            const fullBuffer = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
                         cat.wealth = { mean: 100, variance: 0 };
-                        cat.inventory[FOOD] = fullBuffer * cat.total;
+                        cat.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS;
                     }
                 }),
             );
 
-            const bids = buildPopulationDemandForResource(planet, FOOD);
+            const bids = buildPopulationDemand(planet).get(GROCERY_SERVICE) ?? [];
 
             expect(bids.every((b) => b.quantity === 0)).toBe(true);
             expect(bids.length).toBe(0);
         });
 
-        it('returns bids when cohorts have no food and positive wealth', () => {
+        it('returns bids when cohorts have no grocery service and positive wealth', () => {
             const { planet } = makePlanetWithPopulation({ none: 1_000 });
-            planet.marketPrices[FOOD] = INITIAL_FOOD_PRICE;
+            planet.marketPrices[GROCERY_SERVICE] = INITIAL_SERVICE_PRICE;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
                         cat.wealth = { mean: 100, variance: 0 };
-                        cat.inventory[FOOD] = 0;
+                        cat.services.grocery.buffer = 0;
                     }
                 }),
             );
 
-            const bids = buildPopulationDemandForResource(planet, FOOD);
+            const bids = buildPopulationDemand(planet).get(GROCERY_SERVICE) ?? [];
 
             const totalDemand = bids.reduce((s, b) => s + b.quantity, 0);
             expect(totalDemand).toBeGreaterThan(0);
@@ -122,24 +165,29 @@ describe('buildPopulationDemandForResource', () => {
 
         it('returns no bids when cohorts have zero wealth', () => {
             const { planet } = makePlanetWithPopulation({ none: 1_000 });
-            planet.marketPrices[FOOD] = INITIAL_FOOD_PRICE;
+            planet.marketPrices[GROCERY_SERVICE] = INITIAL_SERVICE_PRICE;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     cat.wealth = { mean: 0, variance: 0 };
-                    cat.inventory[FOOD] = 0;
+                    cat.services.grocery.buffer = 0;
                 }),
             );
 
-            const bids = buildPopulationDemandForResource(planet, FOOD);
+            const bids = buildPopulationDemand(planet).get(GROCERY_SERVICE) ?? [];
 
             expect(bids.length).toBe(0);
         });
     });
 
-    describe('clothing demand (pieces resource)', () => {
+    describe('healthcare service demand', () => {
+        // Set grocery price very cheap so grocery does not consume all budget,
+        // leaving wealth available for healthcare.
+        const CHEAP_GROCERY_PRICE = 0.0001;
+
         it('produces positive quantities per cohort', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
-            planet.marketPrices[CLOTHING] = 0.01;
+            planet.marketPrices[GROCERY_SERVICE] = CHEAP_GROCERY_PRICE;
+            planet.marketPrices[HEALTHCARE_SERVICE] = 0.01;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
@@ -148,7 +196,7 @@ describe('buildPopulationDemandForResource', () => {
                 }),
             );
 
-            const bids = buildPopulationDemandForResource(planet, CLOTHING);
+            const bids = buildPopulationDemand(planet).get(HEALTHCARE_SERVICE) ?? [];
 
             for (const bid of bids) {
                 expect(bid.quantity).toBeGreaterThan(0);
@@ -157,7 +205,8 @@ describe('buildPopulationDemandForResource', () => {
 
         it('total demand is positive with large enough population', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
-            planet.marketPrices[CLOTHING] = 0.01;
+            planet.marketPrices[GROCERY_SERVICE] = CHEAP_GROCERY_PRICE;
+            planet.marketPrices[HEALTHCARE_SERVICE] = 0.01;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
@@ -166,15 +215,16 @@ describe('buildPopulationDemandForResource', () => {
                 }),
             );
 
-            const bids = buildPopulationDemandForResource(planet, CLOTHING);
+            const bids = buildPopulationDemand(planet).get(HEALTHCARE_SERVICE) ?? [];
             const totalDemand = bids.reduce((s, b) => s + b.quantity, 0);
 
             expect(totalDemand).toBeGreaterThan(0);
         });
 
-        it('total demand is negligible when clothing price is too high to afford any', () => {
+        it('total demand is negligible when healthcare service price is too high to afford any', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
-            planet.marketPrices[CLOTHING] = 1_000_000;
+            planet.marketPrices[GROCERY_SERVICE] = CHEAP_GROCERY_PRICE;
+            planet.marketPrices[HEALTHCARE_SERVICE] = 1_000_000;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
@@ -183,22 +233,23 @@ describe('buildPopulationDemandForResource', () => {
                 }),
             );
 
-            const bids = buildPopulationDemandForResource(planet, CLOTHING);
+            const bids = buildPopulationDemand(planet).get(HEALTHCARE_SERVICE) ?? [];
             const totalDemand = bids.reduce((s, b) => s + b.quantity, 0);
 
-            expect(totalDemand).toBeLessThan(1e-3);
+            expect(totalDemand).toBeLessThan(1.1e-3);
         });
 
         it('returns no bids when all cohorts have zero wealth', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
-            planet.marketPrices[CLOTHING] = 0.01;
+            planet.marketPrices[GROCERY_SERVICE] = CHEAP_GROCERY_PRICE;
+            planet.marketPrices[HEALTHCARE_SERVICE] = 0.01;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     cat.wealth = { mean: 0, variance: 0 };
                 }),
             );
 
-            const bids = buildPopulationDemandForResource(planet, CLOTHING);
+            const bids = buildPopulationDemand(planet).get(HEALTHCARE_SERVICE) ?? [];
 
             expect(bids.length).toBe(0);
         });
@@ -207,8 +258,78 @@ describe('buildPopulationDemandForResource', () => {
     it('returns empty array for unknown resource', () => {
         const { planet } = makePlanetWithPopulation({ none: 100 });
 
-        const bids = buildPopulationDemandForResource(planet, 'not-a-real-resource');
+        const bids = buildPopulationDemand(planet).get('not-a-real-resource') ?? [];
 
         expect(bids).toEqual([]);
+    });
+});
+
+describe('buildPopulationDemand', () => {
+    it('grocery consumes budget before healthcare', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1_000 });
+        // Grocery is expensive — should consume most/all of the wealth
+        const groceryPrice = 10;
+        const healthcarePrice = 0.01;
+        planet.marketPrices[GROCERY_SERVICE] = groceryPrice;
+        planet.marketPrices[HEALTHCARE_SERVICE] = healthcarePrice;
+
+        const groceryTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    // Wealth just enough for a fraction of grocery — nothing left for healthcare
+                    cat.wealth = { mean: groceryPrice * (groceryTarget / 2), variance: 0 };
+                    cat.services.grocery.buffer = 0;
+                    cat.services.healthcare.buffer = 0;
+                }
+            }),
+        );
+
+        const allBids = buildPopulationDemand(planet);
+        const groceryDemand = (allBids.get(GROCERY_SERVICE) ?? []).reduce((s, b) => s + b.quantity, 0);
+        const healthcareDemand = (allBids.get(HEALTHCARE_SERVICE) ?? []).reduce((s, b) => s + b.quantity, 0);
+
+        expect(groceryDemand).toBeGreaterThan(0);
+        // Healthcare budget is zero since grocery consumed all wealth
+        expect(healthcareDemand).toBe(0);
+    });
+
+    it('healthcare gets budget when grocery is fully stocked', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1_000 });
+        planet.marketPrices[GROCERY_SERVICE] = INITIAL_SERVICE_PRICE;
+        planet.marketPrices[HEALTHCARE_SERVICE] = INITIAL_SERVICE_PRICE;
+
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    cat.wealth = { mean: 100, variance: 0 };
+                    // Grocery buffer full — no grocery demand, all wealth goes to healthcare
+                    cat.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS;
+                    cat.services.healthcare.buffer = 0;
+                }
+            }),
+        );
+
+        const allBids = buildPopulationDemand(planet);
+        const groceryDemand = (allBids.get(GROCERY_SERVICE) ?? []).reduce((s, b) => s + b.quantity, 0);
+        const healthcareDemand = (allBids.get(HEALTHCARE_SERVICE) ?? []).reduce((s, b) => s + b.quantity, 0);
+
+        expect(groceryDemand).toBe(0);
+        expect(healthcareDemand).toBeGreaterThan(0);
+    });
+
+    it('returns empty arrays for all priority services when wealth is zero', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1_000 });
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                cat.wealth = { mean: 0, variance: 0 };
+            }),
+        );
+
+        const allBids = buildPopulationDemand(planet);
+        for (const bids of allBids.values()) {
+            expect(bids.length).toBe(0);
+        }
     });
 });

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
+import { GROCERY_PRICE_FLOOR } from '@/simulation/constants';
 import { formatNumbers } from '@/lib/utils';
 import type { SellSectionProps } from './marketTypes';
 import { productionPerTick, sellFulfillmentClass, priceArrow } from './marketHelpers';
@@ -134,7 +134,7 @@ export default function SellSection({
                     <Input
                         id={`offer-price-${resourceName}`}
                         type='number'
-                        min={FOOD_PRICE_FLOOR}
+                        min={GROCERY_PRICE_FLOOR}
                         step='any'
                         placeholder={offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'}
                         value={local.offerPrice}

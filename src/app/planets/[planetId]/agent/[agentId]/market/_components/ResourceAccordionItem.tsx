@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
-import { FOOD_PRICE_FLOOR } from '@/simulation/constants';
+import { GROCERY_PRICE_FLOOR } from '@/simulation/constants';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import type { ResourceAccordionItemProps } from './marketTypes';
 import { TTL_FEEDBACK } from './marketTypes';
@@ -332,7 +332,7 @@ export default function ResourceAccordionItem({
         const sellPayload: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }> = {
             [resourceName]: {
                 ...(local.offerAutomated !== (offer?.automated ?? false) && { automated: local.offerAutomated }),
-                ...(!isNaN(offerPrice) && offerPrice >= FOOD_PRICE_FLOOR && { offerPrice }),
+                ...(!isNaN(offerPrice) && offerPrice >= GROCERY_PRICE_FLOOR && { offerPrice }),
                 ...(!isNaN(offerRetainment) && offerRetainment >= 0 && { offerRetainment }),
             },
         };

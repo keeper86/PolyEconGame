@@ -32,19 +32,9 @@ export const stoneQuarryResourceType: Resource = {
     name: 'Stone Quarry',
 };
 
-export const bauxiteDepositResourceType: Resource = {
-    ...landBoundResourceDefault,
-    name: 'Bauxite Deposit',
-};
-
 export const copperDepositResourceType: Resource = {
     ...landBoundResourceDefault,
     name: 'Copper Deposit',
-};
-
-export const rareEarthDepositResourceType: Resource = {
-    ...landBoundResourceDefault,
-    name: 'Rare Earth Deposit',
 };
 
 export const sandDepositResourceType: Resource = {
@@ -75,14 +65,4 @@ export const arableLandResourceType: Resource = {
 export const waterSourceResourceType: Resource = {
     ...landBoundResourceDefault,
     name: 'Water Source',
-};
-
-export const phosphateRockDepositResourceType: Resource = {
-    ...landBoundResourceDefault,
-    name: 'Phosphate Rock Deposit',
-};
-
-export const potashDepositResourceType: Resource = {
-    ...landBoundResourceDefault,
-    name: 'Potash Deposit',
 };

@@ -8,17 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FacilityIcon } from '@/components/client/FacilityIcon';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { useTRPC } from '@/lib/trpc';
-import {
-    FACILITY_LEVELS,
-    FACILITY_LEVEL_LABELS,
-    facilitiesByLevel,
-    type FacilityCatalogEntry,
-} from '@/simulation/planet/facilityCatalog';
+
 import type { ProductionFacility } from '@/simulation/planet/storage';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { formatNumbers } from '@/lib/utils';
+import type { FacilityCatalogEntry } from '@/simulation/planet/facilities';
+import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/facilities';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';

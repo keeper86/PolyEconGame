@@ -72,11 +72,12 @@ export function workforceDemographicTick(agents: Map<string, Agent>, planet: Pla
                 }
 
                 const retirementProb = perTickRetirement(age);
-                const starvationLevel = planet.population.demography[age]?.employed?.[edu]?.[skill]?.starvationLevel;
+                const populationCategory = planet.population.demography[age]?.employed?.[edu]?.[skill];
+                const starvationLevel = populationCategory?.services?.grocery?.starvationLevel ?? 0;
 
-                if (starvationLevel === undefined) {
+                if (populationCategory === undefined) {
                     throw new Error(
-                        `Missing starvation level for age ${age}, edu ${edu}, skill ${skill} in workforce demographic tick. This should never happen because the workforce category should always be in sync with the population cell, which always has a starvation level (default 0).`,
+                        `Missing population category for age ${age}, edu ${edu}, skill ${skill} in workforce demographic tick. This should never happen because the workforce category should always be in sync with the population cell.`,
                     );
                 }
 

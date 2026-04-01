@@ -93,7 +93,7 @@ export function applyDisability(planet: Planet, workforceEvents: WorkforceEventA
             } else {
                 const perTickDisabilityProb = computeTotalDisabilityProbability(
                     age,
-                    category.starvationLevel,
+                    category.services.grocery.starvationLevel,
                     environmentalDisability,
                 );
 

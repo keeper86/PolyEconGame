@@ -8,8 +8,8 @@
  * require data spanning many ticks.
  */
 
+import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
-import { workerQueries } from '../../simulation/workerClient/queries';
 import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
 import {
@@ -21,9 +21,9 @@ import {
     summarisePlanetAssets,
     type AgentPlanetSummary,
 } from '../../simulation/snapshotRepository';
+import { workerQueries } from '../../simulation/workerClient/queries';
 import { db } from '../db';
 import { protectedProcedure } from '../trpcRoot';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
 
 const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
@@ -79,7 +79,7 @@ export const getLatestPlanetSummaries = () =>
                         equity: p.bank.equity,
                         deposits: p.bank.deposits,
                     },
-                    foodPrice: p.marketPrices[agriculturalProductResourceType.name] ?? 1,
+                    foodPrice: p.marketPrices[groceryServiceResourceType.name] ?? 1,
                     name: p.name,
                 })),
             };

@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PRICE_ADJUST_MAX_UP, FOOD_PRICE_CEIL as PRICE_CEIL, FOOD_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
+import {
+    PRICE_ADJUST_MAX_UP,
+    GROCERY_PRICE_CEIL as PRICE_CEIL,
+    GROCERY_PRICE_FLOOR as PRICE_FLOOR,
+} from '../constants';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
@@ -153,8 +157,7 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        // factor = (1 + 0.01 * nextRandom()) * PRICE_ADJUST_MAX_UP with seed 42
-        expect(newPrice).toBeCloseTo(10.58886696775211, 5);
+        expect(newPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_UP, 5);
     });
 
     it('applies PRICE_ADJUST_MAX_DOWN when nothing was sold despite having stock (zero sell-through)', () => {
@@ -165,11 +168,10 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        // factor = (1 + 0.01 * nextRandom()) * PRICE_ADJUST_MAX_DOWN with seed 42
-        expect(newPrice).toBeCloseTo(9.580403447013813, 5);
+        expect(newPrice).toBeCloseTo(PRICE * 0.95, 5);
     });
 
-    it('has small price drift when sell-through equals the target (±1% noise from PRNG)', () => {
+    it('has no price drift when sell-through exactly equals the target', () => {
         const TARGET_SELL_THROUGH = 0.9;
         const PRICE = 10;
         const STOCK = 1000;
@@ -179,8 +181,8 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        // sellThroughFactor(TARGET) == 1, so only the (1 + 0.01 * r) noise survives; seed 42
-        expect(newPrice).toBeCloseTo(10.084635207382961, 5);
+        // sellThroughFactor(TARGET) == 1.0 exactly, so price is unchanged
+        expect(newPrice).toBeCloseTo(PRICE, 5);
     });
 
     it('recovers quickly from the price floor under persistent full sell-through', () => {
@@ -194,16 +196,17 @@ describe('automaticPricing — offer price tâtonnement', () => {
         expect(newPrice).toBeCloseTo(PRICE_FLOOR * PRICE_ADJUST_MAX_UP);
     });
 
-    it('raises price when agent has no stock (supply-constrained, intermittent production)', () => {
+    it('does not change price when agent has no stock and sold nothing (intermittent production)', () => {
         const PRICE = 10;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE, 0, 0);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_UP);
+        // stock=0, sold=0 → supply-constrained with no prior sales → price unchanged
+        expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBeCloseTo(PRICE);
     });
 
-    it('does not exceed FOOD_PRICE_CEIL', () => {
+    it('does not exceed GROCERY_PRICE_CEIL', () => {
         const STOCK = 1000;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE_CEIL, STOCK, STOCK);
 

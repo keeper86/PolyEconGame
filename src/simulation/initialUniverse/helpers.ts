@@ -1,5 +1,5 @@
-import { FOOD_BUFFER_TARGET_TICKS, FOOD_PER_PERSON_PER_TICK, TICKS_PER_YEAR } from '../constants';
-import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
 import type { Resource } from '../planet/planet';
 import {
     createEmptyDemographicEventCounters,
@@ -8,15 +8,14 @@ import {
     type ResourceClaim,
     type ResourceQuantity,
 } from '../planet/planet';
+import type { ProductionFacility, StorageFacility } from '../planet/storage';
 import {
-    type Population,
     MAX_AGE,
     createEmptyPopulationCohort,
     forEachPopulationCohort,
+    type Population,
 } from '../population/population';
 import { makeWorkforceDemography } from '../utils/testHelper';
-import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
-import { agriculturalProductResourceType } from '../planet/resources';
 
 export type ResourceClaimEntry = ResourceQuantity & ResourceClaim;
 
@@ -207,11 +206,12 @@ export function createPopulation(total: number): Population {
         }
     }
 
-    const foodBufferPerPerson = FOOD_BUFFER_TARGET_TICKS * FOOD_PER_PERSON_PER_TICK;
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {
-                category.inventory[agriculturalProductResourceType.name] = 3 * category.total * foodBufferPerPerson;
+                // Initialize with a full buffer so the population has 3 months of
+                // grocery coverage before starvation can begin.
+                category.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS * 8;
             }
         });
     }

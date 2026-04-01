@@ -1,6 +1,6 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
-import { FOOD_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
+import { GROCERY_PRICE_FLOOR as PRICE_FLOOR } from '../constants';
 import { ALL_RESOURCES } from '../planet/resourceCatalog';
 
 /**

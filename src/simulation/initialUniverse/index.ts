@@ -1,25 +1,27 @@
 import type { GameState, Planet } from '../planet/planet';
-import { buildEarth, EARTH_ID } from './earth';
-import { buildAlphaCentauri, AC_ID } from './alphaCentauri';
+import { AC_ID, buildAlphaCentauri } from './alphaCentauri';
+import { EARTH_ID } from './earth';
+import { buildProceduralWorld, PROC_PLANET_ID } from './proceduralWorld';
 import { buildSmallPlanets } from './smallPlanets';
 
-export { EARTH_ID, AC_ID };
 export {
+    createPopulation,
+    makeAgent,
+    makeAgentPlanetAssets,
+    makeAgriculturalProduction,
+    makeDefaultEnvironment,
     makeProductionFacility,
     makeStorage,
-    makeAgentPlanetAssets,
-    makeAgent,
-    createPopulation,
-    makeDefaultEnvironment,
     makeWaterExtraction,
-    makeAgriculturalProduction,
     type ResourceClaimEntry,
 } from './helpers';
 export { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
+export { AC_ID, EARTH_ID, PROC_PLANET_ID };
 
 export function createInitialGameState(): GameState {
-    const { planet: earth, agents: earthAgents } = buildEarth();
+    const { planet: earth, agents: earthAgents } = buildProceduralWorld();
     const { planet: alphaCentauri, agents: acAgents } = buildAlphaCentauri();
+
     const smallPlanets = buildSmallPlanets();
 
     const allAgents = [...earthAgents, ...acAgents, ...smallPlanets.flatMap((p) => p.agents)];

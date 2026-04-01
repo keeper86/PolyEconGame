@@ -30,6 +30,8 @@ export default function ResourceTrigger({
                 return overviewRow ? formatNumbers(overviewRow.clearingPrice) : null;
             case 'totalProduction':
                 return overviewRow ? formatNumbers(overviewRow.totalProduction) : null;
+            case 'totalConsumption':
+                return overviewRow ? formatNumbers(overviewRow.totalConsumption) : null;
             case 'totalSupply':
                 return overviewRow ? formatNumbers(overviewRow.totalSupply) : null;
             case 'totalDemand':
@@ -59,6 +61,7 @@ export default function ResourceTrigger({
             case 'clearingPrice':
                 return 'text-foreground font-semibold';
             case 'totalProduction':
+            case 'totalConsumption':
             case 'totalSupply':
             case 'totalDemand':
             case 'totalSold':
@@ -77,6 +80,8 @@ export default function ResourceTrigger({
                 return overviewRow?.clearingPrice ?? 0;
             case 'totalProduction':
                 return overviewRow?.totalProduction ?? 0;
+            case 'totalConsumption':
+                return overviewRow?.totalConsumption ?? 0;
             case 'totalSupply':
                 return overviewRow?.totalSupply ?? 0;
             case 'totalDemand':

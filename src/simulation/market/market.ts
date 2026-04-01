@@ -1,11 +1,12 @@
-import { EPSILON, INITIAL_FOOD_PRICE } from '../constants';
+import { EPSILON } from '../constants';
+import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/storage';
-import { agriculturalProductResourceType } from '../planet/resources';
 import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';
-import { binHouseholdBids, buildPopulationDemandForResource, householdDemandPriority } from './populationDemand';
+import { binHouseholdBids, buildPopulationDemand, householdDemandPriority } from './populationDemand';
 import { computeMarketSummary, settleAgentBuyers, settleAgentSellers, settleHouseholds } from './settlement';
+import type { BidOrder } from './marketTypes';
 
 export type { BidOrder } from './marketTypes';
 
@@ -18,10 +19,14 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
 
     const agentBidBooks = collectAgentBids(agents, planet);
 
+    // Build all household demand once with sequential budget allocation so that
+    // higher-priority services consume wealth before lower-priority ones.
+    const householdBidMap = buildPopulationDemand(planet);
+
     const resourceOrder = buildResourceOrder(askBooks, agentBidBooks);
 
     for (const resourceName of resourceOrder) {
-        clearResourceMarket(resourceName, askBooks, agentBidBooks, planet);
+        clearResourceMarket(resourceName, askBooks, agentBidBooks, householdBidMap, planet);
     }
 
     releaseRemainingHolds(agents, planet);
@@ -56,23 +61,20 @@ function clearResourceMarket(
     resourceName: string,
     askBooks: ReturnType<typeof collectAgentOffers>,
     agentBidBooks: ReturnType<typeof collectAgentBids>,
+    householdBidMap: Map<string, BidOrder[]>,
     planet: Planet,
 ): void {
     const askOrders = askBooks.get(resourceName) ?? [];
     const agentBids = agentBidBooks.get(resourceName) ?? [];
 
-    // Household bids are built after higher-priority goods are settled so
-    // each cohort's remaining wealth is already up to date.
-    const householdBids = buildPopulationDemandForResource(planet, resourceName).sort(
-        (a, b) => b.bidPrice - a.bidPrice,
-    );
+    const householdBids = (householdBidMap.get(resourceName) ?? []).slice().sort((a, b) => b.bidPrice - a.bidPrice);
 
     const totalSupply = askOrders.reduce((s, a) => s + a.quantity, 0);
     const householdDemand = householdBids.reduce((s, b) => s + b.quantity, 0);
     const agentDemand = agentBids.reduce((s, b) => s + b.quantity, 0);
     const totalDemand = householdDemand + agentDemand;
 
-    const referencePrice = referencePriceFor(planet, resourceName);
+    const referencePrice = initialMarketPrices[resourceName] ?? 1;
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
         // No trades possible: release any escrowed goods back to free stock
@@ -123,7 +125,9 @@ function clearResourceMarket(
         planet.marketPrices[resourceName] = clearingPrice;
     }
 
-    const unsoldSupply = totalSupply - totalVolume;
+    // Clamp to zero: floating-point arithmetic in the matching engine can
+    // produce a volume marginally above totalSupply (≈ 1e-13 noise).
+    const unsoldSupply = Math.max(0, totalSupply - totalVolume);
 
     planet.lastMarketResult[resourceName] = {
         resourceName,
@@ -135,11 +139,4 @@ function clearResourceMarket(
         unsoldSupply,
         populationBids: binHouseholdBids(householdBids, householdBidFilled, householdBidCosts),
     };
-}
-
-function referencePriceFor(planet: Planet, resourceName: string): number {
-    return (
-        planet.marketPrices[resourceName] ??
-        (resourceName === agriculturalProductResourceType.name ? INITIAL_FOOD_PRICE : 1)
-    );
 }

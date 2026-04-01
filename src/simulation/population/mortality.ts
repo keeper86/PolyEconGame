@@ -113,7 +113,7 @@ export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAc
                 }
             } else {
                 const mortalityPerTick = computeMortalityProbabilityPerTick(
-                    category.starvationLevel,
+                    category.services.grocery.starvationLevel,
                     environmentalMortality,
                     age,
                 );

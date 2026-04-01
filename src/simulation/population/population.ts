@@ -1,4 +1,3 @@
-import { stochasticRound } from '../utils/stochasticRound';
 import { type WorkforceCohort } from '../workforce/workforce';
 import type { EducationLevelType } from './education';
 import { educationLevelKeys } from './education';
@@ -91,22 +90,31 @@ export type DisabilityStats = DemographyStat & {
 };
 export type DemographicEventType = RetirementStats['type'] | DeathStats['type'] | DisabilityStats['type'];
 
+export type ServiceState = {
+    buffer: number;
+    starvationLevel: number;
+};
+
 export type PopulationCategory = {
     total: number;
     // Gaussian moments of per-capita monetary wealth for this category
     wealth: GaussianMoments;
-    /**
-     * Per-resource household inventory (total for this category, not per capita).
-     * Keyed by resource name, e.g. `inventory['Agricultural Product']`.
-     * Previously the single field `foodStock` lived here directly.
-     */
-    inventory: { [resourceName: string]: number };
-    // category-bound starvation level (0 to 1)
-    starvationLevel: number;
+
+    services: {
+        grocery: ServiceState;
+        retail: ServiceState;
+        logistics: ServiceState;
+        healthcare: ServiceState;
+        construction: ServiceState;
+        administrative: ServiceState;
+    };
+
     deaths: DeathStats;
     disabilities: DisabilityStats;
     retirements: RetirementStats;
 };
+
+export type ServiceName = keyof PopulationCategory['services'];
 
 export type Cohort<T> = { [O in Occupation]: WorkforceCohort<T> };
 
@@ -119,11 +127,18 @@ export type Population = {
 // ---------------------------------------------------------------------------
 // Population utilities
 // ---------------------------------------------------------------------------
+export const nullServicesState = () => ({
+    grocery: { buffer: 0, starvationLevel: 0 },
+    retail: { buffer: 0, starvationLevel: 0 },
+    logistics: { buffer: 0, starvationLevel: 0 },
+    healthcare: { buffer: 0, starvationLevel: 0 },
+    construction: { buffer: 0, starvationLevel: 0 },
+    administrative: { buffer: 0, starvationLevel: 0 },
+});
 export const nullPopulationCategory = (): PopulationCategory => ({
     total: 0,
     wealth: { mean: 0, variance: 0 },
-    inventory: {},
-    starvationLevel: 0,
+    services: nullServicesState(),
     deaths: { type: 'death', countThisTick: 0, countThisMonth: 0, countLastMonth: 0 },
     disabilities: { type: 'disability', countThisTick: 0, countThisMonth: 0, countLastMonth: 0 },
     retirements: { type: 'retirement', countThisTick: 0, countThisMonth: 0, countLastMonth: 0 },
@@ -157,18 +172,13 @@ export const sumPopulationCohort = (cohorts: Cohort<PopulationCategory>[]): Coho
     return total;
 };
 
-export function mergePopulationCategory(dst: PopulationCategory, src: PopulationCategory, count: number): void {
-    if (count <= 0) {
-        return;
+export function forEachServiceState(
+    category: PopulationCategory,
+    forEachFunction: (serviceName: ServiceName, state: ServiceState) => void,
+): void {
+    for (const [serviceName, state] of Object.entries(category.services)) {
+        forEachFunction(serviceName as ServiceName, state);
     }
-    // Zero-sum wealth transfer: householdDeposits unchanged.
-    mergeWealthInto(dst, src, count);
-    for (const [resourceName, totalStock] of Object.entries(src.inventory)) {
-        const srcStockPer = src.total > 0 ? stochasticRound(totalStock / src.total) : 0;
-        dst.inventory[resourceName] = (dst.inventory[resourceName] ?? 0) + srcStockPer * count;
-    }
-
-    dst.total += count;
 }
 
 export type TransferResult = {
@@ -199,20 +209,41 @@ export const transferPopulation = (
     if (toCategory && to) {
         // Zero-sum wealth transfer between cells — householdDeposits unchanged.
         mergeWealthInto(toCategory, fromCategory, transferMaximum);
-        // Transfer proportional inventory of all resources
-        for (const [resourceName, totalStock] of Object.entries(fromCategory.inventory)) {
-            const inventoryTransfer =
-                fromCategory.total > 0 ? stochasticRound((transferMaximum * totalStock) / fromCategory.total) : 0;
-            toCategory.inventory[resourceName] = (toCategory.inventory[resourceName] ?? 0) + inventoryTransfer;
-            fromCategory.inventory[resourceName] = totalStock - inventoryTransfer;
+
+        // Transfer proportional service buffers.
+        // `buffer` is "coverage ticks for the group" — a per-capita-equivalent metric
+        // (analogous to wealth.mean).  Physical food per person is buffer × rate, so
+        // when transferring people, the FROM group's coverage is unchanged and the TO
+        // group receives a weighted average of its own buffer and the FROM buffer.
+        const toCurrentTotal = toCategory.total;
+        const toNewTotal = toCurrentTotal + transferMaximum;
+        for (const serviceName of Object.keys(fromCategory.services) as ServiceName[]) {
+            const fromService = fromCategory.services[serviceName];
+            const toService = toCategory.services[serviceName];
+
+            // Weighted average: each arriving person carries fromService.buffer ticks.
+            toCategory.services[serviceName] = {
+                buffer:
+                    toNewTotal > 0
+                        ? (toService.buffer * toCurrentTotal + fromService.buffer * transferMaximum) / toNewTotal
+                        : fromService.buffer,
+                starvationLevel: toService.starvationLevel,
+            };
+            // FROM buffer is unchanged — conservation holds because food per-capita
+            // is preserved on both sides.
         }
 
         toCategory.total += transferMaximum;
         fromCategory.total -= transferMaximum;
 
         if (fromCategory.total === 0) {
-            fromCategory.starvationLevel = 0;
-            fromCategory.inventory = {};
+            // Reset all service states when category becomes empty
+            for (const serviceName of Object.keys(fromCategory.services) as ServiceName[]) {
+                fromCategory.services[serviceName] = {
+                    buffer: 0,
+                    starvationLevel: 0,
+                };
+            }
             fromCategory.wealth = { mean: 0, variance: 0 };
         }
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
@@ -224,7 +255,7 @@ export const transferPopulation = (
         inheritedWealth = destroyWealthOnDeath(fromCategory, transferMaximum);
         fromCategory.total -= transferMaximum;
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
-        // Food stock of the dead is taken by "neighbors"
+        // Service buffers of the dead are lost (not transferred to neighbors)
     }
 
     return { count: transferMaximum, inheritedWealth };
@@ -243,16 +274,38 @@ export const reducePopulationCohort = (cohort: Cohort<PopulationCategory>): Popu
 };
 
 export const populationSumFunction = (a: PopulationCategory, b: PopulationCategory): PopulationCategory => {
-    // Merge inventory: sum all resource quantities from both categories
-    const inventory: { [resourceName: string]: number } = { ...a.inventory };
-    for (const [name, qty] of Object.entries(b.inventory)) {
-        inventory[name] = (inventory[name] ?? 0) + qty;
+    // Merge services: sum buffers and compute weighted average of starvation levels
+    const services = { ...a.services };
+
+    for (const serviceName of Object.keys(services) as ServiceName[]) {
+        const serviceA = a.services[serviceName];
+        const serviceB = b.services[serviceName];
+        const totalPeople = a.total + b.total;
+
+        if (totalPeople > 0) {
+            // `buffer` is per-capita coverage ticks — use a population-weighted average.
+            const weightedBuffer = (serviceA.buffer * a.total + serviceB.buffer * b.total) / totalPeople;
+
+            // Weighted average of starvation levels
+            const weightedStarvation =
+                (a.total * serviceA.starvationLevel + b.total * serviceB.starvationLevel) / totalPeople;
+
+            services[serviceName] = {
+                buffer: weightedBuffer,
+                starvationLevel: Math.min(1, weightedStarvation),
+            };
+        } else {
+            services[serviceName] = {
+                buffer: 0,
+                starvationLevel: 0,
+            };
+        }
     }
+
     return {
         total: a.total + b.total,
         wealth: mergeGaussianMoments(a.total, a.wealth, b.total, b.wealth),
-        inventory,
-        starvationLevel: Math.min(1, (a.total * a.starvationLevel + b.total * b.starvationLevel) / (a.total + b.total)),
+        services,
         deaths: {
             type: 'death',
             countThisTick: a.deaths.countThisTick + b.deaths.countThisTick,

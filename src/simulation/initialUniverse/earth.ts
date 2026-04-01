@@ -1,7 +1,49 @@
-import { initialMarketPrices } from './initialMarketPrices';
+import {
+    administrativeCenter,
+    agriculturalProductionFacility,
+    beveragePlant,
+    cementPlant,
+    clayMine,
+    clothingFactory,
+    coalMine,
+    concretePlant,
+    constructionService,
+    consumerElectronicsFactory,
+    copperMine,
+    copperSmelter,
+    cottonFarm,
+    electronicComponentFactory,
+    foodProcessingPlant,
+    furnitureFactory,
+    glassFactory,
+    groceryChain,
+    hospital,
+    ironExtractionFacility,
+    ironSmelter,
+    limestoneQuarry,
+    loggingCamp,
+    logisticsHub,
+    machineryFactory,
+    naturalGasWell,
+    oilRefinery,
+    oilWell,
+    packagingPlant,
+    paperMill,
+    pesticidePlant,
+    pharmaceuticalPlant,
+    retailChain,
+    sandMine,
+    sawmill,
+    school,
+    siliconWaferFactory,
+    stoneQuarry,
+    textileMill,
+    university,
+    vehicleFactory,
+    waterExtractionFacility,
+} from '../planet/facilities';
 import {
     arableLandResourceType,
-    bauxiteDepositResourceType,
     clayDepositResourceType,
     coalDepositResourceType,
     copperDepositResourceType,
@@ -10,79 +52,31 @@ import {
     limestoneDepositResourceType,
     naturalGasFieldResourceType,
     oilReservoirResourceType,
-    phosphateRockDepositResourceType,
-    potashDepositResourceType,
-    rareEarthDepositResourceType,
     sandDepositResourceType,
     stoneQuarryResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
-import {
-    agriculturalProductionFacility,
-    aluminumSmelter,
-    bauxiteMine,
-    beveragePlant,
-    brickFactory,
-    cementPlant,
-    clayMine,
-    clothingFactory,
-    coalMine,
-    coalPowerPlant,
-    concretePlant,
-    consumerElectronicsFactory,
-    copperMine,
-    copperSmelter,
-    cottonFarm,
-    electronicComponentFactory,
-    fertilizerPlant,
-    foodProcessingPlant,
-    furnitureFactory,
-    glassFactory,
-    ironExtractionFacility,
-    ironSmelter,
-    limestoneQuarry,
-    loggingCamp,
-    machineryFactory,
-    naturalGasWell,
-    oilRefinery,
-    oilWell,
-    paperMill,
-    pesticidePlant,
-    pharmaceuticalPlant,
-    phosphateMine,
-    potashMine,
-    rareEarthMine,
-    sandMine,
-    sawmill,
-    stoneQuarry,
-    textileMill,
-    vehicleFactory,
-    waterExtractionFacility,
-} from '../planet/facilities';
 import type { Agent, Planet } from '../planet/planet';
-import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
-import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 import type { ResourceClaimEntry } from './helpers';
+import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
+import { initialMarketPrices } from './initialMarketPrices';
+import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 
 export const EARTH_ID = 'earth';
 const GOV = 'earth-government';
 
 const TOTAL_ARABLE = 1_500_000_000;
 const TOTAL_WATER = 2_000_000_000;
-const TOTAL_IRON_ORE = 5_000_000_000;
-const TOTAL_COAL = 4_000_000_000;
-const TOTAL_OIL = 3_000_000_000;
-const TOTAL_GAS = 2_500_000_000;
-const TOTAL_FOREST = 2_000_000_000;
-const TOTAL_COPPER = 1_500_000_000;
-const TOTAL_RARE_EARTH = 500_000_000;
-const TOTAL_SAND = 2_000_000_000;
-const TOTAL_PHOSPHATE = 1_000_000_000;
-const TOTAL_POTASH = 1_000_000_000;
-const TOTAL_BAUXITE = 1_200_000_000;
-const TOTAL_LIMESTONE = 3_000_000_000;
-const TOTAL_CLAY = 2_000_000_000;
-const TOTAL_STONE = 4_000_000_000;
+const TOTAL_IRON_ORE = 50_000_000_000;
+const TOTAL_COAL = 40_000_000_000;
+const TOTAL_OIL = 30_000_000_000;
+const TOTAL_GAS = 20_500_000_000;
+const TOTAL_FOREST = 200_000_000_000;
+const TOTAL_COPPER = 10_500_000_000;
+const TOTAL_SAND = 20_000_000_000;
+const TOTAL_LIMESTONE = 30_000_000_000;
+const TOTAL_CLAY = 20_000_000_000;
+const TOTAL_STONE = 40_000_000_000;
 
 interface AgriSpec {
     id: string;
@@ -192,12 +186,6 @@ const steelMfgSpecs: MfgSpec[] = [
     { id: 'titan-steel', name: 'Titan Steel Ltd' },
 ];
 
-const aluminumMfgSpecs: MfgSpec[] = [
-    { id: 'alutech-corp', name: 'AluTech Corp' },
-    { id: 'lightmetal-industries', name: 'Lightmetal Industries' },
-    { id: 'global-aluminium', name: 'Global Aluminium Co' },
-];
-
 const refineryMfgSpecs: MfgSpec[] = [
     { id: 'horizon-refinery', name: 'Horizon Refinery Corp' },
     { id: 'global-petrochem', name: 'Global Petrochemicals' },
@@ -240,6 +228,11 @@ const furnitureSpecs: MfgSpec[] = [
     { id: 'woodcraft-intl', name: 'Woodcraft International' },
 ];
 
+const siliconWaferSpecs: MfgSpec[] = [
+    { id: 'wafer-tech', name: 'WaferTech Corp' },
+    { id: 'global-wafers', name: 'Global Wafers Inc' },
+];
+
 const techMfgSpecs: MfgSpec[] = [
     { id: 'silicon-dynamics', name: 'Silicon Dynamics Corp' },
     { id: 'global-electronics', name: 'Global Electronics Inc' },
@@ -264,6 +257,54 @@ const vehicleSpecs: MfgSpec[] = [
     { id: 'precision-parts', name: 'Precision Parts Co' },
 ];
 
+const packagingSpecs: MfgSpec[] = [
+    { id: 'pack-global', name: 'PackGlobal Corp' },
+    { id: 'wrap-world', name: 'Wrap World Inc' },
+];
+
+const adminSpecs: MfgSpec[] = [
+    { id: 'global-admin-services', name: 'Global Admin Services' },
+    { id: 'civic-solutions', name: 'Civic Solutions Corp' },
+    { id: 'metro-admin-group', name: 'Metro Admin Group' },
+];
+
+const logisticsSpecs: MfgSpec[] = [
+    { id: 'swift-logistics', name: 'Swift Logistics Corp' },
+    { id: 'global-freight', name: 'Global Freight Ltd' },
+    { id: 'nexus-distribution', name: 'Nexus Distribution Inc' },
+];
+
+const grocerySpecs: MfgSpec[] = [
+    { id: 'freshmart-chain', name: 'FreshMart Chain' },
+    { id: 'world-grocery', name: 'World Grocery Corp' },
+    { id: 'daily-basket', name: 'Daily Basket Inc' },
+    { id: 'metro-grocers', name: 'Metro Grocers Ltd' },
+];
+
+const retailSpecs: MfgSpec[] = [
+    { id: 'omni-retail', name: 'OmniRetail Corp' },
+    { id: 'global-shops', name: 'Global Shops Ltd' },
+    { id: 'prime-retail-chain', name: 'Prime Retail Chain' },
+];
+
+const healthcareSpecs: MfgSpec[] = [
+    { id: 'healthnet-corp', name: 'HealthNet Corp' },
+    { id: 'global-care-ltd', name: 'Global Care Ltd' },
+    { id: 'metro-health-group', name: 'Metro Health Group' },
+];
+
+const constructionSvcSpecs: MfgSpec[] = [
+    { id: 'buildright-services', name: 'BuildRight Services' },
+    { id: 'urban-construct-co', name: 'Urban Construct Co' },
+    { id: 'global-builders', name: 'Global Builders Corp' },
+];
+
+const educationSpecs: MfgSpec[] = [
+    { id: 'edu-network-corp', name: 'Edu Network Corp' },
+    { id: 'knowledge-global', name: 'Knowledge Global Ltd' },
+    { id: 'campus-systems', name: 'Campus Systems Inc' },
+];
+
 export function buildEarth(): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
     const arableClaims: ResourceClaimEntry[] = [];
@@ -274,11 +315,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     const gasClaims: ResourceClaimEntry[] = [];
     const forestClaims: ResourceClaimEntry[] = [];
     const copperClaims: ResourceClaimEntry[] = [];
-    const rareEarthClaims: ResourceClaimEntry[] = [];
     const sandClaims: ResourceClaimEntry[] = [];
-    const phosphateClaims: ResourceClaimEntry[] = [];
-    const potashClaims: ResourceClaimEntry[] = [];
-    const bauxiteClaims: ResourceClaimEntry[] = [];
     const limestoneClaims: ResourceClaimEntry[] = [];
     const clayClaims: ResourceClaimEntry[] = [];
     const stoneClaims: ResourceClaimEntry[] = [];
@@ -672,62 +709,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // --- Rare earth mining ---
-    const rareEarthId = 'earth-rare-earth-rare-elements';
-    govClaims.push(rareEarthId);
-    rareEarthClaims.push(
-        makeClaim({
-            id: rareEarthId,
-            type: rareEarthDepositResourceType,
-            quantity: 250_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'rare-elements-corp',
-            tenantCostInCoins: 25_000,
-            renewable: false,
-        }),
-    );
-    const re1 = rareEarthMine(EARTH_ID, 'rare-elements-mine');
-    re1.scale = 18;
-    re1.maxScale = 18;
-    agents.push(
-        makeAgent({
-            id: 'rare-elements-corp',
-            name: 'Rare Elements Corp',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [re1],
-            storage: makeStorage({ planetId: EARTH_ID, id: 'rare-elements-storage', name: 'Rare Elements Storage' }),
-            tenancies: [rareEarthId],
-        }),
-    );
-    const innerEarthRareId = 'earth-rare-earth-inner-earth';
-    govClaims.push(innerEarthRareId);
-    rareEarthClaims.push(
-        makeClaim({
-            id: innerEarthRareId,
-            type: rareEarthDepositResourceType,
-            quantity: 150_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'inner-earth-mining',
-            tenantCostInCoins: 15_000,
-            renewable: false,
-        }),
-    );
-    const re2 = rareEarthMine(EARTH_ID, 'inner-earth-rare-mine');
-    re2.scale = 10;
-    re2.maxScale = 10;
-    agents.push(
-        makeAgent({
-            id: 'inner-earth-mining',
-            name: 'Inner Earth Mining Co',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [re2],
-            storage: makeStorage({ planetId: EARTH_ID, id: 'inner-earth-storage', name: 'Inner Earth Storage' }),
-            tenancies: [innerEarthRareId],
-        }),
-    );
-
     // --- Sand mining ---
     const desertSandId = 'earth-sand-desert-sand';
     govClaims.push(desertSandId);
@@ -781,190 +762,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             facilities: [ds2],
             storage: makeStorage({ planetId: EARTH_ID, id: 'sahara-sand-storage', name: 'Sahara Sand Storage' }),
             tenancies: [saharaSandId],
-        }),
-    );
-
-    // --- Phosphate mining ---
-    const phosphateId = 'earth-phosphate-phosphate-global';
-    govClaims.push(phosphateId);
-    phosphateClaims.push(
-        makeClaim({
-            id: phosphateId,
-            type: phosphateRockDepositResourceType,
-            quantity: 500_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'phosphate-global',
-            tenantCostInCoins: 30_000,
-            renewable: false,
-        }),
-    );
-    const ph1 = phosphateMine(EARTH_ID, 'phosphate-global-mine');
-    ph1.scale = 35;
-    ph1.maxScale = 35;
-    agents.push(
-        makeAgent({
-            id: 'phosphate-global',
-            name: 'Phosphate Global',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [ph1],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'phosphate-global-storage',
-                name: 'Phosphate Global Storage',
-            }),
-            tenancies: [phosphateId],
-        }),
-    );
-    const maghrebPhosphateId = 'earth-phosphate-maghreb';
-    govClaims.push(maghrebPhosphateId);
-    phosphateClaims.push(
-        makeClaim({
-            id: maghrebPhosphateId,
-            type: phosphateRockDepositResourceType,
-            quantity: 300_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'maghreb-phosphate',
-            tenantCostInCoins: 20_000,
-            renewable: false,
-        }),
-    );
-    const ph2 = phosphateMine(EARTH_ID, 'maghreb-phosphate-mine');
-    ph2.scale = 25;
-    ph2.maxScale = 25;
-    agents.push(
-        makeAgent({
-            id: 'maghreb-phosphate',
-            name: 'Maghreb Phosphate Corp',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [ph2],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'maghreb-phosphate-storage',
-                name: 'Maghreb Phosphate Storage',
-            }),
-            tenancies: [maghrebPhosphateId],
-        }),
-    );
-
-    // --- Potash mining ---
-    const potashId = 'earth-potash-potash-supply';
-    govClaims.push(potashId);
-    potashClaims.push(
-        makeClaim({
-            id: potashId,
-            type: potashDepositResourceType,
-            quantity: 500_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'potash-ag-supply',
-            tenantCostInCoins: 30_000,
-            renewable: false,
-        }),
-    );
-    const pk1 = potashMine(EARTH_ID, 'potash-supply-mine');
-    pk1.scale = 1;
-    pk1.maxScale = 1;
-    agents.push(
-        makeAgent({
-            id: 'potash-ag-supply',
-            name: 'Potash Ag Supply',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [pk1],
-            storage: makeStorage({ planetId: EARTH_ID, id: 'potash-supply-storage', name: 'Potash Supply Storage' }),
-            tenancies: [potashId],
-        }),
-    );
-
-    // --- Bauxite mining (needed for aluminum smelting) ---
-    const bauxiteAtlasId = 'earth-bauxite-atlas-bauxite';
-    govClaims.push(bauxiteAtlasId);
-    bauxiteClaims.push(
-        makeClaim({
-            id: bauxiteAtlasId,
-            type: bauxiteDepositResourceType,
-            quantity: 400_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'atlas-bauxite-mining',
-            tenantCostInCoins: 40_000,
-            renewable: false,
-        }),
-    );
-    const bx1 = bauxiteMine(EARTH_ID, 'atlas-bauxite-mine');
-    bx1.scale = 5;
-    bx1.maxScale = 5;
-    agents.push(
-        makeAgent({
-            id: 'atlas-bauxite-mining',
-            name: 'Atlas Bauxite Mining',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [bx1],
-            storage: makeStorage({ planetId: EARTH_ID, id: 'atlas-bauxite-storage', name: 'Atlas Bauxite Storage' }),
-            tenancies: [bauxiteAtlasId],
-        }),
-    );
-    const tropicalBauxiteId = 'earth-bauxite-tropical-bauxite';
-    govClaims.push(tropicalBauxiteId);
-    bauxiteClaims.push(
-        makeClaim({
-            id: tropicalBauxiteId,
-            type: bauxiteDepositResourceType,
-            quantity: 350_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'tropical-bauxite-co',
-            tenantCostInCoins: 35_000,
-            renewable: false,
-        }),
-    );
-    const bx2 = bauxiteMine(EARTH_ID, 'tropical-bauxite-mine');
-    bx2.scale = 4;
-    bx2.maxScale = 4;
-    agents.push(
-        makeAgent({
-            id: 'tropical-bauxite-co',
-            name: 'Tropical Bauxite Co',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [bx2],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'tropical-bauxite-storage',
-                name: 'Tropical Bauxite Storage',
-            }),
-            tenancies: [tropicalBauxiteId],
-        }),
-    );
-    const pacificBauxiteId = 'earth-bauxite-pacific-bauxite';
-    govClaims.push(pacificBauxiteId);
-    bauxiteClaims.push(
-        makeClaim({
-            id: pacificBauxiteId,
-            type: bauxiteDepositResourceType,
-            quantity: 250_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'pacific-bauxite-corp',
-            tenantCostInCoins: 25_000,
-            renewable: false,
-        }),
-    );
-    const bx3 = bauxiteMine(EARTH_ID, 'pacific-bauxite-mine');
-    bx3.scale = 3;
-    bx3.maxScale = 3;
-    agents.push(
-        makeAgent({
-            id: 'pacific-bauxite-corp',
-            name: 'Pacific Bauxite Corp',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [bx3],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'pacific-bauxite-storage',
-                name: 'Pacific Bauxite Storage',
-            }),
-            tenancies: [pacificBauxiteId],
         }),
     );
 
@@ -1181,27 +978,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // --- Aluminum smelters (buy bauxite from market) ---
-    for (const spec of aluminumMfgSpecs) {
-        const alumSmelter = aluminumSmelter(EARTH_ID, `${spec.id}-alum`);
-        alumSmelter.scale = 5;
-        alumSmelter.maxScale = 5;
-        const powerPlant = coalPowerPlant(EARTH_ID, `${spec.id}-power`);
-        powerPlant.scale = 5;
-        powerPlant.maxScale = 5;
-
-        agents.push(
-            makeAgent({
-                id: spec.id,
-                name: spec.name,
-                associatedPlanetId: EARTH_ID,
-                planetId: EARTH_ID,
-                facilities: [powerPlant, alumSmelter],
-                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
-            }),
-        );
-    }
-
     // --- Oil refineries (buy crude oil from market) ---
     for (const spec of refineryMfgSpecs) {
         const refinery = oilRefinery(EARTH_ID, `${spec.id}-refinery`);
@@ -1221,7 +997,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     }
 
     // --- Building materials (buy limestone, clay, stone, sand from market) ---
-    const [concreteGiant, urbanMaterials, glassWorld, brickWorksIntl, stoneAgeQuarrying] = buildMaterialsSpecs;
+    const [concreteGiant, glassWorld, stoneAgeQuarrying] = buildMaterialsSpecs;
 
     const cg1 = cementPlant(EARTH_ID, 'concrete-giant-cement');
     cg1.scale = 2;
@@ -1243,23 +1019,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     const um1 = cementPlant(EARTH_ID, 'urban-materials-cement');
     um1.scale = 2;
     um1.maxScale = 2;
-    const um2 = brickFactory(EARTH_ID, 'urban-materials-brick');
-    um2.scale = 10;
-    um2.maxScale = 10;
-    agents.push(
-        makeAgent({
-            id: urbanMaterials.id,
-            name: urbanMaterials.name,
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [um1, um2],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'urban-materials-storage',
-                name: 'Urban Materials Storage',
-            }),
-        }),
-    );
 
     const gw1 = glassFactory(EARTH_ID, 'glass-world-factory');
     gw1.scale = 12;
@@ -1272,24 +1031,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             planetId: EARTH_ID,
             facilities: [gw1],
             storage: makeStorage({ planetId: EARTH_ID, id: 'glass-world-storage', name: 'Glass World Storage' }),
-        }),
-    );
-
-    const bw1 = brickFactory(EARTH_ID, 'brick-works-intl-factory');
-    bw1.scale = 10;
-    bw1.maxScale = 10;
-    agents.push(
-        makeAgent({
-            id: brickWorksIntl.id,
-            name: brickWorksIntl.name,
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [bw1],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'brick-works-intl-storage',
-                name: 'Brick Works Intl Storage',
-            }),
         }),
     );
 
@@ -1308,11 +1049,8 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     );
 
     // --- Fertilizer & chemicals (buy gas + phosphate/potash from market) ---
-    const [agroChem, soilScience, greenChem] = fertilizerChemSpecs;
+    const [agroChem, greenChem] = fertilizerChemSpecs;
 
-    const acf1 = fertilizerPlant(EARTH_ID, 'agrochem-fertilizer');
-    acf1.scale = 10;
-    acf1.maxScale = 10;
     const acf2 = pesticidePlant(EARTH_ID, 'agrochem-pesticide');
     acf2.scale = 8;
     acf2.maxScale = 8;
@@ -1322,22 +1060,8 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             name: agroChem.name,
             associatedPlanetId: EARTH_ID,
             planetId: EARTH_ID,
-            facilities: [acf1, acf2],
+            facilities: [acf2],
             storage: makeStorage({ planetId: EARTH_ID, id: 'agrochem-storage', name: 'AgroChem Storage' }),
-        }),
-    );
-
-    const ss1 = fertilizerPlant(EARTH_ID, 'soil-science-fertilizer');
-    ss1.scale = 8;
-    ss1.maxScale = 8;
-    agents.push(
-        makeAgent({
-            id: soilScience.id,
-            name: soilScience.name,
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [ss1],
-            storage: makeStorage({ planetId: EARTH_ID, id: 'soil-science-storage', name: 'Soil Science Storage' }),
         }),
     );
 
@@ -1556,6 +1280,36 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
+    // silicon wafer factories (buy sand from market) ---
+    const [waferTech, globalWafers] = siliconWaferSpecs;
+    const wt1 = siliconWaferFactory(EARTH_ID, 'wafer-tech-factory');
+    wt1.scale = 3;
+    wt1.maxScale = 3;
+    agents.push(
+        makeAgent({
+            id: waferTech.id,
+            name: waferTech.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [wt1],
+            storage: makeStorage({ planetId: EARTH_ID, id: 'wafer-tech-storage', name: 'Wafer Tech Storage' }),
+        }),
+    );
+
+    const gws1 = siliconWaferFactory(EARTH_ID, 'global-wafers-factory');
+    gws1.scale = 2;
+    gws1.maxScale = 2;
+    agents.push(
+        makeAgent({
+            id: globalWafers.id,
+            name: globalWafers.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [gws1],
+            storage: makeStorage({ planetId: EARTH_ID, id: 'global-wafers-storage', name: 'Global Wafers Storage' }),
+        }),
+    );
+
     // --- Electronic component factories (buy sand+copper+rareEarth+plastic from market) ---
     const [siliconDynamics, globalElectronics, circuitWorld] = techMfgSpecs;
 
@@ -1767,6 +1521,191 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
+    // --- Packaging plants (buy paper + plastic from market) ---
+    for (const spec of packagingSpecs) {
+        const f1 = packagingPlant(EARTH_ID, `${spec.id}-packaging`);
+        f1.scale = 100;
+        f1.maxScale = 100;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Administrative centers (buy paper + consumer electronics from market) ---
+    for (const spec of adminSpecs) {
+        const f1 = administrativeCenter(EARTH_ID, `${spec.id}-admin`);
+        f1.scale = 5000;
+        f1.maxScale = 5000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Logistics hubs (buy vehicle + fuel from market; need admin service) ---
+    for (const spec of logisticsSpecs) {
+        const f1 = logisticsHub(EARTH_ID, `${spec.id}-logistics`);
+        f1.scale = 2000;
+        f1.maxScale = 2000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Grocery chains (buy processed food + beverage + packaging from market; need logistics + admin services) ---
+    for (const spec of grocerySpecs) {
+        const f1 = groceryChain(EARTH_ID, `${spec.id}-grocery`);
+        f1.scale = 2000;
+        f1.maxScale = 2000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Retail chains (buy consumer electronics + clothing + furniture from market; need logistics + admin services) ---
+    for (const spec of retailSpecs) {
+        const f1 = retailChain(EARTH_ID, `${spec.id}-retail`);
+        f1.scale = 1000;
+        f1.maxScale = 1000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Hospitals (buy pharma + chemicals from market; need logistics + admin services) ---
+    for (const spec of healthcareSpecs) {
+        const f1 = hospital(EARTH_ID, `${spec.id}-hospital`);
+        f1.scale = 1000;
+        f1.maxScale = 1000;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Construction services (buy concrete + steel + machinery from market; need admin + logistics services) ---
+    for (const spec of constructionSvcSpecs) {
+        const f1 = constructionService(EARTH_ID, `${spec.id}-construction`);
+        f1.scale = 500;
+        f1.maxScale = 500;
+        agents.push(
+            makeAgent({
+                id: spec.id,
+                name: spec.name,
+                associatedPlanetId: EARTH_ID,
+                planetId: EARTH_ID,
+                facilities: [f1],
+                storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
+            }),
+        );
+    }
+
+    // --- Education providers (buy paper + furniture from market; need admin service) ---
+    const [eduNetwork, knowledgeGlobal, campusSystems] = educationSpecs;
+
+    const en1 = school(EARTH_ID, `${eduNetwork.id}-school`);
+    en1.scale = 500;
+    en1.maxScale = 500;
+    const en2 = university(EARTH_ID, `${eduNetwork.id}-university`);
+    en2.scale = 300;
+    en2.maxScale = 300;
+    agents.push(
+        makeAgent({
+            id: eduNetwork.id,
+            name: eduNetwork.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [en1, en2],
+            storage: makeStorage({
+                planetId: EARTH_ID,
+                id: `${eduNetwork.id}-storage`,
+                name: `${eduNetwork.name} Storage`,
+            }),
+        }),
+    );
+
+    const kg1 = school(EARTH_ID, `${knowledgeGlobal.id}-school`);
+    kg1.scale = 400;
+    kg1.maxScale = 400;
+    const kg2 = university(EARTH_ID, `${knowledgeGlobal.id}-university`);
+    kg2.scale = 200;
+    kg2.maxScale = 200;
+    agents.push(
+        makeAgent({
+            id: knowledgeGlobal.id,
+            name: knowledgeGlobal.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [kg1, kg2],
+            storage: makeStorage({
+                planetId: EARTH_ID,
+                id: `${knowledgeGlobal.id}-storage`,
+                name: `${knowledgeGlobal.name} Storage`,
+            }),
+        }),
+    );
+
+    const edu3s = school(EARTH_ID, `${campusSystems.id}-school`);
+    edu3s.scale = 300;
+    edu3s.maxScale = 300;
+    const edu3u = university(EARTH_ID, `${campusSystems.id}-university`);
+    edu3u.scale = 150;
+    edu3u.maxScale = 150;
+    agents.push(
+        makeAgent({
+            id: campusSystems.id,
+            name: campusSystems.name,
+            associatedPlanetId: EARTH_ID,
+            planetId: EARTH_ID,
+            facilities: [edu3s, edu3u],
+            storage: makeStorage({
+                planetId: EARTH_ID,
+                id: `${campusSystems.id}-storage`,
+                name: `${campusSystems.name} Storage`,
+            }),
+        }),
+    );
+
     // --- Unclaimed remainders ---
     const remainders = [
         { claims: arableClaims, total: TOTAL_ARABLE, type: arableLandResourceType, prefix: 'earth-arable' },
@@ -1777,21 +1716,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         { claims: gasClaims, total: TOTAL_GAS, type: naturalGasFieldResourceType, prefix: 'earth-gas' },
         { claims: forestClaims, total: TOTAL_FOREST, type: forestResourceType, prefix: 'earth-forest' },
         { claims: copperClaims, total: TOTAL_COPPER, type: copperDepositResourceType, prefix: 'earth-copper' },
-        {
-            claims: rareEarthClaims,
-            total: TOTAL_RARE_EARTH,
-            type: rareEarthDepositResourceType,
-            prefix: 'earth-rare-earth',
-        },
         { claims: sandClaims, total: TOTAL_SAND, type: sandDepositResourceType, prefix: 'earth-sand' },
-        {
-            claims: phosphateClaims,
-            total: TOTAL_PHOSPHATE,
-            type: phosphateRockDepositResourceType,
-            prefix: 'earth-phosphate',
-        },
-        { claims: potashClaims, total: TOTAL_POTASH, type: potashDepositResourceType, prefix: 'earth-potash' },
-        { claims: bauxiteClaims, total: TOTAL_BAUXITE, type: bauxiteDepositResourceType, prefix: 'earth-bauxite' },
         {
             claims: limestoneClaims,
             total: TOTAL_LIMESTONE,
@@ -1856,11 +1781,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             [naturalGasFieldResourceType.name]: gasClaims,
             [forestResourceType.name]: forestClaims,
             [copperDepositResourceType.name]: copperClaims,
-            [rareEarthDepositResourceType.name]: rareEarthClaims,
             [sandDepositResourceType.name]: sandClaims,
-            [phosphateRockDepositResourceType.name]: phosphateClaims,
-            [potashDepositResourceType.name]: potashClaims,
-            [bauxiteDepositResourceType.name]: bauxiteClaims,
             [limestoneDepositResourceType.name]: limestoneClaims,
             [clayDepositResourceType.name]: clayClaims,
             [stoneQuarryResourceType.name]: stoneClaims,

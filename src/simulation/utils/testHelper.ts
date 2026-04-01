@@ -15,8 +15,6 @@
  */
 
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import type { ProductionFacility, StorageFacility } from '../planet/storage';
-import { agriculturalProductResourceType } from '../planet/resources';
 import {
     createEmptyDemographicEventCounters,
     type Agent,
@@ -27,6 +25,7 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
+import type { ProductionFacility, StorageFacility } from '../planet/storage';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -298,23 +297,6 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         escrow: {},
         ...overrides,
     } as StorageFacility;
-}
-
-/**
- * Create a StorageFacility pre-loaded with a given quantity of
- * agricultural product (food).
- */
-export function makeStorageFacilityWithFood(quantity: number, planetId = 'p'): StorageFacility {
-    return makeStorageFacility({
-        planetId,
-        id: `storage-${planetId}`,
-        currentInStorage: {
-            [agriculturalProductResourceType.name]: {
-                resource: agriculturalProductResourceType,
-                quantity,
-            },
-        },
-    });
 }
 
 /**

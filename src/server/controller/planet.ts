@@ -7,17 +7,17 @@
  * keeping payloads small.
  */
 
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
-import { protectedProcedure } from '../trpcRoot';
-import { workerQueries } from '../../simulation/workerClient/queries';
-import { computePopulationTotal, computeGlobalStarvation } from '../../simulation/snapshotRepository';
+import { INITIAL_GROCERY_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
+import type { Agent, Planet } from '../../simulation/planet/planet';
+import { educationLevelKeys } from '../../simulation/population/education';
 import type { Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
-import { educationLevelKeys } from '../../simulation/population/education';
-import type { Agent, Planet } from '../../simulation/planet/planet';
-import { INITIAL_FOOD_PRICE } from '../../simulation/constants';
-import { agriculturalProductResourceType } from '@/simulation/planet/resources';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { computeGlobalStarvation, computePopulationTotal } from '../../simulation/snapshotRepository';
+import { workerQueries } from '../../simulation/workerClient/queries';
+import { protectedProcedure } from '../trpcRoot';
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -226,7 +226,7 @@ export const getPlanetEconomy = () =>
                     planetName: planet.name,
                     bank: planet.bank,
                     wagePerEdu: (planet.wagePerEdu as Record<string, number> | null) ?? null,
-                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? null,
+                    priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? null,
                     demography: buildSlimDemographyForEconomy(planet),
                     lastTransferMatrix: planet.population.lastTransferMatrix,
                 },
@@ -273,8 +273,10 @@ function buildFoodDemography(planet: Planet): FoodCohort[] {
                     const cat = cohort[occ][edu][skill];
                     slimCohort[occ][edu][skill] = {
                         total: cat.total,
-                        foodStock: cat.inventory[agriculturalProductResourceType.name] ?? 0,
-                        starvationLevel: cat.starvationLevel,
+                        // Convert buffer (ticks) → service units so callers can
+                        // compare against SERVICE_TARGET_PER_PERSON (= 1.0 unit).
+                        foodStock: cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total,
+                        starvationLevel: cat.services.grocery.starvationLevel,
                     };
                 }
             }
@@ -313,7 +315,7 @@ export const getPlanetFood = () =>
                 food: {
                     planetName: planet.name,
                     demography: buildFoodDemography(planet),
-                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? 1,
+                    priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
                 },
             };
@@ -433,8 +435,10 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                             continue;
                         }
                         gPop += cat.total;
-                        gFoodStock += cat.inventory[agriculturalProductResourceType.name] ?? 0;
-                        gWeightedStarvation += cat.total * cat.starvationLevel;
+                        // Convert buffer (ticks) → service units so the client
+                        // ratio = gFoodStock/pop / SERVICE_TARGET_PER_PERSON normalises correctly.
+                        gFoodStock += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
+                        gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                     }
                 }
@@ -514,7 +518,7 @@ export const getPlanetDemographicsFull = () =>
                     planetName: planet.name,
                     groupMode: input.groupMode,
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
-                    priceLevel: planet.marketPrices[agriculturalProductResourceType.name] ?? 1,
+                    priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
                     starvationLevel: computeGlobalStarvation(planet),
                     lastTransferMatrix: planet.population.lastTransferMatrix,
                 },
@@ -549,7 +553,7 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
             continue;
         }
 
-        const offerPrice = offer.lastOfferPrice ?? offer.offerPrice ?? INITIAL_FOOD_PRICE;
+        const offerPrice = offer.lastOfferPrice ?? offer.offerPrice ?? INITIAL_GROCERY_PRICE;
         const lastPlacedQuantity = offer.lastPlacedQty ?? 0;
         const lastSold = offer.lastSold ?? 0;
         const lastRevenue = offer.lastRevenue ?? 0;
@@ -828,6 +832,7 @@ const marketOverviewRowSchema = z.object({
     level: z.string(),
     clearingPrice: z.number(),
     totalProduction: z.number(),
+    totalConsumption: z.number(),
     totalSupply: z.number(),
     totalDemand: z.number(),
     totalSold: z.number(),
@@ -852,6 +857,22 @@ function computePlanetProduction(agents: Agent[], planetId: string): Record<stri
     return production;
 }
 
+function computePlanetConsumption(agents: Agent[], planetId: string): Record<string, number> {
+    const consumption: Record<string, number> = {};
+    for (const agent of agents) {
+        const assets = agent.assets[planetId];
+        if (!assets) {
+            continue;
+        }
+        for (const fac of assets.productionFacilities ?? []) {
+            for (const [resourceName, qty] of Object.entries(fac.lastTickResults?.lastConsumed ?? {})) {
+                consumption[resourceName] = (consumption[resourceName] ?? 0) + qty;
+            }
+        }
+    }
+    return consumption;
+}
+
 export const getPlanetMarketOverview = () =>
     protectedProcedure
         .input(z.object({ planetId: z.string() }))
@@ -873,6 +894,7 @@ export const getPlanetMarketOverview = () =>
             }
 
             const production = computePlanetProduction(agents, input.planetId);
+            const consumption = computePlanetConsumption(agents, input.planetId);
 
             const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
                 const result = planet.lastMarketResult[resource.name];
@@ -887,6 +909,7 @@ export const getPlanetMarketOverview = () =>
                     level: resource.level,
                     clearingPrice,
                     totalProduction: production[resource.name] ?? 0,
+                    totalConsumption: consumption[resource.name] ?? 0,
                     totalSupply,
                     totalDemand,
                     totalSold,

@@ -2,7 +2,9 @@ export const START_YEAR = 2200;
 export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
-export const FOOD_PER_PERSON_PER_TICK = 1 / TICKS_PER_YEAR; // tons per person per tick
+
+/** Service consumption per person per tick (1 unit/person/tick for all services) */
+export const SERVICE_PER_PERSON_PER_TICK = 1 / 30;
 
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
@@ -22,41 +24,53 @@ export const isMonthBoundary = (tick: number): boolean => tick > 0 && tick % TIC
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
 
 // ---------------------------------------------------------------------------
-// Food market constants
+// Grocery service market constants
 // ---------------------------------------------------------------------------
 
 /**
- * Household food buffer target expressed as days of consumption.
- * Each cohort-class will try to maintain this many days of food stock.
+ * Household grocery service buffer target expressed in ticks of consumption.
+ * Population tries to maintain this many ticks worth of grocery service.
+ * 1 month = TICKS_PER_MONTH ticks.
  */
-export const FOOD_BUFFER_TARGET_DAYS = 30;
+export const GROCERY_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
 
 /**
- * Household food buffer target expressed in ticks of consumption.
- * foodTarget per person = FOOD_BUFFER_TARGET_TICKS × FOOD_PER_PERSON_PER_TICK
+ * Service buffer targets expressed in ticks of consumption.
+ * Each service has its own buffer target for household inventory management.
  */
-export const FOOD_BUFFER_TARGET_TICKS = FOOD_BUFFER_TARGET_DAYS;
+export const HEALTHCARE_BUFFER_TARGET_TICKS = 4;
+export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 3;
+export const LOGISTICS_BUFFER_TARGET_TICKS = 4;
+export const RETAIL_BUFFER_TARGET_TICKS = 10;
+export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
 
 /**
- * Price adjustment rate when inventory is *below* target (scarcity → price rises).
+ * Minimum grocery service price (prevents zero or negative prices).
  */
-export const FOOD_PRICE_ALPHA = 0.002;
+export const GROCERY_PRICE_FLOOR = 0.01;
+export const GROCERY_PRICE_CEIL = 1000000.0;
 
 /**
- * Price adjustment rate when inventory is *above* target (surplus → price falls).
+ * Initial grocery service price per unit (currency units per service unit).
  */
-export const FOOD_PRICE_BETA = 0.001;
+export const INITIAL_GROCERY_PRICE = 1.0;
 
 /**
- * Minimum food price (prevents zero or negative prices).
+ * Minimum buffer fill fraction used to compute the urgency multiplier in
+ * household demand bids and intergenerational transfer needs.
+ *
+ *   effectiveMultiplier = willingnessMultiplier / max(bufferFill, MIN_SERVICE_BUFFER_FILL)
+ *
+ * At empty buffer (fill = 0): urgency ≈ 1 / 0.01 = 100×.
+ * At full  buffer (fill = 1): urgency = 1× (base willingness).
  */
-export const FOOD_PRICE_FLOOR = 0.01;
-export const FOOD_PRICE_CEIL = 1000000.0;
+export const MIN_SERVICE_BUFFER_FILL = 0.01;
 
 /**
- * Initial food price per unit (currency units per ton of agricultural product).
+ * Initial service price per unit (currency units per service unit).
+ * Services require more infrastructure and labor than basic food.
  */
-export const INITIAL_FOOD_PRICE = 1.0;
+export const INITIAL_SERVICE_PRICE = 5.0;
 
 /**
  * Firm inventory target expressed as a multiple of one tick's production output.

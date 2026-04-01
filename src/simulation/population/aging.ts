@@ -41,7 +41,10 @@ export const populationAdvanceYear = (planet: Planet): void => {
             console.warn('[populationAdvanceYear] age-0 cohort not empty after shift — forcing zero');
             cat.total = 0;
             cat.wealth = { mean: 0, variance: 0 };
-            cat.inventory = {};
+            // Reset all service buffers and starvation levels
+            for (const serviceName of Object.keys(cat.services) as (keyof typeof cat.services)[]) {
+                cat.services[serviceName] = { buffer: 0, starvationLevel: 0 };
+            }
         }
     });
 };

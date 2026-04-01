@@ -21,7 +21,6 @@ import {
     makePopulationWithWorkers,
     makeProductionFacility,
     makeStorageFacility,
-    makeStorageFacilityWithFood,
     makeWorkforceCategory,
     makeWorkforceCohort,
     makeWorkforceDemography,
@@ -42,15 +41,14 @@ describe('makePopulationCategory', () => {
         const cat = makePopulationCategory();
         expect(cat.total).toBe(0);
         expect(cat.wealth.mean).toBe(0);
-        expect(Object.keys(cat.inventory)).toHaveLength(0);
-        expect(cat.starvationLevel).toBe(0);
+        expect(cat.services.grocery.buffer).toBe(0);
+        expect(cat.services.grocery.starvationLevel).toBe(0);
         expect(cat.deaths.countThisMonth).toBe(0);
     });
 
     it('applies overrides', () => {
-        const cat = makePopulationCategory({ total: 100, inventory: { 'Agricultural Product': 50 } });
+        const cat = makePopulationCategory({ total: 100 });
         expect(cat.total).toBe(100);
-        expect(cat.inventory['Agricultural Product']).toBe(50);
     });
 });
 
@@ -277,15 +275,6 @@ describe('makeStorageFacility', () => {
         expect(sf.planetId).toBe('p');
         expect(sf.capacity.volume).toBe(1e13);
         expect(Object.keys(sf.currentInStorage)).toHaveLength(0);
-    });
-});
-
-describe('makeStorageFacilityWithFood', () => {
-    it('creates storage pre-loaded with food', () => {
-        const sf = makeStorageFacilityWithFood(500);
-        const food = sf.currentInStorage['Agricultural Product'];
-        expect(food).toBeDefined();
-        expect(food.quantity).toBe(500);
     });
 });
 

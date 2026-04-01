@@ -1,16 +1,15 @@
 import {
-    FOOD_PRICE_CEIL as PRICE_CEIL,
-    FOOD_PRICE_FLOOR as PRICE_FLOOR,
-    INITIAL_FOOD_PRICE,
+    EPSILON,
+    INITIAL_GROCERY_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
-    EPSILON,
+    GROCERY_PRICE_CEIL as PRICE_CEIL,
+    GROCERY_PRICE_FLOOR as PRICE_FLOOR,
 } from '../constants';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
 import { queryStorageFacility } from '../planet/storage';
-import { nextRandom } from '../utils/stochasticRound';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -52,47 +51,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const target = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget = resource.form === 'services' ? 1 : INPUT_BUFFER_TARGET_TICKS;
+            const target = quantity * facility.scale * bufferTarget;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
-        }
-    }
-
-    // Pre-compute the break-even input price ceiling for each traded input resource.
-    // For each unit of input, the maximum rational price equals the revenue it contributes
-    // to the facility's output: Σ(output_qty × output_price) / input_qty.
-    // When a resource is used across multiple facilities, we take the highest ceiling
-    // (the agent values it at whatever facility extracts the most value from it).
-    //
-    // For outputs without a market price yet, we fall back to the total input cost per
-    // output unit (break-even floor). This prevents the ceiling from collapsing to
-    // INITIAL_FOOD_PRICE when a downstream product has never been traded.
-    const inputValueCeiling = new Map<string, number>();
-    for (const facility of assets.productionFacilities) {
-        const tradedInputCostPerScale = facility.needs.reduce((sum, { resource, quantity }) => {
-            if (resource.form === 'landBoundResource') {
-                return sum;
-            }
-            return sum + quantity * (planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE);
-        }, 0);
-        const totalOutputQty = facility.produces.reduce((sum, p) => sum + p.quantity, 0);
-        const inputCostFallbackPerOutputUnit =
-            totalOutputQty > 0 ? tradedInputCostPerScale / totalOutputQty : INITIAL_FOOD_PRICE;
-
-        const outputRevenuePerScale = facility.produces.reduce((sum, p) => {
-            const knownPrice = planet.marketPrices[p.resource.name];
-            const price = knownPrice ?? inputCostFallbackPerOutputUnit;
-            return sum + p.quantity * price;
-        }, 0);
-
-        for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource' || quantity <= 0) {
-                continue;
-            }
-            const ceiling = outputRevenuePerScale / quantity;
-            const existing = inputValueCeiling.get(resource.name) ?? 0;
-            if (ceiling > existing) {
-                inputValueCeiling.set(resource.name, ceiling);
-            }
         }
     }
 
@@ -114,7 +75,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             offer.resource = resource;
             offer.offerRetainment = reserved; // Keep at least the reserved amount
 
-            const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_FOOD_PRICE;
+            const initialPrice = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
             adjustOfferPrice(offer, inventoryQty, initialPrice);
         }
     }
@@ -138,7 +99,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
-            const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget = resource.form === 'services' ? 1 : INPUT_BUFFER_TARGET_TICKS;
+            const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * bufferTarget;
 
             const existing = aggregatedBuyTargets.get(resource.name);
             if (existing) {
@@ -164,9 +126,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
-        const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_FOOD_PRICE;
-        const ceiling = inputValueCeiling.get(resourceName);
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, ceiling);
+        const marketPrice = planet.marketPrices[resourceName] ?? INITIAL_GROCERY_PRICE;
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice);
 
         // Validity guard: price must be a finite positive number >= PRICE_FLOOR.
         // adjustBidPrice should guarantee this, but NaN/Infinity can leak in from
@@ -223,19 +184,16 @@ function adjustOfferPrice(offer: AgentMarketOfferState, inventoryQty: number, in
     // When the agent has no stock to sell this tick (supply-constrained), treat it as
     // full sell-through: the good is scarce and the price should rise.
     if (effectiveQuantity === 0) {
-        const factor = sellThroughFactor(1);
-        const newPrice = price * factor;
-        // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
-        if (!isFinite(newPrice) || newPrice <= 0) {
-            offer.offerPrice = PRICE_FLOOR;
-        } else {
+        if (sold > 0 && price > 0) {
+            const factor = sellThroughFactor(1); // Full sell-through
+            const newPrice = price * factor;
             offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
         }
         return;
     }
 
     const sellThrough = sold / effectiveQuantity;
-    const factor = (1 + 0.01 * nextRandom()) * sellThroughFactor(sellThrough);
+    const factor = sellThroughFactor(sellThrough);
     const newPrice = price * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
