@@ -15,8 +15,30 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
     };
 
     // create two age cohorts: newborns (age 0) and adults (age 30)
-    const newbornCohort = createEmptyPopulationCohort({ total: 100, wealth: { mean: 50, variance: 1 }, services: { grocery: { buffer: 0, starvationLevel: 0 }, retail: { buffer: 0, starvationLevel: 0 }, logistics: { buffer: 0, starvationLevel: 0 }, healthcare: { buffer: 0, starvationLevel: 0 }, construction: { buffer: 0, starvationLevel: 0 }, administrative: { buffer: 0, starvationLevel: 0 }, }, });
-    const adultCohort = createEmptyPopulationCohort({ total: 100, wealth: { mean: 1000, variance: 1 }, services: { grocery: { buffer: 1000, starvationLevel: 0 }, retail: { buffer: 1000, starvationLevel: 0 }, logistics: { buffer: 1000, starvationLevel: 0 }, healthcare: { buffer: 1000, starvationLevel: 0 }, construction: { buffer: 1000, starvationLevel: 0 }, administrative: { buffer: 1000, starvationLevel: 0 }, }, });
+    const newbornCohort = createEmptyPopulationCohort({
+        total: 100,
+        wealth: { mean: 50, variance: 1 },
+        services: {
+            grocery: { buffer: 0, starvationLevel: 0 },
+            retail: { buffer: 0, starvationLevel: 0 },
+            logistics: { buffer: 0, starvationLevel: 0 },
+            healthcare: { buffer: 0, starvationLevel: 0 },
+            construction: { buffer: 0, starvationLevel: 0 },
+            administrative: { buffer: 0, starvationLevel: 0 },
+        },
+    });
+    const adultCohort = createEmptyPopulationCohort({
+        total: 100,
+        wealth: { mean: 1000, variance: 1 },
+        services: {
+            grocery: { buffer: 1000, starvationLevel: 0 },
+            retail: { buffer: 1000, starvationLevel: 0 },
+            logistics: { buffer: 1000, starvationLevel: 0 },
+            healthcare: { buffer: 1000, starvationLevel: 0 },
+            construction: { buffer: 1000, starvationLevel: 0 },
+            administrative: { buffer: 1000, starvationLevel: 0 },
+        },
+    });
 
     // demography is an array indexed by age
     planet.population.demography[0] = newbornCohort;

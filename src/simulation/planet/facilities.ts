@@ -8,8 +8,6 @@ import {
     limestoneDepositResourceType,
     naturalGasFieldResourceType,
     oilReservoirResourceType,
-    phosphateRockDepositResourceType,
-    potashDepositResourceType,
     sandDepositResourceType,
     stoneQuarryResourceType,
     waterSourceResourceType,
@@ -18,14 +16,12 @@ import type { ResourceProcessLevel } from './planet';
 import {
     agriculturalProductResourceType,
     beverageResourceType,
-    brickResourceType,
     cementResourceType,
     chemicalResourceType,
     clayResourceType,
     clothingResourceType,
     coalResourceType,
     concreteResourceType,
-    constructionResourceType,
     consumerElectronicsResourceType,
     copperOreResourceType,
     copperResourceType,
@@ -33,7 +29,6 @@ import {
     crudeOilResourceType,
     electronicComponentResourceType,
     fabricResourceType,
-    fertilizerResourceType,
     fuelResourceType,
     furnitureResourceType,
     glassResourceType,
@@ -47,9 +42,7 @@ import {
     paperResourceType,
     pesticideResourceType,
     pharmaceuticalResourceType,
-    phosphateRockResourceType,
     plasticResourceType,
-    potashResourceType,
     processedFoodResourceType,
     sandResourceType,
     siliconWaferResourceType,
@@ -100,7 +93,7 @@ export const coalMine = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 1,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: coalDepositResourceType, quantity: 500 }],
+    needs: [{ resource: coalDepositResourceType, quantity: 0.5 }],
     produces: [{ resource: coalResourceType, quantity: 500 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -119,7 +112,7 @@ export const oilWell = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 2,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: oilReservoirResourceType, quantity: 300 }],
+    needs: [{ resource: oilReservoirResourceType, quantity: 0.3 }],
     produces: [{ resource: crudeOilResourceType, quantity: 300 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -138,7 +131,7 @@ export const naturalGasWell = (planetId: string, id: string): ProductionFacility
         tertiary: 1,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: naturalGasFieldResourceType, quantity: 100 }],
+    needs: [{ resource: naturalGasFieldResourceType, quantity: 0.1 }],
     produces: [{ resource: naturalGasResourceType, quantity: 100 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -157,7 +150,7 @@ export const loggingCamp = (planetId: string, id: string): ProductionFacility =>
         tertiary: 0,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: forestResourceType, quantity: 400 }],
+    needs: [{ resource: forestResourceType, quantity: 0.4 }],
     produces: [{ resource: logsResourceType, quantity: 400 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -176,7 +169,7 @@ export const stoneQuarry = (planetId: string, id: string): ProductionFacility =>
         tertiary: 0,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: stoneQuarryResourceType, quantity: 400 }],
+    needs: [{ resource: stoneQuarryResourceType, quantity: 0.4 }],
     produces: [{ resource: stoneResourceType, quantity: 400 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -195,7 +188,7 @@ export const copperMine = (planetId: string, id: string): ProductionFacility => 
         tertiary: 1,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: copperDepositResourceType, quantity: 400 }],
+    needs: [{ resource: copperDepositResourceType, quantity: 0.4 }],
     produces: [{ resource: copperOreResourceType, quantity: 400 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -214,7 +207,7 @@ export const sandMine = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 0,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: sandDepositResourceType, quantity: 300 }],
+    needs: [{ resource: sandDepositResourceType, quantity: 0.3 }],
     produces: [{ resource: sandResourceType, quantity: 300 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -233,7 +226,7 @@ export const limestoneQuarry = (planetId: string, id: string): ProductionFacilit
         tertiary: 0,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: limestoneDepositResourceType, quantity: 300 }],
+    needs: [{ resource: limestoneDepositResourceType, quantity: 0.3 }],
     produces: [{ resource: limestoneResourceType, quantity: 300 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -252,7 +245,7 @@ export const clayMine = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 0,
     },
     pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: clayDepositResourceType, quantity: 400 }],
+    needs: [{ resource: clayDepositResourceType, quantity: 0.4 }],
     produces: [{ resource: clayResourceType, quantity: 400 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
@@ -276,44 +269,6 @@ export const ironSmelter = (planetId: string, id: string): ProductionFacility =>
         { resource: coalResourceType, quantity: 30 },
     ],
     produces: [{ resource: steelResourceType, quantity: 100 }],
-    lastTickResults: { ...zeroLastTicksResults },
-});
-
-export const phosphateMine = (planetId: string, id: string): ProductionFacility => ({
-    planetId,
-    id,
-    name: 'Phosphate Mine',
-    maxScale: 1,
-    scale: 1,
-    powerConsumptionPerTick: 0.6,
-    workerRequirement: {
-        none: 8,
-        primary: 12,
-        secondary: 5,
-        tertiary: 1,
-    },
-    pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: phosphateRockDepositResourceType, quantity: 150 }],
-    produces: [{ resource: phosphateRockResourceType, quantity: 150 }],
-    lastTickResults: { ...zeroLastTicksResults },
-});
-
-export const potashMine = (planetId: string, id: string): ProductionFacility => ({
-    planetId,
-    id,
-    name: 'Potash Mine',
-    maxScale: 1,
-    scale: 1,
-    powerConsumptionPerTick: 0.5,
-    workerRequirement: {
-        none: 5,
-        primary: 8,
-        secondary: 4,
-        tertiary: 0,
-    },
-    pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [{ resource: potashDepositResourceType, quantity: 200 }],
-    produces: [{ resource: potashResourceType, quantity: 200 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -428,28 +383,6 @@ export const concretePlant = (planetId: string, id: string): ProductionFacility 
     lastTickResults: { ...zeroLastTicksResults },
 });
 
-export const brickFactory = (planetId: string, id: string): ProductionFacility => ({
-    planetId,
-    id,
-    name: 'Brick Factory',
-    maxScale: 1,
-    scale: 1,
-    powerConsumptionPerTick: 0.7,
-    workerRequirement: {
-        none: 6,
-        primary: 12,
-        secondary: 4,
-        tertiary: 0,
-    },
-    pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [
-        { resource: clayResourceType, quantity: 120 },
-        { resource: coalResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: brickResourceType, quantity: 110 }],
-    lastTickResults: { ...zeroLastTicksResults },
-});
-
 export const glassFactory = (planetId: string, id: string): ProductionFacility => ({
     planetId,
     id,
@@ -470,29 +403,6 @@ export const glassFactory = (planetId: string, id: string): ProductionFacility =
         { resource: naturalGasResourceType, quantity: 10 },
     ],
     produces: [{ resource: glassResourceType, quantity: 100 }],
-    lastTickResults: { ...zeroLastTicksResults },
-});
-
-export const fertilizerPlant = (planetId: string, id: string): ProductionFacility => ({
-    planetId,
-    id,
-    name: 'Fertilizer Plant',
-    maxScale: 1,
-    scale: 1,
-    powerConsumptionPerTick: 0.9,
-    workerRequirement: {
-        none: 5,
-        primary: 12,
-        secondary: 8,
-        tertiary: 2,
-    },
-    pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [
-        { resource: naturalGasResourceType, quantity: 25 },
-        { resource: phosphateRockResourceType, quantity: 25 },
-        { resource: potashResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: fertilizerResourceType, quantity: 50 }],
     lastTickResults: { ...zeroLastTicksResults },
 });
 
@@ -855,8 +765,8 @@ export const intensiveFarmFacility = (planetId: string, id: string): ProductionF
     needs: [
         { resource: arableLandResourceType, quantity: 30 },
         { resource: waterResourceType, quantity: 100 },
-        { resource: fertilizerResourceType, quantity: 10 },
         { resource: pesticideResourceType, quantity: 10 },
+        { resource: chemicalResourceType, quantity: 20 },
     ],
     produces: [{ resource: agriculturalProductResourceType, quantity: 120 }],
     lastTickResults: { ...zeroLastTicksResults },
@@ -901,32 +811,6 @@ export const ironExtractionFacility = (planetId: string, id: string): Production
     produces: [{ resource: ironOreResourceType, quantity: 400 }],
 });
 
-export const constructionFacility = (planetId: string, id: string): ProductionFacility => ({
-    planetId,
-    id,
-    name: 'Construction Facility',
-    maxScale: 1,
-    scale: 1,
-    powerConsumptionPerTick: 1.5,
-    workerRequirement: {
-        none: 20,
-        primary: 40,
-        secondary: 30,
-        tertiary: 10,
-    },
-    pollutionPerTick: { ...defaultPollutionPerTick },
-    needs: [
-        { resource: brickResourceType, quantity: 50 },
-        { resource: concreteResourceType, quantity: 60 },
-        { resource: lumberResourceType, quantity: 20 },
-        { resource: steelResourceType, quantity: 10 },
-        { resource: glassResourceType, quantity: 10 },
-        { resource: machineryResourceType, quantity: 5 },
-    ],
-    produces: [{ resource: constructionResourceType, quantity: 100 }],
-    lastTickResults: { ...zeroLastTicksResults },
-});
-
 export const packagingPlant = (planetId: string, id: string): ProductionFacility => ({
     planetId,
     id,
@@ -943,7 +827,7 @@ export const packagingPlant = (planetId: string, id: string): ProductionFacility
     pollutionPerTick: { ...defaultPollutionPerTick },
     needs: [
         { resource: paperResourceType, quantity: 10 },
-        { resource: plasticResourceType, quantity: 30 },
+        { resource: plasticResourceType, quantity: 60 },
     ],
     produces: [{ resource: packagingResourceType, quantity: 40 }],
     lastTickResults: { ...zeroLastTicksResults },
@@ -1184,8 +1068,6 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(sandMine),
     entry(limestoneQuarry),
     entry(clayMine),
-    entry(phosphateMine),
-    entry(potashMine),
     entry(cottonFarm),
     entry(agriculturalProductionFacility),
     entry(waterExtractionFacility),
@@ -1197,12 +1079,10 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(sawmill),
     entry(cementPlant),
     entry(glassFactory),
-    entry(fertilizerPlant),
     entry(pesticidePlant),
     entry(paperMill),
     entry(textileMill),
     entry(concretePlant),
-    entry(brickFactory),
     entry(foodProcessingPlant),
     entry(beveragePlant),
     entry(pharmaceuticalPlant),
@@ -1213,7 +1093,6 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(machineryFactory),
     entry(vehicleFactory),
     entry(intensiveFarmFacility),
-    entry(constructionFacility),
     entry(packagingPlant),
     entry(administrativeCenter),
     entry(logisticsHub),

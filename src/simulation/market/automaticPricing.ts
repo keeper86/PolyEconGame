@@ -1,16 +1,15 @@
 import {
-    GROCERY_PRICE_CEIL as PRICE_CEIL,
-    GROCERY_PRICE_FLOOR as PRICE_FLOOR,
+    EPSILON,
     INITIAL_GROCERY_PRICE,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
-    EPSILON,
+    GROCERY_PRICE_CEIL as PRICE_CEIL,
+    GROCERY_PRICE_FLOOR as PRICE_FLOOR,
 } from '../constants';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
 import { queryStorageFacility } from '../planet/storage';
-import { nextRandom } from '../utils/stochasticRound';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -52,7 +51,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const target = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget = resource.form === 'services' ? 1 : INPUT_BUFFER_TARGET_TICKS;
+            const target = quantity * facility.scale * bufferTarget;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
     }

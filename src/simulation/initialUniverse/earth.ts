@@ -2,7 +2,6 @@ import {
     administrativeCenter,
     agriculturalProductionFacility,
     beveragePlant,
-    brickFactory,
     cementPlant,
     clayMine,
     clothingFactory,
@@ -14,7 +13,6 @@ import {
     copperSmelter,
     cottonFarm,
     electronicComponentFactory,
-    fertilizerPlant,
     foodProcessingPlant,
     furnitureFactory,
     glassFactory,
@@ -33,8 +31,6 @@ import {
     paperMill,
     pesticidePlant,
     pharmaceuticalPlant,
-    phosphateMine,
-    potashMine,
     retailChain,
     sandMine,
     sawmill,
@@ -781,99 +777,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // --- Phosphate mining ---
-    const phosphateId = 'earth-phosphate-phosphate-global';
-    govClaims.push(phosphateId);
-    phosphateClaims.push(
-        makeClaim({
-            id: phosphateId,
-            type: phosphateRockDepositResourceType,
-            quantity: 500_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'phosphate-global',
-            tenantCostInCoins: 30_000,
-            renewable: false,
-        }),
-    );
-    const ph1 = phosphateMine(EARTH_ID, 'phosphate-global-mine');
-    ph1.scale = 35;
-    ph1.maxScale = 35;
-    agents.push(
-        makeAgent({
-            id: 'phosphate-global',
-            name: 'Phosphate Global',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [ph1],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'phosphate-global-storage',
-                name: 'Phosphate Global Storage',
-            }),
-            tenancies: [phosphateId],
-        }),
-    );
-    const maghrebPhosphateId = 'earth-phosphate-maghreb';
-    govClaims.push(maghrebPhosphateId);
-    phosphateClaims.push(
-        makeClaim({
-            id: maghrebPhosphateId,
-            type: phosphateRockDepositResourceType,
-            quantity: 300_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'maghreb-phosphate',
-            tenantCostInCoins: 20_000,
-            renewable: false,
-        }),
-    );
-    const ph2 = phosphateMine(EARTH_ID, 'maghreb-phosphate-mine');
-    ph2.scale = 25;
-    ph2.maxScale = 25;
-    agents.push(
-        makeAgent({
-            id: 'maghreb-phosphate',
-            name: 'Maghreb Phosphate Corp',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [ph2],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'maghreb-phosphate-storage',
-                name: 'Maghreb Phosphate Storage',
-            }),
-            tenancies: [maghrebPhosphateId],
-        }),
-    );
-
-    // --- Potash mining ---
-    const potashId = 'earth-potash-potash-supply';
-    govClaims.push(potashId);
-    potashClaims.push(
-        makeClaim({
-            id: potashId,
-            type: potashDepositResourceType,
-            quantity: 500_000_000,
-            claimAgentId: GOV,
-            tenantAgentId: 'potash-ag-supply',
-            tenantCostInCoins: 30_000,
-            renewable: false,
-        }),
-    );
-    const pk1 = potashMine(EARTH_ID, 'potash-supply-mine');
-    pk1.scale = 1;
-    pk1.maxScale = 1;
-    agents.push(
-        makeAgent({
-            id: 'potash-ag-supply',
-            name: 'Potash Ag Supply',
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [pk1],
-            storage: makeStorage({ planetId: EARTH_ID, id: 'potash-supply-storage', name: 'Potash Supply Storage' }),
-            tenancies: [potashId],
-        }),
-    );
-
     // --- Limestone quarrying (needed for cement, glass) ---
     const alpineLimestoneId = 'earth-limestone-alpine';
     govClaims.push(alpineLimestoneId);
@@ -1106,7 +1009,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     }
 
     // --- Building materials (buy limestone, clay, stone, sand from market) ---
-    const [concreteGiant, urbanMaterials, glassWorld, brickWorksIntl, stoneAgeQuarrying] = buildMaterialsSpecs;
+    const [concreteGiant, glassWorld, stoneAgeQuarrying] = buildMaterialsSpecs;
 
     const cg1 = cementPlant(EARTH_ID, 'concrete-giant-cement');
     cg1.scale = 2;
@@ -1128,23 +1031,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     const um1 = cementPlant(EARTH_ID, 'urban-materials-cement');
     um1.scale = 2;
     um1.maxScale = 2;
-    const um2 = brickFactory(EARTH_ID, 'urban-materials-brick');
-    um2.scale = 10;
-    um2.maxScale = 10;
-    agents.push(
-        makeAgent({
-            id: urbanMaterials.id,
-            name: urbanMaterials.name,
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [um1, um2],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'urban-materials-storage',
-                name: 'Urban Materials Storage',
-            }),
-        }),
-    );
 
     const gw1 = glassFactory(EARTH_ID, 'glass-world-factory');
     gw1.scale = 12;
@@ -1157,24 +1043,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             planetId: EARTH_ID,
             facilities: [gw1],
             storage: makeStorage({ planetId: EARTH_ID, id: 'glass-world-storage', name: 'Glass World Storage' }),
-        }),
-    );
-
-    const bw1 = brickFactory(EARTH_ID, 'brick-works-intl-factory');
-    bw1.scale = 10;
-    bw1.maxScale = 10;
-    agents.push(
-        makeAgent({
-            id: brickWorksIntl.id,
-            name: brickWorksIntl.name,
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [bw1],
-            storage: makeStorage({
-                planetId: EARTH_ID,
-                id: 'brick-works-intl-storage',
-                name: 'Brick Works Intl Storage',
-            }),
         }),
     );
 
@@ -1193,11 +1061,8 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     );
 
     // --- Fertilizer & chemicals (buy gas + phosphate/potash from market) ---
-    const [agroChem, soilScience, greenChem] = fertilizerChemSpecs;
+    const [agroChem, greenChem] = fertilizerChemSpecs;
 
-    const acf1 = fertilizerPlant(EARTH_ID, 'agrochem-fertilizer');
-    acf1.scale = 10;
-    acf1.maxScale = 10;
     const acf2 = pesticidePlant(EARTH_ID, 'agrochem-pesticide');
     acf2.scale = 8;
     acf2.maxScale = 8;
@@ -1207,22 +1072,8 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             name: agroChem.name,
             associatedPlanetId: EARTH_ID,
             planetId: EARTH_ID,
-            facilities: [acf1, acf2],
+            facilities: [acf2],
             storage: makeStorage({ planetId: EARTH_ID, id: 'agrochem-storage', name: 'AgroChem Storage' }),
-        }),
-    );
-
-    const ss1 = fertilizerPlant(EARTH_ID, 'soil-science-fertilizer');
-    ss1.scale = 8;
-    ss1.maxScale = 8;
-    agents.push(
-        makeAgent({
-            id: soilScience.id,
-            name: soilScience.name,
-            associatedPlanetId: EARTH_ID,
-            planetId: EARTH_ID,
-            facilities: [ss1],
-            storage: makeStorage({ planetId: EARTH_ID, id: 'soil-science-storage', name: 'Soil Science Storage' }),
         }),
     );
 

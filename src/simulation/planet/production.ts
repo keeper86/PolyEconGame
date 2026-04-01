@@ -32,7 +32,7 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
 
 const CONSUMPTION_MISMATCH_TOLERANCE = 1e-9;
 
-const emptyServicesStorage = (agent: Agent, planet: Planet): void => {
+const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -42,9 +42,14 @@ const emptyServicesStorage = (agent: Agent, planet: Planet): void => {
         return;
     }
 
+    // services decay very fast and aggressive. This is for two reasons:
     ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
         if (storage.currentInStorage[serviceName]) {
-            removeFromStorageFacility(storage, serviceName, storage.currentInStorage[serviceName].quantity);
+            removeFromStorageFacility(
+                storage,
+                serviceName,
+                Math.ceil(storage.currentInStorage[serviceName].quantity * 0.5),
+            );
         }
     });
 };
@@ -154,7 +159,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         // we calculated resource constraints with last round services. We now empty service storage
         // This makes services un-storable but allows producing services and using them next ticks production.
-        emptyServicesStorage(agent, planet);
+        depreciateServicesStorage(agent, planet);
 
         assets.productionFacilities.forEach((facility, fi) => {
             const { resourceEfficiencyMap } = facilityMeta[fi];
@@ -206,11 +211,13 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                             );
                         }
                     } else {
+                        const consumeInputs = removeFromStorageFacility(
+                            assets.storageFacility,
+                            need.resource.name,
+                            consumed,
+                        );
                         // services are resetted before this loop, to allow being used as input but are only 1-tick lived
-                        const removed =
-                            need.resource.form === 'services'
-                                ? consumed
-                                : removeFromStorageFacility(assets.storageFacility, need.resource.name, consumed);
+                        const removed = need.resource.form === 'services' ? consumed : consumeInputs;
                         actualConsumed[need.resource.name] = removed;
                         if (removed < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
                             console.warn(

@@ -4,7 +4,6 @@ import {
     GROCERY_BUFFER_TARGET_TICKS,
     INITIAL_GROCERY_PRICE,
     MIN_EMPLOYABLE_AGE,
-    MIN_SERVICE_BUFFER_FILL,
     SERVICE_PER_PERSON_PER_TICK,
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
@@ -218,18 +217,20 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
             for (const occ of OCCUPATIONS) {
                 for (const edu of educationLevelKeys) {
-                    const { pop, groceryBuffer } = cache[age][occ][edu];
+                    const { pop, groceryBuffer, wealth } = cache[age][occ][edu];
                     if (pop <= 0) {
                         continue;
                     }
                     const perCapitaGroceryBuffer = groceryBuffer / pop;
                     const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
-                    // When the buffer is depleted, dependents must pay at a premium in
-                    // the market. Use urgency-adjusted price so the transfer reflects
-                    // the effective cost of filling an empty buffer.
-                    const bufferFill = targetPerPerson > 0 ? Math.min(1, perCapitaGroceryBuffer / targetPerPerson) : 1;
-                    const urgencyGroceryPrice = groceryPrice / Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL);
-                    totalNeed += gap * urgencyGroceryPrice * pop;
+                    // Cost to fill the gap at real market price (no urgency inflation here —
+                    // urgency belongs in market demand bids, not in transfer amounts).
+                    const costGap = gap * groceryPrice;
+                    // Subtract existing per-capita wealth so we only transfer what they
+                    // genuinely cannot self-fund.
+                    const selfFund = Math.max(0, wealth.mean);
+                    const netNeed = Math.max(0, costGap - selfFund);
+                    totalNeed += netNeed * pop;
                     totalPop += pop;
                 }
             }
@@ -238,6 +239,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
         }
         return needs;
     };
+
+    //Let's check the transfers a bit more.
+
+    //This is entirely to supply everyone with groceryService.
 
     const survivalNeeds = computeDependentNeeds(groceryTargetPerPerson);
     const remaining = survivalSurplusSnapshot.map((s) => s.totalSurplus);
@@ -416,10 +421,8 @@ function creditDependents(
             }
             const perCapitaGroceryBuffer = groceryBuffer / pop;
             const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
-            // Match demand urgency: an empty buffer means the dependent must pay
-            // a market premium, so the transfer amount is scaled accordingly.
-            const bufferFill = targetPerPerson > 0 ? Math.min(1, perCapitaGroceryBuffer / targetPerPerson) : 1;
-            const costGap = gap * (groceryPrice / Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL));
+            // Real cost at market price — no urgency inflation.
+            const costGap = gap * groceryPrice;
             const selfFund = Math.max(0, wealth.mean);
             const need = Math.max(0, costGap - selfFund) * pop;
             cells.push({ occ, edu, pop, need });
@@ -432,32 +435,22 @@ function creditDependents(
         return;
     }
 
-    // Distribute by need if possible, otherwise by population
-    if (totalNeed > 0) {
-        for (const cell of cells) {
-            if (cell.need <= 0) {
-                continue;
-            }
-            const share = (cell.need / totalNeed) * amount;
-            const perCapita = share / cell.pop;
+    // Only distribute to cells that actually have a funding gap.
+    // If totalNeed == 0 everyone can self-fund; nothing to credit.
+    if (totalNeed <= 0) {
+        return;
+    }
 
-            const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, perCapita);
-            if (transferMatrix) {
-                transferMatrix[age][cell.edu][cell.occ] += actualAggregate;
-            }
+    for (const cell of cells) {
+        if (cell.need <= 0) {
+            continue;
         }
-    } else {
-        // Fallback: population-proportional
-        for (const cell of cells) {
-            if (cell.pop <= 0) {
-                continue;
-            }
-            const share = (cell.pop / totalPop) * amount;
-            const perCapita = share / cell.pop;
-            const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, perCapita);
-            if (transferMatrix) {
-                transferMatrix[age][cell.edu][cell.occ] += actualAggregate;
-            }
+        const share = (cell.need / totalNeed) * amount;
+        const perCapita = share / cell.pop;
+
+        const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, perCapita);
+        if (transferMatrix) {
+            transferMatrix[age][cell.edu][cell.occ] += actualAggregate;
         }
     }
 }

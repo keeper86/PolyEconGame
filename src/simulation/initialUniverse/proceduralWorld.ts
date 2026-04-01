@@ -20,11 +20,11 @@ import {
     administrativeCenter,
     agriculturalProductionFacility,
     beveragePlant,
+    cementPlant,
     clayMine,
     clothingFactory,
     coalMine,
     coalPowerPlant,
-    cementPlant,
     concretePlant,
     constructionService,
     consumerElectronicsFactory,
@@ -32,7 +32,6 @@ import {
     copperSmelter,
     cottonFarm,
     electronicComponentFactory,
-    fertilizerPlant,
     foodProcessingPlant,
     furnitureFactory,
     glassFactory,
@@ -52,8 +51,6 @@ import {
     paperMill,
     pesticidePlant,
     pharmaceuticalPlant,
-    phosphateMine,
-    potashMine,
     retailChain,
     sandMine,
     sawmill,
@@ -67,6 +64,7 @@ import {
 } from '../planet/facilities';
 import {
     arableLandResourceType,
+    bauxiteDepositResourceType,
     clayDepositResourceType,
     coalDepositResourceType,
     copperDepositResourceType,
@@ -75,13 +73,10 @@ import {
     limestoneDepositResourceType,
     naturalGasFieldResourceType,
     oilReservoirResourceType,
-    phosphateRockDepositResourceType,
-    potashDepositResourceType,
     rareEarthDepositResourceType,
     sandDepositResourceType,
     stoneQuarryResourceType,
     waterSourceResourceType,
-    bauxiteDepositResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
 import type { ProductionFacility } from '../planet/storage';
@@ -111,8 +106,6 @@ const TOTAL_FOREST = 2_000_000_000;
 const TOTAL_COPPER = 1_500_000_000;
 const TOTAL_RARE_EARTH = 500_000_000;
 const TOTAL_SAND = 2_000_000_000;
-const TOTAL_PHOSPHATE = 1_000_000_000;
-const TOTAL_POTASH = 1_000_000_000;
 const TOTAL_BAUXITE = 1_200_000_000;
 const TOTAL_LIMESTONE = 3_000_000_000;
 const TOTAL_CLAY = 2_000_000_000;
@@ -179,8 +172,6 @@ const TARGETS: Record<string, FacilityTarget> = {
     sandMine: { totalScale: 400_980, agentCount: 6 },
     limestoneQuarry: { totalScale: 145_821, agentCount: 5 },
     clayMine: { totalScale: 24_000, agentCount: 3 },
-    phosphateMine: { totalScale: 10_802, agentCount: 3 },
-    potashMine: { totalScale: 3_241, agentCount: 3 },
     cottonFarm: { totalScale: 983_271, agentCount: 10 },
     waterExtractionFacility: { totalScale: 381_130, agentCount: 10 },
     ironExtractionFacility: { totalScale: 242_391, agentCount: 10 },
@@ -191,7 +182,6 @@ const TARGETS: Record<string, FacilityTarget> = {
     sawmill: { totalScale: 533_333, agentCount: 12 },
     cementPlant: { totalScale: 640_000, agentCount: 12 },
     glassFactory: { totalScale: 267_313, agentCount: 10 },
-    fertilizerPlant: { totalScale: 64_815, agentCount: 5 },
     pesticidePlant: { totalScale: 108_025, agentCount: 5 },
     paperMill: { totalScale: 61_111, agentCount: 5 },
     textileMill: { totalScale: 819_393, agentCount: 12 },
@@ -294,8 +284,6 @@ const NAMES: Record<string, string[]> = {
         'Limestone Dynamics Ltd',
     ],
     clayMine: ['Delta Clay Mining', 'Plains Clay Corp', 'Red Earth Clay Ltd'],
-    phosphateMine: ['Phosphate Global', 'Maghreb Phosphate Corp', 'Pacific Minerals Ltd'],
-    potashMine: ['Potash Ag Supply', 'Prairie Potash Corp', 'Global Potash Ltd'],
     cottonFarm: [
         'Cotton World Corp',
         'Textile Fields Ltd',
@@ -423,13 +411,6 @@ const NAMES: Record<string, string[]> = {
         'Palace Glass Inc',
         'ArcticGlass Ltd',
         'Flint Glass Corp',
-    ],
-    fertilizerPlant: [
-        'AgroChem Global',
-        'Soil Science Corp',
-        'Harvest Nutrients Ltd',
-        'Green Yield Corp',
-        'NitroGrow Inc',
     ],
     pesticidePlant: ['GreenChem Ltd', 'CropGuard Corp', 'BioShield Chemicals', 'Field Protect Inc', 'AgriDefense Ltd'],
     paperMill: [
@@ -726,10 +707,6 @@ function depositPerScale(facilityType: string): number {
             return 300000; // limestoneDepositResourceType
         case 'clayMine':
             return 400000; // clayDepositResourceType
-        case 'phosphateMine':
-            return 150000; // phosphateRockDepositResourceType
-        case 'potashMine':
-            return 200000; // potashDepositResourceType
         case 'cottonFarm':
             return 200000; // arableLandResourceType
         case 'intensiveFarmFacility':
@@ -760,8 +737,6 @@ function getFacilityFactory(type: string): FacilityFactory {
         sandMine,
         limestoneQuarry,
         clayMine,
-        phosphateMine,
-        potashMine,
         cottonFarm,
         waterExtractionFacility,
         ironExtractionFacility,
@@ -772,7 +747,6 @@ function getFacilityFactory(type: string): FacilityFactory {
         sawmill,
         cementPlant,
         glassFactory,
-        fertilizerPlant,
         pesticidePlant,
         paperMill,
         textileMill,
@@ -820,8 +794,6 @@ interface ClaimPool {
         | typeof sandDepositResourceType
         | typeof limestoneDepositResourceType
         | typeof clayDepositResourceType
-        | typeof phosphateRockDepositResourceType
-        | typeof potashDepositResourceType
         | typeof ironOreDepositResourceType;
     total: number;
     prefix: string;
@@ -840,8 +812,6 @@ function resourceType(facilityType: string): ClaimPool['type'] | null {
         sandMine: sandDepositResourceType,
         limestoneQuarry: limestoneDepositResourceType,
         clayMine: clayDepositResourceType,
-        phosphateMine: phosphateRockDepositResourceType,
-        potashMine: potashDepositResourceType,
         cottonFarm: arableLandResourceType,
         intensiveFarmFacility: arableLandResourceType,
         waterExtractionFacility: waterSourceResourceType,
@@ -852,16 +822,8 @@ function resourceType(facilityType: string): ClaimPool['type'] | null {
 
 function renewableForResource(facilityType: string): boolean {
     // Forest, sand, limestone, clay, stone, water, arable land are renewable;
-    // coal, oil, gas, copper, phosphate, potash, iron ore are not.
-    const NON_RENEWABLE = new Set([
-        'coalMine',
-        'oilWell',
-        'naturalGasWell',
-        'copperMine',
-        'phosphateMine',
-        'potashMine',
-        'ironExtractionFacility',
-    ]);
+    // coal, oil, gas, copper, iron ore are not.
+    const NON_RENEWABLE = new Set(['coalMine', 'oilWell', 'naturalGasWell', 'copperMine', 'ironExtractionFacility']);
     return !NON_RENEWABLE.has(facilityType);
 }
 
@@ -1029,11 +991,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
     // Fertilizer + Pesticide integrated agrochem
     {
-        const fertScale = Math.round(TARGETS.fertilizerPlant.totalScale * 0.1);
         const pestScale = Math.round(TARGETS.pesticidePlant.totalScale * 0.1);
-        const f1 = fertilizerPlant(PROC_PLANET_ID, 'agrochemplus-fert');
-        f1.scale = fertScale;
-        f1.maxScale = fertScale;
         const f2 = pesticidePlant(PROC_PLANET_ID, 'agrochemplus-pest');
         f2.scale = pestScale;
         f2.maxScale = pestScale;
@@ -1043,7 +1001,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 name: 'AgroChemPlus Corp',
                 associatedPlanetId: PROC_PLANET_ID,
                 planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
+                facilities: [f2],
                 storage: makeStorage({
                     planetId: PROC_PLANET_ID,
                     id: 'agrochemplus-storage',
@@ -1342,18 +1300,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             prefix: `${PROC_PLANET_ID}-clay`,
         },
         {
-            facilityType: 'phosphateMine',
-            total: TOTAL_PHOSPHATE,
-            type: phosphateRockDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-phosphate`,
-        },
-        {
-            facilityType: 'potashMine',
-            total: TOTAL_POTASH,
-            type: potashDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-potash`,
-        },
-        {
             facilityType: 'cottonFarm',
             total: TOTAL_ARABLE,
             type: arableLandResourceType,
@@ -1472,8 +1418,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [copperDepositResourceType.name]: getPool('copperMine'),
             [rareEarthDepositResourceType.name]: rareEarthPool,
             [sandDepositResourceType.name]: getPool('sandMine'),
-            [phosphateRockDepositResourceType.name]: getPool('phosphateMine'),
-            [potashDepositResourceType.name]: getPool('potashMine'),
             [bauxiteDepositResourceType.name]: bauxitePool,
             [limestoneDepositResourceType.name]: getPool('limestoneQuarry'),
             [clayDepositResourceType.name]: getPool('clayMine'),

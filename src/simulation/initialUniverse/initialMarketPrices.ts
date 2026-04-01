@@ -15,7 +15,6 @@ import {
     crudeOilResourceType,
     electronicComponentResourceType,
     fabricResourceType,
-    fertilizerResourceType,
     fuelResourceType,
     furnitureResourceType,
     glassResourceType,
@@ -28,9 +27,7 @@ import {
     paperResourceType,
     pesticideResourceType,
     pharmaceuticalResourceType,
-    phosphateRockResourceType,
     plasticResourceType,
-    potashResourceType,
     processedFoodResourceType,
     sandResourceType,
     steelResourceType,
@@ -69,8 +66,6 @@ export const initialMarketPrices: Record<string, number> = {
     [limestoneResourceType.name]: 0.5,
     [clayResourceType.name]: 0.5,
     [waterResourceType.name]: 0.5,
-    [phosphateRockResourceType.name]: 1.0,
-    [potashResourceType.name]: 1.0,
     [cottonResourceType.name]: 1.5,
     // Tier 1 processed — recipe cost + processing margin
     [steelResourceType.name]: 3.0, // 150 iron ore + 30 coal → 100 steel
@@ -82,7 +77,6 @@ export const initialMarketPrices: Record<string, number> = {
     [chemicalResourceType.name]: 2.0, // oil refinery by-product
     [fuelResourceType.name]: 2.5, // oil refinery
     [brickResourceType.name]: 1.0, // 120 clay + 10 coal → 110 brick
-    [fertilizerResourceType.name]: 2.0, // 25 natural gas + 25 phosphate → 50 fertilizer
     // Tier 2 processed
     [fabricResourceType.name]: 3.0, // 120 cotton + 30 water → 100 fabric
     [processedFoodResourceType.name]: 2.5, // 200 agri + 100 water → 150 processed food

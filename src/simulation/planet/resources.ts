@@ -176,30 +176,6 @@ export const glassResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const phosphateRockResourceType: Resource = {
-    name: 'Phosphate Rock',
-    form: 'solid',
-    level: 'raw',
-    volumePerQuantity: 0.5,
-    massPerQuantity: 1,
-};
-
-export const potashResourceType: Resource = {
-    name: 'Potash',
-    form: 'solid',
-    level: 'raw',
-    volumePerQuantity: 0.5,
-    massPerQuantity: 1,
-};
-
-export const fertilizerResourceType: Resource = {
-    name: 'Fertilizer',
-    form: 'solid',
-    level: 'refined',
-    volumePerQuantity: 0.7,
-    massPerQuantity: 1,
-};
-
 export const pesticideResourceType: Resource = {
     name: 'Pesticide',
     form: 'liquid',
