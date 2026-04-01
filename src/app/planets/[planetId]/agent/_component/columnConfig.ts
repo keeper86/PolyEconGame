@@ -59,6 +59,15 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         priority: 7,
     },
     {
+        id: 'totalConsumption',
+        label: 'Cons',
+        widthClass: 'w-[72px]',
+        title: 'Total consumption',
+        align: 'text-right',
+        enabled: true,
+        priority: 8,
+    },
+    {
         id: 'totalSupply',
         label: 'Supply',
         widthClass: 'w-[72px]',

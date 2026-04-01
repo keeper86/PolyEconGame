@@ -81,12 +81,10 @@ export const APP_ROUTES = {
         description: 'Scientific description of the simulation model with mathematical formulations',
     },
     supplyChain: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        path: '/supply-chain' as any,
-        label: 'Supply Chain',
+        path: '/supply-chain',
+        label: 'Supply Chain Simulator',
         icon: Network,
-        isPublic: true,
-        isMainNav: true,
+        isSecondaryNav: true,
         description: 'Interactive supply chain balance calculator and dependency visualiser',
     },
 } as const satisfies RouteManifest;

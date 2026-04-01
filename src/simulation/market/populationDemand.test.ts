@@ -1,18 +1,15 @@
-import { test, expect } from 'vitest';
-import { buildPopulationDemand } from './populationDemand';
-import { createEmptyPopulationCohort } from '../population/population';
-import { groceryServiceResourceType } from '../planet/services';
+import { test, expect, describe, it } from 'vitest';
+import { binHouseholdBids, buildPopulationDemand } from './populationDemand';
+import { createEmptyPopulationCohort, forEachPopulationCohort } from '../population/population';
+import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
+import { GROCERY_BUFFER_TARGET_TICKS, INITIAL_SERVICE_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../constants';
+import type { Planet } from '../planet/planet';
+import { makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
+import type { BidOrder } from './marketTypes';
 
 test('buildPopulationDemand produces finite reservation prices for empty buffers', () => {
     // Minimal planet stub for the test
-    const planet: any = {
-        marketPrices: {
-            [groceryServiceResourceType.name]: 1,
-        },
-        population: {
-            demography: [],
-        },
-    };
+    const planet: Planet = makePlanet();
 
     // create two age cohorts: newborns (age 0) and adults (age 30)
     const newbornCohort = createEmptyPopulationCohort({
@@ -44,7 +41,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
     planet.population.demography[0] = newbornCohort;
     planet.population.demography[30] = adultCohort;
 
-    const bidsMap = buildPopulationDemand(planet as any);
+    const bidsMap = buildPopulationDemand(planet);
     const bids = bidsMap.get(groceryServiceResourceType.name) ?? [];
     expect(bids.length).toBeGreaterThan(0);
     for (const b of bids) {
@@ -53,14 +50,6 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
         expect(b.bidPrice).toBeGreaterThanOrEqual(0);
     }
 });
-import { describe, expect, it } from 'vitest';
-
-import { GROCERY_BUFFER_TARGET_TICKS, INITIAL_SERVICE_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../constants';
-import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
-import { forEachPopulationCohort } from '../population/population';
-import { makePlanetWithPopulation } from '../utils/testHelper';
-import type { BidOrder } from './marketTypes';
-import { binHouseholdBids, buildPopulationDemand } from './populationDemand';
 
 function makeBid(bidPrice: number, quantity: number): BidOrder {
     return {

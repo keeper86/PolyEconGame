@@ -189,12 +189,6 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                     </div>
                 </div>
 
-                <p className='text-xs text-muted-foreground'>
-                    One entry per resource. Expand to set buy bids and sell offers. Toggle{' '}
-                    <span className='font-medium'>Auto-manage</span> to let the AI adjust prices and quantities each
-                    tick.
-                </p>
-
                 {resourceGroups.length === 0 ? (
                     <p className='text-sm text-muted-foreground'>
                         No resources to display. Build a facility or enable &quot;Show all resources&quot;.

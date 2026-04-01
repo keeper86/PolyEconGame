@@ -832,6 +832,7 @@ const marketOverviewRowSchema = z.object({
     level: z.string(),
     clearingPrice: z.number(),
     totalProduction: z.number(),
+    totalConsumption: z.number(),
     totalSupply: z.number(),
     totalDemand: z.number(),
     totalSold: z.number(),
@@ -856,6 +857,22 @@ function computePlanetProduction(agents: Agent[], planetId: string): Record<stri
     return production;
 }
 
+function computePlanetConsumption(agents: Agent[], planetId: string): Record<string, number> {
+    const consumption: Record<string, number> = {};
+    for (const agent of agents) {
+        const assets = agent.assets[planetId];
+        if (!assets) {
+            continue;
+        }
+        for (const fac of assets.productionFacilities ?? []) {
+            for (const [resourceName, qty] of Object.entries(fac.lastTickResults?.lastConsumed ?? {})) {
+                consumption[resourceName] = (consumption[resourceName] ?? 0) + qty;
+            }
+        }
+    }
+    return consumption;
+}
+
 export const getPlanetMarketOverview = () =>
     protectedProcedure
         .input(z.object({ planetId: z.string() }))
@@ -877,6 +894,7 @@ export const getPlanetMarketOverview = () =>
             }
 
             const production = computePlanetProduction(agents, input.planetId);
+            const consumption = computePlanetConsumption(agents, input.planetId);
 
             const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
                 const result = planet.lastMarketResult[resource.name];
@@ -891,6 +909,7 @@ export const getPlanetMarketOverview = () =>
                     level: resource.level,
                     clearingPrice,
                     totalProduction: production[resource.name] ?? 0,
+                    totalConsumption: consumption[resource.name] ?? 0,
                     totalSupply,
                     totalDemand,
                     totalSold,

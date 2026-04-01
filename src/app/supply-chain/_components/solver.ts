@@ -105,7 +105,6 @@ const POWER_CONSTRAINT_KEY = 'power__balance';
 
 function buildLPModel(config: SolverConfig): Model {
     const { population, allowedFacilities, objective } = config;
-    const demandPerTick = population * SERVICE_PER_PERSON_PER_TICK;
 
     const constraints: Model['constraints'] = {};
     const variables: Model['variables'] = {};
@@ -282,7 +281,6 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
     }
 
     // Compute service coverage at the suggested scales
-    const demandPerTick = config.population * SERVICE_PER_PERSON_PER_TICK;
     const serviceCoverage: Record<string, number> = {};
     for (const svc of DEMANDED_SERVICES) {
         let supplyPerTick = 0;
