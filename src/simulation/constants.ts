@@ -43,7 +43,7 @@ export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 3;
 export const LOGISTICS_BUFFER_TARGET_TICKS = 4;
 export const RETAIL_BUFFER_TARGET_TICKS = 10;
 export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
-export const EDUCATION_BUFFER_TARGET_TICKS = 20;
+export const EDUCATION_BUFFER_TARGET_TICKS = 2;
 
 /**
  * Grocery starvation level below which education is treated as a valid

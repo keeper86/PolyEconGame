@@ -1,5 +1,6 @@
 import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
+import type { ResourceName } from './resourceCatalog';
 import type { ProductionFacility, StorageFacility } from './storage';
 
 /**
@@ -195,7 +196,7 @@ export type Planet = {
      * @example { 'Agricultural Product': 1.25 }
      */
     marketPrices: {
-        [resourceName: string]: number;
+        [resourceName in ResourceName]: number;
     };
     /**
      * Snapshot of the most recent market clearing results, one per resource.

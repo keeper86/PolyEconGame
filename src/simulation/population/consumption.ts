@@ -29,7 +29,7 @@ export function consumeServices(population: Population) {
                 const bufferConsumed = consumed / (rate * pop);
                 serviceState.buffer = Math.max(0, serviceState.buffer - bufferConsumed);
 
-                if (def.serviceKey === 'education' && occ !== 'education') {
+                if (def.serviceKey === 'education' && occ !== 'education' && consumed > 0) {
                     console.warn(`Non-education occupation consuming education service: ${occ}`);
                 }
                 population.lastConsumption[def.resource.name] =

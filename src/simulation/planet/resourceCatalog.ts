@@ -93,6 +93,8 @@ export const ALL_RESOURCES: Resource[] = [
     educationServiceResourceType,
 ] as const;
 
+export type ResourceName = (typeof ALL_RESOURCES)[number]['name'];
+
 export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 
 export const RESOURCE_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {

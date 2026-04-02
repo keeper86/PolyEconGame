@@ -225,6 +225,9 @@ export const transferPopulation = (
             const fromService = fromCategory.services[serviceName];
             const toService = toCategory.services[serviceName];
 
+            if (serviceName === 'education' && to.occ !== 'education') {
+                continue; // Education service is only relevant for the 'education' occupation category
+            }
             // Weighted average: each arriving person carries fromService.buffer ticks.
             toCategory.services[serviceName] = {
                 buffer:

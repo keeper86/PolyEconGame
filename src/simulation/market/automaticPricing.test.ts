@@ -81,8 +81,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // buffer = 200 * 10 * 30 = 60 000 > 5 000 available → retainment should be 60,000
-        expect(offer?.offerRetainment).toBe(60_000);
+        // buffer = 200 * 10 * 10 = 20 000 > 5 000 available → retainment should be 20,000
+        expect(offer?.offerRetainment).toBe(20_000);
     });
 
     it('offers surplus above the reserved buffer', () => {
@@ -106,8 +106,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // 65 000 − 60 000 reserved = 5 000 sellable, retainment should be 60,000
-        expect(offer?.offerRetainment).toBe(60_000);
+        // 65 000 − 20 000 reserved = 45 000 sellable, retainment should be 20,000
+        expect(offer?.offerRetainment).toBe(20_000);
     });
 
     it('still offers full inventory when no facility needs that resource as input', () => {

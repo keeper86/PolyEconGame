@@ -193,7 +193,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     // Price level converts grocery service units into wealth (currency) units.
     // Defaults to 1.0 when not yet set.
     const groceryPrice = planet.marketPrices[groceryServiceResourceType.name];
-    const educationPrice = planet.marketPrices[educationServiceResourceType.name] ?? 1.0;
+    const educationPrice = planet.marketPrices[educationServiceResourceType.name];
 
     const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
     const educationTargetPerPerson = EDUCATION_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
