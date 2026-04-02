@@ -238,8 +238,14 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const survivalNeeds = computeDependentNeeds(groceryTargetPerPerson);
     const remaining = survivalSurplusSnapshot.map((s) => s.totalSurplus);
 
+    // Compute global scarcity factor so all cohorts share shortages proportionally
+    // rather than earlier ages consuming the supply pool first.
+    const totalSupply = remaining.reduce((sum, s) => sum + s, 0);
+    const totalDemand = survivalNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
+    const scarcityFactor = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 1;
+
     for (const [age, dependentNeed] of survivalNeeds.entries()) {
-        const need = dependentNeed.totalNeed;
+        const need = dependentNeed.totalNeed * scarcityFactor;
         if (need <= 0) {
             continue;
         }
