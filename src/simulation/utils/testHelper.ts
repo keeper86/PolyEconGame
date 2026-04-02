@@ -406,6 +406,7 @@ export function makeGovernmentAgent(id = 'gov-1', planetId = 'p'): Agent {
  * or use the convenience helpers below for pre-populated planets.
  */
 export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string }): Planet {
+    const { marketPrices: overrideMarketPrices, ...restOverrides } = overrides ?? {};
     return {
         id: 'p',
         name: 'Test Planet',
@@ -416,9 +417,9 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         bank: makeBank(),
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
-        marketPrices: { ...initialMarketPrices },
+        marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
         lastMarketResult: {},
-        ...overrides,
+        ...restOverrides,
     };
 }
 

@@ -56,7 +56,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const bufferTarget = resource.form === 'services' ? 1 : INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
             const target = quantity * facility.scale * bufferTarget;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }

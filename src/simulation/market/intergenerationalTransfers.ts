@@ -165,31 +165,16 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
 
-    // Price level converts grocery service units into wealth (currency) units.
-    // Defaults to 1.0 when not yet set.
     const groceryPrice = planet.marketPrices[groceryServiceResourceType.name];
 
     const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 
-    // Floor for surplus eligibility: one tick's food cost.
-    // Workers only hold ~one tick's wage in wealth at transfer time (wages are earned
-    // each tick and spent buying food the same tick). Using the full-buffer cost
-    // (groceryTargetPerPerson × price = 30×) as a floor always blocked them because
-    // their wealth never exceeded that threshold → effectiveSurplus was always 0.
-    // A per-tick floor lets any worker with more than their immediate food need give.
     const baseGroceryCost = SERVICE_PER_PERSON_PER_TICK * groceryPrice;
 
-    // Build the aggregate cache once — eliminates repeated SKILL iterations in
-    // every nested loop below (aggregatePopulation / aggregateWealth /
-    // aggregateFoodStock each looped over SKILL previously).
     const cache = buildAggregateCache(demography);
 
-    // Per-cell transfer matrix (age × edu × occ): positive = received, negative = given.
-    // Always create a fresh zero matrix each tick so stale values never carry over.
     const transferMatrix: PopulationTransferMatrix = createZeroTransferMatrix(numAges);
 
-    // Compute per-age aggregate surplus (across ALL edu levels and skills)
-    // Surplus is scaled by supportCapacity — elderly give less per unit wealth.
     const survivalSurplusSnapshot: SurplusSnapshot[] = new Array(numAges);
 
     for (let age = 0; age < numAges; age++) {

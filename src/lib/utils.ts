@@ -14,7 +14,7 @@ export const formatNumbers = (n: number | null | undefined): string => {
         if (n === 0) {
             return '0';
         }
-        return '<0.001';
+        return '<0.0001';
     }
 
     let currentNumber = n;
