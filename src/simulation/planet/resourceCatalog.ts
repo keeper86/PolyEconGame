@@ -2,7 +2,6 @@ import type { Resource, ResourceProcessLevel } from './planet';
 import {
     agriculturalProductResourceType,
     beverageResourceType,
-    brickResourceType,
     cementResourceType,
     chemicalResourceType,
     clayResourceType,
@@ -36,10 +35,12 @@ import {
     vehicleResourceType,
     waterResourceType,
     packagingResourceType,
+    siliconWaferResourceType,
 } from './resources';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
+    educationServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
@@ -67,7 +68,6 @@ export const ALL_RESOURCES: Resource[] = [
     lumberResourceType,
     cementResourceType,
     concreteResourceType,
-    brickResourceType,
     glassResourceType,
     pesticideResourceType,
     pharmaceuticalResourceType,
@@ -78,6 +78,7 @@ export const ALL_RESOURCES: Resource[] = [
     fabricResourceType,
     clothingResourceType,
     furnitureResourceType,
+    siliconWaferResourceType,
     electronicComponentResourceType,
     consumerElectronicsResourceType,
     machineryResourceType,
@@ -89,7 +90,10 @@ export const ALL_RESOURCES: Resource[] = [
     groceryServiceResourceType,
     retailServiceResourceType,
     healthcareServiceResourceType,
+    educationServiceResourceType,
 ] as const;
+
+export type ResourceName = (typeof ALL_RESOURCES)[number]['name'];
 
 export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 

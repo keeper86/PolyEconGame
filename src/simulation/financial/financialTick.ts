@@ -1,4 +1,4 @@
-import { INITIAL_GROCERY_PRICE, INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD } from '../constants';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -44,7 +44,7 @@ function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): num
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const price = planet.marketPrices[resource.name] ?? INITIAL_GROCERY_PRICE;
+            const price = planet.marketPrices[resource.name];
             cost += quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS * price;
         }
     }
@@ -197,20 +197,20 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         if (deposits <= 0 || bank.loans <= 0 || agentLoan <= 0) {
             return;
         }
-        // Retained earnings threshold: only repay from deposits exceeding the
-        // greater of (RETAINED_EARNINGS_THRESHOLD × wageBill) and the full
-        // input-buffer cost.  This ensures agents always keep enough capital to
-        // re-purchase their input buffer before repaying bank debt.
-        const wageBill = assets.lastWageBill ?? 0;
-        const wageThreshold = wageBill * RETAINED_EARNINGS_THRESHOLD;
-        const bufferCost = estimateInputBufferCost(assets, planet);
-        const retainedThreshold = Math.max(wageThreshold, bufferCost);
-        const excessDeposits = Math.max(0, deposits - retainedThreshold);
-        if (excessDeposits <= 0) {
-            return;
+
+        if (bank.loans < agentLoan) {
+            throw new Error(
+                `Bank loan balance (${bank.loans}) is less than agent ${agent.id} loan principal (${agentLoan}). ` +
+                    `This should never happen and indicates a bug in the financial tick logic.`,
+            );
         }
-        // Agents only repay up to their own loan principal and available excess.
-        const repayment = Math.min(agentLoan, excessDeposits, bank.loans);
+
+        const wageBill = assets.lastWageBill ?? 0;
+        const bufferCost = estimateInputBufferCost(assets, planet);
+        const retainedThreshold = RETAINED_EARNINGS_THRESHOLD * (wageBill + bufferCost);
+        const excessDeposits = deposits - retainedThreshold;
+
+        const repayment = excessDeposits <= 0 ? excessDeposits : Math.min(agentLoan, excessDeposits);
         assets.deposits -= repayment;
         assets.loans -= repayment;
         bank.loans -= repayment;

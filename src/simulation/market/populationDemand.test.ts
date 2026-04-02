@@ -2,10 +2,12 @@ import { test, expect, describe, it } from 'vitest';
 import { binHouseholdBids, buildPopulationDemand } from './populationDemand';
 import { createEmptyPopulationCohort, forEachPopulationCohort } from '../population/population';
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
-import { GROCERY_BUFFER_TARGET_TICKS, INITIAL_SERVICE_PRICE, SERVICE_PER_PERSON_PER_TICK } from '../constants';
+import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '../constants';
 import type { Planet } from '../planet/planet';
 import { makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
 import type { BidOrder } from './marketTypes';
+
+const initialPrice = 1.0;
 
 test('buildPopulationDemand produces finite reservation prices for empty buffers', () => {
     // Minimal planet stub for the test
@@ -22,6 +24,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             healthcare: { buffer: 0, starvationLevel: 0 },
             construction: { buffer: 0, starvationLevel: 0 },
             administrative: { buffer: 0, starvationLevel: 0 },
+            education: { buffer: 0, starvationLevel: 0 },
         },
     });
     const adultCohort = createEmptyPopulationCohort({
@@ -34,6 +37,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             healthcare: { buffer: 1000, starvationLevel: 0 },
             construction: { buffer: 1000, starvationLevel: 0 },
             administrative: { buffer: 1000, starvationLevel: 0 },
+            education: { buffer: 1000, starvationLevel: 0 },
         },
     });
 
@@ -147,7 +151,7 @@ describe('buildPopulationDemandForResource', () => {
 
         it('returns bids when cohorts have no grocery service and positive wealth', () => {
             const { planet } = makePlanetWithPopulation({ none: 1_000 });
-            planet.marketPrices[GROCERY_SERVICE] = INITIAL_SERVICE_PRICE;
+            planet.marketPrices[GROCERY_SERVICE] = initialPrice;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
@@ -165,7 +169,7 @@ describe('buildPopulationDemandForResource', () => {
 
         it('returns no bids when cohorts have zero wealth', () => {
             const { planet } = makePlanetWithPopulation({ none: 1_000 });
-            planet.marketPrices[GROCERY_SERVICE] = INITIAL_SERVICE_PRICE;
+            planet.marketPrices[GROCERY_SERVICE] = initialPrice;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     cat.wealth = { mean: 0, variance: 0 };
@@ -297,8 +301,8 @@ describe('buildPopulationDemand', () => {
 
     it('healthcare gets budget when grocery is fully stocked', () => {
         const { planet } = makePlanetWithPopulation({ none: 1_000 });
-        planet.marketPrices[GROCERY_SERVICE] = INITIAL_SERVICE_PRICE;
-        planet.marketPrices[HEALTHCARE_SERVICE] = INITIAL_SERVICE_PRICE;
+        planet.marketPrices[GROCERY_SERVICE] = initialPrice;
+        planet.marketPrices[HEALTHCARE_SERVICE] = initialPrice;
 
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {

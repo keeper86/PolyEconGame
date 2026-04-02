@@ -107,6 +107,7 @@ export type PopulationCategory = {
         healthcare: ServiceState;
         construction: ServiceState;
         administrative: ServiceState;
+        education: ServiceState;
     };
 
     deaths: DeathStats;
@@ -122,6 +123,8 @@ export type Population = {
     demography: Cohort<PopulationCategory>[];
     summedPopulation: Cohort<PopulationCategory>;
     lastTransferMatrix: PopulationTransferMatrix;
+    /** Total units consumed by the population per resource this tick (resource name → units). */
+    lastConsumption: { [resourceName: string]: number };
 };
 
 // ---------------------------------------------------------------------------
@@ -134,6 +137,7 @@ export const nullServicesState = () => ({
     healthcare: { buffer: 0, starvationLevel: 0 },
     construction: { buffer: 0, starvationLevel: 0 },
     administrative: { buffer: 0, starvationLevel: 0 },
+    education: { buffer: 0, starvationLevel: 0 },
 });
 export const nullPopulationCategory = (): PopulationCategory => ({
     total: 0,
@@ -221,6 +225,9 @@ export const transferPopulation = (
             const fromService = fromCategory.services[serviceName];
             const toService = toCategory.services[serviceName];
 
+            if (serviceName === 'education' && to.occ !== 'education') {
+                continue; // Education service is only relevant for the 'education' occupation category
+            }
             // Weighted average: each arriving person carries fromService.buffer ticks.
             toCategory.services[serviceName] = {
                 buffer:

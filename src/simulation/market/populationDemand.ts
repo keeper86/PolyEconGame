@@ -1,6 +1,5 @@
 import {
     SERVICE_PER_PERSON_PER_TICK,
-    INITIAL_SERVICE_PRICE,
     MIN_SERVICE_BUFFER_FILL,
     GROCERY_BUFFER_TARGET_TICKS,
     HEALTHCARE_BUFFER_TARGET_TICKS,
@@ -8,6 +7,7 @@ import {
     LOGISTICS_BUFFER_TARGET_TICKS,
     RETAIL_BUFFER_TARGET_TICKS,
     CONSTRUCTION_BUFFER_TARGET_TICKS,
+    EDUCATION_BUFFER_TARGET_TICKS,
 } from '../constants';
 import type { Planet, Resource } from '../planet/planet';
 import {
@@ -17,6 +17,7 @@ import {
     logisticsServiceResourceType,
     retailServiceResourceType,
     constructionServiceResourceType,
+    educationServiceResourceType,
 } from '../planet/services';
 import { forEachPopulationCohort } from '../population/population';
 import type { ServiceName } from '../population/population';
@@ -57,6 +58,13 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
         willingnessMultiplier: 1.0, // necessary — moderately inelastic
+    },
+    {
+        resource: educationServiceResourceType,
+        serviceKey: 'education',
+        bufferTargetTicks: EDUCATION_BUFFER_TARGET_TICKS,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        willingnessMultiplier: 1.0, // important but deferrable — elastic
     },
     {
         resource: retailServiceResourceType,
@@ -213,7 +221,11 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     break;
                 }
 
-                const referencePrice = planet.marketPrices[def.resource.name] ?? INITIAL_SERVICE_PRICE;
+                if (def.serviceKey === 'education' && occ !== 'education') {
+                    continue; // Only education group buys education services
+                }
+
+                const referencePrice = planet.marketPrices[def.resource.name];
                 if (referencePrice <= 0) {
                     continue;
                 }

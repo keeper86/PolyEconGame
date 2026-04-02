@@ -160,14 +160,6 @@ export const concreteResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const brickResourceType: Resource = {
-    name: 'Brick',
-    form: 'pieces',
-    level: 'manufactured',
-    volumePerQuantity: 1.0,
-    massPerQuantity: 1,
-};
-
 export const glassResourceType: Resource = {
     name: 'Glass',
     form: 'solid',

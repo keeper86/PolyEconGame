@@ -1,16 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import {
-    GROCERY_BUFFER_TARGET_TICKS,
-    INITIAL_GROCERY_PRICE,
-    PRICE_ADJUST_MAX_UP,
-    SERVICE_PER_PERSON_PER_TICK,
-} from '../constants';
+import { GROCERY_BUFFER_TARGET_TICKS, PRICE_ADJUST_MAX_UP, SERVICE_PER_PERSON_PER_TICK } from '../constants';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import {
+    administrativeServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
-    administrativeServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
@@ -397,12 +392,14 @@ describe('updateAgentPricing', () => {
         makeGameState(planet, groceryAgent);
     });
 
-    it('bootstraps with INITIAL_GROCERY_PRICE on first tick', () => {
+    it('bootstraps offer price from seeded marketPrices on first tick', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 100);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
-        expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.offerPrice).toBe(INITIAL_GROCERY_PRICE);
+        expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.offerPrice).toBe(
+            planet.marketPrices[GROCERY_SERVICE],
+        );
         // With retainment 0, effective quantity should be 100
         // The actual quantity is calculated from retainment, not stored
     });
@@ -537,11 +534,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         );
         planet.bank.householdDeposits = totalPop * WEALTH_PER_PERSON;
         planet.bank.deposits = totalPop * WEALTH_PER_PERSON;
-        // Set intermediate service prices cheap so healthcare/logistics/admin
-        // don't consume the entire budget before retail is reached.
-        // Retail is intentionally left unset: it defaults to INITIAL_SERVICE_PRICE
-        // so that reservationPrice (= refPrice × 0.9) exceeds the offer price.
-        // Setting retail to SERVICE_PRICE would make bidPrice < offerPrice (0.9×0.01 < 0.01).
+
         planet.marketPrices[GROCERY_SERVICE] = SERVICE_PRICE;
         planet.marketPrices[healthcareServiceResourceType.name] = SERVICE_PRICE;
         planet.marketPrices[logisticsServiceResourceType.name] = SERVICE_PRICE;

@@ -152,6 +152,7 @@ export function createPopulation(total: number): Population {
         demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
         summedPopulation: createEmptyPopulationCohort(),
         lastTransferMatrix: [],
+        lastConsumption: {},
     };
     const remainder = total - perAge * (MAX_AGE + 1);
 

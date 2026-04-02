@@ -15,6 +15,7 @@
  */
 
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createEmptyDemographicEventCounters,
     type Agent,
@@ -166,6 +167,7 @@ export function makePopulation(): Population {
         demography: makePopulationDemography(),
         summedPopulation: makePopulationCohort(),
         lastTransferMatrix: [],
+        lastConsumption: {},
     };
 }
 
@@ -404,6 +406,7 @@ export function makeGovernmentAgent(id = 'gov-1', planetId = 'p'): Agent {
  * or use the convenience helpers below for pre-populated planets.
  */
 export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string }): Planet {
+    const { marketPrices: overrideMarketPrices, ...restOverrides } = overrides ?? {};
     return {
         id: 'p',
         name: 'Test Planet',
@@ -414,9 +417,9 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         bank: makeBank(),
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
-        marketPrices: {},
+        marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
         lastMarketResult: {},
-        ...overrides,
+        ...restOverrides,
     };
 }
 

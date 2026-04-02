@@ -43,17 +43,21 @@ export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 3;
 export const LOGISTICS_BUFFER_TARGET_TICKS = 4;
 export const RETAIL_BUFFER_TARGET_TICKS = 10;
 export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
+export const EDUCATION_BUFFER_TARGET_TICKS = 2;
+
+/**
+ * Grocery starvation level below which education is treated as a valid
+ * household need in the intergenerational transfer system.
+ * When starvation exceeds this threshold the household is under food stress
+ * and education spending is deferred.
+ */
+export const EDUCATION_STARVATION_THRESHOLD = 0.05;
 
 /**
  * Minimum grocery service price (prevents zero or negative prices).
  */
 export const GROCERY_PRICE_FLOOR = 0.01;
 export const GROCERY_PRICE_CEIL = 1000000.0;
-
-/**
- * Initial grocery service price per unit (currency units per service unit).
- */
-export const INITIAL_GROCERY_PRICE = 1.0;
 
 /**
  * Minimum buffer fill fraction used to compute the urgency multiplier in
@@ -66,30 +70,9 @@ export const INITIAL_GROCERY_PRICE = 1.0;
  */
 export const MIN_SERVICE_BUFFER_FILL = 0.01;
 
-/**
- * Initial service price per unit (currency units per service unit).
- * Services require more infrastructure and labor than basic food.
- */
-export const INITIAL_SERVICE_PRICE = 5.0;
-
-/**
- * Firm inventory target expressed as a multiple of one tick's production output.
- * E.g. 60 means the firm wants to hold 60 ticks (~2 months) worth of production.
- */
-export const FIRM_INVENTORY_TARGET_TICKS = 60;
-
 // ---------------------------------------------------------------------------
 // Per-agent food pricing constants
 // ---------------------------------------------------------------------------
-
-/**
- * Weight of the inventory-penalty term in the pricing AI metric.
- *
- * The agent minimises:  M = (produced − sold)² − INVENTORY_PENALTY_WEIGHT × inventory
- *
- * A higher value makes agents prefer keeping inventory low (sell more aggressively).
- */
-export const INVENTORY_PENALTY_WEIGHT = 0.5;
 
 /**
  * Maximum multiplicative price adjustment per tick (upward).
@@ -102,6 +85,53 @@ export const PRICE_ADJUST_MAX_UP = 1.05;
  * e.g. 0.95 means price can decrease at most 5 % per tick.
  */
 export const PRICE_ADJUST_MAX_DOWN = 0.95;
+
+/**
+ * Maximum multiplicative price adjustment per tick (downward) when the offer
+ * price is within the cost-floor brake zone.  Much smaller than
+ * PRICE_ADJUST_MAX_DOWN so that prices descend very slowly near production
+ * cost, keeping supply chains alive while downstream demand signals propagate.
+ * e.g. 0.99 means at most 1 % decrease per tick at/near the cost floor.
+ */
+export const PRICE_ADJUST_MAX_DOWN_SOFT = 0.99;
+
+/**
+ * Minimum profit-margin markup added on top of estimated production cost to
+ * derive the soft cost floor for automatic pricing.
+ * e.g. 0.05 → agents target at least 5 % above break-even.
+ */
+export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
+
+export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
+
+/**
+ * Width of the cost-floor brake zone, expressed as a fraction of the floor
+ * price.  Within this zone the maximum downward adjustment is linearly
+ * interpolated from PRICE_ADJUST_MAX_DOWN_SOFT (at the floor) to
+ * PRICE_ADJUST_MAX_DOWN (at the top of the zone).
+ * e.g. 0.2 → brake zone spans from costFloor to costFloor × 1.2.
+ */
+export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
+
+/**
+ * Stiffness of the cost-equilibrium spring that couples input and output prices.
+ *
+ * Implements a symmetric error-correction mechanism (cf. von Cramon-Taubadel 1998,
+ * Dosi et al. EURACE): a restoring force proportional to the profitability gap
+ * keeps the supply chain anchored near break-even without hard price floors.
+ *
+ *   Output side: factor += COST_SPRING_STRENGTH × max(0, costFloor/price − 1)
+ *     → upward nudge on offer price when selling below production cost.
+ *
+ *   Input side:  factor −= COST_SPRING_STRENGTH × max(0, totalCost/revenue − 1)
+ *     → downward nudge on bid price when facility costs exceed output revenue.
+ *
+ * Both springs are zero when the facility is profitable, strengthen linearly with
+ * the cost gap, and are additive on top of the normal tâtonnement signal.
+ * Set to 0 to disable.  A value of 0.1 gives a gentle but persistent pull
+ * toward break-even: a 20 % cost overrun adds ~2 % correction per tick.
+ */
+export const COST_SPRING_STRENGTH = 0.1;
 
 /**
  * Sensitivity of the multiplicative price factor to the gradient of M.
@@ -125,7 +155,7 @@ export const RETAINED_EARNINGS_THRESHOLD = 1.5;
  * procurement buffer.  Used both in automaticPricing (bid quantity) and in the
  * financial tick (retained-earnings extension + input-buffer loan).
  */
-export const INPUT_BUFFER_TARGET_TICKS = 30;
+export const INPUT_BUFFER_TARGET_TICKS = 10;
 
 /**
  * Maximum output inventory expressed as ticks of production.
@@ -133,7 +163,7 @@ export const INPUT_BUFFER_TARGET_TICKS = 30;
  * supply-constrained by lack of demand: input buying is suppressed entirely
  * until inventory drops below this ceiling.
  */
-export const OUTPUT_BUFFER_MAX_TICKS = 60;
+export const OUTPUT_BUFFER_MAX_TICKS = 5;
 
 // ---------------------------------------------------------------------------
 // Bank credit / loan origination constants

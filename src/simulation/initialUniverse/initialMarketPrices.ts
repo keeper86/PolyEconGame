@@ -1,7 +1,6 @@
 import {
     agriculturalProductResourceType,
     beverageResourceType,
-    brickResourceType,
     cementResourceType,
     chemicalResourceType,
     clayResourceType,
@@ -24,12 +23,14 @@ import {
     lumberResourceType,
     machineryResourceType,
     naturalGasResourceType,
+    packagingResourceType,
     paperResourceType,
     pesticideResourceType,
     pharmaceuticalResourceType,
     plasticResourceType,
     processedFoodResourceType,
     sandResourceType,
+    siliconWaferResourceType,
     steelResourceType,
     stoneResourceType,
     vehicleResourceType,
@@ -38,6 +39,7 @@ import {
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
+    educationServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
@@ -75,29 +77,29 @@ export const initialMarketPrices: Record<string, number> = {
     [cementResourceType.name]: 2.0, // 60 limestone + 15 clay + 10 coal → 50 cement
     [plasticResourceType.name]: 2.0, // oil refinery by-product
     [chemicalResourceType.name]: 2.0, // oil refinery by-product
-    [fuelResourceType.name]: 2.5, // oil refinery
-    [brickResourceType.name]: 1.0, // 120 clay + 10 coal → 110 brick
-    // Tier 2 processed
+    [fuelResourceType.name]: 2.5, // oil refinery    // Tier 2 processed
     [fabricResourceType.name]: 3.0, // 120 cotton + 30 water → 100 fabric
     [processedFoodResourceType.name]: 2.5, // 200 agri + 100 water → 150 processed food
     [beverageResourceType.name]: 1.5, // 80 water + 20 agri → 100 beverage
     [paperResourceType.name]: 2.5, // 150 logs + 50 water → 100 paper
     [pesticideResourceType.name]: 3.5, // 40 chemical → 30 pesticide
     [concreteResourceType.name]: 2.5, // 40 cement + 80 stone + 40 sand + 20 water → 100 concrete
+    [siliconWaferResourceType.name]: 5.0, // 100 sand + 50 coal → 20 silicon wafer
+    [packagingResourceType.name]: 2.0, // 50 paper + 20 plastic → 100 packaging
     // Tier 3 manufactured
     [clothingResourceType.name]: 6.0, // 80 fabric + 10 plastic → 60 clothing
     [furnitureResourceType.name]: 5.0, // 100 lumber + 20 steel + 10 fabric → 100 furniture
     [electronicComponentResourceType.name]: 15.0, // 100 sand + 100 copper + 50 rare earth + 100 plastic → 80
-    // Tier 4 complex manufactured
     [consumerElectronicsResourceType.name]: 15.0, // 100 electronic component + 50 plastic + 50 glass → 200
     [machineryResourceType.name]: 15.0, // 80 steel + 10 electronic component + 20 plastic → 50
     [vehicleResourceType.name]: 15.0, // 10 steel + 5 aluminum + ... → 10 vehicles
     [pharmaceuticalResourceType.name]: 50.0, // 100 agri + 80 chemical + 100 water → 10 pharma
-    // Tier 5 services
+    // Tier 4 services
     [groceryServiceResourceType.name]: 50.0,
     [healthcareServiceResourceType.name]: 50.0,
     [administrativeServiceResourceType.name]: 50.0,
     [logisticsServiceResourceType.name]: 50.0,
     [retailServiceResourceType.name]: 50.0,
     [constructionServiceResourceType.name]: 50.0,
+    [educationServiceResourceType.name]: 50.0,
 };

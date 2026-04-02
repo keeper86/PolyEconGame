@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+    AUTOMATED_COST_FLOOR_MARKUP,
+    PRICE_ADJUST_MAX_DOWN,
+    PRICE_ADJUST_MAX_DOWN_SOFT,
     PRICE_ADJUST_MAX_UP,
     GROCERY_PRICE_CEIL as PRICE_CEIL,
     GROCERY_PRICE_FLOOR as PRICE_FLOOR,
 } from '../constants';
+import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
@@ -77,8 +81,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // buffer = 200 * 10 * 30 = 60 000 > 5 000 available → retainment should be 60,000
-        expect(offer?.offerRetainment).toBe(60_000);
+        // buffer = 200 * 10 * 10 = 20 000 > 5 000 available → retainment should be 20,000
+        expect(offer?.offerRetainment).toBe(20_000);
     });
 
     it('offers surplus above the reserved buffer', () => {
@@ -102,8 +106,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // 65 000 − 60 000 reserved = 5 000 sellable, retainment should be 60,000
-        expect(offer?.offerRetainment).toBe(60_000);
+        // 65 000 − 20 000 reserved = 45 000 sellable, retainment should be 20,000
+        expect(offer?.offerRetainment).toBe(20_000);
     });
 
     it('still offers full inventory when no facility needs that resource as input', () => {
@@ -256,5 +260,69 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
 
         const bidStorageTarget = agent.assets[PLANET_ID].market?.buy[clothingResourceType.name]?.bidStorageTarget ?? -1;
         expect(bidStorageTarget).toBeGreaterThan(0);
+    });
+});
+
+describe('automaticPricing — cost-floor brake zone', () => {
+    beforeEach(() => seedRng(42));
+
+    it('attenuates the downward adjustment when the offer price is at the cost floor', () => {
+        // Facility: scale=1, workerReq: { none: 1 }, needs: 10 agri-product @ INPUT_PRICE, produces: 5 clothing
+        // inputCostPerTick = NEEDS_QTY × INPUT_PRICE × scale = 10 × 2.0 × 1 = 20
+        // wageCostPerTick  = DEFAULT_WAGE_PER_EDU × 1 worker × scale = 1.0
+        // costPerUnit = (20 + 1) / 5 = 4.2
+        // costFloor = max(PRICE_FLOOR, 4.2 × (1 + AUTOMATED_COST_FLOOR_MARKUP)) = 4.41
+        const INPUT_PRICE = 2.0;
+        const NEEDS_QTY = 10;
+        const PRODUCES_QTY = 5;
+        const inputCost = NEEDS_QTY * INPUT_PRICE;
+        const wageCost = DEFAULT_WAGE_PER_EDU; // 1 worker, scale 1
+        const costPerUnit = (inputCost + wageCost) / PRODUCES_QTY;
+        const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit * (1 + AUTOMATED_COST_FLOOR_MARKUP));
+
+        const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 1 });
+        facility.needs = [{ resource: agriculturalProductResourceType, quantity: NEEDS_QTY }];
+        facility.produces = [{ resource: clothingResourceType, quantity: PRODUCES_QTY }];
+
+        const planet = makePlanetWithPrice({
+            [agriculturalProductResourceType.name]: INPUT_PRICE,
+            [clothingResourceType.name]: PRIOR_PRICE,
+        });
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+            [clothingResourceType.name]: { resource: clothingResourceType, quantity: 1000 },
+        });
+        agent.assets[PLANET_ID].market = {
+            sell: {
+                [clothingResourceType.name]: {
+                    resource: clothingResourceType,
+                    offerPrice: PRIOR_PRICE,
+                    lastSold: 0, // zero sell-through → maximum downward pressure
+                },
+            },
+            buy: {},
+        };
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const newPrice = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.offerPrice!;
+        // At the cost floor, soft brake applies: max drop is PRICE_ADJUST_MAX_DOWN_SOFT (≤1%)
+        expect(newPrice).toBeGreaterThanOrEqual(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN_SOFT);
+        // The full 5% drop must NOT happen
+        expect(newPrice).toBeGreaterThan(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN);
+    });
+
+    it('does not activate the brake zone for facilities with negligible costs (costFloor = PRICE_FLOOR)', () => {
+        // A facility with no inputs and minimal workers has costFloor ≈ PRICE_FLOOR.
+        // The brake zone should be inactive and full PRICE_ADJUST_MAX_DOWN should apply.
+        const STOCK = 1000;
+        const { agent, planet } = makeWaterProducerWithPriorOffer(10, 0, STOCK);
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
+        expect(newPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 5);
     });
 });

@@ -461,10 +461,10 @@ describe('intergenerationalTransfersForPlanet – insufficient surplus', () => {
     it('makes no transfer when all potential supporters are at or below the survival floor', () => {
         const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
         const foodTarget = GROCERY_BUFFER_TARGET_TICKS; // per-person buffer in ticks when fully stocked
-        // The transfer system's floor = groceryTargetPerPerson × price
-        // = GROCERY_BUFFER_TARGET_TICKS × SERVICE_PER_PERSON_PER_TICK × price.
+        // The transfer system's floor = SERVICE_PER_PERSON_PER_TICK × price
+        // (one tick's food cost — the minimum a person must keep for their own food this tick).
         const groceryPrice = planet.marketPrices[GROCERY_SERVICE] ?? 1.0;
-        const floor = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * groceryPrice;
+        const floor = SERVICE_PER_PERSON_PER_TICK * groceryPrice;
 
         // Supporters exactly at the floor — effective surplus is 0.
         placePeople(planet, 30, 500, { wealthMean: floor, foodStock: foodTarget * 500 });

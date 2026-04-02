@@ -1,3 +1,4 @@
+import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
@@ -48,7 +49,7 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
             removeFromStorageFacility(
                 storage,
                 serviceName,
-                Math.ceil(storage.currentInStorage[serviceName].quantity * 0.5),
+                storage.currentInStorage[serviceName].quantity * SERVICE_DEPRECIATION_RATE_PER_TICK,
             );
         }
     });
@@ -216,7 +217,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                             need.resource.name,
                             consumed,
                         );
-                        // services are resetted before this loop, to allow being used as input but are only 1-tick lived
+                        // services are depreciated before, so initial requirements might not be fully met anymore, so we just trust the actual consumption from storage and report that as the "consumed" amount for services. For other resources we expect to consume exactly the calculated amount (barring minor floating-point mismatches), so we report the attempted consumption.
                         const removed = need.resource.form === 'services' ? consumed : consumeInputs;
                         actualConsumed[need.resource.name] = removed;
                         if (removed < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
