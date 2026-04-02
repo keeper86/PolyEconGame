@@ -99,94 +99,111 @@ export const householdDemandPriority: string[] = SERVICE_DEFINITIONS.map((d) => 
 
 // ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
+// Bins bids by price using logarithmic spacing so the chart can show
+// quantity on the Y-axis and price on the X-axis.
 // ---------------------------------------------------------------------------
-export function binHouseholdBids(bids: BidOrder[], filled: number[], costs: number[]) {
+export function binHouseholdBids(
+    bids: BidOrder[],
+    filled: number[],
+    costs: number[],
+    numBins = 20,
+): { priceMin: number; priceMax: number; priceMid: number; quantity: number; filled: number; cost: number }[] {
     if (bids.length === 0) {
         return [];
     }
-    let totalQty = 0;
+
+    const eps = 1e-9;
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
     for (const b of bids) {
-        totalQty += b.quantity;
+        if (b.quantity <= 0) {
+            continue;
+        }
+        const p = Math.max(eps, b.bidPrice);
+        if (p < minPrice) {
+            minPrice = p;
+        }
+        if (p > maxPrice) {
+            maxPrice = p;
+        }
     }
-    if (totalQty === 0) {
+    if (!Number.isFinite(minPrice)) {
         return [];
     }
 
-    const binSize = totalQty / 10;
-    const bins = [];
+    // Single-price case: one bin
+    if (minPrice >= maxPrice) {
+        let totalQty = 0;
+        let totalFilled = 0;
+        let totalCost = 0;
+        for (let i = 0; i < bids.length; i++) {
+            totalQty += bids[i].quantity;
+            totalFilled += filled[i] ?? 0;
+            totalCost += costs[i] ?? 0;
+        }
+        if (totalQty <= 0) {
+            return [];
+        }
+        return [
+            {
+                priceMin: minPrice,
+                priceMax: maxPrice,
+                priceMid: minPrice,
+                quantity: totalQty,
+                filled: totalFilled,
+                cost: totalCost,
+            },
+        ];
+    }
 
-    let group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
-    let binTarget = binSize;
-    let runningQty = 0;
+    // Build log-spaced bin edges
+    const logMin = Math.log10(minPrice);
+    const logMax = Math.log10(maxPrice);
+    const edges: number[] = [];
+    for (let i = 0; i <= numBins; i++) {
+        edges.push(Math.pow(10, logMin + (i / numBins) * (logMax - logMin)));
+    }
+
+    const bins: {
+        priceMin: number;
+        priceMax: number;
+        priceMid: number;
+        quantity: number;
+        filled: number;
+        cost: number;
+    }[] = edges.slice(0, -1).map((lo, i) => ({
+        priceMin: lo,
+        priceMax: edges[i + 1],
+        priceMid: Math.sqrt(lo * edges[i + 1]), // geometric mean of bin edges
+        quantity: 0,
+        filled: 0,
+        cost: 0,
+    }));
 
     for (let i = 0; i < bids.length; i++) {
         const b = bids[i];
-        const bidFilled = filled[i] ?? 0;
-        const bidCost = costs[i] ?? 0;
-        const fillRatio = b.quantity > 0 ? bidFilled / b.quantity : 0;
-        const costRatio = b.quantity > 0 ? bidCost / b.quantity : 0;
+        if (b.quantity <= 0) {
+            continue;
+        }
+        const price = Math.max(eps, b.bidPrice);
 
-        let remaining = b.quantity;
-        let filledRemaining = bidFilled;
-        let costRemaining = bidCost;
-
-        while (remaining > 0) {
-            const spaceInBin = binTarget - runningQty;
-            const isLast = i === bids.length - 1 && remaining <= spaceInBin;
-
-            if (remaining <= spaceInBin || isLast) {
-                group.quantity += remaining;
-                group.filled += filledRemaining;
-                group.cost += costRemaining;
-                group.priceSum += b.bidPrice * remaining;
-                runningQty += remaining;
-                remaining = 0;
-
-                if (runningQty >= binTarget) {
-                    bins.push({
-                        bidPrice: group.priceSum / group.quantity,
-                        quantity: group.quantity,
-                        filled: group.filled,
-                        cost: group.cost,
-                    });
-                    binTarget += binSize;
-                    group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
-                }
+        // Find the bin whose range contains this price (last bin with priceMin <= price)
+        let lo = 0;
+        let hi = bins.length - 1;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (bins[mid].priceMin <= price) {
+                lo = mid;
             } else {
-                const slice = spaceInBin;
-                const sliceFilled = slice * fillRatio;
-                const sliceCost = slice * costRatio;
-                group.quantity += slice;
-                group.filled += sliceFilled;
-                group.cost += sliceCost;
-                group.priceSum += b.bidPrice * slice;
-                runningQty += slice;
-                remaining -= slice;
-                filledRemaining -= sliceFilled;
-                costRemaining -= sliceCost;
-
-                bins.push({
-                    bidPrice: group.priceSum / group.quantity,
-                    quantity: group.quantity,
-                    filled: group.filled,
-                    cost: group.cost,
-                });
-                binTarget += binSize;
-                group = { quantity: 0, filled: 0, cost: 0, priceSum: 0 };
+                hi = mid - 1;
             }
         }
+        bins[lo].quantity += b.quantity;
+        bins[lo].filled += filled[i] ?? 0;
+        bins[lo].cost += costs[i] ?? 0;
     }
 
-    if (group.quantity > 0) {
-        bins.push({
-            bidPrice: group.priceSum / group.quantity,
-            quantity: group.quantity,
-            filled: group.filled,
-            cost: group.cost,
-        });
-    }
-
-    return bins;
+    return bins.filter((b) => b.quantity > 0);
 }
 
 // ---------------------------------------------------------------------------

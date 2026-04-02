@@ -89,7 +89,16 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             offer.offerRetainment = reserved; // Keep at least the reserved amount
 
             const initialPrice = planet.marketPrices[resource.name];
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloors.get(resource.name) ?? PRICE_FLOOR);
+            // Services have sunk wage costs — holding stock to decay is worse than selling
+            // below cost. The cost spring (separate) still prevents a race to the bottom.
+            const skipBrake = resource.form === 'services';
+            adjustOfferPrice(
+                offer,
+                inventoryQty,
+                initialPrice,
+                costFloors.get(resource.name) ?? PRICE_FLOOR,
+                skipBrake,
+            );
         }
     }
 
@@ -346,6 +355,7 @@ function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
+    skipCostBrake: boolean = false,
 ): void {
     const sold = offer.lastSold;
     const price = offer.offerPrice;
@@ -378,7 +388,9 @@ function adjustOfferPrice(
     // the maximum downward step is blended from PRICE_ADJUST_MAX_DOWN_SOFT (at the
     // floor) up to PRICE_ADJUST_MAX_DOWN (at the top of the zone).  Prices can still
     // fall through the floor — just very slowly — keeping supply chains alive.
-    if (factor < 1 && costFloor > PRICE_FLOOR) {
+    // Skipped for services: wages are sunk, decaying inventory is worse than selling
+    // below cost. The cost spring below still provides an upward restoring force.
+    if (!skipCostBrake && factor < 1 && costFloor > PRICE_FLOOR) {
         const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER);
         if (price <= brakeZoneTop) {
             const t =
