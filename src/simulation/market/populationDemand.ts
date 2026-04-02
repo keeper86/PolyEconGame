@@ -1,26 +1,26 @@
 import {
-    SERVICE_PER_PERSON_PER_TICK,
-    MIN_SERVICE_BUFFER_FILL,
-    GROCERY_BUFFER_TARGET_TICKS,
-    HEALTHCARE_BUFFER_TARGET_TICKS,
     ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-    LOGISTICS_BUFFER_TARGET_TICKS,
-    RETAIL_BUFFER_TARGET_TICKS,
     CONSTRUCTION_BUFFER_TARGET_TICKS,
     EDUCATION_BUFFER_TARGET_TICKS,
+    FACTOR_TO_SECURE_GROCERY_SUPPLY,
+    GROCERY_BUFFER_TARGET_TICKS,
+    HEALTHCARE_BUFFER_TARGET_TICKS,
+    LOGISTICS_BUFFER_TARGET_TICKS,
+    RETAIL_BUFFER_TARGET_TICKS,
+    SERVICE_PER_PERSON_PER_TICK,
 } from '../constants';
 import type { Planet, Resource } from '../planet/planet';
 import {
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
     administrativeServiceResourceType,
-    logisticsServiceResourceType,
-    retailServiceResourceType,
     constructionServiceResourceType,
     educationServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    logisticsServiceResourceType,
+    retailServiceResourceType,
 } from '../planet/services';
-import { forEachPopulationCohort } from '../population/population';
 import type { ServiceName } from '../population/population';
+import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
 
 export type ServiceDefinition = {
@@ -28,13 +28,7 @@ export type ServiceDefinition = {
     readonly serviceKey: ServiceName;
     readonly bufferTargetTicks: number;
     readonly consumptionRatePerPersonPerTick: number;
-    /**
-     * Base willingness-to-pay factor at full buffer.
-     * Effective reservation price = marketPrice × willingnessMultiplier / bufferFill,
-     * capped by MIN_SERVICE_BUFFER_FILL (≈ 100× at empty buffer, 1× at full).
-     * > 1 = inelastic (households pay above market), < 1 = elastic.
-     */
-    readonly willingnessMultiplier: number;
+    readonly survivabilityBufferThreshold: number; // under that mark we try to buy that for all wealth
 };
 
 export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
@@ -43,49 +37,49 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         serviceKey: 'grocery',
         bufferTargetTicks: GROCERY_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        willingnessMultiplier: 4.0, // survival necessity — highly inelastic
+        survivabilityBufferThreshold: 1,
     },
     {
         resource: healthcareServiceResourceType,
         serviceKey: 'healthcare',
         bufferTargetTicks: HEALTHCARE_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        willingnessMultiplier: 2.0, // essential health — inelastic
+        survivabilityBufferThreshold: 0,
     },
     {
         resource: logisticsServiceResourceType,
         serviceKey: 'logistics',
         bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        willingnessMultiplier: 1.0, // necessary — moderately inelastic
+        survivabilityBufferThreshold: 0,
     },
     {
         resource: educationServiceResourceType,
         serviceKey: 'education',
         bufferTargetTicks: EDUCATION_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        willingnessMultiplier: 1.0, // important but deferrable — elastic
+        survivabilityBufferThreshold: 0,
     },
     {
         resource: retailServiceResourceType,
         serviceKey: 'retail',
         bufferTargetTicks: RETAIL_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        willingnessMultiplier: 0.9, // discretionary — unit-elastic
+        survivabilityBufferThreshold: 0,
     },
     {
         resource: constructionServiceResourceType,
         serviceKey: 'construction',
         bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 2,
-        willingnessMultiplier: 0.6, // most deferrable — elastic
+        survivabilityBufferThreshold: 0,
     },
     {
         resource: administrativeServiceResourceType,
         serviceKey: 'administrative',
         bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 1.5,
-        willingnessMultiplier: 0.5, // necessary — mildly inelastic
+        survivabilityBufferThreshold: 0,
     },
 ];
 
@@ -206,14 +200,6 @@ export function binHouseholdBids(
     return bins.filter((b) => b.quantity > 0);
 }
 
-// ---------------------------------------------------------------------------
-// Build all population demand in a single sequential-budget pass
-//
-// For each cohort the services are processed in householdDemandPriority order.
-// Each service draws from the cohort's remaining wealth after higher-priority
-// purchases, so food always wins over healthcare, healthcare over retail, etc.
-// Reservation price = referencePrice × willingnessMultiplier (stable signal).
-// ---------------------------------------------------------------------------
 export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
     const allBids = new Map<string, BidOrder[]>(SERVICE_DEFINITIONS.map((def) => [def.resource.name, []]));
 
@@ -242,7 +228,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue; // Only education group buys education services
                 }
 
-                const referencePrice = planet.marketPrices[def.resource.name];
+                const referencePrice = planet.marketPrices[def.resource.name] * FACTOR_TO_SECURE_GROCERY_SUPPLY;
                 if (referencePrice <= 0) {
                     continue;
                 }
@@ -255,21 +241,30 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
+                const survivalBufferThresholdDifference =
+                    rate * Math.max(0, def.survivabilityBufferThreshold - serviceBuffer);
+
                 const affordable = remainingWealth / referencePrice;
                 const quantityPerPerson = Math.min(desiredPerPerson, affordable);
-                if (quantityPerPerson <= 0) {
+
+                if (quantityPerPerson <= survivalBufferThresholdDifference) {
+                    const referencePriceForSurvival = (0.9999 * remainingWealth) / survivalBufferThresholdDifference;
+                    remainingWealth = 0;
+                    const bids = allBids.get(def.resource.name)!;
+                    bids.push({
+                        age,
+                        edu,
+                        occ,
+                        skill,
+                        population: pop,
+                        bidPrice: referencePriceForSurvival,
+                        quantity: survivalBufferThresholdDifference * pop,
+                        wealthMoments: wm,
+                    });
                     continue;
                 }
 
                 remainingWealth -= quantityPerPerson * referencePrice;
-
-                // When the buffer is depleted, households bid above the baseline multiplier
-                // so they can match sellers even during scarcity or price-discovery bootstrap.
-                // At bufferFill=0 (empty): price = willingnessMultiplier / MIN_SERVICE_BUFFER_FILL (~100× base)
-                // At bufferFill=1 (full):  price = willingnessMultiplier × referencePrice (normal)
-                const bufferFill = def.bufferTargetTicks > 0 ? Math.min(1, serviceBuffer / def.bufferTargetTicks) : 1;
-                const effectiveBufferFill = Math.max(bufferFill, MIN_SERVICE_BUFFER_FILL);
-                const reservationPrice = (referencePrice * def.willingnessMultiplier) / effectiveBufferFill;
 
                 const bids = allBids.get(def.resource.name)!;
                 bids.push({
@@ -278,7 +273,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     occ,
                     skill,
                     population: pop,
-                    bidPrice: reservationPrice,
+                    bidPrice: referencePrice,
                     quantity: quantityPerPerson * pop,
                     wealthMoments: wm,
                 });

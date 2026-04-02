@@ -4,8 +4,8 @@ import {
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_DOWN_SOFT,
     PRICE_ADJUST_MAX_UP,
-    GROCERY_PRICE_CEIL as PRICE_CEIL,
-    GROCERY_PRICE_FLOOR as PRICE_FLOOR,
+    PRICE_CEIL,
+    PRICE_FLOOR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import {

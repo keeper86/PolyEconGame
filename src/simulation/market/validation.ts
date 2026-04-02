@@ -1,4 +1,4 @@
-import { GROCERY_PRICE_FLOOR as PRICE_FLOOR, GROCERY_PRICE_CEIL as PRICE_CEIL, EPSILON } from '../constants';
+import { PRICE_FLOOR, PRICE_CEIL, EPSILON } from '../constants';
 import type { Resource, AgentPlanetAssets, AgentMarketOfferState, AgentMarketBidState } from '../planet/planet';
 import { getAvailableStorageCapacity, queryStorageFacility } from '../planet/storage';
 import type { BuyBid } from '../../server/controller/user';

@@ -1,4 +1,5 @@
 import {
+    FACTOR_TO_SECURE_GROCERY_SUPPLY,
     GENERATION_GAP,
     GENERATION_KERNEL_N,
     GROCERY_BUFFER_TARGET_TICKS,
@@ -165,7 +166,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
 
-    const groceryPrice = planet.marketPrices[groceryServiceResourceType.name];
+    const groceryPrice = planet.marketPrices[groceryServiceResourceType.name]*FACTOR_TO_SECURE_GROCERY_SUPPLY;
 
     const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
 

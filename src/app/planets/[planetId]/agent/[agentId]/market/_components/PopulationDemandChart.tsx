@@ -78,12 +78,14 @@ export default function PopulationDemandChart({ bids }: Props) {
     }
 
     // Sort by ascending priceMid so bars go left-to-right (lowest price first)
-    const data = [...bids].sort((a, b) => a.priceMid - b.priceMid).map((b) => ({
-        ...b,
-        // recharts needs a string key for categorical X axis; use formatted price mid
-        name: formatNumbers(b.priceMid),
-        displayQuantity: b.demandedQuantity,
-    }));
+    const data = [...bids]
+        .sort((a, b) => a.priceMid - b.priceMid)
+        .map((b) => ({
+            ...b,
+            // recharts needs a string key for categorical X axis; use formatted price mid
+            name: formatNumbers(b.priceMid),
+            displayQuantity: b.demandedQuantity,
+        }));
 
     const priceMids = data.map((d) => d.priceMid);
     const logTicks = computeLogTicks(priceMids);
@@ -115,6 +117,7 @@ export default function PopulationDemandChart({ bids }: Props) {
                     />
                     <YAxis
                         tick={{ fontSize: 10 }}
+                        scale='linear'
                         label={{ value: 'Quantity (t)', angle: -90, position: 'insideLeft', fontSize: 10 }}
                         tickFormatter={(v) => formatNumbers(v as number)}
                     />

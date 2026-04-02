@@ -274,10 +274,6 @@ export type AgentMarketOfferState = {
 export type AgentMarketBidState = {
     /** The resource being sought. */
     resource: Resource;
-    /**
-     * Maximum price this agent is willing to pay (currency / unit).
-     * Human-controllable: players can override this value.
-     */
     bidPrice?: number;
     /**
      * Fill storage up to this level — bid quantity per tick is computed
