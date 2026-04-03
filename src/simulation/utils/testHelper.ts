@@ -324,6 +324,16 @@ export function makeProductionFacility(
             lastProduced: {},
             lastConsumed: {},
         },
+        avgTickResults: {
+            overallEfficiency: 0,
+            overqualifiedWorkers: {},
+            resourceEfficiency: {},
+            workerEfficiency: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+            lastProduced: {},
+            lastConsumed: {},
+        },
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -419,6 +429,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         environment: makeEnvironment(),
         marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
         lastMarketResult: {},
+        avgMarketResult: {},
         ...restOverrides,
     };
 }

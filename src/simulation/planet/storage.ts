@@ -60,6 +60,12 @@ export type ProductionFacility = Facilility & {
      * `undefined` before the first tick has run.
      */
     lastTickResults: LastTickResults;
+    /**
+     * Exponential moving average of `lastTickResults` over approximately the
+     * last month (α = 1/TICKS_PER_MONTH).  Bootstrapped from the first real
+     * tick's results so the initial value is never biased toward zero.
+     */
+    avgTickResults: LastTickResults;
 };
 
 export type StorageFacility = Facilility & {

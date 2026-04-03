@@ -56,6 +56,16 @@ export function makeProductionFacility(opts: {
             lastProduced: {},
             lastConsumed: {},
         },
+        avgTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            resourceEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+            lastProduced: {},
+            lastConsumed: {},
+        },
     };
 }
 

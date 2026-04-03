@@ -1,4 +1,4 @@
-import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
+import { SERVICE_DEPRECIATION_RATE_PER_TICK, TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
@@ -252,6 +252,66 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 lastProduced: actualProduced,
                 lastConsumed: actualConsumed,
             };
+
+            // Update monthly EMA.  Bootstrap from the first real tick so the
+            // average is never biased toward the zeroed placeholder.
+            const isBootstrap = facility.avgTickResults.overallEfficiency === 0 && overallEfficiency !== 0;
+            if (isBootstrap) {
+                facility.avgTickResults = { ...facility.lastTickResults };
+            } else {
+                const alpha = 1 / TICKS_PER_MONTH;
+                const avg = facility.avgTickResults;
+                avg.overallEfficiency = alpha * overallEfficiency + (1 - alpha) * avg.overallEfficiency;
+
+                for (const key of Object.keys({
+                    ...workerEfficiency,
+                    ...avg.workerEfficiency,
+                }) as (keyof typeof workerEfficiency)[]) {
+                    const cur = workerEfficiency[key] ?? 0;
+                    avg.workerEfficiency[key] = alpha * cur + (1 - alpha) * (avg.workerEfficiency[key] ?? 0);
+                }
+                for (const key of Object.keys({ ...resourceEfficiencyMap, ...avg.resourceEfficiency })) {
+                    const cur = resourceEfficiencyMap[key] ?? 0;
+                    avg.resourceEfficiency[key] = alpha * cur + (1 - alpha) * (avg.resourceEfficiency[key] ?? 0);
+                }
+                for (const key of Object.keys({ ...actualProduced, ...avg.lastProduced })) {
+                    const cur = actualProduced[key] ?? 0;
+                    avg.lastProduced[key] = alpha * cur + (1 - alpha) * (avg.lastProduced[key] ?? 0);
+                }
+                for (const key of Object.keys({ ...actualConsumed, ...avg.lastConsumed })) {
+                    const cur = actualConsumed[key] ?? 0;
+                    avg.lastConsumed[key] = alpha * cur + (1 - alpha) * (avg.lastConsumed[key] ?? 0);
+                }
+                for (const key of Object.keys({
+                    ...exactUsedByEdu,
+                    ...avg.exactUsedByEdu,
+                }) as (keyof typeof exactUsedByEdu)[]) {
+                    const cur = exactUsedByEdu[key] ?? 0;
+                    avg.exactUsedByEdu[key] = alpha * cur + (1 - alpha) * (avg.exactUsedByEdu[key] ?? 0);
+                }
+                for (const key of Object.keys({
+                    ...totalUsedByEdu,
+                    ...avg.totalUsedByEdu,
+                }) as (keyof typeof totalUsedByEdu)[]) {
+                    const cur = totalUsedByEdu[key] ?? 0;
+                    avg.totalUsedByEdu[key] = alpha * cur + (1 - alpha) * (avg.totalUsedByEdu[key] ?? 0);
+                }
+                for (const jobEdu of Object.keys({
+                    ...overqualifiedWorkers,
+                    ...avg.overqualifiedWorkers,
+                }) as (keyof typeof overqualifiedWorkers)[]) {
+                    avg.overqualifiedWorkers[jobEdu] ??= {};
+                    const curJob = overqualifiedWorkers[jobEdu] ?? {};
+                    for (const workerEdu of Object.keys({
+                        ...curJob,
+                        ...avg.overqualifiedWorkers[jobEdu],
+                    }) as (keyof typeof curJob)[]) {
+                        const cur = curJob[workerEdu] ?? 0;
+                        avg.overqualifiedWorkers[jobEdu]![workerEdu] =
+                            alpha * cur + (1 - alpha) * (avg.overqualifiedWorkers[jobEdu]![workerEdu] ?? 0);
+                    }
+                }
+            }
         });
     });
 }

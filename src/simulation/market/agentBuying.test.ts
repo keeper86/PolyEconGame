@@ -52,6 +52,16 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
                 lastProduced: {},
                 lastConsumed: { [coalResourceType.name]: 0 },
             },
+            avgTickResults: {
+                overallEfficiency: 0,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+            },
         },
     ];
     return agent;
@@ -130,6 +140,16 @@ describe('automaticPricing — buy side', () => {
                     totalUsedByEdu: {},
                     lastProduced: {},
                     lastConsumed: { [arableLandResourceType.name]: 0 },
+                },
+                avgTickResults: {
+                    overallEfficiency: 0,
+                    workerEfficiency: {},
+                    resourceEfficiency: {},
+                    overqualifiedWorkers: {},
+                    exactUsedByEdu: {},
+                    totalUsedByEdu: {},
+                    lastProduced: {},
+                    lastConsumed: {},
                 },
             },
         ];

@@ -205,6 +205,15 @@ export type Planet = {
     lastMarketResult: {
         [resourceName: string]: MarketResult;
     };
+    /**
+     * Exponential moving average of `lastMarketResult` over approximately the
+     * last month (α = 1/TICKS_PER_MONTH).  Bootstrapped from the first tick's
+     * result per resource so the value is never biased toward zero.
+     * `populationBids` is excluded (binned histogram; not averaged).
+     */
+    avgMarketResult: {
+        [resourceName: string]: MarketResult;
+    };
 };
 
 // ---------------------------------------------------------------------------
