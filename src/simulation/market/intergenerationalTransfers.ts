@@ -169,7 +169,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const groceryPrice =
         planet.marketPrices[groceryServiceResourceType.name] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
 
-    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * 5;
+    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * 10;
 
     const baseGroceryCost = SERVICE_PER_PERSON_PER_TICK * groceryPrice;
 

@@ -887,7 +887,7 @@ function computePlanetConsumption(agents: Agent[], planetId: string, planet: Pla
 
 export const getPlanetMarketOverview = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string() }))
+        .input(z.object({ planetId: z.string(), average: z.boolean().default(false) }))
         .output(
             z.object({
                 tick: z.number(),
@@ -908,8 +908,10 @@ export const getPlanetMarketOverview = () =>
             const production = computePlanetProduction(agents, input.planetId);
             const consumption = computePlanetConsumption(agents, input.planetId, planet);
 
+            const marketResults = input.average ? planet.avgMarketResult : planet.lastMarketResult;
+
             const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
-                const result = planet.lastMarketResult[resource.name];
+                const result = marketResults[resource.name];
                 const clearingPrice = result?.clearingPrice ?? planet.marketPrices[resource.name] ?? 0;
                 const totalSupply = result?.totalSupply ?? 0;
                 const totalDemand = result?.totalDemand ?? 0;
