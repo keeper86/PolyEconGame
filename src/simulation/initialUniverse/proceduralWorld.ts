@@ -96,16 +96,16 @@ const GOV = 'earth-government';
 
 const TOTAL_ARABLE = 1_500_000_000;
 const TOTAL_WATER = 2_000_000_000;
-const TOTAL_IRON_ORE = 50_000_000_000;
-const TOTAL_COAL = 40_000_000_000;
-const TOTAL_OIL = 30_000_000_000;
-const TOTAL_GAS = 20_500_000_000;
-const TOTAL_FOREST = 2_000_000_000;
-const TOTAL_COPPER = 10_500_000_000;
-const TOTAL_SAND = 20_000_000_000;
-const TOTAL_LIMESTONE = 30_000_000_000;
-const TOTAL_CLAY = 20_000_000_000;
-const TOTAL_STONE = 40_000_000_000;
+const TOTAL_IRON_ORE = 5_000_000_000_000;
+const TOTAL_COAL = 4_000_000_000_000;
+const TOTAL_OIL = 3_000_000_000_000;
+const TOTAL_GAS = 2_000_500_000_000;
+const TOTAL_FOREST = 200_000_000_000;
+const TOTAL_COPPER = 1_000_500_000_000;
+const TOTAL_SAND = 2_000_000_000_000;
+const TOTAL_LIMESTONE = 3_000_000_000_000;
+const TOTAL_CLAY = 2_000_000_000_000;
+const TOTAL_STONE = 4_000_000_000_000;
 
 // ---------------------------------------------------------------------------
 // Deterministic pseudo-random splitter
