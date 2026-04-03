@@ -9,6 +9,7 @@ import {
     insertPlanetPopulationHistory,
     insertProductPriceHistory,
     pruneGameSnapshots,
+    refreshContinuousAggregates,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { GameState } from './planet/planet';
@@ -447,6 +448,23 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             if (state.tick % 30 === 0) {
                 flushProductPrices(state, state.tick);
                 updateAgentMonthlyHistory(state, state.tick);
+                if (snapshotDb) {
+                    void refreshContinuousAggregates(snapshotDb, state.tick, 'monthly').catch((err) =>
+                        console.error(`[worker] Failed to refresh monthly CAGGs at tick ${state.tick}:`, err),
+                    );
+                }
+            }
+
+            // At year boundaries: refresh yearly (and at decade boundaries, decade) CAGGs.
+            if (state.tick % 360 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(snapshotDb, state.tick, 'yearly').catch((err) =>
+                    console.error(`[worker] Failed to refresh yearly CAGGs at tick ${state.tick}:`, err),
+                );
+            }
+            if (state.tick % 3600 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(snapshotDb, state.tick, 'decade').catch((err) =>
+                    console.error(`[worker] Failed to refresh decade CAGGs at tick ${state.tick}:`, err),
+                );
             }
 
             // Periodically persist a cold snapshot for crash recovery.

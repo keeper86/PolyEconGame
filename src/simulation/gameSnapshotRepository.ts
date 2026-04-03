@@ -330,6 +330,32 @@ export async function getProductPriceHistory(
         .select('bucket', 'planet_id', 'product_name', 'avg_price', 'min_price', 'max_price');
 }
 
+/**
+ * Manually refresh continuous aggregate views up to the given tick.
+ *
+ * Called from the worker at tick boundaries so the cascaded CAGGs
+ * (monthly → yearly → decade) stay current without a background scheduler.
+ *
+ * @param granularity  Which tier(s) to refresh. Monthly must be refreshed
+ *   before yearly, yearly before decade (cagg cascade order).
+ */
+export async function refreshContinuousAggregates(
+    db: Knex,
+    upToTick: number,
+    granularity: 'monthly' | 'yearly' | 'decade',
+): Promise<void> {
+    const views =
+        granularity === 'decade'
+            ? ['product_price_decade', 'planet_population_decade', 'agent_decade_summary']
+            : granularity === 'yearly'
+              ? ['product_price_yearly', 'planet_population_yearly', 'agent_yearly_summary']
+              : ['product_price_monthly', 'planet_population_monthly', 'agent_monthly_summary'];
+
+    for (const view of views) {
+        await db.raw(`CALL refresh_continuous_aggregate(?, NULL::bigint, ?::bigint)`, [view, upToTick]);
+    }
+}
+
 export interface PopulationBucket {
     bucket: string;
     planet_id: string;

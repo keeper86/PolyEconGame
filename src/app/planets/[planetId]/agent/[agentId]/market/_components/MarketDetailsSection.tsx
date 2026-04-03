@@ -10,6 +10,7 @@ import OfferTable from './OfferTable';
 import PopulationDemandChart from './PopulationDemandChart';
 import FoodPriceHistoryChart from './FoodPriceHistoryChart';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
+import ProductPriceHistoryChart from './ProductPriceHistoryChart';
 
 const FOOD_RESOURCE_NAME = groceryServiceResourceType.name;
 
@@ -37,30 +38,25 @@ export default function MarketDetailsSection({
         return <div className='text-sm text-muted-foreground'>No market data found for this planet.</div>;
     }
 
-    const isFood = resourceName === FOOD_RESOURCE_NAME;
-
     return (
         <div className='space-y-4'>
-            {isFood && (
-                <>
-                    <h4 className='text-sm font-semibold mb-2'>Price & starvation history</h4>
-                    <Card className='mb-4'>
-                        <CardContent className='pt-3'>
-                            <FoodPriceHistoryChart
-                                planetId={planetId}
-                                live={
-                                    data
-                                        ? {
-                                              tick: data.tick,
-                                              foodPrice: market.clearingPrice,
-                                          }
-                                        : undefined
-                                }
-                            />
-                        </CardContent>
-                    </Card>
-                </>
-            )}
+            <h4 className='text-sm font-semibold mb-2'>Price & starvation history</h4>
+            <Card className='mb-4'>
+                <CardContent className='pt-3'>
+                    <ProductPriceHistoryChart
+                        planetId={planetId}
+                        productName={resourceName}
+                        live={
+                            data
+                                ? {
+                                      tick: data.tick,
+                                      price: market.clearingPrice,
+                                  }
+                                : undefined
+                        }
+                    />
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader className='pb-1'>

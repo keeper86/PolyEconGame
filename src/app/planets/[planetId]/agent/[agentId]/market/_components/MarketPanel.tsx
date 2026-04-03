@@ -229,7 +229,10 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                 <Accordion
                                     type='multiple'
                                     value={openItems}
-                                    onValueChange={setOpenItems}
+                                    onValueChange={(next) => {
+                                        const added = next.find((item) => !openItems.includes(item));
+                                        setOpenItems(added ? [added] : []);
+                                    }}
                                     className='w-full'
                                 >
                                     {levelResources.map(({ name }) => (

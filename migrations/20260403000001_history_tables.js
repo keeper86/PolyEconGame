@@ -1,17 +1,16 @@
 /**
- * Enable TimescaleDB and convert existing history tables to hypertables.
+ * Create all history tables and enable TimescaleDB hypertables.
  *
- * This migration:
- *  1. Enables the TimescaleDB extension.
- *  2. Adds a `wages` column to agent_monthly_history.
- *  3. Converts planet_population_history and agent_monthly_history to
- *     hypertables partitioned by `tick` (integer time dimension,
- *     chunk_time_interval = 360 ticks = 1 game year).
- *  4. Creates the product_price_history table as a hypertable.
- *  5. Creates continuous aggregates at monthly (30), yearly (360) and
- *     decade (3600) granularities for all three tables.
- *  6. Adds continuous-aggregate refresh policies.
- *  7. Adds retention policies on the raw hypertables (drop after 3600 ticks).
+ * Tables created:
+ *   - planet_population_history: total population per planet at each snapshot tick
+ *   - agent_monthly_history: per-agent metrics at each month boundary (every 30 ticks)
+ *   - product_price_history: product price snapshots per planet per tick
+ *
+ * All three tables are converted to TimescaleDB hypertables partitioned by `tick`
+ * (chunk_time_interval = 360 ticks = 1 game year).
+ *
+ * Continuous aggregates at monthly (30), yearly (360) and decade (3600) granularities
+ * are created for all three tables, along with refresh and retention policies.
  *
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
@@ -23,87 +22,92 @@ exports.up = async function (knex) {
     await knex.raw('CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE');
 
     // -------------------------------------------------------------------------
-    // 2. Add wages column to agent_monthly_history
+    // 2. Create planet_population_history hypertable
     // -------------------------------------------------------------------------
-    await knex.schema.alterTable('agent_monthly_history', (table) => {
-        table.double('wages').defaultTo(0);
-    });
-
-    // -------------------------------------------------------------------------
-    // 3. Convert existing tables to hypertables
-    //    TimescaleDB requires that every unique index includes the partition
-    //    column (tick).  The tables were created with a standalone bigserial
-    //    primary key on `id` which violates this rule, so we drop those PKs
-    //    first.  The `id` column remains as a plain bigserial column.
-    //    agent_monthly_history also has a unique constraint on
-    //    (planet_id, agent_id, tick) which already includes tick — fine.
-    //    migrate_data => true carries over already-inserted rows.
-    //    chunk_time_interval => 360 = 1 game year of ticks per chunk.
-    // -------------------------------------------------------------------------
-    await knex.raw(`ALTER TABLE planet_population_history DROP CONSTRAINT IF EXISTS planet_population_history_pkey`);
-    await knex.raw(`ALTER TABLE agent_monthly_history       DROP CONSTRAINT IF EXISTS agent_monthly_history_pkey`);
-
     await knex.raw(`
-        SELECT create_hypertable(
-            'planet_population_history',
-            'tick',
-            chunk_time_interval => 360,
-            migrate_data => true,
-            if_not_exists => true
+        CREATE TABLE planet_population_history (
+            tick             BIGINT           NOT NULL,
+            planet_id        TEXT             NOT NULL,
+            population       BIGINT           NOT NULL,
+            starvation_level DOUBLE PRECISION NOT NULL DEFAULT 0,
+            food_price       DOUBLE PRECISION NOT NULL DEFAULT 0,
+            created_at       TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+            UNIQUE (planet_id, tick)
         )
-    `);
-
-    // Add a unique constraint on (planet_id, tick) to prevent duplicate rows
-    // and preserve query correctness after the PK was dropped above.
-    await knex.raw(`
-        CREATE UNIQUE INDEX IF NOT EXISTS planet_population_history_planet_tick_key
-            ON planet_population_history (planet_id, tick)
     `);
 
     await knex.raw(`
         SELECT create_hypertable(
-            'agent_monthly_history',
-            'tick',
+            'planet_population_history', 'tick',
             chunk_time_interval => 360,
-            migrate_data => true,
             if_not_exists => true
         )
     `);
+
+    await knex.raw(
+        `CREATE INDEX idx_planet_pop_history_planet_tick ON planet_population_history (planet_id, tick DESC)`,
+    );
+
+    // -------------------------------------------------------------------------
+    // 3. Create agent_monthly_history hypertable
+    // -------------------------------------------------------------------------
+    await knex.raw(`
+        CREATE TABLE agent_monthly_history (
+            tick                BIGINT           NOT NULL,
+            planet_id           TEXT             NOT NULL,
+            agent_id            TEXT             NOT NULL,
+            net_balance         DOUBLE PRECISION NOT NULL DEFAULT 0,
+            monthly_net_income  DOUBLE PRECISION NOT NULL DEFAULT 0,
+            total_workers       INTEGER          NOT NULL DEFAULT 0,
+            wages               DOUBLE PRECISION          DEFAULT 0,
+            production_value    DOUBLE PRECISION          DEFAULT 0,
+            facility_count      INTEGER                   DEFAULT 0,
+            storage_value       DOUBLE PRECISION          DEFAULT 0,
+            created_at          TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+            UNIQUE (planet_id, agent_id, tick)
+        )
+    `);
+
+    await knex.raw(`
+        SELECT create_hypertable(
+            'agent_monthly_history', 'tick',
+            chunk_time_interval => 360,
+            if_not_exists => true
+        )
+    `);
+
+    await knex.raw(
+        `CREATE INDEX idx_agent_monthly_agent_planet_tick ON agent_monthly_history (agent_id, planet_id, tick DESC)`,
+    );
+    await knex.raw(`CREATE INDEX idx_agent_monthly_planet_tick ON agent_monthly_history (planet_id, tick DESC)`);
 
     // -------------------------------------------------------------------------
     // 4. Create product_price_history hypertable
     // -------------------------------------------------------------------------
     await knex.raw(`
-        CREATE TABLE IF NOT EXISTS product_price_history (
-            tick        BIGINT      NOT NULL,
-            planet_id   TEXT        NOT NULL,
-            product_name TEXT       NOT NULL,
-            price       DOUBLE PRECISION NOT NULL,
-            created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        CREATE TABLE product_price_history (
+            tick         BIGINT           NOT NULL,
+            planet_id    TEXT             NOT NULL,
+            product_name TEXT             NOT NULL,
+            price        DOUBLE PRECISION NOT NULL,
+            created_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW()
         )
     `);
 
     await knex.raw(`
         SELECT create_hypertable(
-            'product_price_history',
-            'tick',
+            'product_price_history', 'tick',
             chunk_time_interval => 360,
             if_not_exists => true
         )
     `);
 
-    await knex.raw(`
-        CREATE INDEX IF NOT EXISTS idx_product_price_planet_product_tick
-            ON product_price_history (planet_id, product_name, tick DESC)
-    `);
+    await knex.raw(
+        `CREATE INDEX idx_product_price_planet_product_tick ON product_price_history (planet_id, product_name, tick DESC)`,
+    );
 
     // -------------------------------------------------------------------------
-    // 4b. Register an integer_now_func on all three hypertables.
-    //     TimescaleDB continuous aggregates on integer-partitioned hypertables
-    //     require a custom function that returns the "current" integer time.
-    //     We read the latest snapshot tick from game_snapshots so that
-    //     retention/refresh policies use an accurate "now" value rather than a
-    //     hard-coded constant that would make all real data look ancient.
+    // 5. Register integer_now_func on all three hypertables
     // -------------------------------------------------------------------------
     await knex.raw(`
         CREATE OR REPLACE FUNCTION game_tick_now()
@@ -122,9 +126,8 @@ exports.up = async function (knex) {
     );
 
     // -------------------------------------------------------------------------
-    // 5a. Continuous aggregates — MONTHLY (bucket = 30 ticks)
+    // 7a. Continuous aggregates — MONTHLY (bucket = 30 ticks)
     // -------------------------------------------------------------------------
-
     await knex.raw(`
         CREATE MATERIALIZED VIEW product_price_monthly
         WITH (timescaledb.continuous) AS
@@ -174,10 +177,8 @@ exports.up = async function (knex) {
     `);
 
     // -------------------------------------------------------------------------
-    // 5b. Continuous aggregates — YEARLY (bucket = 360 ticks)
-    //     Built on top of the monthly aggregates for efficiency.
+    // 7b. Continuous aggregates — YEARLY (bucket = 360 ticks)
     // -------------------------------------------------------------------------
-
     await knex.raw(`
         CREATE MATERIALIZED VIEW product_price_yearly
         WITH (timescaledb.continuous) AS
@@ -225,10 +226,8 @@ exports.up = async function (knex) {
     `);
 
     // -------------------------------------------------------------------------
-    // 5c. Continuous aggregates — DECADE (bucket = 3600 ticks)
-    //     Built on top of the yearly aggregates.
+    // 7c. Continuous aggregates — DECADE (bucket = 3600 ticks)
     // -------------------------------------------------------------------------
-
     await knex.raw(`
         CREATE MATERIALIZED VIEW product_price_decade
         WITH (timescaledb.continuous) AS
@@ -276,100 +275,46 @@ exports.up = async function (knex) {
     `);
 
     // -------------------------------------------------------------------------
-    // 6. Refresh policies for continuous aggregates
-    //    schedule_interval: how often the policy job runs.
-    //    start_offset / end_offset: range of data refreshed each run.
-    //    Offsets are expressed in the integer tick domain.
-    // -------------------------------------------------------------------------
-
-    // Monthly views — refresh every hour (wall-clock), cover up to 60 ticks back
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('product_price_monthly',
-            start_offset => 60,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 hour',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('agent_monthly_summary',
-            start_offset => 60,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 hour',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('planet_population_monthly',
-            start_offset => 60,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 hour',
-            if_not_exists => true)
-    `);
-
-    // Yearly views — refresh daily
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('product_price_yearly',
-            start_offset => 720,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 day',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('agent_yearly_summary',
-            start_offset => 720,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 day',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('planet_population_yearly',
-            start_offset => 720,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 day',
-            if_not_exists => true)
-    `);
-
-    // Decade views — refresh daily
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('product_price_decade',
-            start_offset => 7200,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 day',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('agent_decade_summary',
-            start_offset => 7200,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 day',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('planet_population_decade',
-            start_offset => 7200,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 day',
-            if_not_exists => true)
-    `);
-
-    // -------------------------------------------------------------------------
-    // 7. Retention policies on raw hypertables (drop chunks older than 3600 ticks)
+    // 8. Retention policies on raw hypertables
+    //
+    //    Raw rows are retained for 13 months (13 × 30 = 390 ticks). The
+    //    cascaded aggregates (monthly → yearly → decade) preserve rolled-up
+    //    history indefinitely beyond that window.
+    //
+    //    NOTE: cascaded CAGGs (yearly on top of monthly, etc.) require the
+    //    intermediate view to be explicitly materialized via refresh policies.
+    //    Real-time aggregation only covers data directly in the raw hypertable
+    //    and does NOT propagate transitively through a CAGG chain.
     // -------------------------------------------------------------------------
     await knex.raw(`
         SELECT add_retention_policy('planet_population_history',
-            drop_after => 3600,
-            if_not_exists => true)
+            drop_after => 390, if_not_exists => true)
     `);
     await knex.raw(`
         SELECT add_retention_policy('agent_monthly_history',
-            drop_after => 3600,
-            if_not_exists => true)
+            drop_after => 390, if_not_exists => true)
     `);
     await knex.raw(`
         SELECT add_retention_policy('product_price_history',
-            drop_after => 3600,
-            if_not_exists => true)
+            drop_after => 390, if_not_exists => true)
     `);
+
+    // -------------------------------------------------------------------------
+    // 9. Refresh policies for continuous aggregates
+    // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // 9. No initial refresh needed — views are empty at migration time.
+    //    The simulation worker calls refreshContinuousAggregates() at each
+    //    month/year/decade tick boundary, so data materializes automatically
+    //    as the simulation runs.
+    // -------------------------------------------------------------------------
 };
+
+// Disable the Knex transaction wrapper for this migration.
+// Several TimescaleDB operations (create_hypertable, set_integer_now_func,
+// refresh_continuous_aggregate) cannot run inside a transaction block.
+exports.config = { transaction: false };
 
 /**
  * @param { import("knex").Knex } knex
@@ -377,9 +322,9 @@ exports.up = async function (knex) {
  */
 exports.down = async function (knex) {
     // Remove retention policies
-    await knex.raw(`SELECT remove_retention_policy('product_price_history',   if_not_exists => true)`);
-    await knex.raw(`SELECT remove_retention_policy('agent_monthly_history',    if_not_exists => true)`);
-    await knex.raw(`SELECT remove_retention_policy('planet_population_history', if_not_exists => true)`);
+    await knex.raw(`SELECT remove_retention_policy('product_price_history',     if_not_exists => true)`);
+    await knex.raw(`SELECT remove_retention_policy('agent_monthly_history',      if_not_exists => true)`);
+    await knex.raw(`SELECT remove_retention_policy('planet_population_history',  if_not_exists => true)`);
 
     // Drop continuous aggregates (cascades through cagg hierarchy)
     for (const view of [
@@ -396,20 +341,14 @@ exports.down = async function (knex) {
         await knex.raw(`DROP MATERIALIZED VIEW IF EXISTS ${view} CASCADE`);
     }
 
-    // Drop product_price_history table
-    await knex.schema.dropTableIfExists('product_price_history');
-
     // Drop integer_now helper function
     await knex.raw('DROP FUNCTION IF EXISTS game_tick_now()');
 
-    // Remove wages column
-    await knex.schema.alterTable('agent_monthly_history', (table) => {
-        table.dropColumn('wages');
-    });
+    // Drop tables
+    await knex.schema.dropTableIfExists('product_price_history');
+    await knex.schema.dropTableIfExists('agent_monthly_history');
+    await knex.schema.dropTableIfExists('planet_population_history');
 
-    // Revert hypertables back to plain tables (not strictly reversible in TimescaleDB,
-    // but dropping and recreating would lose data; we leave them as hypertables in down).
-
-    // Drop extension last (may fail if other objects depend on it)
+    // Drop extension last
     await knex.raw('DROP EXTENSION IF EXISTS timescaledb CASCADE');
 };
