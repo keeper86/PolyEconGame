@@ -45,7 +45,7 @@ export type AgentDecadeSummary = {
     agent_id: string | null;
     avg_net_balance: number | null;
     avg_monthly_net_income: number | null;
-    avg_total_workers: string | null;
+    avg_total_workers: number | null;
     avg_wages: number | null;
     sum_production_value: number | null;
 };
@@ -71,10 +71,10 @@ export type AgentMonthlySummary = {
     agent_id: string | null;
     avg_net_balance: number | null;
     avg_monthly_net_income: number | null;
-    avg_total_workers: string | null;
+    avg_total_workers: number | null;
     avg_wages: number | null;
     sum_production_value: number | null;
-    avg_facility_count: string | null;
+    avg_facility_count: number | null;
     avg_storage_value: number | null;
 };
 
@@ -84,7 +84,7 @@ export type AgentYearlySummary = {
     agent_id: string | null;
     avg_net_balance: number | null;
     avg_monthly_net_income: number | null;
-    avg_total_workers: string | null;
+    avg_total_workers: number | null;
     avg_wages: number | null;
     sum_production_value: number | null;
 };
@@ -112,7 +112,7 @@ export type KnexMigrationsLock = {
 export type PlanetPopulationDecade = {
     bucket: string | null;
     planet_id: string | null;
-    avg_population: string | null;
+    avg_population: number | null;
     avg_starvation: number | null;
     avg_price_level: number | null;
 };
@@ -130,7 +130,7 @@ export type PlanetPopulationHistory = {
 export type PlanetPopulationMonthly = {
     bucket: string | null;
     planet_id: string | null;
-    avg_population: string | null;
+    avg_population: number | null;
     avg_starvation: number | null;
     avg_price_level: number | null;
 };
@@ -138,7 +138,7 @@ export type PlanetPopulationMonthly = {
 export type PlanetPopulationYearly = {
     bucket: string | null;
     planet_id: string | null;
-    avg_population: string | null;
+    avg_population: number | null;
     avg_starvation: number | null;
     avg_price_level: number | null;
 };
