@@ -2,21 +2,52 @@
 // Do not touch them, or risk, your modifications being lost.
 
 export enum Table {
+    AgentDecadeSummary = 'agent_decade_summary',
     AgentMonthlyHistory = 'agent_monthly_history',
+    AgentMonthlySummary = 'agent_monthly_summary',
+    AgentYearlySummary = 'agent_yearly_summary',
     GameSnapshots = 'game_snapshots',
     KnexMigrations = 'knex_migrations',
     KnexMigrationsLock = 'knex_migrations_lock',
+    PlanetPopulationDecade = 'planet_population_decade',
     PlanetPopulationHistory = 'planet_population_history',
+    PlanetPopulationMonthly = 'planet_population_monthly',
+    PlanetPopulationYearly = 'planet_population_yearly',
+    ProductPriceDecade = 'product_price_decade',
+    ProductPriceHistory = 'product_price_history',
+    ProductPriceMonthly = 'product_price_monthly',
+    ProductPriceYearly = 'product_price_yearly',
     UserData = 'user_data',
 }
 
 export type Tables = {
+    agent_decade_summary: AgentDecadeSummary;
     agent_monthly_history: AgentMonthlyHistory;
+    agent_monthly_summary: AgentMonthlySummary;
+    agent_yearly_summary: AgentYearlySummary;
     game_snapshots: GameSnapshots;
     knex_migrations: KnexMigrations;
     knex_migrations_lock: KnexMigrationsLock;
+    planet_population_decade: PlanetPopulationDecade;
     planet_population_history: PlanetPopulationHistory;
+    planet_population_monthly: PlanetPopulationMonthly;
+    planet_population_yearly: PlanetPopulationYearly;
+    product_price_decade: ProductPriceDecade;
+    product_price_history: ProductPriceHistory;
+    product_price_monthly: ProductPriceMonthly;
+    product_price_yearly: ProductPriceYearly;
     user_data: UserData;
+};
+
+export type AgentDecadeSummary = {
+    bucket: string | null;
+    planet_id: string | null;
+    agent_id: string | null;
+    avg_net_balance: number | null;
+    avg_monthly_net_income: number | null;
+    avg_total_workers: string | null;
+    avg_wages: number | null;
+    sum_production_value: number | null;
 };
 
 export type AgentMonthlyHistory = {
@@ -31,6 +62,31 @@ export type AgentMonthlyHistory = {
     facility_count: number | null;
     storage_value: number | null;
     created_at: Date;
+    wages: number | null;
+};
+
+export type AgentMonthlySummary = {
+    bucket: string | null;
+    planet_id: string | null;
+    agent_id: string | null;
+    avg_net_balance: number | null;
+    avg_monthly_net_income: number | null;
+    avg_total_workers: string | null;
+    avg_wages: number | null;
+    sum_production_value: number | null;
+    avg_facility_count: string | null;
+    avg_storage_value: number | null;
+};
+
+export type AgentYearlySummary = {
+    bucket: string | null;
+    planet_id: string | null;
+    agent_id: string | null;
+    avg_net_balance: number | null;
+    avg_monthly_net_income: number | null;
+    avg_total_workers: string | null;
+    avg_wages: number | null;
+    sum_production_value: number | null;
 };
 
 export type GameSnapshots = {
@@ -53,6 +109,14 @@ export type KnexMigrationsLock = {
     is_locked: number | null;
 };
 
+export type PlanetPopulationDecade = {
+    bucket: string | null;
+    planet_id: string | null;
+    avg_population: string | null;
+    avg_starvation: number | null;
+    avg_price_level: number | null;
+};
+
 export type PlanetPopulationHistory = {
     id: string;
     tick: string;
@@ -61,6 +125,57 @@ export type PlanetPopulationHistory = {
     starvation_level: number;
     food_price: number;
     created_at: Date;
+};
+
+export type PlanetPopulationMonthly = {
+    bucket: string | null;
+    planet_id: string | null;
+    avg_population: string | null;
+    avg_starvation: number | null;
+    avg_price_level: number | null;
+};
+
+export type PlanetPopulationYearly = {
+    bucket: string | null;
+    planet_id: string | null;
+    avg_population: string | null;
+    avg_starvation: number | null;
+    avg_price_level: number | null;
+};
+
+export type ProductPriceDecade = {
+    bucket: string | null;
+    planet_id: string | null;
+    product_name: string | null;
+    avg_price: number | null;
+    min_price: number | null;
+    max_price: number | null;
+};
+
+export type ProductPriceHistory = {
+    tick: string;
+    planet_id: string;
+    product_name: string;
+    price: number;
+    created_at: Date;
+};
+
+export type ProductPriceMonthly = {
+    bucket: string | null;
+    planet_id: string | null;
+    product_name: string | null;
+    avg_price: number | null;
+    min_price: number | null;
+    max_price: number | null;
+};
+
+export type ProductPriceYearly = {
+    bucket: string | null;
+    planet_id: string | null;
+    product_name: string | null;
+    avg_price: number | null;
+    min_price: number | null;
+    max_price: number | null;
 };
 
 export type UserData = {

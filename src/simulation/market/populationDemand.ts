@@ -2,7 +2,7 @@ import {
     ADMINISTRATIVE_BUFFER_TARGET_TICKS,
     CONSTRUCTION_BUFFER_TARGET_TICKS,
     EDUCATION_BUFFER_TARGET_TICKS,
-    FACTOR_TO_SECURE_GROCERY_SUPPLY,
+    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     GROCERY_BUFFER_TARGET_TICKS,
     HEALTHCARE_BUFFER_TARGET_TICKS,
     LOGISTICS_BUFFER_TARGET_TICKS,
@@ -28,7 +28,6 @@ export type ServiceDefinition = {
     readonly serviceKey: ServiceName;
     readonly bufferTargetTicks: number;
     readonly consumptionRatePerPersonPerTick: number;
-    readonly survivabilityBufferThreshold: number; // under that mark we try to buy that for all wealth
 };
 
 export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
@@ -37,49 +36,42 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         serviceKey: 'grocery',
         bufferTargetTicks: GROCERY_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        survivabilityBufferThreshold: 1,
     },
     {
         resource: healthcareServiceResourceType,
         serviceKey: 'healthcare',
         bufferTargetTicks: HEALTHCARE_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        survivabilityBufferThreshold: 0,
     },
     {
         resource: logisticsServiceResourceType,
         serviceKey: 'logistics',
         bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        survivabilityBufferThreshold: 0,
     },
     {
         resource: educationServiceResourceType,
         serviceKey: 'education',
         bufferTargetTicks: EDUCATION_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        survivabilityBufferThreshold: 0,
     },
     {
         resource: retailServiceResourceType,
         serviceKey: 'retail',
         bufferTargetTicks: RETAIL_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-        survivabilityBufferThreshold: 0,
     },
     {
         resource: constructionServiceResourceType,
         serviceKey: 'construction',
         bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 2,
-        survivabilityBufferThreshold: 0,
     },
     {
         resource: administrativeServiceResourceType,
         serviceKey: 'administrative',
         bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 1.5,
-        survivabilityBufferThreshold: 0,
     },
 ];
 
@@ -228,43 +220,33 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue; // Only education group buys education services
                 }
 
-                const referencePrice = planet.marketPrices[def.resource.name] * FACTOR_TO_SECURE_GROCERY_SUPPLY;
+                const referencePrice =
+                    planet.marketPrices[def.resource.name] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
                 if (referencePrice <= 0) {
                     continue;
                 }
 
                 const serviceBuffer = category.services[def.serviceKey]?.buffer ?? 0;
                 const rate = def.consumptionRatePerPersonPerTick;
-                const desiredPerPerson = rate * Math.max(0, def.bufferTargetTicks - serviceBuffer);
+                const bufferFillDeficit = Math.max(0, def.bufferTargetTicks - serviceBuffer);
+                const willingPrice = referencePrice * (bufferFillDeficit / def.bufferTargetTicks);
+                if (willingPrice <= 0) {
+                    continue;
+                }
+                const desiredPerPerson = rate * bufferFillDeficit;
 
                 if (desiredPerPerson <= 0) {
                     continue;
                 }
 
-                const survivalBufferThresholdDifference =
-                    rate * Math.max(0, def.survivabilityBufferThreshold - serviceBuffer);
-
-                const affordable = remainingWealth / referencePrice;
+                const affordable = remainingWealth / willingPrice;
                 const quantityPerPerson = Math.min(desiredPerPerson, affordable);
 
-                if (quantityPerPerson <= survivalBufferThresholdDifference) {
-                    const referencePriceForSurvival = (0.9999 * remainingWealth) / survivalBufferThresholdDifference;
-                    remainingWealth = 0;
-                    const bids = allBids.get(def.resource.name)!;
-                    bids.push({
-                        age,
-                        edu,
-                        occ,
-                        skill,
-                        population: pop,
-                        bidPrice: referencePriceForSurvival,
-                        quantity: survivalBufferThresholdDifference * pop,
-                        wealthMoments: wm,
-                    });
+                if (quantityPerPerson <= 0) {
                     continue;
                 }
 
-                remainingWealth -= quantityPerPerson * referencePrice;
+                remainingWealth -= quantityPerPerson * willingPrice;
 
                 const bids = allBids.get(def.resource.name)!;
                 bids.push({
@@ -273,7 +255,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     occ,
                     skill,
                     population: pop,
-                    bidPrice: referencePrice,
+                    bidPrice: willingPrice,
                     quantity: quantityPerPerson * pop,
                     wealthMoments: wm,
                 });

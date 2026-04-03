@@ -10,6 +10,7 @@ import {
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
+    SERVICE_DEPRECIATION_RATE_PER_TICK,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { educationLevelKeys } from '../population/education';
@@ -325,6 +326,7 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet): Map<st
 // ---------------------------------------------------------------------------
 
 const TARGET_SELL_THROUGH = 0.9;
+const SERVICE_SELL_THROUGH_TARGET = 0.98;
 
 /**
  * Map sell-through ∈ [0, 1] onto a price-adjustment factor using two linear
@@ -339,13 +341,13 @@ const TARGET_SELL_THROUGH = 0.9;
  * the PRICE_ADJUST_MAX_UP cap unreachable and creating a strong downward bias
  * once a price has been pushed to the floor.
  */
-function sellThroughFactor(sellThrough: number): number {
+function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THROUGH): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
-    if (clamped >= TARGET_SELL_THROUGH) {
-        const t = (clamped - TARGET_SELL_THROUGH) / (1 - TARGET_SELL_THROUGH);
+    if (clamped >= target) {
+        const t = (clamped - target) / (1 - target);
         return 1 + t * (PRICE_ADJUST_MAX_UP - 1);
     } else {
-        const t = clamped / TARGET_SELL_THROUGH;
+        const t = clamped / target;
         return PRICE_ADJUST_MAX_DOWN + t * (1 - PRICE_ADJUST_MAX_DOWN);
     }
 }
@@ -381,17 +383,16 @@ function adjustOfferPrice(
     }
 
     const sellThrough = sold / effectiveQuantity;
-    let factor = sellThroughFactor(sellThrough);
+    let factor = sellThroughFactor(
+        sellThrough,
+        offer.resource.form === 'services' ? SERVICE_SELL_THROUGH_TARGET : TARGET_SELL_THROUGH,
+    );
 
-    // Soft cost floor: attenuate downward price adjustments near production cost.
-    // Within the brake zone [costFloor, costFloor × (1 + AUTOMATED_COST_FLOOR_BUFFER)]
-    // the maximum downward step is blended from PRICE_ADJUST_MAX_DOWN_SOFT (at the
-    // floor) up to PRICE_ADJUST_MAX_DOWN (at the top of the zone).  Prices can still
-    // fall through the floor — just very slowly — keeping supply chains alive.
-    // Skipped for services: wages are sunk, decaying inventory is worse than selling
-    // below cost. The cost spring below still provides an upward restoring force.
-    if (!skipCostBrake && factor < 1 && costFloor > PRICE_FLOOR) {
-        const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER);
+    const brakeZoneTop =
+        costFloor *
+        (1 + AUTOMATED_COST_FLOOR_BUFFER) *
+        (1 - (offer.resource.form === 'services' ? SERVICE_DEPRECIATION_RATE_PER_TICK : 0));
+    if (!skipCostBrake && factor < 1) {
         if (price <= brakeZoneTop) {
             const t =
                 brakeZoneTop > costFloor
@@ -408,8 +409,8 @@ function adjustOfferPrice(
     // spring is zero; it grows linearly as price falls further below.  This is the
     // error-correction term from ABM price-dynamics literature (cf. EURACE, Dosi
     // et al.): a signal coupling rising input costs to output prices.
-    if (costFloor > PRICE_FLOOR && price > 0) {
-        const deviation = Math.max(0, costFloor / price - 1);
+    if (brakeZoneTop > PRICE_FLOOR && price > 0) {
+        const deviation = Math.max(0, brakeZoneTop / price - 1);
         factor += COST_SPRING_STRENGTH * deviation;
     }
 

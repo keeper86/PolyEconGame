@@ -7,7 +7,7 @@ import {
     insertAgentMonthlyHistory,
     insertGameSnapshot,
     insertPlanetPopulationHistory,
-    pruneAgentMonthlyHistory,
+    insertProductPriceHistory,
     pruneGameSnapshots,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
@@ -300,6 +300,32 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         pendingAgentMonthlyRows.push(...agentRows);
     }
 
+    /**
+     * Collect one market-price sample per product per planet at a month boundary
+     * and write it directly to the DB (non-blocking). Each continuous aggregate
+     * bucket covers 30 ticks, so one sample per month is sufficient.
+     */
+    function flushProductPrices(gs: GameState, tick: number): void {
+        const db = snapshotDb;
+        if (!db) {
+            return;
+        }
+        const rows: Array<{ tick: number; planet_id: string; product_name: string; price: number }> = [];
+        for (const planet of gs.planets.values()) {
+            for (const [productName, price] of Object.entries(planet.marketPrices)) {
+                if (typeof price === 'number' && isFinite(price) && price > 0) {
+                    rows.push({ tick, planet_id: planet.id, product_name: productName, price });
+                }
+            }
+        }
+        if (rows.length === 0) {
+            return;
+        }
+        void insertProductPriceHistory(db, rows).catch((err) => {
+            console.error(`[worker] Failed to save product price rows at tick ${tick}:`, err);
+        });
+    }
+
     // Store agent monthly rows until snapshot time
     const pendingAgentMonthlyRows: Array<{
         tick: number;
@@ -369,15 +395,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     console.log(
                         `[worker] Saved ${pendingAgentMonthlyRows.length} agent monthly history rows for tick ${tick}`,
                     );
-                    pendingAgentMonthlyRows.length = 0; // Clear the array
-
-                    // Prune old agent monthly history (keep only last 12 months = 1 year)
-                    const prunedAgentHistory = await pruneAgentMonthlyHistory(db);
-                    if (prunedAgentHistory > 0) {
-                        console.log(
-                            `[worker] Pruned ${prunedAgentHistory} old agent monthly history rows (older than 1 year)`,
-                        );
-                    }
+                    pendingAgentMonthlyRows.length = 0;
                 }
 
                 if (SNAPSHOT_MAX_RETAINED > 0) {
@@ -425,8 +443,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             // without risk of seeing a half-updated state.
             currentSnapshot = toImmutableGameState(state);
 
-            // Update agent monthly history at month boundaries (every 30 ticks)
+            // At month boundaries: sample prices and update agent history.
             if (state.tick % 30 === 0) {
+                flushProductPrices(state, state.tick);
                 updateAgentMonthlyHistory(state, state.tick);
             }
 

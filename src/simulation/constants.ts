@@ -9,7 +9,7 @@ export const SERVICE_PER_PERSON_PER_TICK = 1 / 30;
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
-export const FACTOR_TO_SECURE_GROCERY_SUPPLY = 1.2;
+export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 1.25;
 
 /**
  * Number of months in the departing/firing pipeline.
