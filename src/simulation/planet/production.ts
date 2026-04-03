@@ -253,8 +253,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 lastConsumed: actualConsumed,
             };
 
-            // Update monthly EMA.  Bootstrap from the first real tick so the
-            // average is never biased toward the zeroed placeholder.
+            // TODO: we know the keys of all these objects. Clean up!
             const isBootstrap = facility.avgTickResults.overallEfficiency === 0 && overallEfficiency !== 0;
             if (isBootstrap) {
                 facility.avgTickResults = { ...facility.lastTickResults };
