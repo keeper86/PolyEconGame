@@ -1,4 +1,4 @@
-import { EPSILON } from '../constants';
+import { EPSILON, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/storage';
 import type { BidOrder } from './marketTypes';
@@ -105,6 +105,7 @@ function clearResourceMarket(
             unsoldSupply: totalSupply,
             populationBids: binHouseholdBids(householdBids, [], []),
         };
+        updateAvgMarketResult(planet, resourceName);
         return;
     }
 
@@ -140,5 +141,44 @@ function clearResourceMarket(
         unfilledDemand: Math.max(0, totalDemand - totalVolume),
         unsoldSupply,
         populationBids: binHouseholdBids(householdBids, householdBidFilled, householdBidCosts),
+    };
+    updateAvgMarketResult(planet, resourceName);
+}
+
+/**
+ * Update the monthly EMA for one resource after `lastMarketResult` has been
+ * written.  Bootstraps from the first tick's result per resource so the
+ * initial average is never biased toward zero.
+ * `populationBids` is intentionally excluded from the average.
+ */
+function updateAvgMarketResult(planet: Planet, resourceName: string): void {
+    const latest = planet.lastMarketResult[resourceName];
+    if (!latest) {
+        return;
+    }
+    const prior = planet.avgMarketResult[resourceName];
+    if (!prior) {
+        // Bootstrap: copy scalar fields, omit populationBids
+        planet.avgMarketResult[resourceName] = {
+            resourceName: latest.resourceName,
+            clearingPrice: latest.clearingPrice,
+            totalVolume: latest.totalVolume,
+            totalDemand: latest.totalDemand,
+            totalSupply: latest.totalSupply,
+            unfilledDemand: latest.unfilledDemand,
+            unsoldSupply: latest.unsoldSupply,
+        };
+        return;
+    }
+    const alpha = 1 / TICKS_PER_MONTH;
+    const ema = (cur: number, prev: number) => alpha * cur + (1 - alpha) * prev;
+    planet.avgMarketResult[resourceName] = {
+        resourceName: latest.resourceName,
+        clearingPrice: ema(latest.clearingPrice, prior.clearingPrice),
+        totalVolume: ema(latest.totalVolume, prior.totalVolume),
+        totalDemand: ema(latest.totalDemand, prior.totalDemand),
+        totalSupply: ema(latest.totalSupply, prior.totalSupply),
+        unfilledDemand: ema(latest.unfilledDemand, prior.unfilledDemand),
+        unsoldSupply: ema(latest.unsoldSupply, prior.unsoldSupply),
     };
 }

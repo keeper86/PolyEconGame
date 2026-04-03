@@ -665,7 +665,9 @@ const marketSnapshotSchema = z.object({
     populationBids: z
         .array(
             z.object({
-                bidPrice: z.number(),
+                priceMin: z.number(),
+                priceMax: z.number(),
+                priceMid: z.number(),
                 demandedQuantity: z.number(),
                 lastBought: z.number(),
                 fillRatio: z.number(),
@@ -714,7 +716,9 @@ export const getPlanetMarket = () =>
             const populationDemand = Math.max(0, totalDemand - agentDemand);
 
             const populationBids: {
-                bidPrice: number;
+                priceMin: number;
+                priceMax: number;
+                priceMid: number;
                 demandedQuantity: number;
                 lastBought: number;
                 fillRatio: number;
@@ -722,16 +726,21 @@ export const getPlanetMarket = () =>
             }[] = [];
             if (result?.populationBids) {
                 result.populationBids.forEach((bin) => {
+                    // Skip bins from old snapshot format (pre-log-price-bins) that lack price range fields
+                    if (bin.priceMin === undefined || bin.priceMax === undefined || bin.priceMid === undefined) {
+                        return;
+                    }
                     const fillRatio = bin.quantity > 0 ? Math.min(1, bin.filled / bin.quantity) : 0;
                     populationBids.push({
-                        bidPrice: bin.bidPrice,
+                        priceMin: bin.priceMin,
+                        priceMax: bin.priceMax,
+                        priceMid: bin.priceMid,
                         demandedQuantity: bin.quantity,
                         lastBought: bin.filled,
                         fillRatio,
                         lastSpent: bin.cost,
                     });
                 });
-                populationBids.sort((a, b) => b.bidPrice - a.bidPrice);
             }
 
             return {
@@ -878,7 +887,7 @@ function computePlanetConsumption(agents: Agent[], planetId: string, planet: Pla
 
 export const getPlanetMarketOverview = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string() }))
+        .input(z.object({ planetId: z.string(), average: z.boolean().default(false) }))
         .output(
             z.object({
                 tick: z.number(),
@@ -899,8 +908,10 @@ export const getPlanetMarketOverview = () =>
             const production = computePlanetProduction(agents, input.planetId);
             const consumption = computePlanetConsumption(agents, input.planetId, planet);
 
+            const marketResults = input.average ? planet.avgMarketResult : planet.lastMarketResult;
+
             const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
-                const result = planet.lastMarketResult[resource.name];
+                const result = marketResults[resource.name];
                 const clearingPrice = result?.clearingPrice ?? planet.marketPrices[resource.name] ?? 0;
                 const totalSupply = result?.totalSupply ?? 0;
                 const totalDemand = result?.totalDemand ?? 0;

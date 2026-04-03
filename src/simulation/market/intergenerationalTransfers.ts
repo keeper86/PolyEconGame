@@ -1,4 +1,5 @@
 import {
+    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     GENERATION_GAP,
     GENERATION_KERNEL_N,
     GROCERY_BUFFER_TARGET_TICKS,
@@ -165,9 +166,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
 
-    const groceryPrice = planet.marketPrices[groceryServiceResourceType.name];
+    const groceryPrice =
+        planet.marketPrices[groceryServiceResourceType.name] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
 
-    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK * 10;
 
     const baseGroceryCost = SERVICE_PER_PERSON_PER_TICK * groceryPrice;
 
@@ -216,7 +218,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                     const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
                     // Cost to fill the gap at real market price (no urgency inflation here —
                     // urgency belongs in market demand bids, not in transfer amounts).
-                    const costGap = gap * groceryPrice;
+                    // Apply a discount factor [0,1] based on how full the per-capita buffer is
+                    // relative to the target, so urgency tapers to zero as the buffer fills.
+                    const fillFraction = Math.min(1, perCapitaGroceryBuffer / targetPerPerson);
+                    const costGap = gap * groceryPrice * (1 - fillFraction);
                     // Subtract existing per-capita wealth so we only transfer what they
                     // genuinely cannot self-fund.
                     const selfFund = Math.max(0, wealth.mean);
@@ -238,8 +243,14 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const survivalNeeds = computeDependentNeeds(groceryTargetPerPerson);
     const remaining = survivalSurplusSnapshot.map((s) => s.totalSurplus);
 
+    // Compute global scarcity factor so all cohorts share shortages proportionally
+    // rather than earlier ages consuming the supply pool first.
+    const totalSupply = remaining.reduce((sum, s) => sum + s, 0);
+    const totalDemand = survivalNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
+    const scarcityFactor = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 1;
+
     for (const [age, dependentNeed] of survivalNeeds.entries()) {
-        const need = dependentNeed.totalNeed;
+        const need = dependentNeed.totalNeed * scarcityFactor;
         if (need <= 0) {
             continue;
         }

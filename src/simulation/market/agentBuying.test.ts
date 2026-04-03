@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { OUTPUT_BUFFER_MAX_TICKS, GROCERY_PRICE_CEIL as PRICE_CEIL } from '../constants';
+import { OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
 import { putIntoStorageFacility } from '../planet/storage';
@@ -51,6 +51,16 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
                 totalUsedByEdu: {},
                 lastProduced: {},
                 lastConsumed: { [coalResourceType.name]: 0 },
+            },
+            avgTickResults: {
+                overallEfficiency: 0,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
             },
         },
     ];
@@ -130,6 +140,16 @@ describe('automaticPricing — buy side', () => {
                     totalUsedByEdu: {},
                     lastProduced: {},
                     lastConsumed: { [arableLandResourceType.name]: 0 },
+                },
+                avgTickResults: {
+                    overallEfficiency: 0,
+                    workerEfficiency: {},
+                    resourceEfficiency: {},
+                    overqualifiedWorkers: {},
+                    exactUsedByEdu: {},
+                    totalUsedByEdu: {},
+                    lastProduced: {},
+                    lastConsumed: {},
                 },
             },
         ];

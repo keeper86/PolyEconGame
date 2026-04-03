@@ -93,13 +93,13 @@ export const initialMarketPrices: Record<string, number> = {
     [consumerElectronicsResourceType.name]: 15.0, // 100 electronic component + 50 plastic + 50 glass → 200
     [machineryResourceType.name]: 15.0, // 80 steel + 10 electronic component + 20 plastic → 50
     [vehicleResourceType.name]: 15.0, // 10 steel + 5 aluminum + ... → 10 vehicles
-    [pharmaceuticalResourceType.name]: 50.0, // 100 agri + 80 chemical + 100 water → 10 pharma
+    [pharmaceuticalResourceType.name]: 20.0, // 100 agri + 80 chemical + 100 water → 10 pharma
     // Tier 4 services
-    [groceryServiceResourceType.name]: 50.0,
-    [healthcareServiceResourceType.name]: 50.0,
-    [administrativeServiceResourceType.name]: 50.0,
-    [logisticsServiceResourceType.name]: 50.0,
-    [retailServiceResourceType.name]: 50.0,
-    [constructionServiceResourceType.name]: 50.0,
-    [educationServiceResourceType.name]: 50.0,
+    [groceryServiceResourceType.name]: 5.0,
+    [healthcareServiceResourceType.name]: 5.0,
+    [administrativeServiceResourceType.name]: 5.0,
+    [logisticsServiceResourceType.name]: 5.0,
+    [retailServiceResourceType.name]: 5.0,
+    [constructionServiceResourceType.name]: 5.0,
+    [educationServiceResourceType.name]: 5.0,
 };

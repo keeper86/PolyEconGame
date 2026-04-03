@@ -205,6 +205,15 @@ export type Planet = {
     lastMarketResult: {
         [resourceName: string]: MarketResult;
     };
+    /**
+     * Exponential moving average of `lastMarketResult` over approximately the
+     * last month (α = 1/TICKS_PER_MONTH).  Bootstrapped from the first tick's
+     * result per resource so the value is never biased toward zero.
+     * `populationBids` is excluded (binned histogram; not averaged).
+     */
+    avgMarketResult: {
+        [resourceName: string]: MarketResult;
+    };
 };
 
 // ---------------------------------------------------------------------------
@@ -274,10 +283,6 @@ export type AgentMarketOfferState = {
 export type AgentMarketBidState = {
     /** The resource being sought. */
     resource: Resource;
-    /**
-     * Maximum price this agent is willing to pay (currency / unit).
-     * Human-controllable: players can override this value.
-     */
     bidPrice?: number;
     /**
      * Fill storage up to this level — bid quantity per tick is computed
@@ -352,7 +357,9 @@ export type MarketResult = {
     unsoldSupply: number;
     /** Binned population demand (so we can display it in the UI) */
     populationBids?: {
-        bidPrice: number;
+        priceMin: number;
+        priceMax: number;
+        priceMid: number;
         quantity: number;
         filled: number;
         cost: number;

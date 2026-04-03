@@ -9,6 +9,8 @@ export const SERVICE_PER_PERSON_PER_TICK = 1 / 30;
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
+export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 1.25;
+
 /**
  * Number of months in the departing/firing pipeline.
  * Fired workers enter this pipeline and work at reduced efficiency
@@ -56,19 +58,8 @@ export const EDUCATION_STARVATION_THRESHOLD = 0.05;
 /**
  * Minimum grocery service price (prevents zero or negative prices).
  */
-export const GROCERY_PRICE_FLOOR = 0.01;
-export const GROCERY_PRICE_CEIL = 1000000.0;
-
-/**
- * Minimum buffer fill fraction used to compute the urgency multiplier in
- * household demand bids and intergenerational transfer needs.
- *
- *   effectiveMultiplier = willingnessMultiplier / max(bufferFill, MIN_SERVICE_BUFFER_FILL)
- *
- * At empty buffer (fill = 0): urgency ≈ 1 / 0.01 = 100×.
- * At full  buffer (fill = 1): urgency = 1× (base willingness).
- */
-export const MIN_SERVICE_BUFFER_FILL = 0.01;
+export const PRICE_FLOOR = 0.01;
+export const PRICE_CEIL = 1000000.0;
 
 // ---------------------------------------------------------------------------
 // Per-agent food pricing constants

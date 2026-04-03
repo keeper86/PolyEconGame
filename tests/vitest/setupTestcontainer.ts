@@ -82,7 +82,7 @@ async function getContainer(): Promise<StartedPostgreSqlContainer> {
         return container;
     }
 
-    container = await new PostgreSqlContainer('postgres:15-alpine')
+    container = await new PostgreSqlContainer('timescale/timescaledb:2.17.2-pg15')
         .withDatabase(process.env.POSTGRES_DB!)
         .withUsername(process.env.POSTGRES_USER!)
         .withPassword(process.env.POSTGRES_PASSWORD!)

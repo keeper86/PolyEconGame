@@ -78,9 +78,11 @@ export function advanceTick(gameState: GameState) {
         }
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(planetAgents, planet, `${planet.name} end of tick`);
-            if (checkWealthBankConsistency(planetMap, 'end of tick').length > 0) {
+            const wealthBankIssues = checkWealthBankConsistency(planetMap, 'end of tick');
+            if (wealthBankIssues.length > 0) {
                 console.error(
-                    `Wealth-bank inconsistency detected on planet ${planet.name} at end of tick ${gameState.tick}`,
+                    `Wealth-bank inconsistency detected on planet ${planet.name} at end of tick ${gameState.tick}:`,
+                    wealthBankIssues,
                 );
             }
         }

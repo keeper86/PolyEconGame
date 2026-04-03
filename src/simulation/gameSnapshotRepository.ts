@@ -252,27 +252,154 @@ export async function getLatestAgentMonthlyHistoryByPlanet(
         .then((res: { rows: AgentMonthlyHistoryRow[] }) => res.rows);
 }
 
+// ---------------------------------------------------------------------------
+// Product price history
+// ---------------------------------------------------------------------------
+
+export interface ProductPriceHistoryRow {
+    tick: string; // bigint comes back as string from pg
+    planet_id: string;
+    product_name: string;
+    price: number;
+    created_at: Date;
+}
+
+export interface InsertProductPrice {
+    tick: number;
+    planet_id: string;
+    product_name: string;
+    price: number;
+}
+
 /**
- * Clean up old agent monthly history, keeping only the last 12 months (1 year) of data.
- * This helps manage storage while preserving a full year of history for annual analysis.
+ * Insert per-tick product price rows for all products on all planets.
+ * These are ingested into the product_price_history hypertable; TimescaleDB
+ * continuous aggregates then compute monthly / yearly / decade averages.
  */
-export async function pruneAgentMonthlyHistory(db: Knex): Promise<number> {
-    const KEEP_MONTHS = 12; // Keep 1 year of data
-
-    // Get the tick of the 12th most recent month
-    const rows = await db('agent_monthly_history')
-        .distinct('tick')
-        .orderBy('tick', 'desc')
-        .limit(KEEP_MONTHS)
-        .select('tick');
-
-    if (rows.length < KEEP_MONTHS) {
-        // Fewer than 12 months of data — nothing to prune.
-        return 0;
+export async function insertProductPriceHistory(db: Knex, rows: InsertProductPrice[]): Promise<void> {
+    if (rows.length === 0) {
+        return;
     }
+    await db('product_price_history').insert(
+        rows.map((r) => ({
+            tick: String(r.tick),
+            planet_id: r.planet_id,
+            product_name: r.product_name,
+            price: r.price,
+        })),
+    );
+}
 
-    const cutoffTick = Number(rows[rows.length - 1].tick);
+// ---------------------------------------------------------------------------
+// Tiered history query helpers
+// ---------------------------------------------------------------------------
 
-    const deleted = await db('agent_monthly_history').where('tick', '<', cutoffTick).del();
-    return deleted;
+export type HistoryGranularity = 'monthly' | 'yearly' | 'decade';
+
+export interface ProductPriceBucket {
+    bucket: string; // tick bucket start, as string
+    planet_id: string;
+    product_name: string;
+    avg_price: number;
+    min_price: number;
+    max_price: number;
+}
+
+/**
+ * Query product price history from the appropriate continuous aggregate based
+ * on requested granularity.
+ */
+export async function getProductPriceHistory(
+    db: Knex,
+    planetId: string,
+    productName: string,
+    granularity: HistoryGranularity = 'monthly',
+    limit: number = 100,
+): Promise<ProductPriceBucket[]> {
+    const view =
+        granularity === 'decade'
+            ? 'product_price_decade'
+            : granularity === 'yearly'
+              ? 'product_price_yearly'
+              : 'product_price_monthly';
+
+    return db(view)
+        .where({ planet_id: planetId, product_name: productName })
+        .orderBy('bucket', 'desc')
+        .limit(limit)
+        .select('bucket', 'planet_id', 'product_name', 'avg_price', 'min_price', 'max_price');
+}
+
+export interface PopulationBucket {
+    bucket: string;
+    planet_id: string;
+    avg_population: number;
+    avg_starvation: number;
+    avg_price_level: number;
+}
+
+/**
+ * Query planet population history from the appropriate continuous aggregate.
+ */
+export async function getPlanetPopulationHistoryAggregated(
+    db: Knex,
+    planetId: string,
+    granularity: HistoryGranularity = 'monthly',
+    limit: number = 100,
+): Promise<PopulationBucket[]> {
+    const view =
+        granularity === 'decade'
+            ? 'planet_population_decade'
+            : granularity === 'yearly'
+              ? 'planet_population_yearly'
+              : 'planet_population_monthly';
+
+    return db(view)
+        .where({ planet_id: planetId })
+        .orderBy('bucket', 'desc')
+        .limit(limit)
+        .select('bucket', 'planet_id', 'avg_population', 'avg_starvation', 'avg_price_level');
+}
+
+export interface AgentSummaryBucket {
+    bucket: string;
+    planet_id: string;
+    agent_id: string;
+    avg_net_balance: number;
+    avg_monthly_net_income: number;
+    avg_total_workers: number;
+    avg_wages: number;
+    sum_production_value: number;
+}
+
+/**
+ * Query agent history from the appropriate continuous aggregate.
+ */
+export async function getAgentHistoryAggregated(
+    db: Knex,
+    agentId: string,
+    granularity: HistoryGranularity = 'monthly',
+    limit: number = 100,
+): Promise<AgentSummaryBucket[]> {
+    const view =
+        granularity === 'decade'
+            ? 'agent_decade_summary'
+            : granularity === 'yearly'
+              ? 'agent_yearly_summary'
+              : 'agent_monthly_summary';
+
+    return db(view)
+        .where({ agent_id: agentId })
+        .orderBy('bucket', 'desc')
+        .limit(limit)
+        .select(
+            'bucket',
+            'planet_id',
+            'agent_id',
+            'avg_net_balance',
+            'avg_monthly_net_income',
+            'avg_total_workers',
+            'avg_wages',
+            'sum_production_value',
+        );
 }
