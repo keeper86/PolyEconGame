@@ -79,16 +79,34 @@ const defaultPollutionPerTick = {
     soil: 0,
 };
 
-const facilityDefaults = {
+const makeFacilityDefaults = () => ({
     maxScale: 1,
     scale: 1,
     pollutionPerTick: { ...defaultPollutionPerTick },
-    lastTickResults: { ...zeroLastTicksResults },
-    avgTickResults: { ...zeroLastTicksResults },
-};
+    lastTickResults: {
+        ...zeroLastTicksResults,
+        workerEfficiency: {},
+        resourceEfficiency: {},
+        overqualifiedWorkers: {},
+        exactUsedByEdu: {},
+        totalUsedByEdu: {},
+        lastProduced: {},
+        lastConsumed: {},
+    },
+    avgTickResults: {
+        ...zeroLastTicksResults,
+        workerEfficiency: {},
+        resourceEfficiency: {},
+        overqualifiedWorkers: {},
+        exactUsedByEdu: {},
+        totalUsedByEdu: {},
+        lastProduced: {},
+        lastConsumed: {},
+    },
+});
 
 export const coalMine = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Coal Mine',
@@ -104,7 +122,7 @@ export const coalMine = (planetId: string, id: string): ProductionFacility => ({
 });
 
 export const oilWell = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Oil Well',
@@ -120,7 +138,7 @@ export const oilWell = (planetId: string, id: string): ProductionFacility => ({
 });
 
 export const naturalGasWell = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Natural Gas Well',
@@ -136,7 +154,7 @@ export const naturalGasWell = (planetId: string, id: string): ProductionFacility
 });
 
 export const loggingCamp = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Logging Camp',
@@ -152,7 +170,7 @@ export const loggingCamp = (planetId: string, id: string): ProductionFacility =>
 });
 
 export const stoneQuarry = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Stone Quarry',
@@ -168,7 +186,7 @@ export const stoneQuarry = (planetId: string, id: string): ProductionFacility =>
 });
 
 export const copperMine = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Copper Mine',
@@ -184,7 +202,7 @@ export const copperMine = (planetId: string, id: string): ProductionFacility => 
 });
 
 export const sandMine = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Sand Mine',
@@ -200,7 +218,7 @@ export const sandMine = (planetId: string, id: string): ProductionFacility => ({
 });
 
 export const limestoneQuarry = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Limestone Quarry',
@@ -216,7 +234,7 @@ export const limestoneQuarry = (planetId: string, id: string): ProductionFacilit
 });
 
 export const clayMine = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Clay Mine',
@@ -232,7 +250,7 @@ export const clayMine = (planetId: string, id: string): ProductionFacility => ({
 });
 
 export const ironSmelter = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Iron Smelter',
@@ -251,7 +269,7 @@ export const ironSmelter = (planetId: string, id: string): ProductionFacility =>
 });
 
 export const copperSmelter = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Copper Smelter',
@@ -270,7 +288,7 @@ export const copperSmelter = (planetId: string, id: string): ProductionFacility 
 });
 
 export const oilRefinery = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Oil Refinery',
@@ -290,7 +308,7 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
 });
 
 export const sawmill = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Sawmill',
@@ -306,7 +324,7 @@ export const sawmill = (planetId: string, id: string): ProductionFacility => ({
 });
 
 export const cementPlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Cement Plant',
@@ -326,7 +344,7 @@ export const cementPlant = (planetId: string, id: string): ProductionFacility =>
 });
 
 export const concretePlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Concrete Plant',
@@ -347,7 +365,7 @@ export const concretePlant = (planetId: string, id: string): ProductionFacility 
 });
 
 export const glassFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Glass Factory',
@@ -367,7 +385,7 @@ export const glassFactory = (planetId: string, id: string): ProductionFacility =
 });
 
 export const pesticidePlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Pesticide Plant',
@@ -386,7 +404,7 @@ export const pesticidePlant = (planetId: string, id: string): ProductionFacility
 });
 
 export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Pharmaceutical Plant',
@@ -406,7 +424,7 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
 });
 
 export const foodProcessingPlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Food Processing Plant',
@@ -427,7 +445,7 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
 });
 
 export const beveragePlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Beverage Plant',
@@ -447,7 +465,7 @@ export const beveragePlant = (planetId: string, id: string): ProductionFacility 
 });
 
 export const paperMill = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Paper Mill',
@@ -466,7 +484,7 @@ export const paperMill = (planetId: string, id: string): ProductionFacility => (
 });
 
 export const cottonFarm = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Cotton Farm',
@@ -485,7 +503,7 @@ export const cottonFarm = (planetId: string, id: string): ProductionFacility => 
 });
 
 export const textileMill = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Textile Mill',
@@ -504,7 +522,7 @@ export const textileMill = (planetId: string, id: string): ProductionFacility =>
 });
 
 export const clothingFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Clothing Factory',
@@ -524,7 +542,7 @@ export const clothingFactory = (planetId: string, id: string): ProductionFacilit
 });
 
 export const furnitureFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Furniture Factory',
@@ -544,7 +562,7 @@ export const furnitureFactory = (planetId: string, id: string): ProductionFacili
 });
 
 export const siliconWaferFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Silicon Wafer Factory',
@@ -563,7 +581,7 @@ export const siliconWaferFactory = (planetId: string, id: string): ProductionFac
 });
 
 export const electronicComponentFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Electronics Component Factory',
@@ -583,7 +601,7 @@ export const electronicComponentFactory = (planetId: string, id: string): Produc
 });
 
 export const consumerElectronicsFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Consumer Electronics Factory',
@@ -603,7 +621,7 @@ export const consumerElectronicsFactory = (planetId: string, id: string): Produc
 });
 
 export const machineryFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Machinery Factory',
@@ -623,7 +641,7 @@ export const machineryFactory = (planetId: string, id: string): ProductionFacili
 });
 
 export const vehicleFactory = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Vehicle Factory',
@@ -646,7 +664,7 @@ export const vehicleFactory = (planetId: string, id: string): ProductionFacility
 });
 
 export const agriculturalProductionFacility = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Agricultural Facility',
@@ -665,7 +683,7 @@ export const agriculturalProductionFacility = (planetId: string, id: string): Pr
 });
 
 export const intensiveFarmFacility = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Intensive Agricultural Facility',
@@ -686,7 +704,7 @@ export const intensiveFarmFacility = (planetId: string, id: string): ProductionF
 });
 
 export const waterExtractionFacility = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Water Extraction Facility',
@@ -703,7 +721,7 @@ export const waterExtractionFacility = (planetId: string, id: string): Productio
 });
 
 export const ironExtractionFacility = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Iron Extraction Facility',
@@ -719,7 +737,7 @@ export const ironExtractionFacility = (planetId: string, id: string): Production
 });
 
 export const packagingPlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Packaging Plant',
@@ -738,7 +756,7 @@ export const packagingPlant = (planetId: string, id: string): ProductionFacility
 });
 
 export const coalPowerPlant = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Coal Power Plant' as const,
@@ -754,7 +772,7 @@ export const coalPowerPlant = (planetId: string, id: string): ProductionFacility
 });
 
 export const administrativeCenter = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Administrative Center' as const,
@@ -770,7 +788,7 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
 });
 
 export const logisticsHub = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Logistics Hub' as const,
@@ -790,7 +808,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
 });
 
 export const constructionService = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Construction Service' as const,
@@ -812,7 +830,7 @@ export const constructionService = (planetId: string, id: string): ProductionFac
 });
 
 export const groceryChain = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Grocery Chain' as const,
@@ -834,7 +852,7 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
 });
 
 export const retailChain = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Retail Chain' as const,
@@ -857,7 +875,7 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
 });
 
 export const hospital = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'Hospital' as const,
@@ -878,7 +896,7 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
 });
 
 export const school = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'School' as const,
@@ -898,7 +916,7 @@ export const school = (planetId: string, id: string): ProductionFacility => ({
 });
 
 export const university = (planetId: string, id: string): ProductionFacility => ({
-    ...facilityDefaults,
+    ...makeFacilityDefaults(),
     planetId,
     id,
     name: 'University' as const,

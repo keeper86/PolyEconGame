@@ -218,7 +218,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                     const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
                     // Cost to fill the gap at real market price (no urgency inflation here —
                     // urgency belongs in market demand bids, not in transfer amounts).
-                    const costGap = gap * groceryPrice * (1 - groceryBuffer / 30); // apply a discount factor to reflect diminishing urgency as buffer fills;
+                    // Apply a discount factor [0,1] based on how full the per-capita buffer is
+                    // relative to the target, so urgency tapers to zero as the buffer fills.
+                    const fillFraction = Math.min(1, perCapitaGroceryBuffer / targetPerPerson);
+                    const costGap = gap * groceryPrice * (1 - fillFraction);
                     // Subtract existing per-capita wealth so we only transfer what they
                     // genuinely cannot self-fund.
                     const selfFund = Math.max(0, wealth.mean);

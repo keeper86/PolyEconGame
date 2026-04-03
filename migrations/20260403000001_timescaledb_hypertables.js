@@ -53,6 +53,13 @@ exports.up = async function (knex) {
         )
     `);
 
+    // Add a unique constraint on (planet_id, tick) to prevent duplicate rows
+    // and preserve query correctness after the PK was dropped above.
+    await knex.raw(`
+        CREATE UNIQUE INDEX IF NOT EXISTS planet_population_history_planet_tick_key
+            ON planet_population_history (planet_id, tick)
+    `);
+
     await knex.raw(`
         SELECT create_hypertable(
             'agent_monthly_history',
@@ -94,13 +101,14 @@ exports.up = async function (knex) {
     // 4b. Register an integer_now_func on all three hypertables.
     //     TimescaleDB continuous aggregates on integer-partitioned hypertables
     //     require a custom function that returns the "current" integer time.
-    //     We use a large constant (9 999 999) as a safe upper bound — the game
-    //     would need to run for ~27 000 in-game years before it is reached.
+    //     We read the latest snapshot tick from game_snapshots so that
+    //     retention/refresh policies use an accurate "now" value rather than a
+    //     hard-coded constant that would make all real data look ancient.
     // -------------------------------------------------------------------------
     await knex.raw(`
         CREATE OR REPLACE FUNCTION game_tick_now()
         RETURNS BIGINT LANGUAGE SQL STABLE AS
-        $$ SELECT 9999999::BIGINT $$
+        $$ SELECT COALESCE((SELECT MAX(tick) FROM game_snapshots), 0)::BIGINT $$
     `);
 
     await knex.raw(
@@ -139,13 +147,13 @@ exports.up = async function (knex) {
             time_bucket(30, tick)          AS bucket,
             planet_id,
             agent_id,
-            avg(net_balance)               AS avg_net_balance,
-            avg(monthly_net_income)        AS avg_monthly_net_income,
-            avg(total_workers)             AS avg_total_workers,
-            avg(wages)                     AS avg_wages,
-            sum(production_value)          AS sum_production_value,
-            avg(facility_count)            AS avg_facility_count,
-            avg(storage_value)             AS avg_storage_value
+            avg(net_balance)::float8               AS avg_net_balance,
+            avg(monthly_net_income)::float8        AS avg_monthly_net_income,
+            avg(total_workers)::float8             AS avg_total_workers,
+            avg(wages)::float8                     AS avg_wages,
+            sum(production_value)::float8          AS sum_production_value,
+            avg(facility_count)::float8            AS avg_facility_count,
+            avg(storage_value)::float8             AS avg_storage_value
         FROM agent_monthly_history
         GROUP BY bucket, planet_id, agent_id
         WITH NO DATA
@@ -157,9 +165,9 @@ exports.up = async function (knex) {
         SELECT
             time_bucket(30, tick)          AS bucket,
             planet_id,
-            avg(population)                AS avg_population,
-            avg(starvation_level)          AS avg_starvation,
-            avg(food_price)                AS avg_price_level
+            avg(population)::float8                AS avg_population,
+            avg(starvation_level)::float8          AS avg_starvation,
+            avg(food_price)::float8                AS avg_price_level
         FROM planet_population_history
         GROUP BY bucket, planet_id
         WITH NO DATA
