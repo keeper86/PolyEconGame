@@ -400,7 +400,7 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
         <>
             <span className='mb-2 flex justify-between items-center'>
                 <h4 className='text-sm font-semibold mb-2' id='food'>
-                    Nutrition heatmap
+                    Starvation heatmap
                 </h4>
                 <BandLegend />
             </span>

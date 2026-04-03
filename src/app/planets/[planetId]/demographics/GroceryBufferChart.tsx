@@ -1,15 +1,16 @@
 'use client';
 
+import { Card, CardContent } from '@/components/ui/card';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumbers } from '@/lib/utils';
+import { GROCERY_BUFFER_TARGET_TICKS } from '@/simulation/constants';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Card, CardContent } from '@/components/ui/card';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { SERVICE_TARGET_PER_PERSON, GV_FOOD, GV_POP } from './demographicsTypes';
+import { GV_FOOD, GV_POP, SERVICE_TARGET_PER_PERSON } from './demographicsTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +73,6 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                         return null;
                     }
                     const ratio = row[`${key}_bufferRatio`] ?? 0;
-                    const avgStock = row[`${key}_avgStock`] ?? 0;
                     return (
                         <div key={key} className='flex items-center gap-1 mt-0.5'>
                             <span
@@ -83,7 +83,8 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {(ratio * 100).toFixed(0)}% · {formatNumbers(avgStock * 1000)} kg · {formatNumbers(pop)}
+                                {(ratio * 100).toFixed(0)}% · {formatNumbers(ratio * GROCERY_BUFFER_TARGET_TICKS)} days
+                                · {formatNumbers(pop)}
                             </span>
                         </div>
                     );
@@ -164,7 +165,6 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
                     const avgStock = pop > 0 ? totalFood / pop : 0;
                     const ratio = avgStock / SERVICE_TARGET_PER_PERSON;
                     row[`${key}_pop`] = pop;
-                    row[`${key}_avgStock`] = avgStock;
                     row[`${key}_bufferRatio`] = ratio;
                     if (pop > 0) {
                         ageHasData = true;
