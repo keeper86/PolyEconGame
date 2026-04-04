@@ -58,7 +58,7 @@ export function advanceTick(gameState: GameState) {
 
         marketTick(planetAgents, planet);
 
-        accumulatePlanetPrices(planet);
+        accumulatePlanetPrices(planet, gameState.tick);
 
         productionTick(planetAgents, planet);
 

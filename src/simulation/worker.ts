@@ -16,6 +16,7 @@ import type { GameState } from './planet/planet';
 import { groceryServiceResourceType } from './planet/services';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
+import { TICKS_PER_MONTH } from './constants';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
@@ -309,9 +310,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     function flushProductPrices(gs: GameState, tick: number): void {
         const db = snapshotDb;
         if (!db) {
-            for (const planet of gs.planets.values()) {
-                planet.monthPriceAcc = {};
-            }
             return;
         }
         const rows: Array<{
@@ -331,9 +329,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 const avgPrice = acc ? acc.sum / acc.count : spotPrice;
                 const minPrice = acc ? acc.min : spotPrice;
                 const maxPrice = acc ? acc.max : spotPrice;
-                rows.push({ tick, planet_id: planet.id, product_name: productName, avgPrice, minPrice, maxPrice });
+                // Insert at the FIRST tick of the completed month so time_bucket(30, tick)
+                // places the row in the correct monthly bucket (not the next one).
+                // e.g. flush at tick=30 → insert at tick=1 → bucket=0 (January) ✓
+                const bucketTick = tick - TICKS_PER_MONTH + 1;
+                rows.push({ tick: bucketTick, planet_id: planet.id, product_name: productName, avgPrice, minPrice, maxPrice });
             }
-            planet.monthPriceAcc = {};
         }
         if (rows.length === 0) {
             return;
@@ -456,6 +457,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
 
             // Accumulate intra-month price stats via planet.monthPriceAcc (done inside engine's advanceTick).
+            // The accumulator is reset on tick 1 of each month (inside accumulatePlanetPrices),
+            // so it always reflects only the current month — no separate reset needed here.
 
             // Capture an immutable snapshot of the game state.
             // This is O(1) structural-sharing; query handlers can read it

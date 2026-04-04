@@ -1,3 +1,4 @@
+import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ResourceName } from './resourceCatalog';
@@ -465,7 +466,12 @@ export type ResourceType = Resource['form'];
  * Only ticks where actual trades occurred (totalVolume > 0) contribute a sample.
  * Called by `advanceTick` in the engine after `marketTick`.
  */
-export function accumulatePlanetPrices(planet: Planet): void {
+export function accumulatePlanetPrices(planet: Planet, tick: number): void {
+    // Reset at the start of each new month so the accumulator always reflects
+    // only the current month's trades — no separate flush step needed.
+    if (tick % TICKS_PER_MONTH === 1) {
+        planet.monthPriceAcc = {};
+    }
     for (const result of Object.values(planet.lastMarketResult)) {
         if (!result || result.totalVolume <= 0) {
             continue;
