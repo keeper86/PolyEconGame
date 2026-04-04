@@ -51,7 +51,7 @@ export function advanceTick(gameState: GameState) {
         }
         preProductionFinancialTick(planetAgents, planet);
 
-        updateAgentProductionScale(planetAgents, planet);
+        // updateAgentProductionScale(planetAgents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 

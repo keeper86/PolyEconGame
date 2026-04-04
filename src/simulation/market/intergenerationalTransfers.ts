@@ -189,9 +189,9 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 if (pop <= 0) {
                     continue;
                 }
-                if (age < MIN_EMPLOYABLE_AGE) {
-                    continue;
-                }
+                //if (age < MIN_EMPLOYABLE_AGE) {
+                //    continue;
+                // For the purpose of survival transfers, treat all ages as potential supporters.}
                 const raw = effectiveSurplus(wealth.mean, wealth.variance, baseGroceryCost, pop);
                 totalSurplus += raw;
                 totalSupporterPop += pop;
@@ -249,7 +249,16 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const totalDemand = survivalNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
     const scarcityFactor = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 1;
 
-    for (const [age, dependentNeed] of survivalNeeds.entries()) {
+    // Shuffle age indices to eliminate systematic processing-order bias over contested
+    // supplier pools. Statistically correct in expectation across ticks.
+    const ageOrder = Array.from({ length: numAges }, (_, i) => i);
+    for (let i = ageOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ageOrder[i], ageOrder[j]] = [ageOrder[j], ageOrder[i]];
+    }
+
+    for (const age of ageOrder) {
+        const dependentNeed = survivalNeeds[age];
         const need = dependentNeed.totalNeed * scarcityFactor;
         if (need <= 0) {
             continue;

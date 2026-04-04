@@ -134,7 +134,18 @@ function PriceAreaChart({
         const currentByMonth = new Map(data.filter((p) => p.monthIdx !== undefined).map((p) => [p.monthIdx!, p]));
         const allIdxs = new Set([...currentByMonth.keys(), ...ghostByMonth.keys()]);
         return Array.from(allIdxs)
-            .sort((a, b) => a - b)
+            .sort((a, b) => {
+                // Current-data entries (including the live fractional point) must come first
+                // so that ghost-only integer entries (e.g. Oct=9 from last year) are never
+                // interleaved between current entries, which would insert avgPrice:null gaps
+                // and break the amber line before the live fractional point (e.g. 9.47).
+                const aIsCurrent = currentByMonth.has(a);
+                const bIsCurrent = currentByMonth.has(b);
+                if (aIsCurrent === bIsCurrent) {
+                    return a - b;
+                }
+                return aIsCurrent ? -1 : 1;
+            })
             .map((monthIdx) => {
                 const curr = currentByMonth.get(monthIdx);
                 const ghost = ghostByMonth.get(monthIdx);
