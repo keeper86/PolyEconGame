@@ -333,7 +333,14 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 // places the row in the correct monthly bucket (not the next one).
                 // e.g. flush at tick=30 → insert at tick=1 → bucket=0 (January) ✓
                 const bucketTick = tick - TICKS_PER_MONTH + 1;
-                rows.push({ tick: bucketTick, planet_id: planet.id, product_name: productName, avgPrice, minPrice, maxPrice });
+                rows.push({
+                    tick: bucketTick,
+                    planet_id: planet.id,
+                    product_name: productName,
+                    avgPrice,
+                    minPrice,
+                    maxPrice,
+                });
             }
         }
         if (rows.length === 0) {

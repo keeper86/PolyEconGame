@@ -441,7 +441,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 let blendedAvg = liveAvg;
                 let blendedMin = liveMin;
                 let blendedMax = liveMax;
-                if (prevPoint && tickInMonth < BLEND_TICKS) {
+                if (prevPoint && tickInMonth < BLEND_TICKS && tickInMonth > 0) {
                     const newWeight = tickInMonth / BLEND_TICKS;
                     const oldWeight = 1 - newWeight;
                     blendedAvg = oldWeight * prevPoint.avgPrice + newWeight * liveAvg;
