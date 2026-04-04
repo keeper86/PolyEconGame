@@ -36,7 +36,7 @@ export default function MarketDetailsSection({
 
     return (
         <div className='space-y-4'>
-            <h4 className='text-sm font-semibold mb-2'>Price & starvation history</h4>
+            <h4 className='text-sm font-semibold mb-2'>Price history</h4>
             <Card className='mb-4'>
                 <CardContent className='pt-3'>
                     <ProductPriceHistoryChart

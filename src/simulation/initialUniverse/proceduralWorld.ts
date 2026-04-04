@@ -1377,6 +1377,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         marketPrices: { ...initialMarketPrices },
         lastMarketResult: {},
         avgMarketResult: {},
+        monthPriceAcc: {},
         resources: {
             [arableLandResourceType.name]: getPool('cottonFarm'),
             [waterSourceResourceType.name]: getPool('waterExtractionFacility'),

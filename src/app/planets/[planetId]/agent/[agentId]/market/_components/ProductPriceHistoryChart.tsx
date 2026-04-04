@@ -69,12 +69,12 @@ type MergedPoint = {
     monthIdx?: number;
     year: number;
     tick: number;
-    avgPrice?: number;
-    minPrice?: number;
-    maxPrice?: number;
-    ghostAvgPrice?: number;
-    ghostMinPrice?: number;
-    ghostMaxPrice?: number;
+    avgPrice: number | null;
+    minPrice: number | null;
+    maxPrice: number | null;
+    ghostAvgPrice: number | null;
+    ghostMinPrice: number | null;
+    ghostMaxPrice: number | null;
 };
 
 function PriceAreaChart({
@@ -114,9 +114,19 @@ function PriceAreaChart({
     referenceYBand?: { y1: number; y2: number };
 }) {
     const mergedData: MergedPoint[] = useMemo(() => {
-        if (!ghostData || ghostData.length === 0) { return data; }
-        const ghostByMonth = new Map(ghostData.filter(p => p.monthIdx !== undefined).map(p => [p.monthIdx!, p]));
-        const currentByMonth = new Map(data.filter(p => p.monthIdx !== undefined).map(p => [p.monthIdx!, p]));
+        if (!ghostData || ghostData.length === 0) {
+            return data.map((p) => ({
+                ...p,
+                avgPrice: p.avgPrice,
+                minPrice: p.minPrice,
+                maxPrice: p.maxPrice,
+                ghostAvgPrice: null,
+                ghostMinPrice: null,
+                ghostMaxPrice: null,
+            }));
+        }
+        const ghostByMonth = new Map(ghostData.filter((p) => p.monthIdx !== undefined).map((p) => [p.monthIdx!, p]));
+        const currentByMonth = new Map(data.filter((p) => p.monthIdx !== undefined).map((p) => [p.monthIdx!, p]));
         const allIdxs = new Set([...currentByMonth.keys(), ...ghostByMonth.keys()]);
         return Array.from(allIdxs)
             .sort((a, b) => a - b)
@@ -127,12 +137,12 @@ function PriceAreaChart({
                     monthIdx,
                     tick: curr?.tick ?? ghost?.tick ?? 0,
                     year: curr?.year ?? ghost?.year ?? 0,
-                    avgPrice: curr?.avgPrice,
-                    minPrice: curr?.minPrice,
-                    maxPrice: curr?.maxPrice,
-                    ghostAvgPrice: ghost?.avgPrice,
-                    ghostMinPrice: ghost?.minPrice,
-                    ghostMaxPrice: ghost?.maxPrice,
+                    avgPrice: curr?.avgPrice ?? null,
+                    minPrice: curr?.minPrice ?? null,
+                    maxPrice: curr?.maxPrice ?? null,
+                    ghostAvgPrice: ghost?.avgPrice ?? null,
+                    ghostMinPrice: ghost?.minPrice ?? null,
+                    ghostMaxPrice: ghost?.maxPrice ?? null,
                 };
             });
     }, [data, ghostData]);
@@ -178,19 +188,38 @@ function PriceAreaChart({
                             />
                         )}
                         <Tooltip
-                            contentStyle={{
-                                background: '#1e293b',
-                                border: '1px solid #334155',
-                                borderRadius: '6px',
-                                fontSize: 12,
+                            content={({ active, payload, label }) => {
+                                if (!active || !payload || payload.length === 0) {
+                                    return null;
+                                }
+                                const filtered = payload.filter((p) => !String(p.name).startsWith('ghost'));
+                                if (filtered.length === 0) {
+                                    return null;
+                                }
+                                return (
+                                    <div
+                                        style={{
+                                            background: '#1e293b',
+                                            border: '1px solid #334155',
+                                            borderRadius: '6px',
+                                            fontSize: 12,
+                                            padding: '6px 10px',
+                                        }}
+                                    >
+                                        <div style={{ color: '#94a3b8', marginBottom: 4 }}>
+                                            {tooltipLabelFormatter(label as number)}
+                                        </div>
+                                        {filtered.map((p) => {
+                                            const [val, name] = tooltipFormatter(p.value as number, p.name as string);
+                                            return (
+                                                <div key={p.name} style={{ color: '#e2e8f0' }}>
+                                                    {name}: {val}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
                             }}
-                            itemStyle={{ color: '#e2e8f0' }}
-                            labelStyle={{ color: '#94a3b8', marginBottom: 4 }}
-                            formatter={(value, name) => {
-                                if (String(name).startsWith('ghost')) { return null as unknown as [string, string]; }
-                                return tooltipFormatter(value as number, name as string);
-                            }}
-                            labelFormatter={tooltipLabelFormatter}
                         />
                         {referenceYBand && (
                             <ReferenceArea
@@ -239,46 +268,48 @@ function PriceAreaChart({
                             connectNulls={false}
                         />
                         {hasGhost && (
-                            <>
-                                <Area
-                                    type='monotone'
-                                    dataKey='ghostMaxPrice'
-                                    stroke='#38bdf8'
-                                    strokeWidth={1}
-                                    strokeOpacity={0.3}
-                                    strokeDasharray='3 3'
-                                    fill='none'
-                                    dot={false}
-                                    activeDot={false}
-                                    name='ghostMaxPrice'
-                                    connectNulls={false}
-                                />
-                                <Area
-                                    type='monotone'
-                                    dataKey='ghostMinPrice'
-                                    stroke='#38bdf8'
-                                    strokeWidth={1}
-                                    strokeOpacity={0.3}
-                                    strokeDasharray='3 3'
-                                    fill='none'
-                                    dot={false}
-                                    activeDot={false}
-                                    name='ghostMinPrice'
-                                    connectNulls={false}
-                                />
-                                <Area
-                                    type='monotone'
-                                    dataKey='ghostAvgPrice'
-                                    stroke='#f59e0b'
-                                    strokeWidth={2}
-                                    strokeOpacity={0.35}
-                                    fill='none'
-                                    dot={false}
-                                    activeDot={false}
-                                    name='ghostAvgPrice'
-                                    connectNulls={false}
-                                />
-                            </>
+                            <Area
+                                type='monotone'
+                                dataKey='ghostAvgPrice'
+                                stroke='#f59e0b'
+                                strokeWidth={2}
+                                strokeOpacity={0.35}
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                name='ghostAvgPrice'
+                                connectNulls={false}
+                            />
+                        )}
+                        {hasGhost && (
+                            <Area
+                                type='monotone'
+                                dataKey='ghostMaxPrice'
+                                stroke='#38bdf8'
+                                strokeWidth={1}
+                                strokeOpacity={0.3}
+                                strokeDasharray='3 3'
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                name='ghostMaxPrice'
+                                connectNulls={false}
+                            />
+                        )}
+                        {hasGhost && (
+                            <Area
+                                type='monotone'
+                                dataKey='ghostMinPrice'
+                                stroke='#38bdf8'
+                                strokeWidth={1}
+                                strokeOpacity={0.3}
+                                strokeDasharray='3 3'
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                name='ghostMinPrice'
+                                connectNulls={false}
+                            />
                         )}
                     </AreaChart>
                 </ResponsiveContainer>
@@ -295,7 +326,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             planetId,
             productName,
             granularity: 'monthly',
-            limit: 12,
+            limit: 13,
         }),
     );
     const { data: yearly, isLoading: loadingYearly } = useSimulationQuery(
@@ -406,22 +437,23 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             : monthlyData.length > 0
               ? tickToDate(monthlyData[monthlyData.length - 1].tick + 1).year
               : 0;
-        return pts
-            .filter((p) => {
-                const { year, monthIndex } = tickToDate(p.bucket + 1);
-                return year === latestYear - 1 && monthIndex > currentMonthIdx;
-            })
-            .map((p) => {
-                const { monthIndex } = tickToDate(p.bucket + 1);
-                return {
-                    tick: p.bucket,
-                    year: p.bucket / TICKS_PER_YEAR,
-                    monthIdx: monthIndex,
-                    avgPrice: p.avgPrice,
-                    minPrice: p.minPrice,
-                    maxPrice: p.maxPrice,
-                };
-            });
+
+        const result = pts.filter((p) => {
+            const { year, monthIndex } = tickToDate(p.bucket + 1);
+            return year === latestYear - 1 && monthIndex >= currentMonthIdx;
+        });
+
+        return result.map((p) => {
+            const { monthIndex } = tickToDate(p.bucket + 1);
+            return {
+                tick: p.bucket,
+                year: p.bucket / TICKS_PER_YEAR,
+                monthIdx: monthIndex,
+                avgPrice: p.avgPrice,
+                minPrice: p.minPrice,
+                maxPrice: p.maxPrice,
+            };
+        });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [monthly, monthlyData, live]);
 

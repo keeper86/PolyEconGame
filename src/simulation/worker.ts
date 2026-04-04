@@ -302,22 +302,31 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     }
 
     /**
-     * Collect one market-price sample per product per planet at a month boundary
-     * and write it directly to the DB (non-blocking). Each continuous aggregate
-     * bucket covers 30 ticks, so one sample per month is sufficient.
+     * Flush accumulated intra-month price stats to the DB at month boundaries,
+     * then reset the accumulator for the next month.
+     * Falls back to the current spot price when no trades occurred this month.
      */
     function flushProductPrices(gs: GameState, tick: number): void {
         const db = snapshotDb;
         if (!db) {
+            for (const planet of gs.planets.values()) {
+                planet.monthPriceAcc = {};
+            }
             return;
         }
-        const rows: Array<{ tick: number; planet_id: string; product_name: string; price: number }> = [];
+        const rows: Array<{ tick: number; planet_id: string; product_name: string; avgPrice: number; minPrice: number; maxPrice: number }> = [];
         for (const planet of gs.planets.values()) {
-            for (const [productName, price] of Object.entries(planet.marketPrices)) {
-                if (typeof price === 'number' && isFinite(price) && price > 0) {
-                    rows.push({ tick, planet_id: planet.id, product_name: productName, price });
+            for (const [productName, spotPrice] of Object.entries(planet.marketPrices)) {
+                if (typeof spotPrice !== 'number' || !isFinite(spotPrice) || spotPrice <= 0) {
+                    continue;
                 }
+                const acc = planet.monthPriceAcc[productName];
+                const avgPrice = acc ? acc.sum / acc.count : spotPrice;
+                const minPrice = acc ? acc.min : spotPrice;
+                const maxPrice = acc ? acc.max : spotPrice;
+                rows.push({ tick, planet_id: planet.id, product_name: productName, avgPrice, minPrice, maxPrice });
             }
+            planet.monthPriceAcc = {};
         }
         if (rows.length === 0) {
             return;
@@ -438,6 +447,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             } catch (err) {
                 console.error('[worker] Error while advancing:', err);
             }
+
+            // Accumulate intra-month price stats via planet.monthPriceAcc (done inside engine's advanceTick).
 
             // Capture an immutable snapshot of the game state.
             // This is O(1) structural-sharing; query handlers can read it

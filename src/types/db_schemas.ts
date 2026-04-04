@@ -154,8 +154,10 @@ export type ProductPriceHistory = {
     tick: string;
     planet_id: string;
     product_name: string;
-    price: number;
+    avg_price: number;
     created_at: Date;
+    min_price: number;
+    max_price: number;
 };
 
 export type ProductPriceMonthly = {

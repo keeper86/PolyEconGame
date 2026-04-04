@@ -268,13 +268,15 @@ export interface InsertProductPrice {
     tick: number;
     planet_id: string;
     product_name: string;
-    price: number;
+    avgPrice: number;
+    minPrice: number;
+    maxPrice: number;
 }
 
 /**
- * Insert per-tick product price rows for all products on all planets.
- * These are ingested into the product_price_history hypertable; TimescaleDB
- * continuous aggregates then compute monthly / yearly / decade averages.
+ * Insert one aggregated price row per product per planet at month boundaries.
+ * Each row contains the intra-month avg/min/max computed in the worker accumulator.
+ * TimescaleDB continuous aggregates cascade these into yearly / decade views.
  */
 export async function insertProductPriceHistory(db: Knex, rows: InsertProductPrice[]): Promise<void> {
     if (rows.length === 0) {
@@ -285,7 +287,9 @@ export async function insertProductPriceHistory(db: Knex, rows: InsertProductPri
             tick: String(r.tick),
             planet_id: r.planet_id,
             product_name: r.product_name,
-            price: r.price,
+            avg_price: r.avgPrice,
+            min_price: r.minPrice,
+            max_price: r.maxPrice,
         })),
     );
 }

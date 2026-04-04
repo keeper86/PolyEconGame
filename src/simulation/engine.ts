@@ -16,6 +16,7 @@ import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
+import { accumulatePlanetPrices } from './planet/planet';
 
 export { seedRng };
 
@@ -57,6 +58,8 @@ export function advanceTick(gameState: GameState) {
         automaticPricing(planetAgents, planet);
 
         marketTick(planetAgents, planet);
+
+        accumulatePlanetPrices(planet);
 
         productionTick(planetAgents, planet);
 
