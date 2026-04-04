@@ -467,7 +467,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 flushProductPrices(state, state.tick);
                 updateAgentMonthlyHistory(state, state.tick);
                 if (snapshotDb) {
-                    void refreshContinuousAggregates(snapshotDb, state.tick, 'monthly').catch((err) =>
+                    // Use tick + 1 because TimescaleDB refresh_continuous_aggregate uses an
+                    // exclusive upper bound [start, end).  The flush above just inserted a row
+                    // at exactly state.tick, so we must pass tick+1 to include it.
+                    void refreshContinuousAggregates(snapshotDb, state.tick + 1, 'monthly').catch((err) =>
                         console.error(`[worker] Failed to refresh monthly CAGGs at tick ${state.tick}:`, err),
                     );
                 }
@@ -475,12 +478,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             // At year boundaries: refresh yearly (and at decade boundaries, decade) CAGGs.
             if (state.tick % 360 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(snapshotDb, state.tick, 'yearly').catch((err) =>
+                void refreshContinuousAggregates(snapshotDb, state.tick + 1, 'yearly').catch((err) =>
                     console.error(`[worker] Failed to refresh yearly CAGGs at tick ${state.tick}:`, err),
                 );
             }
             if (state.tick % 3600 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(snapshotDb, state.tick, 'decade').catch((err) =>
+                void refreshContinuousAggregates(snapshotDb, state.tick + 1, 'decade').catch((err) =>
                     console.error(`[worker] Failed to refresh decade CAGGs at tick ${state.tick}:`, err),
                 );
             }

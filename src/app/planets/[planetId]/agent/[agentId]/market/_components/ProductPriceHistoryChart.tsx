@@ -2,6 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -377,7 +378,10 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
               ? tickToDate(pts[pts.length - 1].bucket + 1).year
               : 0;
 
-        // Keep only points that fall in latestYear and compute their month index (0-11).
+        // Bucket timestamps represent the END of the month. Shift monthIdx by +1 so that
+        // January data (end of Jan) appears at x=1, February at x=2, …, December at x=12.
+        // Position x=0 is the anchor: end-of-December from the previous year.
+        //
         // TimescaleDB time_bucket() returns 0-indexed bucket starts, but tickToDate expects
         // 1-indexed game ticks (it subtracts 1 internally). Use bucket+1 to align correctly.
         const result: ChartPoint[] = pts
@@ -387,12 +391,39 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 return {
                     tick: p.bucket,
                     year: p.bucket / TICKS_PER_YEAR,
-                    monthIdx: monthIndex,
+                    monthIdx: monthIndex + 1,
                     avgPrice: p.avgPrice,
                     minPrice: p.minPrice,
                     maxPrice: p.maxPrice,
                 };
             });
+
+        // Add anchor point at x=0: December of the previous year.
+        const prevDecPoint = pts.find((p) => {
+            const { year, monthIndex } = tickToDate(p.bucket + 1);
+            return year === latestYear - 1 && monthIndex === 11;
+        });
+        if (prevDecPoint) {
+            result.unshift({
+                tick: prevDecPoint.bucket,
+                year: prevDecPoint.bucket / TICKS_PER_YEAR,
+                monthIdx: 0,
+                avgPrice: prevDecPoint.avgPrice,
+                minPrice: prevDecPoint.minPrice,
+                maxPrice: prevDecPoint.maxPrice,
+            });
+        } else {
+            // First year: no previous December — fall back to the initial market price.
+            const fallbackPrice = initialMarketPrices[productName] ?? 1;
+            result.unshift({
+                tick: 0,
+                year: latestYear - 1,
+                monthIdx: 0,
+                avgPrice: fallbackPrice,
+                minPrice: fallbackPrice,
+                maxPrice: fallbackPrice,
+            });
+        }
 
         if (live) {
             const { year: liveYear, monthIndex: liveMonthIdx, day: liveDay } = tickToDate(live.tick);
@@ -467,7 +498,8 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             return {
                 tick: p.bucket,
                 year: p.bucket / TICKS_PER_YEAR,
-                monthIdx: monthIndex,
+                // Ghost data also uses the +1 shift to overlay on the same axis.
+                monthIdx: monthIndex + 1,
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
@@ -518,7 +550,8 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
         return Number.isInteger(year) ? `Y${year}` : `Y${year.toFixed(0)}`;
     };
 
-    const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[monthIdx] ?? '';
+    // monthIdx 0 = end of previous December (anchor); 1–12 = Jan–Dec of current year.
+    const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(monthIdx + 11) % 12] ?? '';
 
     const yearTooltipLabel = (year: number): string => {
         if (typeof year !== 'number') {
@@ -528,11 +561,13 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     };
 
     const monthTooltipLabel = (monthIdx: number): string => {
-        // monthIdx is 0-11; reconstruct the display year from monthlyData.
+        // monthIdx is 1-12 (shifted); 0 is the previous-December anchor.
+        // Reconstruct the display year from monthlyData.
         // pt.tick stores the raw bucket value (0-indexed), so use bucket+1 for tickToDate.
         const pt = monthlyData.find((p) => p.monthIdx === monthIdx);
         const { year: yearInt } = pt ? tickToDate(pt.tick + 1) : { year: 0 };
-        return `${MONTH_NAMES[monthIdx] ?? ''} Y${yearInt}`;
+        const label = MONTH_NAMES[(monthIdx + 11) % 12] ?? '';
+        return `${label} Y${yearInt}`;
     };
 
     if (isLoading) {
@@ -567,8 +602,8 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                         ghostData={ghostMonthlyData}
                         gradId={monthlyGradId}
                         xDataKey='monthIdx'
-                        xDomain={[0, 11]}
-                        xTicks={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}
+                        xDomain={[0, 12]}
+                        xTicks={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
                         xTickFormatter={formatMonthTick}
                         tooltipLabelFormatter={monthTooltipLabel}
                         tooltipFormatter={tooltipFormatter}

@@ -2,11 +2,11 @@ import { isMonthBoundary, isYearBoundary } from './constants';
 import { automaticLoanRepayment, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
-import { marketTick } from './market/market';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
-import { updateAgentProductionScale } from './planet/automaticProductionScale';
+import { marketTick } from './market/market';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
+import { accumulatePlanetPrices } from './planet/planet';
 import { productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
@@ -16,7 +16,6 @@ import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
-import { accumulatePlanetPrices } from './planet/planet';
 
 export { seedRng };
 
