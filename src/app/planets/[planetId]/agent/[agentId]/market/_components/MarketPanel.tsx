@@ -42,7 +42,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
     const [showAll, setShowAll] = useState(false);
     const [useAverage, setUseAverage] = useState(false);
-    const [openItems, setOpenItems] = useState<string[]>([]);
+    const [openItem, setOpenItem] = useState<string | undefined>(undefined);
     const trpc = useTRPC();
 
     const { productionFacilities, storageFacility, market } = assets;
@@ -227,12 +227,10 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                 </div>
 
                                 <Accordion
-                                    type='multiple'
-                                    value={openItems}
-                                    onValueChange={(next) => {
-                                        const added = next.find((item) => !openItems.includes(item));
-                                        setOpenItems(added ? [added] : []);
-                                    }}
+                                    type='single'
+                                    collapsible
+                                    value={openItem}
+                                    onValueChange={setOpenItem}
                                     className='w-full'
                                 >
                                     {levelResources.map(({ name }) => (
@@ -246,7 +244,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                                 buildInitialState([{ name }], buyBids, sellOffers)[name]
                                             }
                                             onLocalChange={handleLocalChange}
-                                            _isOpen={openItems.includes(name)}
+                                            _isOpen={openItem === name}
                                             overviewRow={overviewRows[name]}
                                             visibleColumns={visibleColumns}
                                         />

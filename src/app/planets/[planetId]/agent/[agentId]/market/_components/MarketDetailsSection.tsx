@@ -8,11 +8,7 @@ import React from 'react';
 import BidTable from './BidTable';
 import OfferTable from './OfferTable';
 import PopulationDemandChart from './PopulationDemandChart';
-import FoodPriceHistoryChart from './FoodPriceHistoryChart';
-import { groceryServiceResourceType } from '@/simulation/planet/services';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
-
-const FOOD_RESOURCE_NAME = groceryServiceResourceType.name;
 
 interface MarketDetailsSectionProps {
     planetId: string;

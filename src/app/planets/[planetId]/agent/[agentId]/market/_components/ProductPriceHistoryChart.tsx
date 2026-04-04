@@ -2,14 +2,25 @@
 
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
+import { tickToDate } from '@/components/client/TickDisplay';
 import React, { useMemo } from 'react';
-import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 // Bucket sizes in ticks for each granularity.
 const BUCKET_TICKS = { monthly: 30, yearly: 360, decade: 3600 } as const;
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
+type ChartPoint = {
+    tick: number;
+    year: number;
+    monthIdx?: number;
+    avgPrice: number;
+    minPrice: number;
+    maxPrice: number;
+};
 
 type Props = {
     planetId: string;
@@ -20,6 +31,174 @@ type Props = {
         price: number;
     };
 };
+
+function yDomainFor(points: ChartPoint[]): [number, number] {
+    if (points.length === 0) {
+        return [0, 1];
+    }
+    const mins = points.map((d) => d.minPrice);
+    const maxs = points.map((d) => d.maxPrice);
+    const lo = Math.min(...mins);
+    const hi = Math.max(...maxs);
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) {
+        const v = Number.isFinite(lo) ? lo : 0;
+        return [v * 0.95 - 0.0001, v * 1.05 + 0.0001];
+    }
+    const pad = (hi - lo) * 0.08;
+    return [lo - pad, hi + pad];
+}
+
+function logTicksFor(points: ChartPoint[]): number[] | undefined {
+    const prices = points.map((d) => d.avgPrice).filter((v) => v > 0);
+    if (prices.length === 0) {
+        return undefined;
+    }
+    const minP = Math.min(...prices);
+    const maxP = Math.max(...prices);
+    if (minP === maxP) {
+        return [minP];
+    }
+    const result: number[] = [];
+    for (let e = Math.floor(Math.log10(minP)); e <= Math.ceil(Math.log10(maxP)); e++) {
+        result.push(Math.pow(10, e));
+    }
+    return result;
+}
+
+function PriceAreaChart({
+    data,
+    gradId,
+    xDataKey = 'year',
+    xDomain,
+    xTicks,
+    xTickFormatter,
+    tooltipLabelFormatter,
+    tooltipFormatter,
+    scale,
+    yDomain,
+    yTicks,
+    showYAxis,
+    showLegend: _showLegend,
+    label,
+    referenceYBand,
+}: {
+    data: ChartPoint[];
+    gradId: string;
+    xDataKey?: 'year' | 'monthIdx';
+    xDomain?: [number | string, number | string];
+    xTicks?: number[];
+    xTickFormatter: (v: number) => string;
+    tooltipLabelFormatter: (v: number) => string;
+    tooltipFormatter: (v: number, name: string) => [string, string];
+    scale: 'log' | 'linear';
+    yDomain: [number, number] | ['auto', 'auto'];
+    yTicks?: number[];
+    showYAxis: boolean;
+    showLegend: boolean;
+    label: string;
+    /** Optional shaded band to draw (e.g. to show where the sibling chart's range sits). */
+    referenceYBand?: { y1: number; y2: number };
+}) {
+    return (
+        <div className='flex flex-col' style={{ width: '50%', height: 200 }}>
+            <div className='text-center text-[10px] text-slate-500 mb-0.5'>{label}</div>
+            <div style={{ flex: 1 }}>
+                <ResponsiveContainer width='100%' height='100%'>
+                    <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id={gradId} x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#38bdf8' stopOpacity={0.45} />
+                                <stop offset='95%' stopColor='#38bdf8' stopOpacity={0.08} />
+                            </linearGradient>
+                        </defs>
+                        <XAxis
+                            dataKey={xDataKey}
+                            type='number'
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={{ stroke: '#334155' }}
+                            tickLine={false}
+                            domain={xDomain ?? ['dataMin', 'dataMax']}
+                            ticks={xTicks}
+                            tickFormatter={xTickFormatter}
+                            minTickGap={xTicks ? 0 : 36}
+                        />
+                        {showYAxis && (
+                            <YAxis
+                                type='number'
+                                scale={scale}
+                                domain={yDomain}
+                                allowDataOverflow
+                                ticks={yTicks}
+                                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                                width={52}
+                                tickFormatter={(v) => (typeof v === 'number' ? formatNumbers(v) : String(v))}
+                            />
+                        )}
+                        <Tooltip
+                            contentStyle={{
+                                background: '#1e293b',
+                                border: '1px solid #334155',
+                                borderRadius: '6px',
+                                fontSize: 12,
+                            }}
+                            itemStyle={{ color: '#e2e8f0' }}
+                            labelStyle={{ color: '#94a3b8', marginBottom: 4 }}
+                            formatter={tooltipFormatter}
+                            labelFormatter={tooltipLabelFormatter}
+                        />
+                        {referenceYBand && (
+                            <ReferenceArea
+                                y1={referenceYBand.y1}
+                                y2={referenceYBand.y2}
+                                fill='#f59e0b'
+                                fillOpacity={0.07}
+                                stroke='#f59e0b'
+                                strokeOpacity={0.35}
+                                strokeDasharray='3 3'
+                                strokeWidth={1}
+                                ifOverflow='hidden'
+                            />
+                        )}
+                        <Area
+                            type='monotone'
+                            dataKey='maxPrice'
+                            stroke='#38bdf8'
+                            strokeWidth={1}
+                            strokeDasharray='3 3'
+                            fill={`url(#${gradId})`}
+                            dot={false}
+                            activeDot={false}
+                            name='maxPrice'
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='minPrice'
+                            stroke='#38bdf8'
+                            strokeWidth={1}
+                            strokeDasharray='3 3'
+                            fill='var(--background, #0f172a)'
+                            dot={false}
+                            activeDot={false}
+                            name='minPrice'
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='avgPrice'
+                            stroke='#f59e0b'
+                            strokeWidth={2}
+                            fill='none'
+                            dot={false}
+                            activeDot={{ r: 3, fill: '#f59e0b', stroke: '#1e293b', strokeWidth: 2 }}
+                            name='avgPrice'
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}
 
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
@@ -41,47 +220,81 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
 
     const isLoading = loadingMonthly || loadingYearly || loadingDecade;
 
-    // The minimum bucket (in ticks) that is monthly-granularity data — used for x-axis label formatting.
-    const monthlyThreshold = useMemo(() => {
-        const pts = monthly?.history ?? [];
-        if (pts.length === 0) {
-            return Infinity;
+    type RawPoint = { bucket: number; avgPrice: number; minPrice: number; maxPrice: number };
+
+    const toPoints = (history: typeof monthly): RawPoint[] =>
+        (history?.history ?? []).map((r) => ({
+            bucket: r.bucket,
+            avgPrice: r.avgPrice,
+            minPrice: r.minPrice,
+            maxPrice: r.maxPrice,
+        }));
+
+    // --- Monthly chart data (right panel) ---
+    // Always pinned to [Jan=0 … Dec=11] of the most recent year in the data.
+    const monthlyData = useMemo((): ChartPoint[] => {
+        const pts = toPoints(monthly).sort((a, b) => a.bucket - b.bucket);
+
+        // Determine the most-recent year present in the data (or from live tick).
+        // live.tick is a 1-indexed game tick; bucket values need +1 to align with tickToDate.
+        const latestYear = live
+            ? tickToDate(live.tick).year
+            : pts.length > 0
+              ? tickToDate(pts[pts.length - 1].bucket + 1).year
+              : 0;
+
+        // Keep only points that fall in latestYear and compute their month index (0-11).
+        // TimescaleDB time_bucket() returns 0-indexed bucket starts, but tickToDate expects
+        // 1-indexed game ticks (it subtracts 1 internally). Use bucket+1 to align correctly.
+        const result: ChartPoint[] = pts
+            .filter((p) => tickToDate(p.bucket + 1).year === latestYear)
+            .map((p) => {
+                const { monthIndex } = tickToDate(p.bucket + 1);
+                return {
+                    tick: p.bucket,
+                    year: p.bucket / TICKS_PER_YEAR,
+                    monthIdx: monthIndex,
+                    avgPrice: p.avgPrice,
+                    minPrice: p.minPrice,
+                    maxPrice: p.maxPrice,
+                };
+            });
+
+        if (live) {
+            const { year: liveYear, monthIndex: liveMonthIdx } = tickToDate(live.tick);
+            if (liveYear === latestYear) {
+                const last = result[result.length - 1];
+                result.push({
+                    tick: live.tick,
+                    year: live.tick / TICKS_PER_YEAR,
+                    monthIdx: liveMonthIdx,
+                    avgPrice: live.price,
+                    minPrice: last ? Math.min(last.minPrice, live.price) : live.price,
+                    maxPrice: last ? Math.max(last.maxPrice, live.price) : live.price,
+                });
+            }
         }
-        return Math.min(...pts.map((p) => p.bucket));
-    }, [monthly]);
+        return result;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [monthly, live]);
 
-    const plotData = useMemo(() => {
-        type Point = { bucket: number; avgPrice: number; minPrice: number; maxPrice: number };
-
-        const toPoints = (history: typeof monthly): Point[] =>
-            (history?.history ?? []).map((r) => ({
-                bucket: r.bucket,
-                avgPrice: r.avgPrice,
-                minPrice: r.minPrice,
-                maxPrice: r.maxPrice,
-            }));
+    // --- History chart data (left panel): decade + yearly, excluding ticks covered by monthly ---
+    const historyData = useMemo((): ChartPoint[] => {
+        const monthlyMinTick = monthlyData.length > 0 ? monthlyData[0].tick : Infinity;
 
         const decadePoints = toPoints(decade);
         const yearlyPoints = toPoints(yearly);
-        const monthlyPoints = toPoints(monthly);
 
-        const coveredByDecade = new Set(decadePoints.map((p) => Math.floor(p.bucket / BUCKET_TICKS.decade)));
+        // Remove decade buckets overlapping with monthly range
+        const filteredDecade = decadePoints.filter((p) => p.bucket < monthlyMinTick);
+
+        // Remove yearly buckets covered by a decade bucket OR overlapping with monthly range
+        const coveredByDecade = new Set(filteredDecade.map((p) => Math.floor(p.bucket / BUCKET_TICKS.decade)));
         const filteredYearly = yearlyPoints.filter(
-            (p) => !coveredByDecade.has(Math.floor(p.bucket / BUCKET_TICKS.decade)),
+            (p) => p.bucket < monthlyMinTick && !coveredByDecade.has(Math.floor(p.bucket / BUCKET_TICKS.decade)),
         );
 
-        const coveredByYearly = new Set(
-            [...yearlyPoints, ...filteredYearly].map((p) => Math.floor(p.bucket / BUCKET_TICKS.yearly)),
-        );
-        const filteredMonthly = monthlyPoints.filter(
-            (p) => !coveredByYearly.has(Math.floor(p.bucket / BUCKET_TICKS.yearly)),
-        );
-
-        const merged: Array<{ tick: number; year: number; avgPrice: number; minPrice: number; maxPrice: number }> = [
-            ...decadePoints,
-            ...filteredYearly,
-            ...filteredMonthly,
-        ]
+        return [...filteredDecade, ...filteredYearly]
             .sort((a, b) => a.bucket - b.bucket)
             .map((p) => ({
                 tick: p.bucket,
@@ -90,216 +303,110 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
             }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [decade, yearly, monthlyData]);
 
-        if (live && merged.length > 0) {
-            const last = merged[merged.length - 1];
-            merged.push({
-                tick: live.tick,
-                year: live.tick / TICKS_PER_YEAR,
-                avgPrice: live.price,
-                minPrice: Math.min(last.minPrice, live.price),
-                maxPrice: Math.max(last.maxPrice, live.price),
-            });
+    // Separate Y-axis domains: history uses the full combined range; monthly uses only its own data
+    const allData = useMemo(() => [...historyData, ...monthlyData], [historyData, monthlyData]);
+    const historyYDomain = useMemo(() => yDomainFor(historyData), [historyData]);
+    const monthlyYDomain = useMemo(() => yDomainFor(monthlyData), [monthlyData]);
+
+    // Reference band on the history chart showing where the monthly range sits
+    const monthlyRefBand = useMemo((): { y1: number; y2: number } | undefined => {
+        if (monthlyData.length === 0 || historyData.length === 0) {
+            return undefined;
         }
+        return { y1: monthlyYDomain[0], y2: monthlyYDomain[1] };
+    }, [monthlyYDomain, monthlyData.length, historyData.length]);
 
-        return merged;
-    }, [decade, yearly, monthly, live]);
-
-    const [minData, maxData, minAvgData, maxAvgData] = useMemo(() => {
-        if (plotData.length === 0) {
-            return [0, 1, 0, 1];
-        }
-        return [
-            Math.min(...plotData.map((d) => d.minPrice)),
-            Math.max(...plotData.map((d) => d.maxPrice)),
-            Math.min(...plotData.map((d) => d.avgPrice)),
-            Math.max(...plotData.map((d) => d.avgPrice)),
-        ];
-    }, [plotData]);
-
-    // Y-axis domain with a small padding so a flat line is visible in the middle.
-    const yDomain = useMemo((): [number, number] => {
-        if (!Number.isFinite(minData) || !Number.isFinite(maxData) || minData === maxData) {
-            const v = Number.isFinite(minData) ? minData : 0;
-            return [v * 0.95 - 0.0001, v * 1.05 + 0.0001];
-        }
-        const pad = (maxData - minData) * 0.08;
-        return [minData - pad, maxData + pad];
-    }, [minData, maxData]);
-
-    const withLogScale = useMemo(() => {
-        if (minAvgData <= 0 || !Number.isFinite(minAvgData) || !Number.isFinite(maxAvgData)) {
+    // Use log scale when the combined price range spans an order of magnitude
+    const allAvgPrices = useMemo(() => allData.map((d) => d.avgPrice).filter((v) => v > 0), [allData]);
+    const useLogForHistory = useMemo(() => {
+        if (allAvgPrices.length < 2) {
             return false;
         }
-        return minAvgData / maxAvgData >= 10;
-    }, [minAvgData, maxAvgData]);
+        const lo = Math.min(...allAvgPrices);
+        const hi = Math.max(...allAvgPrices);
+        return lo > 0 && hi / lo >= 10;
+    }, [allAvgPrices]);
 
-    const logTicks = useMemo(() => {
-        if (!withLogScale) {
-            return undefined;
-        }
-        const prices = plotData.map((d) => d.avgPrice).filter((v) => v > 0);
-        if (prices.length === 0) {
-            return undefined;
-        }
-        const minP = Math.min(...prices);
-        const maxP = Math.max(...prices);
-        if (minP === maxP) {
-            return [minP];
-        }
-        const result: number[] = [];
-        for (let e = Math.floor(Math.log10(minP)); e <= Math.ceil(Math.log10(maxP)); e++) {
-            result.push(Math.pow(10, e));
-        }
-        return result;
-    }, [withLogScale, plotData]);
-
-    const formatPrice = (v: number): string => (Number.isFinite(v) ? v.toFixed(4) : String(v));
-
-    const formatXTick = (tick: number): string => {
-        if (typeof tick !== 'number') {
-            return String(tick);
-        }
-        const tickVal = tick * TICKS_PER_YEAR; // year → ticks
-        if (tickVal >= monthlyThreshold) {
-            // Monthly label: show "MonY" e.g. "Apr5"
-            const year = Math.floor(tick);
-            const monthIdx = Math.round((tick - year) * 12);
-            const monthName = MONTH_NAMES[monthIdx % 12] ?? MONTH_NAMES[0];
-            return `${monthName}`;
-        }
-        // Year or decade label
-        return Number.isInteger(tick) ? `Y${tick}` : `Y${tick.toFixed(0)}`;
-    };
-
-    const tooltipLabelFormatter = (label: number): string => {
-        if (typeof label !== 'number') {
-            return String(label);
-        }
-        const tickVal = label * TICKS_PER_YEAR;
-        if (tickVal >= monthlyThreshold) {
-            const year = Math.floor(label);
-            const monthFrac = label - year;
-            const monthIdx = Math.round(monthFrac * 12);
-            const totalMonths = year * 12 + monthIdx;
-            const monthInYear = totalMonths % 12;
-            const displayYear = Math.floor(totalMonths / 12);
-            return `${MONTH_NAMES[monthInYear]} Y${displayYear}`;
-        }
-        return `Y${label.toFixed(2)}`;
-    };
+    const historyGradId = `grad_hist_${productName.replace(/\s+/g, '_')}`;
+    const monthlyGradId = `grad_mon_${productName.replace(/\s+/g, '_')}`;
 
     const tooltipFormatter = (value: number, name: string): [string, string] => {
-        const labels: Record<string, string> = {
-            avgPrice: 'Avg price',
-            minPrice: 'Min price',
-            maxPrice: 'Max price',
-        };
-        return [formatPrice(value), labels[name] ?? name];
+        const labels: Record<string, string> = { avgPrice: 'Avg price', minPrice: 'Min price', maxPrice: 'Max price' };
+        return [formatNumbers(value), labels[name] ?? name];
+    };
+
+    const formatYearTick = (year: number): string => {
+        if (typeof year !== 'number') {
+            return String(year);
+        }
+        return Number.isInteger(year) ? `Y${year}` : `Y${year.toFixed(0)}`;
+    };
+
+    const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[monthIdx] ?? '';
+
+    const yearTooltipLabel = (year: number): string => {
+        if (typeof year !== 'number') {
+            return String(year);
+        }
+        return `Y${year.toFixed(1)}`;
+    };
+
+    const monthTooltipLabel = (monthIdx: number): string => {
+        // monthIdx is 0-11; reconstruct the display year from monthlyData.
+        // pt.tick stores the raw bucket value (0-indexed), so use bucket+1 for tickToDate.
+        const pt = monthlyData.find((p) => p.monthIdx === monthIdx);
+        const { year: yearInt } = pt ? tickToDate(pt.tick + 1) : { year: 0 };
+        return `${MONTH_NAMES[monthIdx] ?? ''} Y${yearInt}`;
     };
 
     if (isLoading) {
         return <div className='text-xs text-muted-foreground'>Loading price history…</div>;
     }
 
-    const gradId = `colorRange_${productName.replace(/\s+/g, '_')}`;
+    const hasHistory = historyData.length > 0;
+    const hasMonthly = monthlyData.length > 0;
 
     return (
         <div className='space-y-1'>
-            <div style={{ width: '100%', height: 180 }}>
-                <ResponsiveContainer width='100%' height='100%'>
-                    <AreaChart data={plotData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id={gradId} x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#38bdf8' stopOpacity={0.45} />
-                                <stop offset='95%' stopColor='#38bdf8' stopOpacity={0.08} />
-                            </linearGradient>
-                        </defs>
-                        <XAxis
-                            dataKey='year'
-                            type='number'
-                            tick={{ fontSize: 10, fill: '#94a3b8' }}
-                            axisLine={{ stroke: '#334155' }}
-                            tickLine={false}
-                            domain={['dataMin', 'dataMax']}
-                            tickFormatter={formatXTick}
-                            minTickGap={40}
-                        />
-                        <YAxis
-                            type='number'
-                            scale={withLogScale ? 'log' : 'linear'}
-                            domain={withLogScale ? ['auto', 'auto'] : yDomain}
-                            allowDataOverflow
-                            ticks={withLogScale ? logTicks : undefined}
-                            tick={{ fontSize: 10, fill: '#94a3b8' }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={56}
-                            tickFormatter={(v) => (typeof v === 'number' ? formatPrice(v) : String(v))}
-                        />
-                        <Tooltip
-                            contentStyle={{
-                                background: '#1e293b',
-                                border: '1px solid #334155',
-                                borderRadius: '6px',
-                                fontSize: 12,
-                            }}
-                            itemStyle={{ color: '#e2e8f0' }}
-                            labelStyle={{ color: '#94a3b8', marginBottom: 4 }}
-                            formatter={tooltipFormatter}
-                            labelFormatter={tooltipLabelFormatter}
-                        />
-                        <Legend
-                            iconType='circle'
-                            iconSize={8}
-                            wrapperStyle={{ fontSize: 11, color: '#94a3b8' }}
-                            formatter={(value) =>
-                                (
-                                    ({
-                                        avgPrice: 'Avg price',
-                                        minPrice: 'Min',
-                                        maxPrice: 'Max',
-                                    }) as Record<string, string>
-                                )[value] ?? value
-                            }
-                        />
-                        {/* Max price — top boundary of the band with fill down to minPrice */}
-                        <Area
-                            type='monotone'
-                            dataKey='maxPrice'
-                            stroke='#38bdf8'
-                            strokeWidth={1}
-                            strokeDasharray='3 3'
-                            fill={`url(#${gradId})`}
-                            dot={false}
-                            activeDot={false}
-                            name='maxPrice'
-                        />
-                        {/* Min price — bottom boundary, wipes out the fill below it */}
-                        <Area
-                            type='monotone'
-                            dataKey='minPrice'
-                            stroke='#38bdf8'
-                            strokeWidth={1}
-                            strokeDasharray='3 3'
-                            fill='var(--background, #0f172a)'
-                            dot={false}
-                            activeDot={false}
-                            name='minPrice'
-                        />
-                        {/* Avg price as a bright line on top */}
-                        <Area
-                            type='monotone'
-                            dataKey='avgPrice'
-                            stroke='#f59e0b'
-                            strokeWidth={2}
-                            fill='none'
-                            dot={false}
-                            activeDot={{ r: 3, fill: '#f59e0b', stroke: '#1e293b', strokeWidth: 2 }}
-                            name='avgPrice'
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
+            <div className='flex w-full' style={{ height: 200 }}>
+                {hasHistory && (
+                    <PriceAreaChart
+                        data={historyData}
+                        gradId={historyGradId}
+                        xTickFormatter={formatYearTick}
+                        tooltipLabelFormatter={yearTooltipLabel}
+                        tooltipFormatter={tooltipFormatter}
+                        scale={useLogForHistory ? 'log' : 'linear'}
+                        yDomain={useLogForHistory ? ['auto', 'auto'] : historyYDomain}
+                        yTicks={useLogForHistory ? logTicksFor(historyData) : undefined}
+                        showYAxis={true}
+                        showLegend={!hasMonthly}
+                        label='Years / Decades'
+                        referenceYBand={useLogForHistory ? undefined : monthlyRefBand}
+                    />
+                )}
+                {hasHistory && hasMonthly && <div className='w-px bg-slate-700 self-stretch mx-0.5 mt-5' />}
+                {hasMonthly && (
+                    <PriceAreaChart
+                        data={monthlyData}
+                        gradId={monthlyGradId}
+                        xDataKey='monthIdx'
+                        xDomain={[0, 11]}
+                        xTicks={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}
+                        xTickFormatter={formatMonthTick}
+                        tooltipLabelFormatter={monthTooltipLabel}
+                        tooltipFormatter={tooltipFormatter}
+                        scale='linear'
+                        yDomain={monthlyYDomain}
+                        yTicks={undefined}
+                        showYAxis={!hasHistory}
+                        showLegend={true}
+                        label='Monthly'
+                    />
+                )}
             </div>
         </div>
     );
