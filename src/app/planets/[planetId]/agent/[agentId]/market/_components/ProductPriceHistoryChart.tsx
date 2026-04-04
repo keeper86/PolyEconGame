@@ -432,13 +432,30 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 const liveAvg = live.avgPrice ?? live.price;
                 const liveMin = live.minPrice ?? live.price;
                 const liveMax = live.maxPrice ?? live.price;
+
+                // Blend with the last completed month's values for the first BLEND_TICKS ticks
+                // of the month to smooth the hard transition when avg/min/max collapse.
+                const BLEND_TICKS = 10;
+                const tickInMonth = liveDay; // 0-indexed
+                const prevPoint = result.length > 0 ? result[result.length - 1] : null;
+                let blendedAvg = liveAvg;
+                let blendedMin = liveMin;
+                let blendedMax = liveMax;
+                if (prevPoint && tickInMonth < BLEND_TICKS) {
+                    const newWeight = tickInMonth / BLEND_TICKS;
+                    const oldWeight = 1 - newWeight;
+                    blendedAvg = oldWeight * prevPoint.avgPrice + newWeight * liveAvg;
+                    blendedMin = oldWeight * prevPoint.minPrice + newWeight * liveMin;
+                    blendedMax = oldWeight * prevPoint.maxPrice + newWeight * liveMax;
+                }
+
                 result.push({
                     tick: live.tick,
                     year: live.tick / TICKS_PER_YEAR,
                     monthIdx: fractionalMonthIdx,
-                    avgPrice: liveAvg,
-                    minPrice: liveMin,
-                    maxPrice: liveMax,
+                    avgPrice: blendedAvg,
+                    minPrice: blendedMin,
+                    maxPrice: blendedMax,
                 });
             }
         }
