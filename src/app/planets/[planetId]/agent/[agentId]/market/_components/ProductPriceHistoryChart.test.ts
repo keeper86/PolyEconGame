@@ -381,12 +381,13 @@ describe('MonthlyChart data invariant: boundary edge cases', () => {
 
 /**
  * Simulate the real-world data constraint: the server returns only the most-recent
- * N monthly buckets. With limit=13, a product queried in e.g. June would only receive
- * Jun-prev..May-current — missing Jul-Oct of the previous year entirely.
+ * N monthly buckets (limit=13 in the component query).
  *
- * These tests verify that limit=24 (the correct value) is sufficient for all months.
+ * With the corrected tickToDate(bucket) decode (no +1), limit=13 is sufficient:
+ * at any month M in year N, the 13 most-recent buckets always include all of
+ * the prev-year months needed for ghost data (M..12).
  */
-describe('MonthlyChart with server-limited data (limit=24)', () => {
+describe('MonthlyChart with server-limited data (limit=13)', () => {
     /** Return only the most-recent `limit` completed buckets before `tick`. */
     function limitedBuckets(allPts: RawPoint[], tick: number, limit: number): RawPoint[] {
         return [...allPts]
@@ -395,7 +396,7 @@ describe('MonthlyChart with server-limited data (limit=24)', () => {
             .slice(0, limit);
     }
 
-    it('limit=24 gives total=14 at every month throughout year 1', () => {
+    it('limit=13 gives total=14 at every month throughout year 1', () => {
         const allPoints = makeTwoYearsOfData(0, 1);
         const failures: string[] = [];
 
@@ -403,7 +404,7 @@ describe('MonthlyChart with server-limited data (limit=24)', () => {
             const day = 15;
             const tick = gameTickFor(1, monthIndex, day);
             const live: LiveData = { tick, price: 11, avgPrice: 11, minPrice: 10, maxPrice: 12 };
-            const pts = limitedBuckets(allPoints, tick, 24);
+            const pts = limitedBuckets(allPoints, tick, 13);
 
             const data = computeMonthlyData(pts, live, PRODUCT_NAME);
             const ghostData = computeMonthlyGhostData(pts, live, data);
@@ -411,50 +412,30 @@ describe('MonthlyChart with server-limited data (limit=24)', () => {
 
             if (total !== 14) {
                 failures.push(
-                    `${MONTH_NAMES[monthIndex]} day ${day}: data=${data.length} ghost=${ghostData.length} total=${total} (expected 14) with limit=24`,
+                    `${MONTH_NAMES[monthIndex]} day ${day}: data=${data.length} ghost=${ghostData.length} total=${total} (expected 14) with limit=13`,
                 );
             }
         }
 
-        if (failures.length > 0) throw new Error(failures.join('\n'));
-    });
-
-    it('limit=13 was the original bug: with old +1 decode ghost was wrong; limit=24 is now the safe value', () => {
-        const allPoints = makeTwoYearsOfData(0, 1);
-        // Demonstrate that limit=24 reliably provides all needed data at every month.
-        // We verify limit=24 gives total=14 while limit=13 in the second half of the year
-        // could theoretically risk gaps (over-constraining). limit=24 is the safe minimum.
-        const failures: string[] = [];
-        for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
-            const tick = gameTickFor(1, monthIndex, 15);
-            const live: LiveData = { tick, price: 11 };
-            const pts24 = limitedBuckets(allPoints, tick, 24);
-
-            const data = computeMonthlyData(pts24, live, PRODUCT_NAME);
-            const ghost = computeMonthlyGhostData(pts24, live, data);
-
-            if (data.length + ghost.length !== 14) {
-                failures.push(`${MONTH_NAMES[monthIndex]}: total=${data.length + ghost.length} with limit=24`);
-            }
+        if (failures.length > 0) {
+            throw new Error(failures.join('\n'));
         }
-        if (failures.length > 0) throw new Error(failures.join('\n'));
     });
 
-    it('limit=24 gives full ghost coverage (monthIdx 1–12) in January', () => {
+    it('limit=13 gives full ghost coverage (monthIdx 1–12) in January', () => {
         const allPoints = makeTwoYearsOfData(0, 1);
         const tick = gameTickFor(1, 0, 15); // mid-January
         const live: LiveData = { tick, price: 11 };
-        const pts = limitedBuckets(allPoints, tick, 24);
+        const pts = limitedBuckets(allPoints, tick, 13);
 
         const data = computeMonthlyData(pts, live, PRODUCT_NAME);
         const ghostData = computeMonthlyGhostData(pts, live, data);
 
         const ghostIdxs = ghostData.map((p) => p.monthIdx as number).sort((a, b) => a - b);
-        // In January, threshold ≈ 0.47, so ghost covers monthIdx 1..12
         expect(ghostIdxs).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     });
 
-    it('limit=24 gives complete ghost range at every month (no gaps)', () => {
+    it('limit=13 gives complete ghost range at every month (no gaps)', () => {
         const allPoints = makeTwoYearsOfData(0, 1);
         const failures: string[] = [];
 
@@ -462,7 +443,7 @@ describe('MonthlyChart with server-limited data (limit=24)', () => {
             const day = 15;
             const tick = gameTickFor(1, monthIndex, day);
             const live: LiveData = { tick, price: 11 };
-            const pts = limitedBuckets(allPoints, tick, 24);
+            const pts = limitedBuckets(allPoints, tick, 13);
 
             const data = computeMonthlyData(pts, live, PRODUCT_NAME);
             const ghostData = computeMonthlyGhostData(pts, live, data);
@@ -476,6 +457,8 @@ describe('MonthlyChart with server-limited data (limit=24)', () => {
             }
         }
 
-        if (failures.length > 0) throw new Error(`Ghost gaps with limit=24:\n${failures.join('\n')}`);
+        if (failures.length > 0) {
+            throw new Error(`Ghost gaps with limit=13:\n${failures.join('\n')}`);
+        }
     });
 });

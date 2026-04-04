@@ -511,7 +511,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             planetId,
             productName,
             granularity: 'monthly',
-            limit: 24,
+            limit: 13,
         }),
     );
     const { data: yearly, isLoading: loadingYearly } = useSimulationQuery(
