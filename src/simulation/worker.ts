@@ -314,7 +314,14 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             return;
         }
-        const rows: Array<{ tick: number; planet_id: string; product_name: string; avgPrice: number; minPrice: number; maxPrice: number }> = [];
+        const rows: Array<{
+            tick: number;
+            planet_id: string;
+            product_name: string;
+            avgPrice: number;
+            minPrice: number;
+            maxPrice: number;
+        }> = [];
         for (const planet of gs.planets.values()) {
             for (const [productName, spotPrice] of Object.entries(planet.marketPrices)) {
                 if (typeof spotPrice !== 'number' || !isFinite(spotPrice) || spotPrice <= 0) {

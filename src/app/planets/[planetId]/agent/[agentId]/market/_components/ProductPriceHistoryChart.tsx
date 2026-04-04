@@ -1,10 +1,10 @@
 'use client';
 
+import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import { TICKS_PER_YEAR } from '@/simulation/constants';
-import { tickToDate } from '@/components/client/TickDisplay';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -25,10 +25,15 @@ type ChartPoint = {
 type Props = {
     planetId: string;
     productName: string;
-    /** Live price from the already-fetched market data (current tick). */
+    /** Live price stats from the already-fetched market data (current tick). */
     live?: {
         tick: number;
+        /** Current tick's clearing price (used as fallback). */
         price: number;
+        /** Running intra-month average price (may be undefined if no trades yet). */
+        avgPrice?: number;
+        minPrice?: number;
+        maxPrice?: number;
     };
 };
 
@@ -379,16 +384,19 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             });
 
         if (live) {
-            const { year: liveYear, monthIndex: liveMonthIdx } = tickToDate(live.tick);
+            const { year: liveYear, monthIndex: liveMonthIdx, day: liveDay } = tickToDate(live.tick);
             if (liveYear === latestYear) {
-                const last = result[result.length - 1];
+                const fractionalMonthIdx = liveMonthIdx + (liveDay - 1) / TICKS_PER_MONTH;
+                const liveAvg = live.avgPrice ?? live.price;
+                const liveMin = live.minPrice ?? live.price;
+                const liveMax = live.maxPrice ?? live.price;
                 result.push({
                     tick: live.tick,
                     year: live.tick / TICKS_PER_YEAR,
-                    monthIdx: liveMonthIdx,
-                    avgPrice: live.price,
-                    minPrice: last ? Math.min(last.minPrice, live.price) : live.price,
-                    maxPrice: last ? Math.max(last.maxPrice, live.price) : live.price,
+                    monthIdx: fractionalMonthIdx,
+                    avgPrice: liveAvg,
+                    minPrice: liveMin,
+                    maxPrice: liveMax,
                 });
             }
         }

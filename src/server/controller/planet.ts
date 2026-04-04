@@ -677,6 +677,13 @@ const marketSnapshotSchema = z.object({
         .optional(),
     populationDemand: z.number(),
     agentDemand: z.number(),
+    currentMonthStats: z
+        .object({
+            avgPrice: z.number(),
+            minPrice: z.number(),
+            maxPrice: z.number(),
+        })
+        .nullable(),
 });
 
 export type PlanetMarketSnapshot = z.infer<typeof marketSnapshotSchema>;
@@ -743,6 +750,10 @@ export const getPlanetMarket = () =>
                 });
             }
 
+            const acc = planet.monthPriceAcc[input.resourceName];
+            const currentMonthStats =
+                acc && acc.count > 0 ? { avgPrice: acc.sum / acc.count, minPrice: acc.min, maxPrice: acc.max } : null;
+
             return {
                 tick,
                 market: {
@@ -760,6 +771,7 @@ export const getPlanetMarket = () =>
                     populationBids,
                     populationDemand,
                     agentDemand,
+                    currentMonthStats,
                 },
             };
         });

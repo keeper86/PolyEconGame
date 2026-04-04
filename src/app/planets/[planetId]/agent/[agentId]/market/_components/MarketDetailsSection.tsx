@@ -47,6 +47,9 @@ export default function MarketDetailsSection({
                                 ? {
                                       tick: data.tick,
                                       price: market.clearingPrice,
+                                      avgPrice: market.currentMonthStats?.avgPrice,
+                                      minPrice: market.currentMonthStats?.minPrice,
+                                      maxPrice: market.currentMonthStats?.maxPrice,
                                   }
                                 : undefined
                         }
