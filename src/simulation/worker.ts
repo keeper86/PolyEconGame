@@ -17,6 +17,7 @@ import { groceryServiceResourceType } from './planet/services';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
 import { handleAgentAction } from './workerClient/agentActions';
@@ -306,10 +307,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
      * then reset the accumulator for the next month.
      * Falls back to the current spot price when no trades occurred this month.
      */
-    function flushProductPrices(gs: GameState, tick: number): void {
+    function flushProductPrices(gs: GameState, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
-            return;
+            return Promise.resolve();
         }
         const rows: Array<{
             tick: number;
@@ -343,9 +344,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
         }
         if (rows.length === 0) {
-            return;
+            return Promise.resolve();
         }
-        void insertProductPriceHistory(db, rows).catch((err) => {
+        return insertProductPriceHistory(db, rows).catch((err) => {
             console.error(`[worker] Failed to save product price rows at tick ${tick}:`, err);
         });
     }
@@ -473,26 +474,32 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             // At month boundaries: sample prices and update agent history.
             if (state.tick % 30 === 0) {
-                flushProductPrices(state, state.tick);
-                updateAgentMonthlyHistory(state, state.tick);
-                if (snapshotDb) {
-                    // TimescaleDB refresh_continuous_aggregate uses an exclusive upper bound
-                    // [start, end). flushProductPrices() writes the monthly row at state.tick,
-                    // so pass tick+1 to include it.
-                    void refreshContinuousAggregates(snapshotDb, state.tick + 1, 'monthly').catch((err) =>
-                        console.error(`[worker] Failed to refresh monthly CAGGs at tick ${state.tick}:`, err),
+                const tickAtFlush = state.tick;
+                // Chain the CAGG refresh after the insert so it never races against uncommitted data.
+                // TimescaleDB only materializes buckets that are FULLY contained in [start, end).
+                // The monthly bucket at tick T spans [T, T+TICKS_PER_MONTH), so the end of the
+                // window must be >= T + TICKS_PER_MONTH to include it.
+                void flushProductPrices(state, tickAtFlush)
+                    .then(() => {
+                        if (snapshotDb) {
+                            return refreshContinuousAggregates(snapshotDb, tickAtFlush + TICKS_PER_MONTH, 'monthly');
+                        }
+                    })
+                    .catch((err) =>
+                        console.error(`[worker] Failed to flush/refresh monthly CAGGs at tick ${tickAtFlush}:`, err),
                     );
-                }
+                updateAgentMonthlyHistory(state, state.tick);
             }
 
             // At year boundaries: refresh yearly (and at decade boundaries, decade) CAGGs.
+            // Same logic: yearly bucket spans [T, T+TICKS_PER_YEAR), pass T+TICKS_PER_YEAR as end.
             if (state.tick % 360 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(snapshotDb, state.tick + 1, 'yearly').catch((err) =>
+                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR, 'yearly').catch((err) =>
                     console.error(`[worker] Failed to refresh yearly CAGGs at tick ${state.tick}:`, err),
                 );
             }
             if (state.tick % 3600 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(snapshotDb, state.tick + 1, 'decade').catch((err) =>
+                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR * 10, 'decade').catch((err) =>
                     console.error(`[worker] Failed to refresh decade CAGGs at tick ${state.tick}:`, err),
                 );
             }

@@ -507,23 +507,32 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     const [granularity, setGranularity] = useState<Granularity>('monthly');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
-        trpc.simulation.getProductPriceHistory.queryOptions({
-            planetId,
-            productName,
-            granularity: 'monthly',
-            limit: 13,
-        }),
+        trpc.simulation.getProductPriceHistory.queryOptions(
+            {
+                planetId,
+                productName,
+                granularity: 'monthly',
+                limit: 13,
+            },
+            { enabled: granularity === 'monthly' },
+        ),
     );
     const { data: yearly, isLoading: loadingYearly } = useSimulationQuery(
-        trpc.simulation.getProductPriceHistory.queryOptions({
-            planetId,
-            productName,
-            granularity: 'yearly',
-            limit: 11,
-        }),
+        trpc.simulation.getProductPriceHistory.queryOptions(
+            {
+                planetId,
+                productName,
+                granularity: 'yearly',
+                limit: 11,
+            },
+            { enabled: granularity === 'yearly' },
+        ),
     );
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
-        trpc.simulation.getProductPriceHistory.queryOptions({ planetId, productName, granularity: 'decade' }),
+        trpc.simulation.getProductPriceHistory.queryOptions(
+            { planetId, productName, granularity: 'decade' },
+            { enabled: granularity === 'decades' },
+        ),
     );
 
     const isLoading = loadingMonthly || loadingYearly || loadingDecade;
@@ -538,6 +547,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             })),
         [monthly],
     );
+
     const yearlyPoints = useMemo(
         () =>
             (yearly?.history ?? []).map((r) => ({
