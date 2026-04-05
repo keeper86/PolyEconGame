@@ -7,6 +7,7 @@ import {
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
+import { nextRandom } from '../utils/stochasticRound';
 import type { Planet } from '../planet/planet';
 import { groceryServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
@@ -252,7 +253,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     // supplier pools. Statistically correct in expectation across ticks.
     const ageOrder = Array.from({ length: numAges }, (_, i) => i);
     for (let i = ageOrder.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(nextRandom() * (i + 1));
         [ageOrder[i], ageOrder[j]] = [ageOrder[j], ageOrder[i]];
     }
 

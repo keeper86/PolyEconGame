@@ -355,8 +355,19 @@ export async function refreshContinuousAggregates(
               ? ['product_price_yearly', 'planet_population_yearly', 'agent_yearly_summary']
               : ['product_price_monthly', 'planet_population_monthly', 'agent_monthly_summary'];
 
+    const ticksPerBucket =
+        granularity === 'decade'
+            ? 3600
+            : granularity === 'yearly'
+              ? 360
+              : 30;
+    const refreshStartTick = Math.max(0, upToTick - ticksPerBucket * 2);
     for (const view of views) {
-        await db.raw(`CALL refresh_continuous_aggregate(?, NULL::bigint, ?::bigint)`, [view, upToTick]);
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [
+            view,
+            refreshStartTick,
+            upToTick,
+        ]);
     }
 }
 

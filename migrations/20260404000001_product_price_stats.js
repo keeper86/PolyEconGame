@@ -75,28 +75,9 @@ exports.up = async function (knex) {
         WITH NO DATA
     `);
 
-    // 5. Refresh policies (same windows as before)
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('product_price_monthly',
-            start_offset => 90,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '1 second',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('product_price_yearly',
-            start_offset => 1080,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '5 seconds',
-            if_not_exists => true)
-    `);
-    await knex.raw(`
-        SELECT add_continuous_aggregate_policy('product_price_decade',
-            start_offset => 10800,
-            end_offset   => 0,
-            schedule_interval => INTERVAL '30 seconds',
-            if_not_exists => true)
-    `);
+    // 5. Do not recreate TimescaleDB refresh policies here.
+    // These product_price_* continuous aggregates are refreshed manually by the worker,
+    // so adding background policies would duplicate refresh work and increase load.
 };
 
 exports.config = { transaction: false };

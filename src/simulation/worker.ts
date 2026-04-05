@@ -329,10 +329,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 const avgPrice = acc ? acc.sum / acc.count : spotPrice;
                 const minPrice = acc ? acc.min : spotPrice;
                 const maxPrice = acc ? acc.max : spotPrice;
-                // Insert at the FIRST tick of the completed month so time_bucket(30, tick)
-                // places the row in the correct monthly bucket (not the next one).
-                // e.g. flush at tick=30 → insert at tick=1 → bucket=0 (January) ✓
-                const bucketTick = tick - TICKS_PER_MONTH + 1;
+                // Persist the completed month at its boundary tick (30, 60, …),
+                // which is the last tick of that month in the game's 1-based tick domain.
+                // This keeps downstream month buckets decodable as valid game ticks.
+                const bucketTick = tick;
                 rows.push({
                     tick: bucketTick,
                     planet_id: planet.id,
@@ -477,9 +477,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 flushProductPrices(state, state.tick);
                 updateAgentMonthlyHistory(state, state.tick);
                 if (snapshotDb) {
-                    // Use tick + 1 because TimescaleDB refresh_continuous_aggregate uses an
-                    // exclusive upper bound [start, end).  The flush above just inserted a row
-                    // at exactly state.tick, so we must pass tick+1 to include it.
+                    // TimescaleDB refresh_continuous_aggregate uses an exclusive upper bound
+                    // [start, end). flushProductPrices() writes the monthly row at state.tick,
+                    // so pass tick+1 to include it.
                     void refreshContinuousAggregates(snapshotDb, state.tick + 1, 'monthly').catch((err) =>
                         console.error(`[worker] Failed to refresh monthly CAGGs at tick ${state.tick}:`, err),
                     );
