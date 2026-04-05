@@ -399,7 +399,7 @@ function YearlyChart({
     };
 
     return (
-        <div style={{ width: '100%', height: 200 }}>
+        <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
                 data={data}
                 gradId={gradId}
@@ -452,7 +452,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
     };
 
     return (
-        <div style={{ width: '100%', height: 200 }}>
+        <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
                 data={data}
                 gradId={gradId}
@@ -574,11 +574,11 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     const showDecades = yearsElapsed >= 10;
 
     if (isLoading) {
-        return <div className='text-xs text-muted-foreground'>Loading price history…</div>;
+        return <div className='text-xs text-muted-foreground h-[240px]'>Loading price history…</div>;
     }
 
     return (
-        <div className='space-y-1'>
+        <>
             <div className='flex gap-1'>
                 <GranularityButton active={granularity === 'monthly'} onClick={() => setGranularity('monthly')}>
                     Monthly
@@ -607,6 +607,6 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             {granularity === 'decades' && showDecades && (
                 <DecadesChart decadePoints={decadePoints} productName={productName} />
             )}
-        </div>
+        </>
     );
 }

@@ -2,6 +2,7 @@ import {
     GENERATION_GAP,
     GENERATION_KERNEL_N,
     GROCERY_BUFFER_TARGET_TICKS,
+    MIN_EMPLOYABLE_AGE,
     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     SERVICE_PER_PERSON_PER_TICK,
     SUPPORT_WEIGHT_SIGMA,
@@ -189,9 +190,9 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 if (pop <= 0) {
                     continue;
                 }
-                //if (age < MIN_EMPLOYABLE_AGE) {
-                //    continue;
-                // For the purpose of survival transfers, treat all ages as potential supporters.}
+                if (age < MIN_EMPLOYABLE_AGE) {
+                    continue;
+                }
                 const raw = effectiveSurplus(wealth.mean, wealth.variance, baseGroceryCost, pop);
                 totalSurplus += raw;
                 totalSupporterPop += pop;
