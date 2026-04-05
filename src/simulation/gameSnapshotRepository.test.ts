@@ -5,16 +5,15 @@
  * Uses a testcontainer PostgreSQL instance to verify snapshot CRUD operations.
  */
 
-import { describe, it, expect } from 'vitest';
 import { getDb } from 'tests/vitest/setupTestcontainer';
+import { describe, expect, it } from 'vitest';
 import {
-    insertGameSnapshot,
-    getLatestGameSnapshot,
     getGameSnapshotByTick,
-    pruneGameSnapshots,
-    insertProductPriceHistory,
+    getLatestGameSnapshot,
     getProductPriceHistory,
-    refreshContinuousAggregates,
+    insertGameSnapshot,
+    insertProductPriceHistory,
+    pruneGameSnapshots,
 } from './gameSnapshotRepository';
 
 /** Helper to create a mock snapshot_data buffer of a given size. */

@@ -4,7 +4,7 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import { TICKS_PER_YEAR } from '@/simulation/constants';
+import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo, useState } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
@@ -97,6 +97,7 @@ function SimplePriceAreaChart({
     scale,
     yDomain,
     yTicks,
+    verticalGridValues,
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
@@ -109,6 +110,7 @@ function SimplePriceAreaChart({
     scale: 'log' | 'linear';
     yDomain: [number, number] | ['auto', 'auto'];
     yTicks?: number[];
+    verticalGridValues?: number[];
 }) {
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
@@ -159,9 +161,9 @@ function SimplePriceAreaChart({
                 <CartesianGrid
                     vertical={true}
                     horizontal={false}
-                    verticalValues={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
+                    verticalValues={verticalGridValues ?? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
                     stroke='#334155'
-                    strokeOpacity={0.7}
+                    strokeOpacity={verticalGridValues ? 0.95 : 0.7}
                 />
                 <XAxis
                     dataKey={xDataKey}
@@ -331,10 +333,13 @@ function MonthlyChart({
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
 
     const monthTooltipLabel = (monthIdx: number): string => {
+        if (!Number.isInteger(monthIdx)) {
+            return `Live data`;
+        }
         const pt = data.find((p) => p.monthIdx === monthIdx);
         const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
         const label = MONTH_NAMES[(monthIdx + 11) % 12] ?? '';
-        return `${label} Y${yearInt}`;
+        return `End of ${label} ${yearInt}`;
     };
 
     return (
@@ -359,7 +364,6 @@ function MonthlyChart({
 
 function YearlyChart({
     yearlyPoints,
-    live,
     productName,
 }: {
     yearlyPoints: RawPoint[];
@@ -371,7 +375,7 @@ function YearlyChart({
             .sort((a, b) => a.bucket - b.bucket)
             .map((p) => ({
                 tick: p.bucket,
-                year: p.bucket / TICKS_PER_YEAR + 1,
+                year: p.bucket / TICKS_PER_YEAR + START_YEAR + 1,
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
@@ -383,22 +387,15 @@ function YearlyChart({
     const yTicks = useMemo(() => (useLog ? logTicksFor(data) : undefined), [data, useLog]);
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
-    // Use relative year (tick / TICKS_PER_YEAR) to match the data's `year` field.
-    const currentYear = live ? live.tick / TICKS_PER_YEAR : data.length > 0 ? data[data.length - 1].year : 0;
-    const xDomain: [number, number] = [Math.max(0, currentYear - 10), currentYear - 1];
+    const xMin = data.length > 0 ? data[0].year : 0;
+    const xDomain: [number, number] = [xMin, xMin + 10];
+    const xTicks = Array.from({ length: 10 }, (_, i) => xMin + i + 0.5);
+    const verticalGridValues = Array.from({ length: 11 }, (_, i) => xMin + i);
 
-    const formatYearTick = (year: number): string => {
-        if (typeof year !== 'number') {
-            return String(year);
-        }
-        return Number.isInteger(year) ? `Y${year}` : `Y${year.toFixed(0)}`;
-    };
+    const formatYearTick = (year: number): string => `${Math.floor(year)}`;
 
     const yearTooltipLabel = (year: number): string => {
-        if (typeof year !== 'number') {
-            return String(year);
-        }
-        return `Y${year.toFixed(1)}`;
+        return `Start of ${Math.floor(year)}`;
     };
 
     return (
@@ -408,11 +405,13 @@ function YearlyChart({
                 gradId={gradId}
                 xDataKey='year'
                 xDomain={xDomain}
+                xTicks={xTicks}
                 xTickFormatter={formatYearTick}
                 tooltipLabelFormatter={yearTooltipLabel}
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
                 yTicks={yTicks}
+                verticalGridValues={verticalGridValues}
             />
         </div>
     );
@@ -426,7 +425,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
             .sort((a, b) => a.bucket - b.bucket)
             .map((p) => ({
                 tick: p.bucket,
-                year: p.bucket / TICKS_PER_YEAR,
+                year: p.bucket / TICKS_PER_YEAR + START_YEAR,
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
@@ -603,7 +602,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 <MonthlyChart monthlyPoints={monthlyPoints} live={live} productName={productName} />
             )}
             {granularity === 'yearly' && showYearly && (
-                <YearlyChart yearlyPoints={yearlyPoints} live={live} productName={productName} />
+                <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />
             )}
             {granularity === 'decades' && showDecades && (
                 <DecadesChart decadePoints={decadePoints} productName={productName} />

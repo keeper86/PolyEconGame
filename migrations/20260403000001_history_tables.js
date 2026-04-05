@@ -5,12 +5,16 @@
  *   - planet_population_history: total population per planet at each snapshot tick
  *   - agent_monthly_history: per-agent metrics at each month boundary (every 30 ticks)
  *   - product_price_history: product price snapshots per planet per tick
+ *     (columns: avg_price, min_price, max_price — tracks intra-month statistics)
  *
  * All three tables are converted to TimescaleDB hypertables partitioned by `tick`
  * (chunk_time_interval = 360 ticks = 1 game year).
  *
  * Continuous aggregates at monthly (30), yearly (360) and decade (3600) granularities
  * are created for all three tables, along with refresh and retention policies.
+ *
+ * game_tick_now() is derived from the history tables themselves to avoid
+ * clipping refresh windows when snapshots are sparse.
  *
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
@@ -89,7 +93,9 @@ exports.up = async function (knex) {
             tick         BIGINT           NOT NULL,
             planet_id    TEXT             NOT NULL,
             product_name TEXT             NOT NULL,
-            price        DOUBLE PRECISION NOT NULL,
+            avg_price    DOUBLE PRECISION NOT NULL,
+            min_price    DOUBLE PRECISION NOT NULL DEFAULT 0,
+            max_price    DOUBLE PRECISION NOT NULL DEFAULT 0,
             created_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW()
         )
     `);
@@ -111,8 +117,13 @@ exports.up = async function (knex) {
     // -------------------------------------------------------------------------
     await knex.raw(`
         CREATE OR REPLACE FUNCTION game_tick_now()
-        RETURNS BIGINT LANGUAGE SQL STABLE AS
-        $$ SELECT COALESCE((SELECT MAX(tick) FROM game_snapshots), 0)::BIGINT $$
+        RETURNS BIGINT LANGUAGE SQL STABLE AS $$
+            SELECT GREATEST(
+                COALESCE((SELECT MAX(tick) + 30 FROM product_price_history), 0),
+                COALESCE((SELECT MAX(tick) + 30 FROM planet_population_history), 0),
+                COALESCE((SELECT MAX(tick) + 30 FROM agent_monthly_history), 0)
+            )::BIGINT
+        $$
     `);
 
     await knex.raw(
@@ -135,11 +146,11 @@ exports.up = async function (knex) {
             time_bucket(30, tick)  AS bucket,
             planet_id,
             product_name,
-            avg(price)             AS avg_price,
-            min(price)             AS min_price,
-            max(price)             AS max_price
+            avg(avg_price)         AS avg_price,
+            min(min_price)         AS min_price,
+            max(max_price)         AS max_price
         FROM product_price_history
-        GROUP BY bucket, planet_id, product_name
+        GROUP BY time_bucket(30, tick), planet_id, product_name
         WITH NO DATA
     `);
 
@@ -158,7 +169,7 @@ exports.up = async function (knex) {
             avg(facility_count)::float8            AS avg_facility_count,
             avg(storage_value)::float8             AS avg_storage_value
         FROM agent_monthly_history
-        GROUP BY bucket, planet_id, agent_id
+        GROUP BY time_bucket(30, tick), planet_id, agent_id
         WITH NO DATA
     `);
 
@@ -172,7 +183,7 @@ exports.up = async function (knex) {
             avg(starvation_level)::float8          AS avg_starvation,
             avg(food_price)::float8                AS avg_price_level
         FROM planet_population_history
-        GROUP BY bucket, planet_id
+        GROUP BY time_bucket(30, tick), planet_id
         WITH NO DATA
     `);
 
