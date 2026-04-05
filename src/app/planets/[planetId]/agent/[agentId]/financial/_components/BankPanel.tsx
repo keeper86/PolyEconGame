@@ -62,32 +62,41 @@ export default function BankPanel({ bank, priceLevel }: Props): React.ReactEleme
                 Planetary Bank
             </p>
             {bank ? (
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1'>
-                    <Stat
-                        label='Outstanding loans'
-                        value={formatNumbers(bank.loans)}
-                        icon={<TrendingDown className='h-3 w-3' />}
-                        valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
-                    />
-                    <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2'>
+                    <div className='grid grid-cols-1 gap-y-1'>
+                        <Stat
+                            label='Outstanding loans'
+                            value={formatNumbers(bank.loans)}
+                            icon={<TrendingDown className='h-3 w-3' />}
+                            valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
+                        />
+                        <Stat
+                            label='Firm deposits'
+                            value={formatNumbers(bank.deposits - bank.householdDeposits)}
+                            icon={<Wallet className='h-3 w-3' />}
+                        />
 
-                    <Stat
-                        label='Household deposits'
-                        value={formatNumbers(bank.householdDeposits)}
-                        icon={<Users className='h-3 w-3' />}
-                    />
-                    <Stat
-                        label='Bank equity'
-                        value={formatNumbers(bank.equity)}
-                        icon={<Scale className='h-3 w-3' />}
-                        valueClassName={equityColor}
-                    />
-                    <Stat
-                        label='Firm deposits'
-                        value={formatNumbers(bank.deposits - bank.householdDeposits)}
-                        icon={<Wallet className='h-3 w-3' />}
-                    />
-                    <Stat label='Deposit rate' value={pct(bank.depositRate)} icon={<Percent className='h-3 w-3' />} />
+                        <Stat
+                            label='Household deposits'
+                            value={formatNumbers(bank.householdDeposits)}
+                            icon={<Users className='h-3 w-3' />}
+                        />
+                    </div>
+                    <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
+                        <Stat
+                            label='Bank equity'
+                            value={formatNumbers(bank.equity)}
+                            icon={<Scale className='h-3 w-3' />}
+                            valueClassName={equityColor}
+                        />
+                        <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
+
+                        <Stat
+                            label='Deposit rate'
+                            value={pct(bank.depositRate)}
+                            icon={<Percent className='h-3 w-3' />}
+                        />
+                    </div>
                 </div>
             ) : (
                 <p className='text-xs text-muted-foreground'>Bank not yet initialised (no financial tick run).</p>

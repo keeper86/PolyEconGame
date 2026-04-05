@@ -541,7 +541,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     if (!agentRecord || !planetRecord) {
                         data = { conditions: null };
                     } else {
-                        data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data) };
+                        data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data, snap.tick) };
                     }
                     break;
                 }

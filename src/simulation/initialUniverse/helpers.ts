@@ -115,7 +115,8 @@ export function makeAgentPlanetAssets(
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
-        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0 },
+        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0, revenueValue: 0 },
+        lastMonthAcc: { productionValue: 0, wagesBill: 0, revenueValue: 0 },
     };
 }
 

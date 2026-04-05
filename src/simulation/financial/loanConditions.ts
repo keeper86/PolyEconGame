@@ -23,7 +23,7 @@
  * further loans until the business turns profitable.
  */
 
-import { STARTER_LOAN_AMOUNT, LOAN_CASH_FLOW_MONTHS, LOAN_TICKS_PER_MONTH } from '../constants';
+import { STARTER_LOAN_AMOUNT, LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 
 // ---------------------------------------------------------------------------
@@ -36,78 +36,90 @@ export type LoanConditions = {
     /** Annual interest rate (matches planet.bank.loanRate, expressed as a
      *  per-tick rate but shown to the player annualised). */
     annualInterestRate: number;
-    /** Outstanding discretionary loan balance already held by this agent. */
-    existingDiscretionaryLoans: number;
-    /** Monthly wage cost used in the projection (informational). */
-    monthlyWageBill: number;
-    /** Monthly market revenue used in the projection (informational). */
-    monthlyRevenue: number;
-    /** Net monthly cash flow = monthlyRevenue − monthlyWageBill. */
+    /** Outstanding loan balance already held by this agent. */
+    existingLoans: number;
+    /** Blended monthly wage cost used in the projection (informational). */
+    blendedMonthlyWages: number;
+    /** Blended monthly market revenue used in the projection (informational). */
+    blendedMonthlyRevenue: number;
+    /** Net monthly cash flow = blendedMonthlyRevenue − blendedMonthlyWages. */
     monthlyNetCashFlow: number;
+    /** Storage collateral value added to the credit limit. */
+    storageCollateral: number;
     /** Whether this agent qualifies as a "new" agent (starter-loan path). */
     isNewAgent: boolean;
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function blendMonthly(lastMonth: number, currentMonth: number, progress: number): number {
+    if (progress <= 0) {
+        return lastMonth;
+    }
+    const extrapolated = currentMonth / progress;
+    return lastMonth * (1 - progress) + extrapolated * progress;
+}
+
+// ---------------------------------------------------------------------------
 // Core calculation
 // ---------------------------------------------------------------------------
 
-/**
- * Compute the credit conditions the planet's bank would offer `agent` on
- * `planet` right now.
- *
- * Only the *discretionary* loan balance (stored in `assets.loans`) is
- * considered for limit purposes; the automatic working-capital loans that
- * cover wage shortfalls are the same field, so the formula naturally sees a
- * high existing balance when the agent already has debt.
- */
-export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditions {
+export function computeLoanConditions(agent: Agent, planet: Planet, tick: number): LoanConditions {
     const assets = agent.assets[planet.id];
     const bank = planet.bank;
 
-    // Per-tick rate → approximate annualised rate (simple, not compounded)
-    const ticksPerYear = 360; // TICKS_PER_YEAR
+    const ticksPerYear = 360;
     const annualInterestRate = bank.loanRate * ticksPerYear;
 
     const existingLoans = assets?.loans ?? 0;
 
-    // Monthly cash-flow projection
-    const lastWageBill = assets?.lastWageBill ?? 0;
-    const monthlyWageBill = lastWageBill * LOAN_TICKS_PER_MONTH;
+    const progress = (tick % TICKS_PER_MONTH) / TICKS_PER_MONTH;
 
-    // Sum all sell-side revenues from last market tick
-    let tickRevenue = 0;
-    if (assets?.market?.sell) {
-        for (const offer of Object.values(assets.market.sell)) {
-            tickRevenue += offer?.lastRevenue ?? 0;
+    const blendedMonthlyRevenue = blendMonthly(
+        assets?.lastMonthAcc.revenueValue ?? 0,
+        assets?.monthAcc.revenueValue ?? 0,
+        progress,
+    );
+    const blendedMonthlyWages = blendMonthly(
+        assets?.lastMonthAcc.wagesBill ?? 0,
+        assets?.monthAcc.wagesBill ?? 0,
+        progress,
+    );
+
+    const monthlyNetCashFlow = blendedMonthlyRevenue - blendedMonthlyWages;
+
+    const isNewAgent = blendedMonthlyRevenue === 0 && existingLoans === 0;
+
+    let storageCollateral = 0;
+    if (assets?.storageFacility?.currentInStorage) {
+        for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
+            if (entry?.quantity) {
+                const price = planet.marketPrices[entry.resource.name] ?? 0;
+                storageCollateral += entry.quantity * price * LOAN_COLLATERAL_FACTOR;
+            }
         }
     }
-    const monthlyRevenue = tickRevenue * LOAN_TICKS_PER_MONTH;
-
-    const monthlyNetCashFlow = monthlyRevenue - monthlyWageBill;
-
-    // Determine whether this is a "new" agent (no revenue history and no
-    // prior discretionary loans).
-    const isNewAgent = tickRevenue === 0 && existingLoans === 0;
 
     let maxLoanAmount: number;
     if (isNewAgent) {
         maxLoanAmount = STARTER_LOAN_AMOUNT;
     } else if (monthlyNetCashFlow <= 0) {
-        // Already cash-flow negative or zero — no further lending.
-        maxLoanAmount = 0;
+        maxLoanAmount = Math.max(0, storageCollateral - existingLoans);
     } else {
-        const projectedCapacity = LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow;
+        const projectedCapacity = LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow + storageCollateral;
         maxLoanAmount = Math.max(0, projectedCapacity - existingLoans);
     }
 
     return {
-        maxLoanAmount: Math.floor(maxLoanAmount), // round down to whole currency units
+        maxLoanAmount: Math.floor(maxLoanAmount),
         annualInterestRate,
-        existingDiscretionaryLoans: existingLoans,
-        monthlyWageBill,
-        monthlyRevenue,
+        existingLoans,
+        blendedMonthlyWages,
+        blendedMonthlyRevenue,
         monthlyNetCashFlow,
+        storageCollateral,
         isNewAgent,
     };
 }

@@ -415,6 +415,13 @@ export type AgentPlanetAssets = {
         depositsAtMonthStart: number;
         productionValue: number;
         wagesBill: number;
+        revenueValue: number;
+    };
+
+    lastMonthAcc: {
+        productionValue: number;
+        wagesBill: number;
+        revenueValue: number;
     };
 };
 
@@ -458,7 +465,17 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
             continue;
         }
         if (tick % TICKS_PER_MONTH === 1) {
-            assets.monthAcc = { depositsAtMonthStart: assets.deposits, productionValue: 0, wagesBill: 0 };
+            assets.lastMonthAcc = {
+                productionValue: assets.monthAcc.productionValue,
+                wagesBill: assets.monthAcc.wagesBill,
+                revenueValue: assets.monthAcc.revenueValue,
+            };
+            assets.monthAcc = {
+                depositsAtMonthStart: assets.deposits,
+                productionValue: 0,
+                wagesBill: 0,
+                revenueValue: 0,
+            };
         }
         for (const facility of assets.productionFacilities) {
             if (facility.lastTickResults?.lastProduced) {
@@ -469,6 +486,11 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
             }
         }
         assets.monthAcc.wagesBill += assets.lastWageBill ?? 0;
+        if (assets.market?.sell) {
+            for (const offer of Object.values(assets.market.sell)) {
+                assets.monthAcc.revenueValue += offer.lastRevenue ?? 0;
+            }
+        }
     }
 }
 

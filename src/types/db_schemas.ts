@@ -155,9 +155,9 @@ export type ProductPriceHistory = {
     planet_id: string;
     product_name: string;
     avg_price: number;
-    created_at: Date;
     min_price: number;
     max_price: number;
+    created_at: Date;
 };
 
 export type ProductPriceMonthly = {

@@ -86,38 +86,32 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
 
             {conditions && (
                 <div className='space-y-1'>
-                    <p className='text-xs text-muted-foreground font-medium mb-1'>Bank offer</p>
-
-                    <Stat
-                        label='Maximum loan amount'
-                        value={formatNumbers(conditions.maxLoanAmount)}
-                        valueClassName={conditions.maxLoanAmount > 0 ? 'text-green-600' : 'text-muted-foreground'}
-                    />
                     <Stat
                         label='Annual interest rate'
                         value={`${(conditions.annualInterestRate * 100).toFixed(2)} %`}
-                    />
-                    <Stat
-                        label='Existing loans'
-                        value={formatNumbers(conditions.existingDiscretionaryLoans)}
-                        valueClassName={conditions.existingDiscretionaryLoans > 0 ? 'text-amber-500' : ''}
                     />
 
                     {!conditions.isNewAgent && (
                         <>
                             <Stat
-                                label='Monthly revenue (projected)'
-                                value={formatNumbers(conditions.monthlyRevenue)}
+                                label='Existing loans'
+                                value={formatNumbers(conditions.existingLoans)}
+                                valueClassName={conditions.existingLoans > 0 ? 'text-amber-500' : ''}
                             />
                             <Stat
-                                label='Monthly wage cost (projected)'
-                                value={formatNumbers(conditions.monthlyWageBill)}
+                                label='Monthly revenue (blended)'
+                                value={formatNumbers(conditions.blendedMonthlyRevenue)}
+                            />
+                            <Stat
+                                label='Monthly wage cost (blended)'
+                                value={formatNumbers(conditions.blendedMonthlyWages)}
                             />
                             <Stat
                                 label='Net monthly cash flow'
                                 value={formatNumbers(conditions.monthlyNetCashFlow)}
                                 valueClassName={conditions.monthlyNetCashFlow >= 0 ? 'text-green-600' : 'text-red-500'}
                             />
+                            <Stat label='Storage collateral' value={formatNumbers(conditions.storageCollateral)} />
                         </>
                     )}
                 </div>
