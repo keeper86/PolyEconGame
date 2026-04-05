@@ -16,7 +16,6 @@ import type { GameState } from './planet/planet';
 import { groceryServiceResourceType } from './planet/services';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
-import { TICKS_PER_MONTH } from './constants';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
