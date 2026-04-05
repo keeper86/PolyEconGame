@@ -1377,6 +1377,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         marketPrices: { ...initialMarketPrices },
         lastMarketResult: {},
         avgMarketResult: {},
+        monthPriceAcc: {},
         resources: {
             [arableLandResourceType.name]: getPool('cottonFarm'),
             [waterSourceResourceType.name]: getPool('waterExtractionFacility'),
@@ -1411,6 +1412,72 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             storms: 30,
         }),
     };
+
+    // -----------------------------------------------------------------------
+    // Build summary: deposits and depletion times
+    // -----------------------------------------------------------------------
+
+    const TICKS_PER_YEAR = 30 * 12; // 360
+
+    // Extraction rate (needs.quantity) per scale per tick for each extractor
+    const extractionRatePerScale: Record<string, number> = {
+        coalMine: 0.5,
+        oilWell: 0.3,
+        naturalGasWell: 0.1,
+        copperMine: 0.4,
+        ironExtractionFacility: 0.4,
+    };
+
+    const resourceSummary: Array<{
+        resource: string;
+        totalDeposit: number;
+        assignedToAgents: number;
+        unassigned: number;
+        renewable: boolean;
+        depletionYears: number | null;
+    }> = poolConfigs.map((cfg) => {
+        const pool = claimPools.get(cfg.facilityType) ?? [];
+        // Only count claims actively tenanted by a non-gov agent
+        const assigned = pool
+            .filter((c) => c.tenantAgentId !== null && c.tenantAgentId !== GOV)
+            .reduce((s, c) => s + c.quantity, 0);
+        const unclaimedQty = pool.filter((c) => c.tenantAgentId === null).reduce((s, c) => s + c.quantity, 0);
+
+        const rate = extractionRatePerScale[cfg.facilityType] ?? null;
+        // Depletion is based only on the assigned (actively extracted) deposit
+        let depletionYears: number | null = null;
+        if (rate !== null && assigned > 0 && !renewableForResource(cfg.facilityType)) {
+            // assigned deposit / (extraction rate per scale * total assigned scale)
+            // But simpler: each agent's claim = scale * depositPerScale, and extracts rate/tick
+            // So depletion = depositPerScale / (rate * TICKS_PER_YEAR)
+            const dpScale = depositPerScale(cfg.facilityType);
+            depletionYears = Math.round(dpScale / rate / TICKS_PER_YEAR);
+        }
+
+        return {
+            resource: cfg.type.name,
+            totalDeposit: cfg.total,
+            assignedToAgents: assigned,
+            unassigned: unclaimedQty,
+            renewable: renewableForResource(cfg.facilityType),
+            depletionYears,
+        };
+    });
+
+    console.log('\n=== Procedural World Summary ===');
+    console.log(`Agents: ${agents.length}`);
+    console.log('\nResource Deposits:');
+    console.log(
+        `${'Resource'.padEnd(28)} ${'Total Deposit'.padStart(20)} ${'Assigned'.padStart(16)} ${'Unassigned'.padStart(16)} ${'Renewable'.padStart(10)} ${'Depletion (yrs)'.padStart(16)}`,
+    );
+    console.log('-'.repeat(110));
+    for (const r of resourceSummary) {
+        const depletion = r.depletionYears !== null ? r.depletionYears.toLocaleString() : 'renewable';
+        console.log(
+            `${r.resource.padEnd(28)} ${r.totalDeposit.toLocaleString().padStart(20)} ${r.assignedToAgents.toLocaleString().padStart(16)} ${r.unassigned.toLocaleString().padStart(16)} ${(r.renewable ? 'yes' : 'no').padStart(10)} ${depletion.padStart(16)}`,
+        );
+    }
+    console.log('=================================\n');
 
     return { planet, agents };
 }

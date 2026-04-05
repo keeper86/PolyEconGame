@@ -1,13 +1,14 @@
 import {
-    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     GENERATION_GAP,
     GENERATION_KERNEL_N,
     GROCERY_BUFFER_TARGET_TICKS,
     MIN_EMPLOYABLE_AGE,
+    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     SERVICE_PER_PERSON_PER_TICK,
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
+import { nextRandom } from '../utils/stochasticRound';
 import type { Planet } from '../planet/planet';
 import { groceryServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
@@ -249,7 +250,16 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const totalDemand = survivalNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
     const scarcityFactor = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 1;
 
-    for (const [age, dependentNeed] of survivalNeeds.entries()) {
+    // Shuffle age indices to eliminate systematic processing-order bias over contested
+    // supplier pools. Statistically correct in expectation across ticks.
+    const ageOrder = Array.from({ length: numAges }, (_, i) => i);
+    for (let i = ageOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(nextRandom() * (i + 1));
+        [ageOrder[i], ageOrder[j]] = [ageOrder[j], ageOrder[i]];
+    }
+
+    for (const age of ageOrder) {
+        const dependentNeed = survivalNeeds[age];
         const need = dependentNeed.totalNeed * scarcityFactor;
         if (need <= 0) {
             continue;

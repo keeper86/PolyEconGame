@@ -10,6 +10,7 @@ import {
     getAgentPlanetDetail,
     getPlanetDetail,
     getPlanetPopulationHistory,
+    getProductPriceHistory,
     getCurrentTick,
     getLoanConditions,
 } from './controller/simulation';
@@ -52,6 +53,7 @@ const simulationRouter = trpcRoot.router({
     getAgentPlanetDetail: getAgentPlanetDetail(),
     getPlanetDetail: getPlanetDetail(),
     getPlanetPopulationHistory: getPlanetPopulationHistory(),
+    getProductPriceHistory: getProductPriceHistory(),
     getLoanConditions: getLoanConditions(),
     getPlanetOverview: getPlanetOverview(),
     getPlanetDemographics: getPlanetDemographics(),

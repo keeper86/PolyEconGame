@@ -51,18 +51,17 @@ export type AgentDecadeSummary = {
 };
 
 export type AgentMonthlyHistory = {
-    id: string;
     tick: string;
     planet_id: string;
     agent_id: string;
     net_balance: number;
     monthly_net_income: number;
     total_workers: number;
+    wages: number | null;
     production_value: number | null;
     facility_count: number | null;
     storage_value: number | null;
     created_at: Date;
-    wages: number | null;
 };
 
 export type AgentMonthlySummary = {
@@ -118,7 +117,6 @@ export type PlanetPopulationDecade = {
 };
 
 export type PlanetPopulationHistory = {
-    id: string;
     tick: string;
     planet_id: string;
     population: string;
@@ -156,8 +154,10 @@ export type ProductPriceHistory = {
     tick: string;
     planet_id: string;
     product_name: string;
-    price: number;
+    avg_price: number;
     created_at: Date;
+    min_price: number;
+    max_price: number;
 };
 
 export type ProductPriceMonthly = {

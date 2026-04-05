@@ -2,11 +2,11 @@ import { isMonthBoundary, isYearBoundary } from './constants';
 import { automaticLoanRepayment, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
-import { marketTick } from './market/market';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
-import { updateAgentProductionScale } from './planet/automaticProductionScale';
+import { marketTick } from './market/market';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
+import { accumulatePlanetPrices } from './planet/planet';
 import { productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
@@ -50,13 +50,15 @@ export function advanceTick(gameState: GameState) {
         }
         preProductionFinancialTick(planetAgents, planet);
 
-        updateAgentProductionScale(planetAgents, planet);
+        // updateAgentProductionScale(planetAgents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 
         automaticPricing(planetAgents, planet);
 
         marketTick(planetAgents, planet);
+
+        accumulatePlanetPrices(planet, gameState.tick);
 
         productionTick(planetAgents, planet);
 

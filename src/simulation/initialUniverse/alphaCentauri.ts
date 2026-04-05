@@ -413,6 +413,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         marketPrices: { ...initialMarketPrices },
         lastMarketResult: {},
         avgMarketResult: {},
+        monthPriceAcc: {},
         resources: {
             [arableLandResourceType.name]: arableClaims,
             [waterSourceResourceType.name]: waterClaims,

@@ -13,18 +13,18 @@
  */
 
 import type { Knex } from 'knex';
+import type {
+    AgentMonthlyHistory,
+    GameSnapshots,
+    PlanetPopulationHistory,
+    ProductPriceHistory,
+} from '../types/db_schemas';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface GameSnapshotRow {
-    id: string; // bigserial comes back as string from pg
-    tick: string; // bigint comes back as string from pg
-    created_at: Date;
-    game_id: number;
-    snapshot_data: Buffer;
-}
+export type GameSnapshotRow = GameSnapshots;
 
 export interface InsertGameSnapshot {
     tick: number;
@@ -102,16 +102,6 @@ export async function pruneGameSnapshots(db: Knex, keepCount: number): Promise<n
 // Planet population history
 // ---------------------------------------------------------------------------
 
-export interface PlanetPopulationHistoryRow {
-    id: string; // bigserial comes back as string from pg
-    tick: string; // bigint comes back as string from pg
-    planet_id: string;
-    population: string; // bigint comes back as string from pg
-    starvation_level: number; // float4 comes back as number from pg
-    food_price: number; // float4 comes back as number from pg
-    created_at: Date;
-}
-
 export interface InsertPlanetPopulation {
     tick: number;
     planet_id: string;
@@ -143,18 +133,14 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
  * Get the full population time-series for a specific planet, ordered by
  * tick ascending.
  */
-export async function getPlanetPopulationHistory(db: Knex, planetId: string): Promise<PlanetPopulationHistoryRow[]> {
-    return db('planet_population_history')
-        .where({ planet_id: planetId })
-        .orderBy('tick', 'desc')
-        .limit(100)
-        .select() as Promise<PlanetPopulationHistoryRow[]>;
+export async function getPlanetPopulationHistory(db: Knex, planetId: string) {
+    return db('planet_population_history').where({ planet_id: planetId }).orderBy('tick', 'desc').limit(100).select();
 }
 
 /**
  * Get the most recent population row for every planet (latest tick).
  */
-export async function getLatestPlanetPopulations(db: Knex): Promise<PlanetPopulationHistoryRow[]> {
+export async function getLatestPlanetPopulations(db: Knex) {
     // Use a DISTINCT ON query to efficiently fetch the latest row per planet.
     return db
         .raw(
@@ -162,26 +148,14 @@ export async function getLatestPlanetPopulations(db: Knex): Promise<PlanetPopula
          FROM planet_population_history
          ORDER BY planet_id, tick DESC`,
         )
-        .then((res: { rows: PlanetPopulationHistoryRow[] }) => res.rows);
+        .then((res: { rows: PlanetPopulationHistory[] }) => res.rows);
 }
 
 // ---------------------------------------------------------------------------
 // Agent monthly history
 // ---------------------------------------------------------------------------
 
-export interface AgentMonthlyHistoryRow {
-    id: string; // bigserial comes back as string from pg
-    tick: string; // bigint comes back as string from pg
-    planet_id: string;
-    agent_id: string;
-    net_balance: number;
-    monthly_net_income: number;
-    total_workers: number;
-    production_value: number;
-    facility_count: number;
-    storage_value: number;
-    created_at: Date;
-}
+export type AgentMonthlyHistoryRow = AgentMonthlyHistory;
 
 export interface InsertAgentMonthlyHistory {
     tick: number;
@@ -256,25 +230,21 @@ export async function getLatestAgentMonthlyHistoryByPlanet(
 // Product price history
 // ---------------------------------------------------------------------------
 
-export interface ProductPriceHistoryRow {
-    tick: string; // bigint comes back as string from pg
-    planet_id: string;
-    product_name: string;
-    price: number;
-    created_at: Date;
-}
+export type ProductPriceHistoryRow = ProductPriceHistory;
 
 export interface InsertProductPrice {
     tick: number;
     planet_id: string;
     product_name: string;
-    price: number;
+    avgPrice: number;
+    minPrice: number;
+    maxPrice: number;
 }
 
 /**
- * Insert per-tick product price rows for all products on all planets.
- * These are ingested into the product_price_history hypertable; TimescaleDB
- * continuous aggregates then compute monthly / yearly / decade averages.
+ * Insert one aggregated price row per product per planet at month boundaries.
+ * Each row contains the intra-month avg/min/max computed in the worker accumulator.
+ * TimescaleDB continuous aggregates cascade these into yearly / decade views.
  */
 export async function insertProductPriceHistory(db: Knex, rows: InsertProductPrice[]): Promise<void> {
     if (rows.length === 0) {
@@ -285,7 +255,9 @@ export async function insertProductPriceHistory(db: Knex, rows: InsertProductPri
             tick: String(r.tick),
             planet_id: r.planet_id,
             product_name: r.product_name,
-            price: r.price,
+            avg_price: r.avgPrice,
+            min_price: r.minPrice,
+            max_price: r.maxPrice,
         })),
     );
 }
@@ -328,6 +300,34 @@ export async function getProductPriceHistory(
         .orderBy('bucket', 'desc')
         .limit(limit)
         .select('bucket', 'planet_id', 'product_name', 'avg_price', 'min_price', 'max_price');
+}
+
+/**
+ * Manually refresh continuous aggregate views up to the given tick.
+ *
+ * Called from the worker at tick boundaries so the cascaded CAGGs
+ * (monthly → yearly → decade) stay current without a background scheduler.
+ *
+ * @param granularity  Which tier(s) to refresh. Monthly must be refreshed
+ *   before yearly, yearly before decade (cagg cascade order).
+ */
+export async function refreshContinuousAggregates(
+    db: Knex,
+    upToTick: number,
+    granularity: 'monthly' | 'yearly' | 'decade',
+): Promise<void> {
+    const views =
+        granularity === 'decade'
+            ? ['product_price_decade', 'planet_population_decade', 'agent_decade_summary']
+            : granularity === 'yearly'
+              ? ['product_price_yearly', 'planet_population_yearly', 'agent_yearly_summary']
+              : ['product_price_monthly', 'planet_population_monthly', 'agent_monthly_summary'];
+
+    const ticksPerBucket = granularity === 'decade' ? 3600 : granularity === 'yearly' ? 360 : 30;
+    const refreshStartTick = Math.max(0, upToTick - ticksPerBucket * 2);
+    for (const view of views) {
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [view, refreshStartTick, upToTick]);
+    }
 }
 
 export interface PopulationBucket {

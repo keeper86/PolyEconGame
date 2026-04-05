@@ -430,6 +430,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
         lastMarketResult: {},
         avgMarketResult: {},
+        monthPriceAcc: {},
         ...restOverrides,
     };
 }

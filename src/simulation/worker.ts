@@ -9,6 +9,7 @@ import {
     insertPlanetPopulationHistory,
     insertProductPriceHistory,
     pruneGameSnapshots,
+    refreshContinuousAggregates,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { GameState } from './planet/planet';
@@ -16,6 +17,7 @@ import { groceryServiceResourceType } from './planet/services';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
 import { handleAgentAction } from './workerClient/agentActions';
@@ -301,27 +303,50 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     }
 
     /**
-     * Collect one market-price sample per product per planet at a month boundary
-     * and write it directly to the DB (non-blocking). Each continuous aggregate
-     * bucket covers 30 ticks, so one sample per month is sufficient.
+     * Flush accumulated intra-month price stats to the DB at month boundaries,
+     * then reset the accumulator for the next month.
+     * Falls back to the current spot price when no trades occurred this month.
      */
-    function flushProductPrices(gs: GameState, tick: number): void {
+    function flushProductPrices(gs: GameState, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
-            return;
+            return Promise.resolve();
         }
-        const rows: Array<{ tick: number; planet_id: string; product_name: string; price: number }> = [];
+        const rows: Array<{
+            tick: number;
+            planet_id: string;
+            product_name: string;
+            avgPrice: number;
+            minPrice: number;
+            maxPrice: number;
+        }> = [];
         for (const planet of gs.planets.values()) {
-            for (const [productName, price] of Object.entries(planet.marketPrices)) {
-                if (typeof price === 'number' && isFinite(price) && price > 0) {
-                    rows.push({ tick, planet_id: planet.id, product_name: productName, price });
+            for (const [productName, spotPrice] of Object.entries(planet.marketPrices)) {
+                if (typeof spotPrice !== 'number' || !isFinite(spotPrice) || spotPrice <= 0) {
+                    continue;
                 }
+                const acc = planet.monthPriceAcc[productName];
+                const avgPrice = acc ? acc.sum / acc.count : spotPrice;
+                const minPrice = acc ? acc.min : spotPrice;
+                const maxPrice = acc ? acc.max : spotPrice;
+                // Persist the completed month at its boundary tick (30, 60, …),
+                // which is the last tick of that month in the game's 1-based tick domain.
+                // This keeps downstream month buckets decodable as valid game ticks.
+                const bucketTick = tick;
+                rows.push({
+                    tick: bucketTick,
+                    planet_id: planet.id,
+                    product_name: productName,
+                    avgPrice,
+                    minPrice,
+                    maxPrice,
+                });
             }
         }
         if (rows.length === 0) {
-            return;
+            return Promise.resolve();
         }
-        void insertProductPriceHistory(db, rows).catch((err) => {
+        return insertProductPriceHistory(db, rows).catch((err) => {
             console.error(`[worker] Failed to save product price rows at tick ${tick}:`, err);
         });
     }
@@ -438,6 +463,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 console.error('[worker] Error while advancing:', err);
             }
 
+            // Accumulate intra-month price stats via planet.monthPriceAcc (done inside engine's advanceTick).
+            // The accumulator is reset on tick 1 of each month (inside accumulatePlanetPrices),
+            // so it always reflects only the current month — no separate reset needed here.
+
             // Capture an immutable snapshot of the game state.
             // This is O(1) structural-sharing; query handlers can read it
             // without risk of seeing a half-updated state.
@@ -445,8 +474,34 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             // At month boundaries: sample prices and update agent history.
             if (state.tick % 30 === 0) {
-                flushProductPrices(state, state.tick);
+                const tickAtFlush = state.tick;
+                // Chain the CAGG refresh after the insert so it never races against uncommitted data.
+                // TimescaleDB only materializes buckets that are FULLY contained in [start, end).
+                // The monthly bucket at tick T spans [T, T+TICKS_PER_MONTH), so the end of the
+                // window must be >= T + TICKS_PER_MONTH to include it.
+                void flushProductPrices(state, tickAtFlush)
+                    .then(() => {
+                        if (snapshotDb) {
+                            return refreshContinuousAggregates(snapshotDb, tickAtFlush + TICKS_PER_MONTH, 'monthly');
+                        }
+                    })
+                    .catch((err) =>
+                        console.error(`[worker] Failed to flush/refresh monthly CAGGs at tick ${tickAtFlush}:`, err),
+                    );
                 updateAgentMonthlyHistory(state, state.tick);
+            }
+
+            // At year boundaries: refresh yearly (and at decade boundaries, decade) CAGGs.
+            // Same logic: yearly bucket spans [T, T+TICKS_PER_YEAR), pass T+TICKS_PER_YEAR as end.
+            if (state.tick % 360 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR, 'yearly').catch((err) =>
+                    console.error(`[worker] Failed to refresh yearly CAGGs at tick ${state.tick}:`, err),
+                );
+            }
+            if (state.tick % 3600 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR * 10, 'decade').catch((err) =>
+                    console.error(`[worker] Failed to refresh decade CAGGs at tick ${state.tick}:`, err),
+                );
             }
 
             // Periodically persist a cold snapshot for crash recovery.

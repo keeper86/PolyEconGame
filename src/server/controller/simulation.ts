@@ -10,7 +10,10 @@
 
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
-import { getPlanetPopulationHistory as dbGetPlanetPopulationHistory } from '../../simulation/gameSnapshotRepository';
+import {
+    getPlanetPopulationHistory as dbGetPlanetPopulationHistory,
+    getProductPriceHistory as dbGetProductPriceHistory,
+} from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
 import {
     computeAgentConsumption,
@@ -372,6 +375,59 @@ export const getPlanetPopulationHistory = () =>
                     starvationLevel: r.starvation_level ?? 0,
                     foodPrice: r.food_price ?? 0,
                 })),
+            };
+        });
+
+/**
+ * Product price history time-series for a single product on a single planet.
+ * Queries the appropriate continuous aggregate view (monthly / yearly / decade)
+ * and returns buckets ordered ascending, ready for chart consumption.
+ */
+export const getProductPriceHistory = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                planetId: z.string(),
+                productName: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(100),
+            }),
+        )
+        .output(
+            z.object({
+                planetId: z.string(),
+                productName: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
+                history: z.array(
+                    z.object({
+                        bucket: z.number(),
+                        avgPrice: z.number(),
+                        minPrice: z.number(),
+                        maxPrice: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input }) => {
+            const rows = await dbGetProductPriceHistory(
+                db,
+                input.planetId,
+                input.productName,
+                input.granularity,
+                input.limit,
+            );
+            return {
+                planetId: input.planetId,
+                productName: input.productName,
+                granularity: input.granularity,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgPrice: r.avg_price,
+                        minPrice: r.min_price,
+                        maxPrice: r.max_price,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
             };
         });
 

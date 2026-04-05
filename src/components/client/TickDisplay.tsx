@@ -20,13 +20,19 @@ const MONTH_NAMES = [
     'December',
 ];
 
-const mapTickToDate = (tick: number): string => {
+export const tickToDate = (tick: number): { year: number; monthIndex: number; day: number } => {
     const simTick = tick - 1;
 
     const year = Math.floor(simTick / TICKS_PER_YEAR) + START_YEAR;
     const tickWithinYear = simTick % TICKS_PER_YEAR;
     const monthIndex = Math.floor(tickWithinYear / TICKS_PER_MONTH);
     const day = (tickWithinYear % TICKS_PER_MONTH) + 1;
+
+    return { year, monthIndex, day };
+};
+
+export const mapTickToDate = (tick: number): string => {
+    const { year, monthIndex, day } = tickToDate(tick);
 
     return `${day.toString().padStart(2, '0')}. ${MONTH_NAMES[monthIndex]} ${year}`;
 };

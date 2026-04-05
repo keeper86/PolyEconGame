@@ -1,3 +1,4 @@
+import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ResourceName } from './resourceCatalog';
@@ -213,6 +214,14 @@ export type Planet = {
      */
     avgMarketResult: {
         [resourceName: string]: MarketResult;
+    };
+    /**
+     * Running intra-month price stats accumulated from every market tick where
+     * trades actually occurred (totalVolume > 0).  Flushed and reset at each
+     * month boundary by the worker.
+     */
+    monthPriceAcc: {
+        [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
 };
 
@@ -446,3 +455,39 @@ export type Resource = {
     massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
 };
 export type ResourceType = Resource['form'];
+
+// ---------------------------------------------------------------------------
+// Price accumulator helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Update the intra-month price accumulator for `planet` using the most recent
+ * market clearing results stored in `planet.lastMarketResult`.
+ * Only ticks where actual trades occurred (totalVolume > 0) contribute a sample.
+ * Called by `advanceTick` in the engine after `marketTick`.
+ */
+export function accumulatePlanetPrices(planet: Planet, tick: number): void {
+    // Reset at the start of each new month so the accumulator always reflects
+    // only the current month's trades — no separate flush step needed.
+    if (tick % TICKS_PER_MONTH === 1) {
+        planet.monthPriceAcc = {};
+    }
+    for (const result of Object.values(planet.lastMarketResult)) {
+        if (!result || result.totalVolume <= 0) {
+            continue;
+        }
+        const price = result.clearingPrice;
+        if (!isFinite(price) || price <= 0) {
+            continue;
+        }
+        const acc = planet.monthPriceAcc[result.resourceName];
+        if (acc) {
+            acc.min = Math.min(acc.min, price);
+            acc.max = Math.max(acc.max, price);
+            acc.sum += price;
+            acc.count += 1;
+        } else {
+            planet.monthPriceAcc[result.resourceName] = { min: price, max: price, sum: price, count: 1 };
+        }
+    }
+}

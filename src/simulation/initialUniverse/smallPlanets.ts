@@ -205,6 +205,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         marketPrices: { ...initialMarketPrices },
         lastMarketResult: {},
         avgMarketResult: {},
+        monthPriceAcc: {},
         resources: {
             [arableLandResourceType.name]: arableClaims,
             [waterSourceResourceType.name]: waterClaims,
