@@ -192,34 +192,20 @@ export type Planet = {
      */
     wagePerEdu?: Partial<Record<EducationLevelType, number>>;
     /**
-     * Per-resource VWAP price levels (currency / unit).
-     * Keys are resource names.  Updated each market tick.
-     * @example { 'Agricultural Product': 1.25 }
+     * TODO: move this to own type in market.
      */
     marketPrices: {
         [resourceName in ResourceName]: number;
     };
-    /**
-     * Snapshot of the most recent market clearing results, one per resource.
-     * Written by `marketTick`; consumed by the UI for charting.
-     */
+
     lastMarketResult: {
         [resourceName: string]: MarketResult;
     };
-    /**
-     * Exponential moving average of `lastMarketResult` over approximately the
-     * last month (α = 1/TICKS_PER_MONTH).  Bootstrapped from the first tick's
-     * result per resource so the value is never biased toward zero.
-     * `populationBids` is excluded (binned histogram; not averaged).
-     */
+
     avgMarketResult: {
         [resourceName: string]: MarketResult;
     };
-    /**
-     * Running intra-month price stats accumulated from every market tick where
-     * trades actually occurred (totalVolume > 0).  Flushed and reset at each
-     * month boundary by the worker.
-     */
+
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
@@ -424,6 +410,12 @@ export type AgentPlanetAssets = {
     deaths: DemographicEventCounters;
     /** Disabilities affecting this agent's workforce, per education level. */
     disabilities: DemographicEventCounters;
+
+    monthAcc: {
+        depositsAtMonthStart: number;
+        productionValue: number;
+        wagesBill: number;
+    };
 };
 
 export type Agent = {
@@ -456,16 +448,30 @@ export type Resource = {
 };
 export type ResourceType = Resource['form'];
 
-// ---------------------------------------------------------------------------
-// Price accumulator helpers
-// ---------------------------------------------------------------------------
+export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+    for (const agent of agents.values()) {
+        if (agent.automated) {
+            continue;
+        }
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            continue;
+        }
+        if (tick % TICKS_PER_MONTH === 1) {
+            assets.monthAcc = { depositsAtMonthStart: assets.deposits, productionValue: 0, wagesBill: 0 };
+        }
+        for (const facility of assets.productionFacilities) {
+            if (facility.lastTickResults?.lastProduced) {
+                for (const [resourceName, qty] of Object.entries(facility.lastTickResults.lastProduced)) {
+                    const price = planet.marketPrices[resourceName] ?? 0;
+                    assets.monthAcc.productionValue += qty * price;
+                }
+            }
+        }
+        assets.monthAcc.wagesBill += assets.lastWageBill ?? 0;
+    }
+}
 
-/**
- * Update the intra-month price accumulator for `planet` using the most recent
- * market clearing results stored in `planet.lastMarketResult`.
- * Only ticks where actual trades occurred (totalVolume > 0) contribute a sample.
- * Called by `advanceTick` in the engine after `marketTick`.
- */
 export function accumulatePlanetPrices(planet: Planet, tick: number): void {
     // Reset at the start of each new month so the accumulator always reflects
     // only the current month's trades — no separate flush step needed.
