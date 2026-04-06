@@ -99,9 +99,9 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        // facility needs 100/tick × scale 1 × 10-tick buffer = 1000
+        // facility needs 30/tick × scale 1 × 10-tick buffer = 300
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
-        expect(bid.bidStorageTarget).toBe(100 * 1 * 10);
+        expect(bid.bidStorageTarget).toBe(30 * 1 * 10);
     });
 
     it('keeps bidStorageTarget at the full buffer target regardless of current inventory', () => {
@@ -113,21 +113,21 @@ describe('automaticPricing — buy side', () => {
         // The storage target is the desired inventory level, not the remaining shortfall.
         // Effective buy quantity (target − inventory) is computed dynamically each tick.
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidStorageTarget).toBe(100 * 1 * 10);
+        expect(bid.bidStorageTarget).toBe(30 * 1 * 10);
         const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
-        expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(Math.max(0, 100 * 1 * 10 - 500));
+        expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(Math.max(0, 30 * 1 * 10 - 500));
     });
 
     it('effective buy quantity is 0 when buffer is already fully covered by storage', () => {
         const buyer = makeSteelProducer();
-        const fullBuffer = 100 * 1 * 10;
+        const fullBuffer = 30 * 1 * 10;
         putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, fullBuffer + 100);
 
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
         const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
-        // Storage target is still set (1000), but effective qty = target − inventory = 0
+        // Storage target is still set (300), but effective qty = target − inventory = 0
         expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(0);
     });
 
@@ -273,7 +273,7 @@ describe('automaticPricing — buy side', () => {
 
     it('suppresses input buying when all outputs exceed the output buffer ceiling', () => {
         const buyer = makeSteelProducer();
-        const fullOutputBuffer = 50 * 1 * OUTPUT_BUFFER_MAX_TICKS;
+        const fullOutputBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
         putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullOutputBuffer);
 
         automaticPricing(agentMap(buyer), planet);
@@ -284,7 +284,7 @@ describe('automaticPricing — buy side', () => {
 
     it('resumes input buying once output inventory drops below the output buffer ceiling', () => {
         const buyer = makeSteelProducer();
-        const fullOutputBuffer = 50 * 1 * OUTPUT_BUFFER_MAX_TICKS;
+        const fullOutputBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
         putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullOutputBuffer - 1);
 
         automaticPricing(agentMap(buyer), planet);
@@ -301,7 +301,7 @@ describe('automaticPricing — buy side', () => {
             produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
         });
 
-        const fullBuffer = 50 * 1 * OUTPUT_BUFFER_MAX_TICKS;
+        const fullBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
         putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullBuffer);
 
         automaticPricing(agentMap(buyer), planet);

@@ -939,9 +939,10 @@ const PLACEHOLDER_ID = 'preview';
 
 const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
     const instance = factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID);
-    const primaryOutput = instance.produces[0].resource.level;
+    const primaryOutput = instance.produces[0]?.resource.level;
 
-    const primaryOutputLevel: ResourceProcessLevel = primaryOutput === 'source' ? 'raw' : primaryOutput;
+    const primaryOutputLevel: ResourceProcessLevel =
+        !primaryOutput || primaryOutput === 'source' ? 'raw' : primaryOutput;
     return { factory, primaryOutputLevel };
 };
 

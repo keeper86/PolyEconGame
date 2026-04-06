@@ -1,34 +1,5 @@
-/**
- * financial/loanConditions.ts
- *
- * Credit-condition evaluation for voluntary (player-initiated) bank loans.
- *
- * The bank issues *working-capital* loans automatically inside
- * `preProductionFinancialTick` to cover wage shortfalls.  This module
- * handles a *separate* credit product: discretionary loans that the
- * player can request from the "Borrow" UI panel.
- *
- * Credit limit formula
- * --------------------
- * 1. **Starter loan** – any agent with no outstanding discretionary loans
- *    and no prior market revenue gets `STARTER_LOAN_AMOUNT`.
- * 2. **Established agent** – the limit is
- *       max(0,  LOAN_CASH_FLOW_MONTHS × monthlyNetCashFlow  −  existingDiscretionaryLoans)
- *    where
- *       monthlyNetCashFlow = monthlyRevenue − monthlyWageBill
- *       monthlyRevenue     = Σ lastRevenue for all market sell positions   × LOAN_TICKS_PER_MONTH
- *       monthlyWageBill    = lastWageBill × LOAN_TICKS_PER_MONTH
- *
- * If the net cash flow is ≤ 0 the limit drops to 0, effectively blocking
- * further loans until the business turns profitable.
- */
-
 import { STARTER_LOAN_AMOUNT, LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
 
 export type LoanConditions = {
     /** Maximum additional amount the agent may borrow right now. */
@@ -50,21 +21,13 @@ export type LoanConditions = {
     isNewAgent: boolean;
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function blendMonthly(lastMonth: number, currentMonth: number, progress: number): number {
-    if (progress <= 0) {
+    if (progress <= 0 || currentMonth === 0) {
         return lastMonth;
     }
     const extrapolated = currentMonth / progress;
     return lastMonth * (1 - progress) + extrapolated * progress;
 }
-
-// ---------------------------------------------------------------------------
-// Core calculation
-// ---------------------------------------------------------------------------
 
 export function computeLoanConditions(agent: Agent, planet: Planet, tick: number): LoanConditions {
     const assets = agent.assets[planet.id];
