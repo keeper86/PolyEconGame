@@ -41,7 +41,6 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
     const [showAll, setShowAll] = useState(false);
-    const [useAverage, setUseAverage] = useState(false);
     const [openItem, setOpenItem] = useState<string | undefined>(undefined);
     const trpc = useTRPC();
 
@@ -49,7 +48,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
 
     // ── Hoisted market overview query ──────────────────────────────────
     const { data: overviewData } = useSimulationQuery(
-        trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId: _planetId, average: useAverage }),
+        trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId: _planetId, average: false }),
     );
     const overviewRows: Record<string, MarketOverviewRow> = useMemo(() => {
         const map: Record<string, MarketOverviewRow> = {};
@@ -183,10 +182,6 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                 <div className='flex items-center justify-between gap-3'>
                     <span className='text-sm font-semibold'>Market Orders</span>
                     <div className='flex items-center gap-2'>
-                        <Label htmlFor='use-average' className='text-xs text-muted-foreground cursor-pointer'>
-                            Monthly avg
-                        </Label>
-                        <Switch id='use-average' checked={useAverage} onCheckedChange={setUseAverage} />
                         <Label htmlFor='show-all-resources' className='text-xs text-muted-foreground cursor-pointer'>
                             Show all resources
                         </Label>

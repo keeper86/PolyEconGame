@@ -1,5 +1,7 @@
 import React from 'react';
 import { Tag, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
+import * as AccordionPrimitive from '@radix-ui/react-accordion';
+import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,15 +83,19 @@ export default function SellSection({
     };
 
     return (
-        <div className={`space-y-3 ${!canSell ? 'opacity-50 pointer-events-none' : ''}`}>
-            <div className='flex items-center justify-between'>
-                <span className='text-xs font-semibold flex items-center gap-1.5'>
+        <AccordionItem
+            value='sell'
+            className={`border-1 p-1 ${!canSell ? 'opacity-50 pointer-events-none' : ''} rounded-md`}
+        >
+            <AccordionPrimitive.Header className='px-1 flex items-center justify-between hover:bg-muted/50 rounded-md px-1 cursor-pointer'>
+                <AccordionPrimitive.Trigger className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold hover:underline text-left'>
                     <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
                     {!canSell && (
                         <span className='text-[10px] font-normal text-muted-foreground'>— nothing to sell</span>
                     )}
-                </span>
-                <div className='flex items-center gap-2'>
+                </AccordionPrimitive.Trigger>
+                {/* Controls are outside the trigger button to avoid nested buttons */}
+                <div className='flex items-center gap-2 pl-2'>
                     {hasActiveOffer && (
                         <Button
                             variant='ghost'
@@ -114,176 +120,193 @@ export default function SellSection({
                         onCheckedChange={(v) => onAutomationChange(v)}
                     />
                 </div>
-            </div>
+            </AccordionPrimitive.Header>
+            <AccordionContent className='pb-0'>
+                <div className='space-y-3 pt-3'>
+                    {isFacilityOutput && (
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
+                            <span>
+                                Max capacity production{' '}
+                                <span className='font-semibold text-foreground'>
+                                    {formatNumbers(producedPerTick)}/tick
+                                </span>
+                            </span>
+                        </div>
+                    )}
 
-            {isFacilityOutput && (
-                <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
-                    <span>
-                        Max capacity production{' '}
-                        <span className='font-semibold text-foreground'>{formatNumbers(producedPerTick)}/tick</span>
-                    </span>
-                </div>
-            )}
-
-            <div className='grid grid-cols-2 gap-3'>
-                {/* Price / unit box */}
-                <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                    <Label htmlFor={`offer-price-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                        Price / unit
-                    </Label>
-                    <Input
-                        id={`offer-price-${resourceName}`}
-                        type='number'
-                        min={PRICE_FLOOR}
-                        step='any'
-                        placeholder={offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'}
-                        value={local.offerPrice}
-                        disabled={local.offerAutomated || sellSaving}
-                        onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
-                        className={getFieldClassName('offerPrice', local.offerAutomated || sellSaving)}
-                    />
-                    {overviewRow && !local.offerAutomated && (
-                        <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                            <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
-                            <Button
-                                variant='outline'
-                                size='sm'
-                                className='h-5 text-[10px] px-1.5 py-0'
-                                disabled={sellSaving}
-                                onClick={() =>
-                                    onLocalChange(resourceName, {
-                                        offerPrice: overviewRow.clearingPrice.toFixed(2),
-                                    })
-                                }
+                    <div className='grid grid-cols-2 gap-3'>
+                        {/* Price / unit box */}
+                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
+                            <Label
+                                htmlFor={`offer-price-${resourceName}`}
+                                className='text-[11px] text-muted-foreground'
                             >
-                                Use
-                            </Button>
-                        </div>
-                    )}
-                </div>
-
-                {/* Retainment box + presets */}
-                <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                    <Label htmlFor={`offer-retainment-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                        Retainment (keep ≥)
-                    </Label>
-                    <Input
-                        id={`offer-retainment-${resourceName}`}
-                        type='number'
-                        min={0}
-                        step={1}
-                        placeholder={
-                            offer?.offerRetainment !== undefined ? String(Math.round(offer.offerRetainment)) : 'e.g. 0'
-                        }
-                        value={local.offerRetainment}
-                        disabled={local.offerAutomated || sellSaving}
-                        onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
-                        className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
-                    />
-                    {/* Effective sell qty with fulfillment colour */}
-                    {offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
-                        <div
-                            className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
-                        >
-                            {effectiveSellQty === 0
-                                ? 'Nothing to sell — order inactive'
-                                : `Sell ${formatNumbers(effectiveSellQty)} / tick`}
-                        </div>
-                    )}
-                    {retainmentPresets && !local.offerAutomated && (
-                        <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
-                            <span className='shrink-0'>Keep:</span>
-                            <div className='flex gap-1 ml-auto'>
-                                {retainmentPresets.map(({ label, qty }) => (
+                                Price / unit
+                            </Label>
+                            <Input
+                                id={`offer-price-${resourceName}`}
+                                type='number'
+                                min={PRICE_FLOOR}
+                                step='any'
+                                placeholder={
+                                    offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'
+                                }
+                                value={local.offerPrice}
+                                disabled={local.offerAutomated || sellSaving}
+                                onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
+                                className={getFieldClassName('offerPrice', local.offerAutomated || sellSaving)}
+                            />
+                            {overviewRow && !local.offerAutomated && (
+                                <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
+                                    <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
                                     <Button
-                                        key={label}
                                         variant='outline'
                                         size='sm'
                                         className='h-5 text-[10px] px-1.5 py-0'
                                         disabled={sellSaving}
                                         onClick={() =>
                                             onLocalChange(resourceName, {
-                                                offerRetainment: String(qty),
+                                                offerPrice: overviewRow.clearingPrice.toFixed(2),
                                             })
                                         }
                                     >
-                                        {label}
+                                        Use
                                     </Button>
-                                ))}
-                            </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Retainment box + presets */}
+                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
+                            <Label
+                                htmlFor={`offer-retainment-${resourceName}`}
+                                className='text-[11px] text-muted-foreground'
+                            >
+                                Retainment (keep ≥)
+                            </Label>
+                            <Input
+                                id={`offer-retainment-${resourceName}`}
+                                type='number'
+                                min={0}
+                                step={1}
+                                placeholder={
+                                    offer?.offerRetainment !== undefined
+                                        ? String(Math.round(offer.offerRetainment))
+                                        : 'e.g. 0'
+                                }
+                                value={local.offerRetainment}
+                                disabled={local.offerAutomated || sellSaving}
+                                onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
+                                className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
+                            />
+                            {/* Effective sell qty with fulfillment colour */}
+                            {offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
+                                <div
+                                    className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
+                                >
+                                    {effectiveSellQty === 0
+                                        ? 'Nothing to sell — order inactive'
+                                        : `Sell ${formatNumbers(effectiveSellQty)} / tick`}
+                                </div>
+                            )}
+                            {retainmentPresets && !local.offerAutomated && (
+                                <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
+                                    <span className='shrink-0'>Keep:</span>
+                                    <div className='flex gap-1 ml-auto'>
+                                        {retainmentPresets.map(({ label, qty }) => (
+                                            <Button
+                                                key={label}
+                                                variant='outline'
+                                                size='sm'
+                                                className='h-5 text-[10px] px-1.5 py-0'
+                                                disabled={sellSaving}
+                                                onClick={() =>
+                                                    onLocalChange(resourceName, {
+                                                        offerRetainment: String(qty),
+                                                    })
+                                                }
+                                            >
+                                                {label}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {(offer?.lastSold !== undefined || offer?.lastRevenue !== undefined) && (
+                        <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
+                            {offer.lastSold !== undefined && <span>Last sold: {formatNumbers(offer.lastSold)}</span>}
+                            {offer.lastRevenue !== undefined && (
+                                <span>Revenue: {formatNumbers(offer.lastRevenue)}</span>
+                            )}
+                            {offer.priceDirection !== undefined &&
+                                (() => {
+                                    const a = priceArrow(offer.priceDirection);
+                                    return a.label ? <span className={a.className}>{a.label}</span> : null;
+                                })()}
                         </div>
                     )}
-                </div>
-            </div>
 
-            {(offer?.lastSold !== undefined || offer?.lastRevenue !== undefined) && (
-                <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                    {offer.lastSold !== undefined && <span>Last sold: {formatNumbers(offer.lastSold)}</span>}
-                    {offer.lastRevenue !== undefined && <span>Revenue: {formatNumbers(offer.lastRevenue)}</span>}
-                    {offer.priceDirection !== undefined &&
-                        (() => {
-                            const a = priceArrow(offer.priceDirection);
-                            return a.label ? <span className={a.className}>{a.label}</span> : null;
-                        })()}
-                </div>
-            )}
-
-            {/* Validation error messages */}
-            {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
-                <div className='space-y-1'>
-                    {local.validationErrors.offerPrice && (
-                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                            <AlertCircle className='h-3 w-3' />
-                            Price: {local.validationErrors.offerPrice}
+                    {/* Validation error messages */}
+                    {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
+                        <div className='space-y-1'>
+                            {local.validationErrors.offerPrice && (
+                                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                                    <AlertCircle className='h-3 w-3' />
+                                    Price: {local.validationErrors.offerPrice}
+                                </div>
+                            )}
+                            {local.validationErrors.offerRetainment && (
+                                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                                    <AlertCircle className='h-3 w-3' />
+                                    Retainment: {local.validationErrors.offerRetainment}
+                                </div>
+                            )}
                         </div>
                     )}
-                    {local.validationErrors.offerRetainment && (
-                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                            <AlertCircle className='h-3 w-3' />
-                            Retainment: {local.validationErrors.offerRetainment}
-                        </div>
-                    )}
-                </div>
-            )}
 
-            {/* Sell section save button and feedback */}
-            <div className='flex items-center justify-between gap-3 pt-2'>
-                <div className='flex items-center gap-3'>
-                    {sellSuccessMsg && (
-                        <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
-                            <CheckCircle2 className='h-3.5 w-3.5' /> {sellSuccessMsg}
-                        </span>
-                    )}
-                    {sellErrorMsg && (
-                        <span className='text-xs text-destructive flex items-center gap-1'>
-                            <AlertCircle className='h-3.5 w-3.5' />
-                            <span dangerouslySetInnerHTML={{ __html: sellErrorMsg }} />
-                        </span>
-                    )}
+                    {/* Sell section save button and feedback */}
+                    <div className='flex items-center justify-between gap-3 pt-2'>
+                        <div className='flex items-center gap-3'>
+                            {sellSuccessMsg && (
+                                <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
+                                    <CheckCircle2 className='h-3.5 w-3.5' /> {sellSuccessMsg}
+                                </span>
+                            )}
+                            {sellErrorMsg && (
+                                <span className='text-xs text-destructive flex items-center gap-1'>
+                                    <AlertCircle className='h-3.5 w-3.5' />
+                                    <span dangerouslySetInnerHTML={{ __html: sellErrorMsg }} />
+                                </span>
+                            )}
+                        </div>
+                        <div className='flex items-center gap-2'>
+                            {hasDirtySellFields && (
+                                <Button
+                                    variant='outline'
+                                    size='sm'
+                                    className='h-7 text-[11px] px-2'
+                                    onClick={onResetSell}
+                                    disabled={sellSaving}
+                                >
+                                    <RotateCcw className='h-3 w-3 mr-1' />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                size='sm'
+                                className='h-7 text-[11px] px-3'
+                                onClick={onSaveSell}
+                                disabled={!hasDirtySellFields || !!hasValidationErrors || sellSaving}
+                            >
+                                {sellSaving ? 'Saving…' : 'Save Sell'}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-                <div className='flex items-center gap-2'>
-                    {hasDirtySellFields && (
-                        <Button
-                            variant='outline'
-                            size='sm'
-                            className='h-7 text-[11px] px-2'
-                            onClick={onResetSell}
-                            disabled={sellSaving}
-                        >
-                            <RotateCcw className='h-3 w-3 mr-1' />
-                            Reset
-                        </Button>
-                    )}
-                    <Button
-                        size='sm'
-                        className='h-7 text-[11px] px-3'
-                        onClick={onSaveSell}
-                        disabled={!hasDirtySellFields || !!hasValidationErrors || sellSaving}
-                    >
-                        {sellSaving ? 'Saving…' : 'Save Sell'}
-                    </Button>
-                </div>
-            </div>
-        </div>
+            </AccordionContent>
+        </AccordionItem>
     );
 }

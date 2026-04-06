@@ -7,7 +7,6 @@ import React from 'react';
 import BidTable from './BidTable';
 import OfferTable from './OfferTable';
 import PopulationDemandChart from './PopulationDemandChart';
-import ProductPriceHistoryChart from './ProductPriceHistoryChart';
 
 interface MarketDetailsSectionProps {
     planetId: string;
@@ -35,24 +34,6 @@ export default function MarketDetailsSection({
 
     return (
         <div className='space-y-4'>
-            <h4 className='text-sm font-semibold mb-2'>Price history</h4>
-
-            <ProductPriceHistoryChart
-                planetId={planetId}
-                productName={resourceName}
-                live={
-                    data
-                        ? {
-                              tick: data.tick,
-                              price: market.clearingPrice,
-                              avgPrice: market.currentMonthStats?.avgPrice,
-                              minPrice: market.currentMonthStats?.minPrice,
-                              maxPrice: market.currentMonthStats?.maxPrice,
-                          }
-                        : undefined
-                }
-            />
-
             <span className='text-xs font-medium text-muted-foreground'>
                 <h4 className='text-sm font-semibold mb-1'>Agent supply</h4>
                 {market.offers.length} active seller{market.offers.length !== 1 ? 's' : ''}
