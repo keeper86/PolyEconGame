@@ -9,6 +9,8 @@ import { educationLevelKeys } from '../population/education';
 export type WorkerSlot = {
     /** Opaque tag so callers can group results back to their source. */
     facilityIdx: number;
+    /** Discriminates which facility array this slot belongs to. */
+    facilityType: 'production' | 'storage' | 'management';
     jobEdu: EducationLevelType;
     jobEduIdx: number;
     /** Bodies needed for 100% efficiency (resource- and age-adjusted). */

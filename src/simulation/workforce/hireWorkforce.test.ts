@@ -210,6 +210,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
         gov.assets = {
             p: {
                 productionFacilities: [],
+                managementFacilities: [],
                 deposits: 0,
                 depositHold: 0,
                 loans: 0,

@@ -38,6 +38,25 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             }
         }
 
+        for (const facility of assets.managementFacilities) {
+            const tick = facility.lastTickResults;
+            if (!tick) {
+                continue;
+            }
+            for (const edu of educationLevelKeys) {
+                totalUsed[edu] += tick.totalUsedByEdu[edu] ?? 0;
+                exactUsed[edu] += tick.exactUsedByEdu[edu] ?? 0;
+            }
+        }
+
+        const storageTick = assets.storageFacility.lastTickResults;
+        if (storageTick) {
+            for (const edu of educationLevelKeys) {
+                totalUsed[edu] += storageTick.totalUsedByEdu[edu] ?? 0;
+                exactUsed[edu] += storageTick.exactUsedByEdu[edu] ?? 0;
+            }
+        }
+
         // 3. Compute new targets
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         for (const edu of educationLevelKeys) {

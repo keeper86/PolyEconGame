@@ -2,7 +2,7 @@ import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ResourceName } from './resourceCatalog';
-import type { ProductionFacility, StorageFacility } from './facility';
+import type { ManagementFacility, ProductionFacility, StorageFacility } from './facility';
 
 /**
  * Single combined central + commercial bank per planet.
@@ -360,6 +360,7 @@ export type FoodMarketResult = MarketResult;
 
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
+    managementFacilities: ManagementFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 

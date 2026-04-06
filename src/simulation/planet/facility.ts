@@ -10,6 +10,7 @@ export type ConstructionState = {
 } | null;
 
 export type Facilility = PlanetaryId & {
+    type: 'production' | 'storage' | 'management';
     name: string;
     maxScale: number;
     scale: number;
@@ -54,6 +55,7 @@ export type LastManagementTickResults = LastTickResults & {
 };
 
 export type ProductionFacility = Facilility & {
+    type: 'production';
     needs: { resource: Resource; quantity: number }[];
     produces: { resource: Resource; quantity: number }[];
 
@@ -61,6 +63,7 @@ export type ProductionFacility = Facilility & {
 };
 
 export type StorageFacility = Facilility & {
+    type: 'storage';
     capacity: {
         volume: number;
         mass: number;
@@ -79,6 +82,7 @@ export type StorageFacility = Facilility & {
 };
 
 export type ManagementFacility = Facilility & {
+    type: 'management';
     needs: { resource: Resource; quantity: number }[];
 
     bufferPerTickPerScale: number;

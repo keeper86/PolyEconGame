@@ -32,6 +32,7 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
     agent.assets.p.productionFacilities = [
         {
             planetId: 'p',
+            type: 'production',
             id: 'grocery-fac',
             name: 'Grocery Store',
             maxScale: 1000,

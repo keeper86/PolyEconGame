@@ -80,6 +80,7 @@ const defaultPollutionPerTick = {
 };
 
 const makeFacilityDefaults = () => ({
+    type: 'production' as const,
     maxScale: 1,
     scale: 1,
     pollutionPerTick: { ...defaultPollutionPerTick },

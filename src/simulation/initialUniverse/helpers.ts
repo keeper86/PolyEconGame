@@ -31,6 +31,7 @@ export function makeProductionFacility(opts: {
     produces: { resource: Resource; quantity: number }[];
 }): ProductionFacility {
     return {
+        type: 'production',
         planetId: opts.planetId,
         id: opts.id,
         name: opts.name,
@@ -69,6 +70,7 @@ export function makeStorage(opts: {
     massCapacity?: number;
 }): StorageFacility {
     return {
+        type: 'storage',
         planetId: opts.planetId,
         id: opts.id,
         name: opts.name,
@@ -102,6 +104,7 @@ export function makeAgentPlanetAssets(
 ): AgentPlanetAssets {
     return {
         productionFacilities: facilities,
+        managementFacilities: [],
         storageFacility: storage,
         deposits: 0,
         depositHold: 0,

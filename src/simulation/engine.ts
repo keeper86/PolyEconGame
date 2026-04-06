@@ -7,7 +7,7 @@ import { marketTick } from './market/market';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
 import { accumulatePlanetPrices, accumulateAgentMetrics } from './planet/planet';
-import { productionTick } from './planet/production';
+import { constructionTick, productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
@@ -59,6 +59,8 @@ export function advanceTick(gameState: GameState) {
         marketTick(planetAgents, planet);
 
         accumulatePlanetPrices(planet, gameState.tick);
+
+        constructionTick(planetAgents, planet);
 
         productionTick(planetAgents, planet);
 

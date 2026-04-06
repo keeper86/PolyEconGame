@@ -309,6 +309,7 @@ export function makeProductionFacility(
     overrides?: Partial<ProductionFacility>,
 ): ProductionFacility {
     return {
+        type: 'production',
         planetId: 'p',
         id: 'facility-1',
         name: 'Test Facility',
@@ -353,6 +354,7 @@ export function makeAllocatedWorkers(
 export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentPlanetAssets>): AgentPlanetAssets {
     return {
         productionFacilities: [],
+        managementFacilities: [],
         deposits: 0,
         depositHold: 0,
         loans: 0,

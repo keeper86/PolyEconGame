@@ -7,7 +7,9 @@ import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
+import type { ManagementFacility, ProductionFacility, StorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
+import { constructionServiceResourceType } from './services';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
 import type { WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
@@ -39,7 +41,6 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
         return;
     }
 
-    // services decay very fast and aggressive. This is for two reasons:
     ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
         if (storage.currentInStorage[serviceName]) {
             removeFromStorageFacility(
@@ -50,6 +51,41 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
         }
     });
 };
+
+export function constructionTick(agents: Map<string, Agent>, planet: Planet): void {
+    agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            return;
+        }
+
+        const allFacilities: Array<ProductionFacility | StorageFacility | ManagementFacility> = [
+            ...assets.productionFacilities,
+            assets.storageFacility,
+            ...assets.managementFacilities,
+        ];
+
+        for (const facility of allFacilities) {
+            if (!facility.construction) {
+                continue;
+            }
+
+            const cs = facility.construction;
+            const available = queryStorageFacility(assets.storageFacility, constructionServiceResourceType.name);
+            const toConsume = Math.min(cs.maximumConstructionServiceConsumption, available);
+
+            if (toConsume > 0) {
+                removeFromStorageFacility(assets.storageFacility, constructionServiceResourceType.name, toConsume);
+                cs.progress += toConsume;
+            }
+
+            if (cs.progress >= cs.totalConstructionServiceRequired) {
+                facility.maxScale = cs.constructionTargetMaxScale;
+                facility.construction = null;
+            }
+        }
+    });
+}
 
 export function productionTick(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -73,10 +109,22 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             ageProd[edu] = ageProductivityMultiplier(meanAge);
         }
 
+        // All active (non-construction) facilities in one flat array.
+        const activeFacilities: Array<ProductionFacility | StorageFacility | ManagementFacility> = [
+            ...assets.productionFacilities.filter((f) => !f.construction),
+            ...(assets.storageFacility.construction === null ? [assets.storageFacility] : []),
+            ...assets.managementFacilities.filter((f) => !f.construction),
+        ];
+
         type FacilityMeta = { resourceEfficiencyScalar: number; resourceEfficiencyMap: Record<string, number> };
 
+        // Compute resource-availability efficiency for each facility.
+        // Storage has no needs → efficiencies = [] → scalar = 1, map = {}.
         const totalStorageDemand = new Map<string, number>();
-        for (const facility of assets.productionFacilities) {
+        for (const facility of activeFacilities) {
+            if (facility.type === 'storage') {
+                continue;
+            }
             for (const need of facility.needs) {
                 if (need.resource.form === 'landBoundResource') {
                     continue;
@@ -89,7 +137,10 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             }
         }
 
-        const facilityMeta: FacilityMeta[] = assets.productionFacilities.map((facility) => {
+        const facilityMeta: FacilityMeta[] = activeFacilities.map((facility) => {
+            if (facility.type === 'storage') {
+                return { resourceEfficiencyScalar: 1, resourceEfficiencyMap: {} };
+            }
             const resourceEfficiencyMap: Record<string, number> = {};
             const efficiencies = facility.needs.map((need) => {
                 const required = need.quantity * facility.scale;
@@ -111,12 +162,13 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             };
         });
 
-        // Build one flat list of WorkerSlots across all facilities
+        // Build one flat list of WorkerSlots across all active facilities.
         const allSlots: WorkerSlot[] = [];
         const effectiveDemandBySlot = new Map<WorkerSlot, number>();
-        for (let facilityIndex = 0; facilityIndex < assets.productionFacilities.length; facilityIndex++) {
-            const facility = assets.productionFacilities[facilityIndex];
-            const { resourceEfficiencyScalar } = facilityMeta[facilityIndex];
+
+        for (let fi = 0; fi < activeFacilities.length; fi++) {
+            const facility = activeFacilities[fi];
+            const { resourceEfficiencyScalar } = facilityMeta[fi];
             for (const [eduLevel, req] of Object.entries(facility.workerRequirement)) {
                 if (!req || req <= 0) {
                     continue;
@@ -129,7 +181,8 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 }
                 const bodies = ageProd[jobEdu] > 0 ? Math.ceil(scaledTarget / ageProd[jobEdu]) : 0;
                 const slot: WorkerSlot = {
-                    facilityIdx: facilityIndex,
+                    facilityIdx: fi,
+                    facilityType: facility.type,
                     jobEdu,
                     jobEduIdx,
                     capacity: Math.max(1, bodies),
@@ -139,18 +192,17 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                     overqualifiedCount: 0,
                 };
                 allSlots.push(slot);
-                // effective demand = req × scale (resource efficiency already baked into capacity)
                 effectiveDemandBySlot.set(slot, req * facility.scale);
             }
         }
 
         const { byFacility } = waterFill(allSlots, workerPool, ageProd, effectiveDemandBySlot);
 
-        // we calculated resource constraints with last round services. We now empty service storage
-        // This makes services un-storable but allows producing services and using them next ticks production.
+        // we calculated resource constraints with last round services. We now empty service storage.
+        // This makes services un-storable but allows producing services and using them next tick's production.
         depreciateServicesStorage(agent, planet);
 
-        assets.productionFacilities.forEach((facility, fi) => {
+        activeFacilities.forEach((facility, fi) => {
             const { resourceEfficiencyMap } = facilityMeta[fi];
             const facilityResult = byFacility.get(fi);
 
@@ -167,79 +219,123 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
 
-            // Track actual absolute consumption/production
-            const actualConsumed: Record<string, number> = {};
-            const actualProduced: Record<string, number> = {};
-
             if (overallEfficiency > 0) {
                 planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;
                 planet.environment.pollution.water +=
                     facility.pollutionPerTick.water * facility.scale * overallEfficiency;
                 planet.environment.pollution.soil +=
                     facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
-
-                facility.produces.forEach((output) => {
-                    const produced = output.quantity * facility.scale * overallEfficiency;
-                    if (produced > 0) {
-                        actualProduced[output.resource.name] = produced;
-                        putIntoStorageFacility(assets.storageFacility, output.resource, produced);
-                    } else {
-                        actualProduced[output.resource.name] = 0;
-                    }
-                });
-
-                facility.needs.forEach((need) => {
-                    const consumed = need.quantity * facility.scale * overallEfficiency;
-                    if (need.resource.form === 'landBoundResource') {
-                        const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
-                        actualConsumed[need.resource.name] = extracted;
-                        if (extracted < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
-                            console.warn(
-                                `Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`,
-                                { planetId: planet.id, agentId: agent.id, facilityId: facility.id },
-                            );
-                        }
-                    } else {
-                        const consumeInputs = removeFromStorageFacility(
-                            assets.storageFacility,
-                            need.resource.name,
-                            consumed,
-                        );
-                        // services are depreciated before, so initial requirements might not be fully met anymore, so we just trust the actual consumption from storage and report that as the "consumed" amount for services. For other resources we expect to consume exactly the calculated amount (barring minor floating-point mismatches), so we report the attempted consumption.
-                        const removed = need.resource.form === 'services' ? consumed : consumeInputs;
-                        actualConsumed[need.resource.name] = removed;
-                        if (removed < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
-                            console.warn(
-                                `Unexpected: removed ${removed} of ${need.resource.name}, expected ${consumed}.`,
-                                {
-                                    planetId: planet.id,
-                                    agentId: agent.id,
-                                    facilityId: facility.id,
-                                },
-                            );
-                        }
-                    }
-                });
-            } else {
-                // If not running, still report zeroes for all needs/produces
-                facility.produces.forEach((output) => {
-                    actualProduced[output.resource.name] = 0;
-                });
-                facility.needs.forEach((need) => {
-                    actualConsumed[need.resource.name] = 0;
-                });
             }
 
-            facility.lastTickResults = {
-                overallEfficiency,
-                workerEfficiency,
-                resourceEfficiency: resourceEfficiencyMap,
-                overqualifiedWorkers,
-                totalUsedByEdu,
-                exactUsedByEdu,
-                lastProduced: actualProduced,
-                lastConsumed: actualConsumed,
-            };
+            if (facility.type === 'production') {
+                const actualConsumed: Record<string, number> = {};
+                const actualProduced: Record<string, number> = {};
+
+                if (overallEfficiency > 0) {
+                    facility.produces.forEach((output) => {
+                        const produced = output.quantity * facility.scale * overallEfficiency;
+                        if (produced > 0) {
+                            actualProduced[output.resource.name] = produced;
+                            putIntoStorageFacility(assets.storageFacility, output.resource, produced);
+                        } else {
+                            actualProduced[output.resource.name] = 0;
+                        }
+                    });
+
+                    facility.needs.forEach((need) => {
+                        const consumed = need.quantity * facility.scale * overallEfficiency;
+                        if (need.resource.form === 'landBoundResource') {
+                            const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
+                            actualConsumed[need.resource.name] = extracted;
+                            if (extracted < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
+                                console.warn(
+                                    `Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`,
+                                    { planetId: planet.id, agentId: agent.id, facilityId: facility.id },
+                                );
+                            }
+                        } else {
+                            const consumeInputs = removeFromStorageFacility(
+                                assets.storageFacility,
+                                need.resource.name,
+                                consumed,
+                            );
+                            const removed = need.resource.form === 'services' ? consumed : consumeInputs;
+                            actualConsumed[need.resource.name] = removed;
+                            if (removed < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
+                                console.warn(
+                                    `Unexpected: removed ${removed} of ${need.resource.name}, expected ${consumed}.`,
+                                    { planetId: planet.id, agentId: agent.id, facilityId: facility.id },
+                                );
+                            }
+                        }
+                    });
+                } else {
+                    facility.produces.forEach((output) => {
+                        actualProduced[output.resource.name] = 0;
+                    });
+                    facility.needs.forEach((need) => {
+                        actualConsumed[need.resource.name] = 0;
+                    });
+                }
+
+                facility.lastTickResults = {
+                    overallEfficiency,
+                    workerEfficiency,
+                    resourceEfficiency: resourceEfficiencyMap,
+                    overqualifiedWorkers,
+                    totalUsedByEdu,
+                    exactUsedByEdu,
+                    lastProduced: actualProduced,
+                    lastConsumed: actualConsumed,
+                };
+            } else if (facility.type === 'management') {
+                const actualConsumed: Record<string, number> = {};
+
+                if (overallEfficiency > 0) {
+                    facility.needs.forEach((need) => {
+                        const consumed = need.quantity * facility.scale * overallEfficiency;
+                        if (need.resource.form === 'landBoundResource') {
+                            const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
+                            actualConsumed[need.resource.name] = extracted;
+                        } else {
+                            const removed = removeFromStorageFacility(
+                                assets.storageFacility,
+                                need.resource.name,
+                                consumed,
+                            );
+                            actualConsumed[need.resource.name] = need.resource.form === 'services' ? consumed : removed;
+                        }
+                    });
+
+                    facility.buffer = Math.min(
+                        facility.maxBuffer,
+                        facility.buffer + facility.bufferPerTickPerScale * facility.scale * overallEfficiency,
+                    );
+                } else {
+                    facility.needs.forEach((need) => {
+                        actualConsumed[need.resource.name] = 0;
+                    });
+                }
+
+                facility.lastTickResults = {
+                    overallEfficiency,
+                    workerEfficiency,
+                    resourceEfficiency: resourceEfficiencyMap,
+                    overqualifiedWorkers,
+                    totalUsedByEdu,
+                    exactUsedByEdu,
+                    lastConsumed: actualConsumed,
+                };
+            } else {
+                // type === 'storage': workers → efficiency → pollution already done above. No inputs/outputs.
+                facility.lastTickResults = {
+                    overallEfficiency,
+                    workerEfficiency,
+                    overqualifiedWorkers,
+                    totalUsedByEdu,
+                    exactUsedByEdu,
+                };
+            }
         });
     });
 }

@@ -18,6 +18,7 @@ const defaultPollutionPerTick = {
 };
 
 const makeFacilityDefaults = () => ({
+    type: 'management' as const,
     maxScale: 1,
     scale: 1,
     pollutionPerTick: { ...defaultPollutionPerTick },
