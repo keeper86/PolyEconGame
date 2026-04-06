@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';
 
-export function FacilityIcon({ facilityName, size = 24 }: { facilityName: string; size?: number }) {
+export function FacilityIcon({ facilityName, size = 164 }: { facilityName: string; size?: number }) {
     const src = getAssetPath(facilityName);
 
     return (

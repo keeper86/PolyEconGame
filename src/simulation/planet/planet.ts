@@ -211,22 +211,8 @@ export type Planet = {
     };
 };
 
-// ---------------------------------------------------------------------------
-// Per-education record helper type
-// ---------------------------------------------------------------------------
-
 export type PerEducation = { [L in EducationLevelType]?: number };
 
-// ---------------------------------------------------------------------------
-// Sub-objects that group related intermediate/feedback state
-// ---------------------------------------------------------------------------
-
-/**
- * Demographic events (deaths, disabilities, retirements) tracked per
- * education level for this month and the previous month.
- * Written by `workforceSync` (thisTick accumulators) and rotated at
- * month boundaries by `postProductionLaborMarketTick`.
- */
 export type DemographicEventCounters = {
     thisMonth: PerEducation;
     prevMonth: PerEducation;
@@ -373,8 +359,6 @@ export type FoodMarketResult = MarketResult;
 // ---------------------------------------------------------------------------
 
 export type AgentPlanetAssets = {
-    resourceClaims: string[]; // resource claims owned by this agent
-    resourceTenancies: string[]; // resource claims where this agent is the tenant
     productionFacilities: ProductionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;

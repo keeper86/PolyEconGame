@@ -352,8 +352,6 @@ export function makeAllocatedWorkers(
  */
 export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentPlanetAssets>): AgentPlanetAssets {
     return {
-        resourceClaims: [],
-        resourceTenancies: [],
         productionFacilities: [],
         deposits: 0,
         depositHold: 0,

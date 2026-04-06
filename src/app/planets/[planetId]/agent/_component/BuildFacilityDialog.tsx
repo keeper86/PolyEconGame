@@ -38,7 +38,7 @@ function FacilityCard({
             <h4 className='text-xl font-semibold leading-tight'>{facility.name}</h4>
             <div className='flex flex-row items-start gap-3'>
                 <div className='relative w-48 h-32'>
-                    <FacilityIcon facilityName={facility.name} size={128} />
+                    <FacilityIcon facilityName={facility.name} size={164} />
                 </div>
 
                 <div className='min-w-0 flex-1'>
@@ -61,8 +61,8 @@ function FacilityCard({
                                     key={resource.name}
                                     className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1'
                                 >
-                                    <ProductIcon productName={resource.name} size={24} />
-                                    {resource.name} ×{formatNumbers(quantity)}
+                                    <ProductIcon productName={resource.name} size={32} />
+                                    {formatNumbers(quantity)}
                                 </span>
                             ))}
                         </div>
@@ -78,8 +78,8 @@ function FacilityCard({
                                     key={resource.name}
                                     className='inline-flex items-center gap-1.5 rounded bg-primary/10 px-2 py-1 text-primary'
                                 >
-                                    <ProductIcon productName={resource.name} size={24} />
-                                    {resource.name} ×{formatNumbers(quantity)}
+                                    <ProductIcon productName={resource.name} size={32} />
+                                    {formatNumbers(quantity)}
                                 </span>
                             ))}
                         </div>

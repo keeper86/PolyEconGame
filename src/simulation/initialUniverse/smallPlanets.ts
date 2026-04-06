@@ -143,14 +143,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         );
     }
 
-    // Register industrial agents' resource tenancies in govClaims
-    for (const agent of spec.industrialAgents) {
-        for (const tenancyId of agent.assets[spec.id]?.resourceTenancies ?? []) {
-            govClaims.push(tenancyId);
-        }
-        agents.push(agent);
-    }
-
     const arableRemainder = makeUnclaimedRemainder({
         idPrefix: `${spec.id}-arable`,
         type: arableLandResourceType,

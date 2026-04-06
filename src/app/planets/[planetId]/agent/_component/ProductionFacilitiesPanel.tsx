@@ -6,6 +6,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
 import { formatNumbers } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import { FacilityIcon } from '@/components/client/FacilityIcon';
 
 // (colours reserved if we later make a chart here)
 
@@ -119,7 +120,8 @@ export default function ProductionFacilitiesPanel({
                 <div className='mt-2 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2'>
                     {facilities && facilities.length > 0 ? (
                         facilities.map((f, idx) => (
-                            <Card key={idx}>
+                            <Card key={idx} className='p-2'>
+                                <FacilityIcon facilityName={f.name} />
                                 <div className='flex justify-between items-baseline'>
                                     <div className='font-medium'>{f.name}</div>
                                     <div className='text-xs text-muted-foreground'>scale: {f.scale}</div>
