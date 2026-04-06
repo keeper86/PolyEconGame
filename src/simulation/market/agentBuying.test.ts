@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
-import { putIntoStorageFacility } from '../planet/storage';
+import { putIntoStorageFacility } from '../planet/facility';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 import { settleAgentBuyers } from './settlement';
+import { agriculturalProductionFacility, ironSmelter } from '../planet/productionFacilities';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -30,40 +31,7 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
         id: `storage-${planetId}`,
         capacity: { volume: 1e9, mass: 1e9 },
     });
-    agent.assets[planetId].productionFacilities = [
-        {
-            planetId,
-            id: 'steel-fac',
-            name: 'Steel Mill',
-            maxScale: 1,
-            scale: 1,
-            powerConsumptionPerTick: 0,
-            workerRequirement: {},
-            pollutionPerTick: { air: 0, water: 0, soil: 0 },
-            needs: [{ resource: coalResourceType, quantity: 100 }],
-            produces: [{ resource: steelResourceType, quantity: 50 }],
-            lastTickResults: {
-                overallEfficiency: 1,
-                workerEfficiency: {},
-                resourceEfficiency: {},
-                overqualifiedWorkers: {},
-                exactUsedByEdu: {},
-                totalUsedByEdu: {},
-                lastProduced: {},
-                lastConsumed: { [coalResourceType.name]: 0 },
-            },
-            avgTickResults: {
-                overallEfficiency: 0,
-                workerEfficiency: {},
-                resourceEfficiency: {},
-                overqualifiedWorkers: {},
-                exactUsedByEdu: {},
-                totalUsedByEdu: {},
-                lastProduced: {},
-                lastConsumed: {},
-            },
-        },
-    ];
+    agent.assets[planetId].productionFacilities = [ironSmelter(planetId, 'steel-fac-1')];
     return agent;
 }
 
@@ -119,40 +87,7 @@ describe('automaticPricing — buy side', () => {
             volumePerQuantity: 0,
             massPerQuantity: 0,
         };
-        agent.assets.p.productionFacilities = [
-            {
-                planetId: 'p',
-                id: 'farm',
-                name: 'Farm',
-                maxScale: 1,
-                scale: 1,
-                powerConsumptionPerTick: 0,
-                workerRequirement: {},
-                pollutionPerTick: { air: 0, water: 0, soil: 0 },
-                needs: [{ resource: arableLandResourceType, quantity: 10 }],
-                produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
-                lastTickResults: {
-                    overallEfficiency: 1,
-                    workerEfficiency: {},
-                    resourceEfficiency: {},
-                    overqualifiedWorkers: {},
-                    exactUsedByEdu: {},
-                    totalUsedByEdu: {},
-                    lastProduced: {},
-                    lastConsumed: { [arableLandResourceType.name]: 0 },
-                },
-                avgTickResults: {
-                    overallEfficiency: 0,
-                    workerEfficiency: {},
-                    resourceEfficiency: {},
-                    overqualifiedWorkers: {},
-                    exactUsedByEdu: {},
-                    totalUsedByEdu: {},
-                    lastProduced: {},
-                    lastConsumed: {},
-                },
-            },
-        ];
+        agent.assets.p.productionFacilities = [agriculturalProductionFacility(planet.id, 'farm-1')];
 
         automaticPricing(agentMap(agent), planet);
 

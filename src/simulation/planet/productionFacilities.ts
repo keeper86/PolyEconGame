@@ -60,7 +60,7 @@ import {
     logisticsServiceResourceType,
     retailServiceResourceType,
 } from './services';
-import type { ProductionFacility } from './storage';
+import type { ProductionFacility } from './facility';
 
 const zeroLastTicksResults = {
     overallEfficiency: 0,
@@ -83,17 +83,8 @@ const makeFacilityDefaults = () => ({
     maxScale: 1,
     scale: 1,
     pollutionPerTick: { ...defaultPollutionPerTick },
+    construction: null,
     lastTickResults: {
-        ...zeroLastTicksResults,
-        workerEfficiency: {},
-        resourceEfficiency: {},
-        overqualifiedWorkers: {},
-        exactUsedByEdu: {},
-        totalUsedByEdu: {},
-        lastProduced: {},
-        lastConsumed: {},
-    },
-    avgTickResults: {
         ...zeroLastTicksResults,
         workerEfficiency: {},
         resourceEfficiency: {},

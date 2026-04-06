@@ -61,7 +61,7 @@ import {
     university,
     vehicleFactory,
     waterExtractionFacility,
-} from '../planet/facilities';
+} from '../planet/productionFacilities';
 import {
     arableLandResourceType,
     clayDepositResourceType,
@@ -77,7 +77,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
-import type { ProductionFacility } from '../planet/storage';
+import type { ProductionFacility } from '../planet/facility';
 import type { ResourceClaimEntry } from './helpers';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';

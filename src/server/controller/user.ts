@@ -13,7 +13,7 @@ import {
 import { workerQueries } from '@/simulation/workerClient/queries';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { validateSellOffer, validateBuyBid } from '@/simulation/market/validation';
-import { queryStorageFacility } from '@/simulation/planet/storage';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';

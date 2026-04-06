@@ -2,7 +2,7 @@ import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ResourceName } from './resourceCatalog';
-import type { ProductionFacility, StorageFacility } from './storage';
+import type { ProductionFacility, StorageFacility } from './facility';
 
 /**
  * Single combined central + commercial bank per planet.

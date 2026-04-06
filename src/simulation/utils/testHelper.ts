@@ -26,7 +26,7 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
-import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import type { ProductionFacility, StorageFacility } from '../planet/facility';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -314,17 +314,8 @@ export function makeProductionFacility(
         name: 'Test Facility',
         maxScale: 1,
         scale: 1,
+        construction: null,
         lastTickResults: {
-            overallEfficiency: 0,
-            overqualifiedWorkers: {},
-            resourceEfficiency: {},
-            workerEfficiency: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-            lastProduced: {},
-            lastConsumed: {},
-        },
-        avgTickResults: {
             overallEfficiency: 0,
             overqualifiedWorkers: {},
             resourceEfficiency: {},

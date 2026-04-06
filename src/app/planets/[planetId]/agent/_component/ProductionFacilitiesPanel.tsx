@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { ProductionFacility, LastTickResults } from '../../../../../simulation/planet/storage';
+import type { ProductionFacility, LastProductionTickResults } from '../../../../../simulation/planet/facility';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
 import { formatNumbers } from '@/lib/utils';
@@ -24,7 +24,7 @@ const efficiencyColor = (frac: number): string => {
 const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 
 /** Render the detailed last-tick results for a production facility. */
-function FacilityEfficiencyDetails({ results }: { results: LastTickResults }): React.ReactElement {
+function FacilityEfficiencyDetails({ results }: { results: LastProductionTickResults }): React.ReactElement {
     const workerEntries = Object.entries(results.workerEfficiency) as [EducationLevelType, number][];
     const workerEfficiencyOverall = workerEntries.length > 0 ? Math.min(...workerEntries.map(([, v]) => v)) : 1;
     const resourceEntries = Object.entries(results.resourceEfficiency);

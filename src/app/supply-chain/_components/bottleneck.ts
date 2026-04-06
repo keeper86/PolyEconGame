@@ -8,7 +8,7 @@
  * facilities only, not at their upstream inputs recursively.
  */
 
-import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/facilities';
+import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import { SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import {
     groceryServiceResourceType,

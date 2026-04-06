@@ -9,13 +9,13 @@ import { FacilityIcon } from '@/components/client/FacilityIcon';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { useTRPC } from '@/lib/trpc';
 
-import type { ProductionFacility } from '@/simulation/planet/storage';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { formatNumbers } from '@/lib/utils';
-import type { FacilityCatalogEntry } from '@/simulation/planet/facilities';
-import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/facilities';
+import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
+import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';

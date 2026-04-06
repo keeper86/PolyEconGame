@@ -3,7 +3,7 @@
 import React from 'react';
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Page } from '../../../../../components/client/Page';
-import type { LastTickResults, ProductionFacility } from '../../../../../simulation/planet/storage';
+import type { LastProductionTickResults, ProductionFacility } from '../../../../../simulation/planet/facility';
 import WorkforceDemographyPanel from './WorkforceDemographyPanel';
 import type { Agent } from '../../../../../simulation/planet/planet';
 import type { EducationLevelType } from '@/simulation/population/education';
@@ -60,7 +60,7 @@ const efficiencyColor = (frac: number): string => {
 const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 
 /** Render the detailed last-tick results for a production facility. */
-function FacilityEfficiencyDetails({ results }: { results: LastTickResults }): React.ReactElement {
+function FacilityEfficiencyDetails({ results }: { results: LastProductionTickResults }): React.ReactElement {
     const workerEntries = Object.entries(results.workerEfficiency) as [EducationLevelType, number][];
     const workerEfficiencyOverall = workerEntries.length > 0 ? Math.min(...workerEntries.map(([, v]) => v)) : 1;
     const resourceEntries = Object.entries(results.resourceEfficiency);

@@ -7,7 +7,7 @@ import {
     machineryResourceType,
     vehicleResourceType,
 } from '../planet/resources';
-import { putIntoStorageFacility } from '../planet/storage';
+import { putIntoStorageFacility } from '../planet/facility';
 import { agentMap, makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { marketTick } from './market';
 import { clearUnifiedBids } from './orderBook';

@@ -1,6 +1,6 @@
 import { OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import type { Agent, Planet } from './planet';
-import { queryStorageFacility } from './storage';
+import { queryStorageFacility } from './facility';
 
 /**
  * Automatically adjusts the `scale` of each production facility for automated

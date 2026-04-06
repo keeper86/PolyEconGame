@@ -1,6 +1,6 @@
 'use client';
 
-import type { StorageFacility } from '@/simulation/planet/storage';
+import type { StorageFacility } from '@/simulation/planet/facility';
 import React from 'react';
 import { formatNumbers } from '@/lib/utils';
 

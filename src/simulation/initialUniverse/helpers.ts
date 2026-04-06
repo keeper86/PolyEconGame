@@ -1,5 +1,5 @@
 import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
-import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
+import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/planet';
 import {
     createEmptyDemographicEventCounters,
@@ -8,7 +8,7 @@ import {
     type ResourceClaim,
     type ResourceQuantity,
 } from '../planet/planet';
-import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import type { ProductionFacility, StorageFacility } from '../planet/facility';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -36,6 +36,7 @@ export function makeProductionFacility(opts: {
         name: opts.name,
         maxScale: opts.scale,
         scale: opts.scale,
+        construction: null,
         powerConsumptionPerTick: opts.powerPerTick,
         workerRequirement: {
             none: opts.workers.none ?? 0,
@@ -47,16 +48,6 @@ export function makeProductionFacility(opts: {
         needs: opts.needs,
         produces: opts.produces,
         lastTickResults: {
-            overallEfficiency: 0,
-            workerEfficiency: {},
-            resourceEfficiency: {},
-            overqualifiedWorkers: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-            lastProduced: {},
-            lastConsumed: {},
-        },
-        avgTickResults: {
             overallEfficiency: 0,
             workerEfficiency: {},
             resourceEfficiency: {},
@@ -83,6 +74,7 @@ export function makeStorage(opts: {
         name: opts.name,
         maxScale: opts.scale ?? 1,
         scale: opts.scale ?? 1,
+        construction: null,
         powerConsumptionPerTick: 0.1,
         workerRequirement: { none: 10, primary: 10, secondary: 5, tertiary: 0 },
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -92,6 +84,13 @@ export function makeStorage(opts: {
         },
         current: { mass: 0, volume: 0 },
         currentInStorage: {},
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+        },
         escrow: {},
     };
 }

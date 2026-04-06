@@ -1,6 +1,6 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
-import { facilityByName } from '../planet/facilities';
+import { facilityByName } from '../planet/productionFacilities';
 
 /**
  * Handle 'buildFacility' action

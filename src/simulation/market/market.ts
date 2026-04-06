@@ -1,6 +1,6 @@
 import { EPSILON, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
-import { releaseFromEscrow } from '../planet/storage';
+import { releaseFromEscrow } from '../planet/facility';
 import type { BidOrder } from './marketTypes';
 import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';

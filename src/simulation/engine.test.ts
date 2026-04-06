@@ -21,8 +21,8 @@ import {
 } from './utils/testHelper';
 import { createWorkforceEventAccumulator } from './workforce/workforceDemographicTick';
 import { agriculturalProductResourceType } from './planet/resources';
-import type { ProductionFacility } from './planet/storage';
-import { putIntoStorageFacility, queryStorageFacility } from './planet/storage';
+import type { ProductionFacility } from './planet/facility';
+import { putIntoStorageFacility, queryStorageFacility } from './planet/facility';
 
 /**
  * Sets up actual hired workers in the agent's workforceDemography for a planet.

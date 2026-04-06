@@ -15,7 +15,7 @@ import {
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { educationLevelKeys } from '../population/education';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
-import { queryStorageFacility } from '../planet/storage';
+import { queryStorageFacility } from '../planet/facility';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {

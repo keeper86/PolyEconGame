@@ -1,4 +1,4 @@
-import { SERVICE_DEPRECIATION_RATE_PER_TICK, TICKS_PER_MONTH } from '../constants';
+import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
@@ -6,15 +6,11 @@ import { extractFromClaimedResource, queryClaimedResource } from '../utils/entit
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
+import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
-import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './storage';
 import type { WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
-
-// ---------------------------------------------------------------------------
-// Local helpers
-// ---------------------------------------------------------------------------
 
 function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
@@ -77,14 +73,6 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             ageProd[edu] = ageProductivityMultiplier(meanAge);
         }
 
-        // Resource efficiency is facility-local. Pre-compute it so the slot
-        // capacities fed into waterFill already reflect resource constraints.
-        //
-        // For stored resources shared by multiple facilities we must allocate
-        // the available stock proportionally; otherwise the first facility to
-        // run in the production loop would deplete storage and leave later
-        // facilities with nothing despite their efficiency being computed from
-        // the full pre-consumption stock.
         type FacilityMeta = { resourceEfficiencyScalar: number; resourceEfficiencyMap: Record<string, number> };
 
         const totalStorageDemand = new Map<string, number>();
@@ -252,65 +240,6 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 lastProduced: actualProduced,
                 lastConsumed: actualConsumed,
             };
-
-            // TODO: we know the keys of all these objects. Clean up!
-            const isBootstrap = facility.avgTickResults.overallEfficiency === 0 && overallEfficiency !== 0;
-            if (isBootstrap) {
-                facility.avgTickResults = { ...facility.lastTickResults };
-            } else {
-                const alpha = 1 / TICKS_PER_MONTH;
-                const avg = facility.avgTickResults;
-                avg.overallEfficiency = alpha * overallEfficiency + (1 - alpha) * avg.overallEfficiency;
-
-                for (const key of Object.keys({
-                    ...workerEfficiency,
-                    ...avg.workerEfficiency,
-                }) as (keyof typeof workerEfficiency)[]) {
-                    const cur = workerEfficiency[key] ?? 0;
-                    avg.workerEfficiency[key] = alpha * cur + (1 - alpha) * (avg.workerEfficiency[key] ?? 0);
-                }
-                for (const key of Object.keys({ ...resourceEfficiencyMap, ...avg.resourceEfficiency })) {
-                    const cur = resourceEfficiencyMap[key] ?? 0;
-                    avg.resourceEfficiency[key] = alpha * cur + (1 - alpha) * (avg.resourceEfficiency[key] ?? 0);
-                }
-                for (const key of Object.keys({ ...actualProduced, ...avg.lastProduced })) {
-                    const cur = actualProduced[key] ?? 0;
-                    avg.lastProduced[key] = alpha * cur + (1 - alpha) * (avg.lastProduced[key] ?? 0);
-                }
-                for (const key of Object.keys({ ...actualConsumed, ...avg.lastConsumed })) {
-                    const cur = actualConsumed[key] ?? 0;
-                    avg.lastConsumed[key] = alpha * cur + (1 - alpha) * (avg.lastConsumed[key] ?? 0);
-                }
-                for (const key of Object.keys({
-                    ...exactUsedByEdu,
-                    ...avg.exactUsedByEdu,
-                }) as (keyof typeof exactUsedByEdu)[]) {
-                    const cur = exactUsedByEdu[key] ?? 0;
-                    avg.exactUsedByEdu[key] = alpha * cur + (1 - alpha) * (avg.exactUsedByEdu[key] ?? 0);
-                }
-                for (const key of Object.keys({
-                    ...totalUsedByEdu,
-                    ...avg.totalUsedByEdu,
-                }) as (keyof typeof totalUsedByEdu)[]) {
-                    const cur = totalUsedByEdu[key] ?? 0;
-                    avg.totalUsedByEdu[key] = alpha * cur + (1 - alpha) * (avg.totalUsedByEdu[key] ?? 0);
-                }
-                for (const jobEdu of Object.keys({
-                    ...overqualifiedWorkers,
-                    ...avg.overqualifiedWorkers,
-                }) as (keyof typeof overqualifiedWorkers)[]) {
-                    avg.overqualifiedWorkers[jobEdu] ??= {};
-                    const curJob = overqualifiedWorkers[jobEdu] ?? {};
-                    for (const workerEdu of Object.keys({
-                        ...curJob,
-                        ...avg.overqualifiedWorkers[jobEdu],
-                    }) as (keyof typeof curJob)[]) {
-                        const cur = curJob[workerEdu] ?? 0;
-                        avg.overqualifiedWorkers[jobEdu]![workerEdu] =
-                            alpha * cur + (1 - alpha) * (avg.overqualifiedWorkers[jobEdu]![workerEdu] ?? 0);
-                    }
-                }
-            }
         });
     });
 }

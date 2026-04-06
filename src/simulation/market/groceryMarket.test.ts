@@ -9,7 +9,7 @@ import {
     logisticsServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
-import { putIntoStorageFacility } from '../planet/storage';
+import { putIntoStorageFacility } from '../planet/facility';
 import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
@@ -36,19 +36,10 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
             name: 'Grocery Store',
             maxScale: 1000,
             scale: 1,
+            construction: null,
             powerConsumptionPerTick: 0,
             lastTickResults: {
                 overallEfficiency: 1,
-                workerEfficiency: {},
-                resourceEfficiency: {},
-                overqualifiedWorkers: {},
-                exactUsedByEdu: {},
-                totalUsedByEdu: {},
-                lastProduced: {},
-                lastConsumed: {},
-            },
-            avgTickResults: {
-                overallEfficiency: 0,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},

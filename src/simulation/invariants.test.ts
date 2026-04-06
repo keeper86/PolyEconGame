@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { checkMonetaryConservation, checkWealthBankConsistency } from './invariants';
 import { advanceTick, seedRng } from './engine';
-import { putIntoStorageFacility } from './planet/storage';
+import { putIntoStorageFacility } from './planet/facility';
 import { makeProductionFacility, makeWorld } from './utils/testHelper';
 import { agriculturalProductResourceType } from './planet/resources';
 
