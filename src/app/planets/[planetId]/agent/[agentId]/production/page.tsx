@@ -1,9 +1,9 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import BuildFacilityDialog from '@/app/planets/[planetId]/agent/_component/BuildFacilityDialog';
+import BuildFacilityDialog from './_component/BuildFacilityDialog';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
-import ProductionFacilitiesPanel from '@/app/planets/[planetId]/agent/_component/ProductionFacilitiesPanel';
+import ProductionFacilitiesPanel from './_component/ProductionFacilitiesPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 
 export default function ProductionPage() {

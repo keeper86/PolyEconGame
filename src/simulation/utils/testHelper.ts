@@ -26,7 +26,7 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
-import type { ProductionFacility, StorageFacility } from '../planet/facility';
+import type { ManagementFacility, ProductionFacility, StorageFacility } from '../planet/facility';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -286,10 +286,13 @@ export function makeEnvironment(overrides?: Partial<Environment>): Environment {
  */
 export function makeStorageFacility(overrides?: Partial<StorageFacility>): StorageFacility {
     return {
+        type: 'storage',
         planetId: 'p',
         id: 'storage-p',
         name: 'test-storage',
+        maxScale: 1,
         scale: 1,
+        construction: null,
         powerConsumptionPerTick: 0,
         workerRequirement: {},
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -297,8 +300,50 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+        },
         ...overrides,
     } as StorageFacility;
+}
+
+/**
+ * Create a ManagementFacility with given worker requirements.
+ */
+export function makeManagementFacility(
+    workerReq?: Partial<Record<EducationLevelType, number>>,
+    overrides?: Partial<ManagementFacility>,
+): ManagementFacility {
+    return {
+        type: 'management',
+        planetId: 'p',
+        id: 'mgmt-1',
+        name: 'Test Management',
+        maxScale: 1,
+        scale: 1,
+        construction: null,
+        powerConsumptionPerTick: 0,
+        workerRequirement: (workerReq ?? {}) as Record<string, number>,
+        pollutionPerTick: { air: 0, water: 0, soil: 0 },
+        needs: [],
+        buffer: 0,
+        maxBuffer: 100,
+        bufferPerTickPerScale: 10,
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            resourceEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+            lastConsumed: {},
+        },
+        ...overrides,
+    };
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { EducationLevelType } from '../population/education';
-import type { PlanetaryId, Resource } from './planet';
+import type { PlanetaryId, Resource, ResourceProcessLevel } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {
@@ -10,9 +10,22 @@ export type ConstructionState = {
 } | null;
 
 export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management';
-export type FacilityCatalogEntry = {
-    constructionServiceRequiredPerScale: (scale: number) => number;
-    minimumConstructionTimeInTicks: number;
+export const getFacilityType = (facility: Facility): FacilityType => {
+    if (facility.type === 'production') {
+        return facility.produces.reduce((prev, curr) => {
+            if (curr.resource.level === 'services' || prev === 'services') {
+                return 'services';
+            }
+            if (curr.resource.level === 'manufactured' || prev === 'manufactured') {
+                return 'manufactured';
+            }
+            if (curr.resource.level === 'refined' || prev === 'refined') {
+                return 'refined';
+            }
+            return 'raw';
+        }, 'raw' as ResourceProcessLevel);
+    }
+    return facility.type;
 };
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 30;
@@ -32,13 +45,13 @@ export const calculateCostsForConstruction = (
 ): number => {
     // Integerate the construction cost over the scale increase, using the constructionCatalog function for the facility type
     let totalCost = 0;
-    for (let scale = currentScale; scale < targetScale; scale++) {
+    for (let scale = currentScale + 1; scale <= targetScale; scale++) {
         totalCost += constructionServiceCostPerScaleIncrease[facilityType](scale);
     }
     return totalCost;
 };
 
-export type Facilility = PlanetaryId & {
+export type FacilityBase = PlanetaryId & {
     type: 'production' | 'storage' | 'management';
     name: string;
     maxScale: number;
@@ -83,7 +96,7 @@ export type LastManagementTickResults = LastTickResults & {
     lastConsumed: { [resourceName: string]: number };
 };
 
-export type ProductionFacility = Facilility & {
+export type ProductionFacility = FacilityBase & {
     type: 'production';
     needs: { resource: Resource; quantity: number }[];
     produces: { resource: Resource; quantity: number }[];
@@ -91,7 +104,7 @@ export type ProductionFacility = Facilility & {
     lastTickResults: LastProductionTickResults;
 };
 
-export type StorageFacility = Facilility & {
+export type StorageFacility = FacilityBase & {
     type: 'storage';
     capacity: {
         volume: number;
@@ -110,7 +123,7 @@ export type StorageFacility = Facilility & {
     escrow: { [resourceName: string]: number };
 };
 
-export type ManagementFacility = Facilility & {
+export type ManagementFacility = FacilityBase & {
     type: 'management';
     needs: { resource: Resource; quantity: number }[];
 
@@ -119,6 +132,8 @@ export type ManagementFacility = Facilility & {
     buffer: number;
     lastTickResults: LastManagementTickResults;
 };
+
+export type Facility = ProductionFacility | StorageFacility | ManagementFacility;
 
 export const putIntoStorageFacility = (
     storage: StorageFacility,

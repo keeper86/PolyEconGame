@@ -939,8 +939,9 @@ const PLACEHOLDER_ID = 'preview';
 
 const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
     const instance = factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID);
-    const primaryOutput = instance.produces[0];
-    const primaryOutputLevel: ResourceProcessLevel = primaryOutput?.resource.level ?? 'raw';
+    const primaryOutput = instance.produces[0].resource.level;
+
+    const primaryOutputLevel: ResourceProcessLevel = primaryOutput === 'source' ? 'raw' : primaryOutput;
     return { factory, primaryOutputLevel };
 };
 
@@ -990,8 +991,8 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(university),
     entry(siliconWaferFactory),
 ];
-export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
-
+export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;
+export type FacilityLevel = ResourceProcessLevel[] | 'refined' | 'manufactured' | 'services';
 export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     raw: 'Raw Extraction',
     refined: 'Refinement',

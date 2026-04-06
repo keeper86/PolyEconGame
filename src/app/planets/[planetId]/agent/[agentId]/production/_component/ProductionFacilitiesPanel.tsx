@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { ProductionFacility, LastProductionTickResults } from '../../../../../simulation/planet/facility';
+import type { ProductionFacility, LastProductionTickResults } from '../../../../../../../simulation/planet/facility';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
 import { formatNumbers } from '@/lib/utils';

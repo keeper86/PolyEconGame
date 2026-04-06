@@ -1,6 +1,7 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 import { facilityByName } from '../planet/productionFacilities';
+import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
 
 /**
  * Handle 'buildFacility' action
@@ -36,8 +37,16 @@ export function handleBuildFacility(
     }
     const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newFacility = catalogEntry.factory(planetId, facilityId);
+    const facilityType = getFacilityType(newFacility);
+    const costs = calculateCostsForConstruction(facilityType, 0, 1);
+    newFacility.construction = {
+        progress: 0,
+        constructionTargetMaxScale: 1,
+        totalConstructionServiceRequired: costs,
+        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+    };
     newFacility.scale = 1;
-    newFacility.maxScale = 1;
+    newFacility.maxScale = 0;
     assets.productionFacilities.push(newFacility);
     console.log(`[worker] Agent '${agentId}' built '${facilityKey}' on planet '${planetId}'`);
     safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId });

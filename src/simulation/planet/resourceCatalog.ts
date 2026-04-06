@@ -98,7 +98,6 @@ export type ResourceName = (typeof ALL_RESOURCES)[number]['name'];
 export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 
 export const RESOURCE_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
-    source: 'Source',
     raw: 'Raw',
     refined: 'Refined',
     manufactured: 'Manufactured',
@@ -106,7 +105,6 @@ export const RESOURCE_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
 };
 
 export const resourcesByLevel: Record<ResourceProcessLevel, Resource[]> = {
-    source: [],
     raw: ALL_RESOURCES.filter((r) => r.level === 'raw'),
     refined: ALL_RESOURCES.filter((r) => r.level === 'refined'),
     manufactured: ALL_RESOURCES.filter((r) => r.level === 'manufactured'),
