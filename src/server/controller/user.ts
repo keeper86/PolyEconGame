@@ -9,6 +9,7 @@ import {
     workerSetBuyBids,
     workerClaimResources,
     workerBuildFacility,
+    workerExpandFacility,
 } from '@/simulation/workerClient/commands';
 import { workerQueries } from '@/simulation/workerClient/queries';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
@@ -723,6 +724,7 @@ export const buildFacility = () => {
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
                 facilityKey: z.string().min(1),
+                targetScale: z.number().int().min(1).max(100).default(1),
             }),
         )
         .output(z.object({ facilityId: z.string() }))
@@ -746,9 +748,50 @@ export const buildFacility = () => {
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityKey: input.facilityKey,
+                targetScale: input.targetScale,
             });
 
             logger.info({ component: 'build-facility' }, `Agent ${input.agentId} built facility ${facilityId}`);
+
+            return { facilityId };
+        });
+};
+
+export const expandFacility = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+                targetScale: z.number().int().min(2).max(100),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'expand-facility' },
+                `User ${userId} expanding facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            const facilityId = await workerExpandFacility({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
+                targetScale: input.targetScale,
+            });
+
+            logger.info({ component: 'expand-facility' }, `Agent ${input.agentId} expanding facility ${facilityId}`);
 
             return { facilityId };
         });

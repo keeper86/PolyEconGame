@@ -2,7 +2,7 @@ import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
-export function ProductIcon({ productName, size = 24 }: { productName: string; size?: number }) {
+export function ProductIcon({ productName, size = 32 }: { productName: string; size?: number }) {
     const src = getAssetPath(productName);
 
     return (

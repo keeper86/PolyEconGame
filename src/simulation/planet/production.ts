@@ -73,6 +73,7 @@ export function constructionTick(agents: Map<string, Agent>, planet: Planet): vo
             const cs = facility.construction;
             const available = queryStorageFacility(assets.storageFacility, constructionServiceResourceType.name);
             const toConsume = Math.min(cs.maximumConstructionServiceConsumption, available);
+            cs.lastTickInvestedConstructionServices = toConsume;
 
             if (toConsume > 0) {
                 removeFromStorageFacility(assets.storageFacility, constructionServiceResourceType.name, toConsume);

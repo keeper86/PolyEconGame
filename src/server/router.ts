@@ -39,6 +39,7 @@ import {
     setBuyBids,
     claimResources,
     buildFacility,
+    expandFacility,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -79,6 +80,7 @@ const protectedAppRouter = trpcRoot.router({
     setBuyBids: setBuyBids(),
     claimResources: claimResources(),
     buildFacility: buildFacility(),
+    expandFacility: expandFacility(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

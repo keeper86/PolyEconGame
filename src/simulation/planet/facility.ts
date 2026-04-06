@@ -7,6 +7,7 @@ export type ConstructionState = {
     totalConstructionServiceRequired: number;
     maximumConstructionServiceConsumption: number;
     progress: number;
+    lastTickInvestedConstructionServices: number;
 } | null;
 
 export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management';
@@ -30,12 +31,12 @@ export const getFacilityType = (facility: Facility): FacilityType => {
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 30;
 export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scale: number) => number> = {
-    raw: (scale: number) => 100 * Math.pow(scale, 1.1),
-    refined: (scale: number) => 200 * Math.pow(scale, 1.1),
-    manufactured: (scale: number) => 400 * Math.pow(scale, 1.1),
-    services: (scale: number) => 300 * Math.pow(scale, 1.1),
-    storage: (scale: number) => 150 * Math.pow(scale, 1.1),
-    management: (scale: number) => 250 * Math.pow(scale, 1.1),
+    raw: (scale: number) => (100 * Math.pow(scale, 1.1)) / scale + 100,
+    refined: (scale: number) => (200 * Math.pow(scale, 1.1)) / scale + 100,
+    manufactured: (scale: number) => (400 * Math.pow(scale, 1.1)) / scale + 100,
+    services: (scale: number) => (300 * Math.pow(scale, 1.1)) / scale + 100,
+    storage: (scale: number) => (150 * Math.pow(scale, 1.1)) / scale + 100,
+    management: (scale: number) => (250 * Math.pow(scale, 1.1)) / scale + 100,
 };
 
 export const calculateCostsForConstruction = (

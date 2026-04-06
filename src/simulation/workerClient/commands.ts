@@ -11,6 +11,7 @@ import {
     setBuyBidsSpec,
     claimResourcesSpec,
     buildFacilitySpec,
+    expandFacilitySpec,
 } from './commandSpec';
 
 export function workerCreateAgent(opts: {
@@ -143,12 +144,28 @@ export function workerBuildFacility(opts: {
     agentId: string;
     planetId: string;
     facilityKey: string;
+    targetScale: number;
     timeoutMs?: number;
 }): Promise<string> {
-    const { agentId, planetId, facilityKey, timeoutMs } = opts;
+    const { agentId, planetId, facilityKey, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
-        { type: 'buildFacility', requestId: randomUUID(), agentId, planetId, facilityKey },
+        { type: 'buildFacility', requestId: randomUUID(), agentId, planetId, facilityKey, targetScale },
         buildFacilitySpec,
+        timeoutMs,
+    );
+}
+
+export function workerExpandFacility(opts: {
+    agentId: string;
+    planetId: string;
+    facilityId: string;
+    targetScale: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'expandFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
+        expandFacilitySpec,
         timeoutMs,
     );
 }

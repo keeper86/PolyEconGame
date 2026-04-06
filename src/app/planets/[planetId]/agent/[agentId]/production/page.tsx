@@ -1,7 +1,6 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import BuildFacilityDialog from './_component/BuildFacilityDialog';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import ProductionFacilitiesPanel from './_component/ProductionFacilitiesPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
@@ -19,10 +18,11 @@ export default function ProductionPage() {
             {hasNoAssets ? (
                 <NoAssetsMessage planetName={planetId} agentId={agentId} />
             ) : !isLoading && assets ? (
-                <div className='space-y-4'>
-                    <ProductionFacilitiesPanel facilities={assets.productionFacilities ?? []} />
-                    <BuildFacilityDialog agentId={agentId} planetId={planetId} />
-                </div>
+                <ProductionFacilitiesPanel
+                    facilities={assets.productionFacilities ?? []}
+                    agentId={agentId}
+                    planetId={planetId}
+                />
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>
             )}

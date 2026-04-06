@@ -96,7 +96,7 @@ export default function ResourceTrigger({
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0 overflow-hidden'>
             {/* Icon */}
-            <ProductIcon productName={name} size={32} />
+            <ProductIcon productName={name} />
 
             {/* Name + market link + order indicators */}
             <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>

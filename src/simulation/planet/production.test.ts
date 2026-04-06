@@ -462,6 +462,7 @@ describe('constructionTick', () => {
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 50,
             progress: 0,
+            lastTickInvestedConstructionServices: 0,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -492,6 +493,7 @@ describe('constructionTick', () => {
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 50,
             progress: 90,
+            lastTickInvestedConstructionServices: 0,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -518,6 +520,7 @@ describe('constructionTick', () => {
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 50,
             progress: 10,
+            lastTickInvestedConstructionServices: 0,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -543,6 +546,7 @@ describe('constructionTick', () => {
             totalConstructionServiceRequired: 60,
             maximumConstructionServiceConsumption: 30,
             progress: 0,
+            lastTickInvestedConstructionServices: 0,
         };
 
         agent.assets.p.managementFacilities = [mgmtFacility];
@@ -605,6 +609,7 @@ describe('productionTick — storage facility', () => {
                 totalConstructionServiceRequired: 100,
                 maximumConstructionServiceConsumption: 50,
                 progress: 0,
+            lastTickInvestedConstructionServices: 0,
             },
         });
 
@@ -710,6 +715,7 @@ describe('productionTick — management facility', () => {
                     totalConstructionServiceRequired: 100,
                     maximumConstructionServiceConsumption: 50,
                     progress: 0,
+            lastTickInvestedConstructionServices: 0,
                 },
             },
         );
