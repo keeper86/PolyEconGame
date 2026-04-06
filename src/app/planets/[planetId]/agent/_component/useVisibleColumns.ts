@@ -43,32 +43,3 @@ export function useVisibleColumns(containerRef: React.RefObject<HTMLElement | nu
 
     return visibleColumns;
 }
-
-/**
- * Simple hook for components that don't have a direct container ref
- * Uses window width as a fallback (less precise but works)
- */
-export function useVisibleColumnsFallback(): ColumnConfig[] {
-    const [visibleColumns, setVisibleColumns] = useState<ColumnConfig[]>([]);
-
-    useEffect(() => {
-        const updateVisibleColumns = () => {
-            // Estimate available width as window width minus some padding
-            const estimatedWidth = window.innerWidth - 100; // Account for some padding/margins
-            const visible = getVisibleColumnsFromConfig(estimatedWidth);
-            setVisibleColumns(visible);
-        };
-
-        // Initial update
-        updateVisibleColumns();
-
-        // Listen to window resize
-        window.addEventListener('resize', updateVisibleColumns);
-
-        return () => {
-            window.removeEventListener('resize', updateVisibleColumns);
-        };
-    }, []);
-
-    return visibleColumns;
-}

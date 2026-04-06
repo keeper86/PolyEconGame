@@ -446,11 +446,18 @@ export default function ResourceAccordionItem({
                 <div className='px-1 pb-2 space-y-4'>
                     {/* ── Dropped columns summary grid ── */}
                     {droppedColumns.length > 0 && (
-                        <div className='grid grid-cols-3 gap-x-4 gap-y-1 rounded-md bg-muted/30 px-2.5 py-2'>
+                        <div className='flex flex-wrap gap-1.5'>
                             {droppedColumns.map((col) => (
-                                <div key={col.id} className='flex flex-col gap-0.5'>
-                                    <span className='text-[10px] text-muted-foreground'>{col.label}</span>
-                                    <span className='text-xs font-medium'>{getDroppedColumnValue(col.id)}</span>
+                                <div
+                                    key={col.id}
+                                    className='flex flex-col gap-0.5 rounded-md bg-muted/40 border border-border/40 px-2 py-1 min-w-[70px] items-end'
+                                >
+                                    <span className='text-[9px] text-muted-foreground uppercase tracking-wide leading-none'>
+                                        {col.label}
+                                    </span>
+                                    <span className='text-xs font-medium leading-tight'>
+                                        {getDroppedColumnValue(col.id)}
+                                    </span>
                                 </div>
                             ))}
                         </div>
