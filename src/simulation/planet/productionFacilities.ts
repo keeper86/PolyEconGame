@@ -993,7 +993,6 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 
 export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
-    source: 'Source',
     raw: 'Raw Extraction',
     refined: 'Refinement',
     manufactured: 'Manufacturing',
@@ -1001,7 +1000,6 @@ export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
 };
 
 export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntry[]> = {
-    source: [],
     raw: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'raw'),
     refined: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'refined'),
     manufactured: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'manufactured'),

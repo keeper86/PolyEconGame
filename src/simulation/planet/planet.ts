@@ -429,7 +429,7 @@ export interface GameState {
     agents: Map<string, Agent>;
 }
 
-export type ResourceProcessLevel = 'source' | 'raw' | 'refined' | 'manufactured' | 'services';
+export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
 
 export type Resource = {
     name: string;

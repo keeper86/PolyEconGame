@@ -1,6 +1,6 @@
-import type { PlanetaryId } from './planet';
 import type { EducationLevelType } from '../population/education';
-import type { Resource } from './planet';
+import type { PlanetaryId, Resource } from './planet';
+import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {
     constructionTargetMaxScale: number;
@@ -8,6 +8,35 @@ export type ConstructionState = {
     maximumConstructionServiceConsumption: number;
     progress: number;
 } | null;
+
+export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management';
+export type FacilityCatalogEntry = {
+    constructionServiceRequiredPerScale: (scale: number) => number;
+    minimumConstructionTimeInTicks: number;
+};
+
+export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 30;
+export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scale: number) => number> = {
+    raw: (scale: number) => 100 * Math.pow(scale, 1.1),
+    refined: (scale: number) => 200 * Math.pow(scale, 1.1),
+    manufactured: (scale: number) => 400 * Math.pow(scale, 1.1),
+    services: (scale: number) => 300 * Math.pow(scale, 1.1),
+    storage: (scale: number) => 150 * Math.pow(scale, 1.1),
+    management: (scale: number) => 250 * Math.pow(scale, 1.1),
+};
+
+export const calculateCostsForConstruction = (
+    facilityType: FacilityType,
+    currentScale: number,
+    targetScale: number,
+): number => {
+    // Integerate the construction cost over the scale increase, using the constructionCatalog function for the facility type
+    let totalCost = 0;
+    for (let scale = currentScale; scale < targetScale; scale++) {
+        totalCost += constructionServiceCostPerScaleIncrease[facilityType](scale);
+    }
+    return totalCost;
+};
 
 export type Facilility = PlanetaryId & {
     type: 'production' | 'storage' | 'management';
