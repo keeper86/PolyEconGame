@@ -355,6 +355,7 @@ function MonthlyChart({
                 tooltipLabelFormatter={monthTooltipLabel}
                 scale='linear'
                 yDomain={yDomain}
+                yTicks={data.length === 0 ? [] : undefined}
             />
         </div>
     );
@@ -410,7 +411,7 @@ function YearlyChart({
                 tooltipLabelFormatter={yearTooltipLabel}
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
-                yTicks={yTicks}
+                yTicks={data.length === 0 ? [] : yTicks}
                 verticalGridValues={verticalGridValues}
             />
         </div>
@@ -462,7 +463,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
                 tooltipLabelFormatter={yearTooltipLabel}
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
-                yTicks={yTicks}
+                yTicks={data.length === 0 ? [] : yTicks}
             />
         </div>
     );
@@ -534,7 +535,10 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
         ),
     );
 
-    const isLoading = loadingMonthly || loadingYearly || loadingDecade;
+    const isLoading =
+        (granularity === 'monthly' && (loadingMonthly || !monthly)) ||
+        (granularity === 'yearly' && (loadingYearly || !yearly)) ||
+        (granularity === 'decades' && (loadingDecade || !decade));
 
     const monthlyPoints = useMemo(
         () =>
@@ -573,13 +577,10 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     const showYearly = yearsElapsed >= 2;
     const showDecades = yearsElapsed >= 10;
 
-    if (isLoading) {
-        return <div className='text-xs text-muted-foreground h-[240px]'>Loading price history…</div>;
-    }
-
     return (
-        <>
+        <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
             <div className='flex gap-1'>
+                Price:
                 <GranularityButton active={granularity === 'monthly'} onClick={() => setGranularity('monthly')}>
                     Monthly
                 </GranularityButton>
@@ -599,14 +600,18 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 </GranularityButton>
             </div>
             {granularity === 'monthly' && (
-                <MonthlyChart monthlyPoints={monthlyPoints} live={live} productName={productName} />
+                <MonthlyChart
+                    monthlyPoints={monthlyPoints}
+                    live={monthlyPoints.length === 0 ? undefined : live}
+                    productName={productName}
+                />
             )}
-            {granularity === 'yearly' && showYearly && (
+            {granularity === 'yearly' && (showYearly || isLoading) && (
                 <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />
             )}
-            {granularity === 'decades' && showDecades && (
+            {granularity === 'decades' && (showDecades || isLoading) && (
                 <DecadesChart decadePoints={decadePoints} productName={productName} />
             )}
-        </>
+        </div>
     );
 }

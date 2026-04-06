@@ -6,7 +6,7 @@ import { intergenerationalTransfersForPlanet } from './market/intergenerationalT
 import { marketTick } from './market/market';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
-import { accumulatePlanetPrices } from './planet/planet';
+import { accumulatePlanetPrices, accumulateAgentMetrics } from './planet/planet';
 import { productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
@@ -61,6 +61,8 @@ export function advanceTick(gameState: GameState) {
         accumulatePlanetPrices(planet, gameState.tick);
 
         productionTick(planetAgents, planet);
+
+        accumulateAgentMetrics(planetAgents, planet, gameState.tick);
 
         automaticLoanRepayment(planetAgents, planet);
 

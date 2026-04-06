@@ -223,64 +223,28 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     // Agent monthly history tracking
     // -----------------------------------------------------------------
 
-    // Track agent deposits at the start of each month to calculate monthly net income
-    const agentMonthlyDeposits = new Map<string, Map<string, number>>(); // agentId -> planetId -> deposits
-
-    /**
-     * Update agent monthly history at month boundaries (every 30 ticks).
-     */
     function updateAgentMonthlyHistory(gs: GameState, tick: number): void {
         const agentRows = [...gs.agents.values()].flatMap((agent) => {
+            if (agent.automated) {
+                return [];
+            }
             return Object.entries(agent.assets).map(([planetId, assets]) => {
-                const currentDeposits = assets.deposits;
-                const currentLoans = assets.loans;
-                const netBalance = currentDeposits - currentLoans;
+                const netBalance = assets.deposits - assets.loans;
+                const monthlyNetIncome = assets.deposits - assets.monthAcc.depositsAtMonthStart;
 
-                // Calculate monthly net income (change in deposits over the month)
-                let monthlyNetIncome = 0;
-
-                if (agentMonthlyDeposits.has(agent.id)) {
-                    const planetDeposits = agentMonthlyDeposits.get(agent.id)!;
-                    if (planetDeposits.has(planetId)) {
-                        const previousDeposits = planetDeposits.get(planetId)!;
-                        monthlyNetIncome = currentDeposits - previousDeposits;
-                    }
-                }
-
-                // Update stored deposits for next month
-                if (!agentMonthlyDeposits.has(agent.id)) {
-                    agentMonthlyDeposits.set(agent.id, new Map());
-                }
-                agentMonthlyDeposits.get(agent.id)!.set(planetId, currentDeposits);
-
-                // Calculate total workers
                 const totalWorkers = Object.values(assets.allocatedWorkers || {}).reduce(
                     (sum, count) => sum + (count || 0),
                     0,
                 );
 
-                // Calculate additional metrics
-                const facilityCount = assets.productionFacilities?.length || 0;
+                const facilityCount = assets.productionFacilities.length;
 
-                // Calculate storage value (sum of all stored resources)
+                const planet = gs.planets.get(planetId);
                 let storageValue = 0;
-                if (assets.storageFacility?.currentInStorage) {
-                    for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
-                        if (entry?.quantity) {
-                            storageValue += entry.quantity; // Simplified - could use market prices
-                        }
-                    }
-                }
-
-                // Calculate production value from last tick
-                let productionValue = 0;
-                if (assets.productionFacilities) {
-                    for (const facility of assets.productionFacilities) {
-                        if (facility.lastTickResults?.lastProduced) {
-                            for (const qty of Object.values(facility.lastTickResults.lastProduced)) {
-                                productionValue += qty; // Simplified - could use market prices
-                            }
-                        }
+                for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
+                    if (entry?.quantity) {
+                        const price = planet?.marketPrices[entry.resource.name] ?? 0;
+                        storageValue += entry.quantity * price;
                     }
                 }
 
@@ -291,14 +255,14 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     net_balance: netBalance,
                     monthly_net_income: monthlyNetIncome,
                     total_workers: totalWorkers,
-                    production_value: productionValue,
+                    wages: assets.monthAcc.wagesBill,
+                    production_value: assets.monthAcc.productionValue,
                     facility_count: facilityCount,
                     storage_value: storageValue,
                 };
             });
         });
 
-        // Store agent rows for later insertion with the snapshot
         pendingAgentMonthlyRows.push(...agentRows);
     }
 
@@ -359,6 +323,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         net_balance: number;
         monthly_net_income: number;
         total_workers: number;
+        wages: number;
         production_value: number;
         facility_count: number;
         storage_value: number;
@@ -453,8 +418,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             const start = Date.now();
             state.tick += 1;
 
-            // CRITICAL: Full drain at tick boundary before advanceTick
-            // Ensures all actions present at tick start are applied in this tick
             drainActionQueue();
 
             try {
@@ -463,16 +426,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 console.error('[worker] Error while advancing:', err);
             }
 
-            // Accumulate intra-month price stats via planet.monthPriceAcc (done inside engine's advanceTick).
-            // The accumulator is reset on tick 1 of each month (inside accumulatePlanetPrices),
-            // so it always reflects only the current month — no separate reset needed here.
-
-            // Capture an immutable snapshot of the game state.
-            // This is O(1) structural-sharing; query handlers can read it
-            // without risk of seeing a half-updated state.
             currentSnapshot = toImmutableGameState(state);
 
-            // At month boundaries: sample prices and update agent history.
             if (state.tick % 30 === 0) {
                 const tickAtFlush = state.tick;
                 // Chain the CAGG refresh after the insert so it never races against uncommitted data.
@@ -491,8 +446,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 updateAgentMonthlyHistory(state, state.tick);
             }
 
-            // At year boundaries: refresh yearly (and at decade boundaries, decade) CAGGs.
-            // Same logic: yearly bucket spans [T, T+TICKS_PER_YEAR), pass T+TICKS_PER_YEAR as end.
             if (state.tick % 360 === 0 && snapshotDb) {
                 void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR, 'yearly').catch((err) =>
                     console.error(`[worker] Failed to refresh yearly CAGGs at tick ${state.tick}:`, err),
@@ -504,12 +457,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 );
             }
 
-            // Periodically persist a cold snapshot for crash recovery.
             if (state.tick % SNAPSHOT_INTERVAL_TICKS === 1) {
                 spawnSnapshotTask(currentSnapshot, state.tick);
             }
-
-            // End tick processing - allow eager draining again
 
             const elapsedMs = Date.now() - start;
             if (state.tick % 17 === 0) {
@@ -591,7 +541,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     if (!agentRecord || !planetRecord) {
                         data = { conditions: null };
                     } else {
-                        data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data) };
+                        data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data, snap.tick) };
                     }
                     break;
                 }

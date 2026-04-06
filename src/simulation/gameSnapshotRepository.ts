@@ -164,9 +164,10 @@ export interface InsertAgentMonthlyHistory {
     net_balance: number;
     monthly_net_income: number;
     total_workers: number;
-    production_value?: number;
-    facility_count?: number;
-    storage_value?: number;
+    wages: number;
+    production_value: number;
+    facility_count: number;
+    storage_value: number;
 }
 
 /**
@@ -185,9 +186,10 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
             net_balance: r.net_balance,
             monthly_net_income: r.monthly_net_income,
             total_workers: r.total_workers,
-            production_value: r.production_value ?? 0,
-            facility_count: r.facility_count ?? 0,
-            storage_value: r.storage_value ?? 0,
+            wages: r.wages,
+            production_value: r.production_value,
+            facility_count: r.facility_count,
+            storage_value: r.storage_value,
         })),
     );
 }

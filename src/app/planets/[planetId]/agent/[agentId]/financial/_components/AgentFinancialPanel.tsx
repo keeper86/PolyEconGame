@@ -2,10 +2,10 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 
-import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
+import LoanPanel from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/LoanPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
-import AgentFinancialOverview from '../../_component/AgentFinancialOverview';
+import AgentFinancialOverview from '../../../_component/AgentFinancialOverview';
 
 export default function AgentFinancialPanel() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();

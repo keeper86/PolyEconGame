@@ -21,10 +21,7 @@ export function handleRequestLoan(
         });
         return;
     }
-    // Re-check credit conditions at application time to guard
-    // against race conditions (e.g. conditions changed between
-    // getLoanConditions query and the actual request).
-    const conditions = computeLoanConditions(agent, planet);
+    const conditions = computeLoanConditions(agent, planet, state.tick);
     if (amount <= 0 || amount > conditions.maxLoanAmount) {
         safePostMessage({
             type: 'loanDenied',

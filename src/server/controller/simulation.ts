@@ -31,10 +31,11 @@ import { protectedProcedure } from '../trpcRoot';
 const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
     annualInterestRate: z.number(),
-    existingDiscretionaryLoans: z.number(),
-    monthlyWageBill: z.number(),
-    monthlyRevenue: z.number(),
+    existingLoans: z.number(),
+    blendedMonthlyWages: z.number(),
+    blendedMonthlyRevenue: z.number(),
     monthlyNetCashFlow: z.number(),
+    storageCollateral: z.number(),
     isNewAgent: z.boolean(),
 });
 

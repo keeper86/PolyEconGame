@@ -46,6 +46,12 @@ export type LiveData = {
 export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productName: string): ChartPoint[] {
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
 
+    // No historical data and no real live tick yet — return empty so the chart
+    // renders as a blank skeleton (e.g. during initial load).
+    if (pts.length === 0 && live.tick === 0) {
+        return [];
+    }
+
     const latestYear = live
         ? tickToDate(live.tick).year
         : pts.length > 0

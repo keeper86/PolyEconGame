@@ -2,7 +2,7 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import AgentFinancialOverview from '@/app/planets/[planetId]/agent/_component/AgentFinancialOverview';
-import LoanPanel from '@/app/planets/[planetId]/agent/_component/LoanPanel';
+import LoanPanel from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/LoanPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { EuroIcon, Landmark } from 'lucide-react';
-import BankPanel from './BankPanel';
+import BankPanel from './_components/BankPanel';
 
 export default function FinancialPage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();

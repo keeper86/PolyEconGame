@@ -1,20 +1,26 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from '@/lib/trpc';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useParams } from 'next/navigation';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import type { ResourceAccordionItemProps } from './marketTypes';
-import { TTL_FEEDBACK } from './marketTypes';
+import { TTL_FEEDBACK, MARKET_STATUS_CONFIG } from './marketTypes';
 import { getResourceByName } from './marketHelpers';
+import { classifyMarket } from './marketHelpers';
+import { cn, formatNumbers } from '@/lib/utils';
+import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/_component/columnConfig';
 import ResourceTrigger from './ResourceTrigger';
 import BuySection from './BuySection';
 import SellSection from './SellSection';
 import MarketDetailsSection from './MarketDetailsSection';
+import ProductPriceHistoryChart from './ProductPriceHistoryChart';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -22,7 +28,7 @@ export default function ResourceAccordionItem({
     assets,
     local,
     onLocalChange,
-    _isOpen,
+    _isOpen: isOpen,
     overviewRow,
     visibleColumns,
 }: ResourceAccordionItemProps): React.ReactElement {
@@ -33,6 +39,48 @@ export default function ResourceAccordionItem({
     const queryClient = useQueryClient();
     // useParams returns route params; cast to access the dynamic segment
     const { planetId } = useParams() as { planetId: string };
+
+    // Fetch market data for the price history chart live prop (shared cache with MarketDetailsSection)
+    // Only fetch when the accordion item is open to avoid batching 43 requests on initial render
+    const { data: marketData } = useSimulationQuery({
+        ...trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName }),
+        enabled: isOpen,
+    });
+
+    // Compute dropped columns (columns not currently visible in the table row)
+    const droppedColumns = MARKET_COLUMNS.filter((col) => col.enabled && !visibleColumns.some((v) => v.id === col.id));
+
+    // Get display value for a dropped column
+    const getDroppedColumnValue = (columnId: string): React.ReactNode => {
+        const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
+        const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
+        switch (columnId) {
+            case 'currentStorage':
+                return formatNumbers(inventoryQty);
+            case 'clearingPrice':
+                return overviewRow ? formatNumbers(overviewRow.clearingPrice) : '—';
+            case 'totalProduction':
+                return overviewRow ? formatNumbers(overviewRow.totalProduction) : '—';
+            case 'totalConsumption':
+                return overviewRow ? formatNumbers(overviewRow.totalConsumption) : '—';
+            case 'totalSupply':
+                return overviewRow ? formatNumbers(overviewRow.totalSupply) : '—';
+            case 'totalDemand':
+                return overviewRow ? formatNumbers(overviewRow.totalDemand) : '—';
+            case 'totalSold':
+                return overviewRow ? formatNumbers(overviewRow.totalSold) : '—';
+            case 'marketFill':
+                return statusConfig ? (
+                    <Badge variant='outline' className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}>
+                        {statusConfig.label}
+                    </Badge>
+                ) : (
+                    '—'
+                );
+            default:
+                return '—';
+        }
+    };
 
     const [buySuccessMsg, setBuySuccessMsg] = useState<string | null>(null);
     const [buyErrorMsg, setBuyErrorMsg] = useState<string | null>(null);
@@ -397,40 +445,77 @@ export default function ResourceAccordionItem({
                 />
             </AccordionTrigger>
             <AccordionContent>
-                <div className='px-1 pb-2 space-y-5'>
-                    <BuySection
-                        resourceName={resourceName}
-                        bid={bid}
-                        local={local}
-                        assets={assets}
-                        overviewRow={overviewRow}
-                        onLocalChange={onLocalChange}
-                        onSaveBuy={handleSaveBuy}
-                        onResetBuy={handleResetBuy}
-                        onCancelBid={() => cancelBuyBidMutation.mutate({ agentId, planetId, resourceName })}
-                        onAutomationChange={handleBuyAutomationChange}
-                        buySaving={buySaving}
-                        buySuccessMsg={buySuccessMsg}
-                        buyErrorMsg={buyErrorMsg}
+                <div className='px-1 pb-2 space-y-4'>
+                    {/* ── Dropped columns summary grid ── */}
+                    {droppedColumns.length > 0 && (
+                        <div className='flex flex-wrap gap-1.5'>
+                            {droppedColumns.map((col) => (
+                                <div
+                                    key={col.id}
+                                    className='flex flex-col gap-0.5 rounded-md bg-muted/40 border border-border/40 px-2 py-1 min-w-[70px] items-end'
+                                >
+                                    <span className='text-[9px] text-muted-foreground uppercase tracking-wide leading-none'>
+                                        {col.label}
+                                    </span>
+                                    <span className='text-xs font-medium leading-tight'>
+                                        {getDroppedColumnValue(col.id)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── Price history chart ── */}
+                    <ProductPriceHistoryChart
+                        planetId={planetId}
+                        productName={resourceName}
+                        live={
+                            marketData?.market
+                                ? {
+                                      tick: marketData.tick,
+                                      price: marketData.market.clearingPrice,
+                                      avgPrice: marketData.market.currentMonthStats?.avgPrice,
+                                      minPrice: marketData.market.currentMonthStats?.minPrice,
+                                      maxPrice: marketData.market.currentMonthStats?.maxPrice,
+                                  }
+                                : undefined
+                        }
                     />
 
-                    <div className='border-t' />
+                    {/* ── Buy / Sell inner accordion ── */}
+                    <Accordion type='single' collapsible className='space-y-1'>
+                        <BuySection
+                            resourceName={resourceName}
+                            bid={bid}
+                            local={local}
+                            assets={assets}
+                            overviewRow={overviewRow}
+                            onLocalChange={onLocalChange}
+                            onSaveBuy={handleSaveBuy}
+                            onResetBuy={handleResetBuy}
+                            onCancelBid={() => cancelBuyBidMutation.mutate({ agentId, planetId, resourceName })}
+                            onAutomationChange={handleBuyAutomationChange}
+                            buySaving={buySaving}
+                            buySuccessMsg={buySuccessMsg}
+                            buyErrorMsg={buyErrorMsg}
+                        />
 
-                    <SellSection
-                        resourceName={resourceName}
-                        offer={offer}
-                        local={local}
-                        assets={assets}
-                        overviewRow={overviewRow}
-                        onLocalChange={onLocalChange}
-                        onSaveSell={handleSaveSell}
-                        onResetSell={handleResetSell}
-                        onCancelOffer={() => cancelSellOfferMutation.mutate({ agentId, planetId, resourceName })}
-                        onAutomationChange={handleSellAutomationChange}
-                        sellSaving={sellSaving}
-                        sellSuccessMsg={sellSuccessMsg}
-                        sellErrorMsg={sellErrorMsg}
-                    />
+                        <SellSection
+                            resourceName={resourceName}
+                            offer={offer}
+                            local={local}
+                            assets={assets}
+                            overviewRow={overviewRow}
+                            onLocalChange={onLocalChange}
+                            onSaveSell={handleSaveSell}
+                            onResetSell={handleResetSell}
+                            onCancelOffer={() => cancelSellOfferMutation.mutate({ agentId, planetId, resourceName })}
+                            onAutomationChange={handleSellAutomationChange}
+                            sellSaving={sellSaving}
+                            sellSuccessMsg={sellSuccessMsg}
+                            sellErrorMsg={sellErrorMsg}
+                        />
+                    </Accordion>
 
                     {/* ── Market details toggle ── */}
                     <div className='flex items-center justify-between gap-3 pt-2'>

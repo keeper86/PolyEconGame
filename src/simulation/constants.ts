@@ -180,6 +180,12 @@ export const LOAN_CASH_FLOW_MONTHS = 6;
  */
 export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;
 
+/**
+ * Fraction of storage face-value (quantity × market price) the bank accepts
+ * as collateral when computing the credit limit.
+ */
+export const LOAN_COLLATERAL_FACTOR = 1.0;
+
 // ---------------------------------------------------------------------------
 // Intergenerational transfer constants
 // ---------------------------------------------------------------------------
