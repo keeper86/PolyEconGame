@@ -28,7 +28,7 @@ export default function ResourceAccordionItem({
     assets,
     local,
     onLocalChange,
-    _isOpen,
+    _isOpen: isOpen,
     overviewRow,
     visibleColumns,
 }: ResourceAccordionItemProps): React.ReactElement {
@@ -41,9 +41,11 @@ export default function ResourceAccordionItem({
     const { planetId } = useParams() as { planetId: string };
 
     // Fetch market data for the price history chart live prop (shared cache with MarketDetailsSection)
-    const { data: marketData } = useSimulationQuery(
-        trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName }),
-    );
+    // Only fetch when the accordion item is open to avoid batching 43 requests on initial render
+    const { data: marketData } = useSimulationQuery({
+        ...trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName }),
+        enabled: isOpen,
+    });
 
     // Compute dropped columns (columns not currently visible in the table row)
     const droppedColumns = MARKET_COLUMNS.filter((col) => col.enabled && !visibleColumns.some((v) => v.id === col.id));
