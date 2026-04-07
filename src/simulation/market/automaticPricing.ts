@@ -136,8 +136,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             }
         } else {
             // Under construction → target construction service input buffer
-            const facilityTarget =
-                facility.construction.maximumConstructionServiceConsumption * INPUT_BUFFER_TARGET_TICKS;
+            const facilityTarget = facility.construction.maximumConstructionServiceConsumption * 3;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;

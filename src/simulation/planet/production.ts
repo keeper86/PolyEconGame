@@ -44,7 +44,7 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
     ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
         if (storage.currentInStorage[serviceName]) {
             const factorToDepreciate =
-                storage.currentInStorage[serviceName].quantity < 1 ? 1 : SERVICE_DEPRECIATION_RATE_PER_TICK;
+                storage.currentInStorage[serviceName].quantity < 0.01 ? 1 : SERVICE_DEPRECIATION_RATE_PER_TICK;
             removeFromStorageFacility(
                 storage,
                 serviceName,

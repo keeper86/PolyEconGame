@@ -13,9 +13,11 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             continue;
         }
 
+        const allFacilities = [...assets.productionFacilities, ...assets.managementFacilities, assets.storageFacility];
+
         // 1. Compute total raw requirement per education level
         const totalRequirement: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-        for (const facility of assets.productionFacilities) {
+        for (const facility of allFacilities) {
             for (const [edu, req] of Object.entries(facility.workerRequirement)) {
                 if (req && req > 0) {
                     totalRequirement[edu as EducationLevelType] += req * facility.scale;
@@ -27,7 +29,7 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         const totalUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 
-        for (const facility of assets.productionFacilities) {
+        for (const facility of allFacilities) {
             const tick = facility.lastTickResults;
             if (!tick) {
                 continue;
@@ -35,25 +37,6 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             for (const edu of educationLevelKeys) {
                 totalUsed[edu] += tick.totalUsedByEdu[edu] ?? 0;
                 exactUsed[edu] += tick.exactUsedByEdu[edu] ?? 0;
-            }
-        }
-
-        for (const facility of assets.managementFacilities) {
-            const tick = facility.lastTickResults;
-            if (!tick) {
-                continue;
-            }
-            for (const edu of educationLevelKeys) {
-                totalUsed[edu] += tick.totalUsedByEdu[edu] ?? 0;
-                exactUsed[edu] += tick.exactUsedByEdu[edu] ?? 0;
-            }
-        }
-
-        const storageTick = assets.storageFacility.lastTickResults;
-        if (storageTick) {
-            for (const edu of educationLevelKeys) {
-                totalUsed[edu] += storageTick.totalUsedByEdu[edu] ?? 0;
-                exactUsed[edu] += storageTick.exactUsedByEdu[edu] ?? 0;
             }
         }
 
