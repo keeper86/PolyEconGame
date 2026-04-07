@@ -1,7 +1,7 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 import { arableLandResourceType, waterSourceResourceType } from '../planet/landBoundResources';
-import { collapseUntenantedClaims } from '../utils/entities';
+import { collapseUntenantedClaims } from '../planet/claims';
 import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from '../utils/initialWorld';
 
 /**
@@ -70,7 +70,6 @@ export function handleClaimResources(
         quantity: arableLandQuantity,
         regenerationRate: arablePool.regenerationRate * arableRatio,
         maximumCapacity: arableLandQuantity,
-        claimAgentId: arablePool.claimAgentId,
         tenantAgentId: agentId,
         tenantCostInCoins: Math.floor(arableLandQuantity * 0.01),
     };
@@ -87,7 +86,6 @@ export function handleClaimResources(
         quantity: waterSourceQuantity,
         regenerationRate: waterPool.regenerationRate * waterRatio,
         maximumCapacity: waterSourceQuantity,
-        claimAgentId: waterPool.claimAgentId,
         tenantAgentId: agentId,
         tenantCostInCoins: Math.floor(waterSourceQuantity * 0.005),
     };

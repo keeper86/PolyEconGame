@@ -5,7 +5,6 @@ export function makeClaim(opts: {
     id: string;
     type: Resource;
     quantity: number;
-    claimAgentId: string;
     tenantAgentId: string | null;
     tenantCostInCoins?: number;
     renewable?: boolean;
@@ -16,7 +15,6 @@ export function makeClaim(opts: {
         quantity: opts.quantity,
         regenerationRate: opts.renewable === false ? 0 : opts.quantity,
         maximumCapacity: opts.quantity,
-        claimAgentId: opts.claimAgentId,
         tenantAgentId: opts.tenantAgentId,
         tenantCostInCoins: opts.tenantCostInCoins ?? 0,
     };
@@ -38,7 +36,6 @@ export function makeUnclaimedRemainder(opts: {
         id: `${opts.idPrefix}-unclaimed`,
         type: opts.type,
         quantity: remaining,
-        claimAgentId: opts.claimAgentId,
         tenantAgentId: null,
     });
 }

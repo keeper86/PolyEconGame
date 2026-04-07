@@ -20,6 +20,7 @@ function slot(jobEdu: EducationLevelType, capacity: number): WorkerSlot {
     const jobEduIdx = ['none', 'primary', 'secondary', 'tertiary'].indexOf(jobEdu);
     return {
         facilityIdx: 0,
+        facilityType: 'production',
         jobEdu,
         jobEduIdx,
         capacity,

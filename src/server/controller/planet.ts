@@ -737,7 +737,7 @@ export const getPlanetClaims = () =>
                         if (claim.regenerationRate > 0) {
                             isRenewable = true;
                         }
-                        const isTenanted = claim.tenantAgentId !== null && claim.tenantAgentId !== claim.claimAgentId;
+                        const isTenanted = claim.tenantAgentId !== null;
                         if (isTenanted) {
                             tenantedCapacity += claim.maximumCapacity;
                             tenantedClaims += 1;

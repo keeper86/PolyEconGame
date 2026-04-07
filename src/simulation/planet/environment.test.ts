@@ -45,7 +45,6 @@ describe('environmentTick', () => {
                         },
                         quantity: 50,
                         id: 'res1',
-                        claimAgentId: null,
                         tenantAgentId: null,
                         tenantCostInCoins: 0,
                         regenerationRate: 20,

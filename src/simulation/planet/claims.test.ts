@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { queryClaimedResource, extractFromClaimedResource } from './entities';
-import type { Planet, Agent, Resource } from '../planet/planet';
-import { arableLandResourceType, waterSourceResourceType } from '../planet/landBoundResources';
-import { makeAgent } from './testHelper';
+import { queryClaimedResource, extractFromClaimedResource } from './claims';
+import type { Planet, Agent, Resource } from './planet';
+import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
+import { makeAgent } from '../utils/testHelper';
 
 function makePlanetWithResources(): Planet {
     const tenantA = makeAgent('tenant-a');

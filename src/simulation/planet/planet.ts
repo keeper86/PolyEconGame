@@ -134,11 +134,10 @@ export type ResourceQuantity = {
 
 export type ResourceClaim = {
     id: string;
-    claimAgentId: string | null; // who currently claims this resource (Company or Government), null if unclaimed
-    tenantAgentId: string | null; // who is currently using this resource (Company or Government), null if not currently used. For example, a farm could be claimed by a government but currently operated by a company as tenant.
-    tenantCostInCoins: number; // how much the tenant pays per tick to the claim owner (e.g. rent for a farm), 0 if no tenant
-    regenerationRate: number; // quantity regenerated per year (for renewable resources), 0 for non-renewable
-    maximumCapacity: number; // maximum quantity that can be stored in this claim, e.g. for a farm or a mine with limited capacity. For non-renewable resources, this is the initial quantity.
+    tenantAgentId: string | null;
+    tenantCostInCoins: number;
+    regenerationRate: number;
+    maximumCapacity: number;
 };
 
 export type AgentMarketPosition = {
@@ -148,8 +147,7 @@ export type AgentMarketPosition = {
         buy: number; // maximum total expenditure this agent can spend on buying resources per tick (currency units)
         sell: number; // maximum total revenue this agent can earn from selling resources per tick (currency units)
     };
-    // quantity in tons or pieces depending on the resource type
-    // price per ton or piece depending on the resource type
+
     buy: {
         [resourceName in string]: { resource: Resource; quantity: number; price: number };
     };
@@ -223,24 +221,12 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
     prevMonth: {},
 });
 
-/**
- * Per-resource offer state for one resource on one planet, stored inside
- * `AgentMarketOffers.sell`.
- * Written by `updateAgentPricing` and `marketTick`.
- */
 export type AgentMarketOfferState = {
     /** The resource being offered. */
     resource: Resource;
-    /**
-     * Current offer price set by this agent (currency / unit).
-     * Human-controllable: players can override this value.
-     */
+
     offerPrice?: number;
-    /**
-     * Keep at least this many units in storage — sell quantity per tick is
-     * computed dynamically as `max(0, inventory − offerRetainment)`.
-     * Human-settable.
-     */
+
     offerRetainment?: number;
     /** Units actually sold during the last market clearing tick. */
     lastSold?: number;
@@ -256,11 +242,6 @@ export type AgentMarketOfferState = {
     automated?: boolean;
 };
 
-/**
- * Per-resource bid state for one resource on one planet, stored inside
- * `AgentMarketOffers.buy`.
- * Written by `automaticPricing` and settled by `marketTick`.
- */
 export type AgentMarketBidState = {
     /** The resource being sought. */
     resource: Resource;
@@ -279,24 +260,11 @@ export type AgentMarketBidState = {
     lastEffectiveQty?: number;
     /** Bid price that was actually submitted to the order book last tick. */
     lastBidPrice?: number;
-    /**
-     * Set to true when the bid was suppressed because storage had no room for
-     * the resource. Cleared each tick when there is capacity available.
-     */
+
     storageFullWarning?: boolean;
-    /**
-     * Set by collectAgentBids for human-controlled agents when deposit scaling occurred.
-     * 'scaled' = bid was placed at reduced quantity due to insufficient deposits (warning).
-     * 'dropped' = no deposits available, bid was not placed at all (error).
-     * Cleared at the start of each tick by resetAgentBuyCounters.
-     */
+
     depositScaleWarning?: 'scaled' | 'dropped';
-    /**
-     * Set by collectAgentBids for human-controlled agents when storage capacity scaling occurred.
-     * 'scaled' = bid was placed at reduced quantity due to insufficient storage capacity (warning).
-     * 'dropped' = no storage capacity available, bid was not placed at all (error).
-     * Cleared at the start of each tick by resetAgentBuyCounters.
-     */
+
     storageScaleWarning?: 'scaled' | 'dropped';
     /** When true, the automatic pricing engine manages this bid each tick. */
     automated?: boolean;
@@ -315,12 +283,6 @@ export type AgentMarketOffers = {
     };
 };
 
-/**
- * Aggregate result snapshot of a single market clearing tick for one resource.
- *
- * Stored on the planet so that the UI can build charts without
- * re-running the market simulation.
- */
 export type MarketResult = {
     /** The resource this result refers to. */
     resourceName: string;
@@ -364,34 +326,18 @@ export type AgentPlanetAssets = {
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 
-    // ----- Financial state -----
-
-    /** Firm deposit balance for this agent on this planet (currency units). */
     deposits: number;
-    /**
-     * Funds locked against active market bids this tick (currency units).
-     * Deducted from `deposits` at bid collection time; returned if unfilled,
-     * consumed if filled.  Always zero outside of a market tick.
-     */
+
     depositHold: number;
-    /** Outstanding loan principal for this agent on this planet (currency units). */
+
     loans: number;
-    /**
-     * Last tick's wage bill (currency units).
-     * Used by the retained-earnings threshold for partial loan repayment.
-     */
+
     lastWageBill?: number;
 
-    /** ----- Market offers (sell-side) for this agent on this planet. */
     market?: AgentMarketOffers;
-
-    // ----- Workforce -----
 
     allocatedWorkers: PerEducation;
 
-    // ----- Demographic event tracking -----
-
-    /** Deaths affecting this agent's workforce, per education level. */
     deaths: DemographicEventCounters;
     /** Disabilities affecting this agent's workforce, per education level. */
     disabilities: DemographicEventCounters;
