@@ -26,7 +26,7 @@ import {
     coalMine,
     coalPowerPlant,
     concretePlant,
-    constructionService,
+    constructionFacility,
     consumerElectronicsFactory,
     copperMine,
     copperSmelter,
@@ -54,11 +54,10 @@ import {
     retailChain,
     sandMine,
     sawmill,
-    school,
     siliconWaferFactory,
     stoneQuarry,
     textileMill,
-    university,
+    educationCenter,
     vehicleFactory,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
@@ -73,7 +72,7 @@ import {
     naturalGasFieldResourceType,
     oilReservoirResourceType,
     sandDepositResourceType,
-    stoneQuarryResourceType,
+    stoneDepositResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
@@ -760,7 +759,7 @@ function getFacilityFactory(type: string): FacilityFactory {
         packagingPlant,
         administrativeCenter,
         logisticsHub,
-        constructionService,
+        constructionService: constructionFacility,
         groceryChain,
         retailChain,
         hospital,
@@ -785,7 +784,7 @@ interface ClaimPool {
         | typeof oilReservoirResourceType
         | typeof naturalGasFieldResourceType
         | typeof forestResourceType
-        | typeof stoneQuarryResourceType
+        | typeof stoneDepositResourceType
         | typeof copperDepositResourceType
         | typeof sandDepositResourceType
         | typeof limestoneDepositResourceType
@@ -803,7 +802,7 @@ function resourceType(facilityType: string): ClaimPool['type'] | null {
         oilWell: oilReservoirResourceType,
         naturalGasWell: naturalGasFieldResourceType,
         loggingCamp: forestResourceType,
-        stoneQuarry: stoneQuarryResourceType,
+        stoneQuarry: stoneDepositResourceType,
         copperMine: copperDepositResourceType,
         sandMine: sandDepositResourceType,
         limestoneQuarry: limestoneDepositResourceType,
@@ -1162,7 +1161,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         const f1 = concretePlant(PROC_PLANET_ID, 'buildmaster-concrete');
         f1.scale = concScale;
         f1.maxScale = concScale;
-        const f2 = constructionService(PROC_PLANET_ID, 'buildmaster-construction');
+        const f2 = constructionFacility(PROC_PLANET_ID, 'buildmaster-construction');
         f2.scale = cstScale;
         f2.maxScale = cstScale;
         agents.push(
@@ -1214,19 +1213,16 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         { id: 'campus-systems-inc', name: 'Campus Systems Inc' },
     ];
     for (const spec of educationSpecs) {
-        const s = school(PROC_PLANET_ID, `${spec.id}-school`);
-        s.scale = 500;
-        s.maxScale = 500;
-        const u = university(PROC_PLANET_ID, `${spec.id}-university`);
-        u.scale = 250;
-        u.maxScale = 250;
+        const u = educationCenter(PROC_PLANET_ID, `${spec.id}-university`);
+        u.scale = 500;
+        u.maxScale = 500;
         agents.push(
             makeAgent({
                 id: spec.id,
                 name: spec.name,
                 associatedPlanetId: PROC_PLANET_ID,
                 planetId: PROC_PLANET_ID,
-                facilities: [s, u],
+                facilities: [u],
                 storage: makeStorage({
                     planetId: PROC_PLANET_ID,
                     id: `${spec.id}-storage`,
@@ -1268,7 +1264,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         {
             facilityType: 'stoneQuarry',
             total: TOTAL_STONE,
-            type: stoneQuarryResourceType,
+            type: stoneDepositResourceType,
             prefix: `${PROC_PLANET_ID}-stone`,
         },
         {
@@ -1390,7 +1386,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [sandDepositResourceType.name]: getPool('sandMine'),
             [limestoneDepositResourceType.name]: getPool('limestoneQuarry'),
             [clayDepositResourceType.name]: getPool('clayMine'),
-            [stoneQuarryResourceType.name]: getPool('stoneQuarry'),
+            [stoneDepositResourceType.name]: getPool('stoneQuarry'),
         },
         infrastructure: {
             primarySchools: 10_000,

@@ -280,14 +280,6 @@ export const vehicleResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const constructionResourceType: Resource = {
-    name: 'Construction Material',
-    form: 'solid',
-    level: 'manufactured',
-    volumePerQuantity: 0.8,
-    massPerQuantity: 1,
-};
-
 export const packagingResourceType: Resource = {
     name: 'Packaging Material',
     form: 'solid',

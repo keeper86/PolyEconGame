@@ -31,7 +31,6 @@ import {
     packagingPlant,
     retailChain,
     sawmill,
-    school,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
 import type { Agent, Planet } from '../planet/planet';
@@ -331,18 +330,6 @@ function buildGuneIndustrialAgents(): Agent[] {
         storage: makeStorage({ planetId: 'gune', id: 'gune-healthcare-storage', name: 'Gune Healthcare Storage' }),
     });
 
-    const sch1 = school('gune', 'gune-school');
-    sch1.scale = 15;
-    sch1.maxScale = 15;
-    const educationAgent = makeAgent({
-        id: 'gune-education-corp',
-        name: 'Gune Education Corp',
-        associatedPlanetId: 'gune',
-        planetId: 'gune',
-        facilities: [sch1],
-        storage: makeStorage({ planetId: 'gune', id: 'gune-education-storage', name: 'Gune Education Storage' }),
-    });
-
     return [
         timberAgent,
         foodAgent,
@@ -352,7 +339,6 @@ function buildGuneIndustrialAgents(): Agent[] {
         groceryAgent,
         retailAgent,
         hospitalAgent,
-        educationAgent,
     ];
 }
 
@@ -485,32 +471,7 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
         }),
     });
 
-    const sch1 = school('icedonia', 'icedonia-school');
-    sch1.scale = 6;
-    sch1.maxScale = 6;
-    const educationAgent = makeAgent({
-        id: 'icedonia-education-corp',
-        name: 'Icedonia Education Corp',
-        associatedPlanetId: 'icedonia',
-        planetId: 'icedonia',
-        facilities: [sch1],
-        storage: makeStorage({
-            planetId: 'icedonia',
-            id: 'icedonia-education-storage',
-            name: 'Icedonia Education Storage',
-        }),
-    });
-
-    return [
-        energyAgent,
-        consumerAgent,
-        adminAgent,
-        logisticsAgent,
-        groceryAgent,
-        retailAgent,
-        hospitalAgent,
-        educationAgent,
-    ];
+    return [energyAgent, consumerAgent, adminAgent, logisticsAgent, groceryAgent, retailAgent, hospitalAgent];
 }
 
 // ============================================================================
@@ -647,22 +608,6 @@ function buildPandaraIndustrialAgents(): Agent[] {
         }),
     });
 
-    const sch1 = school('pandara', 'pandara-school');
-    sch1.scale = 100;
-    sch1.maxScale = 100;
-    const educationAgent = makeAgent({
-        id: 'pandara-education-corp',
-        name: 'Pandara Education Corp',
-        associatedPlanetId: 'pandara',
-        planetId: 'pandara',
-        facilities: [sch1],
-        storage: makeStorage({
-            planetId: 'pandara',
-            id: 'pandara-education-storage',
-            name: 'Pandara Education Storage',
-        }),
-    });
-
     return [
         steelAgent,
         foodAgent,
@@ -672,7 +617,6 @@ function buildPandaraIndustrialAgents(): Agent[] {
         groceryAgent,
         retailAgent,
         hospitalAgent,
-        educationAgent,
     ];
 }
 
@@ -835,22 +779,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
         }),
     });
 
-    const sch1 = school('paradies', 'paradies-school');
-    sch1.scale = 25;
-    sch1.maxScale = 25;
-    const educationAgent = makeAgent({
-        id: 'paradies-education-corp',
-        name: 'Paradies Education Corp',
-        associatedPlanetId: 'paradies',
-        planetId: 'paradies',
-        facilities: [sch1],
-        storage: makeStorage({
-            planetId: 'paradies',
-            id: 'paradies-education-storage',
-            name: 'Paradies Education Storage',
-        }),
-    });
-
     return [
         refineryAgent,
         glassAgent,
@@ -860,7 +788,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
         groceryAgent,
         retailAgent,
         hospitalAgent,
-        educationAgent,
     ];
 }
 
@@ -993,18 +920,6 @@ function buildSuerteIndustrialAgents(): Agent[] {
         }),
     });
 
-    const sch1 = school('suerte', 'suerte-school');
-    sch1.scale = 50;
-    sch1.maxScale = 50;
-    const educationAgent = makeAgent({
-        id: 'suerte-education-corp',
-        name: 'Suerte Education Corp',
-        associatedPlanetId: 'suerte',
-        planetId: 'suerte',
-        facilities: [sch1],
-        storage: makeStorage({ planetId: 'suerte', id: 'suerte-education-storage', name: 'Suerte Education Storage' }),
-    });
-
     return [
         copperAgent,
         cementAgent,
@@ -1014,7 +929,6 @@ function buildSuerteIndustrialAgents(): Agent[] {
         groceryAgent,
         retailAgent,
         hospitalAgent,
-        educationAgent,
     ];
 }
 

@@ -9,7 +9,7 @@ import {
     naturalGasFieldResourceType,
     oilReservoirResourceType,
     sandDepositResourceType,
-    stoneQuarryResourceType,
+    stoneDepositResourceType,
     waterSourceResourceType,
 } from './landBoundResources';
 import type { ResourceProcessLevel } from './planet';
@@ -173,7 +173,7 @@ export const stoneQuarry = (planetId: string, id: string): ProductionFacility =>
         secondary: 3,
         tertiary: 0,
     },
-    needs: [{ resource: stoneQuarryResourceType, quantity: 0.4 }],
+    needs: [{ resource: stoneDepositResourceType, quantity: 0.4 }],
     produces: [{ resource: stoneResourceType, quantity: 400 }],
 });
 
@@ -728,6 +728,22 @@ export const ironExtractionFacility = (planetId: string, id: string): Production
     produces: [{ resource: ironOreResourceType, quantity: 400 }],
 });
 
+export const coalPowerPlant = (planetId: string, id: string): ProductionFacility => ({
+    ...makeFacilityDefaults(),
+    planetId,
+    id,
+    name: 'Coal Power Plant' as const,
+    powerConsumptionPerTick: -200, // produces power for ~ 200 facilities
+    workerRequirement: {
+        none: 0,
+        primary: 10,
+        secondary: 20,
+        tertiary: 5,
+    },
+    needs: [{ resource: coalResourceType, quantity: 40 }],
+    produces: [],
+});
+
 export const packagingPlant = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
@@ -745,22 +761,6 @@ export const packagingPlant = (planetId: string, id: string): ProductionFacility
         { resource: plasticResourceType, quantity: 60 },
     ],
     produces: [{ resource: packagingResourceType, quantity: 40 }],
-});
-
-export const coalPowerPlant = (planetId: string, id: string): ProductionFacility => ({
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Coal Power Plant' as const,
-    powerConsumptionPerTick: -200, // produces power for ~ 200 facilities
-    workerRequirement: {
-        none: 0,
-        primary: 10,
-        secondary: 20,
-        tertiary: 5,
-    },
-    needs: [{ resource: coalResourceType, quantity: 40 }],
-    produces: [],
 });
 
 export const administrativeCenter = (planetId: string, id: string): ProductionFacility => ({
@@ -799,11 +799,11 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     produces: [{ resource: logisticsServiceResourceType, quantity: 100 }],
 });
 
-export const constructionService = (planetId: string, id: string): ProductionFacility => ({
+export const constructionFacility = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Construction Service' as const,
+    name: 'Construction Facility' as const,
     powerConsumptionPerTick: 0.3,
     workerRequirement: {
         none: 40,
@@ -887,31 +887,11 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
     produces: [{ resource: healthcareServiceResourceType, quantity: 300 }],
 });
 
-export const school = (planetId: string, id: string): ProductionFacility => ({
+export const educationCenter = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'School' as const,
-    powerConsumptionPerTick: 0.4,
-    workerRequirement: {
-        none: 10,
-        primary: 20,
-        secondary: 30,
-        tertiary: 50,
-    },
-    needs: [
-        { resource: paperResourceType, quantity: 20 },
-        { resource: furnitureResourceType, quantity: 2 },
-        { resource: administrativeServiceResourceType, quantity: 2 },
-    ],
-    produces: [{ resource: educationServiceResourceType, quantity: 50 }],
-});
-
-export const university = (planetId: string, id: string): ProductionFacility => ({
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'University' as const,
+    name: 'Education Center' as const,
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
         none: 20,
@@ -984,12 +964,11 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(packagingPlant),
     entry(administrativeCenter),
     entry(logisticsHub),
-    entry(constructionService),
+    entry(constructionFacility),
     entry(groceryChain),
     entry(retailChain),
     entry(hospital),
-    entry(school),
-    entry(university),
+    entry(educationCenter),
     entry(siliconWaferFactory),
 ];
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;

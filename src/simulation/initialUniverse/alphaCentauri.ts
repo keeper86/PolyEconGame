@@ -20,7 +20,6 @@ import {
     packagingPlant,
     pharmaceuticalPlant,
     retailChain,
-    school,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
 import type { Agent, Planet } from '../planet/planet';
@@ -343,21 +342,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [hosp1],
             storage: makeStorage({ planetId: AC_ID, id: 'ac-healthcare-storage', name: 'AC Healthcare Storage' }),
-        }),
-    );
-
-    // School (education service)
-    const sch1 = school(AC_ID, 'ac-school');
-    sch1.scale = 20;
-    sch1.maxScale = 20;
-    agents.push(
-        makeAgent({
-            id: 'ac-education-corp',
-            name: 'AC Education Corp',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [sch1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-education-storage', name: 'AC Education Storage' }),
         }),
     );
 

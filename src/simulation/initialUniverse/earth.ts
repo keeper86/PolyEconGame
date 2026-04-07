@@ -7,7 +7,7 @@ import {
     clothingFactory,
     coalMine,
     concretePlant,
-    constructionService,
+    constructionFacility,
     consumerElectronicsFactory,
     copperMine,
     copperSmelter,
@@ -34,11 +34,10 @@ import {
     retailChain,
     sandMine,
     sawmill,
-    school,
     siliconWaferFactory,
     stoneQuarry,
     textileMill,
-    university,
+    educationCenter,
     vehicleFactory,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
@@ -53,7 +52,7 @@ import {
     naturalGasFieldResourceType,
     oilReservoirResourceType,
     sandDepositResourceType,
-    stoneQuarryResourceType,
+    stoneDepositResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
@@ -910,7 +909,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     stoneClaims.push(
         makeClaim({
             id: graniteStoneId,
-            type: stoneQuarryResourceType,
+            type: stoneDepositResourceType,
             quantity: 800_000_000,
             claimAgentId: GOV,
             tenantAgentId: 'granite-quarrying-corp',
@@ -937,7 +936,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     stoneClaims.push(
         makeClaim({
             id: basaltStoneId,
-            type: stoneQuarryResourceType,
+            type: stoneDepositResourceType,
             quantity: 600_000_000,
             claimAgentId: GOV,
             tenantAgentId: 'basalt-rock-corp',
@@ -1625,7 +1624,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
 
     // --- Construction services (buy concrete + steel + machinery from market; need admin + logistics services) ---
     for (const spec of constructionSvcSpecs) {
-        const f1 = constructionService(EARTH_ID, `${spec.id}-construction`);
+        const f1 = constructionFacility(EARTH_ID, `${spec.id}-construction`);
         f1.scale = 500;
         f1.maxScale = 500;
         agents.push(
@@ -1643,19 +1642,16 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
     // --- Education providers (buy paper + furniture from market; need admin service) ---
     const [eduNetwork, knowledgeGlobal, campusSystems] = educationSpecs;
 
-    const en1 = school(EARTH_ID, `${eduNetwork.id}-school`);
-    en1.scale = 500;
-    en1.maxScale = 500;
-    const en2 = university(EARTH_ID, `${eduNetwork.id}-university`);
-    en2.scale = 300;
-    en2.maxScale = 300;
+    const en2 = educationCenter(EARTH_ID, `${eduNetwork.id}-university`);
+    en2.scale = 500;
+    en2.maxScale = 500;
     agents.push(
         makeAgent({
             id: eduNetwork.id,
             name: eduNetwork.name,
             associatedPlanetId: EARTH_ID,
             planetId: EARTH_ID,
-            facilities: [en1, en2],
+            facilities: [en2],
             storage: makeStorage({
                 planetId: EARTH_ID,
                 id: `${eduNetwork.id}-storage`,
@@ -1664,19 +1660,16 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    const kg1 = school(EARTH_ID, `${knowledgeGlobal.id}-school`);
-    kg1.scale = 400;
-    kg1.maxScale = 400;
-    const kg2 = university(EARTH_ID, `${knowledgeGlobal.id}-university`);
-    kg2.scale = 200;
-    kg2.maxScale = 200;
+    const kg2 = educationCenter(EARTH_ID, `${knowledgeGlobal.id}-university`);
+    kg2.scale = 400;
+    kg2.maxScale = 400;
     agents.push(
         makeAgent({
             id: knowledgeGlobal.id,
             name: knowledgeGlobal.name,
             associatedPlanetId: EARTH_ID,
             planetId: EARTH_ID,
-            facilities: [kg1, kg2],
+            facilities: [kg2],
             storage: makeStorage({
                 planetId: EARTH_ID,
                 id: `${knowledgeGlobal.id}-storage`,
@@ -1685,19 +1678,16 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    const edu3s = school(EARTH_ID, `${campusSystems.id}-school`);
-    edu3s.scale = 300;
-    edu3s.maxScale = 300;
-    const edu3u = university(EARTH_ID, `${campusSystems.id}-university`);
-    edu3u.scale = 150;
-    edu3u.maxScale = 150;
+    const edu3u = educationCenter(EARTH_ID, `${campusSystems.id}-university`);
+    edu3u.scale = 300;
+    edu3u.maxScale = 300;
     agents.push(
         makeAgent({
             id: campusSystems.id,
             name: campusSystems.name,
             associatedPlanetId: EARTH_ID,
             planetId: EARTH_ID,
-            facilities: [edu3s, edu3u],
+            facilities: [edu3u],
             storage: makeStorage({
                 planetId: EARTH_ID,
                 id: `${campusSystems.id}-storage`,
@@ -1724,7 +1714,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             prefix: 'earth-limestone',
         },
         { claims: clayClaims, total: TOTAL_CLAY, type: clayDepositResourceType, prefix: 'earth-clay' },
-        { claims: stoneClaims, total: TOTAL_STONE, type: stoneQuarryResourceType, prefix: 'earth-stone' },
+        { claims: stoneClaims, total: TOTAL_STONE, type: stoneDepositResourceType, prefix: 'earth-stone' },
     ];
 
     for (const { claims, total, type, prefix } of remainders) {
@@ -1786,7 +1776,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             [sandDepositResourceType.name]: sandClaims,
             [limestoneDepositResourceType.name]: limestoneClaims,
             [clayDepositResourceType.name]: clayClaims,
-            [stoneQuarryResourceType.name]: stoneClaims,
+            [stoneDepositResourceType.name]: stoneClaims,
         },
         infrastructure: {
             primarySchools: 10000,

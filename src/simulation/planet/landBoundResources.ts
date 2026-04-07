@@ -27,9 +27,9 @@ export const forestResourceType: Resource = {
     name: 'Forest',
 };
 
-export const stoneQuarryResourceType: Resource = {
+export const stoneDepositResourceType: Resource = {
     ...landBoundResourceDefault,
-    name: 'Stone Quarry',
+    name: 'Stone Deposit',
 };
 
 export const copperDepositResourceType: Resource = {
