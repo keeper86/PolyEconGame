@@ -3,7 +3,7 @@ import { getAssetPath } from '@/lib/assetManifest';
 
 export function FacilityIcon({
     facilityName,
-    size = 164,
+    size = 280,
     variant,
 }: {
     facilityName: string;

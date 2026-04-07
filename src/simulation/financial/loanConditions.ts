@@ -73,6 +73,9 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
     } else {
         const projectedCapacity = LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow + storageCollateral;
         maxLoanAmount = Math.max(0, projectedCapacity - existingLoans);
+        if (maxLoanAmount < existingLoans / 10) {
+            maxLoanAmount = 0;
+        }
     }
 
     return {

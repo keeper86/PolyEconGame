@@ -8,12 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { FacilityIcon } from '@/components/client/FacilityIcon';
-import { ProductIcon } from '@/components/client/ProductIcon';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { EfficiencyDetails, efficiencyColor, pctStr } from './EfficiencyDetails';
 import { ScaleSelector } from './ScaleSelector';
+import { FacilityIORow } from './FacilityIORow';
 import { Zap, Users } from 'lucide-react';
 
 export function ActiveFacilityCard({
@@ -95,40 +95,12 @@ export function ActiveFacilityCard({
                 </div>
             </CardHeader>
             <CardContent className='px-3 pb-3 flex flex-col flex-1 gap-2'>
-                <div className='space-y-2 flex-1'>
-                    {facility.needs.length > 0 && (
-                        <div>
-                            <p className='text-xs text-muted-foreground font-medium mb-1'>Needs</p>
-                            <div className='flex flex-wrap gap-1.5'>
-                                {facility.needs.map(({ resource, quantity }) => (
-                                    <span
-                                        key={resource.name}
-                                        className='inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs'
-                                    >
-                                        <ProductIcon productName={resource.name} />
-                                        {formatNumbers(quantity * facility.scale)}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {facility.produces.length > 0 && (
-                        <div>
-                            <p className='text-xs text-muted-foreground font-medium mb-1'>Produces</p>
-                            <div className='flex flex-wrap gap-1.5'>
-                                {facility.produces.map(({ resource, quantity }) => (
-                                    <span
-                                        key={resource.name}
-                                        className='inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary'
-                                    >
-                                        <ProductIcon productName={resource.name} />
-                                        {formatNumbers(quantity * facility.scale)}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
+                <div className='flex-1 space-y-2'>
+                    <FacilityIORow
+                        needs={facility.needs}
+                        produces={facility.produces}
+                        scale={!showExpand ? facility.scale : targetScale}
+                    />
                     {facility.lastTickResults && <EfficiencyDetails results={facility.lastTickResults} />}
                 </div>
 
