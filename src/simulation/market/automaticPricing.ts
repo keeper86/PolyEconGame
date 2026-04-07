@@ -4,6 +4,7 @@ import {
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
+    OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_DOWN_SOFT,
     PRICE_ADJUST_MAX_UP,
@@ -124,8 +125,15 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 if (resource.form === 'landBoundResource') {
                     continue;
                 }
+                let outputBufferFull = false;
+                if (facility.type === 'production') {
+                    outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
+                        const outInventory = queryStorageFacility(assets.storageFacility, out.name);
+                        return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
+                    });
+                }
                 const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
-                const facilityTarget = quantity * facility.scale * bufferTarget;
+                const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * bufferTarget;
 
                 const existing = aggregatedBuyTargets.get(resource.name);
                 if (existing) {
