@@ -8,8 +8,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export const efficiencyColor = (frac: number): string => {
-    if (frac >= 0.9) return 'text-green-600';
-    if (frac >= 0.5) return 'text-amber-500';
+    if (frac >= 0.9) {
+        return 'text-green-600';
+    }
+    if (frac >= 0.5) {
+        return 'text-amber-500';
+    }
     return 'text-red-500';
 };
 
@@ -66,11 +70,15 @@ export function EfficiencyDetails({ results }: { results: LastProductionTickResu
                     <div>
                         <span className='text-muted-foreground'>Overqualified: </span>
                         {overqualifiedEntries.map(([jobEdu, breakdown]) => {
-                            if (!breakdown) return null;
+                            if (!breakdown) {
+                                return null;
+                            }
                             const parts = (
                                 Object.entries(breakdown) as [EducationLevelType, number | undefined][]
                             ).filter(([, v]) => v && v > 0);
-                            if (!parts.length) return null;
+                            if (!parts.length) {
+                                return null;
+                            }
                             return (
                                 <span key={jobEdu} className='ml-2'>
                                     <span className='text-muted-foreground'>{eduLabel(jobEdu)}: </span>

@@ -47,7 +47,6 @@ export default function SellSection({
               ? ([{ label: '0', qty: 0 }] as const)
               : null;
 
-    // Sell section is only active when there's something to sell
     const canSell =
         inventoryQty > 0 || isFacilityOutput || offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 

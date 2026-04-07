@@ -609,7 +609,7 @@ describe('productionTick — storage facility', () => {
                 totalConstructionServiceRequired: 100,
                 maximumConstructionServiceConsumption: 50,
                 progress: 0,
-            lastTickInvestedConstructionServices: 0,
+                lastTickInvestedConstructionServices: 0,
             },
         });
 
@@ -715,7 +715,7 @@ describe('productionTick — management facility', () => {
                     totalConstructionServiceRequired: 100,
                     maximumConstructionServiceConsumption: 50,
                     progress: 0,
-            lastTickInvestedConstructionServices: 0,
+                    lastTickInvestedConstructionServices: 0,
                 },
             },
         );

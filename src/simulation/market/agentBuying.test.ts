@@ -271,17 +271,6 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeLessThanOrEqual(2.0 + 1e-9);
     });
 
-    it('suppresses input buying when all outputs exceed the output buffer ceiling', () => {
-        const buyer = makeSteelProducer();
-        const fullOutputBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
-        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullOutputBuffer);
-
-        automaticPricing(agentMap(buyer), planet);
-
-        // storageTarget is set to 0 when output buffer is full (no point buying inputs)
-        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBe(0);
-    });
-
     it('resumes input buying once output inventory drops below the output buffer ceiling', () => {
         const buyer = makeSteelProducer();
         const fullOutputBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;

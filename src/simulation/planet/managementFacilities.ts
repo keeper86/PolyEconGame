@@ -1,13 +1,12 @@
-import type { ManagementFacility } from './facility';
+import type { LastManagementTickResults, ManagementFacility } from './facility';
 
-const zeroLastTicksResults = {
+const zeroLastTicksResults: LastManagementTickResults = {
     overallEfficiency: 0,
     workerEfficiency: {},
     resourceEfficiency: {},
     overqualifiedWorkers: {},
     exactUsedByEdu: {},
     totalUsedByEdu: {},
-    lastProduced: {},
     lastConsumed: {},
 };
 
