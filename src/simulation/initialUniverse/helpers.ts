@@ -81,8 +81,8 @@ export function makeStorage(opts: {
         workerRequirement: { none: 10, primary: 10, secondary: 5, tertiary: 0 },
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
         capacity: {
-            volume: opts.volumeCapacity ?? 1e11,
-            mass: opts.massCapacity ?? 1e13,
+            volume: opts.volumeCapacity ?? 1e13,
+            mass: opts.massCapacity ?? 1e15,
         },
         current: { mass: 0, volume: 0 },
         currentInStorage: {},
