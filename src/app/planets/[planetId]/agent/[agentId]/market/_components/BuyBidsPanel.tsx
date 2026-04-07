@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
-import type { ProductionFacility } from '@/simulation/planet/storage';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 
 export type BuyBidEntry = {
     bidPrice?: number;

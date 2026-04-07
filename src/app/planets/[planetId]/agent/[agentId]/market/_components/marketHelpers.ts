@@ -1,5 +1,5 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
+import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
 import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 

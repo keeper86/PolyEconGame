@@ -1,4 +1,4 @@
-import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '../planet/storage';
+import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '../planet/facility';
 import type { Planet } from '../planet/planet';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';

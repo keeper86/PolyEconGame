@@ -22,7 +22,7 @@ export function handleRequestLoan(
         return;
     }
     const conditions = computeLoanConditions(agent, planet, state.tick);
-    if (amount <= 0 || amount > conditions.maxLoanAmount) {
+    if (amount <= 0 || amount > conditions.maxLoanAmount * 1.1) {
         safePostMessage({
             type: 'loanDenied',
             requestId,

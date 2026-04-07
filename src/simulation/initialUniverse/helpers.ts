@@ -1,5 +1,5 @@
 import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
-import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/facilities';
+import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/planet';
 import {
     createEmptyDemographicEventCounters,
@@ -8,7 +8,7 @@ import {
     type ResourceClaim,
     type ResourceQuantity,
 } from '../planet/planet';
-import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import type { ProductionFacility, StorageFacility } from '../planet/facility';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -31,11 +31,13 @@ export function makeProductionFacility(opts: {
     produces: { resource: Resource; quantity: number }[];
 }): ProductionFacility {
     return {
+        type: 'production',
         planetId: opts.planetId,
         id: opts.id,
         name: opts.name,
         maxScale: opts.scale,
         scale: opts.scale,
+        construction: null,
         powerConsumptionPerTick: opts.powerPerTick,
         workerRequirement: {
             none: opts.workers.none ?? 0,
@@ -47,16 +49,6 @@ export function makeProductionFacility(opts: {
         needs: opts.needs,
         produces: opts.produces,
         lastTickResults: {
-            overallEfficiency: 0,
-            workerEfficiency: {},
-            resourceEfficiency: {},
-            overqualifiedWorkers: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-            lastProduced: {},
-            lastConsumed: {},
-        },
-        avgTickResults: {
             overallEfficiency: 0,
             workerEfficiency: {},
             resourceEfficiency: {},
@@ -78,20 +70,29 @@ export function makeStorage(opts: {
     massCapacity?: number;
 }): StorageFacility {
     return {
+        type: 'storage',
         planetId: opts.planetId,
         id: opts.id,
         name: opts.name,
         maxScale: opts.scale ?? 1,
         scale: opts.scale ?? 1,
+        construction: null,
         powerConsumptionPerTick: 0.1,
         workerRequirement: { none: 10, primary: 10, secondary: 5, tertiary: 0 },
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
         capacity: {
-            volume: opts.volumeCapacity ?? 1e11,
-            mass: opts.massCapacity ?? 1e13,
+            volume: opts.volumeCapacity ?? 1e13,
+            mass: opts.massCapacity ?? 1e15,
         },
         current: { mass: 0, volume: 0 },
         currentInStorage: {},
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+        },
         escrow: {},
     };
 }
@@ -100,13 +101,10 @@ export function makeAgentPlanetAssets(
     planetId: string,
     facilities: ProductionFacility[],
     storage: StorageFacility,
-    claims: string[],
-    tenancies: string[],
 ): AgentPlanetAssets {
     return {
-        resourceClaims: claims,
-        resourceTenancies: tenancies,
         productionFacilities: facilities,
+        managementFacilities: [],
         storageFacility: storage,
         deposits: 0,
         depositHold: 0,
@@ -130,13 +128,7 @@ export function makeAgent(opts: {
     claims?: string[];
     tenancies?: string[];
 }): Agent {
-    const assets = makeAgentPlanetAssets(
-        opts.planetId,
-        opts.facilities,
-        opts.storage,
-        opts.claims ?? [],
-        opts.tenancies ?? [],
-    );
+    const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage);
     return {
         id: opts.id,
         name: opts.name,

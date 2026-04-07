@@ -33,7 +33,7 @@ import {
     sawmill,
     school,
     waterExtractionFacility,
-} from '../planet/facilities';
+} from '../planet/productionFacilities';
 import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
 import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
@@ -141,14 +141,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                 tenancies: [arableId, waterId],
             }),
         );
-    }
-
-    // Register industrial agents' resource tenancies in govClaims
-    for (const agent of spec.industrialAgents) {
-        for (const tenancyId of agent.assets[spec.id]?.resourceTenancies ?? []) {
-            govClaims.push(tenancyId);
-        }
-        agents.push(agent);
     }
 
     const arableRemainder = makeUnclaimedRemainder({

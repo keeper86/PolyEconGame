@@ -15,7 +15,7 @@
  */
 
 import solver from 'javascript-lp-solver';
-import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/facilities';
+import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import { SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { SERVICE_DEFINITION_BY_RESOURCE_NAME } from '@/simulation/market/populationDemand';
 import {

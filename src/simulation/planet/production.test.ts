@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
-import { productionTick } from './production';
+import { constructionTick, productionTick } from './production';
 
 import {
     agentMap,
     makeAgent,
+    makeManagementFacility,
     makePlanetWithPopulation,
     makeProductionFacility,
     makeStorageFacility,
@@ -18,6 +19,7 @@ import {
     vehicleResourceType,
     waterResourceType,
 } from './resources';
+import { constructionServiceResourceType } from './services';
 
 // test helpers create fresh objects; no deep clone needed
 
@@ -437,5 +439,297 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         const consumed = facility.lastTickResults.lastConsumed[waterResourceType.name] ?? 0;
         expect(consumed).toBeCloseTo(availableWater, 9);
         expect(Number.isInteger(consumed)).toBe(false);
+    });
+});
+
+// ============================================================================
+// constructionTick
+// ============================================================================
+
+describe('constructionTick', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('consumes construction service and advances progress', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
+        facility.id = 'facility-under-construction';
+        facility.construction = {
+            constructionTargetMaxScale: 1,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        // Stock storage with enough construction service
+        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+            resource: constructionServiceResourceType,
+            quantity: 80,
+        };
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        constructionTick(gs.agents, planet);
+
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.progress).toBe(50);
+        const remaining =
+            agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBe(30);
+    });
+
+    it('completes construction when progress reaches totalConstructionServiceRequired', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
+        facility.id = 'completing-facility';
+        facility.construction = {
+            constructionTargetMaxScale: 3,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 90,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+            resource: constructionServiceResourceType,
+            quantity: 20,
+        };
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        constructionTick(gs.agents, planet);
+
+        expect(facility.construction).toBeNull();
+        expect(facility.maxScale).toBe(3);
+    });
+
+    it('does not advance progress when no construction service is available', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
+        facility.id = 'stalled-facility';
+        facility.construction = {
+            constructionTargetMaxScale: 1,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 10,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        // No construction service in storage
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        constructionTick(gs.agents, planet);
+
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.progress).toBe(10);
+    });
+
+    it('applies constructionTick to storageFacility and managementFacilities as well', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const mgmtFacility = makeManagementFacility(
+            { none: 1 },
+            { id: 'mgmt-under-construction', scale: 0, maxScale: 0 },
+        );
+        mgmtFacility.construction = {
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 60,
+            maximumConstructionServiceConsumption: 30,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.managementFacilities = [mgmtFacility];
+        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+            resource: constructionServiceResourceType,
+            quantity: 30,
+        };
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        constructionTick(gs.agents, planet);
+
+        expect(mgmtFacility.construction!.progress).toBe(30);
+    });
+});
+
+// ============================================================================
+// productionTick — storage facility participation
+// ============================================================================
+
+describe('productionTick — storage facility', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('includes storage facility in worker allocation and populates lastTickResults', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        // Override the default storage facility with one that has a worker requirement
+        agent.assets.p.storageFacility = makeStorageFacility({
+            planetId: 'p',
+            id: 'storage-p',
+            workerRequirement: { none: 1 },
+            scale: 1,
+        });
+
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].none.novice.active = 2; // 2 workers, 1 for storage
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
+
+        const results = agent.assets.p.storageFacility.lastTickResults;
+        expect(results).toBeDefined();
+        expect(results.overallEfficiency).toBeGreaterThan(0);
+    });
+
+    it('excludes storage facility under construction from productionTick', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        agent.assets.p.storageFacility = makeStorageFacility({
+            planetId: 'p',
+            id: 'storage-p',
+            workerRequirement: { none: 1 },
+            scale: 0,
+            maxScale: 0,
+            construction: {
+                constructionTargetMaxScale: 1,
+                totalConstructionServiceRequired: 100,
+                maximumConstructionServiceConsumption: 50,
+                progress: 0,
+                lastTickInvestedConstructionServices: 0,
+            },
+        });
+
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].none.novice.active = 1;
+
+        const initialEfficiency = agent.assets.p.storageFacility.lastTickResults.overallEfficiency;
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
+
+        // lastTickResults should not have been updated (still 0 from initialization)
+        expect(agent.assets.p.storageFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
+    });
+});
+
+// ============================================================================
+// productionTick — management facility participation
+// ============================================================================
+
+describe('productionTick — management facility', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('management facility consumes stored input and advances buffer', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const mgmtFacility = makeManagementFacility(
+            { none: 1 },
+            {
+                id: 'mgmt-1',
+                scale: 1,
+                bufferPerTickPerScale: 10,
+                maxBuffer: 100,
+                buffer: 0,
+                needs: [{ resource: waterResourceType, quantity: 5 }],
+            },
+        );
+
+        agent.assets.p.managementFacilities = [mgmtFacility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 50,
+        };
+        agent.assets.p.storageFacility.current.volume += 50 * waterResourceType.volumePerQuantity;
+        agent.assets.p.storageFacility.current.mass += 50 * waterResourceType.massPerQuantity;
+
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].none.novice.active = 1;
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
+
+        expect(mgmtFacility.lastTickResults.overallEfficiency).toBeGreaterThan(0);
+        expect(mgmtFacility.buffer).toBeGreaterThan(0);
+        expect(mgmtFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeGreaterThan(0);
+
+        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBeLessThan(50);
+    });
+
+    it('management facility does not advance buffer at zero efficiency', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const mgmtFacility = makeManagementFacility(
+            { none: 1 }, // needs 1 worker
+            {
+                id: 'mgmt-noworker',
+                scale: 1,
+                bufferPerTickPerScale: 10,
+                maxBuffer: 100,
+                buffer: 0,
+                needs: [],
+            },
+        );
+
+        agent.assets.p.managementFacilities = [mgmtFacility];
+        // No workers → efficiency = 0
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
+
+        expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(0);
+        expect(mgmtFacility.buffer).toBe(0);
+    });
+
+    it('management facility under construction is excluded from productionTick', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const mgmtFacility = makeManagementFacility(
+            { none: 1 },
+            {
+                id: 'mgmt-under-construction',
+                scale: 0,
+                maxScale: 0,
+                buffer: 0,
+                construction: {
+                    constructionTargetMaxScale: 1,
+                    totalConstructionServiceRequired: 100,
+                    maximumConstructionServiceConsumption: 50,
+                    progress: 0,
+                    lastTickInvestedConstructionServices: 0,
+                },
+            },
+        );
+
+        agent.assets.p.managementFacilities = [mgmtFacility];
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].none.novice.active = 1;
+
+        const initialEfficiency = mgmtFacility.lastTickResults.overallEfficiency;
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet);
+
+        expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
+        expect(mgmtFacility.buffer).toBe(0);
     });
 });

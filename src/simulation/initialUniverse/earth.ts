@@ -41,7 +41,7 @@ import {
     university,
     vehicleFactory,
     waterExtractionFacility,
-} from '../planet/facilities';
+} from '../planet/productionFacilities';
 import {
     arableLandResourceType,
     clayDepositResourceType,

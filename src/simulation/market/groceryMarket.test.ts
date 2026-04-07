@@ -9,7 +9,7 @@ import {
     logisticsServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
-import { putIntoStorageFacility } from '../planet/storage';
+import { putIntoStorageFacility } from '../planet/facility';
 import { forEachPopulationCohort, SKILL } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
@@ -32,23 +32,15 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
     agent.assets.p.productionFacilities = [
         {
             planetId: 'p',
+            type: 'production',
             id: 'grocery-fac',
             name: 'Grocery Store',
             maxScale: 1000,
             scale: 1,
+            construction: null,
             powerConsumptionPerTick: 0,
             lastTickResults: {
                 overallEfficiency: 1,
-                workerEfficiency: {},
-                resourceEfficiency: {},
-                overqualifiedWorkers: {},
-                exactUsedByEdu: {},
-                totalUsedByEdu: {},
-                lastProduced: {},
-                lastConsumed: {},
-            },
-            avgTickResults: {
-                overallEfficiency: 0,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -326,8 +318,11 @@ describe('groceryMarketTick', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1000);
         setGroceryOffer(groceryAgent, 2.5);
 
-        // Give households enough wealth to bid above the ask price (2.5).
-        // bidPrice = wealth / GROCERY_BUFFER_TARGET_TICKS → need wealth > 2.5 * 90 = 225
+        // Household bid price = marketPrices[grocery] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY (1.25).
+        // Seed a reference price above the ask so willingPrice (5.0 * 1.25 = 6.25) ≥ ask (2.5) and trades clear.
+        // After clearing at ask=2.5 the market price should be updated from 5.0 → 2.5.
+        planet.marketPrices[GROCERY_SERVICE] = 5.0;
+
         const totalPop = giveHouseholdsWealth(planet, 300);
         planet.bank.householdDeposits = totalPop * 300;
         planet.bank.deposits = totalPop * 300;

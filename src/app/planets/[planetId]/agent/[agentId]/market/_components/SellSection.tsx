@@ -47,7 +47,6 @@ export default function SellSection({
               ? ([{ label: '0', qty: 0 }] as const)
               : null;
 
-    // Sell section is only active when there's something to sell
     const canSell =
         inventoryQty > 0 || isFacilityOutput || offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
@@ -83,10 +82,7 @@ export default function SellSection({
     };
 
     return (
-        <AccordionItem
-            value='sell'
-            className={`border-1 p-1 ${!canSell ? 'opacity-50 pointer-events-none' : ''} rounded-md`}
-        >
+        <AccordionItem value='sell' className={`border-1 p-1 ${!canSell ? 'opacity-50' : ''} rounded-md`}>
             <AccordionPrimitive.Header className='px-1 flex items-center justify-between hover:bg-muted/50 rounded-md px-1 cursor-pointer'>
                 <AccordionPrimitive.Trigger className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold hover:underline text-left'>
                     <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
@@ -116,7 +112,7 @@ export default function SellSection({
                     <Switch
                         id={`offer-auto-${resourceName}`}
                         checked={local.offerAutomated}
-                        disabled={sellSaving || !canSell}
+                        disabled={sellSaving}
                         onCheckedChange={(v) => onAutomationChange(v)}
                     />
                 </div>

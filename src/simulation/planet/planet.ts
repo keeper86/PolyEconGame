@@ -2,7 +2,7 @@ import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ResourceName } from './resourceCatalog';
-import type { ProductionFacility, StorageFacility } from './storage';
+import type { ManagementFacility, ProductionFacility, StorageFacility } from './facility';
 
 /**
  * Single combined central + commercial bank per planet.
@@ -211,22 +211,8 @@ export type Planet = {
     };
 };
 
-// ---------------------------------------------------------------------------
-// Per-education record helper type
-// ---------------------------------------------------------------------------
-
 export type PerEducation = { [L in EducationLevelType]?: number };
 
-// ---------------------------------------------------------------------------
-// Sub-objects that group related intermediate/feedback state
-// ---------------------------------------------------------------------------
-
-/**
- * Demographic events (deaths, disabilities, retirements) tracked per
- * education level for this month and the previous month.
- * Written by `workforceSync` (thisTick accumulators) and rotated at
- * month boundaries by `postProductionLaborMarketTick`.
- */
 export type DemographicEventCounters = {
     thisMonth: PerEducation;
     prevMonth: PerEducation;
@@ -373,9 +359,8 @@ export type FoodMarketResult = MarketResult;
 // ---------------------------------------------------------------------------
 
 export type AgentPlanetAssets = {
-    resourceClaims: string[]; // resource claims owned by this agent
-    resourceTenancies: string[]; // resource claims where this agent is the tenant
     productionFacilities: ProductionFacility[];
+    managementFacilities: ManagementFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 
@@ -444,12 +429,12 @@ export interface GameState {
     agents: Map<string, Agent>;
 }
 
-export type ResourceProcessLevel = 'source' | 'raw' | 'refined' | 'manufactured' | 'services';
+export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
 
 export type Resource = {
     name: string;
     form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource' | 'services';
-    level: ResourceProcessLevel; // raw, refined, manufactured, consumerGood
+    level: ResourceProcessLevel | 'source'; // raw, refined, manufactured, consumerGood
     volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
     massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
 };

@@ -15,7 +15,7 @@ import {
     ironOreResourceType,
     waterResourceType,
 } from '../planet/resources';
-import type { StorageFacility } from '../planet/storage';
+import type { StorageFacility } from '../planet/facility';
 import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';

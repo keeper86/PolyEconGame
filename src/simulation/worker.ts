@@ -164,6 +164,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         handleResourceAction(state, action, safePostMessage);
                         break;
                     case 'buildFacility':
+                    case 'expandFacility':
                         handleFacilityAction(state, action, safePostMessage);
                         break;
                 }
@@ -832,7 +833,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'buildFacility') {
-            const { requestId, agentId, planetId, facilityKey } = msg;
+            const { requestId, agentId, planetId, facilityKey, targetScale } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -841,7 +842,25 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({ type: 'facilityBuildFailed', requestId, reason: `Planet '${planetId}' not found` });
                 return;
             }
-            pendingActions.push({ type: 'buildFacility', requestId, agentId, planetId, facilityKey });
+            pendingActions.push({ type: 'buildFacility', requestId, agentId, planetId, facilityKey, targetScale });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'expandFacility') {
+            const { requestId, agentId, planetId, facilityId, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'facilityExpandFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'facilityExpandFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'expandFacility', requestId, agentId, planetId, facilityId, targetScale });
             // Eager draining if not currently processing a tick
             if (!processingTick) {
                 drainActionQueue();

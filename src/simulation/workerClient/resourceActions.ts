@@ -96,18 +96,6 @@ export function handleClaimResources(
     waterPool.maximumCapacity -= waterSourceQuantity;
     planet.resources[waterSourceResourceType.name].push(newWaterClaim);
 
-    // Register the tenancy on the agent's assets
-    assets.resourceTenancies.push(arableClaimId, waterClaimId);
-
-    // Add the government claim owner's claim list if it exists
-    const govAgent = arablePool.claimAgentId ? state.agents.get(arablePool.claimAgentId) : null;
-    if (govAgent) {
-        const govAssets = govAgent.assets[planetId];
-        if (govAssets) {
-            govAssets.resourceClaims.push(arableClaimId, waterClaimId);
-        }
-    }
-
     // Build production facilities if the agent doesn't already have them
     const hasWaterFacility = assets.productionFacilities.some((f) =>
         f.needs.some((n) => n.resource.name === waterSourceResourceType.name),

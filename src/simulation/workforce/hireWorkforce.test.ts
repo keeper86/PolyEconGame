@@ -209,9 +209,8 @@ describe('preProductionLaborMarketTick — population conservation', () => {
     it('workforce ↔ population consistency with government agent', () => {
         gov.assets = {
             p: {
-                resourceClaims: [],
-                resourceTenancies: [],
                 productionFacilities: [],
+                managementFacilities: [],
                 deposits: 0,
                 depositHold: 0,
                 loans: 0,

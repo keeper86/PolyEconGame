@@ -147,3 +147,16 @@ export const buildFacilitySpec: CommandSpec<
     failureType: 'facilityBuildFailed',
     extract: (msg) => msg.facilityId,
 };
+
+type ExpandFacilitySuccess = Extract<OutboundMessage, { type: 'facilityExpanded' }>;
+type ExpandFacilityFailure = Extract<OutboundMessage, { type: 'facilityExpandFailed' }>;
+export const expandFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'expandFacility' }>,
+    ExpandFacilitySuccess,
+    ExpandFacilityFailure,
+    string
+> = {
+    successType: 'facilityExpanded',
+    failureType: 'facilityExpandFailed',
+    extract: (msg) => msg.facilityId,
+};

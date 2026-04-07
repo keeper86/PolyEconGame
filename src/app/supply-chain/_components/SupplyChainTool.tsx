@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Checkbox } from '@/components/ui/checkbox';
 import { computeSupplyChainBalance, type FacilityInfo, type ResourceBalance } from './computeBalance';
 import DependencyGraph from './DependencyGraph';
-import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/simulation/planet/facilities';
+import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/simulation/planet/productionFacilities';
 import { solveSupplyChain, type SolverObjective, type SolverResult } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';

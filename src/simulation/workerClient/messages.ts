@@ -40,6 +40,15 @@ export type InboundMessage =
           agentId: string;
           planetId: string;
           facilityKey: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
       }
     | {
           type: 'setBuyBids';
@@ -97,6 +106,8 @@ export type OutboundMessage =
     | { type: 'resourcesClaimFailed'; requestId: string; reason: string }
     | { type: 'facilityBuilt'; requestId: string; agentId: string; facilityId: string }
     | { type: 'facilityBuildFailed'; requestId: string; reason: string }
+    | { type: 'facilityExpanded'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'facilityExpandFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
     | WorkerSuccessResponse
     | WorkerErrorResponse;
@@ -150,6 +161,15 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           facilityKey: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
       }
     | {
           type: 'setBuyBids';

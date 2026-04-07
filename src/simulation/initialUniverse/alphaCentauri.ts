@@ -22,7 +22,7 @@ import {
     retailChain,
     school,
     waterExtractionFacility,
-} from '../planet/facilities';
+} from '../planet/productionFacilities';
 import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
 import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';

@@ -50,8 +50,7 @@ export default function BuySection({
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
 
     // Check if buy section has any dirty fields
-    const hasDirtyBuyFields =
-        local.dirtyFields.bidPrice || local.dirtyFields.bidStorageTarget || local.dirtyFields.bidAutomated;
+    const hasDirtyBuyFields = local.dirtyFields.bidPrice || local.dirtyFields.bidStorageTarget;
 
     // Check if there are any validation errors
     const hasValidationErrors = local.validationErrors.bidPrice || local.validationErrors.bidStorageTarget;

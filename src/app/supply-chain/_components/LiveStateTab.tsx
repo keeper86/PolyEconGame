@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Agent } from '@/simulation/planet/planet';
-import type { ProductionFacility } from '@/simulation/planet/storage';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 import { computeSupplyChainBalance } from './computeBalance';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

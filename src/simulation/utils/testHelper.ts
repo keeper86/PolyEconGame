@@ -26,7 +26,7 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
-import type { ProductionFacility, StorageFacility } from '../planet/storage';
+import type { ManagementFacility, ProductionFacility, StorageFacility } from '../planet/facility';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -286,10 +286,13 @@ export function makeEnvironment(overrides?: Partial<Environment>): Environment {
  */
 export function makeStorageFacility(overrides?: Partial<StorageFacility>): StorageFacility {
     return {
+        type: 'storage',
         planetId: 'p',
         id: 'storage-p',
         name: 'test-storage',
+        maxScale: 1,
         scale: 1,
+        construction: null,
         powerConsumptionPerTick: 0,
         workerRequirement: {},
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -297,8 +300,50 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+        },
         ...overrides,
     } as StorageFacility;
+}
+
+/**
+ * Create a ManagementFacility with given worker requirements.
+ */
+export function makeManagementFacility(
+    workerReq?: Partial<Record<EducationLevelType, number>>,
+    overrides?: Partial<ManagementFacility>,
+): ManagementFacility {
+    return {
+        type: 'management',
+        planetId: 'p',
+        id: 'mgmt-1',
+        name: 'Test Management',
+        maxScale: 1,
+        scale: 1,
+        construction: null,
+        powerConsumptionPerTick: 0,
+        workerRequirement: (workerReq ?? {}) as Record<string, number>,
+        pollutionPerTick: { air: 0, water: 0, soil: 0 },
+        needs: [],
+        buffer: 0,
+        maxBuffer: 100,
+        bufferPerTickPerScale: 10,
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            resourceEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+            lastConsumed: {},
+        },
+        ...overrides,
+    };
 }
 
 /**
@@ -309,22 +354,14 @@ export function makeProductionFacility(
     overrides?: Partial<ProductionFacility>,
 ): ProductionFacility {
     return {
+        type: 'production',
         planetId: 'p',
         id: 'facility-1',
         name: 'Test Facility',
         maxScale: 1,
         scale: 1,
+        construction: null,
         lastTickResults: {
-            overallEfficiency: 0,
-            overqualifiedWorkers: {},
-            resourceEfficiency: {},
-            workerEfficiency: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-            lastProduced: {},
-            lastConsumed: {},
-        },
-        avgTickResults: {
             overallEfficiency: 0,
             overqualifiedWorkers: {},
             resourceEfficiency: {},
@@ -361,9 +398,8 @@ export function makeAllocatedWorkers(
  */
 export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentPlanetAssets>): AgentPlanetAssets {
     return {
-        resourceClaims: [],
-        resourceTenancies: [],
         productionFacilities: [],
+        managementFacilities: [],
         deposits: 0,
         depositHold: 0,
         loans: 0,

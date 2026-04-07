@@ -3,7 +3,7 @@
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { ProductionFacility, StorageFacility } from '@/simulation/planet/storage';
+import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { useParams } from 'next/navigation';
 import type { WorkforceDemography } from './workforce-summary';

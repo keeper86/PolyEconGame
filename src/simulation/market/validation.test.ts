@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clothingResourceType, coalResourceType } from '../planet/resources';
-import type { StorageFacility } from '../planet/storage';
+import type { StorageFacility } from '../planet/facility';
 import { validateBuyBid, validateSellOffer } from './validation';
 
 /**
