@@ -93,9 +93,12 @@ export function ActiveClaimCard({
     const isSustainable = claim.depletionTicksEstimate === null;
 
     return (
-        <Card className='border-emerald-500/30'>
+        <Card className='border-emerald-500/30 flex flex-col'>
             <ClaimCardHeader resourceName={claim.resourceName} renewable={summary.renewable} />
-            <CardContent className='space-y-3'>
+            <CardContent className='flex flex-col gap-3 flex-1'>
+                <p className='text-xs text-muted-foreground'>
+                    Available: {formatNumbers(summary.availableCapacity)} of {formatNumbers(summary.totalCapacity)}
+                </p>
                 <div className='space-y-1'>
                     <div className='flex justify-between text-xs'>
                         <span className='text-muted-foreground'>Stock</span>
@@ -134,7 +137,7 @@ export function ActiveClaimCard({
                 </div>
 
                 {showExpand ? (
-                    <div className='space-y-3 border-t pt-3'>
+                    <div className='space-y-3 border-t pt-3 mt-auto'>
                         <p className='text-xs font-medium'>Expand by (scale-years)</p>
                         <div className='space-y-1'>
                             <div className='flex justify-between text-xs text-muted-foreground'>
@@ -251,7 +254,7 @@ export function ActiveClaimCard({
                         })()}
                     </div>
                 ) : confirmQuit ? (
-                    <div className='space-y-2 border-t pt-3'>
+                    <div className='space-y-2 border-t pt-3 mt-auto'>
                         <p className='text-xs text-destructive font-medium'>Release this claim back to the planet?</p>
                         <div className='flex gap-2'>
                             <Button
@@ -281,7 +284,7 @@ export function ActiveClaimCard({
                         {quitMutation.error && <p className='text-xs text-destructive'>{quitMutation.error.message}</p>}
                     </div>
                 ) : (
-                    <div className='flex gap-2 border-t pt-3'>
+                    <div className='flex gap-2 border-t pt-3 mt-auto'>
                         {summary.availableCapacity > 0 && (
                             <Button size='sm' variant='outline' onClick={() => setShowExpand(true)}>
                                 Expand

@@ -1,24 +1,3 @@
-/**
- * Create all history tables and enable TimescaleDB hypertables.
- *
- * Tables created:
- *   - planet_population_history: total population per planet at each snapshot tick
- *   - agent_monthly_history: per-agent metrics at each month boundary (every 30 ticks)
- *   - product_price_history: product price snapshots per planet per tick
- *     (columns: avg_price, min_price, max_price — tracks intra-month statistics)
- *
- * All three tables are converted to TimescaleDB hypertables partitioned by `tick`
- * (chunk_time_interval = 360 ticks = 1 game year).
- *
- * Continuous aggregates at monthly (30), yearly (360) and decade (3600) granularities
- * are created for all three tables, along with refresh and retention policies.
- *
- * game_tick_now() is derived from the history tables themselves to avoid
- * clipping refresh windows when snapshots are sparse.
- *
- * @param { import("knex").Knex } knex
- * @returns { Promise<void> }
- */
 exports.up = async function (knex) {
     // -------------------------------------------------------------------------
     // 1. Enable TimescaleDB

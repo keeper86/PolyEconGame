@@ -66,9 +66,9 @@ export function LeaseClaimCard({
     const leaseDisabled = exceedsCapacity || cannotAfford || leaseMutation.isPending || leased;
 
     return (
-        <Card>
+        <Card className='flex flex-col'>
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
-            <CardContent className='space-y-3'>
+            <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
                     Available: {formatNumbers(summary.availableCapacity)} of {formatNumbers(summary.totalCapacity)}
                 </p>
@@ -138,30 +138,30 @@ export function LeaseClaimCard({
                             </div>
                         )}
                     </div>
-                    <Button
-                        size='sm'
-                        disabled={leaseDisabled}
-                        onClick={() =>
-                            leaseMutation.mutate({
-                                agentId,
-                                planetId,
-                                resourceName: summary.resourceName,
-                                quantity,
-                            })
-                        }
-                        className='w-full'
-                    >
-                        {leaseMutation.isPending || leased ? (
-                            <>
-                                <Loader2 className='h-3 w-3 animate-spin mr-1' />
-                                Takes effect next tick…
-                            </>
-                        ) : (
-                            'Lease'
-                        )}
-                    </Button>
                 </div>
                 {leaseMutation.error && <p className='text-xs text-destructive'>{leaseMutation.error.message}</p>}
+                <Button
+                    size='sm'
+                    disabled={leaseDisabled}
+                    onClick={() =>
+                        leaseMutation.mutate({
+                            agentId,
+                            planetId,
+                            resourceName: summary.resourceName,
+                            quantity,
+                        })
+                    }
+                    className='w-full mt-auto'
+                >
+                    {leaseMutation.isPending || leased ? (
+                        <>
+                            <Loader2 className='h-3 w-3 animate-spin mr-1' />
+                            Takes effect next tick…
+                        </>
+                    ) : (
+                        'Lease'
+                    )}
+                </Button>
             </CardContent>
         </Card>
     );

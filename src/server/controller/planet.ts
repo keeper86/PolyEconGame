@@ -762,7 +762,10 @@ export const getPlanetClaims = () =>
                         regenerationRatePerUnit,
                     };
                 })
-                .sort((a, b) => a.resourceName.localeCompare(b.resourceName));
+                .sort(
+                    (a, b) =>
+                        a.resourceName.localeCompare(b.resourceName) - 5 * (Number(a.renewable) - Number(b.renewable)),
+                );
 
             return { tick, governmentId: planet.governmentId, resources: summaries };
         });
