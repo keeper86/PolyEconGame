@@ -157,7 +157,7 @@ export const loggingCamp = (planetId: string, id: string): ProductionFacility =>
         secondary: 2,
         tertiary: 0,
     },
-    needs: [{ resource: forestResourceType, quantity: 0.4 }],
+    needs: [{ resource: forestResourceType, quantity: 400 }],
     produces: [{ resource: logsResourceType, quantity: 400 }],
 });
 

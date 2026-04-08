@@ -700,6 +700,8 @@ const claimResourceSummarySchema = z.object({
     totalClaims: z.number(),
     tenantedClaims: z.number(),
     renewable: z.boolean(),
+    /** Sum of regenerationRate across all unclaimed + free capacity for this resource. */
+    regenerationRatePerUnit: z.number(),
 });
 
 export type ClaimResourceSummary = z.infer<typeof claimResourceSummarySchema>;
@@ -731,9 +733,11 @@ export const getPlanetClaims = () =>
                     let tenantedClaims = 0;
                     let totalCapacity = 0;
                     let isRenewable = false;
+                    let totalRegenerationRate = 0;
 
                     for (const claim of claims) {
                         totalCapacity += claim.maximumCapacity;
+                        totalRegenerationRate += claim.regenerationRate;
                         if (claim.regenerationRate > 0) {
                             isRenewable = true;
                         }
@@ -744,6 +748,9 @@ export const getPlanetClaims = () =>
                         }
                     }
 
+                    // regenerationRatePerUnit: ratio of regeneration to capacity (0 for non-renewable, 1 for fully renewable)
+                    const regenerationRatePerUnit = totalCapacity > 0 ? totalRegenerationRate / totalCapacity : 0;
+
                     return {
                         resourceName,
                         totalCapacity,
@@ -752,6 +759,7 @@ export const getPlanetClaims = () =>
                         totalClaims: claims.length,
                         tenantedClaims,
                         renewable: isRenewable,
+                        regenerationRatePerUnit,
                     };
                 })
                 .sort((a, b) => a.resourceName.localeCompare(b.resourceName));

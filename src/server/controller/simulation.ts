@@ -433,6 +433,24 @@ export const getProductPriceHistory = () =>
         });
 
 /**
+ * Minimal financials for a specific agent on a specific planet.
+ * Used by the claim lease/expand UI to check affordability.
+ */
+export const getAgentFinancials = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(z.object({ deposits: z.number(), monthlyNetCashFlow: z.number() }))
+        .query(async ({ input }) => {
+            const [{ agent }, { conditions }] = await Promise.all([
+                workerQueries.getAgent(input.agentId),
+                workerQueries.getLoanConditions(input.agentId, input.planetId),
+            ]);
+            const deposits = agent?.assets?.[input.planetId]?.deposits ?? 0;
+            const monthlyNetCashFlow = conditions?.monthlyNetCashFlow ?? 0;
+            return { deposits, monthlyNetCashFlow };
+        });
+
+/**
  * Return the credit conditions the planet bank would offer the requesting
  * agent right now.  Read-only — does not modify any state.
  */

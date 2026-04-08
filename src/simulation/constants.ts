@@ -196,18 +196,6 @@ export const LOAN_COLLATERAL_FACTOR = 1.0;
 export const GENERATION_GAP = 25;
 
 /**
- * Maximum age for "child" dependents (inclusive).
- * Ages 0–CHILD_MAX_AGE are considered children who may receive support.
- */
-export const CHILD_MAX_AGE = 25;
-
-/**
- * Minimum age for "elderly" dependents.
- * Ages >= ELDERLY_MIN_AGE are considered elderly who may receive support.
- */
-export const ELDERLY_MIN_AGE = 67;
-
-/**
  * Standard deviation (in years) for the Gaussian support weight kernel.
  * The kernel peaks at n × GENERATION_GAP and has non-trivial weight within
  * approximately ±2σ of each peak.  A value of 8 means meaningful support
@@ -226,16 +214,6 @@ export const SUPPORT_WEIGHT_SIGMA = 6;
  */
 export const GENERATION_KERNEL_N = 2;
 
-/**
- * Fraction of the food buffer target that an *elderly* supporter must
- * retain for their own survival.  Lower than SUPPORTER_SURVIVAL_FRACTION
- * for working-age supporters, reflecting that elderly are less productive
- * and under starvation should deplete faster — producing emergent
- * age-selective mortality without explicit parameters.
- *
- * Set to 30 % of food target (vs 55 % for working age).
- */
-export const ELDERLY_FLOOR_FRACTION = 0;
 export const EPSILON = 1e-4;
 
 export const LAND_CLAIM_COST_PER_UNIT: Record<string, number> = {
@@ -251,4 +229,19 @@ export const LAND_CLAIM_COST_PER_UNIT: Record<string, number> = {
     'Limestone Deposit': 1,
     'Clay Deposit': 1,
     'Iron Ore Deposit': 1,
+};
+
+export const CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1: Record<string, number> = {
+    'Coal Deposit': 0.5, // coalMine
+    'Oil Reservoir': 0.3, // oilWell
+    'Natural Gas Field': 0.1, // naturalGasWell
+    'Forest': 400, // loggingCamp
+    'Stone Deposit': 0.4, // stoneQuarry
+    'Copper Deposit': 0.4, // copperMine
+    'Sand Deposit': 0.3, // sandMine
+    'Limestone Deposit': 0.3, // limestoneQuarry
+    'Clay Deposit': 0.4, // clayMine
+    'Iron Ore Deposit': 0.4, // ironExtractionFacility
+    'Arable Land': 50, // agriculturalFacility
+    'Water Source': 800, // waterExtractionFacility
 };

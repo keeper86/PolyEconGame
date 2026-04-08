@@ -1,17 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
-import { RefreshCw } from 'lucide-react';
-import { ClaimCardHeader } from './ClaimCardHeader';
 import { useTRPC } from '@/lib/trpc';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatNumbers } from '@/lib/utils';
-import { TICKS_PER_MONTH, MONTHS_PER_YEAR } from '@/simulation/constants';
 import type { AgentClaimEntry, ClaimResourceSummary } from '@/server/controller/planet';
+import {
+    CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1,
+    LAND_CLAIM_COST_PER_UNIT,
+    MONTHS_PER_YEAR,
+    TICKS_PER_MONTH,
+    TICKS_PER_YEAR,
+} from '@/simulation/constants';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ClaimCardHeader } from './ClaimCardHeader';
+
+const SY_TIERS = [1, 10, 100, 1000, 10000, 100000] as const;
 
 function formatDepletion(ticks: number | null): string {
     if (ticks === null) {
@@ -40,8 +47,20 @@ export function ActiveClaimCard({
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [showExpand, setShowExpand] = useState(false);
-    const [additionalQuantity, setAdditionalQuantity] = useState(Math.min(1000, summary.availableCapacity));
+    const [expandTierIndex, setExpandTierIndex] = useState(0);
+    const [expanded, setExpanded] = useState(false);
     const [confirmQuit, setConfirmQuit] = useState(false);
+    const [released, setReleased] = useState(false);
+
+    useEffect(() => {
+        if (expanded) {
+            setExpanded(false);
+            setShowExpand(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [claim.maximumCapacity]);
+
+    const { data: financials } = useQuery(trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }));
 
     const invalidate = () => {
         void queryClient.invalidateQueries({
@@ -55,8 +74,8 @@ export function ActiveClaimCard({
     const expandMutation = useMutation(
         trpc.expandClaim.mutationOptions({
             onSuccess: () => {
+                setExpanded(true);
                 invalidate();
-                setShowExpand(false);
             },
         }),
     );
@@ -64,8 +83,8 @@ export function ActiveClaimCard({
     const quitMutation = useMutation(
         trpc.quitClaim.mutationOptions({
             onSuccess: () => {
+                setReleased(true);
                 invalidate();
-                setConfirmQuit(false);
             },
         }),
     );
@@ -115,53 +134,121 @@ export function ActiveClaimCard({
                 </div>
 
                 {showExpand ? (
-                    <div className='space-y-2 border-t pt-3'>
-                        <p className='text-xs font-medium'>Expand by</p>
-                        <div className='flex items-center gap-2'>
+                    <div className='space-y-3 border-t pt-3'>
+                        <p className='text-xs font-medium'>Expand by (scale-years)</p>
+                        <div className='space-y-1'>
+                            <div className='flex justify-between text-xs text-muted-foreground'>
+                                <span>Scale-years</span>
+                                <span className='font-medium text-foreground'>
+                                    {formatNumbers(SY_TIERS[expandTierIndex] ?? 1)} sy
+                                </span>
+                            </div>
                             <Slider
                                 min={0}
-                                max={summary.availableCapacity}
-                                step={1000}
-                                value={[additionalQuantity]}
-                                onValueChange={([v]) => setAdditionalQuantity(v ?? 0)}
-                                className='flex-1'
+                                max={SY_TIERS.length - 1}
+                                step={1}
+                                value={[expandTierIndex]}
+                                onValueChange={([v]: [number]) => setExpandTierIndex(v ?? 0)}
+                                disabled={expandMutation.isPending || expanded}
                             />
-                            <Input
-                                type='number'
-                                min={0}
-                                max={summary.availableCapacity}
-                                step={1000}
-                                value={additionalQuantity}
-                                onChange={(e) =>
-                                    setAdditionalQuantity(
-                                        Math.max(0, Math.min(summary.availableCapacity, Number(e.target.value))),
-                                    )
-                                }
-                                className='w-24 text-xs'
-                            />
+                            <div className='flex justify-between text-[10px] text-muted-foreground'>
+                                {SY_TIERS.map((t) => (
+                                    <span key={t}>{t >= 1000 ? `${t / 1000}k` : t}</span>
+                                ))}
+                            </div>
                         </div>
-                        <div className='flex gap-2'>
-                            <Button
-                                size='sm'
-                                disabled={additionalQuantity <= 0 || expandMutation.isPending}
-                                onClick={() =>
-                                    expandMutation.mutate({
-                                        agentId,
-                                        planetId,
-                                        claimId: claim.claimId,
-                                        additionalQuantity,
-                                    })
-                                }
-                            >
-                                {expandMutation.isPending ? 'Expanding…' : 'Confirm Expand'}
-                            </Button>
-                            <Button size='sm' variant='outline' onClick={() => setShowExpand(false)}>
-                                Cancel
-                            </Button>
-                        </div>
-                        {expandMutation.error && (
-                            <p className='text-xs text-destructive'>{expandMutation.error.message}</p>
-                        )}
+                        {(() => {
+                            const sy = SY_TIERS[expandTierIndex] ?? 1;
+                            const consumptionPerTick = CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1[claim.resourceName] ?? 1;
+                            const additionalQuantity = sy * consumptionPerTick * TICKS_PER_YEAR;
+                            const costPerUnit = LAND_CLAIM_COST_PER_UNIT[claim.resourceName] ?? 1;
+                            const cost = Math.floor(additionalQuantity * costPerUnit);
+                            const exceedsCapacity = additionalQuantity > summary.availableCapacity;
+                            const deposits = financials?.deposits ?? 0;
+                            const cannotAfford = !summary.renewable && cost > deposits;
+                            const perTickCashFlow = financials?.monthlyNetCashFlow ?? 0;
+                            const cashFlowWarning =
+                                summary.renewable &&
+                                cost * TICKS_PER_YEAR > deposits + perTickCashFlow * MONTHS_PER_YEAR;
+                            const isDisabled = exceedsCapacity || cannotAfford || expandMutation.isPending || expanded;
+
+                            return (
+                                <>
+                                    <div className='space-y-0.5 text-xs'>
+                                        <div className='flex justify-between'>
+                                            <span className='text-muted-foreground'>Quantity</span>
+                                            <span
+                                                className={`font-medium ${exceedsCapacity ? 'text-destructive' : ''}`}
+                                            >
+                                                {formatNumbers(additionalQuantity)} units
+                                                {exceedsCapacity && ' — exceeds available'}
+                                            </span>
+                                        </div>
+                                        <div className='flex justify-between'>
+                                            <span className='text-muted-foreground'>
+                                                {summary.renewable ? 'Cost / tick' : 'Cost (flat)'}
+                                            </span>
+                                            <span className='font-medium text-amber-600 dark:text-amber-400'>
+                                                {formatNumbers(cost)} ¢
+                                            </span>
+                                        </div>
+                                        {!summary.renewable ? (
+                                            <div className='flex justify-between'>
+                                                <span className='text-muted-foreground'>Your deposits</span>
+                                                <span
+                                                    className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}
+                                                >
+                                                    {formatNumbers(deposits)} ¢
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className='flex justify-between'>
+                                                <span className='text-muted-foreground'>Your cash flow</span>
+                                                <span
+                                                    className={`font-medium ${cashFlowWarning ? 'text-amber-600 dark:text-amber-400' : ''}`}
+                                                >
+                                                    {formatNumbers(perTickCashFlow)} ¢
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className='flex gap-2'>
+                                        <Button
+                                            size='sm'
+                                            disabled={isDisabled}
+                                            onClick={() =>
+                                                expandMutation.mutate({
+                                                    agentId,
+                                                    planetId,
+                                                    claimId: claim.claimId,
+                                                    additionalQuantity,
+                                                })
+                                            }
+                                        >
+                                            {expandMutation.isPending || expanded ? (
+                                                <>
+                                                    <Loader2 className='h-3 w-3 animate-spin mr-1' />
+                                                    Takes effect next tick…
+                                                </>
+                                            ) : (
+                                                'Expand'
+                                            )}
+                                        </Button>
+                                        <Button
+                                            size='sm'
+                                            variant='outline'
+                                            disabled={expandMutation.isPending || expanded}
+                                            onClick={() => setShowExpand(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                    {expandMutation.error && (
+                                        <p className='text-xs text-destructive'>{expandMutation.error.message}</p>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 ) : confirmQuit ? (
                     <div className='space-y-2 border-t pt-3'>
@@ -170,12 +257,24 @@ export function ActiveClaimCard({
                             <Button
                                 size='sm'
                                 variant='destructive'
-                                disabled={quitMutation.isPending}
+                                disabled={quitMutation.isPending || released}
                                 onClick={() => quitMutation.mutate({ agentId, planetId, claimId: claim.claimId })}
                             >
-                                {quitMutation.isPending ? 'Releasing…' : 'Confirm Release'}
+                                {quitMutation.isPending || released ? (
+                                    <>
+                                        <Loader2 className='h-3 w-3 animate-spin mr-1' />
+                                        Takes effect next tick…
+                                    </>
+                                ) : (
+                                    'Confirm Release'
+                                )}
                             </Button>
-                            <Button size='sm' variant='outline' onClick={() => setConfirmQuit(false)}>
+                            <Button
+                                size='sm'
+                                variant='outline'
+                                disabled={quitMutation.isPending || released}
+                                onClick={() => setConfirmQuit(false)}
+                            >
                                 Cancel
                             </Button>
                         </div>

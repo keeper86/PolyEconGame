@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useMemo, useRef, useEffect } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ReferenceLine } from 'recharts';
-import { CHILD_MAX_AGE, ELDERLY_MIN_AGE } from '@/simulation/constants';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
-import ChartCard from '../../_components/ChartCard';
+import { useIsSmallScreen } from '@/hooks/useMobile';
+import { formatNumbers } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { PopulationTransferMatrix } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
-import { formatNumbers } from '@/lib/utils';
-import { useIsSmallScreen } from '@/hooks/useMobile';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Bar, BarChart, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import ChartCard from '../../_components/ChartCard';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 
 type Props = {
@@ -156,9 +155,6 @@ export default function TransferChart({ title, matrix, viewMode }: Props): React
                         </span>
                         <span className='text-muted-foreground/60'>
                             (Δ = {formatNumbers(totalReceived - totalGiven)})
-                        </span>
-                        <span className='ml-auto text-muted-foreground/60'>
-                            Children: 0–{CHILD_MAX_AGE} · Elderly: {ELDERLY_MIN_AGE}+
                         </span>
                     </>
                 ) : (
