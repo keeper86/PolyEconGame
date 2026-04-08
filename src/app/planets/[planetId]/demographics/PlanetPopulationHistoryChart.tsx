@@ -42,7 +42,7 @@ function yDomainFor(points: { value: number }[]): [number, number] | ['auto', 'a
         return [lo * 0.9, hi * 1.1 + 1];
     }
     const pad = (hi - lo) * 0.08;
-    return [lo - pad, hi + pad];
+    return [Math.max(0, lo - pad), hi + pad];
 }
 
 function computeMonthlyData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
@@ -287,7 +287,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
                         dataKey='ghostValue'
                         stroke='#4f46e5'
                         strokeWidth={1}
-                        strokeOpacity={0.3}
+                        strokeOpacity={0.6}
                         strokeDasharray='3 3'
                         fill='none'
                         dot={false}

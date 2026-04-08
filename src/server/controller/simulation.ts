@@ -13,6 +13,7 @@ import { z } from 'zod';
 import {
     getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
+    getAgentHistoryAggregated as dbGetAgentHistory,
 } from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
 import {
@@ -437,10 +438,54 @@ export const getProductPriceHistory = () =>
             };
         });
 
-/**
- * Minimal financials for a specific agent on a specific planet.
- * Used by the claim lease/expand UI to check affordability.
- */
+export const getAgentHistory = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(100),
+            }),
+        )
+        .output(
+            z.object({
+                agentId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
+                foundedTick: z.number(),
+                history: z.array(
+                    z.object({
+                        bucket: z.number(),
+                        avgNetBalance: z.number(),
+                        avgMonthlyNetIncome: z.number(),
+                        avgTotalWorkers: z.number(),
+                        avgWages: z.number(),
+                        sumProductionValue: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ agent }, rows] = await Promise.all([
+                workerQueries.getAgent(input.agentId),
+                dbGetAgentHistory(db, input.agentId, input.granularity, input.limit),
+            ]);
+            return {
+                agentId: input.agentId,
+                granularity: input.granularity,
+                foundedTick: agent?.foundedTick ?? 0,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgNetBalance: r.avg_net_balance ?? 0,
+                        avgMonthlyNetIncome: r.avg_monthly_net_income ?? 0,
+                        avgTotalWorkers: r.avg_total_workers ?? 0,
+                        avgWages: r.avg_wages ?? 0,
+                        sumProductionValue: r.sum_production_value ?? 0,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
+            };
+        });
+
 export const getAgentFinancials = () =>
     protectedProcedure
         .input(z.object({ agentId: z.string(), planetId: z.string() }))

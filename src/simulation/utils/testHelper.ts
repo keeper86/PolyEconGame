@@ -425,6 +425,7 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
     return {
         id,
         name,
+        foundedTick: 0,
         associatedPlanetId: planetId,
         transportShips: [],
         automated: true,

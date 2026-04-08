@@ -351,6 +351,7 @@ export type Agent = {
     /** When false (human player), the worker still auto-allocates workforce targets each tick. */
     automateWorkerAllocation: boolean;
     name: string;
+    foundedTick: number;
     associatedPlanetId: string;
     transportShips: TransportShip[];
     assets: {
