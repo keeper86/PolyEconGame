@@ -706,7 +706,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 800_000_000,
             tenantAgentId: 'desert-sand-corp',
             tenantCostInCoins: 25_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ds1 = sandMine(EARTH_ID, 'desert-sand-mine');
@@ -732,7 +732,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 600_000_000,
             tenantAgentId: 'sahara-sand-co',
             tenantCostInCoins: 20_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ds2 = sandMine(EARTH_ID, 'sahara-sand-mine');
@@ -760,7 +760,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 600_000_000,
             tenantAgentId: 'alpine-stone-corp',
             tenantCostInCoins: 30_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ls1 = limestoneQuarry(EARTH_ID, 'alpine-limestone-quarry');
@@ -786,7 +786,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 450_000_000,
             tenantAgentId: 'karst-quarry-co',
             tenantCostInCoins: 22_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ls2 = limestoneQuarry(EARTH_ID, 'karst-limestone-quarry');
@@ -812,7 +812,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 300_000_000,
             tenantAgentId: 'coral-rock-mining',
             tenantCostInCoins: 15_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ls3 = limestoneQuarry(EARTH_ID, 'coral-limestone-quarry');
@@ -840,7 +840,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 500_000_000,
             tenantAgentId: 'delta-clay-mining',
             tenantCostInCoins: 25_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const cl1 = clayMine(EARTH_ID, 'delta-clay-mine');
@@ -866,7 +866,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 400_000_000,
             tenantAgentId: 'plains-clay-corp',
             tenantCostInCoins: 20_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const cl2 = clayMine(EARTH_ID, 'plains-clay-mine');
@@ -894,7 +894,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 800_000_000,
             tenantAgentId: 'granite-quarrying-corp',
             tenantCostInCoins: 40_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const sq1 = stoneQuarry(EARTH_ID, 'granite-quarry');
@@ -920,7 +920,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             quantity: 600_000_000,
             tenantAgentId: 'basalt-rock-corp',
             tenantCostInCoins: 30_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const sq2 = stoneQuarry(EARTH_ID, 'basalt-quarry');

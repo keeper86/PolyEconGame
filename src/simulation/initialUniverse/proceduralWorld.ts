@@ -818,7 +818,17 @@ function resourceType(facilityType: string): ClaimPool['type'] | null {
 function renewableForResource(facilityType: string): boolean {
     // Forest, sand, limestone, clay, stone, water, arable land are renewable;
     // coal, oil, gas, copper, iron ore are not.
-    const NON_RENEWABLE = new Set(['coalMine', 'oilWell', 'naturalGasWell', 'copperMine', 'ironExtractionFacility']);
+    const NON_RENEWABLE = new Set([
+        'coalMine',
+        'oilWell',
+        'naturalGasWell',
+        'copperMine',
+        'ironExtractionFacility',
+        'stoneQuarry',
+        'sandMine',
+        'limestoneQuarry',
+        'clayMine',
+    ]);
     return !NON_RENEWABLE.has(facilityType);
 }
 
