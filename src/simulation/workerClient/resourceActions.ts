@@ -1,6 +1,7 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 import { arableLandResourceType, waterSourceResourceType } from '../planet/landBoundResources';
+import type { ResourceClaim, ResourceQuantity } from '../planet/claims';
 import { collapseUntenantedClaims } from '../planet/claims';
 import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from '../utils/initialWorld';
 import { LAND_CLAIM_COST_PER_UNIT } from '../constants';
@@ -188,8 +189,7 @@ export function handleExpandClaim(
         return;
     }
     let resourceName: string | null = null;
-    let existingClaim: (import('../planet/planet').ResourceClaim & import('../planet/planet').ResourceQuantity) | null =
-        null;
+    let existingClaim: (ResourceClaim & ResourceQuantity) | null = null;
     for (const [rName, entries] of Object.entries(planet.resources)) {
         const found = entries.find((e) => e.id === claimId && e.tenantAgentId === agentId);
         if (found) {
@@ -240,8 +240,7 @@ export function handleQuitClaim(
         return;
     }
     let resourceName: string | null = null;
-    let existingClaim: (import('../planet/planet').ResourceClaim & import('../planet/planet').ResourceQuantity) | null =
-        null;
+    let existingClaim: (ResourceClaim & ResourceQuantity) | null = null;
     for (const [rName, entries] of Object.entries(planet.resources)) {
         const found = entries.find((e) => e.id === claimId && e.tenantAgentId === agentId);
         if (found) {

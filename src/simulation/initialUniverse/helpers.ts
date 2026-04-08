@@ -1,13 +1,8 @@
 import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
-import type { Resource } from '../planet/planet';
-import {
-    createEmptyDemographicEventCounters,
-    type Agent,
-    type AgentPlanetAssets,
-    type ResourceClaim,
-    type ResourceQuantity,
-} from '../planet/planet';
+import type { Resource } from '../planet/claims';
+import { createEmptyDemographicEventCounters, type Agent, type AgentPlanetAssets } from '../planet/planet';
+import { type ResourceClaim, type ResourceQuantity } from '../planet/claims';
 import type { ProductionFacility, StorageFacility } from '../planet/facility';
 import {
     MAX_AGE,

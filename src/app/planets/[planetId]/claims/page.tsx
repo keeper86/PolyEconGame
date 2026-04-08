@@ -1,53 +1,13 @@
 'use client';
 
-import { ProductIcon } from '@/components/client/ProductIcon';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
-import type { AgentClaimEntry, ClaimResourceSummary } from '@/server/controller/planet';
-import { Leaf } from 'lucide-react';
+import type { AgentClaimEntry } from '@/server/controller/planet';
 import { useParams } from 'next/navigation';
 import { ActiveClaimCard } from './_components/ActiveClaimCard';
 import { LeaseClaimCard } from './_components/LeaseClaimCard';
-
-function ReadOnlyClaimCard({ summary }: { summary: ClaimResourceSummary }) {
-    const tenantedFraction = summary.totalCapacity > 0 ? summary.tenantedCapacity / summary.totalCapacity : 0;
-    const tenantedPct = Math.round(tenantedFraction * 100);
-    const availablePct = 100 - tenantedPct;
-
-    return (
-        <Card>
-            <CardHeader className='pb-2'>
-                <CardTitle className='flex items-center gap-2 text-sm font-semibold'>
-                    <ProductIcon productName={summary.resourceName} />
-                    {summary.resourceName}
-                    {summary.renewable && <Leaf className='h-4 w-4 text-green-500' />}
-                </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-3'>
-                <p className='text-xs text-muted-foreground'>Total capacity: {formatNumbers(summary.totalCapacity)}</p>
-                <div className='grid grid-cols-2 gap-2 text-xs'>
-                    <div className='space-y-0.5'>
-                        <p className='text-muted-foreground'>Leased</p>
-                        <p className='font-medium text-amber-600 dark:text-amber-400'>
-                            {formatNumbers(summary.tenantedCapacity)}
-                            <span className='ml-1 text-muted-foreground'>({tenantedPct}%)</span>
-                        </p>
-                    </div>
-                    <div className='space-y-0.5'>
-                        <p className='text-muted-foreground'>Available</p>
-                        <p className='font-medium text-emerald-600 dark:text-emerald-400'>
-                            {formatNumbers(summary.availableCapacity)}
-                            <span className='ml-1 text-muted-foreground'>({availablePct}%)</span>
-                        </p>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
+import { ReadOnlyClaimCard } from './_components/ReadOnlyClaimCard';
 
 function ClaimsContent({ planetId }: { planetId: string }) {
     const trpc = useTRPC();
@@ -56,8 +16,6 @@ function ClaimsContent({ planetId }: { planetId: string }) {
     const { data: planetClaimsData, isLoading: planetClaimsLoading } = useSimulationQuery(
         trpc.simulation.getPlanetClaims.queryOptions({ planetId }),
     );
-
-    console.log(planetClaimsData);
 
     const { data: agentClaimsData, isLoading: agentClaimsLoading } = useSimulationQuery(
         trpc.simulation.getAgentClaims.queryOptions({ agentId: agentId ?? '', planetId }, { enabled: !!agentId }),

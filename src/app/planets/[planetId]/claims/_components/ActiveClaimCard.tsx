@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
-import { ProductIcon } from '@/components/client/ProductIcon';
-import { Leaf, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { ClaimCardHeader } from './ClaimCardHeader';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatNumbers } from '@/lib/utils';
@@ -75,13 +75,7 @@ export function ActiveClaimCard({
 
     return (
         <Card className='border-emerald-500/30'>
-            <CardHeader className='pb-2'>
-                <CardTitle className='flex items-center gap-2 text-sm font-semibold'>
-                    <ProductIcon productName={claim.resourceName} />
-                    {claim.resourceName}
-                    {summary.renewable && <Leaf className='h-4 w-4 text-green-500' />}
-                </CardTitle>
-            </CardHeader>
+            <ClaimCardHeader resourceName={claim.resourceName} renewable={summary.renewable} />
             <CardContent className='space-y-3'>
                 <div className='space-y-1'>
                     <div className='flex justify-between text-xs'>

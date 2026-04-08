@@ -1,5 +1,6 @@
 import { PRICE_FLOOR, PRICE_CEIL, EPSILON } from '../constants';
-import type { Resource, AgentPlanetAssets, AgentMarketOfferState, AgentMarketBidState } from '../planet/planet';
+import type { AgentPlanetAssets, AgentMarketOfferState, AgentMarketBidState } from '../planet/planet';
+import type { Resource } from '../planet/claims';
 import { getAvailableStorageCapacity, queryStorageFacility } from '../planet/facility';
 import type { BuyBid } from '../../server/controller/user';
 

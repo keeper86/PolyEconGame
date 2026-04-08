@@ -9,7 +9,8 @@ import {
     RETAIL_BUFFER_TARGET_TICKS,
     SERVICE_PER_PERSON_PER_TICK,
 } from '../constants';
-import type { Planet, Resource } from '../planet/planet';
+import type { Planet } from '../planet/planet';
+import type { Resource } from '../planet/claims';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,

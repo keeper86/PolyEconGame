@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
+import type { Resource } from './claims';
 import { queryClaimedResource, extractFromClaimedResource } from './claims';
-import type { Planet, Agent, Resource } from './planet';
+import type { Planet, Agent } from './planet';
 import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { makeAgent } from '../utils/testHelper';
 

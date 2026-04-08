@@ -1,4 +1,4 @@
-import type { Resource, ResourceProcessLevel } from './planet';
+import type { Resource, ResourceProcessLevel } from './claims';
 import {
     agriculturalProductResourceType,
     beverageResourceType,

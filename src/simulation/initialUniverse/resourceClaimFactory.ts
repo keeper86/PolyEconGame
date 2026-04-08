@@ -1,4 +1,4 @@
-import type { Resource } from '../planet/planet';
+import type { Resource } from '../planet/claims';
 import type { ResourceClaimEntry } from './helpers';
 
 export function makeClaim(opts: {

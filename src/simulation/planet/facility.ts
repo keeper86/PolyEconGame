@@ -1,5 +1,6 @@
 import type { EducationLevelType } from '../population/education';
-import type { PlanetaryId, Resource, ResourceProcessLevel } from './planet';
+import type { PlanetaryId } from './planet';
+import type { Resource, ResourceProcessLevel } from './claims';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {

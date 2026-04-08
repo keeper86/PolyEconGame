@@ -1,4 +1,4 @@
-import type { Resource } from './planet';
+import type { Resource } from './claims';
 
 const landBoundResourceDefault = {
     form: 'landBoundResource' as const,

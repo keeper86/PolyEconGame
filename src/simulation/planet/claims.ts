@@ -1,5 +1,27 @@
-import type { Resource, ResourceClaim, ResourceQuantity } from './planet';
 import { type Agent, type Planet } from './planet';
+
+export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
+
+export type Resource = {
+    name: string;
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource' | 'services';
+    level: ResourceProcessLevel | 'source'; // raw, refined, manufactured, consumerGood
+    volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
+    massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
+};
+export type ResourceType = Resource['form'];
+export type ResourceQuantity = {
+    type: Resource;
+    quantity: number; // in tons or pieces, depending on the phase
+};
+
+export type ResourceClaim = {
+    id: string;
+    tenantAgentId: string | null;
+    tenantCostInCoins: number;
+    regenerationRate: number;
+    maximumCapacity: number;
+};
 
 export function collapseUntenantedClaims(
     planet: Planet,
