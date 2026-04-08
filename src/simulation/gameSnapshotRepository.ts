@@ -106,8 +106,6 @@ export interface InsertPlanetPopulation {
     tick: number;
     planet_id: string;
     population: number;
-    starvation_level: number;
-    food_price: number;
 }
 
 /**
@@ -123,18 +121,8 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
             tick: String(r.tick),
             planet_id: r.planet_id,
             population: String(r.population),
-            starvation_level: r.starvation_level,
-            food_price: r.food_price,
         })),
     );
-}
-
-/**
- * Get the full population time-series for a specific planet, ordered by
- * tick ascending.
- */
-export async function getPlanetPopulationHistory(db: Knex, planetId: string) {
-    return db('planet_population_history').where({ planet_id: planetId }).orderBy('tick', 'desc').limit(100).select();
 }
 
 /**
@@ -336,8 +324,6 @@ export interface PopulationBucket {
     bucket: string;
     planet_id: string;
     avg_population: number;
-    avg_starvation: number;
-    avg_price_level: number;
 }
 
 /**
@@ -360,7 +346,7 @@ export async function getPlanetPopulationHistoryAggregated(
         .where({ planet_id: planetId })
         .orderBy('bucket', 'desc')
         .limit(limit)
-        .select('bucket', 'planet_id', 'avg_population', 'avg_starvation', 'avg_price_level');
+        .select('bucket', 'planet_id', 'avg_population');
 }
 
 export interface AgentSummaryBucket {

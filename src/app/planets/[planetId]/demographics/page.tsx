@@ -229,7 +229,7 @@ export default function PlanetDemographicsPage() {
 
     return (
         <>
-            <PlanetPopulationHistoryChart planetId={planetId} />
+            <PlanetPopulationHistoryChart planetId={planetId} live={{ tick: data.tick, population: populationTotal }} />
 
             <div className='my-3 border-t' />
 

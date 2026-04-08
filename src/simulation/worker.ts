@@ -13,12 +13,12 @@ import {
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { GameState } from './planet/planet';
-import { groceryServiceResourceType } from './planet/services';
+
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
-import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
+import { computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
@@ -122,6 +122,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         // Fall back to fresh initial state
         state = createInitialGameState();
         currentSnapshot = toImmutableGameState(state);
+
+        // Seed the population history at tick=0 so the chart has a starting
+        // point visible in the very first month. The bucket [0,30) requires a
+        // CAGG window end >= 30, so we refresh immediately after inserting.
+        if (snapshotDb) {
+            const db = snapshotDb;
+            const seedRows = [...state.planets.values()].map((planet) => ({
+                tick: 0,
+                planet_id: planet.id,
+                population: computePopulationTotal(planet),
+            }));
+            void insertPlanetPopulationHistory(db, seedRows)
+                .then(() => refreshContinuousAggregates(db, TICKS_PER_MONTH, 'monthly'))
+                .catch((err) => console.error('[worker] Failed to seed initial population history:', err));
+        }
     }
 
     // -----------------------------------------------------------------
@@ -270,6 +285,24 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         pendingAgentMonthlyRows.push(...agentRows);
     }
 
+    function flushPopulationHistory(gs: GameState, tick: number): Promise<void> {
+        const db = snapshotDb;
+        if (!db) {
+            return Promise.resolve();
+        }
+        const rows = [...gs.planets.values()].map((planet) => ({
+            tick,
+            planet_id: planet.id,
+            population: computePopulationTotal(planet),
+        }));
+        if (rows.length === 0) {
+            return Promise.resolve();
+        }
+        return insertPlanetPopulationHistory(db, rows).catch((err) => {
+            console.error(`[worker] Failed to save population history rows at tick ${tick}:`, err);
+        });
+    }
+
     /**
      * Flush accumulated intra-month price stats to the DB at month boundaries,
      * then reset the accumulator for the next month.
@@ -319,7 +352,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    // Store agent monthly rows until snapshot time
     const pendingAgentMonthlyRows: Array<{
         tick: number;
         planet_id: string;
@@ -369,19 +401,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     game_id: 1,
                     snapshot_data: snapshotData,
                 });
-
-                // Record per-planet population alongside the cold snapshot.
-                // Clamp tiny values to 0 — values below ~1e-300 are
-                // meaningless and can overflow PostgreSQL's float range.
-                const clampTiny = (v: number): number => (Math.abs(v) < 1e-300 ? 0 : v);
-                const populationRows = [...gs.planets.values()].map((planet) => ({
-                    tick,
-                    planet_id: planet.id,
-                    population: computePopulationTotal(planet),
-                    starvation_level: clampTiny(computeGlobalStarvation(planet)),
-                    food_price: clampTiny(planet.marketPrices[groceryServiceResourceType.name] ?? 0),
-                }));
-                await insertPlanetPopulationHistory(db, populationRows);
 
                 // Insert agent monthly history if we have pending rows
                 if (pendingAgentMonthlyRows.length > 0) {
@@ -438,7 +457,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 // TimescaleDB only materializes buckets that are FULLY contained in [start, end).
                 // The monthly bucket at tick T spans [T, T+TICKS_PER_MONTH), so the end of the
                 // window must be >= T + TICKS_PER_MONTH to include it.
-                void flushProductPrices(state, tickAtFlush)
+                void Promise.all([flushProductPrices(state, tickAtFlush), flushPopulationHistory(state, tickAtFlush)])
                     .then(() => {
                         if (snapshotDb) {
                             return refreshContinuousAggregates(snapshotDb, tickAtFlush + TICKS_PER_MONTH, 'monthly');

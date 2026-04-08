@@ -112,16 +112,12 @@ export type PlanetPopulationDecade = {
     bucket: string | null;
     planet_id: string | null;
     avg_population: number | null;
-    avg_starvation: number | null;
-    avg_price_level: number | null;
 };
 
 export type PlanetPopulationHistory = {
     tick: string;
     planet_id: string;
     population: string;
-    starvation_level: number;
-    food_price: number;
     created_at: Date;
 };
 
@@ -129,16 +125,12 @@ export type PlanetPopulationMonthly = {
     bucket: string | null;
     planet_id: string | null;
     avg_population: number | null;
-    avg_starvation: number | null;
-    avg_price_level: number | null;
 };
 
 export type PlanetPopulationYearly = {
     bucket: string | null;
     planet_id: string | null;
     avg_population: number | null;
-    avg_starvation: number | null;
-    avg_price_level: number | null;
 };
 
 export type ProductPriceDecade = {

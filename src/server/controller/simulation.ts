@@ -11,7 +11,7 @@
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import {
-    getPlanetPopulationHistory as dbGetPlanetPopulationHistory,
+    getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
 } from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
@@ -346,36 +346,41 @@ export const getAgentPlanetDetail = () =>
 
 /**
  * Population history time-series for a single planet.
- * Reads from the planet_population_history table written alongside each
- * cold snapshot (every SNAPSHOT_INTERVAL_TICKS ticks).
- * Returns rows ordered tick ascending, ready for direct chart consumption.
+ * Queries the appropriate continuous aggregate view (monthly / yearly / decade).
+ * Returns buckets ordered ascending, ready for chart consumption.
  */
 export const getPlanetPopulationHistory = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string() }))
+        .input(
+            z.object({
+                planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(100),
+            }),
+        )
         .output(
             z.object({
                 planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
                     z.object({
-                        tick: z.number(),
-                        population: z.number(),
-                        starvationLevel: z.number(),
-                        foodPrice: z.number(),
+                        bucket: z.number(),
+                        avgPopulation: z.number(),
                     }),
                 ),
             }),
         )
         .query(async ({ input }) => {
-            const rows = await dbGetPlanetPopulationHistory(db, input.planetId);
+            const rows = await dbGetPlanetPopulationHistory(db, input.planetId, input.granularity, input.limit);
             return {
                 planetId: input.planetId,
-                history: rows.map((r) => ({
-                    tick: Number(r.tick),
-                    population: Number(r.population),
-                    starvationLevel: r.starvation_level ?? 0,
-                    foodPrice: r.food_price ?? 0,
-                })),
+                granularity: input.granularity,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgPopulation: r.avg_population ?? 0,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
             };
         });
 

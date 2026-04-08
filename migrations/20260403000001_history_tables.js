@@ -12,8 +12,6 @@ exports.up = async function (knex) {
             tick             BIGINT           NOT NULL,
             planet_id        TEXT             NOT NULL,
             population       BIGINT           NOT NULL,
-            starvation_level DOUBLE PRECISION NOT NULL DEFAULT 0,
-            food_price       DOUBLE PRECISION NOT NULL DEFAULT 0,
             created_at       TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
             UNIQUE (planet_id, tick)
         )
@@ -158,9 +156,7 @@ exports.up = async function (knex) {
         SELECT
             time_bucket(30, tick)          AS bucket,
             planet_id,
-            avg(population)::float8                AS avg_population,
-            avg(starvation_level)::float8          AS avg_starvation,
-            avg(food_price)::float8                AS avg_price_level
+            avg(population)::float8        AS avg_population
         FROM planet_population_history
         GROUP BY time_bucket(30, tick), planet_id
         WITH NO DATA
@@ -207,9 +203,7 @@ exports.up = async function (knex) {
         SELECT
             time_bucket(360, bucket)       AS bucket,
             planet_id,
-            avg(avg_population)            AS avg_population,
-            avg(avg_starvation)            AS avg_starvation,
-            avg(avg_price_level)           AS avg_price_level
+            avg(avg_population)            AS avg_population
         FROM planet_population_monthly
         GROUP BY time_bucket(360, bucket), planet_id
         WITH NO DATA
@@ -256,9 +250,7 @@ exports.up = async function (knex) {
         SELECT
             time_bucket(3600, bucket)      AS bucket,
             planet_id,
-            avg(avg_population)            AS avg_population,
-            avg(avg_starvation)            AS avg_starvation,
-            avg(avg_price_level)           AS avg_price_level
+            avg(avg_population)            AS avg_population
         FROM planet_population_yearly
         GROUP BY time_bucket(3600, bucket), planet_id
         WITH NO DATA
