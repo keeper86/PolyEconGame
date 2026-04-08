@@ -7,16 +7,22 @@ export function makeClaim(opts: {
     quantity: number;
     tenantAgentId: string | null;
     tenantCostInCoins?: number;
+    costPerTick?: number;
     renewable?: boolean;
 }): ResourceClaimEntry {
+    const isRenewable = opts.renewable === true;
+    const passedCost = opts.tenantCostInCoins ?? 0;
     return {
         id: opts.id,
         type: opts.type,
         quantity: opts.quantity,
-        regenerationRate: opts.renewable === true ? opts.quantity : 0,
+        regenerationRate: isRenewable ? opts.quantity : 0,
         maximumCapacity: opts.quantity,
         tenantAgentId: opts.tenantAgentId,
-        tenantCostInCoins: opts.tenantCostInCoins ?? 0,
+        tenantCostInCoins: isRenewable ? 0 : (opts.tenantCostInCoins ?? 0),
+        costPerTick: isRenewable ? (opts.costPerTick ?? passedCost) : 0,
+        claimStatus: 'active',
+        noticePeriodEndsAtTick: null,
     };
 }
 

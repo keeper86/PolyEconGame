@@ -77,6 +77,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             type: arableLandResourceType,
             quantity: spec.govAgriScale * 1000,
             tenantAgentId: govId,
+            renewable: true,
         }),
     );
     waterClaims.push(
@@ -85,6 +86,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             type: waterSourceResourceType,
             quantity: spec.govAgriScale * 1000,
             tenantAgentId: govId,
+            renewable: true,
         }),
     );
 
@@ -100,6 +102,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                 quantity: company.arableLand,
                 tenantAgentId: company.id,
                 tenantCostInCoins: Math.floor(company.arableLand * 0.01),
+                renewable: true,
             }),
         );
         waterClaims.push(
@@ -109,6 +112,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                 quantity: company.waterSource,
                 tenantAgentId: company.id,
                 tenantCostInCoins: Math.floor(company.waterSource * 0.005),
+                renewable: true,
             }),
         );
 
@@ -222,6 +226,7 @@ function buildGuneIndustrialAgents(): Agent[] {
             quantity: 15000,
             tenantAgentId: 'gune-timber-co',
             tenantCostInCoins: 150,
+            renewable: true,
         }),
     );
     const l1 = loggingCamp('gune', 'gune-timber-logging');

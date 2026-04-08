@@ -48,22 +48,11 @@ export async function insertGameSnapshot(db: Knex, snapshot: InsertGameSnapshot)
     });
 }
 
-// ---------------------------------------------------------------------------
-// Read
-// ---------------------------------------------------------------------------
-
-/**
- * Get the most recent cold snapshot (by tick DESC).
- * Returns `null` if no snapshots exist.
- */
 export async function getLatestGameSnapshot(db: Knex): Promise<GameSnapshotRow | null> {
     const row = await db('game_snapshots').orderBy('tick', 'desc').first();
     return (row as GameSnapshotRow) ?? null;
 }
 
-/**
- * Get a snapshot for a specific tick.
- */
 export async function getGameSnapshotByTick(db: Knex, tick: number): Promise<GameSnapshotRow | null> {
     const row = await db('game_snapshots')
         .where({ tick: String(tick) })
@@ -71,14 +60,6 @@ export async function getGameSnapshotByTick(db: Knex, tick: number): Promise<Gam
     return (row as GameSnapshotRow) ?? null;
 }
 
-// ---------------------------------------------------------------------------
-// Cleanup
-// ---------------------------------------------------------------------------
-
-/**
- * Delete all snapshots except the N most recent (by tick DESC).
- * Useful for keeping the table small.
- */
 export async function pruneGameSnapshots(db: Knex, keepCount: number): Promise<number> {
     if (keepCount <= 0) {
         return 0;
@@ -267,10 +248,6 @@ export interface ProductPriceBucket {
     max_price: number;
 }
 
-/**
- * Query product price history from the appropriate continuous aggregate based
- * on requested granularity.
- */
 export async function getProductPriceHistory(
     db: Knex,
     planetId: string,

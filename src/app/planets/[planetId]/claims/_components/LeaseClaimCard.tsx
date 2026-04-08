@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, InfoIcon, Loader2 } from 'lucide-react';
 import { ClaimCardHeader } from './ClaimCardHeader';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -52,7 +52,7 @@ export function LeaseClaimCard({
 
     const sy = SY_TIERS[tierIndex] ?? 1;
     const consumptionPerTick = CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1[summary.resourceName] ?? 1;
-    const quantity = sy * consumptionPerTick * TICKS_PER_YEAR;
+    const quantity = sy * consumptionPerTick * (summary.renewable ? 1 : TICKS_PER_YEAR);
     const costPerUnit = LAND_CLAIM_COST_PER_UNIT[summary.resourceName] ?? 1;
     const cost = Math.floor(quantity * costPerUnit);
 
@@ -74,9 +74,33 @@ export function LeaseClaimCard({
                 </p>
                 <div className='space-y-3'>
                     <div className='space-y-1'>
-                        <div className='flex justify-between text-xs text-muted-foreground'>
-                            <span>Scale-years</span>
-                            <span className='font-medium text-foreground'>{formatNumbers(sy)} sy</span>
+                        <div className='flex gap-2 text-xs text-muted-foreground pb-1'>
+                            {summary.renewable ? (
+                                <span className='flex gap-1'>
+                                    Scale
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <InfoIcon className='h-4' />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Measures the quantity of resource claimed by what the least-demanding
+                                            facility of a this scale would sustainable be able to consume.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </span>
+                            ) : (
+                                <span className='flex gap-1'>
+                                    Scale-years{' '}
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <InfoIcon className='h-4' />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            1 Scale year can satisfy the annual consumption of one facility at scale 1.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </span>
+                            )}
                         </div>
                         <Slider
                             min={0}
@@ -86,10 +110,20 @@ export function LeaseClaimCard({
                             onValueChange={([v]) => setTierIndex(v ?? 0)}
                             disabled={leaseMutation.isPending || leased}
                         />
-                        <div className='flex justify-between text-[10px] text-muted-foreground'>
-                            {SY_TIERS.map((t) => (
-                                <span key={t}>{t >= 1000 ? `${t / 1000}k` : t}</span>
-                            ))}
+                        <div className='relative h-4 text-[10px] text-muted-foreground'>
+                            {SY_TIERS.map((t, i) => {
+                                const pct = (i / (SY_TIERS.length - 1)) * 100 - 0.3 * (i - 2.3);
+                                const translate = i === 0 ? '100%' : i === SY_TIERS.length - 1 ? '-80%' : '-50%';
+                                return (
+                                    <span
+                                        key={t}
+                                        className='absolute'
+                                        style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
+                                    >
+                                        {formatNumbers(t)}
+                                    </span>
+                                );
+                            })}
                         </div>
                     </div>
                     <div className='space-y-0.5 text-xs'>
@@ -102,39 +136,39 @@ export function LeaseClaimCard({
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>
-                                {summary.renewable ? 'Cost / tick' : 'Cost (flat)'}
+                                {summary.renewable ? 'Cost / tick (locked)' : 'Cost (flat)'}
                             </span>
                             <span className='font-medium text-amber-600 dark:text-amber-400'>
-                                {formatNumbers(cost)} ¢
+                                {formatNumbers(cost)}
                             </span>
                         </div>
                         {!summary.renewable ? (
                             <div className='flex justify-between'>
                                 <span className='text-muted-foreground'>Your deposits</span>
                                 <span className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}>
-                                    {formatNumbers(deposits)} ¢
+                                    {formatNumbers(deposits)}
                                 </span>
                             </div>
                         ) : (
                             <div className='flex justify-between'>
                                 <span className='text-muted-foreground'>Your cash flow</span>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <span
-                                            className={`font-medium ${cashFlowWarning ? 'text-amber-600 dark:text-amber-400' : ''}`}
-                                        >
-                                            {formatNumbers(perTickCashFlow)} ¢
-                                        </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        {cashFlowWarning && (
+                                {cashFlowWarning ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className={`font-medium text-amber-600 dark:text-amber-400`}>
+                                                {formatNumbers(perTickCashFlow)}
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
                                             <span className='flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400'>
                                                 <AlertTriangle className='h-3 w-3 shrink-0' />
                                                 Running cost exceeds current cash flow
                                             </span>
-                                        )}
-                                    </TooltipContent>
-                                </Tooltip>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : (
+                                    <span className={`font-medium `}>{formatNumbers(perTickCashFlow)} </span>
+                                )}
                             </div>
                         )}
                     </div>

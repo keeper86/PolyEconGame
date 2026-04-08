@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -83,7 +84,11 @@ export function ActiveClaimCard({
     const quitMutation = useMutation(
         trpc.quitClaim.mutationOptions({
             onSuccess: () => {
-                setReleased(true);
+                if (summary.renewable) {
+                    setConfirmQuit(false);
+                } else {
+                    setReleased(true);
+                }
                 invalidate();
             },
         }),
@@ -110,10 +115,24 @@ export function ActiveClaimCard({
                         <div className='h-1.5 rounded-full bg-emerald-500' style={{ width: `${fillPct}%` }} />
                     </div>
                 </div>
+                {claim.claimStatus === 'paused' && (
+                    <Badge variant='outline' className='text-amber-600 border-amber-600 text-xs w-fit'>
+                        Paused — insufficient funds
+                    </Badge>
+                )}
+                {claim.claimStatus === 'terminating' && (
+                    <Badge variant='outline' className='text-yellow-600 border-yellow-600 text-xs w-fit'>
+                        Notice given — releases in ~1 month
+                    </Badge>
+                )}
                 <div className='grid grid-cols-2 gap-2 text-xs'>
                     <div className='space-y-0.5'>
                         <p className='text-muted-foreground'>Cost / tick</p>
-                        <p className='font-medium'>{formatNumbers(claim.tenantCostInCoins)} ¢</p>
+                        <p className='font-medium'>
+                            {summary.renewable
+                                ? formatNumbers(claim.costPerTick)
+                                : formatNumbers(claim.tenantCostInCoins)}
+                        </p>
                     </div>
                     <div className='space-y-0.5'>
                         <p className='text-muted-foreground'>Regen / tick</p>
@@ -189,10 +208,10 @@ export function ActiveClaimCard({
                                         </div>
                                         <div className='flex justify-between'>
                                             <span className='text-muted-foreground'>
-                                                {summary.renewable ? 'Cost / tick' : 'Cost (flat)'}
+                                                {summary.renewable ? 'Cost / tick (locked)' : 'Cost (flat)'}
                                             </span>
                                             <span className='font-medium text-amber-600 dark:text-amber-400'>
-                                                {formatNumbers(cost)} ¢
+                                                {formatNumbers(cost)}
                                             </span>
                                         </div>
                                         {!summary.renewable ? (
@@ -201,7 +220,7 @@ export function ActiveClaimCard({
                                                 <span
                                                     className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}
                                                 >
-                                                    {formatNumbers(deposits)} ¢
+                                                    {formatNumbers(deposits)}
                                                 </span>
                                             </div>
                                         ) : (
@@ -210,7 +229,7 @@ export function ActiveClaimCard({
                                                 <span
                                                     className={`font-medium ${cashFlowWarning ? 'text-amber-600 dark:text-amber-400' : ''}`}
                                                 >
-                                                    {formatNumbers(perTickCashFlow)} ¢
+                                                    {formatNumbers(perTickCashFlow)}
                                                 </span>
                                             </div>
                                         )}
@@ -255,7 +274,11 @@ export function ActiveClaimCard({
                     </div>
                 ) : confirmQuit ? (
                     <div className='space-y-2 border-t pt-3 mt-auto'>
-                        <p className='text-xs text-destructive font-medium'>Release this claim back to the planet?</p>
+                        <p className='text-xs text-destructive font-medium'>
+                            {summary.renewable
+                                ? 'Billing continues until the claim is released.'
+                                : 'There is no refund!'}
+                        </p>
                         <div className='flex gap-2'>
                             <Button
                                 size='sm'
@@ -268,6 +291,8 @@ export function ActiveClaimCard({
                                         <Loader2 className='h-3 w-3 animate-spin mr-1' />
                                         Takes effect next tick…
                                     </>
+                                ) : summary.renewable ? (
+                                    'Confirm Notice'
                                 ) : (
                                     'Confirm Release'
                                 )}
@@ -285,14 +310,16 @@ export function ActiveClaimCard({
                     </div>
                 ) : (
                     <div className='flex gap-2 border-t pt-3 mt-auto'>
-                        {summary.availableCapacity > 0 && (
+                        {summary.availableCapacity > 0 && claim.claimStatus !== 'terminating' && (
                             <Button size='sm' variant='outline' onClick={() => setShowExpand(true)}>
                                 Expand
                             </Button>
                         )}
-                        <Button size='sm' variant='outline' onClick={() => setConfirmQuit(true)}>
-                            Release
-                        </Button>
+                        {claim.claimStatus !== 'terminating' && (
+                            <Button size='sm' variant='outline' onClick={() => setConfirmQuit(true)}>
+                                {summary.renewable ? 'Give Notice' : 'Release'}
+                            </Button>
+                        )}
                     </div>
                 )}
             </CardContent>

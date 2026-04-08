@@ -15,10 +15,15 @@ export type ResourceQuantity = {
     quantity: number; // in tons or pieces, depending on the phase
 };
 
+export type ClaimStatus = 'active' | 'paused' | 'terminating';
+
 export type ResourceClaim = {
     id: string;
     tenantAgentId: string | null;
     tenantCostInCoins: number;
+    costPerTick: number;
+    claimStatus: ClaimStatus;
+    noticePeriodEndsAtTick: number | null;
     regenerationRate: number;
     maximumCapacity: number;
 };
@@ -55,6 +60,9 @@ export function collapseUntenantedClaims(
         id: survivorId,
         tenantAgentId: null,
         tenantCostInCoins: 0,
+        costPerTick: 0,
+        claimStatus: 'active' as const,
+        noticePeriodEndsAtTick: null,
         quantity: totalQuantity,
         regenerationRate: totalRegen,
         maximumCapacity: totalCap,
@@ -64,6 +72,8 @@ export function collapseUntenantedClaims(
 
     return collapsed;
 }
+
+export const isRenewableClaim = (claim: ResourceClaim): boolean => claim.regenerationRate > 0;
 
 export const queryClaimedResource = (planet: Planet, agent: Agent, resource: Resource): number => {
     const resourceEntries = planet.resources[resource.name];

@@ -525,6 +525,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 quantity: spec.forest,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.forest * 0.0002),
+                renewable: true,
             }),
         );
 

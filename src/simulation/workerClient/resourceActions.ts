@@ -4,7 +4,7 @@ import { arableLandResourceType, waterSourceResourceType } from '../planet/landB
 import type { ResourceClaim, ResourceQuantity } from '../planet/claims';
 import { collapseUntenantedClaims } from '../planet/claims';
 import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from '../utils/initialWorld';
-import { LAND_CLAIM_COST_PER_UNIT } from '../constants';
+import { LAND_CLAIM_COST_PER_UNIT, TICKS_PER_MONTH } from '../constants';
 
 /**
  * Handle 'claimResources' action
@@ -73,7 +73,10 @@ export function handleClaimResources(
         regenerationRate: arablePool.regenerationRate * arableRatio,
         maximumCapacity: arableLandQuantity,
         tenantAgentId: agentId,
-        tenantCostInCoins: Math.floor(arableLandQuantity * 0.01),
+        tenantCostInCoins: 0,
+        costPerTick: Math.floor(arableLandQuantity * 0.01),
+        claimStatus: 'active' as const,
+        noticePeriodEndsAtTick: null,
     };
     arablePool.quantity -= arableLandQuantity;
     arablePool.regenerationRate -= newArableClaim.regenerationRate;
@@ -89,7 +92,10 @@ export function handleClaimResources(
         regenerationRate: waterPool.regenerationRate * waterRatio,
         maximumCapacity: waterSourceQuantity,
         tenantAgentId: agentId,
-        tenantCostInCoins: Math.floor(waterSourceQuantity * 0.005),
+        tenantCostInCoins: 0,
+        costPerTick: Math.floor(waterSourceQuantity * 0.005),
+        claimStatus: 'active' as const,
+        noticePeriodEndsAtTick: null,
     };
     waterPool.quantity -= waterSourceQuantity;
     waterPool.regenerationRate -= newWaterClaim.regenerationRate;
@@ -159,6 +165,8 @@ export function handleLeaseClaim(
     }
     const claimId = `${planetId}-${resourceName}-${agentId}`;
     const ratio = quantity / pool.maximumCapacity;
+    const isRenewable = pool.regenerationRate > 0;
+    const costAmount = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1));
     const newClaim = {
         id: claimId,
         type: pool.type,
@@ -166,7 +174,10 @@ export function handleLeaseClaim(
         regenerationRate: pool.regenerationRate * ratio,
         maximumCapacity: quantity,
         tenantAgentId: agentId,
-        tenantCostInCoins: Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1)),
+        tenantCostInCoins: isRenewable ? 0 : costAmount,
+        costPerTick: isRenewable ? costAmount : 0,
+        claimStatus: 'active' as const,
+        noticePeriodEndsAtTick: null,
     };
     pool.quantity -= quantity;
     pool.regenerationRate -= newClaim.regenerationRate;
@@ -215,9 +226,15 @@ export function handleExpandClaim(
     existingClaim.quantity += additionalQuantity;
     existingClaim.maximumCapacity += additionalQuantity;
     existingClaim.regenerationRate += pool.regenerationRate * ratio;
-    existingClaim.tenantCostInCoins = Math.floor(
-        existingClaim.maximumCapacity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1),
-    );
+    if (existingClaim.regenerationRate > 0) {
+        existingClaim.costPerTick = Math.floor(
+            existingClaim.maximumCapacity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1),
+        );
+    } else {
+        existingClaim.tenantCostInCoins = Math.floor(
+            existingClaim.maximumCapacity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1),
+        );
+    }
     pool.quantity -= additionalQuantity;
     pool.regenerationRate -= pool.regenerationRate * ratio;
     pool.maximumCapacity -= additionalQuantity;
@@ -253,9 +270,17 @@ export function handleQuitClaim(
         safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Claim '${claimId}' not found for agent` });
         return;
     }
-    existingClaim.tenantAgentId = null;
-    existingClaim.tenantCostInCoins = 0;
-    collapseUntenantedClaims(planet, resourceName, `${planetId}-${resourceName}-unclaimed`);
+    if (existingClaim.regenerationRate > 0) {
+        existingClaim.claimStatus = 'terminating';
+        existingClaim.noticePeriodEndsAtTick = state.tick + TICKS_PER_MONTH;
+    } else {
+        existingClaim.tenantAgentId = null;
+        existingClaim.tenantCostInCoins = 0;
+        existingClaim.costPerTick = 0;
+        existingClaim.claimStatus = 'active';
+        existingClaim.noticePeriodEndsAtTick = null;
+        collapseUntenantedClaims(planet, resourceName, `${planetId}-${resourceName}-unclaimed`);
+    }
     console.log(`[worker] Agent '${agentId}' quit claim '${claimId}' on planet '${planetId}'`);
     safePostMessage({ type: 'claimQuit', requestId, agentId, claimId });
 }

@@ -81,6 +81,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             type: arableLandResourceType,
             quantity: 20000,
             tenantAgentId: GOV,
+            renewable: true,
         }),
     );
     waterClaims.push(
@@ -89,6 +90,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             type: waterSourceResourceType,
             quantity: 20000,
             tenantAgentId: GOV,
+            renewable: true,
         }),
     );
 
@@ -104,6 +106,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                 quantity: spec.arableLand,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.arableLand * 0.01),
+                renewable: true,
             }),
         );
         waterClaims.push(
@@ -113,6 +116,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                 quantity: spec.waterSource,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.waterSource * 0.005),
+                renewable: true,
             }),
         );
 

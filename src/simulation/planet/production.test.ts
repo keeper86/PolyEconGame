@@ -54,6 +54,9 @@ describe('productionTick (basic)', () => {
                 maximumCapacity: 5000,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
             },
         ];
 
@@ -97,6 +100,9 @@ describe('productionTick (basic)', () => {
                 maximumCapacity: 0,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
             },
         ];
 
@@ -140,6 +146,9 @@ describe('productionTick (basic)', () => {
                 maximumCapacity: 10,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
             },
         ];
 
@@ -183,6 +192,9 @@ describe('productionTick (basic)', () => {
                 maximumCapacity: 10000,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
             },
         ];
         planet.resources[resB.name] = [
@@ -194,6 +206,9 @@ describe('productionTick (basic)', () => {
                 maximumCapacity: 100,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
             },
         ];
 
@@ -232,6 +247,9 @@ describe('productionTick (basic)', () => {
                 maximumCapacity: 10,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
             },
         ];
 
@@ -356,6 +374,9 @@ describe('productionTick — pieces vs continuous resource handling', () => {
                 maximumCapacity: 100,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
             },
         ];
 
