@@ -144,6 +144,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         total: spec.totalArable,
         existing: arableClaims,
         claimAgentId: govId,
+        renewable: true,
     });
     if (arableRemainder) {
         arableClaims.push(arableRemainder);
@@ -156,6 +157,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         total: spec.totalWater,
         existing: waterClaims,
         claimAgentId: govId,
+        renewable: true,
     });
     if (waterRemainder) {
         waterClaims.push(waterRemainder);

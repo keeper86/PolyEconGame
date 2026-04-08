@@ -1677,32 +1677,88 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
 
     // --- Unclaimed remainders ---
     const remainders = [
-        { claims: arableClaims, total: TOTAL_ARABLE, type: arableLandResourceType, prefix: 'earth-arable' },
-        { claims: waterClaims, total: TOTAL_WATER, type: waterSourceResourceType, prefix: 'earth-water' },
-        { claims: ironOreClaims, total: TOTAL_IRON_ORE, type: ironOreDepositResourceType, prefix: 'earth-iron' },
-        { claims: coalClaims, total: TOTAL_COAL, type: coalDepositResourceType, prefix: 'earth-coal' },
-        { claims: oilClaims, total: TOTAL_OIL, type: oilReservoirResourceType, prefix: 'earth-oil' },
-        { claims: gasClaims, total: TOTAL_GAS, type: naturalGasFieldResourceType, prefix: 'earth-gas' },
-        { claims: forestClaims, total: TOTAL_FOREST, type: forestResourceType, prefix: 'earth-forest' },
-        { claims: copperClaims, total: TOTAL_COPPER, type: copperDepositResourceType, prefix: 'earth-copper' },
-        { claims: sandClaims, total: TOTAL_SAND, type: sandDepositResourceType, prefix: 'earth-sand' },
+        {
+            claims: arableClaims,
+            total: TOTAL_ARABLE,
+            type: arableLandResourceType,
+            prefix: 'earth-arable',
+            renewable: true,
+        },
+        {
+            claims: waterClaims,
+            total: TOTAL_WATER,
+            type: waterSourceResourceType,
+            prefix: 'earth-water',
+            renewable: true,
+        },
+        {
+            claims: ironOreClaims,
+            total: TOTAL_IRON_ORE,
+            type: ironOreDepositResourceType,
+            prefix: 'earth-iron',
+            renewable: false,
+        },
+        {
+            claims: coalClaims,
+            total: TOTAL_COAL,
+            type: coalDepositResourceType,
+            prefix: 'earth-coal',
+            renewable: false,
+        },
+        { claims: oilClaims, total: TOTAL_OIL, type: oilReservoirResourceType, prefix: 'earth-oil', renewable: false },
+        {
+            claims: gasClaims,
+            total: TOTAL_GAS,
+            type: naturalGasFieldResourceType,
+            prefix: 'earth-gas',
+            renewable: false,
+        },
+        {
+            claims: forestClaims,
+            total: TOTAL_FOREST,
+            type: forestResourceType,
+            prefix: 'earth-forest',
+            renewable: true,
+        },
+        {
+            claims: copperClaims,
+            total: TOTAL_COPPER,
+            type: copperDepositResourceType,
+            prefix: 'earth-copper',
+            renewable: false,
+        },
+        { claims: sandClaims, total: TOTAL_SAND, type: sandDepositResourceType, prefix: 'earth-sand', renewable: true },
         {
             claims: limestoneClaims,
             total: TOTAL_LIMESTONE,
             type: limestoneDepositResourceType,
             prefix: 'earth-limestone',
+            renewable: true,
         },
-        { claims: clayClaims, total: TOTAL_CLAY, type: clayDepositResourceType, prefix: 'earth-clay' },
-        { claims: stoneClaims, total: TOTAL_STONE, type: stoneDepositResourceType, prefix: 'earth-stone' },
+        {
+            claims: clayClaims,
+            total: TOTAL_CLAY,
+            type: clayDepositResourceType,
+            prefix: 'earth-clay',
+            renewable: false,
+        },
+        {
+            claims: stoneClaims,
+            total: TOTAL_STONE,
+            type: stoneDepositResourceType,
+            prefix: 'earth-stone',
+            renewable: false,
+        },
     ];
 
-    for (const { claims, total, type, prefix } of remainders) {
+    for (const { claims, total, type, prefix, renewable } of remainders) {
         const remainder = makeUnclaimedRemainder({
             idPrefix: prefix,
             type,
             total,
             existing: claims,
             claimAgentId: GOV,
+            renewable,
         });
         if (remainder) {
             claims.push(remainder);

@@ -1247,73 +1247,91 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         total: number;
         type: ClaimPool['type'];
         prefix: string;
+        renewable: boolean;
     }> = [
         {
             facilityType: 'coalMine',
             total: TOTAL_COAL,
             type: coalDepositResourceType,
             prefix: `${PROC_PLANET_ID}-coal`,
+            renewable: renewableForResource('coalMine'),
         },
-        { facilityType: 'oilWell', total: TOTAL_OIL, type: oilReservoirResourceType, prefix: `${PROC_PLANET_ID}-oil` },
+        {
+            facilityType: 'oilWell',
+            total: TOTAL_OIL,
+            type: oilReservoirResourceType,
+            prefix: `${PROC_PLANET_ID}-oil`,
+            renewable: renewableForResource('oilWell'),
+        },
         {
             facilityType: 'naturalGasWell',
             total: TOTAL_GAS,
             type: naturalGasFieldResourceType,
             prefix: `${PROC_PLANET_ID}-gas`,
+            renewable: renewableForResource('naturalGasWell'),
         },
         {
             facilityType: 'loggingCamp',
             total: TOTAL_FOREST,
             type: forestResourceType,
             prefix: `${PROC_PLANET_ID}-forest`,
+            renewable: renewableForResource('loggingCamp'),
         },
         {
             facilityType: 'stoneQuarry',
             total: TOTAL_STONE,
             type: stoneDepositResourceType,
             prefix: `${PROC_PLANET_ID}-stone`,
+            renewable: renewableForResource('stoneQuarry'),
         },
         {
             facilityType: 'copperMine',
             total: TOTAL_COPPER,
             type: copperDepositResourceType,
             prefix: `${PROC_PLANET_ID}-copper`,
+            renewable: renewableForResource('copperMine'),
         },
         {
             facilityType: 'sandMine',
             total: TOTAL_SAND,
             type: sandDepositResourceType,
             prefix: `${PROC_PLANET_ID}-sand`,
+            renewable: renewableForResource('sandMine'),
         },
         {
             facilityType: 'limestoneQuarry',
             total: TOTAL_LIMESTONE,
             type: limestoneDepositResourceType,
             prefix: `${PROC_PLANET_ID}-limestone`,
+            renewable: renewableForResource('limestoneQuarry'),
         },
         {
             facilityType: 'clayMine',
             total: TOTAL_CLAY,
             type: clayDepositResourceType,
             prefix: `${PROC_PLANET_ID}-clay`,
+            renewable: renewableForResource('clayMine'),
         },
         {
             facilityType: 'cottonFarm',
             total: TOTAL_ARABLE,
             type: arableLandResourceType,
             prefix: `${PROC_PLANET_ID}-arable`,
+            renewable: renewableForResource('cottonFarm'),
         },
         {
             facilityType: 'waterExtractionFacility',
             total: TOTAL_WATER,
             type: waterSourceResourceType,
             prefix: `${PROC_PLANET_ID}-water`,
+            renewable: renewableForResource('waterExtractionFacility'),
         },
         {
             facilityType: 'ironExtractionFacility',
             total: TOTAL_IRON_ORE,
             type: ironOreDepositResourceType,
             prefix: `${PROC_PLANET_ID}-iron`,
+            renewable: renewableForResource('ironExtractionFacility'),
         },
     ];
 
@@ -1332,6 +1350,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             total: cfg.total,
             existing: pool,
             claimAgentId: GOV,
+            renewable: cfg.renewable,
         });
         if (remainder) {
             pool.push(remainder);

@@ -13,7 +13,7 @@ export function makeClaim(opts: {
         id: opts.id,
         type: opts.type,
         quantity: opts.quantity,
-        regenerationRate: opts.renewable === false ? 0 : opts.quantity,
+        regenerationRate: opts.renewable === true ? opts.quantity : 0,
         maximumCapacity: opts.quantity,
         tenantAgentId: opts.tenantAgentId,
         tenantCostInCoins: opts.tenantCostInCoins ?? 0,
@@ -26,6 +26,7 @@ export function makeUnclaimedRemainder(opts: {
     total: number;
     existing: ResourceClaimEntry[];
     claimAgentId: string;
+    renewable?: boolean;
 }): ResourceClaimEntry | null {
     const used = opts.existing.reduce((sum, c) => sum + c.quantity, 0);
     const remaining = opts.total - used;
@@ -37,5 +38,6 @@ export function makeUnclaimedRemainder(opts: {
         type: opts.type,
         quantity: remaining,
         tenantAgentId: null,
+        renewable: opts.renewable,
     });
 }

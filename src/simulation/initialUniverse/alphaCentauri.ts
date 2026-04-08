@@ -341,18 +341,31 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
 
     // Unclaimed remainders
     const remainders = [
-        { claims: arableClaims, total: TOTAL_ARABLE, type: arableLandResourceType, prefix: 'ac-arable' },
-        { claims: waterClaims, total: TOTAL_WATER, type: waterSourceResourceType, prefix: 'ac-water' },
-        { claims: ironClaims, total: TOTAL_IRON, type: ironOreDepositResourceType, prefix: 'ac-iron' },
-        { claims: coalClaims, total: TOTAL_COAL, type: coalDepositResourceType, prefix: 'ac-coal' },
+        {
+            claims: arableClaims,
+            total: TOTAL_ARABLE,
+            type: arableLandResourceType,
+            prefix: 'ac-arable',
+            renewable: true,
+        },
+        { claims: waterClaims, total: TOTAL_WATER, type: waterSourceResourceType, prefix: 'ac-water', renewable: true },
+        {
+            claims: ironClaims,
+            total: TOTAL_IRON,
+            type: ironOreDepositResourceType,
+            prefix: 'ac-iron',
+            renewable: false,
+        },
+        { claims: coalClaims, total: TOTAL_COAL, type: coalDepositResourceType, prefix: 'ac-coal', renewable: false },
     ];
-    for (const { claims, total, type, prefix } of remainders) {
+    for (const { claims, total, type, prefix, renewable } of remainders) {
         const remainder = makeUnclaimedRemainder({
             idPrefix: prefix,
             type,
             total,
             existing: claims,
             claimAgentId: GOV,
+            renewable,
         });
         if (remainder) {
             claims.push(remainder);
