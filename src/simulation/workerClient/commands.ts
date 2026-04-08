@@ -12,6 +12,9 @@ import {
     claimResourcesSpec,
     buildFacilitySpec,
     expandFacilitySpec,
+    leaseClaimSpec,
+    expandClaimSpec,
+    quitClaimSpec,
 } from './commandSpec';
 
 export function workerCreateAgent(opts: {
@@ -166,6 +169,50 @@ export function workerExpandFacility(opts: {
     return sendCommandSpec(
         { type: 'expandFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
         expandFacilitySpec,
+        timeoutMs,
+    );
+}
+
+export function workerLeaseClaim(opts: {
+    agentId: string;
+    planetId: string;
+    resourceName: string;
+    quantity: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, resourceName, quantity, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'leaseClaim', requestId: randomUUID(), agentId, planetId, resourceName, quantity },
+        leaseClaimSpec,
+        timeoutMs,
+    );
+}
+
+export function workerExpandClaim(opts: {
+    agentId: string;
+    planetId: string;
+    claimId: string;
+    additionalQuantity: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, claimId, additionalQuantity, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'expandClaim', requestId: randomUUID(), agentId, planetId, claimId, additionalQuantity },
+        expandClaimSpec,
+        timeoutMs,
+    );
+}
+
+export function workerQuitClaim(opts: {
+    agentId: string;
+    planetId: string;
+    claimId: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, claimId, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'quitClaim', requestId: randomUUID(), agentId, planetId, claimId },
+        quitClaimSpec,
         timeoutMs,
     );
 }

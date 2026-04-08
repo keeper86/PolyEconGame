@@ -1,45 +1,48 @@
 import { health } from './controller/health';
 import { logs } from './controller/logs';
+import {
+    getAgentClaims,
+    getPlanetClaims,
+    getPlanetDemographics,
+    getPlanetDemographicsFull,
+    getPlanetEconomy,
+    getPlanetMarket,
+    getPlanetMarketOverview,
+    getPlanetOverview,
+} from './controller/planet';
 import { ship } from './controller/ship';
 import {
-    getLatestPlanetSummaries,
-    getLatestAgents,
-    getAgentListSummaries,
     getAgentDetail,
+    getAgentListSummaries,
     getAgentOverview,
     getAgentPlanetDetail,
+    getCurrentTick,
+    getLatestAgents,
+    getLatestPlanetSummaries,
+    getLoanConditions,
     getPlanetDetail,
     getPlanetPopulationHistory,
     getProductPriceHistory,
-    getCurrentTick,
-    getLoanConditions,
 } from './controller/simulation';
-import {
-    getPlanetOverview,
-    getPlanetDemographics,
-    getPlanetEconomy,
-    getPlanetDemographicsFull,
-    getPlanetMarket,
-    getPlanetMarketOverview,
-    getPlanetClaims,
-} from './controller/planet';
 
 import {
-    getUser,
-    getUsers,
-    updateUser,
-    getUserIdFromSession,
+    buildFacility,
+    cancelBuyBid,
+    cancelSellOffer,
     createAgent,
+    expandClaim,
+    expandFacility,
+    getUser,
+    getUserIdFromSession,
+    getUsers,
+    leaseClaim,
+    quitClaim,
     requestLoan,
     setAutomation,
-    setWorkerAllocationTargets,
-    setSellOffers,
-    cancelSellOffer,
-    cancelBuyBid,
     setBuyBids,
-    claimResources,
-    buildFacility,
-    expandFacility,
+    setSellOffers,
+    setWorkerAllocationTargets,
+    updateUser
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -62,6 +65,7 @@ const simulationRouter = trpcRoot.router({
     getPlanetMarket: getPlanetMarket(),
     getPlanetMarketOverview: getPlanetMarketOverview(),
     getPlanetClaims: getPlanetClaims(),
+    getAgentClaims: getAgentClaims(),
     // historical endpoints removed
 });
 
@@ -78,9 +82,11 @@ const protectedAppRouter = trpcRoot.router({
     cancelSellOffer: cancelSellOffer(),
     cancelBuyBid: cancelBuyBid(),
     setBuyBids: setBuyBids(),
-    claimResources: claimResources(),
     buildFacility: buildFacility(),
     expandFacility: expandFacility(),
+    leaseClaim: leaseClaim(),
+    expandClaim: expandClaim(),
+    quitClaim: quitClaim(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

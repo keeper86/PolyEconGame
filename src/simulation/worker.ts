@@ -161,6 +161,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         handleMarketAction(state, action, safePostMessage);
                         break;
                     case 'claimResources':
+                    case 'leaseClaim':
+                    case 'expandClaim':
+                    case 'quitClaim':
                         handleResourceAction(state, action, safePostMessage);
                         break;
                     case 'buildFacility':
@@ -826,6 +829,57 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 waterSourceQuantity,
             });
             // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'leaseClaim') {
+            const { requestId, agentId, planetId, resourceName, quantity } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'claimLeaseFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'leaseClaim', requestId, agentId, planetId, resourceName, quantity });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'expandClaim') {
+            const { requestId, agentId, planetId, claimId, additionalQuantity } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'claimExpandFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'claimExpandFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'expandClaim', requestId, agentId, planetId, claimId, additionalQuantity });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'quitClaim') {
+            const { requestId, agentId, planetId, claimId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'claimQuitFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'quitClaim', requestId, agentId, planetId, claimId });
             if (!processingTick) {
                 drainActionQueue();
             }

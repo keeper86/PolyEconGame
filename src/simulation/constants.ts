@@ -237,3 +237,18 @@ export const GENERATION_KERNEL_N = 2;
  */
 export const ELDERLY_FLOOR_FRACTION = 0;
 export const EPSILON = 1e-4;
+
+export const LAND_CLAIM_COST_PER_UNIT: Record<string, number> = {
+    'Arable Land': 1,
+    'Water Source': 1,
+    'Coal Deposit': 1,
+    'Oil Reservoir': 1,
+    'Natural Gas Field': 1,
+    'Forest': 1,
+    'Stone Deposit': 1,
+    'Copper Deposit': 1,
+    'Sand Deposit': 1,
+    'Limestone Deposit': 1,
+    'Clay Deposit': 1,
+    'Iron Ore Deposit': 1,
+};

@@ -160,3 +160,42 @@ export const expandFacilitySpec: CommandSpec<
     failureType: 'facilityExpandFailed',
     extract: (msg) => msg.facilityId,
 };
+
+type LeaseClaimSuccess = Extract<OutboundMessage, { type: 'claimLeased' }>;
+type LeaseClaimFailure = Extract<OutboundMessage, { type: 'claimLeaseFailed' }>;
+export const leaseClaimSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'leaseClaim' }>,
+    LeaseClaimSuccess,
+    LeaseClaimFailure,
+    string
+> = {
+    successType: 'claimLeased',
+    failureType: 'claimLeaseFailed',
+    extract: (msg) => msg.claimId,
+};
+
+type ExpandClaimSuccess = Extract<OutboundMessage, { type: 'claimExpanded' }>;
+type ExpandClaimFailure = Extract<OutboundMessage, { type: 'claimExpandFailed' }>;
+export const expandClaimSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'expandClaim' }>,
+    ExpandClaimSuccess,
+    ExpandClaimFailure,
+    string
+> = {
+    successType: 'claimExpanded',
+    failureType: 'claimExpandFailed',
+    extract: (msg) => msg.claimId,
+};
+
+type QuitClaimSuccess = Extract<OutboundMessage, { type: 'claimQuit' }>;
+type QuitClaimFailure = Extract<OutboundMessage, { type: 'claimQuitFailed' }>;
+export const quitClaimSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'quitClaim' }>,
+    QuitClaimSuccess,
+    QuitClaimFailure,
+    string
+> = {
+    successType: 'claimQuit',
+    failureType: 'claimQuitFailed',
+    extract: (msg) => msg.claimId,
+};

@@ -759,6 +759,81 @@ export const getPlanetClaims = () =>
             return { tick, governmentId: planet.governmentId, resources: summaries };
         });
 
+export type AgentClaimEntry = {
+    claimId: string;
+    resourceName: string;
+    quantity: number;
+    maximumCapacity: number;
+    tenantCostInCoins: number;
+    regenerationRate: number;
+    extractionRatePerTick: number;
+    depletionTicksEstimate: number | null;
+};
+
+const agentClaimEntrySchema = z.object({
+    claimId: z.string(),
+    resourceName: z.string(),
+    quantity: z.number(),
+    maximumCapacity: z.number(),
+    tenantCostInCoins: z.number(),
+    regenerationRate: z.number(),
+    extractionRatePerTick: z.number(),
+    depletionTicksEstimate: z.number().nullable(),
+});
+
+export const getAgentClaims = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(z.object({ tick: z.number(), claims: z.array(agentClaimEntrySchema) }))
+        .query(async ({ input }) => {
+            const [{ tick }, { planet }, { agents }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getPlanet(input.planetId),
+                workerQueries.getAgentsByPlanet(input.planetId),
+            ]);
+
+            if (!planet) {
+                return { tick, claims: [] };
+            }
+
+            const agent = agents.find((a: Agent) => a.id === input.agentId);
+            if (!agent) {
+                return { tick, claims: [] };
+            }
+
+            const assets = agent.assets[input.planetId];
+            const facilities = assets?.productionFacilities ?? [];
+
+            const claims: AgentClaimEntry[] = [];
+
+            for (const [resourceName, entries] of Object.entries(planet.resources)) {
+                for (const entry of entries) {
+                    if (entry.tenantAgentId !== input.agentId) {
+                        continue;
+                    }
+                    const extractionRatePerTick = facilities.reduce((sum, f) => {
+                        const need = f.needs.find((n) => n.resource.name === resourceName);
+                        return need ? sum + need.quantity * f.scale : sum;
+                    }, 0);
+                    const netDepletionRate = extractionRatePerTick - entry.regenerationRate;
+                    const depletionTicksEstimate =
+                        netDepletionRate > 0 ? Math.floor(entry.quantity / netDepletionRate) : null;
+                    claims.push({
+                        claimId: entry.id,
+                        resourceName,
+                        quantity: entry.quantity,
+                        maximumCapacity: entry.maximumCapacity,
+                        tenantCostInCoins: entry.tenantCostInCoins,
+                        regenerationRate: entry.regenerationRate,
+                        extractionRatePerTick,
+                        depletionTicksEstimate,
+                    });
+                }
+            }
+
+            return { tick, claims };
+        });
+
 // ---------------------------------------------------------------------------
 // Market overview (all resources)
 // ---------------------------------------------------------------------------

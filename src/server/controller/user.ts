@@ -10,6 +10,9 @@ import {
     workerClaimResources,
     workerBuildFacility,
     workerExpandFacility,
+    workerLeaseClaim,
+    workerExpandClaim,
+    workerQuitClaim,
 } from '@/simulation/workerClient/commands';
 import { workerQueries } from '@/simulation/workerClient/queries';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
@@ -645,78 +648,6 @@ export const setBuyBids = () => {
         });
 };
 
-/**
- * Claim a slice of untenanted arable land and a water source on the given
- * planet for the user's agent and equip it with the matching production
- * facilities (water extraction + agricultural production).
- *
- * Under the hood the worker collapses all unclaimed resource blocks into a
- * single pool and splits off the requested quantities.  The minimum
- * meaningful chunk is 1 000 units for each resource (scale = 1 facility).
- *
- * The caller must already own an agent and must not have existing tenancies
- * for these resource types (the worker will simply add new ones alongside
- * any that already exist).
- */
-export const claimResources = () => {
-    return protectedProcedure
-        .input(
-            z.object({
-                agentId: z.string().min(1),
-                planetId: z.string().min(1),
-                /**
-                 * How much arable land to claim (units).
-                 * Must be a positive multiple of 1 000 (= one facility scale).
-                 */
-                arableLandQuantity: z.number().int().min(1000),
-                /**
-                 * How much water source to claim (units).
-                 * Must be a positive multiple of 1 000.
-                 */
-                waterSourceQuantity: z.number().int().min(1000),
-            }),
-        )
-        .output(
-            z.object({
-                arableClaimId: z.string(),
-                waterClaimId: z.string(),
-            }),
-        )
-        .mutation(async ({ input, ctx }) => {
-            const userId = getUserIdFromContext(ctx);
-
-            // Verify the requesting user actually owns this agent
-            const row = await db('user_data').where({ user_id: userId }).first();
-            if (!row) {
-                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-            }
-            if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
-            }
-
-            logger.info(
-                { component: 'claim-resources' },
-                `User ${userId} claiming ${input.arableLandQuantity} arable land and ` +
-                    `${input.waterSourceQuantity} water source on planet ${input.planetId} ` +
-                    `for agent ${input.agentId}`,
-            );
-
-            const result = await workerClaimResources({
-                agentId: input.agentId,
-                planetId: input.planetId,
-                arableLandQuantity: input.arableLandQuantity,
-                waterSourceQuantity: input.waterSourceQuantity,
-            });
-
-            logger.info(
-                { component: 'claim-resources' },
-                `Agent ${input.agentId} claimed arable=${result.arableClaimId}, water=${result.waterClaimId}`,
-            );
-
-            return result;
-        });
-};
-
 export const buildFacility = () => {
     return protectedProcedure
         .input(
@@ -794,5 +725,93 @@ export const expandFacility = () => {
             logger.info({ component: 'expand-facility' }, `Agent ${input.agentId} expanding facility ${facilityId}`);
 
             return { facilityId };
+        });
+};
+
+export const leaseClaim = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                resourceName: z.string().min(1),
+                quantity: z.number().int().min(1),
+            }),
+        )
+        .output(z.object({ claimId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            const claimId = await workerLeaseClaim({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                resourceName: input.resourceName,
+                quantity: input.quantity,
+            });
+            return { claimId };
+        });
+};
+
+export const expandClaim = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                claimId: z.string().min(1),
+                additionalQuantity: z.number().int().min(1),
+            }),
+        )
+        .output(z.object({ claimId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            const claimId = await workerExpandClaim({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                claimId: input.claimId,
+                additionalQuantity: input.additionalQuantity,
+            });
+            return { claimId };
+        });
+};
+
+export const quitClaim = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                claimId: z.string().min(1),
+            }),
+        )
+        .output(z.object({ claimId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            const claimId = await workerQuitClaim({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                claimId: input.claimId,
+            });
+            return { claimId };
         });
 };
