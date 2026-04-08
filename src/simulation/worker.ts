@@ -139,19 +139,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // -----------------------------------------------------------------
-    // Action queue — collects user-driven state mutations between ticks
-    // -----------------------------------------------------------------
-
     const pendingActions: PendingAction[] = [];
     let processingTick = false; // True during advanceTick + snapshot creation
 
-    /**
-     * Apply every queued action to `state` in FIFO order.
-     * Called in two contexts:
-     * 1. Eagerly when actions arrive (if not processingTick)
-     * 2. At tick boundary before advanceTick (mandatory full drain)
-     */
     function drainActionQueue(): void {
         if (pendingActions.length === 0) {
             return;
@@ -199,18 +189,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // -----------------------------------------------------------------
-    // Tick loop (recursive setTimeout to avoid drift / overlap)
-    // -----------------------------------------------------------------
-
     const DEBOUNCE_MS = 1000;
     let lastMessagePost = 0;
     let pendingTickMsg: OutboundMessage | null = null;
     let running = true;
 
-    /** Safe wrapper around messagePort.postMessage that swallows EPIPE errors
-     *  which occur when the main thread has already torn down the channel
-     *  (e.g. during pool.destroy() or process shutdown). */
     function safePostMessage(msg: OutboundMessage): void {
         try {
             messagePort?.postMessage(msg);
@@ -238,12 +221,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // -----------------------------------------------------------------
-    // Agent monthly history tracking
-    // -----------------------------------------------------------------
-
-    function updateAgentMonthlyHistory(gs: GameState, tick: number): void {
-        const agentRows = [...gs.agents.values()].flatMap((agent) => {
+    function flushAgentMonthlyHistory(gs: GameState, tick: number): Promise<void> {
+        const db = snapshotDb;
+        if (!db) {
+            return Promise.resolve();
+        }
+        const rows = [...gs.agents.values()].flatMap((agent) => {
             if (agent.automated) {
                 return [];
             }
@@ -251,10 +234,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 const netBalance = assets.deposits - assets.loans;
                 const monthlyNetIncome = assets.deposits - assets.monthAcc.depositsAtMonthStart;
 
-                const totalWorkers = Object.values(assets.allocatedWorkers || {}).reduce(
-                    (sum, count) => sum + (count || 0),
-                    0,
-                );
+                const totalWorkers = Math.round(assets.monthAcc.totalWorkersTicks / TICKS_PER_MONTH);
 
                 const facilityCount = assets.productionFacilities.length;
 
@@ -281,8 +261,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 };
             });
         });
-
-        pendingAgentMonthlyRows.push(...agentRows);
+        if (rows.length === 0) {
+            return Promise.resolve();
+        }
+        return insertAgentMonthlyHistory(db, rows).catch((err) => {
+            console.error(`[worker] Failed to save agent monthly history rows at tick ${tick}:`, err);
+        });
     }
 
     function flushPopulationHistory(gs: GameState, tick: number): Promise<void> {
@@ -352,19 +336,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    const pendingAgentMonthlyRows: Array<{
-        tick: number;
-        planet_id: string;
-        agent_id: string;
-        net_balance: number;
-        monthly_net_income: number;
-        total_workers: number;
-        wages: number;
-        production_value: number;
-        facility_count: number;
-        storage_value: number;
-    }> = [];
-
     // -----------------------------------------------------------------
     // Cold snapshot persistence (async, non-blocking)
     // -----------------------------------------------------------------
@@ -401,15 +372,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     game_id: 1,
                     snapshot_data: snapshotData,
                 });
-
-                // Insert agent monthly history if we have pending rows
-                if (pendingAgentMonthlyRows.length > 0) {
-                    await insertAgentMonthlyHistory(db, pendingAgentMonthlyRows);
-                    console.log(
-                        `[worker] Saved ${pendingAgentMonthlyRows.length} agent monthly history rows for tick ${tick}`,
-                    );
-                    pendingAgentMonthlyRows.length = 0;
-                }
 
                 if (SNAPSHOT_MAX_RETAINED > 0) {
                     const pruned = await pruneGameSnapshots(db, SNAPSHOT_MAX_RETAINED);
@@ -457,7 +419,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 // TimescaleDB only materializes buckets that are FULLY contained in [start, end).
                 // The monthly bucket at tick T spans [T, T+TICKS_PER_MONTH), so the end of the
                 // window must be >= T + TICKS_PER_MONTH to include it.
-                void Promise.all([flushProductPrices(state, tickAtFlush), flushPopulationHistory(state, tickAtFlush)])
+                void Promise.all([
+                    flushProductPrices(state, tickAtFlush),
+                    flushPopulationHistory(state, tickAtFlush),
+                    flushAgentMonthlyHistory(state, tickAtFlush),
+                ])
                     .then(() => {
                         if (snapshotDb) {
                             return refreshContinuousAggregates(snapshotDb, tickAtFlush + TICKS_PER_MONTH, 'monthly');
@@ -466,7 +432,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     .catch((err) =>
                         console.error(`[worker] Failed to flush/refresh monthly CAGGs at tick ${tickAtFlush}:`, err),
                     );
-                updateAgentMonthlyHistory(state, state.tick);
             }
 
             if (state.tick % 360 === 0 && snapshotDb) {

@@ -322,6 +322,7 @@ export type AgentPlanetAssets = {
     loans: number;
 
     lastWageBill?: number;
+    lastTotalWorkers?: number;
 
     market?: AgentMarketOffers;
 
@@ -336,12 +337,14 @@ export type AgentPlanetAssets = {
         productionValue: number;
         wagesBill: number;
         revenueValue: number;
+        totalWorkersTicks: number;
     };
 
     lastMonthAcc: {
         productionValue: number;
         wagesBill: number;
         revenueValue: number;
+        totalWorkersTicks: number;
     };
 };
 
@@ -379,12 +382,14 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
                 productionValue: assets.monthAcc.productionValue,
                 wagesBill: assets.monthAcc.wagesBill,
                 revenueValue: assets.monthAcc.revenueValue,
+                totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
             };
             assets.monthAcc = {
                 depositsAtMonthStart: assets.deposits,
                 productionValue: 0,
                 wagesBill: 0,
                 revenueValue: 0,
+                totalWorkersTicks: 0,
             };
         }
         for (const facility of assets.productionFacilities) {
@@ -396,6 +401,7 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
             }
         }
         assets.monthAcc.wagesBill += assets.lastWageBill ?? 0;
+        assets.monthAcc.totalWorkersTicks += assets.lastTotalWorkers ?? 0;
         if (assets.market?.sell) {
             for (const offer of Object.values(assets.market.sell)) {
                 assets.monthAcc.revenueValue += offer.lastRevenue ?? 0;

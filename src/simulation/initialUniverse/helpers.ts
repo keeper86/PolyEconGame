@@ -108,8 +108,8 @@ export function makeAgentPlanetAssets(
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
-        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0, revenueValue: 0 },
-        lastMonthAcc: { productionValue: 0, wagesBill: 0, revenueValue: 0 },
+        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0, revenueValue: 0, totalWorkersTicks: 0 },
+        lastMonthAcc: { productionValue: 0, wagesBill: 0, revenueValue: 0, totalWorkersTicks: 0 },
     };
 }
 
@@ -131,6 +131,7 @@ export function makeAgent(opts: {
         transportShips: [],
         automated: true,
         automateWorkerAllocation: true,
+        foundedTick: 0,
         assets: { [opts.planetId]: assets },
     };
 }

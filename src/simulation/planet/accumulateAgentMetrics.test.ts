@@ -80,6 +80,7 @@ describe('accumulateAgentMetrics', () => {
             productionValue: 400,
             wagesBill: 200,
             revenueValue: 600,
+            totalWorkersTicks: 0,
         };
 
         accumulateAgentMetrics(agents, planet, TICKS_PER_MONTH + 1);
@@ -97,6 +98,7 @@ describe('accumulateAgentMetrics', () => {
             productionValue: 999,
             wagesBill: 999,
             revenueValue: 999,
+            totalWorkersTicks: 0,
         };
 
         accumulateAgentMetrics(agents, planet, TICKS_PER_MONTH + 1);
