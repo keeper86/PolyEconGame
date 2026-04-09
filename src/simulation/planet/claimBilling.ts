@@ -11,11 +11,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                 continue;
             }
 
-            if (
-                entry.claimStatus === 'terminating' &&
-                entry.noticePeriodEndsAtTick !== null &&
-                tick >= entry.noticePeriodEndsAtTick
-            ) {
+            if (entry.noticePeriodEndsAtTick !== null && tick >= entry.noticePeriodEndsAtTick) {
                 entry.tenantAgentId = null;
                 entry.costPerTick = 0;
                 entry.claimStatus = 'active';
@@ -24,6 +20,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                 continue;
             }
 
+            const isTerminating = entry.noticePeriodEndsAtTick !== null;
             const agent = agents.get(entry.tenantAgentId);
             const assets = agent?.assets[planet.id];
             if (!assets) {
@@ -39,7 +36,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                 if (govAssets) {
                     govAssets.deposits += entry.costPerTick;
                 }
-            } else {
+            } else if (!isTerminating) {
                 entry.claimStatus = 'paused';
             }
         }

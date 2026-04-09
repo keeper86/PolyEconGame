@@ -214,11 +214,6 @@ export const transferPopulation = (
         // Zero-sum wealth transfer between cells — householdDeposits unchanged.
         mergeWealthInto(toCategory, fromCategory, transferMaximum);
 
-        // Transfer proportional service buffers.
-        // `buffer` is "coverage ticks for the group" — a per-capita-equivalent metric
-        // (analogous to wealth.mean).  Physical food per person is buffer × rate, so
-        // when transferring people, the FROM group's coverage is unchanged and the TO
-        // group receives a weighted average of its own buffer and the FROM buffer.
         const toCurrentTotal = toCategory.total;
         const toNewTotal = toCurrentTotal + transferMaximum;
         for (const serviceName of Object.keys(fromCategory.services) as ServiceName[]) {
@@ -234,10 +229,12 @@ export const transferPopulation = (
                     toNewTotal > 0
                         ? (toService.buffer * toCurrentTotal + fromService.buffer * transferMaximum) / toNewTotal
                         : fromService.buffer,
-                starvationLevel: toService.starvationLevel,
+                starvationLevel:
+                    toNewTotal > 0
+                        ? (toService.starvationLevel * toCurrentTotal + fromService.starvationLevel * transferMaximum) /
+                          toNewTotal
+                        : fromService.starvationLevel,
             };
-            // FROM buffer is unchanged — conservation holds because food per-capita
-            // is preserved on both sides.
         }
 
         toCategory.total += transferMaximum;

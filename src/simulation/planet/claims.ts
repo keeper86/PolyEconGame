@@ -15,7 +15,7 @@ export type ResourceQuantity = {
     quantity: number; // in tons or pieces, depending on the phase
 };
 
-export type ClaimStatus = 'active' | 'paused' | 'terminating';
+export type ClaimStatus = 'active' | 'paused';
 
 export type ResourceClaim = {
     id: string;

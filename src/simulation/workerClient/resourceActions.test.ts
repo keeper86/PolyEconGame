@@ -248,7 +248,7 @@ describe('handleLeaseClaim', () => {
 
 describe('handleQuitClaim', () => {
     describe('renewable claim', () => {
-        it('sets claimStatus to terminating instead of releasing immediately', () => {
+        it('sets noticePeriodEndsAtTick and does not release immediately', () => {
             const { gameState, planet, company } = setupWorld(0);
             planet.resources[arableLandResourceType.name] = [
                 {
@@ -279,7 +279,7 @@ describe('handleQuitClaim', () => {
             );
 
             const claim = planet.resources[arableLandResourceType.name].find((e) => e.id === 'arable-claim');
-            expect(claim!.claimStatus).toBe('terminating');
+            expect(claim!.noticePeriodEndsAtTick).not.toBeNull();
             expect(claim!.tenantAgentId).toBe(company.id);
         });
 

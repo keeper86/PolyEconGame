@@ -271,7 +271,6 @@ export function handleQuitClaim(
         return;
     }
     if (existingClaim.regenerationRate > 0) {
-        existingClaim.claimStatus = 'terminating';
         existingClaim.noticePeriodEndsAtTick = state.tick + TICKS_PER_MONTH;
     } else {
         existingClaim.tenantAgentId = null;

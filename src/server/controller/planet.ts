@@ -777,7 +777,7 @@ export type AgentClaimEntry = {
     maximumCapacity: number;
     tenantCostInCoins: number;
     costPerTick: number;
-    claimStatus: 'active' | 'paused' | 'terminating';
+    claimStatus: 'active' | 'paused';
     noticePeriodEndsAtTick: number | null;
     regenerationRate: number;
     extractionRatePerTick: number;
@@ -791,7 +791,7 @@ const agentClaimEntrySchema = z.object({
     maximumCapacity: z.number(),
     tenantCostInCoins: z.number(),
     costPerTick: z.number(),
-    claimStatus: z.enum(['active', 'paused', 'terminating']),
+    claimStatus: z.enum(['active', 'paused']),
     noticePeriodEndsAtTick: z.number().nullable(),
     regenerationRate: z.number(),
     extractionRatePerTick: z.number(),

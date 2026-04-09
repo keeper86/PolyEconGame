@@ -12,7 +12,7 @@ function makeRenewableClaim(
         regenerationRate: number;
         maximumCapacity: number;
         costPerTick: number;
-        claimStatus: 'active' | 'paused' | 'terminating';
+        claimStatus: 'active' | 'paused';
         noticePeriodEndsAtTick: number | null;
     }>,
 ) {
@@ -180,7 +180,7 @@ describe('claimBillingTick', () => {
     describe('notice / termination', () => {
         it('continues billing during notice period', () => {
             planet.resources[arableLandResourceType.name] = [
-                makeRenewableClaim({ claimStatus: 'terminating', noticePeriodEndsAtTick: 100, costPerTick: 10 }),
+                makeRenewableClaim({ noticePeriodEndsAtTick: 100, costPerTick: 10 }),
             ];
             const agents = new Map([
                 [gov.id, gov],
@@ -194,9 +194,7 @@ describe('claimBillingTick', () => {
         });
 
         it('releases claim back to pool when notice period expires', () => {
-            planet.resources[arableLandResourceType.name] = [
-                makeRenewableClaim({ claimStatus: 'terminating', noticePeriodEndsAtTick: 100 }),
-            ];
+            planet.resources[arableLandResourceType.name] = [makeRenewableClaim({ noticePeriodEndsAtTick: 100 })];
             const agents = new Map([
                 [gov.id, gov],
                 [company.id, company],
@@ -212,7 +210,6 @@ describe('claimBillingTick', () => {
         it('merges released claim into untenanted pool', () => {
             planet.resources[arableLandResourceType.name] = [
                 makeRenewableClaim({
-                    claimStatus: 'terminating',
                     noticePeriodEndsAtTick: 100,
                     quantity: 500,
                     maximumCapacity: 500,
@@ -245,9 +242,7 @@ describe('claimBillingTick', () => {
         });
 
         it('does not release before notice period ends', () => {
-            planet.resources[arableLandResourceType.name] = [
-                makeRenewableClaim({ claimStatus: 'terminating', noticePeriodEndsAtTick: 100 }),
-            ];
+            planet.resources[arableLandResourceType.name] = [makeRenewableClaim({ noticePeriodEndsAtTick: 100 })];
             const agents = new Map([
                 [gov.id, gov],
                 [company.id, company],
@@ -258,6 +253,23 @@ describe('claimBillingTick', () => {
             const entries = planet.resources[arableLandResourceType.name];
             const tenanted = entries.filter((e) => e.tenantAgentId === company.id);
             expect(tenanted).toHaveLength(1);
+        });
+
+        it('does not set claimStatus to paused when agent cannot afford billing during notice period', () => {
+            planet.resources[arableLandResourceType.name] = [
+                makeRenewableClaim({ noticePeriodEndsAtTick: 100, costPerTick: 10 }),
+            ];
+            company.assets[planet.id]!.deposits = 0;
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 50);
+
+            const entry = planet.resources[arableLandResourceType.name][0];
+            expect(entry!.claimStatus).toBe('active');
+            expect(entry!.noticePeriodEndsAtTick).toBe(100);
         });
     });
 

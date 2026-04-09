@@ -9,16 +9,10 @@ import { ClaimCardHeader } from './ClaimCardHeader';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatNumbers } from '@/lib/utils';
-import {
-    CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1,
-    LAND_CLAIM_COST_PER_UNIT,
-    TICKS_PER_MONTH,
-    TICKS_PER_YEAR,
-} from '@/simulation/constants';
+import { TICKS_PER_MONTH } from '@/simulation/constants';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-
-const SY_TIERS = [1, 10, 100, 1000, 10000, 100000] as const;
+import { SY_TIERS, calcClaimQuantity, calcClaimCost } from './claimCalculations';
 
 export function LeaseClaimCard({
     summary,
@@ -50,11 +44,8 @@ export function LeaseClaimCard({
         }),
     );
 
-    const sy = SY_TIERS[tierIndex] ?? 1;
-    const consumptionPerTick = CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1[summary.resourceName] ?? 1;
-    const quantity = sy * consumptionPerTick * (summary.renewable ? 1 : TICKS_PER_YEAR);
-    const costPerUnit = LAND_CLAIM_COST_PER_UNIT[summary.resourceName] ?? 1;
-    const cost = Math.floor(quantity * costPerUnit);
+    const quantity = calcClaimQuantity(summary.resourceName, tierIndex, summary.renewable);
+    const cost = calcClaimCost(summary.resourceName, quantity);
 
     const deposits = financials?.deposits ?? 0;
     const monthlyNetCashFlow = financials?.monthlyNetCashFlow ?? 0;
