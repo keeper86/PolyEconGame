@@ -111,7 +111,7 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
                 type: 'number' as const,
                 domain: [0, 12] as [number, number],
                 ticks: MONTHLY_X_TICKS,
-                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) % 12)] ?? '',
+                tickFormatter: (v: number) => MONTH_NAMES[Math.ceil(v) % 12] ?? '',
                 gridVertical: true,
                 gridValues: MONTHLY_GRID_VALUES,
             };
@@ -127,7 +127,14 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
                 gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
             };
         }
-        return { type: 'category' as const, domain: undefined, ticks: undefined, tickFormatter: undefined, gridVertical: false, gridValues: undefined };
+        return {
+            type: 'category' as const,
+            domain: undefined,
+            ticks: undefined,
+            tickFormatter: undefined,
+            gridVertical: false,
+            gridValues: undefined,
+        };
     }, [granularity, chartData]);
 
     const tooltipLabelFormatter = useMemo(() => {
@@ -274,7 +281,7 @@ function BalanceFlowChart({ data, granularity }: { data: FinancialPoint[]; granu
                 type: 'number' as const,
                 domain: [0, 12] as [number, number],
                 ticks: MONTHLY_X_TICKS,
-                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) % 12)] ?? '',
+                tickFormatter: (v: number) => MONTH_NAMES[Math.ceil(v) % 12] ?? '',
                 gridVertical: true,
                 gridValues: MONTHLY_GRID_VALUES,
             };
@@ -290,7 +297,14 @@ function BalanceFlowChart({ data, granularity }: { data: FinancialPoint[]; granu
                 gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
             };
         }
-        return { type: 'category' as const, domain: undefined, ticks: undefined, tickFormatter: undefined, gridVertical: false, gridValues: undefined };
+        return {
+            type: 'category' as const,
+            domain: undefined,
+            ticks: undefined,
+            tickFormatter: undefined,
+            gridVertical: false,
+            gridValues: undefined,
+        };
     }, [granularity, chartData]);
 
     const tooltipLabelFormatter = useMemo(() => {
