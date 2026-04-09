@@ -156,21 +156,6 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
 }
 
 /**
- * Get the full monthly history for a specific agent, ordered by tick descending.
- */
-export async function getAgentMonthlyHistory(
-    db: Knex,
-    agentId: string,
-    limit: number = 100,
-): Promise<AgentMonthlyHistoryRow[]> {
-    return db('agent_monthly_history')
-        .where({ agent_id: agentId })
-        .orderBy('tick', 'desc')
-        .limit(limit)
-        .select() as Promise<AgentMonthlyHistoryRow[]>;
-}
-
-/**
  * Get the most recent monthly history row for every agent on a planet (latest tick).
  */
 export async function getLatestAgentMonthlyHistoryByPlanet(

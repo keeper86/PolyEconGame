@@ -231,7 +231,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             return Object.entries(agent.assets).map(([planetId, assets]) => {
                 const netBalance = assets.deposits - assets.loans;
-                const monthlyNetIncome = assets.deposits - assets.monthAcc.depositsAtMonthStart;
+                const monthlyNetIncome =
+                    assets.monthAcc.revenue -
+                    assets.monthAcc.claimPayments -
+                    assets.monthAcc.wages -
+                    assets.monthAcc.purchases;
 
                 const totalWorkers = Math.round(assets.monthAcc.totalWorkersTicks / TICKS_PER_MONTH);
 
