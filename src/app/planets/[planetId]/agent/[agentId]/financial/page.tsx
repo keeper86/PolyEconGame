@@ -2,14 +2,17 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import AgentFinancialOverview from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/AgentFinancialOverview';
+import AgentFinancialCharts from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/AgentFinancialCharts';
 import LoanPanel from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/LoanPanel';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { EuroIcon } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import BankPanel from './_components/BankPanel';
 
 export default function FinancialPage() {
@@ -67,6 +70,17 @@ export default function FinancialPage() {
                         <Separator />
 
                         <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} />
+
+                        <Separator />
+                        <Collapsible>
+                            <CollapsibleTrigger className='flex items-center gap-1 text-xs font-semibold text-muted-foreground w-full group'>
+                                <ChevronDown className='h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180' />
+                                Historical Trends
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className='pt-3'>
+                                <AgentFinancialCharts agentId={agentId} />
+                            </CollapsibleContent>
+                        </Collapsible>
                     </CardContent>
                 </Card>
             ) : (

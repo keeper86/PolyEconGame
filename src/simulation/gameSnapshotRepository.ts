@@ -1,17 +1,3 @@
-/**
- * server/gameSnapshotRepository.ts
- *
- * Repository layer for reading and writing sparse cold game snapshots
- * and planet population history.
- *
- * Cold snapshots: MessagePack-serialized blobs of the full GameState,
- * stored periodically (e.g. every 360 ticks) for crash recovery.
- *
- * Population history: lightweight rows (tick | planet_id | population)
- * written alongside each cold snapshot so long-term population trends
- * can be queried without deserializing the full blob.
- */
-
 import type { Knex } from 'knex';
 import type {
     AgentMonthlyHistory,
@@ -203,10 +189,6 @@ export async function getLatestAgentMonthlyHistoryByPlanet(
         .then((res: { rows: AgentMonthlyHistoryRow[] }) => res.rows);
 }
 
-// ---------------------------------------------------------------------------
-// Product price history
-// ---------------------------------------------------------------------------
-
 export type ProductPriceHistoryRow = ProductPriceHistory;
 
 export interface InsertProductPrice {
@@ -218,11 +200,6 @@ export interface InsertProductPrice {
     maxPrice: number;
 }
 
-/**
- * Insert one aggregated price row per product per planet at month boundaries.
- * Each row contains the intra-month avg/min/max computed in the worker accumulator.
- * TimescaleDB continuous aggregates cascade these into yearly / decade views.
- */
 export async function insertProductPriceHistory(db: Knex, rows: InsertProductPrice[]): Promise<void> {
     if (rows.length === 0) {
         return;
@@ -238,10 +215,6 @@ export async function insertProductPriceHistory(db: Knex, rows: InsertProductPri
         })),
     );
 }
-
-// ---------------------------------------------------------------------------
-// Tiered history query helpers
-// ---------------------------------------------------------------------------
 
 export type HistoryGranularity = 'monthly' | 'yearly' | 'decade';
 
@@ -275,15 +248,6 @@ export async function getProductPriceHistory(
         .select('bucket', 'planet_id', 'product_name', 'avg_price', 'min_price', 'max_price');
 }
 
-/**
- * Manually refresh continuous aggregate views up to the given tick.
- *
- * Called from the worker at tick boundaries so the cascaded CAGGs
- * (monthly → yearly → decade) stay current without a background scheduler.
- *
- * @param granularity  Which tier(s) to refresh. Monthly must be refreshed
- *   before yearly, yearly before decade (cagg cascade order).
- */
 export async function refreshContinuousAggregates(
     db: Knex,
     upToTick: number,
@@ -344,6 +308,15 @@ export interface AgentSummaryBucket {
     sum_consumption_value: number;
 }
 
+export interface AgentFinancialBucket {
+    bucket: string;
+    avg_net_balance: number;
+    avg_monthly_net_income: number;
+    avg_wages: number;
+    sum_purchases: number;
+    sum_claim_payments: number;
+}
+
 /**
  * Query agent history from the appropriate continuous aggregate.
  */
@@ -374,5 +347,32 @@ export async function getAgentHistoryAggregated(
             'avg_wages',
             'sum_production_value',
             'sum_consumption_value',
+        );
+}
+
+export async function getAgentFinancialHistoryAggregated(
+    db: Knex,
+    agentId: string,
+    granularity: HistoryGranularity = 'monthly',
+    limit: number = 26,
+): Promise<AgentFinancialBucket[]> {
+    const view =
+        granularity === 'decade'
+            ? 'agent_decade_summary'
+            : granularity === 'yearly'
+              ? 'agent_yearly_summary'
+              : 'agent_monthly_summary';
+
+    return db(view)
+        .where({ agent_id: agentId })
+        .orderBy('bucket', 'desc')
+        .limit(limit)
+        .select(
+            'bucket',
+            'avg_net_balance',
+            'avg_monthly_net_income',
+            'avg_wages',
+            'sum_purchases',
+            'sum_claim_payments',
         );
 }
