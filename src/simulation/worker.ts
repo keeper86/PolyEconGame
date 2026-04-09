@@ -167,7 +167,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'claimResources':
                     case 'leaseClaim':
-                    case 'expandClaim':
                     case 'quitClaim':
                         handleResourceAction(state, action, safePostMessage);
                         break;
@@ -830,23 +829,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'leaseClaim', requestId, agentId, planetId, resourceName, quantity });
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
-        if (msg.type === 'expandClaim') {
-            const { requestId, agentId, planetId, claimId, additionalQuantity } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'claimExpandFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'claimExpandFailed', requestId, reason: `Planet '${planetId}' not found` });
-                return;
-            }
-            pendingActions.push({ type: 'expandClaim', requestId, agentId, planetId, claimId, additionalQuantity });
             if (!processingTick) {
                 drainActionQueue();
             }

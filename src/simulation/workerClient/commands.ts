@@ -13,7 +13,6 @@ import {
     buildFacilitySpec,
     expandFacilitySpec,
     leaseClaimSpec,
-    expandClaimSpec,
     quitClaimSpec,
 } from './commandSpec';
 
@@ -184,21 +183,6 @@ export function workerLeaseClaim(opts: {
     return sendCommandSpec(
         { type: 'leaseClaim', requestId: randomUUID(), agentId, planetId, resourceName, quantity },
         leaseClaimSpec,
-        timeoutMs,
-    );
-}
-
-export function workerExpandClaim(opts: {
-    agentId: string;
-    planetId: string;
-    claimId: string;
-    additionalQuantity: number;
-    timeoutMs?: number;
-}): Promise<string> {
-    const { agentId, planetId, claimId, additionalQuantity, timeoutMs } = opts;
-    return sendCommandSpec(
-        { type: 'expandClaim', requestId: randomUUID(), agentId, planetId, claimId, additionalQuantity },
-        expandClaimSpec,
         timeoutMs,
     );
 }

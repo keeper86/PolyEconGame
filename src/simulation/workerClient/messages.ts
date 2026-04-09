@@ -80,14 +80,6 @@ export type InboundMessage =
           quantity: number;
       }
     | {
-          type: 'expandClaim';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          claimId: string;
-          additionalQuantity: number;
-      }
-    | {
           type: 'quitClaim';
           requestId: string;
           agentId: string;
@@ -133,8 +125,6 @@ export type OutboundMessage =
     | { type: 'facilityExpandFailed'; requestId: string; reason: string }
     | { type: 'claimLeased'; requestId: string; agentId: string; claimId: string }
     | { type: 'claimLeaseFailed'; requestId: string; reason: string }
-    | { type: 'claimExpanded'; requestId: string; agentId: string; claimId: string }
-    | { type: 'claimExpandFailed'; requestId: string; reason: string }
     | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string }
     | { type: 'claimQuitFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
@@ -228,14 +218,6 @@ export type PendingAction =
           planetId: string;
           resourceName: string;
           quantity: number;
-      }
-    | {
-          type: 'expandClaim';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          claimId: string;
-          additionalQuantity: number;
       }
     | {
           type: 'quitClaim';

@@ -32,7 +32,6 @@ import {
     cancelBuyBid,
     cancelSellOffer,
     createAgent,
-    expandClaim,
     expandFacility,
     getUser,
     getUserIdFromSession,
@@ -89,7 +88,6 @@ const protectedAppRouter = trpcRoot.router({
     buildFacility: buildFacility(),
     expandFacility: expandFacility(),
     leaseClaim: leaseClaim(),
-    expandClaim: expandClaim(),
     quitClaim: quitClaim(),
 });
 

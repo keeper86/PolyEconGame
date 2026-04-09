@@ -6,9 +6,8 @@ import {
     workerCancelBuyBid,
     workerCancelSellOffer,
     workerCreateAgent,
-    workerExpandClaim,
-    workerExpandFacility,
     workerLeaseClaim,
+    workerExpandFacility,
     workerQuitClaim,
     workerRequestLoan,
     workerSetAutomation,
@@ -752,36 +751,6 @@ export const leaseClaim = () => {
                 planetId: input.planetId,
                 resourceName: input.resourceName,
                 quantity: input.quantity,
-            });
-            return { claimId };
-        });
-};
-
-export const expandClaim = () => {
-    return protectedProcedure
-        .input(
-            z.object({
-                agentId: z.string().min(1),
-                planetId: z.string().min(1),
-                claimId: z.string().min(1),
-                additionalQuantity: z.number().int().min(1),
-            }),
-        )
-        .output(z.object({ claimId: z.string() }))
-        .mutation(async ({ input, ctx }) => {
-            const userId = getUserIdFromContext(ctx);
-            const row = await db('user_data').where({ user_id: userId }).first();
-            if (!row) {
-                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-            }
-            if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
-            }
-            const claimId = await workerExpandClaim({
-                agentId: input.agentId,
-                planetId: input.planetId,
-                claimId: input.claimId,
-                additionalQuantity: input.additionalQuantity,
             });
             return { claimId };
         });

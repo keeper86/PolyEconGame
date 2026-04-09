@@ -4,7 +4,7 @@ import { arableLandResourceType, ironOreDepositResourceType } from '../planet/la
 import type { GameState } from '../planet/planet';
 import { makeWorld } from '../utils/testHelper';
 import type { OutboundMessage } from './messages';
-import { handleExpandClaim, handleLeaseClaim, handleQuitClaim } from './resourceActions';
+import { handleLeaseClaim, handleQuitClaim } from './resourceActions';
 
 function makeMessages() {
     const messages: OutboundMessage[] = [];
@@ -502,15 +502,16 @@ describe('handleQuitClaim', () => {
 });
 
 // ============================================================================
-// handleExpandClaim
+// handleLeaseClaim — auto-expand when claim already exists
 // ============================================================================
 
-describe('handleExpandClaim', () => {
+describe('handleLeaseClaim auto-expand (claim already exists)', () => {
     it('recalculates costPerTick for renewable expansion', () => {
         const { gameState, planet, company } = setupWorld();
+        const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
         planet.resources[arableLandResourceType.name] = [
             {
-                id: 'arable-claim',
+                id: claimId,
                 type: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
@@ -523,7 +524,7 @@ describe('handleExpandClaim', () => {
                 pausedTicksThisYear: 0,
             },
             {
-                id: 'arable-pool',
+                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
                 type: arableLandResourceType,
                 quantity: 8000,
                 regenerationRate: 8000,
@@ -538,15 +539,15 @@ describe('handleExpandClaim', () => {
         ];
         const { post } = makeMessages();
 
-        handleExpandClaim(
+        handleLeaseClaim(
             gameState,
             {
-                type: 'expandClaim',
+                type: 'leaseClaim',
                 requestId: 'r1',
                 agentId: company.id,
                 planetId: planet.id,
-                claimId: 'arable-claim',
-                additionalQuantity: 1000,
+                resourceName: arableLandResourceType.name,
+                quantity: 1000,
             },
             post,
         );
@@ -561,9 +562,10 @@ describe('handleExpandClaim', () => {
 
     it('recalculates tenantCostInCoins for non-renewable expansion', () => {
         const { gameState, planet, company } = setupWorld();
+        const claimId = `${planet.id}-${ironOreDepositResourceType.name}-${company.id}`;
         planet.resources[ironOreDepositResourceType.name] = [
             {
-                id: 'iron-claim',
+                id: claimId,
                 type: ironOreDepositResourceType,
                 quantity: 3000,
                 regenerationRate: 0,
@@ -576,7 +578,7 @@ describe('handleExpandClaim', () => {
                 pausedTicksThisYear: 0,
             },
             {
-                id: 'iron-pool',
+                id: `${planet.id}-${ironOreDepositResourceType.name}-unclaimed`,
                 type: ironOreDepositResourceType,
                 quantity: 7000,
                 regenerationRate: 0,
@@ -591,15 +593,15 @@ describe('handleExpandClaim', () => {
         ];
         const { post } = makeMessages();
 
-        handleExpandClaim(
+        handleLeaseClaim(
             gameState,
             {
-                type: 'expandClaim',
+                type: 'leaseClaim',
                 requestId: 'r1',
                 agentId: company.id,
                 planetId: planet.id,
-                claimId: 'iron-claim',
-                additionalQuantity: 2000,
+                resourceName: ironOreDepositResourceType.name,
+                quantity: 2000,
             },
             post,
         );
@@ -611,11 +613,12 @@ describe('handleExpandClaim', () => {
         expect(claim!.costPerTick).toBe(0);
     });
 
-    it('emits claimExpandFailed when pool has insufficient capacity', () => {
+    it('emits claimLeaseFailed when pool has insufficient capacity', () => {
         const { gameState, planet, company } = setupWorld();
+        const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
         planet.resources[arableLandResourceType.name] = [
             {
-                id: 'arable-claim',
+                id: claimId,
                 type: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
@@ -628,7 +631,7 @@ describe('handleExpandClaim', () => {
                 pausedTicksThisYear: 0,
             },
             {
-                id: 'arable-pool',
+                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
                 type: arableLandResourceType,
                 quantity: 500,
                 regenerationRate: 500,
@@ -643,20 +646,20 @@ describe('handleExpandClaim', () => {
         ];
         const { messages, post } = makeMessages();
 
-        handleExpandClaim(
+        handleLeaseClaim(
             gameState,
             {
-                type: 'expandClaim',
+                type: 'leaseClaim',
                 requestId: 'r1',
                 agentId: company.id,
                 planetId: planet.id,
-                claimId: 'arable-claim',
-                additionalQuantity: 1000,
+                resourceName: arableLandResourceType.name,
+                quantity: 1000,
             },
             post,
         );
 
-        expect(messages.find((m) => m.type === 'claimExpandFailed')).toBeDefined();
+        expect(messages.find((m) => m.type === 'claimLeaseFailed')).toBeDefined();
     });
 
     it('deducts upfront cost (1 month) for renewable expansion', () => {
@@ -667,9 +670,10 @@ describe('handleExpandClaim', () => {
         );
         const expectedUpfront = costPerTick * TICKS_PER_MONTH;
         const initialDeposits = company.assets[planet.id].deposits;
+        const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
         planet.resources[arableLandResourceType.name] = [
             {
-                id: 'arable-claim',
+                id: claimId,
                 type: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
@@ -682,7 +686,7 @@ describe('handleExpandClaim', () => {
                 pausedTicksThisYear: 0,
             },
             {
-                id: 'arable-pool',
+                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
                 type: arableLandResourceType,
                 quantity: 8000,
                 regenerationRate: 8000,
@@ -697,15 +701,15 @@ describe('handleExpandClaim', () => {
         ];
         const { post } = makeMessages();
 
-        handleExpandClaim(
+        handleLeaseClaim(
             gameState,
             {
-                type: 'expandClaim',
+                type: 'leaseClaim',
                 requestId: 'r1',
                 agentId: company.id,
                 planetId: planet.id,
-                claimId: 'arable-claim',
-                additionalQuantity,
+                resourceName: arableLandResourceType.name,
+                quantity: additionalQuantity,
             },
             post,
         );
@@ -713,12 +717,13 @@ describe('handleExpandClaim', () => {
         expect(company.assets[planet.id].deposits).toBe(initialDeposits - expectedUpfront);
     });
 
-    it('emits claimExpandFailed when agent cannot afford upfront cost for renewable expansion', () => {
+    it('emits claimLeaseFailed when agent cannot afford upfront cost for renewable expansion', () => {
         const { gameState, planet, company } = setupWorld();
         company.assets[planet.id].deposits = 0;
+        const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
         planet.resources[arableLandResourceType.name] = [
             {
-                id: 'arable-claim',
+                id: claimId,
                 type: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
@@ -731,7 +736,7 @@ describe('handleExpandClaim', () => {
                 pausedTicksThisYear: 0,
             },
             {
-                id: 'arable-pool',
+                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
                 type: arableLandResourceType,
                 quantity: 8000,
                 regenerationRate: 8000,
@@ -746,19 +751,73 @@ describe('handleExpandClaim', () => {
         ];
         const { messages, post } = makeMessages();
 
-        handleExpandClaim(
+        handleLeaseClaim(
             gameState,
             {
-                type: 'expandClaim',
+                type: 'leaseClaim',
                 requestId: 'r1',
                 agentId: company.id,
                 planetId: planet.id,
-                claimId: 'arable-claim',
-                additionalQuantity: 1000,
+                resourceName: arableLandResourceType.name,
+                quantity: 1000,
             },
             post,
         );
 
-        expect(messages.find((m) => m.type === 'claimExpandFailed')).toBeDefined();
+        expect(messages.find((m) => m.type === 'claimLeaseFailed')).toBeDefined();
+    });
+
+    it('does not create a duplicate entry when leasing an already-leased resource', () => {
+        const { gameState, planet, company } = setupWorld();
+        const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
+        planet.resources[arableLandResourceType.name] = [
+            {
+                id: claimId,
+                type: arableLandResourceType,
+                quantity: 2000,
+                regenerationRate: 2000,
+                maximumCapacity: 2000,
+                tenantAgentId: company.id,
+                tenantCostInCoins: 0,
+                costPerTick: 2000,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
+            },
+            {
+                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
+                type: arableLandResourceType,
+                quantity: 8000,
+                regenerationRate: 8000,
+                maximumCapacity: 8000,
+                tenantAgentId: null,
+                tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
+            },
+        ];
+        const { messages, post } = makeMessages();
+
+        handleLeaseClaim(
+            gameState,
+            {
+                type: 'leaseClaim',
+                requestId: 'r1',
+                agentId: company.id,
+                planetId: planet.id,
+                resourceName: arableLandResourceType.name,
+                quantity: 1000,
+            },
+            post,
+        );
+
+        expect(messages.find((m) => m.type === 'claimLeased')).toBeDefined();
+        const tenantEntries = planet.resources[arableLandResourceType.name].filter(
+            (e) => e.tenantAgentId === company.id,
+        );
+        expect(tenantEntries).toHaveLength(1);
+        expect(tenantEntries[0]!.id).toBe(claimId);
     });
 });

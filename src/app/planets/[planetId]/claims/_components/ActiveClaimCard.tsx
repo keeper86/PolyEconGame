@@ -69,7 +69,7 @@ export function ActiveClaimCard({
     };
 
     const expandMutation = useMutation(
-        trpc.expandClaim.mutationOptions({
+        trpc.leaseClaim.mutationOptions({
             onSuccess: () => {
                 setExpanded(true);
                 invalidate();
@@ -155,7 +155,12 @@ export function ActiveClaimCard({
                             isPending={expandMutation.isPending}
                             isSubmitted={expanded}
                             onSubmit={(additionalQuantity) =>
-                                expandMutation.mutate({ agentId, planetId, claimId: claim.claimId, additionalQuantity })
+                                expandMutation.mutate({
+                                    agentId,
+                                    planetId,
+                                    resourceName: claim.resourceName,
+                                    quantity: additionalQuantity,
+                                })
                             }
                             onCancel={() => setShowExpand(false)}
                             submitLabel='Expand'

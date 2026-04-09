@@ -174,19 +174,6 @@ export const leaseClaimSpec: CommandSpec<
     extract: (msg) => msg.claimId,
 };
 
-type ExpandClaimSuccess = Extract<OutboundMessage, { type: 'claimExpanded' }>;
-type ExpandClaimFailure = Extract<OutboundMessage, { type: 'claimExpandFailed' }>;
-export const expandClaimSpec: CommandSpec<
-    Extract<InboundMessage, { type: 'expandClaim' }>,
-    ExpandClaimSuccess,
-    ExpandClaimFailure,
-    string
-> = {
-    successType: 'claimExpanded',
-    failureType: 'claimExpandFailed',
-    extract: (msg) => msg.claimId,
-};
-
 type QuitClaimSuccess = Extract<OutboundMessage, { type: 'claimQuit' }>;
 type QuitClaimFailure = Extract<OutboundMessage, { type: 'claimQuitFailed' }>;
 export const quitClaimSpec: CommandSpec<
