@@ -121,6 +121,7 @@ describe('claimBillingTick', () => {
     describe('pausing on insufficient funds', () => {
         it('sets claimStatus to paused when agent cannot afford costPerTick', () => {
             company.assets[planet.id].deposits = 5;
+            company.automated = false;
             planet.resources[arableLandResourceType.name] = [makeRenewableClaim({ costPerTick: 10 })];
             const agents = new Map([
                 [gov.id, gov],
@@ -134,6 +135,7 @@ describe('claimBillingTick', () => {
 
         it('does not deduct or credit when claim is paused due to insufficient funds', () => {
             company.assets[planet.id].deposits = 5;
+            company.automated = false;
             planet.resources[arableLandResourceType.name] = [makeRenewableClaim({ costPerTick: 10 })];
             const agents = new Map([
                 [gov.id, gov],
@@ -166,6 +168,7 @@ describe('claimBillingTick', () => {
 
         it('stays paused when paused claim still cannot afford payment', () => {
             company.assets[planet.id].deposits = 5;
+            company.automated = false;
             planet.resources[arableLandResourceType.name] = [
                 makeRenewableClaim({ claimStatus: 'paused', costPerTick: 10 }),
             ];
