@@ -48,7 +48,7 @@ export default function FinancialPage() {
             ) : !isLoading && assets ? (
                 <Card>
                     <CardContent className='px-3 py-3 space-y-3'>
-                        <BankPanel bank={economy.bank} priceLevel={economy.priceLevel ?? undefined} />
+                        <BankPanel bank={economy.bank} />
 
                         <Separator />
                         <p className='text-sm font-semibold flex items-center gap-2'>

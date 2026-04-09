@@ -135,6 +135,7 @@ export interface InsertAgentMonthlyHistory {
     total_workers: number;
     wages: number;
     production_value: number;
+    consumption_value: number;
     facility_count: number;
     storage_value: number;
     purchases: number;
@@ -159,6 +160,7 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
             total_workers: r.total_workers,
             wages: r.wages,
             production_value: r.production_value,
+            consumption_value: r.consumption_value,
             facility_count: r.facility_count,
             storage_value: r.storage_value,
             purchases: r.purchases,
@@ -339,6 +341,7 @@ export interface AgentSummaryBucket {
     avg_total_workers: number;
     avg_wages: number;
     sum_production_value: number;
+    sum_consumption_value: number;
 }
 
 /**
@@ -370,5 +373,6 @@ export async function getAgentHistoryAggregated(
             'avg_total_workers',
             'avg_wages',
             'sum_production_value',
+            'sum_consumption_value',
         );
 }

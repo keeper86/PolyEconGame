@@ -222,6 +222,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
                 monthAcc: {
                     depositsAtMonthStart: 0,
                     productionValue: 0,
+                    consumptionValue: 0,
                     wages: 0,
                     revenue: 0,
                     purchases: 0,
@@ -230,6 +231,7 @@ describe('preProductionLaborMarketTick — population conservation', () => {
                 },
                 lastMonthAcc: {
                     productionValue: 0,
+                    consumptionValue: 0,
                     wages: 0,
                     revenue: 0,
                     purchases: 0,

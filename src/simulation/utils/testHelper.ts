@@ -411,6 +411,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         monthAcc: {
             depositsAtMonthStart: 0,
             productionValue: 0,
+            consumptionValue: 0,
             wages: 0,
             revenue: 0,
             purchases: 0,
@@ -419,6 +420,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         },
         lastMonthAcc: {
             productionValue: 0,
+            consumptionValue: 0,
             wages: 0,
             revenue: 0,
             purchases: 0,

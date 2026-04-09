@@ -59,6 +59,8 @@ export type AgentMonthlyHistory = {
     total_workers: number;
     wages: number | null;
     production_value: number | null;
+    purchases: number | null;
+    claim_payments: number | null;
     facility_count: number | null;
     storage_value: number | null;
     created_at: Date;

@@ -2,22 +2,13 @@ import { STARTER_LOAN_AMOUNT, LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, TIC
 import type { Agent, Planet } from '../planet/planet';
 
 export type LoanConditions = {
-    /** Maximum additional amount the agent may borrow right now. */
     maxLoanAmount: number;
-    /** Annual interest rate (matches planet.bank.loanRate, expressed as a
-     *  per-tick rate but shown to the player annualised). */
     annualInterestRate: number;
-    /** Outstanding loan balance already held by this agent. */
     existingLoans: number;
-    /** Blended monthly wage cost used in the projection (informational). */
-    blendedMonthlyWages: number;
-    /** Blended monthly market revenue used in the projection (informational). */
+    blendedMonthlyExpenses: number;
     blendedMonthlyRevenue: number;
-    /** Net monthly cash flow = blendedMonthlyRevenue − blendedMonthlyWages. */
     monthlyNetCashFlow: number;
-    /** Storage collateral value added to the credit limit. */
     storageCollateral: number;
-    /** Whether this agent qualifies as a "new" agent (starter-loan path). */
     isNewAgent: boolean;
 };
 
@@ -33,8 +24,7 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
     const assets = agent.assets[planet.id];
     const bank = planet.bank;
 
-    const ticksPerYear = 360;
-    const annualInterestRate = bank.loanRate * ticksPerYear;
+    const annualInterestRate = bank.loanRate * 360;
 
     const existingLoans = assets?.loans ?? 0;
 
@@ -45,13 +35,15 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
         assets?.monthAcc.revenue ?? 0,
         progress,
     );
-    const blendedMonthlyWages = blendMonthly(
-        assets?.lastMonthAcc.wages ?? 0,
-        assets?.monthAcc.wages ?? 0,
+    const blendedMonthlyExpenses = blendMonthly(
+        (assets?.lastMonthAcc.wages ?? 0) +
+            (assets?.lastMonthAcc.purchases ?? 0) +
+            (assets?.lastMonthAcc.claimPayments ?? 0),
+        (assets?.monthAcc.wages ?? 0) + (assets?.monthAcc.purchases ?? 0) + (assets?.monthAcc.claimPayments ?? 0),
         progress,
     );
 
-    const monthlyNetCashFlow = blendedMonthlyRevenue - blendedMonthlyWages;
+    const monthlyNetCashFlow = blendedMonthlyRevenue - blendedMonthlyExpenses;
 
     const isNewAgent = blendedMonthlyRevenue === 0 && existingLoans === 0;
 
@@ -82,7 +74,7 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
         maxLoanAmount: Math.floor(maxLoanAmount),
         annualInterestRate,
         existingLoans,
-        blendedMonthlyWages,
+        blendedMonthlyExpenses,
         blendedMonthlyRevenue,
         monthlyNetCashFlow,
         storageCollateral,

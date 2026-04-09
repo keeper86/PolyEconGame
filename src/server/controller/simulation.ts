@@ -33,7 +33,7 @@ const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
     annualInterestRate: z.number(),
     existingLoans: z.number(),
-    blendedMonthlyWages: z.number(),
+    blendedMonthlyExpenses: z.number(),
     blendedMonthlyRevenue: z.number(),
     monthlyNetCashFlow: z.number(),
     storageCollateral: z.number(),
@@ -460,6 +460,7 @@ export const getAgentHistory = () =>
                         avgTotalWorkers: z.number(),
                         avgWages: z.number(),
                         sumProductionValue: z.number(),
+                        sumConsumptionValue: z.number(),
                     }),
                 ),
             }),
@@ -481,6 +482,7 @@ export const getAgentHistory = () =>
                         avgTotalWorkers: r.avg_total_workers ?? 0,
                         avgWages: r.avg_wages ?? 0,
                         sumProductionValue: r.sum_production_value ?? 0,
+                        sumConsumptionValue: r.sum_consumption_value ?? 0,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };

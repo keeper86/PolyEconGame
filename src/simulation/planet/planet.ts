@@ -332,6 +332,7 @@ export type AgentPlanetAssets = {
     monthAcc: {
         depositsAtMonthStart: number;
         productionValue: number;
+        consumptionValue: number;
         wages: number;
         revenue: number;
         purchases: number;
@@ -341,6 +342,7 @@ export type AgentPlanetAssets = {
 
     lastMonthAcc: {
         productionValue: number;
+        consumptionValue: number;
         wages: number;
         revenue: number;
         purchases: number;
@@ -378,6 +380,7 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
         if (tick % TICKS_PER_MONTH === 1) {
             assets.lastMonthAcc = {
                 productionValue: assets.monthAcc.productionValue,
+                consumptionValue: assets.monthAcc.consumptionValue,
                 wages: assets.monthAcc.wages,
                 revenue: assets.monthAcc.revenue,
                 purchases: assets.monthAcc.purchases,
@@ -387,20 +390,13 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
             assets.monthAcc = {
                 depositsAtMonthStart: assets.deposits,
                 productionValue: 0,
+                consumptionValue: 0,
                 wages: 0,
                 revenue: 0,
                 purchases: 0,
                 claimPayments: 0,
                 totalWorkersTicks: 0,
             };
-        }
-        for (const facility of assets.productionFacilities) {
-            if (facility.lastTickResults?.lastProduced) {
-                for (const [resourceName, qty] of Object.entries(facility.lastTickResults.lastProduced)) {
-                    const price = planet.marketPrices[resourceName] ?? 0;
-                    assets.monthAcc.productionValue += qty * price;
-                }
-            }
         }
     }
 }

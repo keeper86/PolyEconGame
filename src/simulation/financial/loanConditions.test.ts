@@ -20,6 +20,7 @@ function makeEstablishedAgent(
     assets.loans = overrides?.existingLoans ?? 0;
     assets.lastMonthAcc = {
         productionValue: 0,
+        consumptionValue: 0,
         wages: overrides?.lastMonthWages ?? 0,
         revenue: overrides?.lastMonthRevenue ?? 0,
         purchases: 0,
@@ -29,6 +30,7 @@ function makeEstablishedAgent(
     assets.monthAcc = {
         depositsAtMonthStart: 0,
         productionValue: 0,
+        consumptionValue: 0,
         wages: overrides?.currentMonthWages ?? 0,
         revenue: overrides?.currentMonthRevenue ?? 0,
         purchases: 0,

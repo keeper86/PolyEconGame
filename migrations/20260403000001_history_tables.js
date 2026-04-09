@@ -42,6 +42,9 @@ exports.up = async function (knex) {
             total_workers       INTEGER          NOT NULL DEFAULT 0,
             wages               DOUBLE PRECISION          DEFAULT 0,
             production_value    DOUBLE PRECISION          DEFAULT 0,
+            consumption_value   DOUBLE PRECISION          DEFAULT 0,
+            purchases           DOUBLE PRECISION          DEFAULT 0,
+            claim_payments      DOUBLE PRECISION          DEFAULT 0,
             facility_count      INTEGER                   DEFAULT 0,
             storage_value       DOUBLE PRECISION          DEFAULT 0,
             created_at          TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
@@ -143,6 +146,7 @@ exports.up = async function (knex) {
             avg(total_workers)::float8             AS avg_total_workers,
             avg(wages)::float8                     AS avg_wages,
             sum(production_value)::float8          AS sum_production_value,
+            sum(consumption_value)::float8         AS sum_consumption_value,
             avg(facility_count)::float8            AS avg_facility_count,
             avg(storage_value)::float8             AS avg_storage_value
         FROM agent_monthly_history
@@ -191,7 +195,8 @@ exports.up = async function (knex) {
             avg(avg_monthly_net_income)    AS avg_monthly_net_income,
             avg(avg_total_workers)         AS avg_total_workers,
             avg(avg_wages)                 AS avg_wages,
-            sum(sum_production_value)      AS sum_production_value
+            sum(sum_production_value)      AS sum_production_value,
+            sum(sum_consumption_value)     AS sum_consumption_value
         FROM agent_monthly_summary
         GROUP BY time_bucket(360, bucket), planet_id, agent_id
         WITH NO DATA
@@ -238,7 +243,8 @@ exports.up = async function (knex) {
             avg(avg_monthly_net_income)    AS avg_monthly_net_income,
             avg(avg_total_workers)         AS avg_total_workers,
             avg(avg_wages)                 AS avg_wages,
-            sum(sum_production_value)      AS sum_production_value
+            sum(sum_production_value)      AS sum_production_value,
+            sum(sum_consumption_value)     AS sum_consumption_value
         FROM agent_yearly_summary
         GROUP BY time_bucket(3600, bucket), planet_id, agent_id
         WITH NO DATA
