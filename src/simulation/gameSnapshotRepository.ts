@@ -101,7 +101,7 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
         rows.map((r) => ({
             tick: String(r.tick),
             planet_id: r.planet_id,
-            population: String(r.population),
+            population: String(Math.round(r.population)),
         })),
     );
 }

@@ -662,7 +662,9 @@ describe('handleExpandClaim', () => {
     it('deducts upfront cost (1 month) for renewable expansion', () => {
         const { gameState, planet, company } = setupWorld();
         const additionalQuantity = 1000;
-        const costPerTick = Math.floor(additionalQuantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1));
+        const costPerTick = Math.floor(
+            additionalQuantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1),
+        );
         const expectedUpfront = costPerTick * TICKS_PER_MONTH;
         const initialDeposits = company.assets[planet.id].deposits;
         planet.resources[arableLandResourceType.name] = [

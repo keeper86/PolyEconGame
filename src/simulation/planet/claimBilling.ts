@@ -38,6 +38,15 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                 continue;
             }
 
+            if (assets.deposits < entry.costPerTick && agent.automated) {
+                const shortfall = entry.costPerTick - assets.deposits;
+                // Record aggregate bank loan and per-agent loan principal
+                planet.bank.loans += shortfall;
+                planet.bank.deposits += shortfall;
+                assets.deposits += shortfall;
+                assets.loans += shortfall;
+            }
+
             if (assets.deposits >= entry.costPerTick) {
                 if (entry.claimStatus === 'paused') {
                     entry.claimStatus = 'active';
