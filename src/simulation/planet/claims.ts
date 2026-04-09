@@ -24,6 +24,7 @@ export type ResourceClaim = {
     costPerTick: number;
     claimStatus: ClaimStatus;
     noticePeriodEndsAtTick: number | null;
+    pausedSinceTick: number | null;
     regenerationRate: number;
     maximumCapacity: number;
 };

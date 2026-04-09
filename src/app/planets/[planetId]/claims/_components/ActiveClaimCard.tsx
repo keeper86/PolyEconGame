@@ -116,20 +116,6 @@ export function ActiveClaimCard({
                 )}
                 <div className='grid grid-cols-2 gap-2 text-xs'>
                     <div className='space-y-0.5'>
-                        <p className='text-muted-foreground'>Cost / tick</p>
-                        <p className='font-medium'>
-                            {summary.renewable
-                                ? formatNumbers(claim.costPerTick)
-                                : formatNumbers(claim.tenantCostInCoins)}
-                        </p>
-                    </div>
-                    <div className='space-y-0.5'>
-                        <p className='text-muted-foreground'>Regen / tick</p>
-                        <p className='font-medium text-green-600 dark:text-green-400'>
-                            +{formatNumbers(claim.regenerationRate)}
-                        </p>
-                    </div>
-                    <div className='space-y-0.5'>
                         <p className='text-muted-foreground'>Extraction / tick</p>
                         <p className='font-medium'>{formatNumbers(claim.extractionRatePerTick)}</p>
                     </div>
@@ -142,6 +128,20 @@ export function ActiveClaimCard({
                             {formatDepletion(claim.depletionTicksEstimate)}
                         </p>
                     </div>
+                    {summary.renewable && (
+                        <>
+                            <div className='space-y-0.5'>
+                                <p className='text-muted-foreground'>Cost / tick</p>
+                                <p className='font-medium'>{formatNumbers(claim.costPerTick)}</p>
+                            </div>
+                            <div className='space-y-0.5'>
+                                <p className='text-muted-foreground'>Regen / tick</p>
+                                <p className='font-medium text-green-600 dark:text-green-400'>
+                                    +{formatNumbers(claim.regenerationRate)}
+                                </p>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {showExpand ? (

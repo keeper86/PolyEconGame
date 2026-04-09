@@ -57,6 +57,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
 
@@ -103,6 +104,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
 
@@ -149,6 +151,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
 
@@ -195,6 +198,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
         planet.resources[resB.name] = [
@@ -209,6 +213,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
 
@@ -250,6 +255,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
 
@@ -377,6 +383,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
 

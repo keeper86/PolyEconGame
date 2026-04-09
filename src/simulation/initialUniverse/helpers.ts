@@ -154,10 +154,9 @@ export function createPopulation(total: number): Population {
         lastTransferMatrix: [],
         lastConsumption: {},
     };
-    const remainder = total - perAge * (MAX_AGE + 1);
 
     for (let age = 0; age <= MAX_AGE; age++) {
-        const ageCount = perAge + (age < remainder ? 1 : 0);
+        const ageCount = perAge * 2 * (1 - age / MAX_AGE);
         if (ageCount <= 0) {
             continue;
         }

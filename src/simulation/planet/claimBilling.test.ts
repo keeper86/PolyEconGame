@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { TICKS_PER_MONTH } from '../constants';
 import { makeWorld } from '../utils/testHelper';
 import { claimBillingTick } from './claimBilling';
 import { arableLandResourceType, ironOreDepositResourceType } from './landBoundResources';
@@ -14,6 +15,7 @@ function makeRenewableClaim(
         costPerTick: number;
         claimStatus: 'active' | 'paused';
         noticePeriodEndsAtTick: number | null;
+        pausedSinceTick: number | null;
     }>,
 ) {
     return {
@@ -27,6 +29,7 @@ function makeRenewableClaim(
         costPerTick: 10,
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
+        pausedSinceTick: null,
         ...overrides,
     };
 }
@@ -43,6 +46,7 @@ function makeNonRenewableClaim(overrides?: Partial<{ tenantAgentId: string | nul
         costPerTick: 0,
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
+        pausedSinceTick: null,
         ...overrides,
     };
 }
@@ -226,6 +230,7 @@ describe('claimBillingTick', () => {
                     costPerTick: 0,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
+                    pausedSinceTick: null,
                 },
             ];
             const agents = new Map([
@@ -270,6 +275,129 @@ describe('claimBillingTick', () => {
             const entry = planet.resources[arableLandResourceType.name][0];
             expect(entry!.claimStatus).toBe('active');
             expect(entry!.noticePeriodEndsAtTick).toBe(100);
+        });
+    });
+
+    describe('auto-termination after 1 month paused', () => {
+        it('records pausedSinceTick when claim transitions to paused', () => {
+            company.assets[planet.id].deposits = 5;
+            planet.resources[arableLandResourceType.name] = [makeRenewableClaim({ costPerTick: 10 })];
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 42);
+
+            const entry = planet.resources[arableLandResourceType.name][0];
+            expect(entry!.claimStatus).toBe('paused');
+            expect(entry!.pausedSinceTick).toBe(42);
+        });
+
+        it('does not update pausedSinceTick when already paused', () => {
+            company.assets[planet.id].deposits = 5;
+            planet.resources[arableLandResourceType.name] = [
+                makeRenewableClaim({ claimStatus: 'paused', pausedSinceTick: 10, costPerTick: 10 }),
+            ];
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 20);
+
+            expect(planet.resources[arableLandResourceType.name][0]!.pausedSinceTick).toBe(10);
+        });
+
+        it('clears pausedSinceTick when claim resumes', () => {
+            company.assets[planet.id].deposits = 1000;
+            planet.resources[arableLandResourceType.name] = [
+                makeRenewableClaim({ claimStatus: 'paused', pausedSinceTick: 10, costPerTick: 10 }),
+            ];
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 20);
+
+            const entry = planet.resources[arableLandResourceType.name][0];
+            expect(entry!.claimStatus).toBe('active');
+            expect(entry!.pausedSinceTick).toBeNull();
+        });
+
+        it('terminates claim when paused for exactly TICKS_PER_MONTH ticks', () => {
+            company.assets[planet.id].deposits = 5;
+            planet.resources[arableLandResourceType.name] = [
+                makeRenewableClaim({ claimStatus: 'paused', pausedSinceTick: 0, costPerTick: 10 }),
+            ];
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, TICKS_PER_MONTH);
+
+            const tenanted = planet.resources[arableLandResourceType.name].filter(
+                (e) => e.tenantAgentId === company.id,
+            );
+            expect(tenanted).toHaveLength(0);
+        });
+
+        it('does not terminate before TICKS_PER_MONTH ticks of pause', () => {
+            company.assets[planet.id].deposits = 5;
+            planet.resources[arableLandResourceType.name] = [
+                makeRenewableClaim({ claimStatus: 'paused', pausedSinceTick: 0, costPerTick: 10 }),
+            ];
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, TICKS_PER_MONTH - 1);
+
+            const tenanted = planet.resources[arableLandResourceType.name].filter(
+                (e) => e.tenantAgentId === company.id,
+            );
+            expect(tenanted).toHaveLength(1);
+        });
+
+        it('merges auto-terminated claim back into untenanted pool', () => {
+            company.assets[planet.id].deposits = 5;
+            planet.resources[arableLandResourceType.name] = [
+                makeRenewableClaim({
+                    claimStatus: 'paused',
+                    pausedSinceTick: 0,
+                    costPerTick: 10,
+                    quantity: 500,
+                    maximumCapacity: 500,
+                    regenerationRate: 500,
+                }),
+                {
+                    id: 'pool',
+                    type: arableLandResourceType,
+                    quantity: 200,
+                    regenerationRate: 200,
+                    maximumCapacity: 200,
+                    tenantAgentId: null,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedSinceTick: null,
+                },
+            ];
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, TICKS_PER_MONTH);
+
+            const entries = planet.resources[arableLandResourceType.name];
+            expect(entries).toHaveLength(1);
+            expect(entries[0].tenantAgentId).toBeNull();
+            expect(entries[0].maximumCapacity).toBe(700);
         });
     });
 

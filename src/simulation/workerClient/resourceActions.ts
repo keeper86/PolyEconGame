@@ -7,6 +7,37 @@ import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from '..
 import { LAND_CLAIM_COST_PER_UNIT, TICKS_PER_MONTH } from '../constants';
 
 /**
+ * Calculates and charges the upfront cost for acquiring `quantity` units of a resource.
+ * For renewables: 1 month of per-tick cost. For non-renewables: the flat cost.
+ * Returns the upfront amount charged, or null if the agent cannot afford it.
+ */
+function chargeUpfrontCost(
+    state: GameState,
+    agentId: string,
+    planetId: string,
+    resourceName: string,
+    quantity: number,
+    isRenewable: boolean,
+): number | null {
+    const costAmount = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1));
+    const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
+    const agentAssets = state.agents.get(agentId)?.assets[planetId];
+    const planet = state.planets.get(planetId);
+    if (!agentAssets || !planet) {
+        return null;
+    }
+    if (agentAssets.deposits < upfrontCost) {
+        return null;
+    }
+    agentAssets.deposits -= upfrontCost;
+    const govAssets = state.agents.get(planet.governmentId)?.assets[planetId];
+    if (govAssets) {
+        govAssets.deposits += upfrontCost;
+    }
+    return upfrontCost;
+}
+
+/**
  * Handle 'claimResources' action
  *
  * TODO: 1) we need to handle all claim-types
@@ -77,6 +108,7 @@ export function handleClaimResources(
         costPerTick: Math.floor(arableLandQuantity * 0.01),
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
+        pausedSinceTick: null,
     };
     arablePool.quantity -= arableLandQuantity;
     arablePool.regenerationRate -= newArableClaim.regenerationRate;
@@ -96,6 +128,7 @@ export function handleClaimResources(
         costPerTick: Math.floor(waterSourceQuantity * 0.005),
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
+        pausedSinceTick: null,
     };
     waterPool.quantity -= waterSourceQuantity;
     waterPool.regenerationRate -= newWaterClaim.regenerationRate;
@@ -167,6 +200,16 @@ export function handleLeaseClaim(
     const ratio = quantity / pool.maximumCapacity;
     const isRenewable = pool.regenerationRate > 0;
     const costAmount = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1));
+    const charged = chargeUpfrontCost(state, agentId, planetId, resourceName, quantity, isRenewable);
+    if (charged === null) {
+        const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
+        safePostMessage({
+            type: 'claimLeaseFailed',
+            requestId,
+            reason: `Insufficient deposits — required ${upfrontCost}, available ${agent.assets[planetId]!.deposits}`,
+        });
+        return;
+    }
     const newClaim = {
         id: claimId,
         type: pool.type,
@@ -178,6 +221,7 @@ export function handleLeaseClaim(
         costPerTick: isRenewable ? costAmount : 0,
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
+        pausedSinceTick: null,
     };
     pool.quantity -= quantity;
     pool.regenerationRate -= newClaim.regenerationRate;
@@ -223,6 +267,18 @@ export function handleExpandClaim(
         return;
     }
     const ratio = additionalQuantity / pool.maximumCapacity;
+    const isRenewable = existingClaim.regenerationRate > 0;
+    const charged = chargeUpfrontCost(state, agentId, planetId, resourceName, additionalQuantity, isRenewable);
+    if (charged === null) {
+        const costAmount = Math.floor(additionalQuantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1));
+        const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
+        safePostMessage({
+            type: 'claimExpandFailed',
+            requestId,
+            reason: `Insufficient deposits — required ${upfrontCost}, available ${agent.assets[planetId]?.deposits ?? 0}`,
+        });
+        return;
+    }
     existingClaim.quantity += additionalQuantity;
     existingClaim.maximumCapacity += additionalQuantity;
     existingClaim.regenerationRate += pool.regenerationRate * ratio;

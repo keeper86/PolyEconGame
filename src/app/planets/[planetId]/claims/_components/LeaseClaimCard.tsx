@@ -46,13 +46,14 @@ export function LeaseClaimCard({
 
     const quantity = calcClaimQuantity(summary.resourceName, tierIndex, summary.renewable);
     const cost = calcClaimCost(summary.resourceName, quantity);
+    const upfrontCost = summary.renewable ? cost * TICKS_PER_MONTH : cost;
 
     const deposits = financials?.deposits ?? 0;
     const monthlyNetCashFlow = financials?.monthlyNetCashFlow ?? 0;
     const perTickCashFlow = monthlyNetCashFlow / TICKS_PER_MONTH;
 
     const exceedsCapacity = quantity > summary.availableCapacity;
-    const cannotAfford = !summary.renewable && cost > deposits;
+    const cannotAfford = upfrontCost > deposits;
     const cashFlowWarning = summary.renewable && cost > perTickCashFlow;
     const leaseDisabled = exceedsCapacity || cannotAfford || leaseMutation.isPending || leased;
 
@@ -125,9 +126,27 @@ export function LeaseClaimCard({
                                 {exceedsCapacity && ' — exceeds available'}
                             </span>
                         </div>
+                        {summary.renewable && (
+                            <>
+                                <div className='flex justify-between'>
+                                    <span className='text-muted-foreground'>Upfront (1 month)</span>
+                                    <span
+                                        className={`font-medium ${cannotAfford ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}`}
+                                    >
+                                        {formatNumbers(upfrontCost)}
+                                    </span>
+                                </div>
+                                <div className='flex justify-between'>
+                                    <span className='text-muted-foreground'>Your deposits</span>
+                                    <span className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}>
+                                        {formatNumbers(deposits)}
+                                    </span>
+                                </div>
+                            </>
+                        )}
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>
-                                {summary.renewable ? 'Cost / tick (locked)' : 'Cost (flat)'}
+                                {summary.renewable ? 'Cost / tick (ongoing)' : 'Cost (flat)'}
                             </span>
                             <span className='font-medium text-amber-600 dark:text-amber-400'>
                                 {formatNumbers(cost)}
@@ -141,26 +160,28 @@ export function LeaseClaimCard({
                                 </span>
                             </div>
                         ) : (
-                            <div className='flex justify-between'>
-                                <span className='text-muted-foreground'>Your cash flow</span>
-                                {cashFlowWarning ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <span className={`font-medium text-amber-600 dark:text-amber-400`}>
-                                                {formatNumbers(perTickCashFlow)}
-                                            </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <span className='flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400'>
-                                                <AlertTriangle className='h-3 w-3 shrink-0' />
-                                                Running cost exceeds current cash flow
-                                            </span>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : (
-                                    <span className={`font-medium `}>{formatNumbers(perTickCashFlow)} </span>
-                                )}
-                            </div>
+                            <>
+                                <div className='flex justify-between'>
+                                    <span className='text-muted-foreground'>Your cash flow</span>
+                                    {cashFlowWarning ? (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className={`font-medium text-amber-600 dark:text-amber-400`}>
+                                                    {formatNumbers(perTickCashFlow)}
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <span className='flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400'>
+                                                    <AlertTriangle className='h-3 w-3 shrink-0' />
+                                                    Running cost exceeds current cash flow
+                                                </span>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    ) : (
+                                        <span className={`font-medium`}>{formatNumbers(perTickCashFlow)}</span>
+                                    )}
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>

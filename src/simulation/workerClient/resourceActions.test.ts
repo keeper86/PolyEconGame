@@ -34,6 +34,7 @@ function addRenewablePool(gameState: GameState, planetId: string, quantity = 10_
             costPerTick: 0,
             claimStatus: 'active' as const,
             noticePeriodEndsAtTick: null,
+            pausedSinceTick: null,
         },
     ];
 }
@@ -52,6 +53,7 @@ function addNonRenewablePool(gameState: GameState, planetId: string, quantity = 
             costPerTick: 0,
             claimStatus: 'active' as const,
             noticePeriodEndsAtTick: null,
+            pausedSinceTick: null,
         },
     ];
 }
@@ -191,6 +193,77 @@ describe('handleLeaseClaim', () => {
 
             expect(messages.find((m) => m.type === 'claimLeaseFailed')).toBeDefined();
         });
+
+        it('deducts upfront cost of 1 month from agent deposits on lease', () => {
+            const { gameState, planet, company } = setupWorld();
+            addRenewablePool(gameState, planet.id, 10_000);
+            const { post } = makeMessages();
+            const initialDeposits = company.assets[planet.id].deposits;
+            const quantity = 2000;
+            const costPerTick = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1));
+            const expectedUpfront = costPerTick * TICKS_PER_MONTH;
+
+            handleLeaseClaim(
+                gameState,
+                {
+                    type: 'leaseClaim',
+                    requestId: 'r1',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    resourceName: arableLandResourceType.name,
+                    quantity,
+                },
+                post,
+            );
+
+            expect(company.assets[planet.id].deposits).toBe(initialDeposits - expectedUpfront);
+        });
+
+        it('credits upfront cost to government deposits on lease', () => {
+            const { gameState, planet, company, gov } = setupWorld();
+            addRenewablePool(gameState, planet.id, 10_000);
+            const { post } = makeMessages();
+            const quantity = 2000;
+            const costPerTick = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1));
+            const expectedUpfront = costPerTick * TICKS_PER_MONTH;
+
+            handleLeaseClaim(
+                gameState,
+                {
+                    type: 'leaseClaim',
+                    requestId: 'r1',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    resourceName: arableLandResourceType.name,
+                    quantity,
+                },
+                post,
+            );
+
+            expect(gov.assets[planet.id].deposits).toBe(expectedUpfront);
+        });
+
+        it('emits claimLeaseFailed when agent cannot afford upfront cost', () => {
+            const { gameState, planet, company } = setupWorld();
+            addRenewablePool(gameState, planet.id, 10_000);
+            company.assets[planet.id].deposits = 0;
+            const { messages, post } = makeMessages();
+
+            handleLeaseClaim(
+                gameState,
+                {
+                    type: 'leaseClaim',
+                    requestId: 'r1',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    resourceName: arableLandResourceType.name,
+                    quantity: 2000,
+                },
+                post,
+            );
+
+            expect(messages.find((m) => m.type === 'claimLeaseFailed')).toBeDefined();
+        });
     });
 
     describe('non-renewable resource (Iron Ore Deposit)', () => {
@@ -262,6 +335,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 20,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
+                    pausedSinceTick: null,
                 },
             ];
             const { post } = makeMessages();
@@ -297,6 +371,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 20,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
+                    pausedSinceTick: null,
                 },
             ];
             const { post } = makeMessages();
@@ -331,6 +406,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 20,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
+                    pausedSinceTick: null,
                 },
             ];
             const { messages, post } = makeMessages();
@@ -366,6 +442,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 0,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
+                    pausedSinceTick: null,
                 },
             ];
             const { post } = makeMessages();
@@ -394,6 +471,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 0,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
+                    pausedSinceTick: null,
                 },
             ];
             const { post } = makeMessages();
@@ -442,6 +520,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 2000,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
             {
                 id: 'arable-pool',
@@ -454,6 +533,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
         const { post } = makeMessages();
@@ -493,6 +573,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
             {
                 id: 'iron-pool',
@@ -505,6 +586,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
         const { post } = makeMessages();
@@ -543,6 +625,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 2000,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
             {
                 id: 'arable-pool',
@@ -555,6 +638,108 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
+            },
+        ];
+        const { messages, post } = makeMessages();
+
+        handleExpandClaim(
+            gameState,
+            {
+                type: 'expandClaim',
+                requestId: 'r1',
+                agentId: company.id,
+                planetId: planet.id,
+                claimId: 'arable-claim',
+                additionalQuantity: 1000,
+            },
+            post,
+        );
+
+        expect(messages.find((m) => m.type === 'claimExpandFailed')).toBeDefined();
+    });
+
+    it('deducts upfront cost (1 month) for renewable expansion', () => {
+        const { gameState, planet, company } = setupWorld();
+        const additionalQuantity = 1000;
+        const costPerTick = Math.floor(additionalQuantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1));
+        const expectedUpfront = costPerTick * TICKS_PER_MONTH;
+        const initialDeposits = company.assets[planet.id].deposits;
+        planet.resources[arableLandResourceType.name] = [
+            {
+                id: 'arable-claim',
+                type: arableLandResourceType,
+                quantity: 2000,
+                regenerationRate: 2000,
+                maximumCapacity: 2000,
+                tenantAgentId: company.id,
+                tenantCostInCoins: 0,
+                costPerTick: 2000,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
+            },
+            {
+                id: 'arable-pool',
+                type: arableLandResourceType,
+                quantity: 8000,
+                regenerationRate: 8000,
+                maximumCapacity: 8000,
+                tenantAgentId: null,
+                tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
+            },
+        ];
+        const { post } = makeMessages();
+
+        handleExpandClaim(
+            gameState,
+            {
+                type: 'expandClaim',
+                requestId: 'r1',
+                agentId: company.id,
+                planetId: planet.id,
+                claimId: 'arable-claim',
+                additionalQuantity,
+            },
+            post,
+        );
+
+        expect(company.assets[planet.id].deposits).toBe(initialDeposits - expectedUpfront);
+    });
+
+    it('emits claimExpandFailed when agent cannot afford upfront cost for renewable expansion', () => {
+        const { gameState, planet, company } = setupWorld();
+        company.assets[planet.id].deposits = 0;
+        planet.resources[arableLandResourceType.name] = [
+            {
+                id: 'arable-claim',
+                type: arableLandResourceType,
+                quantity: 2000,
+                regenerationRate: 2000,
+                maximumCapacity: 2000,
+                tenantAgentId: company.id,
+                tenantCostInCoins: 0,
+                costPerTick: 2000,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
+            },
+            {
+                id: 'arable-pool',
+                type: arableLandResourceType,
+                quantity: 8000,
+                regenerationRate: 8000,
+                maximumCapacity: 8000,
+                tenantAgentId: null,
+                tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedSinceTick: null,
             },
         ];
         const { messages, post } = makeMessages();
