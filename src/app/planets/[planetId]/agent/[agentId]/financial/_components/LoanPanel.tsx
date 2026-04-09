@@ -84,26 +84,6 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
                 </p>
             )}
 
-            {conditions && (
-                <div className='space-y-1'>
-                    <Stat
-                        label='Annual interest rate'
-                        value={`${(conditions.annualInterestRate * 100).toFixed(2)} %`}
-                    />
-
-                    {!conditions.isNewAgent && (
-                        <>
-                            <Stat
-                                label='Existing loans'
-                                value={formatNumbers(conditions.existingLoans)}
-                                valueClassName={conditions.existingLoans > 0 ? 'text-amber-500' : ''}
-                            />
-                            <Stat label='Storage collateral' value={formatNumbers(conditions.storageCollateral)} />
-                        </>
-                    )}
-                </div>
-            )}
-
             {/* Feedback messages */}
             {successMsg && (
                 <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>

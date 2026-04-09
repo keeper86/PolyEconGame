@@ -24,7 +24,11 @@ export default function FinancialPage() {
     const { data: loanConditionsData } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId: detail?.planetId ?? '' }),
     );
-    const loanConditions = loanConditionsData?.conditions ?? null;
+    const loanConditions = loanConditionsData?.conditions ?? {
+        blendedMonthlyRevenue: 0,
+        blendedMonthlyExpenses: 0,
+        monthlyNetCashFlow: 0,
+    };
 
     if (isEconomyLoading) {
         return <div className='text-sm text-muted-foreground'>Loading economy data…</div>;

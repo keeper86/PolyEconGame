@@ -11,7 +11,7 @@ type Props = {
         blendedMonthlyRevenue: number;
         blendedMonthlyExpenses: number;
         monthlyNetCashFlow: number;
-    } | null;
+    };
 };
 
 function Stat({
@@ -38,10 +38,6 @@ function Stat({
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
 export default function AgentFinancialOverview({ deposits, loans, loanConditions }: Props): React.ReactElement {
     const netPosition = deposits - loans;
 
@@ -59,7 +55,9 @@ export default function AgentFinancialOverview({ deposits, loans, loanConditions
                         label='Outstanding loans'
                         value={formatNumbers(loans)}
                         icon={<TrendingDown className='h-3 w-3' />}
-                        valueClassName={loans > 0 ? 'text-amber-500' : 'text-muted-foreground'}
+                        valueClassName={
+                            loans === 0 ? 'text-muted-foreground' : loans > deposits ? 'text-red-500' : 'text-amber-500'
+                        }
                     />
                     <Stat
                         label='Net position (deposits − loans)'
@@ -67,25 +65,40 @@ export default function AgentFinancialOverview({ deposits, loans, loanConditions
                         icon={
                             netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />
                         }
-                        valueClassName={netPosition < 0 ? 'text-red-500' : netPosition > 0 ? 'text-green-600' : ''}
+                        valueClassName={
+                            netPosition < 0
+                                ? 'text-red-500'
+                                : netPosition > 0
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground'
+                        }
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
                     <Stat
                         label='Monthly revenue (projected)'
-                        value={formatNumbers(loanConditions?.blendedMonthlyRevenue)}
+                        value={formatNumbers(loanConditions.blendedMonthlyRevenue)}
                     />
                     <Stat
                         label='Monthly expenses (projected)'
-                        value={formatNumbers(loanConditions?.blendedMonthlyExpenses)}
+                        value={formatNumbers(loanConditions.blendedMonthlyExpenses)}
+                        valueClassName={
+                            loanConditions.blendedMonthlyExpenses === 0
+                                ? 'text-muted-foreground'
+                                : loanConditions.blendedMonthlyExpenses > loanConditions.blendedMonthlyRevenue
+                                  ? 'text-red-500'
+                                  : 'text-amber-500'
+                        }
                     />
                     <Stat
                         label='Net monthly cash flow (projected)'
-                        value={formatNumbers(loanConditions?.monthlyNetCashFlow)}
+                        value={formatNumbers(loanConditions.monthlyNetCashFlow)}
                         valueClassName={
-                            loanConditions?.monthlyNetCashFlow && loanConditions?.monthlyNetCashFlow >= 0
-                                ? 'text-green-600'
-                                : 'text-red-500'
+                            loanConditions.monthlyNetCashFlow === 0
+                                ? 'text-muted-foreground'
+                                : loanConditions.monthlyNetCashFlow > 0
+                                  ? 'text-green-600'
+                                  : 'text-red-500'
                         }
                     />
                 </div>

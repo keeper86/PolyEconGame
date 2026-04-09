@@ -1,5 +1,5 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
+import type { ManagementFacility, ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
 import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 
@@ -112,6 +112,7 @@ export function buildResourceList(
     sellOffers: Record<string, MarketOfferEntry>,
     storageFacility: StorageFacility,
     showAll: boolean,
+    managementFacilities: ManagementFacility[] = [],
 ): { name: string }[] {
     if (showAll) {
         return ALL_RESOURCES.filter((r) => r.form !== 'landBoundResource').map((r) => ({ name: r.name }));
@@ -152,6 +153,12 @@ export function buildResourceList(
         if ((entry?.quantity ?? 0) > 0) {
             add(name);
         }
+    }
+
+    // Construction Service: show if any facility is under construction
+    const allFacilities = [...facilities, ...managementFacilities, storageFacility];
+    if (allFacilities.some((f) => f.construction !== null)) {
+        add('Construction Service');
     }
 
     return result;
