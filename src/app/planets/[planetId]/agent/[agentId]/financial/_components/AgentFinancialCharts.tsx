@@ -20,6 +20,10 @@ type FinancialPoint = {
     sumClaimPayments: number;
 };
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const MONTHLY_X_TICKS = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
+const MONTHLY_GRID_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
 function GranularityButton({
     active,
     disabled,
@@ -49,15 +53,8 @@ function GranularityButton({
     );
 }
 
-function bucketLabel(bucket: number, granularity: Granularity): string {
-    const { year, monthIndex } = tickToDate(bucket);
-    if (granularity === 'monthly') {
-        const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${MONTH_NAMES[monthIndex]} ${year}`;
-    }
-    if (granularity === 'yearly') {
-        return `${year}`;
-    }
+function bucketDecadeLabel(bucket: number): string {
+    const { year } = tickToDate(bucket);
     return `${year}s`;
 }
 
@@ -78,13 +75,19 @@ function yDomain(vals: number[]): [number, number] | ['auto', 'auto'] {
 function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; granularity: Granularity }) {
     const chartData = useMemo(
         () =>
-            data.map((p) => ({
-                label: bucketLabel(p.bucket, granularity),
-                revenue: p.avgMonthlyNetIncome + p.avgWages + p.sumPurchases + p.sumClaimPayments,
-                wages: p.avgWages,
-                purchases: p.sumPurchases,
-                claimPayments: p.sumClaimPayments,
-            })),
+            data.map((p) => {
+                const { year, monthIndex } = tickToDate(p.bucket);
+                return {
+                    xVal: granularity === 'monthly' ? monthIndex + 1 : granularity === 'yearly' ? year : year,
+                    year,
+                    monthIndex,
+                    label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
+                    revenue: p.avgMonthlyNetIncome + p.avgWages + p.sumPurchases + p.sumClaimPayments,
+                    wages: p.avgWages,
+                    purchases: p.sumPurchases,
+                    claimPayments: p.sumClaimPayments,
+                };
+            }),
         [data, granularity],
     );
 
@@ -101,6 +104,42 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
             ),
         [data],
     );
+
+    const xAxisProps = useMemo(() => {
+        if (granularity === 'monthly') {
+            return {
+                type: 'number' as const,
+                domain: [0, 12] as [number, number],
+                ticks: MONTHLY_X_TICKS,
+                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) % 12)] ?? '',
+                gridVertical: true,
+                gridValues: MONTHLY_GRID_VALUES,
+            };
+        }
+        if (granularity === 'yearly') {
+            const xMin = chartData.length > 0 ? chartData[0].xVal : 0;
+            return {
+                type: 'number' as const,
+                domain: [xMin, xMin + 10] as [number, number],
+                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
+                tickFormatter: (v: number) => String(Math.floor(v)),
+                gridVertical: true,
+                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+            };
+        }
+        return { type: 'category' as const, domain: undefined, ticks: undefined, tickFormatter: undefined, gridVertical: false, gridValues: undefined };
+    }, [granularity, chartData]);
+
+    const tooltipLabelFormatter = useMemo(() => {
+        if (granularity === 'monthly') {
+            const byMonthIdx = new Map(chartData.map((p) => [p.xVal, `${MONTH_NAMES[p.monthIndex]} ${p.year}`]));
+            return (label: number) => byMonthIdx.get(label) ?? '';
+        }
+        if (granularity === 'yearly') {
+            return (label: number) => String(Math.floor(label));
+        }
+        return undefined;
+    }, [granularity, chartData]);
 
     return (
         <Card>
@@ -127,13 +166,23 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
                                     <stop offset='95%' stopColor='#8b5cf6' stopOpacity={0.1} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid vertical={false} horizontal={false} stroke='#334155' />
+                            <CartesianGrid
+                                vertical={xAxisProps.gridVertical}
+                                horizontal={false}
+                                verticalValues={xAxisProps.gridValues}
+                                stroke='#334155'
+                                strokeOpacity={xAxisProps.gridVertical ? 0.7 : 1}
+                            />
                             <XAxis
-                                dataKey='label'
+                                dataKey={granularity === 'decade' ? 'label' : 'xVal'}
+                                type={xAxisProps.type}
+                                domain={xAxisProps.domain}
+                                ticks={xAxisProps.ticks}
+                                tickFormatter={xAxisProps.tickFormatter}
                                 tick={{ fontSize: 10, fill: '#94a3b8' }}
                                 axisLine={{ stroke: '#334155' }}
                                 tickLine={false}
-                                interval='preserveStartEnd'
+                                minTickGap={xAxisProps.ticks ? 0 : 36}
                             />
                             <YAxis
                                 type='number'
@@ -149,6 +198,7 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
                                 labelStyle={{ color: '#94a3b8' }}
                                 itemStyle={{ color: '#e2e8f0' }}
                                 formatter={(v) => formatNumbers(v as number)}
+                                labelFormatter={tooltipLabelFormatter}
                             />
                             <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
                             <Area
@@ -201,16 +251,58 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
 function BalanceFlowChart({ data, granularity }: { data: FinancialPoint[]; granularity: Granularity }) {
     const chartData = useMemo(
         () =>
-            data.map((p) => ({
-                label: bucketLabel(p.bucket, granularity),
-                netBalance: p.avgNetBalance,
-                netIncome: p.avgMonthlyNetIncome,
-            })),
+            data.map((p) => {
+                const { year, monthIndex } = tickToDate(p.bucket);
+                return {
+                    xVal: granularity === 'monthly' ? monthIndex + 1 : year,
+                    year,
+                    monthIndex,
+                    label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
+                    netBalance: p.avgNetBalance,
+                    netIncome: p.avgMonthlyNetIncome,
+                };
+            }),
         [data, granularity],
     );
 
     const domainBalance = useMemo(() => yDomain(data.map((p) => p.avgNetBalance)), [data]);
     const domainIncome = useMemo(() => yDomain(data.map((p) => p.avgMonthlyNetIncome)), [data]);
+
+    const xAxisProps = useMemo(() => {
+        if (granularity === 'monthly') {
+            return {
+                type: 'number' as const,
+                domain: [0, 12] as [number, number],
+                ticks: MONTHLY_X_TICKS,
+                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) % 12)] ?? '',
+                gridVertical: true,
+                gridValues: MONTHLY_GRID_VALUES,
+            };
+        }
+        if (granularity === 'yearly') {
+            const xMin = chartData.length > 0 ? chartData[0].xVal : 0;
+            return {
+                type: 'number' as const,
+                domain: [xMin, xMin + 10] as [number, number],
+                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
+                tickFormatter: (v: number) => String(Math.floor(v)),
+                gridVertical: true,
+                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+            };
+        }
+        return { type: 'category' as const, domain: undefined, ticks: undefined, tickFormatter: undefined, gridVertical: false, gridValues: undefined };
+    }, [granularity, chartData]);
+
+    const tooltipLabelFormatter = useMemo(() => {
+        if (granularity === 'monthly') {
+            const byMonthIdx = new Map(chartData.map((p) => [p.xVal, `${MONTH_NAMES[p.monthIndex]} ${p.year}`]));
+            return (label: number) => byMonthIdx.get(label) ?? '';
+        }
+        if (granularity === 'yearly') {
+            return (label: number) => String(Math.floor(label));
+        }
+        return undefined;
+    }, [granularity, chartData]);
 
     return (
         <Card>
@@ -229,13 +321,23 @@ function BalanceFlowChart({ data, granularity }: { data: FinancialPoint[]; granu
                                     <stop offset='95%' stopColor='#06b6d4' stopOpacity={0.08} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid vertical={false} horizontal={false} stroke='#334155' />
+                            <CartesianGrid
+                                vertical={xAxisProps.gridVertical}
+                                horizontal={false}
+                                verticalValues={xAxisProps.gridValues}
+                                stroke='#334155'
+                                strokeOpacity={xAxisProps.gridVertical ? 0.7 : 1}
+                            />
                             <XAxis
-                                dataKey='label'
+                                dataKey={granularity === 'decade' ? 'label' : 'xVal'}
+                                type={xAxisProps.type}
+                                domain={xAxisProps.domain}
+                                ticks={xAxisProps.ticks}
+                                tickFormatter={xAxisProps.tickFormatter}
                                 tick={{ fontSize: 10, fill: '#94a3b8' }}
                                 axisLine={{ stroke: '#334155' }}
                                 tickLine={false}
-                                interval='preserveStartEnd'
+                                minTickGap={xAxisProps.ticks ? 0 : 36}
                             />
                             <YAxis
                                 yAxisId='left'
@@ -263,6 +365,7 @@ function BalanceFlowChart({ data, granularity }: { data: FinancialPoint[]; granu
                                 labelStyle={{ color: '#94a3b8' }}
                                 itemStyle={{ color: '#e2e8f0' }}
                                 formatter={(v) => formatNumbers(v as number)}
+                                labelFormatter={tooltipLabelFormatter}
                             />
                             <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
                             <Area
@@ -299,13 +402,13 @@ export default function AgentFinancialCharts({ agentId }: { agentId: string }) {
 
     const { data: monthlyData, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, granularity: 'monthly', limit: 26 },
+            { agentId, granularity: 'monthly', limit: 13 },
             { enabled: granularity === 'monthly' },
         ),
     );
     const { data: yearlyData, isLoading: loadingYearly } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, granularity: 'yearly', limit: 100 },
+            { agentId, granularity: 'yearly', limit: 11 },
             { enabled: granularity === 'yearly' },
         ),
     );
