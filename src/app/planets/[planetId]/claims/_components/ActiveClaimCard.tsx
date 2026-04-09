@@ -4,17 +4,16 @@ import { mapTickToDate } from '@/components/client/TickDisplay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import type { AgentClaimEntry, ClaimResourceSummary } from '@/server/controller/planet';
 import { MONTHS_PER_YEAR, TICKS_PER_MONTH } from '@/simulation/constants';
-import { SY_TIERS, calcClaimQuantity, calcClaimCost } from './claimCalculations';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, InfoIcon, Loader2, RefreshCw } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2, RefreshCw } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { ClaimCardHeader } from './ClaimCardHeader';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ClaimSizeForm } from './ClaimSizeForm';
 
 function formatDepletion(ticks: number | null): string {
     if (ticks === null) {
@@ -56,7 +55,9 @@ export function ActiveClaimCard({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [claim.maximumCapacity]);
 
-    const { data: financials } = useQuery(trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }));
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
+    );
 
     const invalidate = () => {
         void queryClient.invalidateQueries({
@@ -146,171 +147,20 @@ export function ActiveClaimCard({
 
                 {showExpand ? (
                     <div className='space-y-3 border-t pt-3 mt-auto'>
-                        <div className='space-y-3'>
-                            <div className='space-y-1'>
-                                <div className='flex gap-2 text-xs text-muted-foreground pb-1'>
-                                    {summary.renewable ? (
-                                        <span className='flex gap-1'>
-                                            Scale
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <InfoIcon className='h-4' />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    Measures the quantity of resource claimed by what the
-                                                    least-demanding facility of this scale would sustainably be able to
-                                                    consume.
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </span>
-                                    ) : (
-                                        <span className='flex gap-1'>
-                                            Scale-years{' '}
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <InfoIcon className='h-4' />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    1 Scale year can satisfy the annual consumption of one facility at
-                                                    scale 1.
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </span>
-                                    )}
-                                </div>
-                                <Slider
-                                    min={0}
-                                    max={SY_TIERS.length - 1}
-                                    step={1}
-                                    value={[expandTierIndex]}
-                                    onValueChange={([v]: [number]) => setExpandTierIndex(v ?? 0)}
-                                    disabled={expandMutation.isPending || expanded}
-                                />
-                                <div className='relative h-4 text-[10px] text-muted-foreground'>
-                                    {SY_TIERS.map((t, i) => {
-                                        const pct = (i / (SY_TIERS.length - 1)) * 100 - 0.3 * (i - 2.3);
-                                        const translate =
-                                            i === 0 ? '100%' : i === SY_TIERS.length - 1 ? '-80%' : '-50%';
-                                        return (
-                                            <span
-                                                key={t}
-                                                className='absolute'
-                                                style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
-                                            >
-                                                {formatNumbers(t)}
-                                            </span>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            {(() => {
-                                const additionalQuantity = calcClaimQuantity(
-                                    claim.resourceName,
-                                    expandTierIndex,
-                                    summary.renewable,
-                                );
-                                const cost = calcClaimCost(claim.resourceName, additionalQuantity);
-                                const exceedsCapacity = additionalQuantity > summary.availableCapacity;
-                                const deposits = financials?.deposits ?? 0;
-                                const cannotAfford = !summary.renewable && cost > deposits;
-                                const monthlyNetCashFlow = financials?.monthlyNetCashFlow ?? 0;
-                                const perTickCashFlow = monthlyNetCashFlow / TICKS_PER_MONTH;
-                                const cashFlowWarning = summary.renewable && cost > perTickCashFlow;
-                                const isDisabled =
-                                    exceedsCapacity || cannotAfford || expandMutation.isPending || expanded;
-
-                                return (
-                                    <>
-                                        <div className='space-y-0.5 text-xs'>
-                                            <div className='flex justify-between'>
-                                                <span className='text-muted-foreground'>Quantity</span>
-                                                <span
-                                                    className={`font-medium ${exceedsCapacity ? 'text-destructive' : ''}`}
-                                                >
-                                                    {formatNumbers(additionalQuantity)} units
-                                                    {exceedsCapacity && ' — exceeds available'}
-                                                </span>
-                                            </div>
-                                            <div className='flex justify-between'>
-                                                <span className='text-muted-foreground'>
-                                                    {summary.renewable ? 'Cost / tick (locked)' : 'Cost (flat)'}
-                                                </span>
-                                                <span className='font-medium text-amber-600 dark:text-amber-400'>
-                                                    {formatNumbers(cost)}
-                                                </span>
-                                            </div>
-                                            {!summary.renewable ? (
-                                                <div className='flex justify-between'>
-                                                    <span className='text-muted-foreground'>Your deposits</span>
-                                                    <span
-                                                        className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}
-                                                    >
-                                                        {formatNumbers(deposits)}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className='flex justify-between'>
-                                                    <span className='text-muted-foreground'>Your cash flow</span>
-                                                    {cashFlowWarning ? (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <span className='font-medium text-amber-600 dark:text-amber-400'>
-                                                                    {formatNumbers(perTickCashFlow)}
-                                                                </span>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <span className='flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400'>
-                                                                    <AlertTriangle className='h-3 w-3 shrink-0' />
-                                                                    Running cost exceeds current cash flow
-                                                                </span>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    ) : (
-                                                        <span className='font-medium'>
-                                                            {formatNumbers(perTickCashFlow)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className='flex gap-2'>
-                                            <Button
-                                                size='sm'
-                                                disabled={isDisabled}
-                                                onClick={() =>
-                                                    expandMutation.mutate({
-                                                        agentId,
-                                                        planetId,
-                                                        claimId: claim.claimId,
-                                                        additionalQuantity,
-                                                    })
-                                                }
-                                            >
-                                                {expandMutation.isPending || expanded ? (
-                                                    <>
-                                                        <Loader2 className='h-3 w-3 animate-spin mr-1' />
-                                                        Takes effect next tick…
-                                                    </>
-                                                ) : (
-                                                    'Expand'
-                                                )}
-                                            </Button>
-                                            <Button
-                                                size='sm'
-                                                variant='outline'
-                                                disabled={expandMutation.isPending || expanded}
-                                                onClick={() => setShowExpand(false)}
-                                            >
-                                                Cancel
-                                            </Button>
-                                        </div>
-                                        {expandMutation.error && (
-                                            <p className='text-xs text-destructive'>{expandMutation.error.message}</p>
-                                        )}
-                                    </>
-                                );
-                            })()}
-                        </div>
+                        <ClaimSizeForm
+                            summary={summary}
+                            financials={financials}
+                            tierIndex={expandTierIndex}
+                            onTierChange={setExpandTierIndex}
+                            isPending={expandMutation.isPending}
+                            isSubmitted={expanded}
+                            onSubmit={(additionalQuantity) =>
+                                expandMutation.mutate({ agentId, planetId, claimId: claim.claimId, additionalQuantity })
+                            }
+                            onCancel={() => setShowExpand(false)}
+                            submitLabel='Expand'
+                            errorMessage={expandMutation.error?.message}
+                        />
                     </div>
                 ) : confirmQuit ? (
                     <div className='space-y-2 border-t pt-3 mt-auto'>
