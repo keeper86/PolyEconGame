@@ -328,7 +328,12 @@ describe('planet population history: write-refresh-read', () => {
         ];
 
         await insertPlanetPopulationHistory(db, insertRows);
-        await refreshPopulationMonthly(90 + 30);
+        // Use tick 0 as the start so all three buckets (30, 60, 90) fall within the refresh window.
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [
+            'planet_population_monthly',
+            0,
+            90 + 30,
+        ]);
 
         const result = await getPlanetPopulationHistoryAggregated(db, PLANET2, 'monthly', 13);
 
