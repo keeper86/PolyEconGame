@@ -253,8 +253,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     net_balance: netBalance,
                     monthly_net_income: monthlyNetIncome,
                     total_workers: totalWorkers,
-                    wages: assets.monthAcc.wagesBill,
+                    wages: assets.monthAcc.wages,
                     production_value: assets.monthAcc.productionValue,
+                    purchases: assets.monthAcc.purchases,
+                    claim_payments: assets.monthAcc.claimPayments,
                     facility_count: facilityCount,
                     storage_value: storageValue,
                 };

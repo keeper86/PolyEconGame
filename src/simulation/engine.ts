@@ -68,7 +68,7 @@ export function advanceTick(gameState: GameState) {
 
         accumulateAgentMetrics(planetAgents, planet, gameState.tick);
 
-        automaticLoanRepayment(planetAgents, planet);
+        automaticLoanRepayment(planetAgents, planet, gameState.tick);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(planetAgents, planet);

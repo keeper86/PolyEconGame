@@ -18,7 +18,6 @@ export type AgentPlanetAssets = {
     workforceDemography?: WorkforceDemography;
     deposits: number;
     loans?: number;
-    lastWageBill?: number;
     market?: {
         sell: {
             [resourceName: string]: {

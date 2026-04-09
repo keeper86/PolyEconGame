@@ -98,19 +98,6 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
                                 value={formatNumbers(conditions.existingLoans)}
                                 valueClassName={conditions.existingLoans > 0 ? 'text-amber-500' : ''}
                             />
-                            <Stat
-                                label='Monthly revenue (projected)'
-                                value={formatNumbers(conditions.blendedMonthlyRevenue)}
-                            />
-                            <Stat
-                                label='Monthly wage cost (projected)'
-                                value={formatNumbers(conditions.blendedMonthlyWages)}
-                            />
-                            <Stat
-                                label='Net monthly cash flow (projected)'
-                                value={formatNumbers(conditions.monthlyNetCashFlow)}
-                                valueClassName={conditions.monthlyNetCashFlow >= 0 ? 'text-green-600' : 'text-red-500'}
-                            />
                             <Stat label='Storage collateral' value={formatNumbers(conditions.storageCollateral)} />
                         </>
                     )}

@@ -137,6 +137,8 @@ export interface InsertAgentMonthlyHistory {
     production_value: number;
     facility_count: number;
     storage_value: number;
+    purchases: number;
+    claim_payments: number;
 }
 
 /**
@@ -159,6 +161,8 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
             production_value: r.production_value,
             facility_count: r.facility_count,
             storage_value: r.storage_value,
+            purchases: r.purchases,
+            claim_payments: r.claim_payments,
         })),
     );
 }

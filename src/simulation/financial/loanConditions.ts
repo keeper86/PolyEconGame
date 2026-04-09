@@ -41,13 +41,13 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
     const progress = (((tick - 1) % TICKS_PER_MONTH) + 1) / TICKS_PER_MONTH;
 
     const blendedMonthlyRevenue = blendMonthly(
-        assets?.lastMonthAcc.revenueValue ?? 0,
-        assets?.monthAcc.revenueValue ?? 0,
+        assets?.lastMonthAcc.revenue ?? 0,
+        assets?.monthAcc.revenue ?? 0,
         progress,
     );
     const blendedMonthlyWages = blendMonthly(
-        assets?.lastMonthAcc.wagesBill ?? 0,
-        assets?.monthAcc.wagesBill ?? 0,
+        assets?.lastMonthAcc.wages ?? 0,
+        assets?.monthAcc.wages ?? 0,
         progress,
     );
 

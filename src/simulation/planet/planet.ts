@@ -321,9 +321,6 @@ export type AgentPlanetAssets = {
 
     loans: number;
 
-    lastWageBill?: number;
-    lastTotalWorkers?: number;
-
     market?: AgentMarketOffers;
 
     allocatedWorkers: PerEducation;
@@ -335,15 +332,19 @@ export type AgentPlanetAssets = {
     monthAcc: {
         depositsAtMonthStart: number;
         productionValue: number;
-        wagesBill: number;
-        revenueValue: number;
+        wages: number;
+        revenue: number;
+        purchases: number;
+        claimPayments: number;
         totalWorkersTicks: number;
     };
 
     lastMonthAcc: {
         productionValue: number;
-        wagesBill: number;
-        revenueValue: number;
+        wages: number;
+        revenue: number;
+        purchases: number;
+        claimPayments: number;
         totalWorkersTicks: number;
     };
 };
@@ -370,9 +371,6 @@ export interface GameState {
 
 export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     for (const agent of agents.values()) {
-        if (agent.automated) {
-            continue;
-        }
         const assets = agent.assets[planet.id];
         if (!assets) {
             continue;
@@ -380,15 +378,19 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
         if (tick % TICKS_PER_MONTH === 1) {
             assets.lastMonthAcc = {
                 productionValue: assets.monthAcc.productionValue,
-                wagesBill: assets.monthAcc.wagesBill,
-                revenueValue: assets.monthAcc.revenueValue,
+                wages: assets.monthAcc.wages,
+                revenue: assets.monthAcc.revenue,
+                purchases: assets.monthAcc.purchases,
+                claimPayments: assets.monthAcc.claimPayments,
                 totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
             };
             assets.monthAcc = {
                 depositsAtMonthStart: assets.deposits,
                 productionValue: 0,
-                wagesBill: 0,
-                revenueValue: 0,
+                wages: 0,
+                revenue: 0,
+                purchases: 0,
+                claimPayments: 0,
                 totalWorkersTicks: 0,
             };
         }
@@ -398,13 +400,6 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
                     const price = planet.marketPrices[resourceName] ?? 0;
                     assets.monthAcc.productionValue += qty * price;
                 }
-            }
-        }
-        assets.monthAcc.wagesBill += assets.lastWageBill ?? 0;
-        assets.monthAcc.totalWorkersTicks += assets.lastTotalWorkers ?? 0;
-        if (assets.market?.sell) {
-            for (const offer of Object.values(assets.market.sell)) {
-                assets.monthAcc.revenueValue += offer.lastRevenue ?? 0;
             }
         }
     }
