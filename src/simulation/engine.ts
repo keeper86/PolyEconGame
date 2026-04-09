@@ -7,7 +7,7 @@ import { marketTick } from './market/market';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
-import { accumulatePlanetPrices, accumulateAgentMetrics } from './planet/planet';
+import { resetAgentMetrics, accumulatePlanetPrices } from './planet/planet';
 import { constructionTick, productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { seedRng } from './utils/stochasticRound';
@@ -43,6 +43,7 @@ export function advanceTick(gameState: GameState) {
         }
 
         if (isMonthBoundary(gameState.tick)) {
+            resetAgentMetrics(planetAgents, planet);
             automaticWorkerAllocation(planetAgents, planet);
             hireWorkforce(planetAgents, planet);
             if (process.env.SIM_DEBUG) {
@@ -65,8 +66,6 @@ export function advanceTick(gameState: GameState) {
         constructionTick(planetAgents, planet);
 
         productionTick(planetAgents, planet);
-
-        accumulateAgentMetrics(planetAgents, planet, gameState.tick);
 
         automaticLoanRepayment(planetAgents, planet, gameState.tick);
 

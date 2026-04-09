@@ -371,33 +371,31 @@ export interface GameState {
     agents: Map<string, Agent>;
 }
 
-export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
         if (!assets) {
             continue;
         }
-        if (tick % TICKS_PER_MONTH === 1) {
-            assets.lastMonthAcc = {
-                productionValue: assets.monthAcc.productionValue,
-                consumptionValue: assets.monthAcc.consumptionValue,
-                wages: assets.monthAcc.wages,
-                revenue: assets.monthAcc.revenue,
-                purchases: assets.monthAcc.purchases,
-                claimPayments: assets.monthAcc.claimPayments,
-                totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
-            };
-            assets.monthAcc = {
-                depositsAtMonthStart: assets.deposits,
-                productionValue: 0,
-                consumptionValue: 0,
-                wages: 0,
-                revenue: 0,
-                purchases: 0,
-                claimPayments: 0,
-                totalWorkersTicks: 0,
-            };
-        }
+        assets.lastMonthAcc = {
+            productionValue: assets.monthAcc.productionValue,
+            consumptionValue: assets.monthAcc.consumptionValue,
+            wages: assets.monthAcc.wages,
+            revenue: assets.monthAcc.revenue,
+            purchases: assets.monthAcc.purchases,
+            claimPayments: assets.monthAcc.claimPayments,
+            totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
+        };
+        assets.monthAcc = {
+            depositsAtMonthStart: assets.deposits,
+            productionValue: 0,
+            consumptionValue: 0,
+            wages: 0,
+            revenue: 0,
+            purchases: 0,
+            claimPayments: 0,
+            totalWorkersTicks: 0,
+        };
     }
 }
 

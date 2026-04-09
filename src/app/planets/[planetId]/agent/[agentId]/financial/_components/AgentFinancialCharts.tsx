@@ -80,7 +80,7 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
         () =>
             data.map((p) => ({
                 label: bucketLabel(p.bucket, granularity),
-                revenue: p.avgMonthlyNetIncome,
+                revenue: p.avgMonthlyNetIncome + p.avgWages + p.sumPurchases + p.sumClaimPayments,
                 wages: p.avgWages,
                 purchases: p.sumPurchases,
                 claimPayments: p.sumClaimPayments,
@@ -96,7 +96,7 @@ function ExpensesRevenueChart({ data, granularity }: { data: FinancialPoint[]; g
                     p.avgWages,
                     p.sumPurchases,
                     p.sumClaimPayments,
-                    p.avgWages + p.sumPurchases + p.sumClaimPayments,
+                    p.avgMonthlyNetIncome + p.avgWages + p.sumPurchases + p.sumClaimPayments,
                 ]),
             ),
         [data],

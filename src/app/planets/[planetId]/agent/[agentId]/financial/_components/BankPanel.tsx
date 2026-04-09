@@ -64,7 +64,7 @@ export default function BankPanel({ bank }: Props): React.ReactElement | null {
                         icon={<Users className='h-3 w-3' />}
                     />
                 </div>
-                <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
+                <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Bank equity'
                         value={formatNumbers(bank.equity)}
