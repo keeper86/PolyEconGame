@@ -23,7 +23,7 @@ export function makeClaim(opts: {
         costPerTick: isRenewable ? (opts.costPerTick ?? passedCost) : 0,
         claimStatus: 'active',
         noticePeriodEndsAtTick: null,
-        pausedSinceTick: null,
+        pausedTicksThisYear: 0,
     };
 }
 

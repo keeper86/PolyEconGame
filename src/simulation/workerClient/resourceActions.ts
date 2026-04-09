@@ -108,7 +108,7 @@ export function handleClaimResources(
         costPerTick: Math.floor(arableLandQuantity * 0.01),
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
-        pausedSinceTick: null,
+        pausedTicksThisYear: 0,
     };
     arablePool.quantity -= arableLandQuantity;
     arablePool.regenerationRate -= newArableClaim.regenerationRate;
@@ -128,7 +128,7 @@ export function handleClaimResources(
         costPerTick: Math.floor(waterSourceQuantity * 0.005),
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
-        pausedSinceTick: null,
+        pausedTicksThisYear: 0,
     };
     waterPool.quantity -= waterSourceQuantity;
     waterPool.regenerationRate -= newWaterClaim.regenerationRate;
@@ -221,7 +221,7 @@ export function handleLeaseClaim(
         costPerTick: isRenewable ? costAmount : 0,
         claimStatus: 'active' as const,
         noticePeriodEndsAtTick: null,
-        pausedSinceTick: null,
+        pausedTicksThisYear: 0,
     };
     pool.quantity -= quantity;
     pool.regenerationRate -= newClaim.regenerationRate;

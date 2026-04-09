@@ -78,6 +78,11 @@ export function advanceTick(gameState: GameState) {
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'beforeYear');
             }
+            for (const entries of Object.values(planet.resources)) {
+                for (const entry of entries) {
+                    entry.pausedTicksThisYear = 0;
+                }
+            }
             populationAdvanceYearTick(planet);
             workforceAdvanceYearTick(planetAgents, planet);
             if (process.env.SIM_DEBUG) {

@@ -57,7 +57,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -104,7 +104,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -151,7 +151,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -198,7 +198,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
         planet.resources[resB.name] = [
@@ -213,7 +213,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -255,7 +255,7 @@ describe('productionTick (basic)', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -383,7 +383,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 

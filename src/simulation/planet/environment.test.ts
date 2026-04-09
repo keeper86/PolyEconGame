@@ -50,7 +50,7 @@ describe('environmentTick', () => {
                         costPerTick: 0,
                         claimStatus: 'active' as const,
                         noticePeriodEndsAtTick: null,
-                        pausedSinceTick: null,
+                        pausedTicksThisYear: 0,
                         regenerationRate: 20,
                         maximumCapacity: 60,
                     },

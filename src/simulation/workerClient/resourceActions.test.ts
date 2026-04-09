@@ -34,7 +34,7 @@ function addRenewablePool(gameState: GameState, planetId: string, quantity = 10_
             costPerTick: 0,
             claimStatus: 'active' as const,
             noticePeriodEndsAtTick: null,
-            pausedSinceTick: null,
+            pausedTicksThisYear: 0,
         },
     ];
 }
@@ -53,7 +53,7 @@ function addNonRenewablePool(gameState: GameState, planetId: string, quantity = 
             costPerTick: 0,
             claimStatus: 'active' as const,
             noticePeriodEndsAtTick: null,
-            pausedSinceTick: null,
+            pausedTicksThisYear: 0,
         },
     ];
 }
@@ -335,7 +335,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 20,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
-                    pausedSinceTick: null,
+                    pausedTicksThisYear: 0,
                 },
             ];
             const { post } = makeMessages();
@@ -371,7 +371,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 20,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
-                    pausedSinceTick: null,
+                    pausedTicksThisYear: 0,
                 },
             ];
             const { post } = makeMessages();
@@ -406,7 +406,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 20,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
-                    pausedSinceTick: null,
+                    pausedTicksThisYear: 0,
                 },
             ];
             const { messages, post } = makeMessages();
@@ -442,7 +442,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 0,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
-                    pausedSinceTick: null,
+                    pausedTicksThisYear: 0,
                 },
             ];
             const { post } = makeMessages();
@@ -471,7 +471,7 @@ describe('handleQuitClaim', () => {
                     costPerTick: 0,
                     claimStatus: 'active' as const,
                     noticePeriodEndsAtTick: null,
-                    pausedSinceTick: null,
+                    pausedTicksThisYear: 0,
                 },
             ];
             const { post } = makeMessages();
@@ -520,7 +520,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 2000,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
             {
                 id: 'arable-pool',
@@ -533,7 +533,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
         const { post } = makeMessages();
@@ -573,7 +573,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
             {
                 id: 'iron-pool',
@@ -586,7 +586,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
         const { post } = makeMessages();
@@ -625,7 +625,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 2000,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
             {
                 id: 'arable-pool',
@@ -638,7 +638,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
         const { messages, post } = makeMessages();
@@ -679,7 +679,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 2000,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
             {
                 id: 'arable-pool',
@@ -692,7 +692,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
         const { post } = makeMessages();
@@ -728,7 +728,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 2000,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
             {
                 id: 'arable-pool',
@@ -741,7 +741,7 @@ describe('handleExpandClaim', () => {
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
-                pausedSinceTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
         const { messages, post } = makeMessages();

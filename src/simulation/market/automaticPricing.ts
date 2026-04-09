@@ -79,9 +79,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     // Pre-compute estimated cost floors for each produced resource.
-    const costFloors = buildCostFloors(assets, planet);
+    const costFloors = buildCostFloors(assets, planet, agent.id);
 
-    const inputProfitGaps = buildInputProfitGaps(assets, planet);
+    const inputProfitGaps = buildInputProfitGaps(assets, planet, agent.id);
 
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
@@ -189,7 +189,37 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 }
 
-function buildCostFloors(assets: AgentPlanetAssets, planet: Planet): Map<string, number> {
+/**
+ * Returns the effective cost-per-unit for a land-bound resource held by an agent.
+ * Renewable claims: costPerTick / quantity (recurring access fee per available unit).
+ * Non-renewable claims: tenantCostInCoins / maximumCapacity (upfront purchase amortised
+ * over the original deposit size).
+ */
+function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: string): number {
+    const entries = planet.resources[resourceName];
+    if (!entries) {
+        return 0;
+    }
+    let totalCost = 0;
+    let totalUnits = 0;
+    for (const entry of entries) {
+        if (entry.tenantAgentId !== agentId) {
+            continue;
+        }
+        if (entry.regenerationRate > 0) {
+            // Renewable: pay costPerTick each tick for `quantity` units
+            totalCost += entry.costPerTick;
+            totalUnits += entry.quantity;
+        } else {
+            // Non-renewable: upfront purchase of maximumCapacity units
+            totalCost += entry.tenantCostInCoins;
+            totalUnits += entry.maximumCapacity;
+        }
+    }
+    return totalUnits > 0 ? totalCost / totalUnits : 0;
+}
+
+function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
     const accumulated = new Map<string, { totalCost: number; totalUnits: number }>();
 
     for (const facility of assets.productionFacilities) {
@@ -197,13 +227,13 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet): Map<string,
             continue;
         }
 
-        // Input cost: Σ(marketPrice × qty × scale) for each non-land input
+        // Input cost: Σ(price × qty × scale) for each input (land-bound resources use claim cost)
         let inputCostPerTick = 0;
         for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource') {
-                continue;
-            }
-            const price = planet.marketPrices[resource.name];
+            const price =
+                resource.form === 'landBoundResource'
+                    ? getLandBoundCostPerUnit(planet, agentId, resource.name)
+                    : planet.marketPrices[resource.name];
             inputCostPerTick += price * quantity * facility.scale;
         }
 
@@ -275,7 +305,7 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet): Map<string,
  * Returns: input resource name → weighted-average profitability gap (≥ 0).
  * Profitable facilities (gap = 0) do not contribute to the spring.
  */
-function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet): Map<string, number> {
+function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
     const weightedGapSum = new Map<string, number>();
     const weightSum = new Map<string, number>();
 
@@ -295,10 +325,10 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet): Map<st
 
         let totalCost = 0;
         for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource') {
-                continue;
-            }
-            const p = planet.marketPrices[resource.name];
+            const p =
+                resource.form === 'landBoundResource'
+                    ? getLandBoundCostPerUnit(planet, agentId, resource.name)
+                    : planet.marketPrices[resource.name];
             totalCost += p * quantity * facility.scale;
         }
         for (const edu of educationLevelKeys) {
@@ -316,9 +346,6 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet): Map<st
         }
 
         for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource') {
-                continue;
-            }
             const w = quantity * facility.scale;
             weightedGapSum.set(resource.name, (weightedGapSum.get(resource.name) ?? 0) + gap * w);
             weightSum.set(resource.name, (weightSum.get(resource.name) ?? 0) + w);
