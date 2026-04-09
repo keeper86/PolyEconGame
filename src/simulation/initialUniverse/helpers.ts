@@ -156,7 +156,7 @@ export function createPopulation(total: number): Population {
     };
 
     for (let age = 0; age <= MAX_AGE; age++) {
-        const ageCount = perAge * 2 * (1 - age / MAX_AGE);
+        const ageCount = Math.floor(perAge * 2 * (1 - age / MAX_AGE));
         if (ageCount <= 0) {
             continue;
         }
