@@ -22,12 +22,14 @@ function makeEstablishedAgent(
         productionValue: 0,
         wagesBill: overrides?.lastMonthWages ?? 0,
         revenueValue: overrides?.lastMonthRevenue ?? 0,
+        totalWorkersTicks: 0,
     };
     assets.monthAcc = {
         depositsAtMonthStart: 0,
         productionValue: 0,
         wagesBill: overrides?.currentMonthWages ?? 0,
         revenueValue: overrides?.currentMonthRevenue ?? 0,
+        totalWorkersTicks: 0,
     };
     return a;
 }

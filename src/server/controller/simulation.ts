@@ -11,8 +11,9 @@
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import {
-    getPlanetPopulationHistory as dbGetPlanetPopulationHistory,
+    getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
+    getAgentHistoryAggregated as dbGetAgentHistory,
 } from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
 import {
@@ -346,36 +347,41 @@ export const getAgentPlanetDetail = () =>
 
 /**
  * Population history time-series for a single planet.
- * Reads from the planet_population_history table written alongside each
- * cold snapshot (every SNAPSHOT_INTERVAL_TICKS ticks).
- * Returns rows ordered tick ascending, ready for direct chart consumption.
+ * Queries the appropriate continuous aggregate view (monthly / yearly / decade).
+ * Returns buckets ordered ascending, ready for chart consumption.
  */
 export const getPlanetPopulationHistory = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string() }))
+        .input(
+            z.object({
+                planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(100),
+            }),
+        )
         .output(
             z.object({
                 planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
                     z.object({
-                        tick: z.number(),
-                        population: z.number(),
-                        starvationLevel: z.number(),
-                        foodPrice: z.number(),
+                        bucket: z.number(),
+                        avgPopulation: z.number(),
                     }),
                 ),
             }),
         )
         .query(async ({ input }) => {
-            const rows = await dbGetPlanetPopulationHistory(db, input.planetId);
+            const rows = await dbGetPlanetPopulationHistory(db, input.planetId, input.granularity, input.limit);
             return {
                 planetId: input.planetId,
-                history: rows.map((r) => ({
-                    tick: Number(r.tick),
-                    population: Number(r.population),
-                    starvationLevel: r.starvation_level ?? 0,
-                    foodPrice: r.food_price ?? 0,
-                })),
+                granularity: input.granularity,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgPopulation: r.avg_population ?? 0,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
             };
         });
 
@@ -430,6 +436,68 @@ export const getProductPriceHistory = () =>
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };
+        });
+
+export const getAgentHistory = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(100),
+            }),
+        )
+        .output(
+            z.object({
+                agentId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
+                foundedTick: z.number(),
+                history: z.array(
+                    z.object({
+                        bucket: z.number(),
+                        avgNetBalance: z.number(),
+                        avgMonthlyNetIncome: z.number(),
+                        avgTotalWorkers: z.number(),
+                        avgWages: z.number(),
+                        sumProductionValue: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ agent }, rows] = await Promise.all([
+                workerQueries.getAgent(input.agentId),
+                dbGetAgentHistory(db, input.agentId, input.granularity, input.limit),
+            ]);
+            return {
+                agentId: input.agentId,
+                granularity: input.granularity,
+                foundedTick: agent?.foundedTick ?? 0,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgNetBalance: r.avg_net_balance ?? 0,
+                        avgMonthlyNetIncome: r.avg_monthly_net_income ?? 0,
+                        avgTotalWorkers: r.avg_total_workers ?? 0,
+                        avgWages: r.avg_wages ?? 0,
+                        sumProductionValue: r.sum_production_value ?? 0,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
+            };
+        });
+
+export const getAgentFinancials = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(z.object({ deposits: z.number(), monthlyNetCashFlow: z.number() }))
+        .query(async ({ input }) => {
+            const [{ agent }, { conditions }] = await Promise.all([
+                workerQueries.getAgent(input.agentId),
+                workerQueries.getLoanConditions(input.agentId, input.planetId),
+            ]);
+            const deposits = agent?.assets?.[input.planetId]?.deposits ?? 0;
+            const monthlyNetCashFlow = conditions?.monthlyNetCashFlow ?? 0;
+            return { deposits, monthlyNetCashFlow };
         });
 
 /**

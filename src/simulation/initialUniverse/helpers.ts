@@ -1,13 +1,8 @@
 import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
-import type { Resource } from '../planet/planet';
-import {
-    createEmptyDemographicEventCounters,
-    type Agent,
-    type AgentPlanetAssets,
-    type ResourceClaim,
-    type ResourceQuantity,
-} from '../planet/planet';
+import type { Resource } from '../planet/claims';
+import { createEmptyDemographicEventCounters, type Agent, type AgentPlanetAssets } from '../planet/planet';
+import { type ResourceClaim, type ResourceQuantity } from '../planet/claims';
 import type { ProductionFacility, StorageFacility } from '../planet/facility';
 import {
     MAX_AGE,
@@ -113,8 +108,8 @@ export function makeAgentPlanetAssets(
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
-        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0, revenueValue: 0 },
-        lastMonthAcc: { productionValue: 0, wagesBill: 0, revenueValue: 0 },
+        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0, revenueValue: 0, totalWorkersTicks: 0 },
+        lastMonthAcc: { productionValue: 0, wagesBill: 0, revenueValue: 0, totalWorkersTicks: 0 },
     };
 }
 
@@ -136,6 +131,7 @@ export function makeAgent(opts: {
         transportShips: [],
         automated: true,
         automateWorkerAllocation: true,
+        foundedTick: 0,
         assets: { [opts.planetId]: assets },
     };
 }
@@ -158,10 +154,9 @@ export function createPopulation(total: number): Population {
         lastTransferMatrix: [],
         lastConsumption: {},
     };
-    const remainder = total - perAge * (MAX_AGE + 1);
 
     for (let age = 0; age <= MAX_AGE; age++) {
-        const ageCount = perAge + (age < remainder ? 1 : 0);
+        const ageCount = Math.floor(perAge * 2 * (1 - age / MAX_AGE));
         if (ageCount <= 0) {
             continue;
         }

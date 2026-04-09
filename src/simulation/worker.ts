@@ -13,12 +13,12 @@ import {
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import type { GameState } from './planet/planet';
-import { groceryServiceResourceType } from './planet/services';
+
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
-import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
+import { computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
@@ -122,21 +122,26 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         // Fall back to fresh initial state
         state = createInitialGameState();
         currentSnapshot = toImmutableGameState(state);
-    }
 
-    // -----------------------------------------------------------------
-    // Action queue — collects user-driven state mutations between ticks
-    // -----------------------------------------------------------------
+        // Seed the population history at tick=0 so the chart has a starting
+        // point visible in the very first month. The bucket [0,30) requires a
+        // CAGG window end >= 30, so we refresh immediately after inserting.
+        if (snapshotDb) {
+            const db = snapshotDb;
+            const seedRows = [...state.planets.values()].map((planet) => ({
+                tick: 0,
+                planet_id: planet.id,
+                population: computePopulationTotal(planet),
+            }));
+            void insertPlanetPopulationHistory(db, seedRows)
+                .then(() => refreshContinuousAggregates(db, TICKS_PER_MONTH, 'monthly'))
+                .catch((err) => console.error('[worker] Failed to seed initial population history:', err));
+        }
+    }
 
     const pendingActions: PendingAction[] = [];
     let processingTick = false; // True during advanceTick + snapshot creation
 
-    /**
-     * Apply every queued action to `state` in FIFO order.
-     * Called in two contexts:
-     * 1. Eagerly when actions arrive (if not processingTick)
-     * 2. At tick boundary before advanceTick (mandatory full drain)
-     */
     function drainActionQueue(): void {
         if (pendingActions.length === 0) {
             return;
@@ -161,6 +166,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         handleMarketAction(state, action, safePostMessage);
                         break;
                     case 'claimResources':
+                    case 'leaseClaim':
+                    case 'quitClaim':
                         handleResourceAction(state, action, safePostMessage);
                         break;
                     case 'buildFacility':
@@ -181,18 +188,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // -----------------------------------------------------------------
-    // Tick loop (recursive setTimeout to avoid drift / overlap)
-    // -----------------------------------------------------------------
-
     const DEBOUNCE_MS = 1000;
     let lastMessagePost = 0;
     let pendingTickMsg: OutboundMessage | null = null;
     let running = true;
 
-    /** Safe wrapper around messagePort.postMessage that swallows EPIPE errors
-     *  which occur when the main thread has already torn down the channel
-     *  (e.g. during pool.destroy() or process shutdown). */
     function safePostMessage(msg: OutboundMessage): void {
         try {
             messagePort?.postMessage(msg);
@@ -220,12 +220,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // -----------------------------------------------------------------
-    // Agent monthly history tracking
-    // -----------------------------------------------------------------
-
-    function updateAgentMonthlyHistory(gs: GameState, tick: number): void {
-        const agentRows = [...gs.agents.values()].flatMap((agent) => {
+    function flushAgentMonthlyHistory(gs: GameState, tick: number): Promise<void> {
+        const db = snapshotDb;
+        if (!db) {
+            return Promise.resolve();
+        }
+        const rows = [...gs.agents.values()].flatMap((agent) => {
             if (agent.automated) {
                 return [];
             }
@@ -233,10 +233,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 const netBalance = assets.deposits - assets.loans;
                 const monthlyNetIncome = assets.deposits - assets.monthAcc.depositsAtMonthStart;
 
-                const totalWorkers = Object.values(assets.allocatedWorkers || {}).reduce(
-                    (sum, count) => sum + (count || 0),
-                    0,
-                );
+                const totalWorkers = Math.round(assets.monthAcc.totalWorkersTicks / TICKS_PER_MONTH);
 
                 const facilityCount = assets.productionFacilities.length;
 
@@ -263,8 +260,30 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 };
             });
         });
+        if (rows.length === 0) {
+            return Promise.resolve();
+        }
+        return insertAgentMonthlyHistory(db, rows).catch((err) => {
+            console.error(`[worker] Failed to save agent monthly history rows at tick ${tick}:`, err);
+        });
+    }
 
-        pendingAgentMonthlyRows.push(...agentRows);
+    function flushPopulationHistory(gs: GameState, tick: number): Promise<void> {
+        const db = snapshotDb;
+        if (!db) {
+            return Promise.resolve();
+        }
+        const rows = [...gs.planets.values()].map((planet) => ({
+            tick,
+            planet_id: planet.id,
+            population: computePopulationTotal(planet),
+        }));
+        if (rows.length === 0) {
+            return Promise.resolve();
+        }
+        return insertPlanetPopulationHistory(db, rows).catch((err) => {
+            console.error(`[worker] Failed to save population history rows at tick ${tick}:`, err);
+        });
     }
 
     /**
@@ -316,20 +335,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    // Store agent monthly rows until snapshot time
-    const pendingAgentMonthlyRows: Array<{
-        tick: number;
-        planet_id: string;
-        agent_id: string;
-        net_balance: number;
-        monthly_net_income: number;
-        total_workers: number;
-        wages: number;
-        production_value: number;
-        facility_count: number;
-        storage_value: number;
-    }> = [];
-
     // -----------------------------------------------------------------
     // Cold snapshot persistence (async, non-blocking)
     // -----------------------------------------------------------------
@@ -366,28 +371,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     game_id: 1,
                     snapshot_data: snapshotData,
                 });
-
-                // Record per-planet population alongside the cold snapshot.
-                // Clamp tiny values to 0 — values below ~1e-300 are
-                // meaningless and can overflow PostgreSQL's float range.
-                const clampTiny = (v: number): number => (Math.abs(v) < 1e-300 ? 0 : v);
-                const populationRows = [...gs.planets.values()].map((planet) => ({
-                    tick,
-                    planet_id: planet.id,
-                    population: computePopulationTotal(planet),
-                    starvation_level: clampTiny(computeGlobalStarvation(planet)),
-                    food_price: clampTiny(planet.marketPrices[groceryServiceResourceType.name] ?? 0),
-                }));
-                await insertPlanetPopulationHistory(db, populationRows);
-
-                // Insert agent monthly history if we have pending rows
-                if (pendingAgentMonthlyRows.length > 0) {
-                    await insertAgentMonthlyHistory(db, pendingAgentMonthlyRows);
-                    console.log(
-                        `[worker] Saved ${pendingAgentMonthlyRows.length} agent monthly history rows for tick ${tick}`,
-                    );
-                    pendingAgentMonthlyRows.length = 0;
-                }
 
                 if (SNAPSHOT_MAX_RETAINED > 0) {
                     const pruned = await pruneGameSnapshots(db, SNAPSHOT_MAX_RETAINED);
@@ -435,7 +418,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 // TimescaleDB only materializes buckets that are FULLY contained in [start, end).
                 // The monthly bucket at tick T spans [T, T+TICKS_PER_MONTH), so the end of the
                 // window must be >= T + TICKS_PER_MONTH to include it.
-                void flushProductPrices(state, tickAtFlush)
+                void Promise.all([
+                    flushProductPrices(state, tickAtFlush),
+                    flushPopulationHistory(state, tickAtFlush),
+                    flushAgentMonthlyHistory(state, tickAtFlush),
+                ])
                     .then(() => {
                         if (snapshotDb) {
                             return refreshContinuousAggregates(snapshotDb, tickAtFlush + TICKS_PER_MONTH, 'monthly');
@@ -444,7 +431,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     .catch((err) =>
                         console.error(`[worker] Failed to flush/refresh monthly CAGGs at tick ${tickAtFlush}:`, err),
                     );
-                updateAgentMonthlyHistory(state, state.tick);
             }
 
             if (state.tick % 360 === 0 && snapshotDb) {
@@ -826,6 +812,40 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 waterSourceQuantity,
             });
             // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'leaseClaim') {
+            const { requestId, agentId, planetId, resourceName, quantity } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'claimLeaseFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'leaseClaim', requestId, agentId, planetId, resourceName, quantity });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'quitClaim') {
+            const { requestId, agentId, planetId, claimId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'claimQuitFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'quitClaim', requestId, agentId, planetId, claimId });
             if (!processingTick) {
                 drainActionQueue();
             }

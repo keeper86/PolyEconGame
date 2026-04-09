@@ -13,8 +13,9 @@ export function handleCreateAgent(
     const { requestId, agentId, agentName, planetId } = action;
 
     const newAgent: Agent = makeAgent(agentId, planetId, agentName);
-    newAgent.automated = false; // explicitly mark user-created agents as non-automated
-    newAgent.automateWorkerAllocation = false; // start with manual control
+    newAgent.automated = false;
+    newAgent.automateWorkerAllocation = false;
+    newAgent.foundedTick = state.tick;
     state.agents.set(agentId, newAgent);
     console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
     safePostMessage({ type: 'agentCreated', requestId, agentId });

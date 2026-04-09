@@ -1,27 +1,39 @@
-import type { Resource } from '../planet/planet';
-import { type Agent, type Planet } from '../planet/planet';
+import { type Agent, type Planet } from './planet';
 
-/**
- * Collapse all resource-claim entries for `resourceName` on `planet` that
- * have no tenant (tenantAgentId === null) into a single entry.
- *
- * The surviving entry keeps the id of the first untenanted entry found (or
- * uses the provided `collapsedId` if given) and accumulates the total
- * quantity / regenerationRate / maximumCapacity from all the merged entries.
- * Any extra untenanted entries are removed from the array.
- *
- * This is called before assigning a new tenant so that we always have exactly
- * one "pool" block to split from, regardless of how fragmented the claim list
- * has become over time.
- *
- * @returns The single collapsed entry, or `null` if there are no untenanted
- *          entries for this resource on this planet.
- */
+export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
+
+export type Resource = {
+    name: string;
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource' | 'services';
+    level: ResourceProcessLevel | 'source'; // raw, refined, manufactured, consumerGood
+    volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
+    massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
+};
+export type ResourceType = Resource['form'];
+export type ResourceQuantity = {
+    type: Resource;
+    quantity: number; // in tons or pieces, depending on the phase
+};
+
+export type ClaimStatus = 'active' | 'paused';
+
+export type ResourceClaim = {
+    id: string;
+    tenantAgentId: string | null;
+    tenantCostInCoins: number;
+    costPerTick: number;
+    claimStatus: ClaimStatus;
+    noticePeriodEndsAtTick: number | null;
+    pausedTicksThisYear: number;
+    regenerationRate: number;
+    maximumCapacity: number;
+};
+
 export function collapseUntenantedClaims(
     planet: Planet,
     resourceName: string,
     collapsedId?: string,
-): (import('../planet/planet').ResourceClaim & import('../planet/planet').ResourceQuantity) | null {
+): (ResourceClaim & ResourceQuantity) | null {
     const entries = planet.resources[resourceName];
     if (!entries) {
         return null;
@@ -39,7 +51,6 @@ export function collapseUntenantedClaims(
 
     // Use the id of the first untenanted entry (or the provided collapsedId)
     const survivorId = collapsedId ?? untenanted[0].id;
-    const claimAgentId = untenanted[0].claimAgentId;
 
     // Remove ALL untenanted entries
     const filtered = entries.filter((e) => e.tenantAgentId !== null);
@@ -48,9 +59,11 @@ export function collapseUntenantedClaims(
     const collapsed = {
         ...untenanted[0],
         id: survivorId,
-        claimAgentId,
         tenantAgentId: null,
         tenantCostInCoins: 0,
+        costPerTick: 0,
+        claimStatus: 'active' as const,
+        noticePeriodEndsAtTick: null,
         quantity: totalQuantity,
         regenerationRate: totalRegen,
         maximumCapacity: totalCap,
@@ -60,6 +73,8 @@ export function collapseUntenantedClaims(
 
     return collapsed;
 }
+
+export const isRenewableClaim = (claim: ResourceClaim): boolean => claim.regenerationRate > 0;
 
 export const queryClaimedResource = (planet: Planet, agent: Agent, resource: Resource): number => {
     const resourceEntries = planet.resources[resource.name];

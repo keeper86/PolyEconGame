@@ -52,9 +52,12 @@ describe('productionTick (basic)', () => {
                 quantity: 5000,
                 regenerationRate: 0,
                 maximumCapacity: 5000,
-                claimAgentId: gov.id,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -96,9 +99,12 @@ describe('productionTick (basic)', () => {
                 quantity: 0,
                 regenerationRate: 0,
                 maximumCapacity: 0,
-                claimAgentId: gov.id,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -140,9 +146,12 @@ describe('productionTick (basic)', () => {
                 quantity: 10,
                 regenerationRate: 0,
                 maximumCapacity: 10,
-                claimAgentId: gov.id,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -184,9 +193,12 @@ describe('productionTick (basic)', () => {
                 quantity: 10000,
                 regenerationRate: 0,
                 maximumCapacity: 10000,
-                claimAgentId: gov.id,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
         planet.resources[resB.name] = [
@@ -196,9 +208,12 @@ describe('productionTick (basic)', () => {
                 quantity: 100,
                 regenerationRate: 0,
                 maximumCapacity: 100,
-                claimAgentId: gov.id,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -235,9 +250,12 @@ describe('productionTick (basic)', () => {
                 quantity: 10,
                 regenerationRate: 0,
                 maximumCapacity: 10,
-                claimAgentId: gov.id,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 
@@ -360,9 +378,12 @@ describe('productionTick — pieces vs continuous resource handling', () => {
                 quantity: 100,
                 regenerationRate: 0,
                 maximumCapacity: 100,
-                claimAgentId: gov.id,
                 tenantAgentId: agent.id,
                 tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
             },
         ];
 

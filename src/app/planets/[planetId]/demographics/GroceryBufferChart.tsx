@@ -165,6 +165,7 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
                     const avgStock = pop > 0 ? totalFood / pop : 0;
                     const ratio = avgStock / SERVICE_TARGET_PER_PERSON;
                     row[`${key}_pop`] = pop;
+                    row[`${key}_avgStock`] = avgStock;
                     row[`${key}_bufferRatio`] = ratio;
                     if (pop > 0) {
                         ageHasData = true;

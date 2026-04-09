@@ -71,6 +71,21 @@ export type InboundMessage =
           planetId: string;
           resourceName: string;
       }
+    | {
+          type: 'leaseClaim';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          resourceName: string;
+          quantity: number;
+      }
+    | {
+          type: 'quitClaim';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          claimId: string;
+      }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -108,6 +123,10 @@ export type OutboundMessage =
     | { type: 'facilityBuildFailed'; requestId: string; reason: string }
     | { type: 'facilityExpanded'; requestId: string; agentId: string; facilityId: string }
     | { type: 'facilityExpandFailed'; requestId: string; reason: string }
+    | { type: 'claimLeased'; requestId: string; agentId: string; claimId: string }
+    | { type: 'claimLeaseFailed'; requestId: string; reason: string }
+    | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string }
+    | { type: 'claimQuitFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
     | WorkerSuccessResponse
     | WorkerErrorResponse;
@@ -191,4 +210,19 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           resourceName: string;
+      }
+    | {
+          type: 'leaseClaim';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          resourceName: string;
+          quantity: number;
+      }
+    | {
+          type: 'quitClaim';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          claimId: string;
       };

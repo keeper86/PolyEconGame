@@ -1,4 +1,5 @@
-import type { Agent, Planet, Resource } from '../planet/planet';
+import type { Agent, Planet } from '../planet/planet';
+import type { Resource } from '../planet/claims';
 import { lockIntoEscrow, queryStorageFacility } from '../planet/facility';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';

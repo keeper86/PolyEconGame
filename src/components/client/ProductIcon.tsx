@@ -12,7 +12,7 @@ export function ProductIcon({ productName, size = 42 }: { productName: string; s
                     className='rounded overflow-hidden shrink-0 inline-block relative'
                     style={{ width: size, height: size }}
                 >
-                    <Image src={src} alt={productName} fill className='object-contain' />
+                    <Image src={src} alt={productName} fill sizes={`${size}px`} className='object-contain' />
                 </span>
             </TooltipTrigger>
             <TooltipContent>{productName}</TooltipContent>

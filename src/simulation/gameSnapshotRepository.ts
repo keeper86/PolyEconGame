@@ -48,22 +48,11 @@ export async function insertGameSnapshot(db: Knex, snapshot: InsertGameSnapshot)
     });
 }
 
-// ---------------------------------------------------------------------------
-// Read
-// ---------------------------------------------------------------------------
-
-/**
- * Get the most recent cold snapshot (by tick DESC).
- * Returns `null` if no snapshots exist.
- */
 export async function getLatestGameSnapshot(db: Knex): Promise<GameSnapshotRow | null> {
     const row = await db('game_snapshots').orderBy('tick', 'desc').first();
     return (row as GameSnapshotRow) ?? null;
 }
 
-/**
- * Get a snapshot for a specific tick.
- */
 export async function getGameSnapshotByTick(db: Knex, tick: number): Promise<GameSnapshotRow | null> {
     const row = await db('game_snapshots')
         .where({ tick: String(tick) })
@@ -71,14 +60,6 @@ export async function getGameSnapshotByTick(db: Knex, tick: number): Promise<Gam
     return (row as GameSnapshotRow) ?? null;
 }
 
-// ---------------------------------------------------------------------------
-// Cleanup
-// ---------------------------------------------------------------------------
-
-/**
- * Delete all snapshots except the N most recent (by tick DESC).
- * Useful for keeping the table small.
- */
 export async function pruneGameSnapshots(db: Knex, keepCount: number): Promise<number> {
     if (keepCount <= 0) {
         return 0;
@@ -106,8 +87,6 @@ export interface InsertPlanetPopulation {
     tick: number;
     planet_id: string;
     population: number;
-    starvation_level: number;
-    food_price: number;
 }
 
 /**
@@ -122,19 +101,9 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
         rows.map((r) => ({
             tick: String(r.tick),
             planet_id: r.planet_id,
-            population: String(r.population),
-            starvation_level: r.starvation_level,
-            food_price: r.food_price,
+            population: String(Math.round(r.population)),
         })),
     );
-}
-
-/**
- * Get the full population time-series for a specific planet, ordered by
- * tick ascending.
- */
-export async function getPlanetPopulationHistory(db: Knex, planetId: string) {
-    return db('planet_population_history').where({ planet_id: planetId }).orderBy('tick', 'desc').limit(100).select();
 }
 
 /**
@@ -279,10 +248,6 @@ export interface ProductPriceBucket {
     max_price: number;
 }
 
-/**
- * Query product price history from the appropriate continuous aggregate based
- * on requested granularity.
- */
 export async function getProductPriceHistory(
     db: Knex,
     planetId: string,
@@ -336,8 +301,6 @@ export interface PopulationBucket {
     bucket: string;
     planet_id: string;
     avg_population: number;
-    avg_starvation: number;
-    avg_price_level: number;
 }
 
 /**
@@ -360,7 +323,7 @@ export async function getPlanetPopulationHistoryAggregated(
         .where({ planet_id: planetId })
         .orderBy('bucket', 'desc')
         .limit(limit)
-        .select('bucket', 'planet_id', 'avg_population', 'avg_starvation', 'avg_price_level');
+        .select('bucket', 'planet_id', 'avg_population');
 }
 
 export interface AgentSummaryBucket {

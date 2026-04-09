@@ -700,6 +700,8 @@ const claimResourceSummarySchema = z.object({
     totalClaims: z.number(),
     tenantedClaims: z.number(),
     renewable: z.boolean(),
+    /** Sum of regenerationRate across all unclaimed + free capacity for this resource. */
+    regenerationRatePerUnit: z.number(),
 });
 
 export type ClaimResourceSummary = z.infer<typeof claimResourceSummarySchema>;
@@ -731,18 +733,23 @@ export const getPlanetClaims = () =>
                     let tenantedClaims = 0;
                     let totalCapacity = 0;
                     let isRenewable = false;
+                    let totalRegenerationRate = 0;
 
                     for (const claim of claims) {
                         totalCapacity += claim.maximumCapacity;
+                        totalRegenerationRate += claim.regenerationRate;
                         if (claim.regenerationRate > 0) {
                             isRenewable = true;
                         }
-                        const isTenanted = claim.tenantAgentId !== null && claim.tenantAgentId !== claim.claimAgentId;
+                        const isTenanted = claim.tenantAgentId !== null;
                         if (isTenanted) {
                             tenantedCapacity += claim.maximumCapacity;
                             tenantedClaims += 1;
                         }
                     }
+
+                    // regenerationRatePerUnit: ratio of regeneration to capacity (0 for non-renewable, 1 for fully renewable)
+                    const regenerationRatePerUnit = totalCapacity > 0 ? totalRegenerationRate / totalCapacity : 0;
 
                     return {
                         resourceName,
@@ -752,11 +759,99 @@ export const getPlanetClaims = () =>
                         totalClaims: claims.length,
                         tenantedClaims,
                         renewable: isRenewable,
+                        regenerationRatePerUnit,
                     };
                 })
-                .sort((a, b) => a.resourceName.localeCompare(b.resourceName));
+                .sort(
+                    (a, b) =>
+                        a.resourceName.localeCompare(b.resourceName) - 5 * (Number(a.renewable) - Number(b.renewable)),
+                );
 
             return { tick, governmentId: planet.governmentId, resources: summaries };
+        });
+
+export type AgentClaimEntry = {
+    claimId: string;
+    resourceName: string;
+    quantity: number;
+    maximumCapacity: number;
+    tenantCostInCoins: number;
+    costPerTick: number;
+    claimStatus: 'active' | 'paused';
+    noticePeriodEndsAtTick: number | null;
+    regenerationRate: number;
+    extractionRatePerTick: number;
+    depletionTicksEstimate: number | null;
+};
+
+const agentClaimEntrySchema = z.object({
+    claimId: z.string(),
+    resourceName: z.string(),
+    quantity: z.number(),
+    maximumCapacity: z.number(),
+    tenantCostInCoins: z.number(),
+    costPerTick: z.number(),
+    claimStatus: z.enum(['active', 'paused']),
+    noticePeriodEndsAtTick: z.number().nullable(),
+    regenerationRate: z.number(),
+    extractionRatePerTick: z.number(),
+    depletionTicksEstimate: z.number().nullable(),
+});
+
+export const getAgentClaims = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(z.object({ tick: z.number(), claims: z.array(agentClaimEntrySchema) }))
+        .query(async ({ input }) => {
+            const [{ tick }, { planet }, { agents }] = await Promise.all([
+                workerQueries.getCurrentTick(),
+                workerQueries.getPlanet(input.planetId),
+                workerQueries.getAgentsByPlanet(input.planetId),
+            ]);
+
+            if (!planet) {
+                return { tick, claims: [] };
+            }
+
+            const agent = agents.find((a: Agent) => a.id === input.agentId);
+            if (!agent) {
+                return { tick, claims: [] };
+            }
+
+            const assets = agent.assets[input.planetId];
+            const facilities = assets?.productionFacilities ?? [];
+
+            const claims: AgentClaimEntry[] = [];
+
+            for (const [resourceName, entries] of Object.entries(planet.resources)) {
+                for (const entry of entries) {
+                    if (entry.tenantAgentId !== input.agentId) {
+                        continue;
+                    }
+                    const extractionRatePerTick = facilities.reduce((sum, f) => {
+                        const need = f.needs.find((n) => n.resource.name === resourceName);
+                        return need ? sum + need.quantity * f.scale : sum;
+                    }, 0);
+                    const netDepletionRate = extractionRatePerTick - entry.regenerationRate;
+                    const depletionTicksEstimate =
+                        netDepletionRate > 0 ? Math.floor(entry.quantity / netDepletionRate) : null;
+                    claims.push({
+                        claimId: entry.id,
+                        resourceName,
+                        quantity: entry.quantity,
+                        maximumCapacity: entry.maximumCapacity,
+                        tenantCostInCoins: entry.tenantCostInCoins,
+                        costPerTick: entry.costPerTick,
+                        claimStatus: entry.claimStatus,
+                        noticePeriodEndsAtTick: entry.noticePeriodEndsAtTick,
+                        regenerationRate: entry.regenerationRate,
+                        extractionRatePerTick,
+                        depletionTicksEstimate,
+                    });
+                }
+            }
+
+            return { tick, claims };
         });
 
 // ---------------------------------------------------------------------------

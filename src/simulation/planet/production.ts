@@ -2,7 +2,7 @@ import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { extractFromClaimedResource, queryClaimedResource } from '../utils/entities';
+import { extractFromClaimedResource, queryClaimedResource } from './claims';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';

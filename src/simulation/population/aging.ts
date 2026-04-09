@@ -33,18 +33,17 @@ export const populationAdvanceYear = (planet: Planet): void => {
         }
     }
 
-    // Cohort 0 is now empty (all people were just moved to age 1).
-    // Explicitly verify and leave it clean for per-tick births.
-    // (transferPopulation already cleared the totals; this is a safety guard.)
-    forEachPopulationCohort(demo[0], (cat) => {
-        if (cat.total !== 0) {
-            console.warn('[populationAdvanceYear] age-0 cohort not empty after shift — forcing zero');
-            cat.total = 0;
-            cat.wealth = { mean: 0, variance: 0 };
-            // Reset all service buffers and starvation levels
-            for (const serviceName of Object.keys(cat.services) as (keyof typeof cat.services)[]) {
-                cat.services[serviceName] = { buffer: 0, starvationLevel: 0 };
+    if (process.env.SIM_DEBUG === '1') {
+        forEachPopulationCohort(demo[0], (cat) => {
+            if (cat.total !== 0) {
+                console.warn('[populationAdvanceYear] age-0 cohort not empty after shift — forcing zero');
+                cat.total = 0;
+                cat.wealth = { mean: 0, variance: 0 };
+                // Reset all service buffers and starvation levels
+                for (const serviceName of Object.keys(cat.services) as (keyof typeof cat.services)[]) {
+                    cat.services[serviceName] = { buffer: 0, starvationLevel: 0 };
+                }
             }
-        }
-    });
+        });
+    }
 };

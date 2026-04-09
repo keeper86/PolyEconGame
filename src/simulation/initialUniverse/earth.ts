@@ -329,7 +329,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: govArableId,
             type: arableLandResourceType,
             quantity: 100_000_000,
-            claimAgentId: GOV,
             tenantAgentId: GOV,
             renewable: true,
         }),
@@ -339,7 +338,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: govWaterId,
             type: waterSourceResourceType,
             quantity: 100_000_000,
-            claimAgentId: GOV,
             tenantAgentId: GOV,
             renewable: true,
         }),
@@ -355,7 +353,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: arableId,
                 type: arableLandResourceType,
                 quantity: spec.arableLand,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.arableLand * 0.001),
                 renewable: true,
@@ -366,7 +363,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: waterId,
                 type: waterSourceResourceType,
                 quantity: spec.waterSource,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.waterSource * 0.0005),
                 renewable: true,
@@ -414,7 +410,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: ironId,
                 type: ironOreDepositResourceType,
                 quantity: spec.ironOre,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.ironOre * 0.0001),
                 renewable: false,
@@ -448,7 +443,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: coalId,
                 type: coalDepositResourceType,
                 quantity: spec.coal,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.coal * 0.0001),
                 renewable: false,
@@ -483,7 +477,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: oilId,
                 type: oilReservoirResourceType,
                 quantity: spec.oil,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.oil * 0.0002),
                 renewable: false,
@@ -494,7 +487,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: gasId,
                 type: naturalGasFieldResourceType,
                 quantity: spec.gas,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.gas * 0.0002),
                 renewable: false,
@@ -531,9 +523,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 id: forestId,
                 type: forestResourceType,
                 quantity: spec.forest,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.forest * 0.0002),
+                renewable: true,
             }),
         );
 
@@ -599,7 +591,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: copperBasinCopperId,
             type: copperDepositResourceType,
             quantity: 500_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'copper-basin-mining',
             tenantCostInCoins: 50_000,
             renewable: false,
@@ -627,7 +618,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: pacificCopperId,
             type: copperDepositResourceType,
             quantity: 350_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'pacific-copper-co',
             tenantCostInCoins: 35_000,
             renewable: false,
@@ -655,7 +645,6 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: andeanCopperId,
             type: copperDepositResourceType,
             quantity: 250_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'andean-copper-mines',
             tenantCostInCoins: 25_000,
             renewable: false,
@@ -716,10 +705,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: desertSandId,
             type: sandDepositResourceType,
             quantity: 800_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'desert-sand-corp',
             tenantCostInCoins: 25_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ds1 = sandMine(EARTH_ID, 'desert-sand-mine');
@@ -743,10 +731,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: saharaSandId,
             type: sandDepositResourceType,
             quantity: 600_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'sahara-sand-co',
             tenantCostInCoins: 20_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ds2 = sandMine(EARTH_ID, 'sahara-sand-mine');
@@ -772,10 +759,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: alpineLimestoneId,
             type: limestoneDepositResourceType,
             quantity: 600_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'alpine-stone-corp',
             tenantCostInCoins: 30_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ls1 = limestoneQuarry(EARTH_ID, 'alpine-limestone-quarry');
@@ -799,10 +785,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: karstLimestoneId,
             type: limestoneDepositResourceType,
             quantity: 450_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'karst-quarry-co',
             tenantCostInCoins: 22_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ls2 = limestoneQuarry(EARTH_ID, 'karst-limestone-quarry');
@@ -826,10 +811,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: coralLimestoneId,
             type: limestoneDepositResourceType,
             quantity: 300_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'coral-rock-mining',
             tenantCostInCoins: 15_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const ls3 = limestoneQuarry(EARTH_ID, 'coral-limestone-quarry');
@@ -855,10 +839,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: deltaClayId,
             type: clayDepositResourceType,
             quantity: 500_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'delta-clay-mining',
             tenantCostInCoins: 25_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const cl1 = clayMine(EARTH_ID, 'delta-clay-mine');
@@ -882,10 +865,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: plainsClayId,
             type: clayDepositResourceType,
             quantity: 400_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'plains-clay-corp',
             tenantCostInCoins: 20_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const cl2 = clayMine(EARTH_ID, 'plains-clay-mine');
@@ -911,10 +893,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: graniteStoneId,
             type: stoneDepositResourceType,
             quantity: 800_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'granite-quarrying-corp',
             tenantCostInCoins: 40_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const sq1 = stoneQuarry(EARTH_ID, 'granite-quarry');
@@ -938,10 +919,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
             id: basaltStoneId,
             type: stoneDepositResourceType,
             quantity: 600_000_000,
-            claimAgentId: GOV,
             tenantAgentId: 'basalt-rock-corp',
             tenantCostInCoins: 30_000,
-            renewable: true,
+            renewable: false,
         }),
     );
     const sq2 = stoneQuarry(EARTH_ID, 'basalt-quarry');
@@ -1698,32 +1678,88 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
 
     // --- Unclaimed remainders ---
     const remainders = [
-        { claims: arableClaims, total: TOTAL_ARABLE, type: arableLandResourceType, prefix: 'earth-arable' },
-        { claims: waterClaims, total: TOTAL_WATER, type: waterSourceResourceType, prefix: 'earth-water' },
-        { claims: ironOreClaims, total: TOTAL_IRON_ORE, type: ironOreDepositResourceType, prefix: 'earth-iron' },
-        { claims: coalClaims, total: TOTAL_COAL, type: coalDepositResourceType, prefix: 'earth-coal' },
-        { claims: oilClaims, total: TOTAL_OIL, type: oilReservoirResourceType, prefix: 'earth-oil' },
-        { claims: gasClaims, total: TOTAL_GAS, type: naturalGasFieldResourceType, prefix: 'earth-gas' },
-        { claims: forestClaims, total: TOTAL_FOREST, type: forestResourceType, prefix: 'earth-forest' },
-        { claims: copperClaims, total: TOTAL_COPPER, type: copperDepositResourceType, prefix: 'earth-copper' },
-        { claims: sandClaims, total: TOTAL_SAND, type: sandDepositResourceType, prefix: 'earth-sand' },
+        {
+            claims: arableClaims,
+            total: TOTAL_ARABLE,
+            type: arableLandResourceType,
+            prefix: 'earth-arable',
+            renewable: true,
+        },
+        {
+            claims: waterClaims,
+            total: TOTAL_WATER,
+            type: waterSourceResourceType,
+            prefix: 'earth-water',
+            renewable: true,
+        },
+        {
+            claims: ironOreClaims,
+            total: TOTAL_IRON_ORE,
+            type: ironOreDepositResourceType,
+            prefix: 'earth-iron',
+            renewable: false,
+        },
+        {
+            claims: coalClaims,
+            total: TOTAL_COAL,
+            type: coalDepositResourceType,
+            prefix: 'earth-coal',
+            renewable: false,
+        },
+        { claims: oilClaims, total: TOTAL_OIL, type: oilReservoirResourceType, prefix: 'earth-oil', renewable: false },
+        {
+            claims: gasClaims,
+            total: TOTAL_GAS,
+            type: naturalGasFieldResourceType,
+            prefix: 'earth-gas',
+            renewable: false,
+        },
+        {
+            claims: forestClaims,
+            total: TOTAL_FOREST,
+            type: forestResourceType,
+            prefix: 'earth-forest',
+            renewable: true,
+        },
+        {
+            claims: copperClaims,
+            total: TOTAL_COPPER,
+            type: copperDepositResourceType,
+            prefix: 'earth-copper',
+            renewable: false,
+        },
+        { claims: sandClaims, total: TOTAL_SAND, type: sandDepositResourceType, prefix: 'earth-sand', renewable: true },
         {
             claims: limestoneClaims,
             total: TOTAL_LIMESTONE,
             type: limestoneDepositResourceType,
             prefix: 'earth-limestone',
+            renewable: true,
         },
-        { claims: clayClaims, total: TOTAL_CLAY, type: clayDepositResourceType, prefix: 'earth-clay' },
-        { claims: stoneClaims, total: TOTAL_STONE, type: stoneDepositResourceType, prefix: 'earth-stone' },
+        {
+            claims: clayClaims,
+            total: TOTAL_CLAY,
+            type: clayDepositResourceType,
+            prefix: 'earth-clay',
+            renewable: false,
+        },
+        {
+            claims: stoneClaims,
+            total: TOTAL_STONE,
+            type: stoneDepositResourceType,
+            prefix: 'earth-stone',
+            renewable: false,
+        },
     ];
 
-    for (const { claims, total, type, prefix } of remainders) {
+    for (const { claims, total, type, prefix, renewable } of remainders) {
         const remainder = makeUnclaimedRemainder({
             idPrefix: prefix,
             type,
             total,
             existing: claims,
             claimAgentId: GOV,
+            renewable,
         });
         if (remainder) {
             claims.push(remainder);

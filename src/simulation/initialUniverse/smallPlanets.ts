@@ -76,8 +76,8 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             id: govArableId,
             type: arableLandResourceType,
             quantity: spec.govAgriScale * 1000,
-            claimAgentId: govId,
             tenantAgentId: govId,
+            renewable: true,
         }),
     );
     waterClaims.push(
@@ -85,8 +85,8 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             id: govWaterId,
             type: waterSourceResourceType,
             quantity: spec.govAgriScale * 1000,
-            claimAgentId: govId,
             tenantAgentId: govId,
+            renewable: true,
         }),
     );
 
@@ -100,9 +100,9 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                 id: arableId,
                 type: arableLandResourceType,
                 quantity: company.arableLand,
-                claimAgentId: govId,
                 tenantAgentId: company.id,
                 tenantCostInCoins: Math.floor(company.arableLand * 0.01),
+                renewable: true,
             }),
         );
         waterClaims.push(
@@ -110,9 +110,9 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                 id: waterId,
                 type: waterSourceResourceType,
                 quantity: company.waterSource,
-                claimAgentId: govId,
                 tenantAgentId: company.id,
                 tenantCostInCoins: Math.floor(company.waterSource * 0.005),
+                renewable: true,
             }),
         );
 
@@ -148,6 +148,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         total: spec.totalArable,
         existing: arableClaims,
         claimAgentId: govId,
+        renewable: true,
     });
     if (arableRemainder) {
         arableClaims.push(arableRemainder);
@@ -160,6 +161,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         total: spec.totalWater,
         existing: waterClaims,
         claimAgentId: govId,
+        renewable: true,
     });
     if (waterRemainder) {
         waterClaims.push(waterRemainder);
@@ -222,9 +224,9 @@ function buildGuneIndustrialAgents(): Agent[] {
             id: forestId,
             type: forestResourceType,
             quantity: 15000,
-            claimAgentId: 'gune-government',
             tenantAgentId: 'gune-timber-co',
             tenantCostInCoins: 150,
+            renewable: true,
         }),
     );
     const l1 = loggingCamp('gune', 'gune-timber-logging');
@@ -355,7 +357,6 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
             id: coalId,
             type: coalDepositResourceType,
             quantity: 60000,
-            claimAgentId: 'icedonia-government',
             tenantAgentId: 'icedonia-polar-energy',
             tenantCostInCoins: 60,
             renewable: false,
@@ -487,7 +488,6 @@ function buildPandaraIndustrialAgents(): Agent[] {
             id: ironId,
             type: ironOreDepositResourceType,
             quantity: 200000,
-            claimAgentId: 'pandara-government',
             tenantAgentId: 'pandara-steel-works',
             tenantCostInCoins: 200,
             renewable: false,
@@ -634,7 +634,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
             id: oilId,
             type: oilReservoirResourceType,
             quantity: 100000,
-            claimAgentId: 'paradies-government',
             tenantAgentId: 'paradies-refinery',
             tenantCostInCoins: 200,
             renewable: false,
@@ -666,7 +665,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
             id: sandId,
             type: sandDepositResourceType,
             quantity: 80000,
-            claimAgentId: 'paradies-government',
             tenantAgentId: 'paradies-glass-works',
             tenantCostInCoins: 40,
             renewable: true,
@@ -804,7 +802,6 @@ function buildSuerteIndustrialAgents(): Agent[] {
             id: copperId,
             type: copperDepositResourceType,
             quantity: 120000,
-            claimAgentId: 'suerte-government',
             tenantAgentId: 'suerte-copper-mining',
             tenantCostInCoins: 120,
             renewable: false,

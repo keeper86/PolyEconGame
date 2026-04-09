@@ -80,8 +80,8 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             id: govArableId,
             type: arableLandResourceType,
             quantity: 20000,
-            claimAgentId: GOV,
             tenantAgentId: GOV,
+            renewable: true,
         }),
     );
     waterClaims.push(
@@ -89,8 +89,8 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             id: govWaterId,
             type: waterSourceResourceType,
             quantity: 20000,
-            claimAgentId: GOV,
             tenantAgentId: GOV,
+            renewable: true,
         }),
     );
 
@@ -104,9 +104,9 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                 id: arableId,
                 type: arableLandResourceType,
                 quantity: spec.arableLand,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.arableLand * 0.01),
+                renewable: true,
             }),
         );
         waterClaims.push(
@@ -114,9 +114,9 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                 id: waterId,
                 type: waterSourceResourceType,
                 quantity: spec.waterSource,
-                claimAgentId: GOV,
                 tenantAgentId: spec.id,
                 tenantCostInCoins: Math.floor(spec.waterSource * 0.005),
+                renewable: true,
             }),
         );
 
@@ -154,7 +154,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             id: ironId,
             type: ironOreDepositResourceType,
             quantity: 300000,
-            claimAgentId: GOV,
             tenantAgentId: colonyIron.id,
             tenantCostInCoins: 300,
             renewable: false,
@@ -186,7 +185,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             id: coalId,
             type: coalDepositResourceType,
             quantity: 200000,
-            claimAgentId: GOV,
             tenantAgentId: energyCorp.id,
             tenantCostInCoins: 200,
             renewable: false,
@@ -347,18 +345,31 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
 
     // Unclaimed remainders
     const remainders = [
-        { claims: arableClaims, total: TOTAL_ARABLE, type: arableLandResourceType, prefix: 'ac-arable' },
-        { claims: waterClaims, total: TOTAL_WATER, type: waterSourceResourceType, prefix: 'ac-water' },
-        { claims: ironClaims, total: TOTAL_IRON, type: ironOreDepositResourceType, prefix: 'ac-iron' },
-        { claims: coalClaims, total: TOTAL_COAL, type: coalDepositResourceType, prefix: 'ac-coal' },
+        {
+            claims: arableClaims,
+            total: TOTAL_ARABLE,
+            type: arableLandResourceType,
+            prefix: 'ac-arable',
+            renewable: true,
+        },
+        { claims: waterClaims, total: TOTAL_WATER, type: waterSourceResourceType, prefix: 'ac-water', renewable: true },
+        {
+            claims: ironClaims,
+            total: TOTAL_IRON,
+            type: ironOreDepositResourceType,
+            prefix: 'ac-iron',
+            renewable: false,
+        },
+        { claims: coalClaims, total: TOTAL_COAL, type: coalDepositResourceType, prefix: 'ac-coal', renewable: false },
     ];
-    for (const { claims, total, type, prefix } of remainders) {
+    for (const { claims, total, type, prefix, renewable } of remainders) {
         const remainder = makeUnclaimedRemainder({
             idPrefix: prefix,
             type,
             total,
             existing: claims,
             claimAgentId: GOV,
+            renewable,
         });
         if (remainder) {
             claims.push(remainder);

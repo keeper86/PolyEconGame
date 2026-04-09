@@ -85,11 +85,13 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
 
         if (wageBill <= 0) {
             assets.lastWageBill = 0;
+            assets.lastTotalWorkers = 0;
             return;
         }
 
-        // Record wage bill for retained-earnings threshold
+        // Record wage bill and worker count for history accumulation
         assets.lastWageBill = wageBill;
+        assets.lastTotalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
 
         // 2. Working-capital loan if needed (MONEY CREATION)
         //    bank.loans↑  bank.deposits↑  agent.deposits↑

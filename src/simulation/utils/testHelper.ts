@@ -408,8 +408,8 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
-        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0, revenueValue: 0 },
-        lastMonthAcc: { productionValue: 0, wagesBill: 0, revenueValue: 0 },
+        monthAcc: { depositsAtMonthStart: 0, productionValue: 0, wagesBill: 0, revenueValue: 0, totalWorkersTicks: 0 },
+        lastMonthAcc: { productionValue: 0, wagesBill: 0, revenueValue: 0, totalWorkersTicks: 0 },
         ...overrides,
     };
 }
@@ -425,6 +425,7 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
     return {
         id,
         name,
+        foundedTick: 0,
         associatedPlanetId: planetId,
         transportShips: [],
         automated: true,

@@ -48,10 +48,12 @@ export default function UserAvatar({ userId, large = false, src = null }: Props)
     if (!src && isError) {
         return (
             <Tooltip>
-                <TooltipTrigger>
-                    <Avatar className={large ? 'w-32 h-32' : undefined}>
-                        <AvatarFallback className='rounded-lg p-1 bg-muted  text-red-500'>?</AvatarFallback>
-                    </Avatar>
+                <TooltipTrigger asChild>
+                    <span>
+                        <Avatar className={large ? 'w-32 h-32' : undefined}>
+                            <AvatarFallback className='rounded-lg p-1 bg-muted  text-red-500'>?</AvatarFallback>
+                        </Avatar>
+                    </span>
                 </TooltipTrigger>
                 <TooltipContent>{error?.message}</TooltipContent>
             </Tooltip>

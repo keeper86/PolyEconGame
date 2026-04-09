@@ -1,4 +1,5 @@
-import type { Agent, Resource } from '../planet/planet';
+import type { Agent } from '../planet/planet';
+import type { Resource } from '../planet/claims';
 import type { EducationLevelType } from '../population/education';
 import type { GaussianMoments, Occupation, Skill } from '../population/population';
 

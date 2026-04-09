@@ -4,6 +4,7 @@ import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { marketTick } from './market/market';
+import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { Agent, GameState } from './planet/planet';
 import { accumulatePlanetPrices, accumulateAgentMetrics } from './planet/planet';
@@ -48,6 +49,7 @@ export function advanceTick(gameState: GameState) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'othermonth');
             }
         }
+        claimBillingTick(planetAgents, planet, gameState.tick);
         preProductionFinancialTick(planetAgents, planet);
 
         // updateAgentProductionScale(planetAgents, planet);
@@ -75,6 +77,11 @@ export function advanceTick(gameState: GameState) {
         if (isYearBoundary(gameState.tick)) {
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'beforeYear');
+            }
+            for (const entries of Object.values(planet.resources)) {
+                for (const entry of entries) {
+                    entry.pausedTicksThisYear = 0;
+                }
             }
             populationAdvanceYearTick(planet);
             workforceAdvanceYearTick(planetAgents, planet);

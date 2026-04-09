@@ -1,4 +1,4 @@
-import type { Resource } from './planet';
+import type { Resource } from './claims';
 
 export const ironOreResourceType: Resource = {
     name: 'Iron Ore',

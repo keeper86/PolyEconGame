@@ -10,8 +10,10 @@ import { describe, expect, it } from 'vitest';
 import {
     getGameSnapshotByTick,
     getLatestGameSnapshot,
+    getPlanetPopulationHistoryAggregated,
     getProductPriceHistory,
     insertGameSnapshot,
+    insertPlanetPopulationHistory,
     insertProductPriceHistory,
     pruneGameSnapshots,
 } from './gameSnapshotRepository';
@@ -238,5 +240,107 @@ describe('product price history: write-refresh-read', () => {
 
         expect(febBucket).toBeDefined();
         expect(febBucket!.avg_price).toBeCloseTo(20);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Planet population history — write → refresh → read
+// ---------------------------------------------------------------------------
+
+describe('planet population history: write-refresh-read', () => {
+    async function refreshPopulationMonthly(upToTick: number): Promise<void> {
+        const db = getDb();
+        const refreshStartTick = Math.max(0, upToTick - 60);
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [
+            'planet_population_monthly',
+            refreshStartTick,
+            upToTick,
+        ]);
+    }
+
+    it('January bucket is visible after insert + refresh with tick + TICKS_PER_MONTH', async () => {
+        const db = getDb();
+
+        const JAN_TICK = 30;
+
+        // game_tick_now() returns GREATEST(snapshot_max, price_max + 30, population_max + 30).
+        // After inserting a population row at tick=30, game_tick_now() >= 60,
+        // which satisfies the window requirement of >= JAN_TICK + BUCKET_WIDTH = 60.
+        await insertPlanetPopulationHistory(db, [
+            { tick: JAN_TICK, planet_id: 'test-planet-pop-jan', population: 1_000_000 },
+        ]);
+
+        await refreshPopulationMonthly(JAN_TICK + 30);
+
+        const rows = await getPlanetPopulationHistoryAggregated(db, 'test-planet-pop-jan', 'monthly', 13);
+
+        expect(rows.length).toBeGreaterThanOrEqual(1);
+        const janBucket = rows.find((r) => Number(r.bucket) === JAN_TICK);
+        expect(janBucket).toBeDefined();
+        expect(janBucket!.avg_population).toBeCloseTo(1_000_000);
+    });
+
+    it('refresh with window end = tick skips the bucket (partial window bug)', async () => {
+        const db = getDb();
+
+        await insertPlanetPopulationHistory(db, [
+            { tick: 30, planet_id: 'test-planet-pop-clean', population: 500_000 },
+        ]);
+
+        // Window [0, 30) — bucket 30 is at the boundary, so TimescaleDB skips it.
+        await refreshPopulationMonthly(30);
+
+        const rows = await getPlanetPopulationHistoryAggregated(db, 'test-planet-pop-clean', 'monthly', 13);
+        const bucket = rows.find((r) => Number(r.bucket) === 30);
+
+        expect(bucket).toBeUndefined();
+    });
+
+    it('multiple planets in the same tick are all materialised', async () => {
+        const db = getDb();
+
+        const TICK = 90;
+        const planets = ['test-pop-p1', 'test-pop-p2', 'test-pop-p3'];
+
+        await insertPlanetPopulationHistory(
+            db,
+            planets.map((planet_id, i) => ({ tick: TICK, planet_id, population: (i + 1) * 1_000_000 })),
+        );
+
+        await refreshPopulationMonthly(TICK + 30);
+
+        for (const [i, planet_id] of planets.entries()) {
+            const rows = await getPlanetPopulationHistoryAggregated(db, planet_id, 'monthly', 13);
+            const bucket = rows.find((r) => Number(r.bucket) === TICK);
+            expect(bucket).toBeDefined();
+            expect(bucket!.avg_population).toBeCloseTo((i + 1) * 1_000_000);
+        }
+    });
+
+    it('consecutive months accumulate correctly', async () => {
+        const db = getDb();
+
+        const PLANET2 = 'test-pop-consecutive';
+        const insertRows = [
+            { tick: 30, planet_id: PLANET2, population: 1_000_000 },
+            { tick: 60, planet_id: PLANET2, population: 1_100_000 },
+            { tick: 90, planet_id: PLANET2, population: 1_200_000 },
+        ];
+
+        await insertPlanetPopulationHistory(db, insertRows);
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [
+            'planet_population_monthly',
+            0,
+            90 + 30,
+        ]);
+
+        const result = await getPlanetPopulationHistoryAggregated(db, PLANET2, 'monthly', 13);
+
+        expect(result.length).toBeGreaterThanOrEqual(3);
+        for (const { tick, population } of insertRows) {
+            const bucket = result.find((r) => Number(r.bucket) === tick);
+            expect(bucket).toBeDefined();
+            expect(bucket!.avg_population).toBeCloseTo(population);
+        }
     });
 });

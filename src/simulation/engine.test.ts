@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { advanceTick, seedRng } from './engine';
 import { environmentTick } from './planet/environment';
 
-import type { Agent, Planet, Resource } from './planet/planet';
+import type { Agent, Planet } from './planet/planet';
 import { productionTick } from './planet/production';
 import type { EducationLevelType } from './population/education';
 import { populationTick } from './population/populationTick';
@@ -23,6 +23,7 @@ import { createWorkforceEventAccumulator } from './workforce/workforceDemographi
 import { agriculturalProductResourceType } from './planet/resources';
 import type { ProductionFacility } from './planet/facility';
 import { putIntoStorageFacility, queryStorageFacility } from './planet/facility';
+import type { Resource } from './planet/claims';
 
 /**
  * Sets up actual hired workers in the agent's workforceDemography for a planet.

@@ -3,6 +3,7 @@ import type { EducationLevelType, Population } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
 import type { ResourceName } from './resourceCatalog';
 import type { ManagementFacility, ProductionFacility, StorageFacility } from './facility';
+import type { ResourceType, ResourceQuantity, Resource, ResourceClaim } from './claims';
 
 /**
  * Single combined central + commercial bank per planet.
@@ -127,19 +128,6 @@ export type Environment = {
         };
     };
 };
-export type ResourceQuantity = {
-    type: Resource;
-    quantity: number; // in tons or pieces, depending on the phase
-};
-
-export type ResourceClaim = {
-    id: string;
-    claimAgentId: string | null; // who currently claims this resource (Company or Government), null if unclaimed
-    tenantAgentId: string | null; // who is currently using this resource (Company or Government), null if not currently used. For example, a farm could be claimed by a government but currently operated by a company as tenant.
-    tenantCostInCoins: number; // how much the tenant pays per tick to the claim owner (e.g. rent for a farm), 0 if no tenant
-    regenerationRate: number; // quantity regenerated per year (for renewable resources), 0 for non-renewable
-    maximumCapacity: number; // maximum quantity that can be stored in this claim, e.g. for a farm or a mine with limited capacity. For non-renewable resources, this is the initial quantity.
-};
 
 export type AgentMarketPosition = {
     limits: {
@@ -148,8 +136,7 @@ export type AgentMarketPosition = {
         buy: number; // maximum total expenditure this agent can spend on buying resources per tick (currency units)
         sell: number; // maximum total revenue this agent can earn from selling resources per tick (currency units)
     };
-    // quantity in tons or pieces depending on the resource type
-    // price per ton or piece depending on the resource type
+
     buy: {
         [resourceName in string]: { resource: Resource; quantity: number; price: number };
     };
@@ -223,24 +210,12 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
     prevMonth: {},
 });
 
-/**
- * Per-resource offer state for one resource on one planet, stored inside
- * `AgentMarketOffers.sell`.
- * Written by `updateAgentPricing` and `marketTick`.
- */
 export type AgentMarketOfferState = {
     /** The resource being offered. */
     resource: Resource;
-    /**
-     * Current offer price set by this agent (currency / unit).
-     * Human-controllable: players can override this value.
-     */
+
     offerPrice?: number;
-    /**
-     * Keep at least this many units in storage — sell quantity per tick is
-     * computed dynamically as `max(0, inventory − offerRetainment)`.
-     * Human-settable.
-     */
+
     offerRetainment?: number;
     /** Units actually sold during the last market clearing tick. */
     lastSold?: number;
@@ -256,11 +231,6 @@ export type AgentMarketOfferState = {
     automated?: boolean;
 };
 
-/**
- * Per-resource bid state for one resource on one planet, stored inside
- * `AgentMarketOffers.buy`.
- * Written by `automaticPricing` and settled by `marketTick`.
- */
 export type AgentMarketBidState = {
     /** The resource being sought. */
     resource: Resource;
@@ -279,24 +249,11 @@ export type AgentMarketBidState = {
     lastEffectiveQty?: number;
     /** Bid price that was actually submitted to the order book last tick. */
     lastBidPrice?: number;
-    /**
-     * Set to true when the bid was suppressed because storage had no room for
-     * the resource. Cleared each tick when there is capacity available.
-     */
+
     storageFullWarning?: boolean;
-    /**
-     * Set by collectAgentBids for human-controlled agents when deposit scaling occurred.
-     * 'scaled' = bid was placed at reduced quantity due to insufficient deposits (warning).
-     * 'dropped' = no deposits available, bid was not placed at all (error).
-     * Cleared at the start of each tick by resetAgentBuyCounters.
-     */
+
     depositScaleWarning?: 'scaled' | 'dropped';
-    /**
-     * Set by collectAgentBids for human-controlled agents when storage capacity scaling occurred.
-     * 'scaled' = bid was placed at reduced quantity due to insufficient storage capacity (warning).
-     * 'dropped' = no storage capacity available, bid was not placed at all (error).
-     * Cleared at the start of each tick by resetAgentBuyCounters.
-     */
+
     storageScaleWarning?: 'scaled' | 'dropped';
     /** When true, the automatic pricing engine manages this bid each tick. */
     automated?: boolean;
@@ -315,12 +272,6 @@ export type AgentMarketOffers = {
     };
 };
 
-/**
- * Aggregate result snapshot of a single market clearing tick for one resource.
- *
- * Stored on the planet so that the UI can build charts without
- * re-running the market simulation.
- */
 export type MarketResult = {
     /** The resource this result refers to. */
     resourceName: string;
@@ -364,34 +315,19 @@ export type AgentPlanetAssets = {
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 
-    // ----- Financial state -----
-
-    /** Firm deposit balance for this agent on this planet (currency units). */
     deposits: number;
-    /**
-     * Funds locked against active market bids this tick (currency units).
-     * Deducted from `deposits` at bid collection time; returned if unfilled,
-     * consumed if filled.  Always zero outside of a market tick.
-     */
+
     depositHold: number;
-    /** Outstanding loan principal for this agent on this planet (currency units). */
+
     loans: number;
-    /**
-     * Last tick's wage bill (currency units).
-     * Used by the retained-earnings threshold for partial loan repayment.
-     */
+
     lastWageBill?: number;
+    lastTotalWorkers?: number;
 
-    /** ----- Market offers (sell-side) for this agent on this planet. */
     market?: AgentMarketOffers;
-
-    // ----- Workforce -----
 
     allocatedWorkers: PerEducation;
 
-    // ----- Demographic event tracking -----
-
-    /** Deaths affecting this agent's workforce, per education level. */
     deaths: DemographicEventCounters;
     /** Disabilities affecting this agent's workforce, per education level. */
     disabilities: DemographicEventCounters;
@@ -401,12 +337,14 @@ export type AgentPlanetAssets = {
         productionValue: number;
         wagesBill: number;
         revenueValue: number;
+        totalWorkersTicks: number;
     };
 
     lastMonthAcc: {
         productionValue: number;
         wagesBill: number;
         revenueValue: number;
+        totalWorkersTicks: number;
     };
 };
 
@@ -416,6 +354,7 @@ export type Agent = {
     /** When false (human player), the worker still auto-allocates workforce targets each tick. */
     automateWorkerAllocation: boolean;
     name: string;
+    foundedTick: number;
     associatedPlanetId: string;
     transportShips: TransportShip[];
     assets: {
@@ -428,17 +367,6 @@ export interface GameState {
     planets: Map<string, Planet>;
     agents: Map<string, Agent>;
 }
-
-export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
-
-export type Resource = {
-    name: string;
-    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'persons' | 'frozenGoods' | 'landBoundResource' | 'services';
-    level: ResourceProcessLevel | 'source'; // raw, refined, manufactured, consumerGood
-    volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
-    massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
-};
-export type ResourceType = Resource['form'];
 
 export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     for (const agent of agents.values()) {
@@ -454,12 +382,14 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
                 productionValue: assets.monthAcc.productionValue,
                 wagesBill: assets.monthAcc.wagesBill,
                 revenueValue: assets.monthAcc.revenueValue,
+                totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
             };
             assets.monthAcc = {
                 depositsAtMonthStart: assets.deposits,
                 productionValue: 0,
                 wagesBill: 0,
                 revenueValue: 0,
+                totalWorkersTicks: 0,
             };
         }
         for (const facility of assets.productionFacilities) {
@@ -471,6 +401,7 @@ export function accumulateAgentMetrics(agents: Map<string, Agent>, planet: Plane
             }
         }
         assets.monthAcc.wagesBill += assets.lastWageBill ?? 0;
+        assets.monthAcc.totalWorkersTicks += assets.lastTotalWorkers ?? 0;
         if (assets.market?.sell) {
             for (const offer of Object.values(assets.market.sell)) {
                 assets.monthAcc.revenueValue += offer.lastRevenue ?? 0;
