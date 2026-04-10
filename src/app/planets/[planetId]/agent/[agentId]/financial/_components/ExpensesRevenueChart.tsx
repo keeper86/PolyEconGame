@@ -25,6 +25,42 @@ export function ExpensesRevenueChart({
     ghostData?: FinancialChartPoint[];
     granularity: Granularity;
 }) {
+    const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
+        const finite = vals.filter(Number.isFinite);
+        if (finite.length === 0) {
+            return ['auto', 'auto'];
+        }
+        const lo = Math.min(0, ...finite);
+        const hi = Math.max(0, ...finite);
+        if (lo === hi) {
+            return [lo * 0.9 - 0.001, hi * 1.1 + 0.001];
+        }
+        const pad = (hi - lo) * 0.08;
+        return [Math.max(0, lo - pad), hi + pad];
+    };
+
+    const { scale, domain, yTicks } = useMemo(() => {
+        const allVals = [...data, ...(ghostData ?? [])].flatMap((p) => [
+            p.avgMonthlyNetIncome,
+            p.avgWages,
+            p.sumPurchases,
+            p.sumClaimPayments,
+        ]);
+        const positive = allVals.filter((v) => v > 0);
+        if (positive.length >= 2) {
+            const lo = Math.min(...positive);
+            const hi = Math.max(...positive);
+            if (hi / lo >= 10) {
+                const ticks: number[] = [];
+                for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) {
+                    ticks.push(Math.pow(10, e));
+                }
+                return { scale: 'log' as const, domain: ['auto', 'auto'] as ['auto', 'auto'], yTicks: ticks };
+            }
+        }
+        return { scale: 'linear' as const, domain: yDomain(allVals), yTicks: undefined };
+    }, [data, ghostData]);
+
     const chartData = useMemo(() => {
         if (granularity === 'monthly') {
             const currentPts = data as FinancialChartPoint[];
@@ -45,17 +81,23 @@ export function ExpensesRevenueChart({
                     const curr = currentByMonthIdx.get(monthIdx);
                     const ghost = ghostByMonthIdx.get(monthIdx);
                     const year = curr ? tickToDate(curr.bucket).year : ghost ? tickToDate(ghost.bucket).year : 0;
+                    const nullIfZeroLog = (v: number | null | undefined): number | null => {
+                        if (v === null || v === undefined) {
+                            return null;
+                        }
+                        return scale === 'log' && v <= 0 ? null : v;
+                    };
                     return {
                         monthIdx,
                         year,
-                        revenue: curr ? curr.avgMonthlyNetIncome : null,
-                        wages: curr?.avgWages ?? null,
-                        purchases: curr?.sumPurchases ?? null,
-                        claimPayments: curr?.sumClaimPayments ?? null,
-                        ghostRevenue: ghost ? ghost.avgMonthlyNetIncome : null,
-                        ghostWages: ghost?.avgWages ?? null,
-                        ghostPurchases: ghost?.sumPurchases ?? null,
-                        ghostClaimPayments: ghost?.sumClaimPayments ?? null,
+                        revenue: nullIfZeroLog(curr ? curr.avgMonthlyNetIncome : null),
+                        wages: nullIfZeroLog(curr?.avgWages ?? null),
+                        purchases: nullIfZeroLog(curr?.sumPurchases ?? null),
+                        claimPayments: nullIfZeroLog(curr?.sumClaimPayments ?? null),
+                        ghostRevenue: nullIfZeroLog(ghost ? ghost.avgMonthlyNetIncome : null),
+                        ghostWages: nullIfZeroLog(ghost?.avgWages ?? null),
+                        ghostPurchases: nullIfZeroLog(ghost?.sumPurchases ?? null),
+                        ghostClaimPayments: nullIfZeroLog(ghost?.sumClaimPayments ?? null),
                     };
                 });
         }
@@ -66,45 +108,17 @@ export function ExpensesRevenueChart({
                 year: year + 1,
                 monthIndex,
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
-                revenue: p.avgMonthlyNetIncome,
-                wages: p.avgWages,
-                purchases: p.sumPurchases,
-                claimPayments: p.sumClaimPayments,
+                revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
+                wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
+                purchases: scale === 'log' && p.sumPurchases <= 0 ? null : p.sumPurchases,
+                claimPayments: scale === 'log' && p.sumClaimPayments <= 0 ? null : p.sumClaimPayments,
                 ghostRevenue: null,
                 ghostWages: null,
                 ghostPurchases: null,
                 ghostClaimPayments: null,
             };
         });
-    }, [data, ghostData, granularity]);
-
-    const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
-        const finite = vals.filter(Number.isFinite);
-        if (finite.length === 0) {
-            return ['auto', 'auto'];
-        }
-        const lo = Math.min(0, ...finite);
-        const hi = Math.max(0, ...finite);
-        if (lo === hi) {
-            return [lo * 0.9 - 0.001, hi * 1.1 + 0.001];
-        }
-        const pad = (hi - lo) * 0.08;
-        return [Math.max(0, lo - pad), hi + pad];
-    };
-
-    const domain = useMemo(
-        () =>
-            yDomain(
-                [...data, ...(ghostData ?? [])].flatMap((p) => [
-                    p.avgMonthlyNetIncome,
-                    p.avgWages,
-                    p.sumPurchases,
-                    p.sumClaimPayments,
-                    p.avgMonthlyNetIncome,
-                ]),
-            ),
-        [data, ghostData],
-    );
+    }, [data, ghostData, granularity, scale]);
 
     const xAxisProps = useMemo(() => {
         if (granularity === 'monthly') {
@@ -205,7 +219,10 @@ export function ExpensesRevenueChart({
                             />
                             <YAxis
                                 type='number'
+                                scale={scale}
                                 domain={domain}
+                                allowDataOverflow
+                                ticks={yTicks}
                                 tick={{ fontSize: 10, fill: '#94a3b8' }}
                                 axisLine={false}
                                 tickLine={false}

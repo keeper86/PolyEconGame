@@ -82,7 +82,9 @@ export function BalanceFlowChart({
     }, [data, ghostData, granularity]);
 
     const [domainBalance, domainIncome] = useMemo(() => {
-        const balanceVals = chartData.map((p) => p.netBalance ?? p.ghostNetBalance).filter((v): v is number => v !== null);
+        const balanceVals = chartData
+            .map((p) => p.netBalance ?? p.ghostNetBalance)
+            .filter((v): v is number => v !== null);
         const incomeVals = chartData.map((p) => p.netIncome ?? p.ghostNetIncome).filter((v): v is number => v !== null);
         return alignedYDomains(balanceVals, incomeVals);
     }, [chartData]);

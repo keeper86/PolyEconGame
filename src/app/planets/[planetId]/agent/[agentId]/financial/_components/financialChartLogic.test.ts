@@ -87,9 +87,18 @@ describe('alignedYDomains', () => {
 
     it('lo is always less than hi for both axes', () => {
         const cases: [number[], number[]][] = [
-            [[1, 2, 3], [4, 5, 6]],
-            [[-3, -2, -1], [-6, -5, -4]],
-            [[-100, 200], [50, 300]],
+            [
+                [1, 2, 3],
+                [4, 5, 6],
+            ],
+            [
+                [-3, -2, -1],
+                [-6, -5, -4],
+            ],
+            [
+                [-100, 200],
+                [50, 300],
+            ],
             [[0], [0]],
         ];
         for (const [a, b] of cases) {
