@@ -184,9 +184,7 @@ export function BalanceFlowChart({
                                 width={56}
                                 tickFormatter={(v) => formatNumbers(v as number)}
                             />
-                            <Tooltip
-                                content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />}
-                            />
+                            <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                             <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
                             <Area
                                 yAxisId='left'

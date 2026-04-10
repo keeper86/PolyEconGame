@@ -203,9 +203,7 @@ export function ExpensesRevenueChart({
                                 width={56}
                                 tickFormatter={(v) => formatNumbers(v as number)}
                             />
-                            <Tooltip
-                                content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />}
-                            />
+                            <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                             <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
                             <Area
                                 type='monotone'
@@ -248,62 +246,61 @@ export function ExpensesRevenueChart({
                                 connectNulls={false}
                             />
                             <Area
-                                    type='monotone'
-                                    dataKey='ghostWages'
-                                    stroke='#ef4444'
-                                    strokeWidth={1}
-                                    strokeOpacity={0.5}
-                                    strokeDasharray='4 2'
-                                    fill='none'
-                                    dot={false}
-                                    activeDot={false}
-                                    legendType='none'
-                                    isAnimationActive={false}
-                                    connectNulls={false}
-                                />
-                                <Area
-                                    type='monotone'
-                                    dataKey='ghostPurchases'
-                                    stroke='#f59e0b'
-                                    strokeWidth={1}
-                                    strokeOpacity={0.5}
-                                    strokeDasharray='4 2'
-                                    fill='none'
-                                    dot={false}
-                                    activeDot={false}
-                                    legendType='none'
-                                    isAnimationActive={false}
-                                    connectNulls={false}
-                                />
-                                <Area
-                                    type='monotone'
-                                    dataKey='ghostClaimPayments'
-                                    stroke='#8b5cf6'
-                                    strokeWidth={1}
-                                    strokeOpacity={0.5}
-                                    strokeDasharray='4 2'
-                                    fill='none'
-                                    dot={false}
-                                    activeDot={false}
-                                    legendType='none'
-                                    isAnimationActive={false}
-                                    connectNulls={false}
-                                />
-                                <Area
-                                    type='monotone'
-                                    dataKey='ghostRevenue'
-                                    stroke='#10b981'
-                                    strokeWidth={1.5}
-                                    strokeOpacity={0.5}
-                                    strokeDasharray='4 2'
-                                    fill='none'
-                                    dot={false}
-                                    activeDot={false}
-                                    legendType='none'
-                                    isAnimationActive={false}
-                                    connectNulls={false}
-                                />
-
+                                type='monotone'
+                                dataKey='ghostWages'
+                                stroke='#ef4444'
+                                strokeWidth={1}
+                                strokeOpacity={0.5}
+                                strokeDasharray='4 2'
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                legendType='none'
+                                isAnimationActive={false}
+                                connectNulls={false}
+                            />
+                            <Area
+                                type='monotone'
+                                dataKey='ghostPurchases'
+                                stroke='#f59e0b'
+                                strokeWidth={1}
+                                strokeOpacity={0.5}
+                                strokeDasharray='4 2'
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                legendType='none'
+                                isAnimationActive={false}
+                                connectNulls={false}
+                            />
+                            <Area
+                                type='monotone'
+                                dataKey='ghostClaimPayments'
+                                stroke='#8b5cf6'
+                                strokeWidth={1}
+                                strokeOpacity={0.5}
+                                strokeDasharray='4 2'
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                legendType='none'
+                                isAnimationActive={false}
+                                connectNulls={false}
+                            />
+                            <Area
+                                type='monotone'
+                                dataKey='ghostRevenue'
+                                stroke='#10b981'
+                                strokeWidth={1.5}
+                                strokeOpacity={0.5}
+                                strokeDasharray='4 2'
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                legendType='none'
+                                isAnimationActive={false}
+                                connectNulls={false}
+                            />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>

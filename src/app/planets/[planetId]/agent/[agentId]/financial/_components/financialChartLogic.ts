@@ -1,4 +1,3 @@
-
 import { tickToDate } from '@/components/client/TickDisplay';
 
 export type Granularity = 'monthly' | 'yearly' | 'decade';

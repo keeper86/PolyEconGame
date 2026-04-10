@@ -8,9 +8,13 @@ type Props = TooltipProps<number, string> & {
 };
 
 export function FinancialTooltip({ active, payload, label, labelFormatter }: Props) {
-    if (!active || !payload || payload.length === 0) { return null; }
+    if (!active || !payload || payload.length === 0) {
+        return null;
+    }
     const visible = payload.filter((entry) => !String(entry.dataKey).startsWith('ghost'));
-    if (visible.length === 0) { return null; }
+    if (visible.length === 0) {
+        return null;
+    }
     return (
         <div
             style={{
