@@ -2,6 +2,7 @@ import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import type { ManagementFacility, ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
 import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
 import type { MarketOverviewRow } from '@/server/controller/planet';
+import { constructionServiceResourceType } from '@/simulation/planet/services';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -155,10 +156,9 @@ export function buildResourceList(
         }
     }
 
-    // Construction Service: show if any facility is under construction
     const allFacilities = [...facilities, ...managementFacilities, storageFacility];
     if (allFacilities.some((f) => f.construction !== null)) {
-        add('Construction Service');
+        add(constructionServiceResourceType.name);
     }
 
     return result;

@@ -33,18 +33,44 @@ export function bucketDecadeLabel(bucket: number): string {
     return `${year}s`;
 }
 
-export function yDomain(vals: number[]): [number, number] | ['auto', 'auto'] {
-    const finite = vals.filter(Number.isFinite);
-    if (finite.length === 0) {
-        return ['auto', 'auto'];
-    }
-    const lo = Math.min(...finite);
-    const hi = Math.max(...finite);
-    if (lo === hi) {
-        return [lo * 0.9 - 0.001, hi * 1.1 + 0.001];
-    }
-    const pad = (hi - lo) * 0.08;
-    return [Math.max(0, lo - pad), hi + pad];
+/**
+ * Compute two y-axis domains such that the zero line sits at the same
+ * vertical fraction on both axes, making them directly comparable.
+ */
+export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
+    const computeNatural = (vals: number[]): [number, number] => {
+        const finite = vals.filter(Number.isFinite);
+        if (finite.length === 0) {
+            return [0, 0];
+        }
+        const lo = Math.min(0, ...finite);
+        const hi = Math.max(0, ...finite);
+        if (lo === hi) {
+            return [lo - 0.001, hi + 0.001];
+        }
+        const pad = (hi - lo) * 0.08;
+        return [lo - pad, hi + pad];
+    };
+
+    const [loA, hiA] = computeNatural(valsA);
+    const [loB, hiB] = computeNatural(valsB);
+    const spanA = hiA - loA;
+    const spanB = hiB - loB;
+
+    // Zero fraction: how far from the bottom is zero, for each axis
+    const pA = spanA > 0 ? Math.abs(loA) / spanA : 0.5;
+    const pB = spanB > 0 ? Math.abs(loB) / spanB : 0.5;
+    // Use the larger zero-fraction so neither series clips
+    const p = Math.max(pA, pB);
+
+    // Expand each axis so that zero sits at fraction p from the bottom
+    const totalA = Math.max(spanA, Math.abs(hiA) / (1 - p + 0.0001), Math.abs(loA) / (p + 0.0001));
+    const totalB = Math.max(spanB, Math.abs(hiB) / (1 - p + 0.0001), Math.abs(loB) / (p + 0.0001));
+
+    return [
+        [-p * totalA, (1 - p) * totalA],
+        [-p * totalB, (1 - p) * totalB],
+    ];
 }
 
 /** @deprecated Use FinancialPoint */

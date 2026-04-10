@@ -4,9 +4,20 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatNumbers } from '@/lib/utils';
 import React, { useMemo } from 'react';
-import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    Legend,
+    ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts';
 import { FinancialTooltip } from './FinancialTooltip';
 import {
+    alignedYDomains,
     bucketDecadeLabel,
     type FinancialChartPoint,
     type FinancialPoint,
@@ -14,7 +25,6 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
-    yDomain,
 } from './financialChartLogic';
 
 export function BalanceFlowChart({
@@ -40,13 +50,19 @@ export function BalanceFlowChart({
                     const curr = currentByMonthIdx.get(monthIdx);
                     const ghost = ghostByMonthIdx.get(monthIdx);
                     const year = curr ? tickToDate(curr.bucket).year : ghost ? tickToDate(ghost.bucket).year : 0;
+                    const netIncome = curr
+                        ? curr.avgMonthlyNetIncome - (curr.avgWages + curr.sumPurchases + curr.sumClaimPayments)
+                        : null;
+                    const ghostNetIncome = ghost
+                        ? ghost.avgMonthlyNetIncome - (ghost.avgWages + ghost.sumPurchases + ghost.sumClaimPayments)
+                        : null;
                     return {
                         monthIdx,
                         year,
                         netBalance: curr?.avgNetBalance ?? null,
-                        netIncome: curr?.avgMonthlyNetIncome ?? null,
+                        netIncome: netIncome,
                         ghostNetBalance: ghost?.avgNetBalance ?? null,
-                        ghostNetIncome: ghost?.avgMonthlyNetIncome ?? null,
+                        ghostNetIncome: ghostNetIncome,
                     };
                 });
         }
@@ -65,14 +81,11 @@ export function BalanceFlowChart({
         });
     }, [data, ghostData, granularity]);
 
-    const domainBalance = useMemo(
-        () => yDomain([...(data as FinancialPoint[]), ...(ghostData ?? [])].map((p) => p.avgNetBalance)),
-        [data, ghostData],
-    );
-    const domainIncome = useMemo(
-        () => yDomain([...(data as FinancialPoint[]), ...(ghostData ?? [])].map((p) => p.avgMonthlyNetIncome)),
-        [data, ghostData],
-    );
+    const [domainBalance, domainIncome] = useMemo(() => {
+        const balanceVals = chartData.map((p) => p.netBalance ?? p.ghostNetBalance).filter((v): v is number => v !== null);
+        const incomeVals = chartData.map((p) => p.netIncome ?? p.ghostNetIncome).filter((v): v is number => v !== null);
+        return alignedYDomains(balanceVals, incomeVals);
+    }, [chartData]);
 
     const xAxisProps = useMemo(() => {
         if (granularity === 'monthly') {
@@ -185,6 +198,14 @@ export function BalanceFlowChart({
                                 tickFormatter={(v) => formatNumbers(v as number)}
                             />
                             <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
+                            <ReferenceLine
+                                yAxisId='left'
+                                y={0}
+                                stroke='#94a3b8'
+                                strokeOpacity={0.5}
+                                strokeDasharray='3 3'
+                            />
+                            <ReferenceLine yAxisId='right' y={0} stroke='#94a3b8' strokeOpacity={0} />
                             <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
                             <Area
                                 yAxisId='left'

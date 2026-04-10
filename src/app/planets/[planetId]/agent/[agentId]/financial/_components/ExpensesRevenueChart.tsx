@@ -3,18 +3,17 @@
 import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatNumbers } from '@/lib/utils';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { FinancialTooltip } from './FinancialTooltip';
 import {
+    MONTHLY_GRID_VALUES,
+    MONTHLY_X_TICKS,
+    MONTH_NAMES,
     bucketDecadeLabel,
     type FinancialChartPoint,
     type FinancialPoint,
     type Granularity,
-    MONTHLY_GRID_VALUES,
-    MONTHLY_X_TICKS,
-    MONTH_NAMES,
-    yDomain,
 } from './financialChartLogic';
 
 export function ExpensesRevenueChart({
@@ -49,15 +48,11 @@ export function ExpensesRevenueChart({
                     return {
                         monthIdx,
                         year,
-                        revenue: curr
-                            ? curr.avgMonthlyNetIncome + curr.avgWages + curr.sumPurchases + curr.sumClaimPayments
-                            : null,
+                        revenue: curr ? curr.avgMonthlyNetIncome : null,
                         wages: curr?.avgWages ?? null,
                         purchases: curr?.sumPurchases ?? null,
                         claimPayments: curr?.sumClaimPayments ?? null,
-                        ghostRevenue: ghost
-                            ? ghost.avgMonthlyNetIncome + ghost.avgWages + ghost.sumPurchases + ghost.sumClaimPayments
-                            : null,
+                        ghostRevenue: ghost ? ghost.avgMonthlyNetIncome : null,
                         ghostWages: ghost?.avgWages ?? null,
                         ghostPurchases: ghost?.sumPurchases ?? null,
                         ghostClaimPayments: ghost?.sumClaimPayments ?? null,
@@ -67,11 +62,11 @@ export function ExpensesRevenueChart({
         return (data as FinancialPoint[]).map((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
             return {
-                xVal: granularity === 'yearly' ? year : year,
-                year,
+                xVal: year + 1,
+                year: year + 1,
                 monthIndex,
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
-                revenue: p.avgMonthlyNetIncome + p.avgWages + p.sumPurchases + p.sumClaimPayments,
+                revenue: p.avgMonthlyNetIncome,
                 wages: p.avgWages,
                 purchases: p.sumPurchases,
                 claimPayments: p.sumClaimPayments,
@@ -83,6 +78,20 @@ export function ExpensesRevenueChart({
         });
     }, [data, ghostData, granularity]);
 
+    const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
+        const finite = vals.filter(Number.isFinite);
+        if (finite.length === 0) {
+            return ['auto', 'auto'];
+        }
+        const lo = Math.min(0, ...finite);
+        const hi = Math.max(0, ...finite);
+        if (lo === hi) {
+            return [lo * 0.9 - 0.001, hi * 1.1 + 0.001];
+        }
+        const pad = (hi - lo) * 0.08;
+        return [Math.max(0, lo - pad), hi + pad];
+    };
+
     const domain = useMemo(
         () =>
             yDomain(
@@ -91,7 +100,7 @@ export function ExpensesRevenueChart({
                     p.avgWages,
                     p.sumPurchases,
                     p.sumClaimPayments,
-                    p.avgMonthlyNetIncome + p.avgWages + p.sumPurchases + p.sumClaimPayments,
+                    p.avgMonthlyNetIncome,
                 ]),
             ),
         [data, ghostData],
@@ -111,7 +120,7 @@ export function ExpensesRevenueChart({
         }
         if (granularity === 'yearly') {
             const yearlyPts = data as FinancialPoint[];
-            const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year : 0;
+            const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year + 1 : 0;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,

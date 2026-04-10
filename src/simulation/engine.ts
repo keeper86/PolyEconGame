@@ -1,4 +1,4 @@
-import { isMonthBoundary, isYearBoundary } from './constants';
+import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { automaticLoanRepayment, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
@@ -29,6 +29,10 @@ export function advanceTick(gameState: GameState) {
 
         const planetMap = new Map([[planet.id, planet]]);
 
+        if (isFirstTickInMonth(gameState.tick)) {
+            resetAgentMetrics(planetAgents, planet);
+        }
+
         environmentTick(planet);
 
         if (process.env.SIM_DEBUG) {
@@ -43,7 +47,6 @@ export function advanceTick(gameState: GameState) {
         }
 
         if (isMonthBoundary(gameState.tick)) {
-            resetAgentMetrics(planetAgents, planet);
             automaticWorkerAllocation(planetAgents, planet);
             hireWorkforce(planetAgents, planet);
             if (process.env.SIM_DEBUG) {

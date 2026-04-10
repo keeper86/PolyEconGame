@@ -165,7 +165,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'setBuyBids':
                         handleMarketAction(state, action, safePostMessage);
                         break;
-                    case 'claimResources':
                     case 'leaseClaim':
                     case 'quitClaim':
                         handleResourceAction(state, action, safePostMessage);
@@ -231,11 +230,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             return Object.entries(agent.assets).map(([planetId, assets]) => {
                 const netBalance = assets.deposits - assets.loans;
-                const monthlyNetIncome =
-                    assets.monthAcc.revenue -
-                    assets.monthAcc.claimPayments -
-                    assets.monthAcc.wages -
-                    assets.monthAcc.purchases;
+                const monthlyNetIncome = assets.monthAcc.revenue;
 
                 const totalWorkers = Math.round(assets.monthAcc.totalWorkersTicks / TICKS_PER_MONTH);
 
@@ -785,39 +780,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setBuyBids', requestId, agentId, planetId, bids });
-            // Eager draining if not currently processing a tick
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
-        if (msg.type === 'claimResources') {
-            const { requestId, agentId, planetId, arableLandQuantity, waterSourceQuantity } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'resourcesClaimFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'resourcesClaimFailed', requestId, reason: `Planet '${planetId}' not found` });
-                return;
-            }
-            if (arableLandQuantity <= 0 || waterSourceQuantity <= 0) {
-                safePostMessage({
-                    type: 'resourcesClaimFailed',
-                    requestId,
-                    reason: 'arableLandQuantity and waterSourceQuantity must be positive',
-                });
-                return;
-            }
-            pendingActions.push({
-                type: 'claimResources',
-                requestId,
-                agentId,
-                planetId,
-                arableLandQuantity,
-                waterSourceQuantity,
-            });
             // Eager draining if not currently processing a tick
             if (!processingTick) {
                 drainActionQueue();

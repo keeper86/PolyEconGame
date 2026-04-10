@@ -9,7 +9,6 @@ import {
     cancelSellOfferSpec,
     cancelBuyBidSpec,
     setBuyBidsSpec,
-    claimResourcesSpec,
     buildFacilitySpec,
     expandFacilitySpec,
     leaseClaimSpec,
@@ -123,21 +122,6 @@ export function workerSetBuyBids(opts: {
     return sendCommandSpec(
         { type: 'setBuyBids', requestId: randomUUID(), agentId, planetId, bids },
         setBuyBidsSpec,
-        timeoutMs,
-    );
-}
-
-export function workerClaimResources(opts: {
-    agentId: string;
-    planetId: string;
-    arableLandQuantity: number;
-    waterSourceQuantity: number;
-    timeoutMs?: number;
-}): Promise<{ arableClaimId: string; waterClaimId: string }> {
-    const { agentId, planetId, arableLandQuantity, waterSourceQuantity, timeoutMs } = opts;
-    return sendCommandSpec(
-        { type: 'claimResources', requestId: randomUUID(), agentId, planetId, arableLandQuantity, waterSourceQuantity },
-        claimResourcesSpec,
         timeoutMs,
     );
 }
