@@ -6,10 +6,6 @@ import { Landmark, Percent, Scale, TrendingDown, Users, Wallet } from 'lucide-re
 import React from 'react';
 const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 
-/* ------------------------------------------------------------------ */
-/*  Stat row                                                           */
-/* ------------------------------------------------------------------ */
-
 function Stat({
     label,
     value,
@@ -34,26 +30,12 @@ function Stat({
     );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
-
 type Props = {
-    bank?: Bank;
-    priceLevel?: number;
+    bank: Bank;
 };
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-export default function BankPanel({ bank, priceLevel }: Props): React.ReactElement | null {
-    // Don't render anything until the financial tick has run at least once.
-    if (!bank && priceLevel === undefined) {
-        return null;
-    }
-
-    const equityColor = bank && bank.equity < 0 ? 'text-red-500' : bank && bank.equity > 0 ? 'text-green-600' : '';
+export default function BankPanel({ bank }: Props): React.ReactElement | null {
+    const equityColor = bank.equity < 0 ? 'text-red-500' : bank.equity > 0 ? 'text-green-600' : '';
 
     return (
         <>
@@ -61,46 +43,39 @@ export default function BankPanel({ bank, priceLevel }: Props): React.ReactEleme
                 <Landmark className='h-4 w-4 text-muted-foreground' />
                 Planetary Bank
             </p>
-            {bank ? (
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2'>
-                    <div className='grid grid-cols-1 gap-y-1'>
-                        <Stat
-                            label='Outstanding loans'
-                            value={formatNumbers(bank.loans)}
-                            icon={<TrendingDown className='h-3 w-3' />}
-                            valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
-                        />
-                        <Stat
-                            label='Firm deposits'
-                            value={formatNumbers(bank.deposits - bank.householdDeposits)}
-                            icon={<Wallet className='h-3 w-3' />}
-                        />
 
-                        <Stat
-                            label='Household deposits'
-                            value={formatNumbers(bank.householdDeposits)}
-                            icon={<Users className='h-3 w-3' />}
-                        />
-                    </div>
-                    <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
-                        <Stat
-                            label='Bank equity'
-                            value={formatNumbers(bank.equity)}
-                            icon={<Scale className='h-3 w-3' />}
-                            valueClassName={equityColor}
-                        />
-                        <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2'>
+                <div className='grid grid-cols-1 gap-y-1'>
+                    <Stat
+                        label='Outstanding loans'
+                        value={formatNumbers(bank.loans)}
+                        icon={<TrendingDown className='h-3 w-3' />}
+                        valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
+                    />
+                    <Stat
+                        label='Firm deposits'
+                        value={formatNumbers(bank.deposits - bank.householdDeposits)}
+                        icon={<Wallet className='h-3 w-3' />}
+                    />
 
-                        <Stat
-                            label='Deposit rate'
-                            value={pct(bank.depositRate)}
-                            icon={<Percent className='h-3 w-3' />}
-                        />
-                    </div>
+                    <Stat
+                        label='Household deposits'
+                        value={formatNumbers(bank.householdDeposits)}
+                        icon={<Users className='h-3 w-3' />}
+                    />
                 </div>
-            ) : (
-                <p className='text-xs text-muted-foreground'>Bank not yet initialised (no financial tick run).</p>
-            )}
+                <div className='grid grid-cols-1 gap-y-1'>
+                    <Stat
+                        label='Bank equity'
+                        value={formatNumbers(bank.equity)}
+                        icon={<Scale className='h-3 w-3' />}
+                        valueClassName={equityColor}
+                    />
+                    <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
+
+                    <Stat label='Deposit rate' value={pct(bank.depositRate)} icon={<Percent className='h-3 w-3' />} />
+                </div>
+            </div>
         </>
     );
 }

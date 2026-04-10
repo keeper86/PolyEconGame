@@ -27,14 +27,6 @@ export type InboundMessage =
           offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
       }
     | {
-          type: 'claimResources';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          arableLandQuantity: number;
-          waterSourceQuantity: number;
-      }
-    | {
           type: 'buildFacility';
           requestId: string;
           agentId: string;
@@ -165,14 +157,6 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
-      }
-    | {
-          type: 'claimResources';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          arableLandQuantity: number;
-          waterSourceQuantity: number;
       }
     | {
           type: 'buildFacility';

@@ -48,6 +48,9 @@ export type AgentDecadeSummary = {
     avg_total_workers: number | null;
     avg_wages: number | null;
     sum_production_value: number | null;
+    sum_consumption_value: number | null;
+    sum_purchases: number | null;
+    sum_claim_payments: number | null;
 };
 
 export type AgentMonthlyHistory = {
@@ -59,6 +62,9 @@ export type AgentMonthlyHistory = {
     total_workers: number;
     wages: number | null;
     production_value: number | null;
+    consumption_value: number | null;
+    purchases: number | null;
+    claim_payments: number | null;
     facility_count: number | null;
     storage_value: number | null;
     created_at: Date;
@@ -73,6 +79,9 @@ export type AgentMonthlySummary = {
     avg_total_workers: number | null;
     avg_wages: number | null;
     sum_production_value: number | null;
+    sum_consumption_value: number | null;
+    sum_purchases: number | null;
+    sum_claim_payments: number | null;
     avg_facility_count: number | null;
     avg_storage_value: number | null;
 };
@@ -86,6 +95,9 @@ export type AgentYearlySummary = {
     avg_total_workers: number | null;
     avg_wages: number | null;
     sum_production_value: number | null;
+    sum_consumption_value: number | null;
+    sum_purchases: number | null;
+    sum_claim_payments: number | null;
 };
 
 export type GameSnapshots = {

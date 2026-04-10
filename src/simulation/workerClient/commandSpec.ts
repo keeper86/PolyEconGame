@@ -122,19 +122,6 @@ export const setBuyBidsSpec: CommandSpec<
     extract: () => undefined,
 };
 
-type ClaimResourcesSuccess = Extract<OutboundMessage, { type: 'resourcesClaimed' }>;
-type ClaimResourcesFailure = Extract<OutboundMessage, { type: 'resourcesClaimFailed' }>;
-export const claimResourcesSpec: CommandSpec<
-    Extract<InboundMessage, { type: 'claimResources' }>,
-    ClaimResourcesSuccess,
-    ClaimResourcesFailure,
-    { arableClaimId: string; waterClaimId: string }
-> = {
-    successType: 'resourcesClaimed',
-    failureType: 'resourcesClaimFailed',
-    extract: (msg) => ({ arableClaimId: msg.arableClaimId, waterClaimId: msg.waterClaimId }),
-};
-
 type BuildFacilitySuccess = Extract<OutboundMessage, { type: 'facilityBuilt' }>;
 type BuildFacilityFailure = Extract<OutboundMessage, { type: 'facilityBuildFailed' }>;
 export const buildFacilitySpec: CommandSpec<

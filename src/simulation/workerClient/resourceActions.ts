@@ -1,16 +1,9 @@
-import type { GameState } from '../planet/planet';
-import type { OutboundMessage, PendingAction } from './messages';
-import { arableLandResourceType, waterSourceResourceType } from '../planet/landBoundResources';
+import { LAND_CLAIM_COST_PER_UNIT, TICKS_PER_MONTH } from '../constants';
 import type { ResourceClaim, ResourceQuantity } from '../planet/claims';
 import { collapseUntenantedClaims } from '../planet/claims';
-import { makeAgriculturalProduction, makeStorage, makeWaterExtraction } from '../utils/initialWorld';
-import { LAND_CLAIM_COST_PER_UNIT, TICKS_PER_MONTH } from '../constants';
+import type { GameState } from '../planet/planet';
+import type { OutboundMessage, PendingAction } from './messages';
 
-/**
- * Calculates and charges the upfront cost for acquiring `quantity` units of a resource.
- * For renewables: 1 month of per-tick cost. For non-renewables: the flat cost.
- * Returns the upfront amount charged, or null if the agent cannot afford it.
- */
 function chargeUpfrontCost(
     state: GameState,
     agentId: string,
@@ -35,140 +28,6 @@ function chargeUpfrontCost(
         govAssets.deposits += upfrontCost;
     }
     return upfrontCost;
-}
-
-/**
- * Handle 'claimResources' action
- *
- * TODO: 1) we need to handle all claim-types
- *     2) this should happen after any actions that modify the planet's resources, such that we always have a consistent view on the available untenanted resources
- */
-export function handleClaimResources(
-    state: GameState,
-    action: Extract<PendingAction, { type: 'claimResources' }>,
-    safePostMessage: (msg: OutboundMessage) => void,
-): void {
-    const { requestId, agentId, planetId, arableLandQuantity, waterSourceQuantity } = action;
-    const agent = state.agents.get(agentId);
-    const planet = state.planets.get(planetId);
-    if (!agent || !planet) {
-        safePostMessage({
-            type: 'resourcesClaimFailed',
-            requestId,
-            reason: 'Agent or planet not found',
-        });
-        return;
-    }
-    const assets = agent.assets[planetId];
-    if (!assets) {
-        safePostMessage({
-            type: 'resourcesClaimFailed',
-            requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
-        });
-        return;
-    }
-
-    // Collapse all untenanted arable land into one pool
-    const arablePool = collapseUntenantedClaims(planet, arableLandResourceType.name, `${planetId}-arable-unclaimed`);
-    if (!arablePool || arablePool.quantity < arableLandQuantity) {
-        safePostMessage({
-            type: 'resourcesClaimFailed',
-            requestId,
-            reason: `Not enough untenanted arable land — requested ${arableLandQuantity}, available ${arablePool?.quantity ?? 0}`,
-        });
-        return;
-    }
-
-    // Collapse all untenanted water sources into one pool
-    const waterPool = collapseUntenantedClaims(planet, waterSourceResourceType.name, `${planetId}-water-unclaimed`);
-    if (!waterPool || waterPool.quantity < waterSourceQuantity) {
-        safePostMessage({
-            type: 'resourcesClaimFailed',
-            requestId,
-            reason: `Not enough untenanted water sources — requested ${waterSourceQuantity}, available ${waterPool?.quantity ?? 0}`,
-        });
-        return;
-    }
-
-    // Create new claim IDs for this agent
-    const arableClaimId = `${planetId}-arable-${agentId}`;
-    const waterClaimId = `${planetId}-water-${agentId}`;
-
-    // Split arable land off the pool
-    const arableRatio = arableLandQuantity / arablePool.maximumCapacity;
-    const newArableClaim = {
-        id: arableClaimId,
-        type: arableLandResourceType,
-        quantity: arableLandQuantity,
-        regenerationRate: arablePool.regenerationRate * arableRatio,
-        maximumCapacity: arableLandQuantity,
-        tenantAgentId: agentId,
-        tenantCostInCoins: 0,
-        costPerTick: Math.floor(arableLandQuantity * 0.01),
-        claimStatus: 'active' as const,
-        noticePeriodEndsAtTick: null,
-        pausedTicksThisYear: 0,
-    };
-    arablePool.quantity -= arableLandQuantity;
-    arablePool.regenerationRate -= newArableClaim.regenerationRate;
-    arablePool.maximumCapacity -= arableLandQuantity;
-    planet.resources[arableLandResourceType.name].push(newArableClaim);
-
-    // Split water source off the pool
-    const waterRatio = waterSourceQuantity / waterPool.maximumCapacity;
-    const newWaterClaim = {
-        id: waterClaimId,
-        type: waterSourceResourceType,
-        quantity: waterSourceQuantity,
-        regenerationRate: waterPool.regenerationRate * waterRatio,
-        maximumCapacity: waterSourceQuantity,
-        tenantAgentId: agentId,
-        tenantCostInCoins: 0,
-        costPerTick: Math.floor(waterSourceQuantity * 0.005),
-        claimStatus: 'active' as const,
-        noticePeriodEndsAtTick: null,
-        pausedTicksThisYear: 0,
-    };
-    waterPool.quantity -= waterSourceQuantity;
-    waterPool.regenerationRate -= newWaterClaim.regenerationRate;
-    waterPool.maximumCapacity -= waterSourceQuantity;
-    planet.resources[waterSourceResourceType.name].push(newWaterClaim);
-
-    // Build production facilities if the agent doesn't already have them
-    const hasWaterFacility = assets.productionFacilities.some((f) =>
-        f.needs.some((n) => n.resource.name === waterSourceResourceType.name),
-    );
-    const hasAgriFacility = assets.productionFacilities.some((f) =>
-        f.needs.some((n) => n.resource.name === arableLandResourceType.name),
-    );
-
-    const waterScale = waterSourceQuantity / 1000;
-    const agriScale = arableLandQuantity / 1000;
-
-    if (!hasWaterFacility) {
-        const waterFacility = makeWaterExtraction(planetId, agentId, waterScale);
-        assets.productionFacilities.push(waterFacility);
-    }
-    if (!hasAgriFacility) {
-        const agriFacility = makeAgriculturalProduction(planetId, agentId, agriScale);
-        assets.productionFacilities.push(agriFacility);
-    }
-
-    // Build storage if the agent doesn't have one yet
-    if (!assets.storageFacility) {
-        assets.storageFacility = makeStorage({
-            planetId,
-            id: `${agentId}-storage`,
-            name: `${agentId} Storage`,
-        });
-    }
-
-    console.log(
-        `[worker] Agent '${agentId}' claimed ${arableLandQuantity} arable land and ` +
-            `${waterSourceQuantity} water source on planet '${planetId}'`,
-    );
-    safePostMessage({ type: 'resourcesClaimed', requestId, agentId, arableClaimId, waterClaimId });
 }
 
 export function handleLeaseClaim(
@@ -229,6 +88,7 @@ export function handleLeaseClaim(
         pool.quantity -= quantity;
         pool.regenerationRate -= pool.regenerationRate * ratio;
         pool.maximumCapacity -= quantity;
+        agent.assets[planetId]!.monthAcc.claimPayments += charged;
         console.log(`[worker] Agent '${agentId}' expanded claim '${claimId}' by ${quantity} on planet '${planetId}'`);
         safePostMessage({ type: 'claimLeased', requestId, agentId, claimId });
         return;
@@ -264,6 +124,7 @@ export function handleLeaseClaim(
     pool.regenerationRate -= newClaim.regenerationRate;
     pool.maximumCapacity -= quantity;
     planet.resources[resourceName].push(newClaim);
+    agent.assets[planetId]!.monthAcc.claimPayments += charged;
     console.log(`[worker] Agent '${agentId}' leased ${quantity} of '${resourceName}' on planet '${planetId}'`);
     safePostMessage({ type: 'claimLeased', requestId, agentId, claimId });
 }
@@ -317,9 +178,6 @@ export function handleResourceAction(
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
     switch (action.type) {
-        case 'claimResources':
-            handleClaimResources(state, action, safePostMessage);
-            break;
         case 'leaseClaim':
             handleLeaseClaim(state, action, safePostMessage);
             break;

@@ -54,6 +54,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                     entry.claimStatus = 'active';
                 }
                 assets.deposits -= entry.costPerTick;
+                assets.monthAcc.claimPayments += entry.costPerTick;
                 const govAssets = agents.get(planet.governmentId)?.assets[planet.id];
                 if (govAssets) {
                     govAssets.deposits += entry.costPerTick;

@@ -9,37 +9,37 @@ const serviceResourceDefault = {
 
 export const logisticsServiceResourceType: Resource = {
     ...serviceResourceDefault,
-    name: 'Logistics Service',
+    name: 'Logistics',
 };
 
 export const constructionServiceResourceType: Resource = {
     ...serviceResourceDefault,
-    name: 'Construction Service',
+    name: 'Construction',
 };
 
 export const administrativeServiceResourceType: Resource = {
     ...serviceResourceDefault,
-    name: 'Administrative Service',
+    name: 'Administration',
 };
 
 export const groceryServiceResourceType: Resource = {
     ...serviceResourceDefault,
-    name: 'Grocery Service',
+    name: 'Grocery',
 };
 
 export const retailServiceResourceType: Resource = {
     ...serviceResourceDefault,
-    name: 'Retail Service',
+    name: 'Retail',
 };
 
 export const healthcareServiceResourceType: Resource = {
     ...serviceResourceDefault,
-    name: 'Healthcare Service',
+    name: 'Healthcare',
 };
 
 export const educationServiceResourceType: Resource = {
     ...serviceResourceDefault,
-    name: 'Education Service',
+    name: 'Education',
 };
 
 export const ALL_SERVICE_RESOURCE_TYPE_NAMES = [

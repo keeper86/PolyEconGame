@@ -281,6 +281,13 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                     });
                 }
 
+                for (const [name, qty] of Object.entries(actualProduced)) {
+                    assets.monthAcc.productionValue += qty * (planet.marketPrices[name] ?? 0);
+                }
+                for (const [name, qty] of Object.entries(actualConsumed)) {
+                    assets.monthAcc.consumptionValue += qty * (planet.marketPrices[name] ?? 0);
+                }
+
                 facility.lastTickResults = {
                     overallEfficiency,
                     workerEfficiency,
@@ -318,6 +325,10 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                     facility.needs.forEach((need) => {
                         actualConsumed[need.resource.name] = 0;
                     });
+                }
+
+                for (const [name, qty] of Object.entries(actualConsumed)) {
+                    assets.monthAcc.consumptionValue += qty * (planet.marketPrices[name] ?? 0);
                 }
 
                 facility.lastTickResults = {

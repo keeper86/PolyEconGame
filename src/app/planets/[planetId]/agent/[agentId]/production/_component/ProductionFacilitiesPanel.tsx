@@ -11,6 +11,7 @@ import { HardHat } from 'lucide-react';
 import { UnderConstructionCard } from './UnderConstructionCard';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
 import { CatalogCard } from './CatalogCard';
+import { constructionServiceResourceType } from '@/simulation/planet/services';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -28,7 +29,7 @@ export default function ProductionFacilitiesPanel({
     const queryClient = useQueryClient();
 
     const { data: constructionMarket } = useQuery(
-        trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: 'Construction Service' }),
+        trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
     );
     const constructionServicePrice = constructionMarket?.market?.clearingPrice;
 

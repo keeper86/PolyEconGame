@@ -20,6 +20,7 @@ type HistoryPoint = {
     avgTotalWorkers: number;
     avgWages: number;
     sumProductionValue: number;
+    sumConsumptionValue: number;
 };
 
 type ChartConfig = {
@@ -33,6 +34,7 @@ const CHARTS: ChartConfig[] = [
     { title: 'Net Balance', color: '#4f46e5', gradId: 'gradBalance', dataKey: 'avgNetBalance' },
     { title: 'Monthly Net Income', color: '#10b981', gradId: 'gradIncome', dataKey: 'avgMonthlyNetIncome' },
     { title: 'Production Value', color: '#f59e0b', gradId: 'gradProd', dataKey: 'sumProductionValue' },
+    { title: 'Consumption Value', color: '#8b5cf6', gradId: 'gradCons', dataKey: 'sumConsumptionValue' },
     { title: 'Wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
     { title: 'Total Workers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
 ];

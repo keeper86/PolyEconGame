@@ -21,6 +21,7 @@ export const NOTICE_PERIOD_MONTHS = 3;
 
 /** True only on clean month boundaries (every TICKS_PER_MONTH ticks). */
 export const isMonthBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_MONTH === 0;
+export const isFirstTickInMonth = (tick: number): boolean => tick % TICKS_PER_MONTH === 1;
 
 /** True only on clean year boundaries (every TICKS_PER_YEAR ticks). */
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;

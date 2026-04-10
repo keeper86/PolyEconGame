@@ -566,7 +566,7 @@ Settlement:
                     <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                         {`RETAINED_EARNINGS_THRESHOLD = 1.5
 
-retainedThreshold = lastWageBill × 1.5
+retainedThreshold = perTickWage × 1.5
 excessDeposits    = max(0, deposits − retainedThreshold)
 repayment         = min(agentLoan, excessDeposits, bank.loans)
 

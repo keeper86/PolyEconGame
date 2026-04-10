@@ -30,7 +30,7 @@ export function handleRequestLoan(
         });
         return;
     }
-    // TODO: unify with automatic loan for wages and move to wealthOps
+
     const assets = agent.assets[planetId];
     if (!assets) {
         safePostMessage({

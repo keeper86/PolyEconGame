@@ -14,6 +14,7 @@ import {
     getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
     getAgentHistoryAggregated as dbGetAgentHistory,
+    getAgentFinancialHistoryAggregated as dbGetAgentFinancialHistory,
 } from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
 import {
@@ -33,7 +34,7 @@ const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
     annualInterestRate: z.number(),
     existingLoans: z.number(),
-    blendedMonthlyWages: z.number(),
+    blendedMonthlyExpenses: z.number(),
     blendedMonthlyRevenue: z.number(),
     monthlyNetCashFlow: z.number(),
     storageCollateral: z.number(),
@@ -460,6 +461,7 @@ export const getAgentHistory = () =>
                         avgTotalWorkers: z.number(),
                         avgWages: z.number(),
                         sumProductionValue: z.number(),
+                        sumConsumptionValue: z.number(),
                     }),
                 ),
             }),
@@ -481,6 +483,55 @@ export const getAgentHistory = () =>
                         avgTotalWorkers: r.avg_total_workers ?? 0,
                         avgWages: r.avg_wages ?? 0,
                         sumProductionValue: r.sum_production_value ?? 0,
+                        sumConsumptionValue: r.sum_consumption_value ?? 0,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
+            };
+        });
+
+export const getAgentFinancialHistory = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(26),
+            }),
+        )
+        .output(
+            z.object({
+                agentId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
+                foundedTick: z.number(),
+                history: z.array(
+                    z.object({
+                        bucket: z.number(),
+                        avgNetBalance: z.number(),
+                        avgMonthlyNetIncome: z.number(),
+                        avgWages: z.number(),
+                        sumPurchases: z.number(),
+                        sumClaimPayments: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input }) => {
+            const [{ agent }, rows] = await Promise.all([
+                workerQueries.getAgent(input.agentId),
+                dbGetAgentFinancialHistory(db, input.agentId, input.granularity, input.limit),
+            ]);
+            return {
+                agentId: input.agentId,
+                granularity: input.granularity,
+                foundedTick: agent?.foundedTick ?? 0,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgNetBalance: r.avg_net_balance ?? 0,
+                        avgMonthlyNetIncome: r.avg_monthly_net_income ?? 0,
+                        avgWages: r.avg_wages ?? 0,
+                        sumPurchases: r.sum_purchases ?? 0,
+                        sumClaimPayments: r.sum_claim_payments ?? 0,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };

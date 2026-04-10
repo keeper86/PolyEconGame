@@ -44,7 +44,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     const [openItem, setOpenItem] = useState<string | undefined>(undefined);
     const trpc = useTRPC();
 
-    const { productionFacilities, storageFacility, market } = assets;
+    const { productionFacilities, managementFacilities, storageFacility, market } = assets;
 
     // ── Hoisted market overview query ──────────────────────────────────
     const { data: overviewData } = useSimulationQuery(
@@ -64,9 +64,17 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     const buyBidKeys = Object.keys(buyBids).join(',');
     const sellOfferKeys = Object.keys(sellOffers).join(',');
     const resources = useMemo(
-        () => buildResourceList(productionFacilities, buyBids, sellOffers, storageFacility, showAll),
+        () =>
+            buildResourceList(
+                productionFacilities,
+                buyBids,
+                sellOffers,
+                storageFacility,
+                showAll,
+                managementFacilities,
+            ),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [showAll, buyBidKeys, sellOfferKeys, productionFacilities.length],
+        [showAll, buyBidKeys, sellOfferKeys, productionFacilities.length, managementFacilities.length],
     );
 
     // Group resources by level

@@ -1,4 +1,4 @@
-import { INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD, TICKS_PER_MONTH } from '../constants';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -84,20 +84,16 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         }
 
         if (wageBill <= 0) {
-            assets.lastWageBill = 0;
-            assets.lastTotalWorkers = 0;
             return;
         }
 
-        // Record wage bill and worker count for history accumulation
-        assets.lastWageBill = wageBill;
-        assets.lastTotalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
+        assets.monthAcc.wages += wageBill;
+        assets.monthAcc.totalWorkersTicks += Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
 
         // 2. Working-capital loan if needed (MONEY CREATION)
         //    bank.loans↑  bank.deposits↑  agent.deposits↑
         if (assets.deposits < wageBill) {
             const shortfall = wageBill - assets.deposits;
-            // Record aggregate bank loan and per-agent loan principal
             bank.loans += shortfall;
             bank.deposits += shortfall;
             assets.deposits += shortfall;
@@ -105,16 +101,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         }
 
         assets.deposits -= wageBill;
-        // householdDeposits is now updated inside creditWageIncome, per cell,
-        // so no bulk increment here.
-        assets.lastWageBill = wageBill;
 
-        // 3. Input-buffer procurement loan (MONEY CREATION)
-        //    Automated agents need capital to purchase production inputs every
-        //    tick.  If their deposits fall below the estimated buffer cost, the
-        //    bank tops them up so they can participate in the commodity market.
-        //    The retained-earnings threshold in automaticLoanRepayment ensures
-        //    this balance is never repaid below the buffer floor.
         if (agent.automated) {
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
@@ -126,10 +113,6 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             }
         }
 
-        // Count only THIS agent's employed workers (from their workforce demography),
-        // so that wages are distributed only to workers employed by this agent.
-        // Using the global demography count would cause double-counting when multiple
-        // agents each distribute their own wage bill across all employed workers.
         let totalAgentWorkerCount = 0;
         for (const edu of educationLevelKeys) {
             totalAgentWorkerCount += totalWorkersForEdu[edu];
@@ -166,20 +149,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
     bank.equity = bank.deposits - bank.loans;
 }
 
-// ---------------------------------------------------------------------------
-// B) Post-production financial tick
-// ---------------------------------------------------------------------------
-
-/**
- * Step B: loan repayment and balance-sheet reconciliation.
- *
- *   1. Loan repayment (money destruction) with retained-earnings threshold.
- *   2. Balance-sheet invariant verification, when SIM_DEBUG=1 is enabled.
- *
- * Called after the food market tick and wealth diffusion, as the final
- * financial reconciliation step.
- */
-export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet): void {
+export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
     const bank = planet.bank;
 
     if (bank.loans <= 0) {
@@ -207,9 +177,10 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
             );
         }
 
-        const wageBill = assets.lastWageBill ?? 0;
+        const tickInMonth = ((tick - 1) % TICKS_PER_MONTH) + 1;
+        const perTickWage = assets.monthAcc.wages / tickInMonth;
         const bufferCost = estimateInputBufferCost(assets, planet);
-        const retainedThreshold = RETAINED_EARNINGS_THRESHOLD * (wageBill + bufferCost);
+        const retainedThreshold = RETAINED_EARNINGS_THRESHOLD * (perTickWage + bufferCost);
         const excessDeposits = deposits - retainedThreshold;
 
         const repayment = excessDeposits <= 0 ? excessDeposits : Math.min(agentLoan, excessDeposits);

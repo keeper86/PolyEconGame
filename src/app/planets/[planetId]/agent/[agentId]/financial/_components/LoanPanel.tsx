@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useTRPC } from '@/lib/trpc';
+import { formatNumbers } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, BadgeDollarSign, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useTRPC } from '@/lib/trpc';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { formatNumbers } from '@/lib/utils';
+import React, { useState } from 'react';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -17,29 +17,6 @@ type Props = {
     agentId: string;
     planetId: string;
 };
-
-/* ------------------------------------------------------------------ */
-/*  Stat row helper (mirrors AgentFinancialPanel)                     */
-/* ------------------------------------------------------------------ */
-
-function Stat({
-    label,
-    value,
-    valueClassName,
-}: {
-    label: string;
-    value: React.ReactNode;
-    valueClassName?: string;
-}): React.ReactElement {
-    return (
-        <div className='flex items-baseline justify-between gap-2'>
-            <span className='text-xs text-muted-foreground truncate'>{label}</span>
-            <span className={`tabular-nums whitespace-nowrap text-xs font-medium ${valueClassName ?? ''}`}>
-                {value}
-            </span>
-        </div>
-    );
-}
 
 export default function LoanPanel({ agentId, planetId }: Props): React.ReactElement {
     const trpc = useTRPC();
@@ -82,39 +59,6 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
                 <p className='text-xs text-muted-foreground'>
                     Credit conditions unavailable. The agent or planet may not be loaded yet.
                 </p>
-            )}
-
-            {conditions && (
-                <div className='space-y-1'>
-                    <Stat
-                        label='Annual interest rate'
-                        value={`${(conditions.annualInterestRate * 100).toFixed(2)} %`}
-                    />
-
-                    {!conditions.isNewAgent && (
-                        <>
-                            <Stat
-                                label='Existing loans'
-                                value={formatNumbers(conditions.existingLoans)}
-                                valueClassName={conditions.existingLoans > 0 ? 'text-amber-500' : ''}
-                            />
-                            <Stat
-                                label='Monthly revenue (projected)'
-                                value={formatNumbers(conditions.blendedMonthlyRevenue)}
-                            />
-                            <Stat
-                                label='Monthly wage cost (projected)'
-                                value={formatNumbers(conditions.blendedMonthlyWages)}
-                            />
-                            <Stat
-                                label='Net monthly cash flow (projected)'
-                                value={formatNumbers(conditions.monthlyNetCashFlow)}
-                                valueClassName={conditions.monthlyNetCashFlow >= 0 ? 'text-green-600' : 'text-red-500'}
-                            />
-                            <Stat label='Storage collateral' value={formatNumbers(conditions.storageCollateral)} />
-                        </>
-                    )}
-                </div>
             )}
 
             {/* Feedback messages */}

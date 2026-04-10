@@ -3,13 +3,14 @@
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
+import type { ManagementFacility, ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { useParams } from 'next/navigation';
 import type { WorkforceDemography } from './workforce-summary';
 
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
+    managementFacilities: ManagementFacility[];
     storageFacility: StorageFacility;
     allocatedWorkers: Record<EducationLevelType, number>;
     deaths?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
@@ -18,7 +19,6 @@ export type AgentPlanetAssets = {
     workforceDemography?: WorkforceDemography;
     deposits: number;
     loans?: number;
-    lastWageBill?: number;
     market?: {
         sell: {
             [resourceName: string]: {
