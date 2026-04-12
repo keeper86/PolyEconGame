@@ -106,7 +106,7 @@ export default function ProductionFacilitiesPanel({
                 </TabsList>
                 {FACILITY_LEVELS.map((level) => (
                     <TabsContent key={level} value={level} className='mt-3'>
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                        <div className='flex flex-row gap-3 flex-wrap'>
                             {facilitiesByLevel[level].map((entry) => {
                                 const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
                                 const owned = ownedByName.get(previewName);

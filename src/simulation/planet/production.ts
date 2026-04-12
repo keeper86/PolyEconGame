@@ -171,20 +171,17 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         for (let fi = 0; fi < activeFacilities.length; fi++) {
             const facility = activeFacilities[fi];
-            const { resourceEfficiencyScalar } = facilityMeta[fi];
             for (const [eduLevel, req] of Object.entries(facility.workerRequirement)) {
                 if (!req || req <= 0) {
                     continue;
                 }
                 const jobEdu = eduLevel as EducationLevelType;
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
-                const scaledTarget = req * facility.scale * resourceEfficiencyScalar;
-                if (scaledTarget <= 0) {
-                    continue;
-                }
-                const bodies = ageProd[jobEdu] > 0 ? Math.ceil(scaledTarget / ageProd[jobEdu]) : 0;
+
+                const fullTarget = req * facility.scale;
+                const bodies = ageProd[jobEdu] > 0 ? Math.ceil(fullTarget / ageProd[jobEdu]) : 0;
                 const slot: WorkerSlot = {
-                    facilityIdx: fi,
+                    facilityId: facility.id,
                     facilityType: facility.type,
                     jobEdu,
                     jobEduIdx,
@@ -207,14 +204,23 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         activeFacilities.forEach((facility, fi) => {
             const { resourceEfficiencyMap } = facilityMeta[fi];
-            const facilityResult = byFacility.get(fi);
+            const facilityResult = byFacility.get(facility.id);
 
-            const hasWorkerRequirements = Object.values(facility.workerRequirement).some((v) => v && v > 0);
-            const workerEfficiency = facilityResult?.workerEfficiency ?? {};
-            const workerEfficiencyOverall = facilityResult?.workerEfficiencyOverall ?? (hasWorkerRequirements ? 0 : 1);
-            const totalUsedByEdu = facilityResult?.totalUsedByEdu ?? { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-            const exactUsedByEdu = facilityResult?.exactUsedByEdu ?? { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-            const overqualifiedWorkers = facilityResult?.overqualifiedWorkers ?? {};
+            // A facility with no worker slots won't appear in byFacility – treat it as fully efficient.
+            const emptyEduRecord = (): Record<EducationLevelType, number> => ({
+                none: 0,
+                primary: 0,
+                secondary: 0,
+                tertiary: 0,
+            });
+            const { workerEfficiency, workerEfficiencyOverall, overqualifiedWorkers, totalUsedByEdu, exactUsedByEdu } =
+                facilityResult ?? {
+                    workerEfficiency: {},
+                    workerEfficiencyOverall: 1,
+                    overqualifiedWorkers: {},
+                    totalUsedByEdu: emptyEduRecord(),
+                    exactUsedByEdu: emptyEduRecord(),
+                };
 
             const resourceEfficiencies = Object.values(resourceEfficiencyMap);
             const overallEfficiency = Math.min(

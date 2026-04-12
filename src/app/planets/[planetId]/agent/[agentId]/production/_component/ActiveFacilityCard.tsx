@@ -1,20 +1,19 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
-import { formatNumbers } from '@/lib/utils';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { FacilityIcon } from '@/components/client/FacilityIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { FacilityIcon } from '@/components/client/FacilityIcon';
 import { useTRPC } from '@/lib/trpc';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { formatNumbers } from '@/lib/utils';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
-import { EfficiencyDetails, efficiencyColor, pctStr } from './EfficiencyDetails';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useMemo, useState } from 'react';
+import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
+import { FacilityProductionIORow } from './FacilityProductionIORow';
 import { ScaleSelector } from './ScaleSelector';
-import { FacilityIORow } from './FacilityIORow';
-import { Zap, Users } from 'lucide-react';
+import { WorkerBars } from './WorkerBars';
 
 export function ActiveFacilityCard({
     facility,
@@ -54,54 +53,48 @@ export function ActiveFacilityCard({
     const estimatedCredits =
         constructionServicePrice && constructionServicePrice > 0 ? expandCost * constructionServicePrice : null;
 
-    const totalWorkers = Object.entries(facility.workerRequirement)
-        .filter(([, v]) => v && v > 0)
-        .reduce((sum, [, v]) => sum + (v ?? 0) * facility.scale, 0);
+    const results = facility.lastTickResults;
+    const eff = results?.overallEfficiency ?? 0;
 
-    const eff = facility.lastTickResults?.overallEfficiency ?? 0;
+    const globalMin = results
+        ? Math.min(
+              ...Object.values(results.resourceEfficiency),
+              ...Object.values(results.workerEfficiency).filter((v): v is number => v !== undefined),
+          )
+        : 1;
 
     return (
-        <Card className='overflow-hidden flex flex-col'>
+        <Card className='overflow-hidden flex flex-col min-w-[300px] sm:w-[500px]'>
             <CardHeader className='p-3 pb-2'>
-                <div className='flex items-start gap-3'>
+                <div className='flex items-start gap-3 flex-wrap'>
                     <FacilityIcon facilityName={facility.name} />
-                    <div className='flex-1 min-w-0'>
-                        <div className='flex items-center gap-2 flex-wrap'>
-                            <h3 className='font-semibold text-sm leading-tight'>{facility.name}</h3>
+                    <div className='flex-1 min-w-[150px]'>
+                        <div className='flex items-center gap-1 flex-col mb-2'>
+                            <h3 className='font-semibold leading-tight '>{facility.name}</h3>
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
                                 Scale {facility.maxScale}
                             </Badge>
-                            <Badge variant='secondary' className={`text-[10px] px-1.5 py-0 ${efficiencyColor(eff)}`}>
-                                {pctStr(eff)} eff.
-                            </Badge>
                         </div>
-                        <div className='flex items-center gap-3 mt-1 text-xs text-muted-foreground'>
-                            {totalWorkers > 0 && (
-                                <span className='flex items-center gap-1'>
-                                    <Users className='h-3 w-3' />
-                                    {formatNumbers(totalWorkers)}
-                                </span>
-                            )}
-                            {facility.powerConsumptionPerTick !== 0 && (
-                                <span className='flex items-center gap-1'>
-                                    <Zap className='h-3 w-3' />
-                                    {facility.powerConsumptionPerTick > 0
-                                        ? `${facility.powerConsumptionPerTick} MW`
-                                        : 'produces power'}
-                                </span>
-                            )}
-                        </div>
+
+                        <WorkerBars
+                            workerRequirement={facility.workerRequirement}
+                            scale={facility.scale}
+                            workerEfficiency={results?.workerEfficiency ?? {}}
+                            globalMin={globalMin}
+                        />
                     </div>
                 </div>
             </CardHeader>
             <CardContent className='px-3 pb-3 flex flex-col flex-1 gap-2'>
                 <div className='flex-1 space-y-2'>
-                    <FacilityIORow
+                    <FacilityProductionIORow
                         needs={facility.needs}
                         produces={facility.produces}
                         scale={!showExpand ? facility.scale : targetScale}
+                        resourceEfficiency={results?.resourceEfficiency ?? {}}
+                        overallEfficiency={eff}
+                        limitingEfficiency={globalMin}
                     />
-                    {facility.lastTickResults && <EfficiencyDetails results={facility.lastTickResults} />}
                 </div>
 
                 <div className='mt-auto space-y-2'>

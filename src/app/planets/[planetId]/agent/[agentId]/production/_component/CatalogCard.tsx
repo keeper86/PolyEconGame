@@ -58,7 +58,7 @@ export function CatalogCard({
     );
 
     return (
-        <Card className='overflow-hidden opacity-80 hover:opacity-100 transition-opacity flex flex-col'>
+        <Card className='overflow-hidden opacity-80 hover:opacity-100 transition-opacity flex flex-col min-w-[300px] max-w-[600px]'>
             <CardHeader className='p-3 pb-2'>
                 <div className='flex items-start gap-3'>
                     <FacilityIcon facilityName={facility.name} />

@@ -22,7 +22,7 @@ export function UnderConstructionCard({ facility }: { facility: ProductionFacili
             : '?';
 
     return (
-        <Card className='overflow-hidden'>
+        <Card className='overflow-hidden flex flex-col min-w-[300px] sm:w-[500px]'>
             <CardHeader className='p-3 pb-2'>
                 <div className='flex items-start gap-3'>
                     <div className='relative shrink-0'>
@@ -31,7 +31,7 @@ export function UnderConstructionCard({ facility }: { facility: ProductionFacili
                     </div>
                     <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-2 flex-wrap'>
-                            <h3 className='font-semibold text-sm leading-tight'>{facility.name}</h3>
+                            <h3 className='font-semibold leading-tight mb-2'>{facility.name}</h3>
                             <Badge
                                 variant='secondary'
                                 className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
