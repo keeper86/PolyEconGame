@@ -34,6 +34,7 @@ import {
     cancelSellOffer,
     createAgent,
     expandFacility,
+    setFacilityScale,
     getUser,
     getUserIdFromSession,
     getUsers,
@@ -89,6 +90,7 @@ const protectedAppRouter = trpcRoot.router({
     setBuyBids: setBuyBids(),
     buildFacility: buildFacility(),
     expandFacility: expandFacility(),
+    setFacilityScale: setFacilityScale(),
     leaseClaim: leaseClaim(),
     quitClaim: quitClaim(),
 });

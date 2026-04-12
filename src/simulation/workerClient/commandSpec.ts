@@ -148,6 +148,19 @@ export const expandFacilitySpec: CommandSpec<
     extract: (msg) => msg.facilityId,
 };
 
+type SetFacilityScaleSuccess = Extract<OutboundMessage, { type: 'facilityScaleSet' }>;
+type SetFacilityScaleFailure = Extract<OutboundMessage, { type: 'facilityScaleSetFailed' }>;
+export const setFacilityScaleSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'setFacilityScale' }>,
+    SetFacilityScaleSuccess,
+    SetFacilityScaleFailure,
+    string
+> = {
+    successType: 'facilityScaleSet',
+    failureType: 'facilityScaleSetFailed',
+    extract: (msg) => msg.facilityId,
+};
+
 type LeaseClaimSuccess = Extract<OutboundMessage, { type: 'claimLeased' }>;
 type LeaseClaimFailure = Extract<OutboundMessage, { type: 'claimLeaseFailed' }>;
 export const leaseClaimSpec: CommandSpec<

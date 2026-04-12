@@ -8,6 +8,7 @@ import {
     workerCreateAgent,
     workerLeaseClaim,
     workerExpandFacility,
+    workerSetFacilityScale,
     workerQuitClaim,
     workerRequestLoan,
     workerSetAutomation,
@@ -721,6 +722,44 @@ export const expandFacility = () => {
             });
 
             logger.info({ component: 'expand-facility' }, `Agent ${input.agentId} expanding facility ${facilityId}`);
+
+            return { facilityId };
+        });
+};
+
+export const setFacilityScale = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+                scaleFraction: z.number().min(0).max(1),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'set-facility-scale' },
+                `User ${userId} setting facility '${input.facilityId}' scale to ${input.scaleFraction} for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            const facilityId = await workerSetFacilityScale({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
+                scaleFraction: input.scaleFraction,
+            });
 
             return { facilityId };
         });

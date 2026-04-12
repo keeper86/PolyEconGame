@@ -11,6 +11,7 @@ import {
     setBuyBidsSpec,
     buildFacilitySpec,
     expandFacilitySpec,
+    setFacilityScaleSpec,
     leaseClaimSpec,
     quitClaimSpec,
 } from './commandSpec';
@@ -152,6 +153,21 @@ export function workerExpandFacility(opts: {
     return sendCommandSpec(
         { type: 'expandFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
         expandFacilitySpec,
+        timeoutMs,
+    );
+}
+
+export function workerSetFacilityScale(opts: {
+    agentId: string;
+    planetId: string;
+    facilityId: string;
+    scaleFraction: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, facilityId, scaleFraction, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'setFacilityScale', requestId: randomUUID(), agentId, planetId, facilityId, scaleFraction },
+        setFacilityScaleSpec,
         timeoutMs,
     );
 }
