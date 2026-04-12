@@ -26,7 +26,7 @@ export function UnderConstructionCard({ facility }: { facility: ProductionFacili
             <CardHeader className='p-3 pb-2'>
                 <div className='flex items-start gap-3'>
                     <div className='relative shrink-0'>
-                        <FacilityIcon facilityName={facility.name} variant='constructed' />
+                        <FacilityIcon facilityName={facility.name} />
                         <div className='absolute inset-0 bg-background/50 rounded' />
                     </div>
                     <div className='flex-1 min-w-0'>

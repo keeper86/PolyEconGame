@@ -3,182 +3,112 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FacilityIcon } from '@/components/client/FacilityIcon';
-import { ProductIcon } from '@/components/client/ProductIcon';
-import { useTRPC } from '@/lib/trpc';
-
 import type { ProductionFacility } from '@/simulation/planet/facility';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
-import { formatNumbers } from '@/lib/utils';
-import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
+import React, { useState } from 'react';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
+import { CatalogCard } from './CatalogCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
-function FacilityCard({
-    entry,
-    onBuild,
-    isBuilding,
-}: {
-    entry: FacilityCatalogEntry;
-    onBuild: (facilityName: string) => void;
-    isBuilding: boolean;
-}): React.ReactElement {
-    const facility: ProductionFacility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
-
-    const totalWorkers = Object.values(facility.workerRequirement).reduce((sum, v) => sum + (v ?? 0), 0);
-
-    return (
-        <>
-            <h4 className='text-xl font-semibold leading-tight'>{facility.name}</h4>
-            <div className='flex flex-row items-start gap-3'>
-                <div className='relative w-48 h-32'>
-                    <FacilityIcon facilityName={facility.name} size={164} />
-                </div>
-
-                <div className='min-w-0 flex-1'>
-                    <p className='text-xs text-muted-foreground mt-0.5'>
-                        {formatNumbers(totalWorkers)} workers ·{' '}
-                        {facility.powerConsumptionPerTick > 0
-                            ? `${facility.powerConsumptionPerTick} MW`
-                            : 'produces power'}
-                    </p>
-                </div>
-            </div>
-
-            <div className='space-y-2 text-xs'>
-                {facility.needs.length > 0 && (
-                    <div>
-                        <span className='text-muted-foreground font-medium'>Needs: </span>
-                        <div className='flex flex-wrap gap-2 mt-1'>
-                            {facility.needs.map(({ resource, quantity }) => (
-                                <span
-                                    key={resource.name}
-                                    className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1'
-                                >
-                                    <ProductIcon productName={resource.name} size={32} />
-                                    {formatNumbers(quantity)}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {facility.produces.length > 0 && (
-                    <div>
-                        <span className='text-muted-foreground font-medium'>Produces: </span>
-                        <div className='flex flex-wrap gap-2 mt-1'>
-                            {facility.produces.map(({ resource, quantity }) => (
-                                <span
-                                    key={resource.name}
-                                    className='inline-flex items-center gap-1.5 rounded bg-primary/10 px-2 py-1 text-primary'
-                                >
-                                    <ProductIcon productName={resource.name} size={32} />
-                                    {formatNumbers(quantity)}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <Button
-                variant='outline'
-                size='sm'
-                disabled={isBuilding}
-                onClick={() => onBuild(facility.name)}
-                className='mt-auto w-full text-xs'
-            >
-                {isBuilding ? 'Building…' : 'Build'}
-            </Button>
-        </>
-    );
-}
-
-export default function BuildFacilityDialog({
+export function BuildFacilityDialog({
     agentId,
     planetId,
+    constructionServicePrice,
+    ownedByName,
+    onBuilt,
 }: {
     agentId: string;
     planetId: string;
+    constructionServicePrice?: number;
+    ownedByName: Map<string, ProductionFacility>;
+    onBuilt: () => void;
 }): React.ReactElement {
     const [open, setOpen] = useState(false);
-    const trpc = useTRPC();
-    const queryClient = useQueryClient();
 
-    const buildMutation = useMutation(
-        trpc.buildFacility.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-                });
-            },
-        }),
+    const handleBuilt = () => {
+        setOpen(false);
+        onBuilt();
+    };
+
+    const buildableLevels = FACILITY_LEVELS.filter((level) =>
+        facilitiesByLevel[level].some((e) => !ownedByName.has(e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name)),
     );
 
-    function handleBuild(facilityKey: string) {
-        buildMutation.mutate({ agentId, planetId, facilityKey });
-    }
+    const defaultTab = buildableLevels[0];
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant='outline' size='sm' className='gap-2'>
-                    <PlusCircle className='h-4 w-4' />
-                    Build facility
+                <Button variant='outline' size='sm' className='gap-1.5 text-xs'>
+                    <PlusCircle className='h-3.5 w-3.5' />
+                    Build Facility
                 </Button>
             </DialogTrigger>
-            <DialogContent className='max-w-4xl max-h-[85vh] flex flex-col p-3 sm:p-6'>
+            <DialogContent className='max-w-3xl max-h-[85vh] flex flex-col'>
                 <DialogHeader>
                     <DialogTitle>Build a New Facility</DialogTitle>
                 </DialogHeader>
-
-                <Tabs defaultValue='raw' className='flex-1 overflow-hidden flex flex-col'>
-                    <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
-                        {FACILITY_LEVELS.map((level) => (
-                            <TabsTrigger
-                                key={level}
-                                value={level}
-                                className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                            >
-                                {FACILITY_LEVEL_LABELS[level]}
-                                <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
-                                    {facilitiesByLevel[level].length}
-                                </Badge>
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-
-                    {FACILITY_LEVELS.map(
-                        (
-                            level, // no scroll bar when smallScreen===true
-                        ) => (
-                            <TabsContent
-                                key={level}
-                                value={level}
-                                className='flex-1 overflow-y-auto mt-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'
-                            >
-                                <div className='flex flex-col gap-3 rounded-lg border border-border bg-card p-2 md:p-4'>
-                                    {facilitiesByLevel[level].map((entry) => (
-                                        <React.Fragment key={entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name}>
-                                            <FacilityCard
-                                                entry={entry}
-                                                onBuild={handleBuild}
-                                                isBuilding={buildMutation.isPending}
-                                            />
-                                            <Separator className='my-3' />
-                                        </React.Fragment>
-                                    ))}
-                                </div>
-                            </TabsContent>
-                        ),
-                    )}
-                </Tabs>
+                {buildableLevels.length === 0 ? (
+                    <p className='text-sm text-muted-foreground py-4 text-center'>
+                        All available facilities have already been built.
+                    </p>
+                ) : (
+                    <Tabs defaultValue={defaultTab} className='flex-1 flex flex-col overflow-hidden'>
+                        <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
+                            {buildableLevels.map((level) => {
+                                const count = facilitiesByLevel[level].filter(
+                                    (e) => !ownedByName.has(e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name),
+                                ).length;
+                                return (
+                                    <TabsTrigger
+                                        key={level}
+                                        value={level}
+                                        className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                    >
+                                        {FACILITY_LEVEL_LABELS[level]}
+                                        <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
+                                            {count}
+                                        </Badge>
+                                    </TabsTrigger>
+                                );
+                            })}
+                        </TabsList>
+                        <div className='flex-1 overflow-y-auto mt-3'>
+                            {buildableLevels.map((level) => (
+                                <TabsContent key={level} value={level} className='mt-0'>
+                                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                                        {facilitiesByLevel[level]
+                                            .filter(
+                                                (e) =>
+                                                    !ownedByName.has(
+                                                        e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name,
+                                                    ),
+                                            )
+                                            .map((entry) => {
+                                                const previewName = entry.factory(
+                                                    PLACEHOLDER_PLANET,
+                                                    PLACEHOLDER_ID,
+                                                ).name;
+                                                return (
+                                                    <CatalogCard
+                                                        key={previewName}
+                                                        entry={entry}
+                                                        agentId={agentId}
+                                                        planetId={planetId}
+                                                        constructionServicePrice={constructionServicePrice}
+                                                        onBuilt={handleBuilt}
+                                                    />
+                                                );
+                                            })}
+                                    </div>
+                                </TabsContent>
+                            ))}
+                        </div>
+                    </Tabs>
+                )}
             </DialogContent>
         </Dialog>
     );
