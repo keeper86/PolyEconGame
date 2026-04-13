@@ -74,7 +74,7 @@ export function BalanceFlowChart({
                 monthIndex,
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 netBalance: p.avgNetBalance,
-                netIncome: p.avgMonthlyNetIncome,
+                netIncome: p.avgMonthlyNetIncome - (p.avgWages + p.sumPurchases + p.sumClaimPayments),
                 ghostNetBalance: null,
                 ghostNetIncome: null,
             };

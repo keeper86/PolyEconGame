@@ -83,6 +83,8 @@ export default function ResourceAccordionItem({
         }
     };
 
+    const [innerOpen, setInnerOpen] = useState<string>('');
+
     const [buySuccessMsg, setBuySuccessMsg] = useState<string | null>(null);
     const [buyErrorMsg, setBuyErrorMsg] = useState<string | null>(null);
     const [sellSuccessMsg, setSellSuccessMsg] = useState<string | null>(null);
@@ -345,9 +347,8 @@ export default function ResourceAccordionItem({
             }
         }
 
-        const buyPayload: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }> = {
+        const buyPayload: Record<string, { bidPrice?: number; bidStorageTarget?: number }> = {
             [resourceName]: {
-                ...(local.bidAutomated !== (bid?.automated ?? false) && { automated: local.bidAutomated }),
                 ...(!isNaN(bidPrice) && bidPrice > 0 && { bidPrice }),
                 ...(!isNaN(bidStorageTarget) && bidStorageTarget >= 0 && { bidStorageTarget }),
             },
@@ -378,9 +379,8 @@ export default function ResourceAccordionItem({
             }
         }
 
-        const sellPayload: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }> = {
+        const sellPayload: Record<string, { offerPrice?: number; offerRetainment?: number }> = {
             [resourceName]: {
-                ...(local.offerAutomated !== (offer?.automated ?? false) && { automated: local.offerAutomated }),
                 ...(!isNaN(offerPrice) && offerPrice >= PRICE_FLOOR && { offerPrice }),
                 ...(!isNaN(offerRetainment) && offerRetainment >= 0 && { offerRetainment }),
             },
@@ -394,7 +394,6 @@ export default function ResourceAccordionItem({
         onLocalChange(resourceName, {
             bidPrice: local.savedBidPrice,
             bidStorageTarget: local.savedBidStorageTarget,
-            bidAutomated: local.savedBidAutomated,
         });
         setBuySuccessMsg(null);
         setBuyErrorMsg(null);
@@ -404,7 +403,6 @@ export default function ResourceAccordionItem({
         onLocalChange(resourceName, {
             offerPrice: local.savedOfferPrice,
             offerRetainment: local.savedOfferRetainment,
-            offerAutomated: local.savedOfferAutomated,
         });
         setSellSuccessMsg(null);
         setSellErrorMsg(null);
@@ -412,25 +410,25 @@ export default function ResourceAccordionItem({
 
     // ── Automation change handlers ────────────────────────────────────
     const handleBuyAutomationChange = (automated: boolean) => {
-        onLocalChange(resourceName, { bidAutomated: automated });
-        // Auto-save when automation is toggled
-        if (automated !== local.savedBidAutomated) {
-            const buyPayload: Record<string, { automated?: boolean }> = {
-                [resourceName]: { automated },
-            };
-            buyMutation.mutate({ agentId, planetId, bids: buyPayload });
+        onLocalChange(resourceName, { bidAutomated: automated, savedBidAutomated: automated });
+        if (automated) {
+            setInnerOpen((prev) => (prev === 'buy' ? '' : prev));
         }
+        const buyPayload: Record<string, { automated?: boolean }> = {
+            [resourceName]: { automated },
+        };
+        buyMutation.mutate({ agentId, planetId, bids: buyPayload });
     };
 
     const handleSellAutomationChange = (automated: boolean) => {
-        onLocalChange(resourceName, { offerAutomated: automated });
-        // Auto-save when automation is toggled
-        if (automated !== local.savedOfferAutomated) {
-            const sellPayload: Record<string, { automated?: boolean }> = {
-                [resourceName]: { automated },
-            };
-            sellMutation.mutate({ agentId, planetId, offers: sellPayload });
+        onLocalChange(resourceName, { offerAutomated: automated, savedOfferAutomated: automated });
+        if (automated) {
+            setInnerOpen((prev) => (prev === 'sell' ? '' : prev));
         }
+        const sellPayload: Record<string, { automated?: boolean }> = {
+            [resourceName]: { automated },
+        };
+        sellMutation.mutate({ agentId, planetId, offers: sellPayload });
     };
 
     return (
@@ -484,7 +482,13 @@ export default function ResourceAccordionItem({
                     />
 
                     {/* ── Buy / Sell inner accordion ── */}
-                    <Accordion type='single' collapsible className='space-y-1'>
+                    <Accordion
+                        type='single'
+                        collapsible
+                        className='space-y-1'
+                        value={innerOpen}
+                        onValueChange={setInnerOpen}
+                    >
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}

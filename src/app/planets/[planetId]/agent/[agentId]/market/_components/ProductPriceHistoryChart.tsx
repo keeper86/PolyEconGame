@@ -31,9 +31,11 @@ function yDomainFor(points: ChartPoint[]): [number, number] {
     const maxs = points.map((d) => d.maxPrice);
     const lo = Math.min(...mins);
     const hi = Math.max(...maxs);
-    if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) {
-        const v = Number.isFinite(lo) ? lo : 0;
-        return [v * 0.95 - 0.0001, v * 1.05 + 0.0001];
+    const mid = (lo + hi) / 2;
+    const minSpread = Math.abs(mid) * 0.02 + 0.01;
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi - lo < minSpread) {
+        const v = Number.isFinite(mid) ? mid : 0;
+        return [v - minSpread / 2, v + minSpread / 2];
     }
     const pad = (hi - lo) * 0.08;
     return [lo - pad, hi + pad];
