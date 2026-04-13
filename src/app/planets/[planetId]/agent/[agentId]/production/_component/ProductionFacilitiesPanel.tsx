@@ -10,7 +10,7 @@ import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
-import { BuildFacilityDialog } from './BuildFacilityDialog';
+import { LevelBuildSection } from './LevelBuildSection';
 import { UnderConstructionCard } from './UnderConstructionCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
@@ -93,13 +93,6 @@ export default function ProductionFacilitiesPanel({
                             </Badge>
                         )}
                     </h2>
-                    <BuildFacilityDialog
-                        agentId={agentId}
-                        planetId={planetId}
-                        constructionServicePrice={constructionServicePrice}
-                        ownedByName={ownedByName}
-                        onBuilt={refresh}
-                    />
                 </div>
                 <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
                     {FACILITY_LEVELS.map((level) => {
@@ -115,7 +108,6 @@ export default function ProductionFacilitiesPanel({
                             <TabsTrigger
                                 key={level}
                                 value={level}
-                                disabled={ownedTotal === 0}
                                 className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                             >
                                 {FACILITY_LEVEL_LABELS[level]}
@@ -128,32 +120,46 @@ export default function ProductionFacilitiesPanel({
                         );
                     })}
                 </TabsList>
-                {FACILITY_LEVELS.map((level) => (
-                    <TabsContent key={level} value={level} className='mt-3'>
-                        <div className='flex flex-row gap-3 flex-wrap'>
-                            {facilitiesByLevel[level].map((entry) => {
-                                const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
-                                const owned = ownedByName.get(previewName);
-                                if (owned) {
-                                    if (owned.construction !== null) {
-                                        return <UnderConstructionCard key={owned.id} facility={owned} />;
+                {FACILITY_LEVELS.map((level) => {
+                    const unbuildableEntries = facilitiesByLevel[level].filter(
+                        (e) => !ownedByName.has(e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name),
+                    );
+                    return (
+                        <TabsContent key={level} value={level} className='mt-3'>
+                            <div className='flex flex-row gap-3 flex-wrap'>
+                                {facilitiesByLevel[level].map((entry) => {
+                                    const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
+                                    const owned = ownedByName.get(previewName);
+                                    if (owned) {
+                                        if (owned.construction !== null) {
+                                            return <UnderConstructionCard key={owned.id} facility={owned} />;
+                                        }
+                                        return (
+                                            <ActiveFacilityCard
+                                                key={owned.id}
+                                                facility={owned}
+                                                agentId={agentId}
+                                                planetId={planetId}
+                                                constructionServicePrice={constructionServicePrice}
+                                                onExpanded={refresh}
+                                            />
+                                        );
                                     }
-                                    return (
-                                        <ActiveFacilityCard
-                                            key={owned.id}
-                                            facility={owned}
-                                            agentId={agentId}
-                                            planetId={planetId}
-                                            constructionServicePrice={constructionServicePrice}
-                                            onExpanded={refresh}
-                                        />
-                                    );
-                                }
-                                return null;
-                            })}
-                        </div>
-                    </TabsContent>
-                ))}
+                                    return null;
+                                })}
+                                {unbuildableEntries.length > 0 && (
+                                    <LevelBuildSection
+                                        entries={unbuildableEntries}
+                                        agentId={agentId}
+                                        planetId={planetId}
+                                        constructionServicePrice={constructionServicePrice}
+                                        onBuilt={refresh}
+                                    />
+                                )}
+                            </div>
+                        </TabsContent>
+                    );
+                })}
             </Tabs>
         </div>
     );

@@ -1,20 +1,11 @@
 'use client';
 
 import React from 'react';
-import { ProductIcon } from '@/components/client/ProductIcon';
-import { formatNumbers } from '@/lib/utils';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
-
-type ResourceEntry = { resource: { name: string }; quantity: number };
-
-function ProductQuantity({ resource, quantity }: ResourceEntry): React.ReactElement {
-    return (
-        <span className='inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1'>
-            <ProductIcon productName={resource.name} />
-            {formatNumbers(quantity)}
-        </span>
-    );
-}
+import type { ResourceEntry } from './ProductQuantity';
+import { ProductQuantity } from './ProductQuantity';
+import { useAgentId } from '@/hooks/useAgentId';
+import { usePlanetId } from '@/hooks/usePlanetId';
 
 export function FacilityIORow({
     needs,
@@ -25,11 +16,21 @@ export function FacilityIORow({
     produces: ResourceEntry[];
     scale?: number;
 }): React.ReactElement {
+    const planetId = usePlanetId();
+    const { agentId } = useAgentId();
     return (
         <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
             <div className='flex flex-wrap gap-1.5 justify-center'>
                 {needs.map(({ resource, quantity }) => (
-                    <ProductQuantity key={resource.name} resource={resource} quantity={quantity * scale} />
+                    <ProductQuantity
+                        key={resource.name}
+                        resource={resource}
+                        quantity={quantity * scale}
+                        efficiency={1}
+                        isLimiting={false}
+                        planetId={planetId}
+                        agentId={agentId}
+                    />
                 ))}
             </div>
 
@@ -39,7 +40,15 @@ export function FacilityIORow({
 
             <div className='flex flex-wrap gap-1.5 justify-center'>
                 {produces.map(({ resource, quantity }) => (
-                    <ProductQuantity key={resource.name} resource={resource} quantity={quantity * scale} />
+                    <ProductQuantity
+                        key={resource.name}
+                        resource={resource}
+                        quantity={quantity * scale}
+                        efficiency={1}
+                        isLimiting={false}
+                        planetId={planetId}
+                        agentId={agentId}
+                    />
                 ))}
             </div>
         </div>
