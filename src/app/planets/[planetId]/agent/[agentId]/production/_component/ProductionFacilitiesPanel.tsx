@@ -6,7 +6,8 @@ import { useTRPC } from '@/lib/trpc';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useMemo } from 'react';
+import type { ResourceProcessLevel } from '@/simulation/planet/claims';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
 import { BuildFacilityDialog } from './BuildFacilityDialog';
@@ -57,9 +58,32 @@ export default function ProductionFacilitiesPanel({
         );
     }, [ownedByName]);
 
+    const [activeTab, setActiveTab] = useState<ResourceProcessLevel>(() => {
+        if (typeof window === 'undefined') {
+            return defaultTab;
+        }
+        const hash = window.location.hash.slice(1);
+        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as ResourceProcessLevel;
+    });
+
+    useEffect(() => {
+        const hash = window.location.hash.slice(1);
+        if (!hash) {
+            return;
+        }
+        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel)) {
+            setActiveTab(hash as ResourceProcessLevel);
+        }
+    }, []);
+
+    const handleTabChange = (value: string) => {
+        setActiveTab(value as ResourceProcessLevel);
+        window.history.replaceState(null, '', `#${value}`);
+    };
+
     return (
         <div className='space-y-4'>
-            <Tabs defaultValue={defaultTab}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <div className='flex items-center justify-between mb-1'>
                     <h2 className='text-sm font-semibold'>
                         Facilities

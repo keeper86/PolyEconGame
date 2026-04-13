@@ -65,6 +65,22 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         return slug ? (slugToResourceName(slug) ?? undefined) : undefined;
     });
 
+    // During Next.js soft navigation, window.location.hash may not be set yet when
+    // the useState initializers run synchronously. Read the hash in a useEffect
+    // (which fires after the browser has applied the new URL) and hydrate the states.
+    useEffect(() => {
+        const slug = window.location.hash.slice(1);
+        if (!slug) {
+            return;
+        }
+        const resourceName = slugToResourceName(slug) ?? undefined;
+        if (!resourceName) {
+            return;
+        }
+        setHashResource((prev) => prev ?? resourceName);
+        setOpenItem((prev) => prev ?? resourceName);
+    }, []);
+
     // Update URL hash when accordion opens/closes
     const handleOpenChange = (value: string | undefined) => {
         setOpenItem(value);
@@ -77,14 +93,18 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         }
     };
 
-    // Scroll to the element when auto-opened from hash on mount
+    // Scroll to the element when auto-opened from hash on mount.
+    // Depends on openItem so it also fires when the soft-navigation useEffect above
+    // sets openItem for the first time (it starts as undefined and is then set).
+    const hasScrolled = useRef(false);
     useEffect(() => {
-        if (!openItem) {
+        if (!openItem || hasScrolled.current) {
             return;
         }
         const slug = resourceNameToSlug(openItem);
         const el = document.getElementById(slug);
         if (el) {
+            hasScrolled.current = true;
             // Use a small delay to let the accordion finish rendering, then scroll
             // manually to account for the sticky header height (h-12 sm:h-14 = 48–56px).
             setTimeout(() => {
@@ -92,9 +112,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                 window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
             }, 50);
         }
-        // Only run on mount
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [openItem]);
 
     const trpc = useTRPC();
 

@@ -38,10 +38,8 @@ export function WorkerBars({
         return null;
     }
 
-    console.log('WorkerBars', { workerRequirement, scale, workerEfficiency, globalMin });
-
     return (
-        <div className='flex flex-col gap-2 mt-1'>
+        <div className='flex flex-col gap-2 mb-3'>
             {entries.map(([edu, req]) => {
                 const required = (req ?? 0) * scale;
                 const eff = workerEfficiency[edu] ?? 1;

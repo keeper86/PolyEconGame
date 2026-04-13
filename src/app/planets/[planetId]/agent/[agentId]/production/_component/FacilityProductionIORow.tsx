@@ -1,8 +1,12 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumbers } from '@/lib/utils';
+import { useAgentId } from '@/hooks/useAgentId';
+import { usePlanetId } from '@/hooks/usePlanetId';
+import { resourceNameToSlug } from '../../market/_components/marketHelpers';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 
 type ResourceEntry = { resource: { name: string }; quantity: number };
@@ -22,9 +26,23 @@ function ProductQuantity({
     quantity,
     efficiency,
     isLimiting,
-}: ResourceEntry & { efficiency: number; isLimiting: boolean }): React.ReactElement {
+    planetId,
+    agentId,
+}: ResourceEntry & {
+    efficiency: number;
+    isLimiting: boolean;
+    planetId: string | null;
+    agentId: string | null;
+}): React.ReactElement {
+    const href =
+        planetId && agentId
+            ? `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resource.name)}`
+            : null;
     return (
-        <span className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
+        <Link
+            href={(href ?? '#') as never}
+            className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all'
+        >
             <span
                 className={`absolute bottom-0 left-0 right-0 ${fillColor(efficiency, isLimiting)} transition-all`}
                 style={{ height: `${Math.round(efficiency * 100)}%` }}
@@ -33,7 +51,7 @@ function ProductQuantity({
                 <ProductIcon productName={resource.name} />
                 {formatNumbers(quantity)}
             </span>
-        </span>
+        </Link>
     );
 }
 
@@ -52,6 +70,8 @@ export function FacilityProductionIORow({
     overallEfficiency: number;
     limitingEfficiency: number;
 }): React.ReactElement {
+    const planetId = usePlanetId();
+    const { agentId } = useAgentId();
     return (
         <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
             <div className='flex flex-wrap gap-1.5 justify-center'>
@@ -61,9 +81,11 @@ export function FacilityProductionIORow({
                         <ProductQuantity
                             key={resource.name}
                             resource={resource}
-                            quantity={quantity * scale}
+                            quantity={quantity * scale * overallEfficiency}
                             efficiency={eff}
                             isLimiting={eff <= limitingEfficiency && limitingEfficiency < 0.99}
+                            planetId={planetId}
+                            agentId={agentId}
                         />
                     );
                 })}
@@ -78,9 +100,11 @@ export function FacilityProductionIORow({
                     <ProductQuantity
                         key={resource.name}
                         resource={resource}
-                        quantity={quantity * scale}
+                        quantity={quantity * scale * overallEfficiency}
                         efficiency={overallEfficiency}
                         isLimiting={overallEfficiency <= limitingEfficiency && limitingEfficiency < 0.99}
+                        planetId={planetId}
+                        agentId={agentId}
                     />
                 ))}
             </div>

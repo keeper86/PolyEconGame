@@ -26,3 +26,5 @@ export function FacilityIcon({
         </span>
     );
 }
+
+export const defaultHeight = Math.ceil((280 * 2) / 3);
