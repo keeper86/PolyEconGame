@@ -1,6 +1,6 @@
 'use client';
 
-import { FacilityIcon } from '@/components/client/FacilityIcon';
+import { defaultHeight, FacilityIcon } from '@/components/client/FacilityIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -90,11 +90,11 @@ export function ActiveFacilityCard({
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityIcon facilityName={facility.name} />}
             headerContent={
-                <>
-                    <div className='flex items-center gap-1 flex-col mb-2'>
+                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
+                    <div className='flex items-center gap-1 flex-col mb-auto'>
                         <h3 className='font-semibold leading-tight '>{facility.name}</h3>
                         <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                            Scale {facility.maxScale}
+                            Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
                         </Badge>
                     </div>
                     <WorkerBars
@@ -103,7 +103,7 @@ export function ActiveFacilityCard({
                         workerEfficiency={results?.workerEfficiency ?? {}}
                         globalMin={globalMin}
                     />
-                </>
+                </span>
             }
         >
             <div className='flex-1 space-y-2'>

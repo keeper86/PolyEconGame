@@ -1,3 +1,4 @@
+import { defaultHeight } from '@/components/client/FacilityIcon';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import React from 'react';
@@ -20,7 +21,12 @@ export function FacilityCardShell({
             <CardHeader className='p-3 pb-2'>
                 <div className='flex items-start gap-3'>
                     {icon}
-                    <div className='flex-1 min-w-[150px]'>{headerContent}</div>
+                    <div
+                        className={`flex-1 min-w-[150px] min-h-[${defaultHeight}px]`}
+                        style={{ height: `${defaultHeight}px` }}
+                    >
+                        {headerContent}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className={cn('px-3 pb-3', contentClassName)}>{children}</CardContent>
