@@ -122,6 +122,53 @@ export function handleExpandFacility(
 }
 
 /**
+ * Handle 'setFacilityScale' action — set operating scale of an active facility
+ */
+export function handleSetFacilityScale(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'setFacilityScale' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, facilityId, scaleFraction } = action;
+    if (scaleFraction < 0 || scaleFraction > 1) {
+        safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: `scaleFraction must be between 0 and 1` });
+        return;
+    }
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'facilityScaleSetFailed',
+            requestId,
+            reason: `Agent has no assets on planet '${planetId}'`,
+        });
+        return;
+    }
+    const facility = assets.productionFacilities.find((f) => f.id === facilityId);
+    if (!facility) {
+        safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: `Facility '${facilityId}' not found` });
+        return;
+    }
+    if (facility.construction !== null) {
+        safePostMessage({
+            type: 'facilityScaleSetFailed',
+            requestId,
+            reason: 'Facility is under construction',
+        });
+        return;
+    }
+    facility.scale = facility.maxScale * scaleFraction;
+    console.log(
+        `[worker] Agent '${agentId}' set '${facilityId}' scale to ${facility.scale} (${scaleFraction * 100}%) on planet '${planetId}'`,
+    );
+    safePostMessage({ type: 'facilityScaleSet', requestId, agentId, facilityId });
+}
+
+/**
  * Dispatch facility-related actions to the appropriate handler
  */
 export function handleFacilityAction(
@@ -135,6 +182,9 @@ export function handleFacilityAction(
             break;
         case 'expandFacility':
             handleExpandFacility(state, action, safePostMessage);
+            break;
+        case 'setFacilityScale':
+            handleSetFacilityScale(state, action, safePostMessage);
             break;
         default:
             // This function only handles facility actions

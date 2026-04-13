@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
-import { HardHat } from 'lucide-react';
-import { UnderConstructionCard } from './UnderConstructionCard';
-import { ActiveFacilityCard } from './ActiveFacilityCard';
-import { CatalogCard } from './CatalogCard';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ResourceProcessLevel } from '@/simulation/planet/claims';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
+import { ActiveFacilityCard } from './ActiveFacilityCard';
+import { BuildFacilityDialog } from './BuildFacilityDialog';
+import { UnderConstructionCard } from './UnderConstructionCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -47,30 +47,43 @@ export default function ProductionFacilitiesPanel({
     }, [facilities]);
 
     const activeCount = facilities.filter((f) => f.construction === null).length;
-    const constructionCount = facilities.filter((f) => f.construction !== null).length;
+
+    const defaultTab = useMemo(() => {
+        return (
+            FACILITY_LEVELS.find((level) =>
+                facilitiesByLevel[level].some((e) =>
+                    ownedByName.has(e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name),
+                ),
+            ) ?? 'raw'
+        );
+    }, [ownedByName]);
+
+    const [activeTab, setActiveTab] = useState<ResourceProcessLevel>(() => {
+        if (typeof window === 'undefined') {
+            return defaultTab;
+        }
+        const hash = window.location.hash.slice(1);
+        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as ResourceProcessLevel;
+    });
+
+    useEffect(() => {
+        const hash = window.location.hash.slice(1);
+        if (!hash) {
+            return;
+        }
+        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel)) {
+            setActiveTab(hash as ResourceProcessLevel);
+        }
+    }, []);
+
+    const handleTabChange = (value: string) => {
+        setActiveTab(value as ResourceProcessLevel);
+        window.history.replaceState(null, '', `#${value}`);
+    };
 
     return (
         <div className='space-y-4'>
-            {constructionCount > 0 && (
-                <div>
-                    <div className='flex items-center gap-2 mb-2'>
-                        <HardHat className='h-4 w-4 text-amber-500' />
-                        <h2 className='text-sm font-semibold'>Under Construction</h2>
-                        <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
-                            {constructionCount}
-                        </Badge>
-                    </div>
-                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-                        {facilities
-                            .filter((f) => f.construction !== null)
-                            .map((f) => (
-                                <UnderConstructionCard key={f.id} facility={f} />
-                            ))}
-                    </div>
-                </div>
-            )}
-
-            <Tabs defaultValue='raw'>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <div className='flex items-center justify-between mb-1'>
                     <h2 className='text-sm font-semibold'>
                         Facilities
@@ -80,6 +93,13 @@ export default function ProductionFacilitiesPanel({
                             </Badge>
                         )}
                     </h2>
+                    <BuildFacilityDialog
+                        agentId={agentId}
+                        planetId={planetId}
+                        constructionServicePrice={constructionServicePrice}
+                        ownedByName={ownedByName}
+                        onBuilt={refresh}
+                    />
                 </div>
                 <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
                     {FACILITY_LEVELS.map((level) => {
@@ -95,6 +115,7 @@ export default function ProductionFacilitiesPanel({
                             <TabsTrigger
                                 key={level}
                                 value={level}
+                                disabled={ownedTotal === 0}
                                 className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                             >
                                 {FACILITY_LEVEL_LABELS[level]}
@@ -109,7 +130,7 @@ export default function ProductionFacilitiesPanel({
                 </TabsList>
                 {FACILITY_LEVELS.map((level) => (
                     <TabsContent key={level} value={level} className='mt-3'>
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                        <div className='flex flex-row gap-3 flex-wrap'>
                             {facilitiesByLevel[level].map((entry) => {
                                 const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
                                 const owned = ownedByName.get(previewName);
@@ -128,16 +149,7 @@ export default function ProductionFacilitiesPanel({
                                         />
                                     );
                                 }
-                                return (
-                                    <CatalogCard
-                                        key={previewName}
-                                        entry={entry}
-                                        agentId={agentId}
-                                        planetId={planetId}
-                                        constructionServicePrice={constructionServicePrice}
-                                        onBuilt={refresh}
-                                    />
-                                );
+                                return null;
                             })}
                         </div>
                     </TabsContent>

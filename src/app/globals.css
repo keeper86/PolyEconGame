@@ -146,3 +146,10 @@ html {
         --card: oklch(0.205 0 0 / 75%);
     }
 }
+
+.text-outline-strong {
+    text-shadow:
+        0 0 2px black,
+        0 0 4px black,
+        0 0 6px black;
+}

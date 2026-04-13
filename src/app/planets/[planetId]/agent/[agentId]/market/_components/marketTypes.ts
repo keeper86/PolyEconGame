@@ -48,10 +48,8 @@ export type LocalResourceState = {
     dirtyFields: {
         offerPrice: boolean;
         offerRetainment: boolean;
-        offerAutomated: boolean;
         bidPrice: boolean;
         bidStorageTarget: boolean;
-        bidAutomated: boolean;
     };
 
     // Validation errors

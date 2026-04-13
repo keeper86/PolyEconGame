@@ -46,7 +46,7 @@ const COLORS = [
 const eduLabel = (edu: EducationLevelType): string => educationLevels[edu].name;
 
 /** Colour class based on an efficiency fraction (0-1). */
-const efficiencyColor = (frac: number): string => {
+export const efficiencyColor = (frac: number): string => {
     if (frac >= 0.9) {
         return 'text-green-600';
     }

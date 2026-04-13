@@ -16,10 +16,10 @@ function supply(overrides: Partial<Record<EducationLevelType, number>>): Record<
     return { ...NO_SUPPLY, ...overrides };
 }
 
-function slot(jobEdu: EducationLevelType, capacity: number): WorkerSlot {
+function slot(jobEdu: EducationLevelType, capacity: number, facilityId = 'fac-0'): WorkerSlot {
     const jobEduIdx = ['none', 'primary', 'secondary', 'tertiary'].indexOf(jobEdu);
     return {
-        facilityIdx: 0,
+        facilityId,
         facilityType: 'production',
         jobEdu,
         jobEduIdx,
@@ -94,8 +94,7 @@ describe('waterFill — qualification rule', () => {
 
 describe('waterFill — equilibrium', () => {
     it('equalises fill ratio across two same-capacity slots', () => {
-        const slots = [slot('none', 10), slot('none', 10)];
-        slots[1].facilityIdx = 1;
+        const slots = [slot('none', 10), slot('none', 10, 'fac-1')];
         waterFill(slots, supply({ none: 10 }), FLAT_PROD, NO_DEMAND);
         // 10 workers, 20 total capacity → equilibrium 0.5 → 5 each
         expect(slots[0].assigned).toBe(5);
@@ -104,16 +103,14 @@ describe('waterFill — equilibrium', () => {
 
     it('equalises fill ratio across different-capacity slots', () => {
         // 6-cap + 10-cap, 8 workers → equilibrium 8/16 = 0.5
-        const slots = [slot('none', 6), slot('none', 10)];
-        slots[1].facilityIdx = 1;
+        const slots = [slot('none', 6), slot('none', 10, 'fac-1')];
         waterFill(slots, supply({ none: 8 }), FLAT_PROD, NO_DEMAND);
         expect(slots[0].assigned).toBe(3); // ceil(0.5 × 6) = 3
         expect(slots[1].assigned).toBe(5); // ceil(0.5 × 10) = 5
     });
 
     it('fills all slots to 100% when there is enough supply', () => {
-        const slots = [slot('none', 4), slot('none', 6)];
-        slots[1].facilityIdx = 1;
+        const slots = [slot('none', 4), slot('none', 6, 'fac-1')];
         waterFill(slots, supply({ none: 10 }), FLAT_PROD, NO_DEMAND);
         expect(slots[0].assigned).toBe(4);
         expect(slots[1].assigned).toBe(6);
@@ -122,8 +119,7 @@ describe('waterFill — equilibrium', () => {
     it('raises the lower slot to the level of the higher before equalising further', () => {
         // slot A is at 0/10 (0%), slot B is pre-filled to 4/10 (40%), supply = 6 none
         const a = slot('none', 10);
-        const b = slot('none', 10);
-        b.facilityIdx = 1;
+        const b = slot('none', 10, 'fac-1');
         b.assigned = 4;
         // sorted: [a(0%), b(40%)] — first step raises a to 40% (needs 4), 2 left for both (→ 50% each)
         waterFill([a, b], supply({ none: 6 }), FLAT_PROD, NO_DEMAND);
@@ -152,8 +148,7 @@ describe('waterFill — multiple tiers', () => {
         // 10 secondary workers: both slots reachable (secondary ≥ none, secondary = secondary).
         // equilibrium = 10/16 ≈ 0.625 → slot1 gets ceil(0.625×6)=4, slot2 gets min(ceil(0.625×10)=7, 6 left)=6
         const none6 = slot('none', 6);
-        const sec10 = slot('secondary', 10);
-        sec10.facilityIdx = 1;
+        const sec10 = slot('secondary', 10, 'fac-1');
         waterFill([none6, sec10], supply({ secondary: 10 }), FLAT_PROD, NO_DEMAND);
         expect(none6.assigned).toBe(4);
         expect(sec10.assigned).toBe(6);
@@ -169,8 +164,7 @@ describe('waterFill — multiple tiers', () => {
         // Step 2: 1 worker left for both (width=15) → equilibrium = 0.6 + 1/15 ≈ 0.667.
         // primary-slot: ceil(0.667×5)=4 total, takes 4 (3+1). none-slot: supply exhausted.
         const noneSlot = slot('none', 10);
-        const primarySlot = slot('primary', 5);
-        primarySlot.facilityIdx = 1;
+        const primarySlot = slot('primary', 5, 'fac-1');
         waterFill([noneSlot, primarySlot], supply({ none: 6, primary: 4 }), FLAT_PROD, NO_DEMAND);
         expect(noneSlot.assigned).toBe(6); // none-pass only; primary exhausted on primarySlot
         expect(primarySlot.assigned).toBe(4); // all 4 primary workers went here

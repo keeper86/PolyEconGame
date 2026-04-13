@@ -1,41 +1,25 @@
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 
-/**
- * A single worker slot (one education level within one facility).
- * Capacity is in headcount ("bodies") already adjusted for age productivity
- * and resource availability — so filling to `capacity` means 100% efficiency.
- */
 export type WorkerSlot = {
-    /** Opaque tag so callers can group results back to their source. */
-    facilityIdx: number;
+    /** Facility id so callers can group results back to their source. */
+    facilityId: string;
     /** Discriminates which facility array this slot belongs to. */
     facilityType: 'production' | 'storage' | 'management';
     jobEdu: EducationLevelType;
     jobEduIdx: number;
-    /** Bodies needed for 100% efficiency (resource- and age-adjusted). */
     capacity: number;
-    /** Bodies assigned so far. Mutated by waterFill. */
     assigned: number;
-    /** assigned × ageProd. Mutated by waterFill. */
     effectiveAssigned: number;
-    /** How many bodies were assigned from each worker tier. */
     assignedByEdu: Partial<Record<EducationLevelType, number>>;
-    /** Bodies assigned from a tier above jobEduIdx (overqualified). */
     overqualifiedCount: number;
 };
 
-/** Per-facility aggregates derived directly from the filled WorkerSlots. */
 export type WaterFillFacilityResult = {
-    /** Worker fill rate per job education level (fraction of effective demand met). */
     workerEfficiency: { [edu in EducationLevelType]?: number };
-    /** Minimum of all per-slot worker efficiencies (bottleneck). */
     workerEfficiencyOverall: number;
-    /** Total bodies drawn from each worker-edu tier across all slots. */
     totalUsedByEdu: Record<EducationLevelType, number>;
-    /** Bodies filling exactly-matching job slots per job-edu tier. */
     exactUsedByEdu: Record<EducationLevelType, number>;
-    /** Overqualified workers per job-edu tier, broken down by worker-edu. */
     overqualifiedWorkers: {
         [jobEdu in EducationLevelType]?: {
             [workerEdu in EducationLevelType]?: number;
@@ -43,25 +27,11 @@ export type WaterFillFacilityResult = {
     };
 };
 
-/** Return value of {@link waterFill}. */
 export type WaterFillResult = {
-    /** Remaining (unused) supply per education tier. */
     remaining: Record<EducationLevelType, number>;
-    /** Per-facility aggregates, keyed by `facilityIdx`. */
-    byFacility: Map<number, WaterFillFacilityResult>;
+    byFacility: Map<string, WaterFillFacilityResult>;
 };
 
-/**
- * Distributes workers across slots to maximise the minimum fill ratio
- * (communicating-vessels / water-filling).
- *
- * For each worker tier (lowest-first) all reachable under-filled slots are
- * raised to a common equilibrium level before moving to the next tier.
- * "Reachable" means jobEduIdx ≤ workerEduIdx.
- *
- * Mutates `slots` in place.
- * Returns the remaining unused supply per tier **and** per-facility aggregates.
- */
 export function waterFill(
     slots: WorkerSlot[],
     supplyByEdu: Record<EducationLevelType, number>,
@@ -112,12 +82,12 @@ export function waterFill(
         remaining[workerEdu] = supply;
     }
 
-    // Collect the unique facility indices present in the slot list
-    const facilityIndices = new Set(slots.map((s) => s.facilityIdx));
-    const byFacility = new Map<number, WaterFillFacilityResult>();
+    // Collect the unique facility ids present in the slot list
+    const facilityIds = new Set(slots.map((s) => s.facilityId));
+    const byFacility = new Map<string, WaterFillFacilityResult>();
 
-    for (const fi of facilityIndices) {
-        const facilitySlots = slots.filter((s) => s.facilityIdx === fi);
+    for (const fi of facilityIds) {
+        const facilitySlots = slots.filter((s) => s.facilityId === fi);
 
         const workerEfficiency: { [edu in EducationLevelType]?: number } = {};
         let workerEfficiencyOverall = 1;

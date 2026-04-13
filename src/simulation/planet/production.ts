@@ -119,7 +119,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             ...assets.managementFacilities.filter((f) => !f.construction),
         ];
 
-        type FacilityMeta = { resourceEfficiencyScalar: number; resourceEfficiencyMap: Record<string, number> };
+        type FacilityMeta = { resourceEfficiencyMap: Record<string, number> };
 
         // Compute resource-availability efficiency for each facility.
         // Storage has no needs → efficiencies = [] → scalar = 1, map = {}.
@@ -142,27 +142,24 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         const facilityMeta: FacilityMeta[] = activeFacilities.map((facility) => {
             if (facility.type === 'storage') {
-                return { resourceEfficiencyScalar: 1, resourceEfficiencyMap: {} };
+                return { resourceEfficiencyMap: {} };
             }
             const resourceEfficiencyMap: Record<string, number> = {};
-            const efficiencies = facility.needs.map((need) => {
+            for (const need of facility.needs) {
                 const required = need.quantity * facility.scale;
                 if (need.resource.form === 'landBoundResource') {
-                    const eff = Math.min(1, queryClaimedResource(planet, agent, need.resource) / required);
-                    resourceEfficiencyMap[need.resource.name] = eff;
-                    return eff;
+                    resourceEfficiencyMap[need.resource.name] = Math.min(
+                        1,
+                        queryClaimedResource(planet, agent, need.resource) / required,
+                    );
+                    continue;
                 }
                 const available = queryStorageFacility(assets.storageFacility, need.resource.name);
                 const totalDemand = totalStorageDemand.get(need.resource.name) ?? required;
                 const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
-                const eff = required > 0 ? Math.min(1, fairShare / required) : 1;
-                resourceEfficiencyMap[need.resource.name] = eff;
-                return eff;
-            });
-            return {
-                resourceEfficiencyScalar: efficiencies.length > 0 ? Math.min(...efficiencies) : 1,
-                resourceEfficiencyMap,
-            };
+                resourceEfficiencyMap[need.resource.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
+            }
+            return { resourceEfficiencyMap };
         });
 
         // Build one flat list of WorkerSlots across all active facilities.
@@ -171,20 +168,17 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         for (let fi = 0; fi < activeFacilities.length; fi++) {
             const facility = activeFacilities[fi];
-            const { resourceEfficiencyScalar } = facilityMeta[fi];
             for (const [eduLevel, req] of Object.entries(facility.workerRequirement)) {
                 if (!req || req <= 0) {
                     continue;
                 }
                 const jobEdu = eduLevel as EducationLevelType;
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
-                const scaledTarget = req * facility.scale * resourceEfficiencyScalar;
-                if (scaledTarget <= 0) {
-                    continue;
-                }
-                const bodies = ageProd[jobEdu] > 0 ? Math.ceil(scaledTarget / ageProd[jobEdu]) : 0;
+
+                const fullTarget = req * facility.scale;
+                const bodies = ageProd[jobEdu] > 0 ? Math.ceil(fullTarget / ageProd[jobEdu]) : 0;
                 const slot: WorkerSlot = {
-                    facilityIdx: fi,
+                    facilityId: facility.id,
                     facilityType: facility.type,
                     jobEdu,
                     jobEduIdx,
@@ -207,14 +201,23 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         activeFacilities.forEach((facility, fi) => {
             const { resourceEfficiencyMap } = facilityMeta[fi];
-            const facilityResult = byFacility.get(fi);
+            const facilityResult = byFacility.get(facility.id);
 
-            const hasWorkerRequirements = Object.values(facility.workerRequirement).some((v) => v && v > 0);
-            const workerEfficiency = facilityResult?.workerEfficiency ?? {};
-            const workerEfficiencyOverall = facilityResult?.workerEfficiencyOverall ?? (hasWorkerRequirements ? 0 : 1);
-            const totalUsedByEdu = facilityResult?.totalUsedByEdu ?? { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-            const exactUsedByEdu = facilityResult?.exactUsedByEdu ?? { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-            const overqualifiedWorkers = facilityResult?.overqualifiedWorkers ?? {};
+            // A facility with no worker slots won't appear in byFacility – treat it as fully efficient.
+            const emptyEduRecord = (): Record<EducationLevelType, number> => ({
+                none: 0,
+                primary: 0,
+                secondary: 0,
+                tertiary: 0,
+            });
+            const { workerEfficiency, workerEfficiencyOverall, overqualifiedWorkers, totalUsedByEdu, exactUsedByEdu } =
+                facilityResult ?? {
+                    workerEfficiency: {},
+                    workerEfficiencyOverall: 1,
+                    overqualifiedWorkers: {},
+                    totalUsedByEdu: emptyEduRecord(),
+                    exactUsedByEdu: emptyEduRecord(),
+                };
 
             const resourceEfficiencies = Object.values(resourceEfficiencyMap);
             const overallEfficiency = Math.min(

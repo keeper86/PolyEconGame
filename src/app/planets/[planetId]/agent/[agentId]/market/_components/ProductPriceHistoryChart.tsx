@@ -31,9 +31,11 @@ function yDomainFor(points: ChartPoint[]): [number, number] {
     const maxs = points.map((d) => d.maxPrice);
     const lo = Math.min(...mins);
     const hi = Math.max(...maxs);
-    if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) {
-        const v = Number.isFinite(lo) ? lo : 0;
-        return [v * 0.95 - 0.0001, v * 1.05 + 0.0001];
+    const mid = (lo + hi) / 2;
+    const minSpread = Math.abs(mid) * 0.02 + 0.01;
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi - lo < minSpread) {
+        const v = Number.isFinite(mid) ? mid : 0;
+        return [v - minSpread / 2, v + minSpread / 2];
     }
     const pad = (hi - lo) * 0.08;
     return [lo - pad, hi + pad];
@@ -47,13 +49,26 @@ function logTicksFor(points: ChartPoint[]): number[] | undefined {
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     if (minP === maxP) {
-        return [minP];
+        // Return power-of-10 ticks bracketing the single price to avoid
+        // recharts adding the data value as an extra tick (causing duplicates).
+        const e = Math.floor(Math.log10(minP));
+        const lower = Math.pow(10, e);
+        const upper = Math.pow(10, e + 1);
+        return lower === upper ? [lower] : [lower, upper];
     }
     const result: number[] = [];
     for (let e = Math.floor(Math.log10(minP)); e <= Math.ceil(Math.log10(maxP)); e++) {
         result.push(Math.pow(10, e));
     }
     return result;
+}
+
+function logDomainFor(ticks: number[]): [number, number] {
+    // Use the tick range as the domain so recharts does not auto-add domain
+    // boundary ticks that duplicate values already in the ticks array.
+    const min = Math.min(...ticks);
+    const max = Math.max(...ticks);
+    return [min, max];
 }
 
 function usesLogScale(points: ChartPoint[]): boolean {
@@ -384,8 +399,8 @@ function YearlyChart({
     }, [yearlyPoints]);
 
     const useLog = useMemo(() => usesLogScale(data), [data]);
-    const yDomain = useMemo(() => (useLog ? (['auto', 'auto'] as ['auto', 'auto']) : yDomainFor(data)), [data, useLog]);
     const yTicks = useMemo(() => (useLog ? logTicksFor(data) : undefined), [data, useLog]);
+    const yDomain = useMemo(() => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(data)), [data, useLog, yTicks]);
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
     const xMin = data.length > 0 ? data[0].year : 0;
@@ -434,8 +449,8 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
     }, [decadePoints]);
 
     const useLog = useMemo(() => usesLogScale(data), [data]);
-    const yDomain = useMemo(() => (useLog ? (['auto', 'auto'] as ['auto', 'auto']) : yDomainFor(data)), [data, useLog]);
     const yTicks = useMemo(() => (useLog ? logTicksFor(data) : undefined), [data, useLog]);
+    const yDomain = useMemo(() => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(data)), [data, useLog, yTicks]);
     const gradId = `grad_dec_${productName.replace(/\s+/g, '_')}`;
 
     const formatYearTick = (year: number): string => {

@@ -67,11 +67,6 @@ export default function FinancialPage() {
                             loans={assets.loans ?? 0}
                             loanConditions={loanConditions}
                         />
-                        <Separator />
-
-                        <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} />
-
-                        <Separator />
                         <Collapsible>
                             <CollapsibleTrigger className='flex items-center gap-1 text-xs font-semibold text-muted-foreground w-full group'>
                                 <ChevronDown className='h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180' />
@@ -81,6 +76,9 @@ export default function FinancialPage() {
                                 <AgentFinancialCharts agentId={agentId} />
                             </CollapsibleContent>
                         </Collapsible>
+                        <Separator />
+
+                        <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} />
                     </CardContent>
                 </Card>
             ) : (

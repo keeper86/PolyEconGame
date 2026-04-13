@@ -171,6 +171,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'buildFacility':
                     case 'expandFacility':
+                    case 'setFacilityScale':
                         handleFacilityAction(state, action, safePostMessage);
                         break;
                 }
@@ -850,6 +851,28 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'expandFacility', requestId, agentId, planetId, facilityId, targetScale });
+            // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'setFacilityScale') {
+            const { requestId, agentId, planetId, facilityId, scaleFraction } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'facilityScaleSetFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'setFacilityScale', requestId, agentId, planetId, facilityId, scaleFraction });
             // Eager draining if not currently processing a tick
             if (!processingTick) {
                 drainActionQueue();

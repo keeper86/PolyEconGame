@@ -74,7 +74,7 @@ export function BalanceFlowChart({
                 monthIndex,
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 netBalance: p.avgNetBalance,
-                netIncome: p.avgMonthlyNetIncome,
+                netIncome: p.avgMonthlyNetIncome - (p.avgWages + p.sumPurchases + p.sumClaimPayments),
                 ghostNetBalance: null,
                 ghostNetIncome: null,
             };
@@ -149,7 +149,7 @@ export function BalanceFlowChart({
                 <p className='text-xs font-semibold text-muted-foreground mb-2'>Net Balance &amp; Cash Flow</p>
                 <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width='100%' height='100%'>
-                        <AreaChart data={chartData} margin={{ top: 0, right: -20, left: -10, bottom: 0 }}>
+                        <AreaChart data={chartData} margin={{ top: 0, right: -20, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id='gradBalance2' x1='0' x2='0' y1='0' y2='1'>
                                     <stop offset='5%' stopColor='#4f46e5' stopOpacity={0.45} />
