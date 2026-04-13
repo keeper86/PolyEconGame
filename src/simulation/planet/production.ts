@@ -119,7 +119,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
             ...assets.managementFacilities.filter((f) => !f.construction),
         ];
 
-        type FacilityMeta = { resourceEfficiencyScalar: number; resourceEfficiencyMap: Record<string, number> };
+        type FacilityMeta = { resourceEfficiencyMap: Record<string, number> };
 
         // Compute resource-availability efficiency for each facility.
         // Storage has no needs → efficiencies = [] → scalar = 1, map = {}.
@@ -142,27 +142,24 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
 
         const facilityMeta: FacilityMeta[] = activeFacilities.map((facility) => {
             if (facility.type === 'storage') {
-                return { resourceEfficiencyScalar: 1, resourceEfficiencyMap: {} };
+                return { resourceEfficiencyMap: {} };
             }
             const resourceEfficiencyMap: Record<string, number> = {};
-            const efficiencies = facility.needs.map((need) => {
+            for (const need of facility.needs) {
                 const required = need.quantity * facility.scale;
                 if (need.resource.form === 'landBoundResource') {
-                    const eff = Math.min(1, queryClaimedResource(planet, agent, need.resource) / required);
-                    resourceEfficiencyMap[need.resource.name] = eff;
-                    return eff;
+                    resourceEfficiencyMap[need.resource.name] = Math.min(
+                        1,
+                        queryClaimedResource(planet, agent, need.resource) / required,
+                    );
+                    continue;
                 }
                 const available = queryStorageFacility(assets.storageFacility, need.resource.name);
                 const totalDemand = totalStorageDemand.get(need.resource.name) ?? required;
                 const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
-                const eff = required > 0 ? Math.min(1, fairShare / required) : 1;
-                resourceEfficiencyMap[need.resource.name] = eff;
-                return eff;
-            });
-            return {
-                resourceEfficiencyScalar: efficiencies.length > 0 ? Math.min(...efficiencies) : 1,
-                resourceEfficiencyMap,
-            };
+                resourceEfficiencyMap[need.resource.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
+            }
+            return { resourceEfficiencyMap };
         });
 
         // Build one flat list of WorkerSlots across all active facilities.

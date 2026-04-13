@@ -10,7 +10,7 @@ import { formatNumbers } from '@/lib/utils';
 import { FacilityCardShell } from './FacilityCardShell';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
 import { FacilityProductionIORow } from './FacilityProductionIORow';
 import { ScaleSelector } from './ScaleSelector';
@@ -36,12 +36,18 @@ export function ActiveFacilityCard({
     const [showSetScale, setShowSetScale] = useState(false);
 
     const SCALE_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
-    const currentScaleFraction = facility.maxScale > 0 ? Math.round((facility.scale / facility.maxScale) * 4) / 4 : 1;
+    const computeScaleFractionIndex = (scale: number, maxScale: number) => {
+        const fraction = maxScale > 0 ? Math.round((scale / maxScale) * 4) / 4 : 1;
+        const idx = SCALE_FRACTIONS.indexOf(fraction as (typeof SCALE_FRACTIONS)[number]);
+        return idx >= 0 ? idx : 4;
+    };
     const [scaleFractionIndex, setScaleFractionIndex] = useState(() =>
-        SCALE_FRACTIONS.indexOf(currentScaleFraction as (typeof SCALE_FRACTIONS)[number]) >= 0
-            ? SCALE_FRACTIONS.indexOf(currentScaleFraction as (typeof SCALE_FRACTIONS)[number])
-            : 4,
+        computeScaleFractionIndex(facility.scale, facility.maxScale),
     );
+    useEffect(() => {
+        setScaleFractionIndex(computeScaleFractionIndex(facility.scale, facility.maxScale));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [facility.scale, facility.maxScale]);
 
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
