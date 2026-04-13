@@ -19,17 +19,16 @@ export function FacilityCardShell({
     return (
         <Card className={cn('overflow-hidden flex flex-col min-w-[300px]', className)}>
             <CardHeader className='p-3 pb-2'>
-                <div className='flex items-start gap-3'>
+                <div className='flex items-start gap-3 flex-wrap'>
                     {icon}
-                    <div
-                        className={`flex-1 min-w-[150px] min-h-[${defaultHeight}px]`}
-                        style={{ height: `${defaultHeight}px` }}
-                    >
+                    <div className='flex-1 min-w-[150px]' style={{ minHeight: `${defaultHeight}px` }}>
                         {headerContent}
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className={cn('px-3 pb-3', contentClassName)}>{children}</CardContent>
+            <CardContent className={cn('px-3 pb-3', 'max-w-[485px] sm:max-w-[485px]', contentClassName)}>
+                {children}
+            </CardContent>
         </Card>
     );
 }

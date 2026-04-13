@@ -86,7 +86,6 @@ export function ActiveFacilityCard({
 
     return (
         <FacilityCardShell
-            className='sm:w-[485px]'
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityIcon facilityName={facility.name} />}
             headerContent={
