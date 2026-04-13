@@ -8,9 +8,13 @@ import { Progress } from '@/components/ui/progress';
 import { FacilityIcon } from '@/components/client/FacilityIcon';
 import { HardHat } from 'lucide-react';
 import { FacilityCardShell } from './FacilityCardShell';
+import { Button } from '@/components/ui/button';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
 
 export function UnderConstructionCard({ facility }: { facility: ProductionFacility }): React.ReactElement {
     const cs = facility.construction!;
+    const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const pct =
         cs.totalConstructionServiceRequired > 0
             ? Math.min(100, (cs.progress / cs.totalConstructionServiceRequired) * 100)
@@ -77,8 +81,12 @@ export function UnderConstructionCard({ facility }: { facility: ProductionFacili
             </div>
             <p className='text-xs text-muted-foreground'>
                 Remaining: <span className='tabular-nums'>{formatNumbers(remaining)}</span> /{' '}
-                {formatNumbers(cs.totalConstructionServiceRequired)} construction services
+                {formatNumbers(cs.totalConstructionServiceRequired)} construction
             </p>
+            <Button size='sm' variant='outline' asChild>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Link href={`/planets/${planetId}/agent/${agentId}/market#construction` as any}>Buy construction</Link>
+            </Button>
         </FacilityCardShell>
     );
 }

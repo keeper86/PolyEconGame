@@ -80,6 +80,11 @@ export function resourceNameToSlug(resourceName: string): string {
     return resourceName.toLowerCase().replace(/\s+/g, '-');
 }
 
+/** Convert URL slug back to resource name by looking up ALL_RESOURCES */
+export function slugToResourceName(slug: string): string | undefined {
+    return ALL_RESOURCES.find((r) => resourceNameToSlug(r.name) === slug)?.name;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Market status classification                                       */
 /* ------------------------------------------------------------------ */
@@ -114,6 +119,7 @@ export function buildResourceList(
     storageFacility: StorageFacility,
     showAll: boolean,
     managementFacilities: ManagementFacility[] = [],
+    forceInclude: string[] = [],
 ): { name: string }[] {
     if (showAll) {
         return ALL_RESOURCES.filter((r) => r.form !== 'landBoundResource').map((r) => ({ name: r.name }));
@@ -161,6 +167,11 @@ export function buildResourceList(
         add(constructionServiceResourceType.name);
     }
 
+    // Force-include specific resources (e.g. from URL hash) regardless of filters
+    for (const name of forceInclude) {
+        add(name);
+    }
+
     return result;
 }
 
@@ -194,10 +205,8 @@ export function buildInitialState(
             dirtyFields: {
                 offerPrice: false,
                 offerRetainment: false,
-                offerAutomated: false,
                 bidPrice: false,
                 bidStorageTarget: false,
-                bidAutomated: false,
             },
 
             // Validation errors - empty initially

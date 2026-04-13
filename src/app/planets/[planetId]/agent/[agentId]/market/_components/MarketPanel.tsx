@@ -11,7 +11,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { Props } from './marketTypes';
-import { buildResourceList, buildInitialState, getResourceByName } from './marketHelpers';
+import {
+    buildResourceList,
+    buildInitialState,
+    getResourceByName,
+    slugToResourceName,
+    resourceNameToSlug,
+} from './marketHelpers';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from '../../../_component/columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
@@ -41,7 +47,55 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
     const [showAll, setShowAll] = useState(false);
-    const [openItem, setOpenItem] = useState<string | undefined>(undefined);
+
+    // Read initial hash on mount (client-only)
+    const [hashResource, setHashResource] = useState<string | undefined>(() => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+        const slug = window.location.hash.slice(1);
+        return slug ? (slugToResourceName(slug) ?? undefined) : undefined;
+    });
+
+    const [openItem, setOpenItem] = useState<string | undefined>(() => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+        const slug = window.location.hash.slice(1);
+        return slug ? (slugToResourceName(slug) ?? undefined) : undefined;
+    });
+
+    // Update URL hash when accordion opens/closes
+    const handleOpenChange = (value: string | undefined) => {
+        setOpenItem(value);
+        // Once the user interacts, clear the forced resource so normal filtering applies again
+        setHashResource(undefined);
+        if (value) {
+            window.history.replaceState(null, '', `#${resourceNameToSlug(value)}`);
+        } else {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+    };
+
+    // Scroll to the element when auto-opened from hash on mount
+    useEffect(() => {
+        if (!openItem) {
+            return;
+        }
+        const slug = resourceNameToSlug(openItem);
+        const el = document.getElementById(slug);
+        if (el) {
+            // Use a small delay to let the accordion finish rendering, then scroll
+            // manually to account for the sticky header height (h-12 sm:h-14 = 48–56px).
+            setTimeout(() => {
+                const top = el.getBoundingClientRect().top + window.scrollY - 72;
+                window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            }, 50);
+        }
+        // Only run on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const trpc = useTRPC();
 
     const { productionFacilities, managementFacilities, storageFacility, market } = assets;
@@ -72,9 +126,10 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                 storageFacility,
                 showAll,
                 managementFacilities,
+                hashResource ? [hashResource] : [],
             ),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [showAll, buyBidKeys, sellOfferKeys, productionFacilities.length, managementFacilities.length],
+        [showAll, buyBidKeys, sellOfferKeys, productionFacilities.length, managementFacilities.length, hashResource],
     );
 
     // Group resources by level
@@ -112,10 +167,6 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                 // Always preserve UI-only fields that are never sent to the server
                 next[name].targetBufferTicks = p.targetBufferTicks;
 
-                // For each dirty field: keep the user's unsaved input but re-evaluate
-                // dirtiness against the fresh server baseline (savedXxx in `next`).
-                // After a successful save the server echoes back the saved value, so
-                // the comparison will produce false and the dirty indicator clears.
                 if (p.dirtyFields.offerPrice) {
                     next[name].offerPrice = p.offerPrice;
                     next[name].dirtyFields.offerPrice = p.offerPrice !== next[name].savedOfferPrice;
@@ -124,10 +175,6 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                     next[name].offerRetainment = p.offerRetainment;
                     next[name].dirtyFields.offerRetainment = p.offerRetainment !== next[name].savedOfferRetainment;
                 }
-                if (p.dirtyFields.offerAutomated) {
-                    next[name].offerAutomated = p.offerAutomated;
-                    next[name].dirtyFields.offerAutomated = p.offerAutomated !== next[name].savedOfferAutomated;
-                }
                 if (p.dirtyFields.bidPrice) {
                     next[name].bidPrice = p.bidPrice;
                     next[name].dirtyFields.bidPrice = p.bidPrice !== next[name].savedBidPrice;
@@ -135,10 +182,6 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                 if (p.dirtyFields.bidStorageTarget) {
                     next[name].bidStorageTarget = p.bidStorageTarget;
                     next[name].dirtyFields.bidStorageTarget = p.bidStorageTarget !== next[name].savedBidStorageTarget;
-                }
-                if (p.dirtyFields.bidAutomated) {
-                    next[name].bidAutomated = p.bidAutomated;
-                    next[name].dirtyFields.bidAutomated = p.bidAutomated !== next[name].savedBidAutomated;
                 }
             }
             return next;
@@ -163,17 +206,12 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
             if ('offerRetainment' in patch) {
                 dirtyFields.offerRetainment = patch.offerRetainment !== current.savedOfferRetainment;
             }
-            if ('offerAutomated' in patch) {
-                dirtyFields.offerAutomated = patch.offerAutomated !== current.savedOfferAutomated;
-            }
+
             if ('bidPrice' in patch) {
                 dirtyFields.bidPrice = patch.bidPrice !== current.savedBidPrice;
             }
             if ('bidStorageTarget' in patch) {
                 dirtyFields.bidStorageTarget = patch.bidStorageTarget !== current.savedBidStorageTarget;
-            }
-            if ('bidAutomated' in patch) {
-                dirtyFields.bidAutomated = patch.bidAutomated !== current.savedBidAutomated;
             }
 
             return {
@@ -233,7 +271,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                     type='single'
                                     collapsible
                                     value={openItem}
-                                    onValueChange={setOpenItem}
+                                    onValueChange={handleOpenChange}
                                     className='w-full'
                                 >
                                     {levelResources.map(({ name }) => (

@@ -21,6 +21,7 @@ import BuySection from './BuySection';
 import SellSection from './SellSection';
 import MarketDetailsSection from './MarketDetailsSection';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
+import { resourceNameToSlug } from './marketHelpers';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -433,7 +434,7 @@ export default function ResourceAccordionItem({
     };
 
     return (
-        <AccordionItem value={resourceName}>
+        <AccordionItem value={resourceName} id={resourceNameToSlug(resourceName)}>
             <AccordionTrigger className='hover:no-underline px-1'>
                 <ResourceTrigger
                     name={resourceName}
