@@ -4,7 +4,6 @@ import { educationLevelKeys } from './education';
 import type { Planet } from '../planet/planet';
 import { mergeWealthInto, destroyWealthOnDeath } from '../financial/wealthOps';
 
-export { educationLevels } from './education';
 export const forEachOccupiedPopulation = <T>(
     cohort: WorkforceCohort<T>,
     forEachFunction: (category: T, edu: EducationLevelType, skill: Skill) => void,

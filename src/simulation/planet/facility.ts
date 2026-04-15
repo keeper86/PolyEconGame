@@ -1,6 +1,7 @@
 import type { EducationLevelType } from '../population/education';
-import type { PlanetaryId } from './planet';
+import type { TransportShipType } from '../ships/ships';
 import type { Resource, ResourceProcessLevel } from './claims';
+import type { PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {
@@ -11,7 +12,7 @@ export type ConstructionState = {
     lastTickInvestedConstructionServices: number;
 } | null;
 
-export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management';
+export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management' | 'ships';
 export const getFacilityType = (facility: Facility): FacilityType => {
     if (facility.type === 'production') {
         return facility.produces.reduce((prev, curr) => {
@@ -38,6 +39,7 @@ export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scal
     services: (scale: number) => (300 * Math.pow(scale, 1.1)) / scale + 100,
     storage: (scale: number) => (150 * Math.pow(scale, 1.1)) / scale + 100,
     management: (scale: number) => (250 * Math.pow(scale, 1.1)) / scale + 100,
+    ships: (scale: number) => (500 * Math.pow(scale, 1.1)) / scale + 100,
 };
 
 export const calculateCostsForConstruction = (
@@ -54,7 +56,7 @@ export const calculateCostsForConstruction = (
 };
 
 export type FacilityBase = PlanetaryId & {
-    type: 'production' | 'storage' | 'management';
+    type: 'production' | 'storage' | 'management' | 'ships';
     name: string;
     maxScale: number;
     scale: number;
@@ -70,6 +72,8 @@ export type FacilityBase = PlanetaryId & {
         soil: number;
     };
 };
+
+export type FacilityCategory = FacilityBase['type'];
 
 export type LastTickResults = {
     overallEfficiency: number;
@@ -97,6 +101,8 @@ export type LastManagementTickResults = LastTickResults & {
 
     lastConsumed: { [resourceName: string]: number };
 };
+
+export type LastShipyardTickResults = LastManagementTickResults;
 
 export type ProductionFacility = FacilityBase & {
     type: 'production';
@@ -135,7 +141,30 @@ export type ManagementFacility = FacilityBase & {
     lastTickResults: LastManagementTickResults;
 };
 
-export type Facility = ProductionFacility | StorageFacility | ManagementFacility;
+export type ShipyardFacilityBase = FacilityBase & {
+    type: 'ships';
+    lastTickResults: LastShipyardTickResults;
+};
+export type ShipyardFacility = ShipyardFacilityBase &
+    (
+        | {
+              mode: 'building';
+              shipName: string;
+              produces: TransportShipType; // productionCosts are defined in the ship catalog based on the ship type key
+              progress: number;
+          }
+        | {
+              mode: 'maintenance';
+              shipOwner: string;
+              shipName: string;
+              progress: number;
+          }
+        | {
+              mode: 'idle';
+          }
+    );
+
+export type Facility = ProductionFacility | StorageFacility | ManagementFacility | ShipyardFacility;
 
 export const putIntoStorageFacility = (
     storage: StorageFacility,
@@ -186,6 +215,7 @@ export const getAvailableStorageCapacity = (storage: StorageFacility, resource: 
     return Math.max(0, Math.min(byVolume, byMass));
 };
 
+// TODO: USE resource not only name
 export const removeFromStorageFacility = (
     storage: StorageFacility | undefined,
     resourceName: string,

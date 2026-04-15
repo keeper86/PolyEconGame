@@ -7,7 +7,7 @@ import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
-import type { ManagementFacility, ProductionFacility, StorageFacility } from './facility';
+import type { Facility, ManagementFacility, ProductionFacility, StorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
@@ -90,6 +90,8 @@ export function constructionTick(agents: Map<string, Agent>, planet: Planet): vo
     });
 }
 
+export const MAINTENANCE_COST_MULTIPLIER = 0.01;
+
 export function productionTick(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -113,10 +115,11 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
         }
 
         // All active (non-construction) facilities in one flat array.
-        const activeFacilities: Array<ProductionFacility | StorageFacility | ManagementFacility> = [
+        const activeFacilities: Array<Facility> = [
             ...assets.productionFacilities.filter((f) => !f.construction),
             ...(assets.storageFacility.construction === null ? [assets.storageFacility] : []),
             ...assets.managementFacilities.filter((f) => !f.construction),
+            ...assets.shipyardFacilities.filter((f) => !f.construction),
         ];
 
         type FacilityMeta = { resourceEfficiencyMap: Record<string, number> };
@@ -126,6 +129,42 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
         const totalStorageDemand = new Map<string, number>();
         for (const facility of activeFacilities) {
             if (facility.type === 'storage') {
+                continue;
+            }
+            if (facility.type === 'ships') {
+                if (facility.mode === 'building') {
+                    const proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
+
+                    for (const need of facility.produces.buildingCost) {
+                        const required = need.quantity * proportionPerTick;
+                        totalStorageDemand.set(
+                            need.type.name,
+                            (totalStorageDemand.get(need.type.name) ?? 0) + required,
+                        );
+                    }
+                } else if (facility.mode === 'maintenance') {
+                    const shipOwner = agents.get(facility.shipOwner);
+
+                    const ship = shipOwner?.transportShips.find((s) => s.name === facility.shipName);
+
+                    if (!ship) {
+                        console.warn(
+                            `Ship owner with id ${facility.shipOwner} not found for maintenance. Skipping maintenance consumption.`,
+                        );
+                        continue;
+                    }
+
+                    const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+
+                    for (const need of ship.type.buildingCost) {
+                        const required = need.quantity * maintenancePerTick * MAINTENANCE_COST_MULTIPLIER;
+                        totalStorageDemand.set(
+                            need.type.name,
+                            (totalStorageDemand.get(need.type.name) ?? 0) + required,
+                        );
+                    }
+                }
+
                 continue;
             }
             for (const need of facility.needs) {
@@ -145,6 +184,40 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                 return { resourceEfficiencyMap: {} };
             }
             const resourceEfficiencyMap: Record<string, number> = {};
+            if (facility.type === 'ships') {
+                if (facility.mode === 'building') {
+                    for (const need of facility.produces.buildingCost) {
+                        const required =
+                            need.quantity * Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
+                        const available = queryStorageFacility(assets.storageFacility, need.type.name);
+                        const totalDemand = totalStorageDemand.get(need.type.name) ?? required;
+                        const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
+                        resourceEfficiencyMap[need.type.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
+                    }
+                } else if (facility.mode === 'maintenance') {
+                    const shipOwner = agents.get(facility.shipOwner);
+
+                    const ship = shipOwner?.transportShips.find((s) => s.name === facility.shipName);
+
+                    if (!ship) {
+                        console.warn(
+                            `Ship owner with id ${facility.shipOwner} not found for maintenance. Skipping maintenance consumption.`,
+                        );
+                        return { resourceEfficiencyMap };
+                    }
+
+                    const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+
+                    for (const need of ship.type.buildingCost) {
+                        const required = need.quantity * maintenancePerTick * MAINTENANCE_COST_MULTIPLIER;
+                        const available = queryStorageFacility(assets.storageFacility, need.type.name);
+                        const totalDemand = totalStorageDemand.get(need.type.name) ?? required;
+                        const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
+                        resourceEfficiencyMap[need.type.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
+                    }
+                }
+                return { resourceEfficiencyMap };
+            }
             for (const need of facility.needs) {
                 const required = need.quantity * facility.scale;
                 if (need.resource.form === 'landBoundResource') {

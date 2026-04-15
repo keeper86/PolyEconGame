@@ -1,11 +1,12 @@
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
+import type { FacilityCategory } from './facility';
 
 export type WorkerSlot = {
     /** Facility id so callers can group results back to their source. */
     facilityId: string;
     /** Discriminates which facility array this slot belongs to. */
-    facilityType: 'production' | 'storage' | 'management';
+    facilityType: FacilityCategory;
     jobEdu: EducationLevelType;
     jobEduIdx: number;
     capacity: number;

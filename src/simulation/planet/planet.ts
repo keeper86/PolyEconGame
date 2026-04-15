@@ -1,41 +1,17 @@
 import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
-import type { WorkforceCohort, WorkforceCategory } from '../workforce/workforce';
+import type { TransportShip } from '../ships/ships';
+import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
+import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
+import type { ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from './facility';
 import type { ResourceName } from './resourceCatalog';
-import type { ManagementFacility, ProductionFacility, StorageFacility } from './facility';
-import type { ResourceType, ResourceQuantity, Resource, ResourceClaim } from './claims';
 
-/**
- * Single combined central + commercial bank per planet.
- * Money is created when loans are issued and destroyed when repaid.
- */
 export interface Bank {
-    /** Total outstanding loans to firms (asset side of the bank's balance sheet). */
     loans: number;
-    /**
-     * Total deposits held at the bank (liability side).
-     * Invariant: deposits === firmDeposits + householdDeposits,
-     * where firmDeposits = Σ agent.deposits for all agents on this planet.
-     */
     deposits: number;
-    /**
-     * Aggregate household deposit balance (currency units).
-     * Wages flow into this account; consumption flows out.
-     *
-     * Invariant: this must always equal the sum of per-cohort monetary
-     * wealth across the entire population demography:
-     *   householdDeposits === Σ (category.total × category.wealth.mean)
-     *
-     * Updated incrementally by each subsystem that mutates household
-     * wealth: preProductionFinancialTick (+wages), foodMarket (−purchases),
-     * mortality (−deceased wealth), intergenerationalTransfers (zero-sum).
-     */
     householdDeposits: number;
-    /** Bank's own equity = deposits − loans. */
     equity: number;
-    /** Interest rate on loans per tick (0 = no interest for initial implementation). */
     loanRate: number;
-    /** Interest rate on deposits per tick (0 = no interest for initial implementation). */
     depositRate: number;
 }
 
@@ -43,45 +19,6 @@ export type PlanetaryId = {
     planetId: string;
     id: string;
 };
-
-export type TransportShipType = {
-    name: string;
-    speed: number; // in light years per tick
-    cargoSpecification: {
-        type: ResourceType; // type of resource this ship can carry
-        volume: number; // in cubic meters
-        mass: number; // in tons
-    };
-};
-
-export type TransportShipStatusTransporting = {
-    type: 'transporting';
-    from: string; // planet id
-    to: string; // planet id
-    cargo: ResourceQuantity & { quantity: number }; // current cargo, null if empty
-    arrivalTick: number; // tick when the ship will arrive at destination
-};
-
-export type TransportShipStatusIdle = {
-    type: 'idle';
-};
-
-export type TransportShipStatusMaintenance = {
-    type: 'maintenance';
-    doneAtTick: number; // tick when maintenance will be completed
-};
-
-export type TransportShipStatus =
-    | TransportShipStatusIdle
-    | TransportShipStatusMaintenance
-    | TransportShipStatusTransporting;
-
-export interface TransportShip {
-    id: string;
-    name: string;
-    state: TransportShipStatus;
-    maintainanceStatus: number; // percentage (0-100) of how well maintained the ship is, affects speed and breakdown chance
-}
 
 export type Infrastructure = {
     primarySchools: number;
@@ -235,19 +172,10 @@ export type AgentMarketBidState = {
     /** The resource being sought. */
     resource: Resource;
     bidPrice?: number;
-    /**
-     * Fill storage up to this level — bid quantity per tick is computed
-     * dynamically as `max(0, bidStorageTarget − inventory)`.
-     * Human-settable.
-     */
     bidStorageTarget?: number;
-    /** Units actually purchased during the last market clearing tick. */
     lastBought?: number;
-    /** Total expenditure during the last market clearing tick (currency units). */
     lastSpent?: number;
-    /** Quantity actually placed into the order book last tick (scaled by available deposits). */
     lastEffectiveQty?: number;
-    /** Bid price that was actually submitted to the order book last tick. */
     lastBidPrice?: number;
 
     storageFullWarning?: boolean;
@@ -255,7 +183,6 @@ export type AgentMarketBidState = {
     depositScaleWarning?: 'scaled' | 'dropped';
 
     storageScaleWarning?: 'scaled' | 'dropped';
-    /** When true, the automatic pricing engine manages this bid each tick. */
     automated?: boolean;
 };
 
@@ -298,20 +225,10 @@ export type MarketResult = {
     }[];
 };
 
-// ---------------------------------------------------------------------------
-// Backward-compatible alias so existing UI / server code compiles without
-// changes.  Remove once all call-sites have been updated.
-// ---------------------------------------------------------------------------
-/** @deprecated Use `MarketResult` instead. */
-export type FoodMarketResult = MarketResult;
-
-// ---------------------------------------------------------------------------
-// AgentPlanetAssets
-// ---------------------------------------------------------------------------
-
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
     managementFacilities: ManagementFacility[];
+    shipyardFacilities: ShipyardFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 
@@ -326,7 +243,6 @@ export type AgentPlanetAssets = {
     allocatedWorkers: PerEducation;
 
     deaths: DemographicEventCounters;
-    /** Disabilities affecting this agent's workforce, per education level. */
     disabilities: DemographicEventCounters;
 
     monthAcc: {

@@ -1,4 +1,4 @@
-import type { LastManagementTickResults, ManagementFacility } from './facility';
+import type { LastManagementTickResults, ManagementFacility, ShipyardFacility } from './facility';
 
 const zeroLastTicksResults: LastManagementTickResults = {
     overallEfficiency: 0,
@@ -16,7 +16,7 @@ const defaultPollutionPerTick = {
     soil: 0,
 };
 
-const makeFacilityDefaults = () => ({
+const makeManagementFacilityDefaults = () => ({
     type: 'management' as const,
     maxScale: 1,
     scale: 1,
@@ -38,7 +38,7 @@ const makeFacilityDefaults = () => ({
 });
 
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
-    ...makeFacilityDefaults(),
+    ...makeManagementFacilityDefaults(),
     planetId,
     id,
     name: 'Human Resources Office',
@@ -50,4 +50,24 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
         tertiary: 1,
     },
     needs: [],
+});
+
+export const shipyardFacilityType = (planetId: string, id: string): ShipyardFacility => ({
+    planetId,
+    id,
+    type: 'ships',
+    name: 'Shipyard',
+    maxScale: 1,
+    scale: 1,
+    construction: null,
+    powerConsumptionPerTick: 2,
+    workerRequirement: {
+        none: 10,
+        primary: 20,
+        secondary: 10,
+        tertiary: 5,
+    },
+    pollutionPerTick: { ...defaultPollutionPerTick },
+    mode: 'idle',
+    lastTickResults: { ...zeroLastTicksResults },
 });
