@@ -1,4 +1,3 @@
-import type { TransportShip } from '../planet/planet';
 import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 
 export type InboundMessage =
@@ -92,15 +91,6 @@ export type InboundMessage =
 export type OutboundMessage =
     | { type: 'pong'; tick: number }
     | { type: 'tick'; tick: number; elapsedMs: number }
-    | { type: 'shipArrived'; shipId: string; to: string; cargo: { metal: number; energy: number }; tick: number }
-    | { type: 'shipCreated'; ship: TransportShip; tick: number }
-    | {
-          type: 'shipCreationFailed';
-          reason: string;
-          requested: { metal: number; energy: number };
-          available?: { metal: number; energy: number };
-          from?: string;
-      }
     | { type: 'agentCreated'; requestId: string; agentId: string }
     | { type: 'agentCreationFailed'; requestId: string; reason: string }
     | { type: 'loanGranted'; requestId: string; agentId: string; amount: number }

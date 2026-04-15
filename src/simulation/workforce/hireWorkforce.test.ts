@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import { createEmptyDemographicEventCounters, type Agent, type Planet } from '../planet/planet';
+import { type Agent, type Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { SKILL } from '../population/population';
 
@@ -9,10 +9,10 @@ import { assertTotalPopulationConserved, assertWorkforcePopulationConsistency } 
 import {
     agentMap,
     makeAgent,
+    makeAgentPlanetAssets,
     makeAllocatedWorkers,
     makePlanet,
     makePlanetWithPopulation,
-    makeStorageFacility,
     makeWorkforceDemography,
     sumPopOcc,
     totalPopulation,
@@ -208,37 +208,10 @@ describe('preProductionLaborMarketTick — population conservation', () => {
 
     it('workforce ↔ population consistency with government agent', () => {
         gov.assets = {
-            p: {
-                productionFacilities: [],
-                managementFacilities: [],
-                deposits: 0,
-                depositHold: 0,
-                loans: 0,
-                storageFacility: makeStorageFacility(),
-                allocatedWorkers: makeAllocatedWorkers({ primary: 300 }),
+            p: makeAgentPlanetAssets(planet.id, {
                 workforceDemography: makeWorkforceDemography(),
-                deaths: createEmptyDemographicEventCounters(),
-                disabilities: createEmptyDemographicEventCounters(),
-                monthAcc: {
-                    depositsAtMonthStart: 0,
-                    productionValue: 0,
-                    consumptionValue: 0,
-                    wages: 0,
-                    revenue: 0,
-                    purchases: 0,
-                    claimPayments: 0,
-                    totalWorkersTicks: 0,
-                },
-                lastMonthAcc: {
-                    productionValue: 0,
-                    consumptionValue: 0,
-                    wages: 0,
-                    revenue: 0,
-                    purchases: 0,
-                    claimPayments: 0,
-                    totalWorkersTicks: 0,
-                },
-            },
+                allocatedWorkers: makeAllocatedWorkers(),
+            }),
         };
 
         const before = totalPopulation(planet);
