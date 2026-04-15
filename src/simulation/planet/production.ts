@@ -416,6 +416,73 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet): void
                     exactUsedByEdu,
                     lastConsumed: actualConsumed,
                 };
+            } else if (facility.type === 'ships') {
+                const actualConsumed: Record<string, number> = {};
+                if (facility.mode === 'building') {
+                    if (overallEfficiency > 0) {
+                        for (const need of facility.produces.buildingCost) {
+                            const required =
+                                need.quantity * Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
+                            const consumed = required * overallEfficiency;
+                            const removed = removeFromStorageFacility(assets.storageFacility, need.type.name, consumed);
+                            actualConsumed[need.type.name] = need.type.form === 'services' ? consumed : removed;
+                        }
+                    } else {
+                        facility.produces.buildingCost.forEach((need) => {
+                            actualConsumed[need.type.name] = 0;
+                        });
+                    }
+                } else if (facility.mode === 'maintenance') {
+                    if (overallEfficiency > 0) {
+                        const shipOwner = agents.get(facility.shipOwner);
+
+                        const ship = shipOwner?.transportShips.find((s) => s.name === facility.shipName);
+
+                        if (!ship) {
+                            console.warn(
+                                `Ship owner with id ${facility.shipOwner} not found for maintenance. Skipping maintenance consumption.`,
+                            );
+                        } else {
+                            for (const need of ship.type.buildingCost) {
+                                const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+                                const required = need.quantity * maintenancePerTick * MAINTENANCE_COST_MULTIPLIER;
+                                const consumed = required * overallEfficiency;
+                                const removed = removeFromStorageFacility(
+                                    assets.storageFacility,
+                                    need.type.name,
+                                    consumed,
+                                );
+                                actualConsumed[need.type.name] = need.type.form === 'services' ? consumed : removed;
+                            }
+                        }
+                    } else {
+                        const shipOwner = agents.get(facility.shipOwner);
+                        const ship = shipOwner?.transportShips.find((s) => s.name === facility.shipName);
+                        if (!ship) {
+                            console.warn(
+                                `Ship owner with id ${facility.shipOwner} not found for maintenance. Skipping maintenance consumption.`,
+                            );
+                        } else {
+                            for (const need of ship.type.buildingCost) {
+                                actualConsumed[need.type.name] = 0;
+                            }
+                        }
+                    }
+                }
+
+                for (const [name, qty] of Object.entries(actualConsumed)) {
+                    assets.monthAcc.consumptionValue += qty * (planet.marketPrices[name] ?? 0);
+                }
+
+                facility.lastTickResults = {
+                    overallEfficiency,
+                    workerEfficiency,
+                    resourceEfficiency: resourceEfficiencyMap,
+                    overqualifiedWorkers,
+                    totalUsedByEdu,
+                    exactUsedByEdu,
+                    lastConsumed: actualConsumed,
+                };
             } else {
                 // type === 'storage': workers → efficiency → pollution already done above. No inputs/outputs.
                 facility.lastTickResults = {
