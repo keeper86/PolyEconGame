@@ -326,3 +326,24 @@ export type ShipMaintenanceOffer = ShipMaintenanceOfferBase &
               status: 'open';
           }
     );
+
+export type TransportContractBase = {
+    id: string;
+    fromPlanetId: string;
+    toPlanetId: string;
+    cargo: ResourceQuantity;
+    maxDurationInTicks: number;
+    offeredReward: number;
+    postedByAgentId: string;
+};
+
+export type TransportContract =
+    | (TransportContractBase & {
+          status: 'open';
+          expiresAtTick: number;
+      })
+    | {
+          status: 'accepted';
+          acceptedByAgentId: string;
+          fulfillmentDueAtTick?: number;
+      };
