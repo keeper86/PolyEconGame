@@ -349,13 +349,14 @@ function processShipyardFacility(
             facility.progress += part * overallEfficiency;
             if (facility.progress >= 1) {
                 agent.transportShips.push(createTransportShip(facility.produces, tick, facility.shipName, planet));
+                params.facility = { ...facility, mode: 'idle' };
             }
         } else {
             for (const need of facility.produces.buildingCost) {
                 actualConsumed[need.type.name] = 0;
             }
         }
-    } else if (facility.mode === 'maintenance' && resolvedShip) {
+    } else if (facility.mode === 'maintenance' && resolvedShip && resolvedShip.state.type === 'maintenance') {
         const maintenancePerTick = Math.min(1, 3 / resolvedShip.type.buildingTime);
         if (overallEfficiency > 0) {
             for (const need of resolvedShip.type.buildingCost) {
@@ -363,6 +364,18 @@ function processShipyardFacility(
                 const consumed = required * overallEfficiency;
                 const removed = removeFromStorageFacility(storage, need.type.name, consumed);
                 actualConsumed[need.type.name] = need.type.form === 'services' ? consumed : removed;
+
+                resolvedShip.maintainanceStatus = Math.min(
+                    1,
+                    resolvedShip.maintainanceStatus + maintenancePerTick * overallEfficiency,
+                );
+                if (resolvedShip.maintainanceStatus >= 1) {
+                    resolvedShip.state = {
+                        type: 'idle',
+                        planetId: resolvedShip.state.planetId,
+                    };
+                    params.facility = { ...facility, mode: 'idle' };
+                }
             }
         } else {
             for (const need of resolvedShip.type.buildingCost) {

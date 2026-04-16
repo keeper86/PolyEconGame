@@ -287,21 +287,17 @@ export const createTransportShip = (
     };
 };
 
-export type ContractStatus = 'open' | 'accepted' | 'fulfilled' | 'cancelled';
+export type ContractStatus = 'open' | 'accepted';
 
 export type ShipBuyingOffer = {
     id: string;
-    status: ContractStatus;
     shipType: ShipTypeKey;
     buyerAgentId: string;
     price: number; // creating this offer escrows the price amount from the buyer's deposits
-    deliveryAfterAccepting: number; // tick when contract is due to be fulfilled after being accepted
-    acceptedAndBuildBy?: string; // buyer agent id
 };
 
 export type ShipSellingOffer = {
     id: string;
-    status: ContractStatus;
     ship: TransportShip;
     sellerAgentId: string;
     price: number;
@@ -312,7 +308,6 @@ type ShipMaintenanceOfferBase = {
     shipId: string;
     shipOwnerAgentId: string;
     price: number;
-    maximumTicksAllowed: number;
 };
 
 export type ShipMaintenanceOffer = ShipMaintenanceOfferBase &
