@@ -3,46 +3,8 @@
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { ManagementFacility, ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
-import type { EducationLevelType } from '@/simulation/population/education';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { useParams } from 'next/navigation';
-import type { WorkforceDemography } from './workforce-summary';
-
-export type AgentPlanetAssets = {
-    productionFacilities: ProductionFacility[];
-    managementFacilities: ManagementFacility[];
-    storageFacility: StorageFacility;
-    allocatedWorkers: Record<EducationLevelType, number>;
-    deaths?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
-    disabilities?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
-    retirements?: { thisMonth: Record<EducationLevelType, number>; prevMonth: Record<EducationLevelType, number> };
-    workforceDemography?: WorkforceDemography;
-    deposits: number;
-    loans?: number;
-    market?: {
-        sell: {
-            [resourceName: string]: {
-                offerPrice?: number;
-                offerRetainment?: number;
-                lastSold?: number;
-                lastRevenue?: number;
-                priceDirection?: number;
-                automated?: boolean;
-            };
-        };
-        buy: {
-            [resourceName: string]: {
-                bidPrice?: number;
-                bidStorageTarget?: number;
-                lastBought?: number;
-                lastSpent?: number;
-                storageFullWarning?: boolean;
-                depositScaleWarning?: 'scaled' | 'dropped';
-                automated?: boolean;
-            };
-        };
-    };
-};
 
 export type AgentPlanetDetail = {
     agentId: string;

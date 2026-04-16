@@ -19,7 +19,8 @@ export default function ProductionPage() {
                 <NoAssetsMessage planetName={planetId} agentId={agentId} />
             ) : !isLoading && assets ? (
                 <ProductionFacilitiesPanel
-                    facilities={assets.productionFacilities ?? []}
+                    facilities={assets.productionFacilities}
+                    shipyardFacilities={assets.shipyardFacilities}
                     agentId={agentId}
                     planetId={planetId}
                 />

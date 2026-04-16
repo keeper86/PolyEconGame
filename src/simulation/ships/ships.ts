@@ -29,6 +29,7 @@ export type TransportShipStatusTransporting = {
     to: string; // planet id
     cargo: ResourceQuantity | null;
     arrivalTick: number; // tick when the ship will arrive at destination
+    contractId?: string;
 };
 
 export type TransportShipStatusLoading = {
@@ -37,12 +38,14 @@ export type TransportShipStatusLoading = {
     to: string; // planet id
     cargoGoal: ResourceQuantity | null;
     currentCargo: ResourceQuantity;
+    contractId?: string;
 };
 
 export type TransportShipStatusUnloading = {
     type: 'unloading';
     planetId: string;
     cargo: ResourceQuantity;
+    contractId?: string;
 };
 
 export type TransportShipStatusIdle = {
@@ -53,7 +56,7 @@ export type TransportShipStatusIdle = {
 export type TransportShipStatusMaintenance = {
     type: 'maintenance';
     planetId: string;
-    doneAtTick: number;
+    contractId?: string;
 };
 
 export type TransportShipStatus =
@@ -63,6 +66,8 @@ export type TransportShipStatus =
     | TransportShipStatusLoading
     | TransportShipStatusUnloading;
 
+export type TransportShipStatusType = TransportShipStatus['type'];
+
 export type TransportShip = {
     name: string;
     builtAtTick: number;
@@ -71,7 +76,9 @@ export type TransportShip = {
     maintainanceStatus: number;
 };
 
-export const shipTick = (agents: Map<string, Agent>, planet: Planet, tick = 1): void => {
+// There are planet bound ship actions and there are general one.
+// currently we do non-planet-bound ship actions for each planet -> 7 times.
+export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
     agents.forEach((agent) => {
         agent.transportShips.forEach((ship) => {
             if (ship.state.type === 'loading') {
@@ -181,12 +188,37 @@ export const shipTick = (agents: Map<string, Agent>, planet: Planet, tick = 1): 
                 return;
             }
             if (ship.state.type === 'maintenance') {
-                if (tick >= ship.state.doneAtTick) {
+                if (ship.maintainanceStatus === 1) {
+                    const relevantAssets = agent.assets[ship.state.planetId];
+                    if (!relevantAssets) {
+                        return;
+                    }
+
+                    const offerIndex = relevantAssets.shipMaintenanceOffers.findIndex(
+                        (o) =>
+                            o.status === 'accepted' &&
+                            o.shipName === facility.shipName &&
+                            o.maintenanceProviderAgentId === agent.id,
+                    );
+                    if (offerIndex !== -1) {
+                        const offer = ownerAssets.shipMaintenanceOffers[offerIndex];
+                        if (offer.status === 'accepted') {
+                            ownerAssets.shipMaintenanceOffers[offerIndex] = {
+                                ...offer,
+                                status: 'fulfilled',
+                                maintenanceProviderAgentId: offer.maintenanceProviderAgentId,
+                            };
+                            // Release escrowed payment: deduct from hold, pay provider
+                            ownerAssets.depositHold -= offer.price;
+                            agent.assets[planet.id].deposits += offer.price;
+                        }
+                        break;
+                    }
+
                     ship.state = {
                         type: 'idle',
                         planetId: ship.state.planetId,
                     };
-                    ship.maintainanceStatus = 1;
                 }
             }
         });

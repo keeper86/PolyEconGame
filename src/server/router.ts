@@ -58,6 +58,9 @@ import {
     setSellOffers,
     setWorkerAllocationTargets,
     updateUser,
+    buildShipyard,
+    expandShipyard,
+    setShipyardMode,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -116,6 +119,9 @@ const protectedAppRouter = trpcRoot.router({
     acceptShipBuyingOffer: acceptShipBuyingOffer(),
     postShipMaintenanceOffer: postShipMaintenanceOffer(),
     acceptShipMaintenanceOffer: acceptShipMaintenanceOffer(),
+    buildShipyard: buildShipyard(),
+    expandShipyard: expandShipyard(),
+    setShipyardMode: setShipyardMode(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

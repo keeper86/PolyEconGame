@@ -22,6 +22,7 @@ import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 export { seedRng };
 
 export function advanceTick(gameState: GameState) {
+    shipTick(gameState.agents, gameState.tick);
     gameState.planets.forEach((planet) => {
         const planetMap = new Map([[planet.id, planet]]);
 
@@ -71,8 +72,6 @@ export function advanceTick(gameState: GameState) {
         productionTick(gameState.agents, planet, gameState.tick);
 
         automaticLoanRepayment(gameState.agents, planet, gameState.tick);
-
-        shipTick(gameState.agents, planet, gameState.tick);
 
         if (isFirstTickInMonth(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);

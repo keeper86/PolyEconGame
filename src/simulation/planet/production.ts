@@ -2,6 +2,7 @@ import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
+import type { TransportShipStatusType } from '../ships/ships';
 import { createTransportShip, type TransportShip } from '../ships/ships';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
@@ -376,7 +377,7 @@ function processShipyardFacility(
                     type: 'idle',
                     planetId: resolvedShip.state.planetId,
                 };
-                (facility as { mode: string }).mode = 'idle';
+                (facility as { mode: TransportShipStatusType }).mode = 'idle';
 
                 // Find the matching maintenance offer and mark it fulfilled + transfer payment
                 const ownerAgent = agents.get(facility.shipOwner);

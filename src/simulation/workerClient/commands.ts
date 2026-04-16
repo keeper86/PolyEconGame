@@ -21,6 +21,9 @@ import {
     acceptShipBuyingOfferSpec,
     postShipMaintenanceOfferSpec,
     acceptShipMaintenanceOfferSpec,
+    buildShipyardSpec,
+    expandShipyardSpec,
+    setShipyardModeSpec,
 } from './commandSpec';
 
 export function workerCreateAgent(opts: {
@@ -340,6 +343,56 @@ export function workerAcceptShipMaintenanceOffer(opts: {
     return sendCommandSpec(
         { type: 'acceptShipMaintenanceOffer', requestId: randomUUID(), agentId, planetId, posterAgentId, offerId },
         acceptShipMaintenanceOfferSpec,
+        timeoutMs,
+    );
+}
+
+export function workerBuildShipyard(opts: {
+    agentId: string;
+    planetId: string;
+    shipyardName: string;
+    targetScale: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, shipyardName, targetScale, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'buildShipyard', requestId: randomUUID(), agentId, planetId, shipyardName, targetScale },
+        buildShipyardSpec,
+        timeoutMs,
+    );
+}
+
+export function workerExpandShipyard(opts: {
+    agentId: string;
+    planetId: string;
+    facilityId: string;
+    targetScale: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'expandShipyard', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
+        expandShipyardSpec,
+        timeoutMs,
+    );
+}
+
+export function workerSetShipyardMode(
+    opts: {
+        agentId: string;
+        planetId: string;
+        facilityId: string;
+        timeoutMs?: number;
+    } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'idle' }),
+): Promise<string> {
+    const { agentId, planetId, facilityId, timeoutMs } = opts;
+    const modePayload =
+        opts.mode === 'building'
+            ? ({ mode: 'building', shipTypeName: opts.shipTypeName, shipName: opts.shipName } as const)
+            : ({ mode: 'idle' } as const);
+    return sendCommandSpec(
+        { type: 'setShipyardMode', requestId: randomUUID(), agentId, planetId, facilityId, ...modePayload },
+        setShipyardModeSpec,
         timeoutMs,
     );
 }

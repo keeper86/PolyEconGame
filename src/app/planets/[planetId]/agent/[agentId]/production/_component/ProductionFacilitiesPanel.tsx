@@ -9,19 +9,25 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
+import type { ShipyardFacility } from '../../../../../../../simulation/planet/facility';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
 import { LevelBuildSection } from './LevelBuildSection';
 import { UnderConstructionCard } from './UnderConstructionCard';
+import { ActiveShipyardCard } from './ActiveShipyardCard';
+import { UnderConstructionShipyardCard } from './UnderConstructionShipyardCard';
+import { ShipyardBuildSection } from './ShipyardBuildSection';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
 export default function ProductionFacilitiesPanel({
     facilities,
+    shipyardFacilities,
     agentId,
     planetId,
 }: {
     facilities: ProductionFacility[];
+    shipyardFacilities: ShipyardFacility[];
     agentId: string;
     planetId: string;
 }): React.ReactElement {
@@ -47,6 +53,7 @@ export default function ProductionFacilitiesPanel({
     }, [facilities]);
 
     const activeCount = facilities.filter((f) => f.construction === null).length;
+    const activeShipyards = shipyardFacilities.filter((f) => f.construction === null).length;
 
     const defaultTab = useMemo(() => {
         return (
@@ -58,12 +65,14 @@ export default function ProductionFacilitiesPanel({
         );
     }, [ownedByName]);
 
-    const [activeTab, setActiveTab] = useState<ResourceProcessLevel>(() => {
+    const [activeTab, setActiveTab] = useState<ResourceProcessLevel | 'ships'>(() => {
         if (typeof window === 'undefined') {
             return defaultTab;
         }
         const hash = window.location.hash.slice(1);
-        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as ResourceProcessLevel;
+        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as
+            | ResourceProcessLevel
+            | 'ships';
     });
 
     useEffect(() => {
@@ -71,13 +80,13 @@ export default function ProductionFacilitiesPanel({
         if (!hash) {
             return;
         }
-        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel)) {
-            setActiveTab(hash as ResourceProcessLevel);
+        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) || hash === 'ships') {
+            setActiveTab(hash as ResourceProcessLevel | 'ships');
         }
     }, []);
 
     const handleTabChange = (value: string) => {
-        setActiveTab(value as ResourceProcessLevel);
+        setActiveTab(value as ResourceProcessLevel | 'ships');
         window.history.replaceState(null, '', `#${value}`);
     };
 
@@ -119,6 +128,17 @@ export default function ProductionFacilitiesPanel({
                             </TabsTrigger>
                         );
                     })}
+                    <TabsTrigger
+                        value='ships'
+                        className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                        Ships
+                        {shipyardFacilities.length > 0 && (
+                            <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
+                                {activeShipyards}/{shipyardFacilities.length}
+                            </Badge>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
                 {FACILITY_LEVELS.map((level) => {
                     const unbuildableEntries = facilitiesByLevel[level].filter(
@@ -160,6 +180,33 @@ export default function ProductionFacilitiesPanel({
                         </TabsContent>
                     );
                 })}
+                <TabsContent value='ships' className='mt-3'>
+                    <div className='flex flex-col gap-4'>
+                        <ShipyardBuildSection
+                            agentId={agentId}
+                            planetId={planetId}
+                            constructionServicePrice={constructionServicePrice}
+                            onBuilt={refresh}
+                        />
+                        <div className='flex flex-row gap-3 flex-wrap'>
+                            {shipyardFacilities.map((sy) => {
+                                if (sy.construction !== null) {
+                                    return <UnderConstructionShipyardCard key={sy.id} facility={sy} />;
+                                }
+                                return (
+                                    <ActiveShipyardCard
+                                        key={sy.id}
+                                        facility={sy}
+                                        agentId={agentId}
+                                        planetId={planetId}
+                                        constructionServicePrice={constructionServicePrice}
+                                        onExpanded={refresh}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+                </TabsContent>
             </Tabs>
         </div>
     );

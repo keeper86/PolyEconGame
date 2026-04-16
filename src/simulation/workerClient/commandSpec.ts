@@ -279,3 +279,44 @@ export const acceptShipMaintenanceOfferSpec: CommandSpec<
     failureType: 'shipMaintenanceOfferAcceptFailed',
     extract: (msg) => msg.offerId,
 };
+
+// --- Shipyard management specs ---
+
+type BuildShipyardSuccess = Extract<OutboundMessage, { type: 'shipyardBuilt' }>;
+type BuildShipyardFailure = Extract<OutboundMessage, { type: 'shipyardBuildFailed' }>;
+export const buildShipyardSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'buildShipyard' }>,
+    BuildShipyardSuccess,
+    BuildShipyardFailure,
+    string
+> = {
+    successType: 'shipyardBuilt',
+    failureType: 'shipyardBuildFailed',
+    extract: (msg) => msg.facilityId,
+};
+
+type ExpandShipyardSuccess = Extract<OutboundMessage, { type: 'shipyardExpanded' }>;
+type ExpandShipyardFailure = Extract<OutboundMessage, { type: 'shipyardExpandFailed' }>;
+export const expandShipyardSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'expandShipyard' }>,
+    ExpandShipyardSuccess,
+    ExpandShipyardFailure,
+    string
+> = {
+    successType: 'shipyardExpanded',
+    failureType: 'shipyardExpandFailed',
+    extract: (msg) => msg.facilityId,
+};
+
+type SetShipyardModeSuccess = Extract<OutboundMessage, { type: 'shipyardModeSet' }>;
+type SetShipyardModeFailure = Extract<OutboundMessage, { type: 'shipyardModeSetFailed' }>;
+export const setShipyardModeSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'setShipyardMode' }>,
+    SetShipyardModeSuccess,
+    SetShipyardModeFailure,
+    string
+> = {
+    successType: 'shipyardModeSet',
+    failureType: 'shipyardModeSetFailed',
+    extract: (msg) => msg.facilityId,
+};

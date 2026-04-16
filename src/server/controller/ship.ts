@@ -13,23 +13,26 @@ import {
 } from '../../simulation/workerClient/commands';
 import { workerQueries } from '../../simulation/workerClient/queries';
 
-async function assertAgentOwnership(
-    ctx: Parameters<Parameters<ReturnType<typeof protectedProcedure>['mutation']>[0]>[0]['ctx'],
-    agentId: string,
-): Promise<void> {
-    const userId = getUserIdFromContext(ctx);
+async function assertAgentOwnership(userId: string, agentId: string): Promise<void> {
     const row = await db('user_data').where({ user_id: userId }).first();
-    if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-    if (row.agent_id !== agentId) throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+    if (!row) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+    }
+    if (row.agent_id !== agentId) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+    }
 }
 
 // --- Queries ---
 
 export const listAgentShips = () =>
     protectedProcedure.input(z.object({ agentId: z.string().min(1) })).query(async ({ input, ctx }) => {
-        await assertAgentOwnership(ctx, input.agentId);
+        const userId = getUserIdFromContext(ctx);
+        await assertAgentOwnership(userId, input.agentId);
         const { agent } = await workerQueries.getAgent(input.agentId);
-        if (!agent) throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+        if (!agent) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+        }
         return { ships: agent.transportShips ?? [] };
     });
 
@@ -79,7 +82,8 @@ export const postTransportContract = () =>
             }),
         )
         .mutation(async ({ input, ctx }) => {
-            await assertAgentOwnership(ctx, input.agentId);
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
             const contractId = await workerPostTransportContract(input);
             return { contractId };
         });
@@ -96,7 +100,8 @@ export const acceptTransportContract = () =>
             }),
         )
         .mutation(async ({ input, ctx }) => {
-            await assertAgentOwnership(ctx, input.agentId);
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
             const contractId = await workerAcceptTransportContract(input);
             return { contractId };
         });
@@ -111,7 +116,8 @@ export const cancelTransportContract = () =>
             }),
         )
         .mutation(async ({ input, ctx }) => {
-            await assertAgentOwnership(ctx, input.agentId);
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
             const contractId = await workerCancelTransportContract(input);
             return { contractId };
         });
@@ -127,7 +133,8 @@ export const postShipBuyingOffer = () =>
             }),
         )
         .mutation(async ({ input, ctx }) => {
-            await assertAgentOwnership(ctx, input.agentId);
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
             const offerId = await workerPostShipBuyingOffer(input);
             return { offerId };
         });
@@ -144,7 +151,8 @@ export const acceptShipBuyingOffer = () =>
             }),
         )
         .mutation(async ({ input, ctx }) => {
-            await assertAgentOwnership(ctx, input.agentId);
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
             const offerId = await workerAcceptShipBuyingOffer(input);
             return { offerId };
         });
@@ -161,7 +169,8 @@ export const postShipMaintenanceOffer = () =>
             }),
         )
         .mutation(async ({ input, ctx }) => {
-            await assertAgentOwnership(ctx, input.agentId);
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
             const offerId = await workerPostShipMaintenanceOffer(input);
             return { offerId };
         });
@@ -177,7 +186,8 @@ export const acceptShipMaintenanceOffer = () =>
             }),
         )
         .mutation(async ({ input, ctx }) => {
-            await assertAgentOwnership(ctx, input.agentId);
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
             const offerId = await workerAcceptShipMaintenanceOffer(input);
             return { offerId };
         });
