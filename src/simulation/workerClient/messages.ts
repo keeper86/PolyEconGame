@@ -85,6 +85,67 @@ export type InboundMessage =
           planetId: string;
           claimId: string;
       }
+    | {
+          type: 'postTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string; // fromPlanetId — contract lives in poster's assets on this planet
+          toPlanetId: string;
+          cargo: { resourceName: string; quantity: number };
+          maxDurationInTicks: number;
+          offeredReward: number;
+          expiresAtTick: number;
+      }
+    | {
+          type: 'acceptTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string; // planet where contract was posted
+          posterAgentId: string;
+          contractId: string;
+          shipName: string;
+      }
+    | {
+          type: 'cancelTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          contractId: string;
+      }
+    | {
+          type: 'postShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          shipType: string; // ShipTypeKey
+          price: number;
+      }
+    | {
+          type: 'acceptShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string; // planet where offer was posted
+          posterAgentId: string;
+          offerId: string;
+          shipName: string; // idle ship to transfer
+      }
+    | {
+          type: 'postShipMaintenanceOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string; // ship's current planet
+          shipName: string;
+          price: number;
+          maximumTicksAllowed: number;
+      }
+    | {
+          type: 'acceptShipMaintenanceOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string; // planet where offer was posted
+          posterAgentId: string;
+          offerId: string;
+      }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -119,6 +180,20 @@ export type OutboundMessage =
     | { type: 'claimLeaseFailed'; requestId: string; reason: string }
     | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string }
     | { type: 'claimQuitFailed'; requestId: string; reason: string }
+    | { type: 'transportContractPosted'; requestId: string; agentId: string; contractId: string }
+    | { type: 'transportContractPostFailed'; requestId: string; reason: string }
+    | { type: 'transportContractAccepted'; requestId: string; agentId: string; contractId: string }
+    | { type: 'transportContractAcceptFailed'; requestId: string; reason: string }
+    | { type: 'transportContractCancelled'; requestId: string; agentId: string; contractId: string }
+    | { type: 'transportContractCancelFailed'; requestId: string; reason: string }
+    | { type: 'shipBuyingOfferPosted'; requestId: string; agentId: string; offerId: string }
+    | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string }
+    | { type: 'shipBuyingOfferAccepted'; requestId: string; agentId: string; offerId: string }
+    | { type: 'shipBuyingOfferAcceptFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceOfferPosted'; requestId: string; agentId: string; offerId: string }
+    | { type: 'shipMaintenanceOfferPostFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceOfferAccepted'; requestId: string; agentId: string; offerId: string }
+    | { type: 'shipMaintenanceOfferAcceptFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
     | WorkerSuccessResponse
     | WorkerErrorResponse;
@@ -217,4 +292,65 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           claimId: string;
+      }
+    | {
+          type: 'postTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          toPlanetId: string;
+          cargo: { resourceName: string; quantity: number };
+          maxDurationInTicks: number;
+          offeredReward: number;
+          expiresAtTick: number;
+      }
+    | {
+          type: 'acceptTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          posterAgentId: string;
+          contractId: string;
+          shipName: string;
+      }
+    | {
+          type: 'cancelTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          contractId: string;
+      }
+    | {
+          type: 'postShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          shipType: string;
+          price: number;
+      }
+    | {
+          type: 'acceptShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          posterAgentId: string;
+          offerId: string;
+          shipName: string;
+      }
+    | {
+          type: 'postShipMaintenanceOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          shipName: string;
+          price: number;
+          maximumTicksAllowed: number;
+      }
+    | {
+          type: 'acceptShipMaintenanceOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          posterAgentId: string;
+          offerId: string;
       };

@@ -10,7 +10,19 @@ import {
     getPlanetMarketOverview,
     getPlanetOverview,
 } from './controller/planet';
-import { ship } from './controller/ship';
+import {
+    listAgentShips,
+    listTransportContracts,
+    listShipBuyingOffers,
+    listShipMaintenanceOffers,
+    postTransportContract,
+    acceptTransportContract,
+    cancelTransportContract,
+    postShipBuyingOffer,
+    acceptShipBuyingOffer,
+    postShipMaintenanceOffer,
+    acceptShipMaintenanceOffer,
+} from './controller/ship';
 import {
     getAgentDetail,
     getAgentFinancials,
@@ -93,12 +105,22 @@ const protectedAppRouter = trpcRoot.router({
     setFacilityScale: setFacilityScale(),
     leaseClaim: leaseClaim(),
     quitClaim: quitClaim(),
+    listAgentShips: listAgentShips(),
+    listTransportContracts: listTransportContracts(),
+    listShipBuyingOffers: listShipBuyingOffers(),
+    listShipMaintenanceOffers: listShipMaintenanceOffers(),
+    postTransportContract: postTransportContract(),
+    acceptTransportContract: acceptTransportContract(),
+    cancelTransportContract: cancelTransportContract(),
+    postShipBuyingOffer: postShipBuyingOffer(),
+    acceptShipBuyingOffer: acceptShipBuyingOffer(),
+    postShipMaintenanceOffer: postShipMaintenanceOffer(),
+    acceptShipMaintenanceOffer: acceptShipMaintenanceOffer(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({
     logs: logs(),
     health: health(),
-    ship: ship(),
     simulation: simulationRouter,
 });
 

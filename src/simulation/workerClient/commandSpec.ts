@@ -186,3 +186,96 @@ export const quitClaimSpec: CommandSpec<
     failureType: 'claimQuitFailed',
     extract: (msg) => msg.claimId,
 };
+
+// --- Ship contract specs ---
+
+type PostTransportContractSuccess = Extract<OutboundMessage, { type: 'transportContractPosted' }>;
+type PostTransportContractFailure = Extract<OutboundMessage, { type: 'transportContractPostFailed' }>;
+export const postTransportContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postTransportContract' }>,
+    PostTransportContractSuccess,
+    PostTransportContractFailure,
+    string
+> = {
+    successType: 'transportContractPosted',
+    failureType: 'transportContractPostFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type AcceptTransportContractSuccess = Extract<OutboundMessage, { type: 'transportContractAccepted' }>;
+type AcceptTransportContractFailure = Extract<OutboundMessage, { type: 'transportContractAcceptFailed' }>;
+export const acceptTransportContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptTransportContract' }>,
+    AcceptTransportContractSuccess,
+    AcceptTransportContractFailure,
+    string
+> = {
+    successType: 'transportContractAccepted',
+    failureType: 'transportContractAcceptFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type CancelTransportContractSuccess = Extract<OutboundMessage, { type: 'transportContractCancelled' }>;
+type CancelTransportContractFailure = Extract<OutboundMessage, { type: 'transportContractCancelFailed' }>;
+export const cancelTransportContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelTransportContract' }>,
+    CancelTransportContractSuccess,
+    CancelTransportContractFailure,
+    string
+> = {
+    successType: 'transportContractCancelled',
+    failureType: 'transportContractCancelFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type PostShipBuyingOfferSuccess = Extract<OutboundMessage, { type: 'shipBuyingOfferPosted' }>;
+type PostShipBuyingOfferFailure = Extract<OutboundMessage, { type: 'shipBuyingOfferPostFailed' }>;
+export const postShipBuyingOfferSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postShipBuyingOffer' }>,
+    PostShipBuyingOfferSuccess,
+    PostShipBuyingOfferFailure,
+    string
+> = {
+    successType: 'shipBuyingOfferPosted',
+    failureType: 'shipBuyingOfferPostFailed',
+    extract: (msg) => msg.offerId,
+};
+
+type AcceptShipBuyingOfferSuccess = Extract<OutboundMessage, { type: 'shipBuyingOfferAccepted' }>;
+type AcceptShipBuyingOfferFailure = Extract<OutboundMessage, { type: 'shipBuyingOfferAcceptFailed' }>;
+export const acceptShipBuyingOfferSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptShipBuyingOffer' }>,
+    AcceptShipBuyingOfferSuccess,
+    AcceptShipBuyingOfferFailure,
+    string
+> = {
+    successType: 'shipBuyingOfferAccepted',
+    failureType: 'shipBuyingOfferAcceptFailed',
+    extract: (msg) => msg.offerId,
+};
+
+type PostShipMaintenanceOfferSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceOfferPosted' }>;
+type PostShipMaintenanceOfferFailure = Extract<OutboundMessage, { type: 'shipMaintenanceOfferPostFailed' }>;
+export const postShipMaintenanceOfferSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postShipMaintenanceOffer' }>,
+    PostShipMaintenanceOfferSuccess,
+    PostShipMaintenanceOfferFailure,
+    string
+> = {
+    successType: 'shipMaintenanceOfferPosted',
+    failureType: 'shipMaintenanceOfferPostFailed',
+    extract: (msg) => msg.offerId,
+};
+
+type AcceptShipMaintenanceOfferSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceOfferAccepted' }>;
+type AcceptShipMaintenanceOfferFailure = Extract<OutboundMessage, { type: 'shipMaintenanceOfferAcceptFailed' }>;
+export const acceptShipMaintenanceOfferSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptShipMaintenanceOffer' }>,
+    AcceptShipMaintenanceOfferSuccess,
+    AcceptShipMaintenanceOfferFailure,
+    string
+> = {
+    successType: 'shipMaintenanceOfferAccepted',
+    failureType: 'shipMaintenanceOfferAcceptFailed',
+    extract: (msg) => msg.offerId,
+};

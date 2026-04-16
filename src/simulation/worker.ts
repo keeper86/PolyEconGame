@@ -22,6 +22,15 @@ import { computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
+import {
+    handlePostTransportContract,
+    handleAcceptTransportContract,
+    handleCancelTransportContract,
+    handlePostShipBuyingOffer,
+    handleAcceptShipBuyingOffer,
+    handlePostShipMaintenanceOffer,
+    handleAcceptShipMaintenanceOffer,
+} from './workerClient/shipContractActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
@@ -173,6 +182,27 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'expandFacility':
                     case 'setFacilityScale':
                         handleFacilityAction(state, action, safePostMessage);
+                        break;
+                    case 'postTransportContract':
+                        handlePostTransportContract(state, action, safePostMessage);
+                        break;
+                    case 'acceptTransportContract':
+                        handleAcceptTransportContract(state, action, safePostMessage);
+                        break;
+                    case 'cancelTransportContract':
+                        handleCancelTransportContract(state, action, safePostMessage);
+                        break;
+                    case 'postShipBuyingOffer':
+                        handlePostShipBuyingOffer(state, action, safePostMessage);
+                        break;
+                    case 'acceptShipBuyingOffer':
+                        handleAcceptShipBuyingOffer(state, action, safePostMessage);
+                        break;
+                    case 'postShipMaintenanceOffer':
+                        handlePostShipMaintenanceOffer(state, action, safePostMessage);
+                        break;
+                    case 'acceptShipMaintenanceOffer':
+                        handleAcceptShipMaintenanceOffer(state, action, safePostMessage);
                         break;
                 }
             } catch (err) {

@@ -5,6 +5,7 @@ import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce'
 import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
 import type { ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from './facility';
 import type { ResourceName } from './resourceCatalog';
+import type { ShipBuyingOffer, ShipMaintenanceOffer, TransportContract } from '../ships/ships';
 
 export interface Bank {
     loans: number;
@@ -231,6 +232,10 @@ export type AgentPlanetAssets = {
     shipyardFacilities: ShipyardFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
+
+    transportContracts: TransportContract[];
+    shipBuyingOffers: ShipBuyingOffer[];
+    shipMaintenanceOffers: ShipMaintenanceOffer[];
 
     deposits: number;
 

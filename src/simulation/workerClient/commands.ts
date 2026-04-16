@@ -14,6 +14,13 @@ import {
     setFacilityScaleSpec,
     leaseClaimSpec,
     quitClaimSpec,
+    postTransportContractSpec,
+    acceptTransportContractSpec,
+    cancelTransportContractSpec,
+    postShipBuyingOfferSpec,
+    acceptShipBuyingOfferSpec,
+    postShipMaintenanceOfferSpec,
+    acceptShipMaintenanceOfferSpec,
 } from './commandSpec';
 
 export function workerCreateAgent(opts: {
@@ -197,6 +204,142 @@ export function workerQuitClaim(opts: {
     return sendCommandSpec(
         { type: 'quitClaim', requestId: randomUUID(), agentId, planetId, claimId },
         quitClaimSpec,
+        timeoutMs,
+    );
+}
+
+export function workerPostTransportContract(opts: {
+    agentId: string;
+    planetId: string;
+    toPlanetId: string;
+    cargo: { resourceName: string; quantity: number };
+    maxDurationInTicks: number;
+    offeredReward: number;
+    expiresAtTick: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, toPlanetId, cargo, maxDurationInTicks, offeredReward, expiresAtTick, timeoutMs } = opts;
+    return sendCommandSpec(
+        {
+            type: 'postTransportContract',
+            requestId: randomUUID(),
+            agentId,
+            planetId,
+            toPlanetId,
+            cargo,
+            maxDurationInTicks,
+            offeredReward,
+            expiresAtTick,
+        },
+        postTransportContractSpec,
+        timeoutMs,
+    );
+}
+
+export function workerAcceptTransportContract(opts: {
+    agentId: string;
+    planetId: string;
+    posterAgentId: string;
+    contractId: string;
+    shipName: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, posterAgentId, contractId, shipName, timeoutMs } = opts;
+    return sendCommandSpec(
+        {
+            type: 'acceptTransportContract',
+            requestId: randomUUID(),
+            agentId,
+            planetId,
+            posterAgentId,
+            contractId,
+            shipName,
+        },
+        acceptTransportContractSpec,
+        timeoutMs,
+    );
+}
+
+export function workerCancelTransportContract(opts: {
+    agentId: string;
+    planetId: string;
+    contractId: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, contractId, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'cancelTransportContract', requestId: randomUUID(), agentId, planetId, contractId },
+        cancelTransportContractSpec,
+        timeoutMs,
+    );
+}
+
+export function workerPostShipBuyingOffer(opts: {
+    agentId: string;
+    planetId: string;
+    shipType: string;
+    price: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, shipType, price, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'postShipBuyingOffer', requestId: randomUUID(), agentId, planetId, shipType, price },
+        postShipBuyingOfferSpec,
+        timeoutMs,
+    );
+}
+
+export function workerAcceptShipBuyingOffer(opts: {
+    agentId: string;
+    planetId: string;
+    posterAgentId: string;
+    offerId: string;
+    shipName: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, posterAgentId, offerId, shipName, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'acceptShipBuyingOffer', requestId: randomUUID(), agentId, planetId, posterAgentId, offerId, shipName },
+        acceptShipBuyingOfferSpec,
+        timeoutMs,
+    );
+}
+
+export function workerPostShipMaintenanceOffer(opts: {
+    agentId: string;
+    planetId: string;
+    shipName: string;
+    price: number;
+    maximumTicksAllowed: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, shipName, price, maximumTicksAllowed, timeoutMs } = opts;
+    return sendCommandSpec(
+        {
+            type: 'postShipMaintenanceOffer',
+            requestId: randomUUID(),
+            agentId,
+            planetId,
+            shipName,
+            price,
+            maximumTicksAllowed,
+        },
+        postShipMaintenanceOfferSpec,
+        timeoutMs,
+    );
+}
+
+export function workerAcceptShipMaintenanceOffer(opts: {
+    agentId: string;
+    planetId: string;
+    posterAgentId: string;
+    offerId: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, posterAgentId, offerId, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'acceptShipMaintenanceOffer', requestId: randomUUID(), agentId, planetId, posterAgentId, offerId },
+        acceptShipMaintenanceOfferSpec,
         timeoutMs,
     );
 }

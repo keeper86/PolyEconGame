@@ -143,10 +143,41 @@ export const shipTick = (agents: Map<string, Agent>, planet: Planet, tick = 1): 
                         return;
                     }
                 }
+                const arrivedPlanetId = ship.state.planetId;
                 ship.state = {
                     type: 'idle',
-                    planetId: ship.state.planetId,
+                    planetId: arrivedPlanetId,
                 };
+
+                // Fulfil any accepted transport contract for this delivery
+                for (const posterAgent of agents.values()) {
+                    for (const posterAssets of Object.values(posterAgent.assets)) {
+                        const contractIndex = posterAssets.transportContracts.findIndex(
+                            (c) =>
+                                c.status === 'accepted' &&
+                                c.acceptedByAgentId === agent.id &&
+                                c.shipName === ship.name &&
+                                c.toPlanetId === arrivedPlanetId,
+                        );
+                        if (contractIndex !== -1) {
+                            const contract = posterAssets.transportContracts[contractIndex];
+                            if (contract.status === 'accepted') {
+                                posterAssets.transportContracts[contractIndex] = {
+                                    ...contract,
+                                    status: 'fulfilled',
+                                };
+                                // Transfer reward: release from poster's hold, credit carrier
+                                posterAssets.depositHold -= contract.offeredReward;
+                                const carrierAssets =
+                                    agent.assets[arrivedPlanetId] ?? agent.assets[agent.associatedPlanetId];
+                                if (carrierAssets) {
+                                    carrierAssets.deposits += contract.offeredReward;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
                 return;
             }
             if (ship.state.type === 'maintenance') {
@@ -287,40 +318,33 @@ export const createTransportShip = (
     };
 };
 
-export type ContractStatus = 'open' | 'accepted';
+export type ContractStatus = 'open' | 'accepted' | 'fulfilled' | 'cancelled';
 
 export type ShipBuyingOffer = {
     id: string;
     shipType: ShipTypeKey;
     buyerAgentId: string;
-    price: number; // creating this offer escrows the price amount from the buyer's deposits
-};
-
-export type ShipSellingOffer = {
-    id: string;
-    ship: TransportShip;
-    sellerAgentId: string;
+    /** Escrowed from buyer's deposits when offer is posted. */
     price: number;
-};
+} & (
+    | { status: 'open' }
+    | { status: 'accepted'; sellerAgentId: string; shipName: string }
+    | { status: 'fulfilled'; sellerAgentId: string; shipName: string }
+    | { status: 'cancelled' }
+);
 
-type ShipMaintenanceOfferBase = {
+export type ShipMaintenanceOffer = {
     id: string;
-    shipId: string;
+    shipName: string;
     shipOwnerAgentId: string;
     price: number;
-};
-
-export type ShipMaintenanceOffer = ShipMaintenanceOfferBase &
-    (
-        | {
-              status: 'accepted';
-              maintenanceProviderAgentId: string;
-              contractDueTick: number;
-          }
-        | {
-              status: 'open';
-          }
-    );
+    maximumTicksAllowed: number;
+} & (
+    | { status: 'open' }
+    | { status: 'accepted'; maintenanceProviderAgentId: string; contractDueTick: number }
+    | { status: 'fulfilled'; maintenanceProviderAgentId: string }
+    | { status: 'cancelled' }
+);
 
 export type TransportContractBase = {
     id: string;
@@ -330,15 +354,13 @@ export type TransportContractBase = {
     maxDurationInTicks: number;
     offeredReward: number;
     postedByAgentId: string;
+    expiresAtTick: number;
 };
 
-export type TransportContract =
-    | (TransportContractBase & {
-          status: 'open';
-          expiresAtTick: number;
-      })
-    | {
-          status: 'accepted';
-          acceptedByAgentId: string;
-          fulfillmentDueAtTick?: number;
-      };
+export type TransportContract = TransportContractBase &
+    (
+        | { status: 'open' }
+        | { status: 'accepted'; acceptedByAgentId: string; shipName: string; fulfillmentDueAtTick: number }
+        | { status: 'fulfilled'; acceptedByAgentId: string }
+        | { status: 'cancelled' }
+    );

@@ -333,6 +333,7 @@ function processShipyardFacility(
     params: ShipyardParameters,
     tick: number,
     resolvedShip: TransportShip | undefined,
+    agents: Map<string, Agent>,
 ): void {
     const { facility, storage, overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, agent } =
         params;
@@ -349,7 +350,8 @@ function processShipyardFacility(
             facility.progress += part * overallEfficiency;
             if (facility.progress >= 1) {
                 agent.transportShips.push(createTransportShip(facility.produces, tick, facility.shipName, planet));
-                params.facility = { ...facility, mode: 'idle' };
+                // Cast to mutable to reset mode in-place (facility is still the array reference)
+                (facility as { mode: string }).mode = 'idle';
             }
         } else {
             for (const need of facility.produces.buildingCost) {
@@ -364,17 +366,43 @@ function processShipyardFacility(
                 const consumed = required * overallEfficiency;
                 const removed = removeFromStorageFacility(storage, need.type.name, consumed);
                 actualConsumed[need.type.name] = need.type.form === 'services' ? consumed : removed;
+            }
+            resolvedShip.maintainanceStatus = Math.min(
+                1,
+                resolvedShip.maintainanceStatus + maintenancePerTick * overallEfficiency,
+            );
+            if (resolvedShip.maintainanceStatus >= 1) {
+                resolvedShip.state = {
+                    type: 'idle',
+                    planetId: resolvedShip.state.planetId,
+                };
+                (facility as { mode: string }).mode = 'idle';
 
-                resolvedShip.maintainanceStatus = Math.min(
-                    1,
-                    resolvedShip.maintainanceStatus + maintenancePerTick * overallEfficiency,
-                );
-                if (resolvedShip.maintainanceStatus >= 1) {
-                    resolvedShip.state = {
-                        type: 'idle',
-                        planetId: resolvedShip.state.planetId,
-                    };
-                    params.facility = { ...facility, mode: 'idle' };
+                // Find the matching maintenance offer and mark it fulfilled + transfer payment
+                const ownerAgent = agents.get(facility.shipOwner);
+                if (ownerAgent) {
+                    for (const ownerAssets of Object.values(ownerAgent.assets)) {
+                        const offerIndex = ownerAssets.shipMaintenanceOffers.findIndex(
+                            (o) =>
+                                o.status === 'accepted' &&
+                                o.shipName === facility.shipName &&
+                                o.maintenanceProviderAgentId === agent.id,
+                        );
+                        if (offerIndex !== -1) {
+                            const offer = ownerAssets.shipMaintenanceOffers[offerIndex];
+                            if (offer.status === 'accepted') {
+                                ownerAssets.shipMaintenanceOffers[offerIndex] = {
+                                    ...offer,
+                                    status: 'fulfilled',
+                                    maintenanceProviderAgentId: offer.maintenanceProviderAgentId,
+                                };
+                                // Release escrowed payment: deduct from hold, pay provider
+                                ownerAssets.depositHold -= offer.price;
+                                agent.assets[planet.id].deposits += offer.price;
+                            }
+                            break;
+                        }
+                    }
                 }
             }
         } else {
@@ -537,7 +565,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'ships') {
-                processShipyardFacility({ ...productionParameterBase, facility }, tick, resolvedShip);
+                processShipyardFacility({ ...productionParameterBase, facility }, tick, resolvedShip, agents);
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
             }
