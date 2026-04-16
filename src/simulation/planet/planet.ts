@@ -107,14 +107,8 @@ export type Planet = {
     governmentId: string;
     infrastructure: Infrastructure;
     environment: Environment;
-    /** Combined central + commercial bank for this planet. */
     bank: Bank;
-    /** Food market state: pricing, inventory, household food buffers. */
 
-    /**
-     * Wage per education level (currency units per worker per tick).
-     * Defaults to 1.0 for all levels when not set.
-     */
     wagePerEdu?: Partial<Record<EducationLevelType, number>>;
     /**
      * TODO: move this to own type in market.

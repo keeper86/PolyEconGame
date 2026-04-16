@@ -969,16 +969,39 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'postTransportContract') {
-            const { requestId, agentId, planetId, toPlanetId, cargo, maxDurationInTicks, offeredReward, expiresAtTick } = msg;
+            const {
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                cargo,
+                maxDurationInTicks,
+                offeredReward,
+                expiresAtTick,
+            } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'transportContractPostFailed', requestId, reason: 'Agent not found' });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'transportContractPostFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'transportContractPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            pendingActions.push({ type: 'postTransportContract', requestId, agentId, planetId, toPlanetId, cargo, maxDurationInTicks, offeredReward, expiresAtTick });
+            pendingActions.push({
+                type: 'postTransportContract',
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                cargo,
+                maxDurationInTicks,
+                offeredReward,
+                expiresAtTick,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -992,10 +1015,22 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'transportContractAcceptFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            pendingActions.push({ type: 'acceptTransportContract', requestId, agentId, planetId, posterAgentId, contractId, shipName });
+            pendingActions.push({
+                type: 'acceptTransportContract',
+                requestId,
+                agentId,
+                planetId,
+                posterAgentId,
+                contractId,
+                shipName,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1009,7 +1044,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'transportContractCancelFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'transportContractCancelFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
             pendingActions.push({ type: 'cancelTransportContract', requestId, agentId, planetId, contractId });
@@ -1026,7 +1065,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipBuyingOfferPostFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipBuyingOfferPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
             pendingActions.push({ type: 'postShipBuyingOffer', requestId, agentId, planetId, shipType, price });
@@ -1043,10 +1086,22 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipBuyingOfferAcceptFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            pendingActions.push({ type: 'acceptShipBuyingOffer', requestId, agentId, planetId, posterAgentId, offerId, shipName });
+            pendingActions.push({
+                type: 'acceptShipBuyingOffer',
+                requestId,
+                agentId,
+                planetId,
+                posterAgentId,
+                offerId,
+                shipName,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1060,10 +1115,22 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipMaintenanceOfferPostFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipMaintenanceOfferPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            pendingActions.push({ type: 'postShipMaintenanceOffer', requestId, agentId, planetId, shipName, price, maximumTicksAllowed });
+            pendingActions.push({
+                type: 'postShipMaintenanceOffer',
+                requestId,
+                agentId,
+                planetId,
+                shipName,
+                price,
+                maximumTicksAllowed,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1077,10 +1144,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipMaintenanceOfferAcceptFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipMaintenanceOfferAcceptFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            pendingActions.push({ type: 'acceptShipMaintenanceOffer', requestId, agentId, planetId, posterAgentId, offerId });
+            pendingActions.push({
+                type: 'acceptShipMaintenanceOffer',
+                requestId,
+                agentId,
+                planetId,
+                posterAgentId,
+                offerId,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }

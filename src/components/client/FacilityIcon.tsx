@@ -4,15 +4,15 @@ import { getAssetPath } from '@/lib/assetManifest';
 export function FacilityIcon({
     facilityName,
     size = 280,
-    variant,
+    suffix,
 }: {
     facilityName: string;
     size?: number;
-    variant?: 'constructed';
+    suffix?: string;
 }) {
     let src: string;
-    if (variant === 'constructed') {
-        src = getAssetPath(facilityName + '_constructed');
+    if (suffix !== '') {
+        src = getAssetPath(facilityName + '_' + suffix);
     } else {
         src = getAssetPath(facilityName);
     }

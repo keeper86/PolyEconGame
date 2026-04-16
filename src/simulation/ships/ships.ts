@@ -257,15 +257,27 @@ const defaultRequiredCrew = {
 
 const defaultBuildTime = 60;
 
+export const scaleShipType = (scale = 1, type: TransportShipType): TransportShipType => {
+    return {
+        ...type,
+        cargoSpecification: {
+            type: type.cargoSpecification.type,
+            volume: type.cargoSpecification.volume * scale,
+            mass: type.cargoSpecification.mass * scale,
+        },
+        buildingCost: type.buildingCost.map((rc) => ({ type: rc.type, quantity: rc.quantity * scale })),
+    };
+};
+
 export const shiptypes = {
     solid: {
-        'Bulk Carrier': {
-            name: 'Bulk Carrier',
+        smallBulkCarrier: {
+            name: 'Small bulk Carrier',
             speed: 6,
             cargoSpecification: {
                 type: 'solid',
-                volume: 2000,
-                mass: 1500,
+                volume: 200000,
+                mass: 150000,
             },
             requiredCrew: { ...defaultRequiredCrew },
             buildingCost: [...defaultBuildingCost],
@@ -278,8 +290,8 @@ export const shiptypes = {
             speed: 10,
             cargoSpecification: {
                 type: 'liquid',
-                volume: 1000,
-                mass: 800,
+                volume: 100000,
+                mass: 80000,
             },
             requiredCrew: { ...defaultRequiredCrew },
             buildingCost: [...defaultBuildingCost],
@@ -292,8 +304,8 @@ export const shiptypes = {
             speed: 6,
             cargoSpecification: {
                 type: 'gas',
-                volume: 1500,
-                mass: 1200,
+                volume: 150000,
+                mass: 120000,
             },
             requiredCrew: { ...defaultRequiredCrew },
             buildingCost: [...defaultBuildingCost],
@@ -306,8 +318,8 @@ export const shiptypes = {
             speed: 8,
             cargoSpecification: {
                 type: 'pieces',
-                volume: 1000,
-                mass: 800,
+                volume: 100000,
+                mass: 80000,
             },
             requiredCrew: { ...defaultRequiredCrew },
             buildingCost: [...defaultBuildingCost],
@@ -320,8 +332,8 @@ export const shiptypes = {
             speed: 12,
             cargoSpecification: {
                 type: 'persons',
-                volume: 500,
-                mass: 20000,
+                volume: 50000,
+                mass: 200000,
             },
             requiredCrew: { ...defaultRequiredCrew },
             buildingCost: [...defaultBuildingCost],
@@ -334,8 +346,8 @@ export const shiptypes = {
             speed: 7,
             cargoSpecification: {
                 type: 'frozenGoods',
-                volume: 800,
-                mass: 600,
+                volume: 80000,
+                mass: 60000,
             },
             requiredCrew: { ...defaultRequiredCrew },
             buildingCost: [...defaultBuildingCost],

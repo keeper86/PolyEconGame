@@ -100,7 +100,7 @@ describe('engine basic behavior', () => {
 
         agent.assets[planet.id].productionFacilities.push(prod);
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const entry = agent.assets[planet.id].storageFacility.currentInStorage[agriculturalProductResourceType.name];
         expect(entry).toBeDefined();
@@ -138,7 +138,7 @@ describe('engine basic behavior', () => {
         const storage = agent.assets[planet.id].storageFacility;
         putIntoStorageFacility(storage, neededResource, neededResourceQuantity);
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const storageOfNeededResource = queryStorageFacility(storage, neededResource.name);
         expect(storageOfNeededResource).toBeDefined();
@@ -182,7 +182,7 @@ describe('engine basic behavior', () => {
         expect(storageOfNeededResource).toBeDefined();
         expect(storageOfNeededResource).toBe(1);
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const storageOfProducedResource = queryStorageFacility(storage, agriculturalProductResourceType.name);
         expect(storageOfProducedResource).toBeDefined();
@@ -209,7 +209,7 @@ describe('engine basic behavior', () => {
         // Set 5 actual hired workers (via workforce demography) of the required 10
         setActualWorkers(agent, planet.id, { none: 5 });
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const storageOfProducedResource = queryStorageFacility(storage, agriculturalProductResourceType.name);
         expect(storageOfProducedResource).toBeDefined();
@@ -258,7 +258,7 @@ describe('productionTick worker education fallback', () => {
         setActualWorkers(agent, planet.id, { primary: 10 });
         expect(agent.assets[planet.id].productionFacilities.length).toBe(0);
         agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { primary: 10 }));
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const facility = agent.assets[planet.id].productionFacilities[0];
         expect(facility.lastTickResults?.overallEfficiency).toBe(1);
@@ -271,7 +271,7 @@ describe('productionTick worker education fallback', () => {
         setActualWorkers(agent, planet.id, { none: 0, secondary: 10 });
         agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const facility = agent.assets[planet.id].productionFacilities[0];
         expect(facility.lastTickResults?.overallEfficiency).toBe(1);
@@ -284,7 +284,7 @@ describe('productionTick worker education fallback', () => {
         setActualWorkers(agent, planet.id, { none: 6, primary: 4 });
         agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const facility = agent.assets[planet.id].productionFacilities[0];
         expect(facility.lastTickResults?.overallEfficiency).toBe(1);
@@ -297,7 +297,7 @@ describe('productionTick worker education fallback', () => {
         setActualWorkers(agent, planet.id, { none: 1, primary: 1, secondary: 1 });
         agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const facility = agent.assets[planet.id].productionFacilities[0];
         // 3/10 = 0.3
@@ -311,7 +311,7 @@ describe('productionTick worker education fallback', () => {
         setActualWorkers(agent, planet.id, { none: 100, primary: 100, secondary: 0 });
         agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { secondary: 10 }));
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const facility = agent.assets[planet.id].productionFacilities[0];
         expect(facility.lastTickResults?.overallEfficiency).toBe(0);
@@ -331,7 +331,7 @@ describe('productionTick worker education fallback', () => {
         facility2.id = 'pf-test-2';
         agent.assets[planet.id].productionFacilities.push(facility2);
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const f1 = agent.assets[planet.id].productionFacilities[0];
         const f2 = agent.assets[planet.id].productionFacilities[1];
@@ -351,7 +351,7 @@ describe('productionTick worker education fallback', () => {
         setActualWorkers(agent, planet.id, { none: 2, primary: 3, secondary: 2, tertiary: 3 });
         agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const facility = agent.assets[planet.id].productionFacilities[0];
         expect(facility.lastTickResults?.overallEfficiency).toBe(1);
@@ -395,7 +395,7 @@ describe('productionTick proportional worker allocation', () => {
             makeFacilityWithWorkerReq(planet.id, { none: 10, primary: 5 }),
         );
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const facility = agent.assets[planet.id].productionFacilities[0];
         const results = facility.lastTickResults!;
@@ -421,7 +421,7 @@ describe('productionTick proportional worker allocation', () => {
             makeFacilityWithWorkerReq(planet.id, { none: 5, primary: 8, secondary: 6 }),
         );
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         // All workers consumed — totalUsedByEdu confirms none sit idle
@@ -441,7 +441,7 @@ describe('productionTick proportional worker allocation', () => {
             makeFacilityWithWorkerReq(planet.id, { none: 5, primary: 10 }),
         );
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         expect(results.workerEfficiency!.none).toBe(1);
@@ -462,7 +462,7 @@ describe('productionTick proportional worker allocation', () => {
             makeFacilityWithWorkerReq(planet.id, { none: 5, primary: 10 }),
         );
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         // All 12 workers consumed — totalUsedByEdu confirms
@@ -484,7 +484,7 @@ describe('productionTick proportional worker allocation', () => {
         fac.scale = 10;
         agent.assets[planet.id].productionFacilities.push(fac);
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         // All 30 primary workers are consumed — totalUsedByEdu confirms
@@ -511,7 +511,7 @@ describe('productionTick idle worker persistence', () => {
         setActualWorkers(agent, planet.id, { none: 8 });
         agent.assets[planet.id].productionFacilities.push(makeProductionFacility({ none: 5 }, { planetId: planet.id }));
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         // 5 none-tier workers were placed in the slot, 3 remain unused
@@ -527,7 +527,7 @@ describe('productionTick idle worker persistence', () => {
             makeProductionFacility({ none: 10 }, { planetId: planet.id }),
         );
 
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet,1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         expect(results.totalUsedByEdu.none).toBe(10);
@@ -538,7 +538,7 @@ describe('productionTick idle worker persistence', () => {
     it('records zero usage when no workers are hired', () => {
         const agent = makeAgent('agent-1', planet.id);
         agent.assets[planet.id].productionFacilities.push(makeProductionFacility({ none: 5 }, { planetId: planet.id }));
-        productionTick(agentMap(agent), planet);
+        productionTick(agentMap(agent), planet, 1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         expect(results.totalUsedByEdu.none ?? 0).toBe(0);

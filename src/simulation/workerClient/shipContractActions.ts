@@ -192,7 +192,7 @@ export function handleCancelTransportContract(
     assets.depositHold -= contract.offeredReward;
     assets.deposits += contract.offeredReward;
 
-    assets.transportContracts[contractIndex] = { ...contract, status: 'cancelled' };
+    assets.transportContracts.splice(contractIndex, 1);
     safePostMessage({ type: 'transportContractCancelled', requestId, agentId, contractId });
 }
 
@@ -308,12 +308,7 @@ export function handleAcceptShipBuyingOffer(
         sellerAssets.deposits += offer.price;
     }
 
-    buyerAssets.shipBuyingOffers[offerIndex] = {
-        ...offer,
-        status: 'fulfilled',
-        sellerAgentId: agentId,
-        shipName,
-    };
+    buyerAssets.shipBuyingOffers.splice(offerIndex, 1);
 
     safePostMessage({ type: 'shipBuyingOfferAccepted', requestId, agentId, offerId });
 }
