@@ -16,15 +16,16 @@ import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
+import { MAINTENANCE_COST_MULTIPLIER } from '../planet/production';
 import { educationLevelKeys } from '../population/education';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet);
+        automaticPricingForAgent(agent, planet, agents);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet, agents: Map<string, Agent>): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -76,6 +77,31 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             constructionServiceResourceType.name,
             (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
         );
+    }
+    for (const facility of assets.shipyardFacilities) {
+        if (facility.construction !== null) {
+            continue;
+        }
+        if (facility.mode === 'building') {
+            const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
+            for (const need of facility.produces.buildingCost) {
+                const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                const target = need.quantity * ratePerTick * bufferTarget;
+                inputReserve.set(need.type.name, (inputReserve.get(need.type.name) ?? 0) + target);
+            }
+        } else if (facility.mode === 'maintenance') {
+            const resolvedShip = agents
+                .get(facility.shipOwner)
+                ?.transportShips.find((s) => s.name === facility.shipName);
+            if (resolvedShip) {
+                const ratePerTick = Math.min(1, 3 / resolvedShip.type.buildingTime) * MAINTENANCE_COST_MULTIPLIER;
+                for (const need of resolvedShip.type.buildingCost) {
+                    const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                    const target = need.quantity * ratePerTick * bufferTarget;
+                    inputReserve.set(need.type.name, (inputReserve.get(need.type.name) ?? 0) + target);
+                }
+            }
+        }
     }
 
     // Pre-compute estimated cost floors for each produced resource.
@@ -153,6 +179,45 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     resource: constructionServiceResourceType,
                     storageTarget: facilityTarget,
                 });
+            }
+        }
+    }
+
+    for (const facility of assets.shipyardFacilities) {
+        if (facility.construction !== null) {
+            continue;
+        }
+        if (facility.mode === 'building') {
+            const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
+            for (const need of facility.produces.buildingCost) {
+                const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                const facilityTarget = need.quantity * ratePerTick * bufferTarget;
+                const existing = aggregatedBuyTargets.get(need.type.name);
+                if (existing) {
+                    existing.storageTarget += facilityTarget;
+                } else {
+                    aggregatedBuyTargets.set(need.type.name, { resource: need.type, storageTarget: facilityTarget });
+                }
+            }
+        } else if (facility.mode === 'maintenance') {
+            const resolvedShip = agents
+                .get(facility.shipOwner)
+                ?.transportShips.find((s) => s.name === facility.shipName);
+            if (resolvedShip) {
+                const ratePerTick = Math.min(1, 3 / resolvedShip.type.buildingTime) * MAINTENANCE_COST_MULTIPLIER;
+                for (const need of resolvedShip.type.buildingCost) {
+                    const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                    const facilityTarget = need.quantity * ratePerTick * bufferTarget;
+                    const existing = aggregatedBuyTargets.get(need.type.name);
+                    if (existing) {
+                        existing.storageTarget += facilityTarget;
+                    } else {
+                        aggregatedBuyTargets.set(need.type.name, {
+                            resource: need.type,
+                            storageTarget: facilityTarget,
+                        });
+                    }
+                }
             }
         }
     }

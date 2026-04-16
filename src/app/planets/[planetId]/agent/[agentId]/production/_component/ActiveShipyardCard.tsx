@@ -140,10 +140,10 @@ export function ActiveShipyardCard({
                     <div className='flex justify-between text-xs text-muted-foreground mb-1'>
                         <span>{facility.mode === 'building' ? 'Build progress' : 'Maintenance progress'}</span>
                         <span className='tabular-nums font-medium text-foreground'>
-                            {Math.round(facility.progress)}%
+                            {Math.round(facility.progress * 100)}%
                         </span>
                     </div>
-                    <Progress value={facility.progress} className='h-2' />
+                    <Progress value={facility.progress * 100} className='h-2' />
                 </div>
             )}
 

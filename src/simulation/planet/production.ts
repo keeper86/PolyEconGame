@@ -74,10 +74,11 @@ export function constructionTick(agents: Map<string, Agent>, planet: Planet): vo
             return;
         }
 
-        const allFacilities: Array<ProductionFacility | StorageFacility | ManagementFacility> = [
+        const allFacilities: Array<Facility> = [
             ...assets.productionFacilities,
             assets.storageFacility,
             ...assets.managementFacilities,
+            ...assets.shipyardFacilities,
         ];
 
         for (const facility of allFacilities) {

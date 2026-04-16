@@ -1,5 +1,10 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import type { ManagementFacility, ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
+import type {
+    ManagementFacility,
+    ProductionFacility,
+    ShipyardFacility,
+    StorageFacility,
+} from '@/simulation/planet/facility';
 import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
@@ -119,6 +124,7 @@ export function buildResourceList(
     storageFacility: StorageFacility,
     showAll: boolean,
     managementFacilities: ManagementFacility[] = [],
+    shipyardFacilities: ShipyardFacility[] = [],
     forceInclude: string[] = [],
 ): { name: string }[] {
     if (showAll) {
@@ -148,6 +154,37 @@ export function buildResourceList(
             }
         }
     }
+
+    for (const f of managementFacilities) {
+        for (const { resource } of f.needs) {
+            if (resource.form !== 'landBoundResource') {
+                add(resource.name);
+            }
+        }
+    }
+
+    for (const f of shipyardFacilities) {
+        if (f.mode === 'idle') {
+            continue;
+        }
+        if (f.mode === 'building') {
+            const { produces } = f;
+            produces.buildingCost.forEach(({ type }) => {
+                if (type.form !== 'landBoundResource') {
+                    add(type.name);
+                }
+            });
+        }
+        if (f.mode === 'maintenance') {
+            const { maintained } = f;
+            maintained.buildingCost.forEach(({ type }) => {
+                if (type.form !== 'landBoundResource') {
+                    add(type.name);
+                }
+            });
+        }
+    }
+
     // Existing bids / offers
     for (const name of Object.keys(buyBids)) {
         add(name);
@@ -162,7 +199,7 @@ export function buildResourceList(
         }
     }
 
-    const allFacilities = [...facilities, ...managementFacilities, storageFacility];
+    const allFacilities = [...facilities, ...managementFacilities, storageFacility, ...shipyardFacilities];
     if (allFacilities.some((f) => f.construction !== null)) {
         add(constructionServiceResourceType.name);
     }

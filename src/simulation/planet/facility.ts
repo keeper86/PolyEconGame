@@ -157,6 +157,7 @@ export type ShipyardFacility = ShipyardFacilityBase &
               mode: 'maintenance';
               shipOwner: string;
               shipName: string;
+              maintained: TransportShipType;
               progress: number;
           }
         | {
