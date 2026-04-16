@@ -8,6 +8,7 @@ import {
     makeManagementFacility,
     makePlanetWithPopulation,
     makeProductionFacility,
+    makeShipyardFacility,
     makeStorageFacility,
 } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
@@ -20,6 +21,7 @@ import {
     waterResourceType,
 } from './resources';
 import { constructionServiceResourceType } from './services';
+import type { TransportShipType } from '../ships/ships';
 
 // test helpers create fresh objects; no deep clone needed
 
@@ -67,7 +69,7 @@ describe('productionTick (basic)', () => {
             agents: agentMap(agent, gov),
         };
 
-        productionTick(gameState.agents, planet);
+        productionTick(gameState.agents, planet, gameState.tick);
 
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
         // ironExtractionFacility produces 1000 * scale(1) * overallEfficiency (should be 1)
@@ -114,7 +116,7 @@ describe('productionTick (basic)', () => {
             agents: agentMap(agent, gov),
         };
 
-        productionTick(gameState.agents, planet);
+        productionTick(gameState.agents, planet, gameState.tick);
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
         expect(storedIron).toBe(0);
 
@@ -156,7 +158,7 @@ describe('productionTick (basic)', () => {
         ];
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         // facility should record overqualified usage for jobEdu 'none'
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'oq-fac');
@@ -218,7 +220,7 @@ describe('productionTick (basic)', () => {
         ];
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'scale-fac');
         expect(recorded).toBeDefined();
@@ -260,7 +262,7 @@ describe('productionTick (basic)', () => {
         ];
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         // Only 1 slot needed — totalUsedByEdu.secondary should be ≤ 1 (the slot capacity)
         const used = facility.lastTickResults?.totalUsedByEdu?.secondary ?? 0;
@@ -304,7 +306,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         // Both facilities must have run (efficiency > 0)
         expect(facilityA.lastTickResults.overallEfficiency).toBeGreaterThan(0);
@@ -348,7 +350,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeGreaterThanOrEqual(0);
@@ -392,7 +394,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         agent.assets.p.productionFacilities = [facility];
         agent.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', capacity: { volume: 1e12, mass: 1e12 } });
 
-        productionTick(agentMap(agent, gov), planet);
+        productionTick(agentMap(agent, gov), planet, 1);
 
         const produced = facility.lastTickResults.lastProduced[waterResourceType.name] ?? 0;
         expect(produced).toBe(7);
@@ -422,7 +424,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         agent.assets.p.productionFacilities = [facility];
 
         const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         const produced = facility.lastTickResults.lastProduced[vehicleResourceType.name] ?? 0;
         expect(Number.isInteger(produced)).toBe(true);
@@ -455,7 +457,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         agent.assets.p.productionFacilities = [facility];
 
         const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         const consumed = facility.lastTickResults.lastConsumed[waterResourceType.name] ?? 0;
         expect(consumed).toBeCloseTo(availableWater, 9);
@@ -608,7 +610,7 @@ describe('productionTick — storage facility', () => {
         wf[30].none.novice.active = 2; // 2 workers, 1 for storage
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         const results = agent.assets.p.storageFacility.lastTickResults;
         expect(results).toBeDefined();
@@ -640,7 +642,7 @@ describe('productionTick — storage facility', () => {
         const initialEfficiency = agent.assets.p.storageFacility.lastTickResults.overallEfficiency;
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         // lastTickResults should not have been updated (still 0 from initialization)
         expect(agent.assets.p.storageFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
@@ -684,7 +686,7 @@ describe('productionTick — management facility', () => {
         wf[30].none.novice.active = 1;
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBeGreaterThan(0);
         expect(mgmtFacility.buffer).toBeGreaterThan(0);
@@ -714,7 +716,7 @@ describe('productionTick — management facility', () => {
         // No workers → efficiency = 0
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(0);
         expect(mgmtFacility.buffer).toBe(0);
@@ -748,9 +750,200 @@ describe('productionTick — management facility', () => {
         const initialEfficiency = mgmtFacility.lastTickResults.overallEfficiency;
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
-        productionTick(gs.agents, planet);
+        productionTick(gs.agents, planet, gs.tick);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
         expect(mgmtFacility.buffer).toBe(0);
+    });
+});
+
+// ============================================================================
+// productionTick — shipyard facility
+// ============================================================================
+
+/** Minimal ship type with 100 steel building cost over 90 ticks. */
+function makeTestShipType(): TransportShipType {
+    return {
+        name: 'Freighter',
+        speed: 1,
+        cargoSpecification: { type: 'solid', volume: 5000, mass: 5000 },
+        requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
+        buildingCost: [{ type: steelResourceType, quantity: 900 }],
+        buildingTime: 90,
+    };
+}
+
+describe('productionTick — shipyard facility (building mode)', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('consumes building cost proportionally and records lastConsumed', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('builder');
+        const shipType = makeTestShipType();
+
+        // scale=9 → proportionPerTick = sqrt(9)/90 = 3/90 = 1/30
+        // required steel = 900 * (1/30) = 30 per tick at full efficiency
+        const shipyard = makeShipyardFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
+
+        agent.assets.p.shipyardFacilities = [shipyard];
+        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+            resource: steelResourceType,
+            quantity: 60,
+        };
+        agent.assets.p.storageFacility.current.volume = 60 * steelResourceType.volumePerQuantity;
+        agent.assets.p.storageFacility.current.mass = 60 * steelResourceType.massPerQuantity;
+
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 9; // scale=9 needs 9 effective workers
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet, gs.tick);
+
+        expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
+        const consumed = shipyard.lastTickResults.lastConsumed[steelResourceType.name] ?? 0;
+        expect(consumed).toBeCloseTo(30, 5);
+
+        const remaining = agent.assets.p.storageFacility.currentInStorage[steelResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBeCloseTo(30, 5);
+    });
+
+    it('records zero consumption and zero efficiency when no workers are available', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('builder');
+        const shipType = makeTestShipType();
+
+        const shipyard = makeShipyardFacility({ secondary: 1 }, { id: 'sy-zero', scale: 1, shipType });
+        agent.assets.p.shipyardFacilities = [shipyard];
+        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+            resource: steelResourceType,
+            quantity: 100,
+        };
+        // No workers added
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet, gs.tick);
+
+        expect(shipyard.lastTickResults.overallEfficiency).toBe(0);
+        expect(shipyard.lastTickResults.lastConsumed[steelResourceType.name]).toBe(0);
+        // Storage must be untouched
+        const remaining = agent.assets.p.storageFacility.currentInStorage[steelResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBe(100);
+    });
+
+    it('shipyard under construction is excluded from productionTick', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('builder');
+        const shipType = makeTestShipType();
+
+        const shipyard = makeShipyardFacility(
+            { secondary: 1 },
+            {
+                id: 'sy-uc',
+                scale: 0,
+                maxScale: 0,
+                shipType,
+                construction: {
+                    constructionTargetMaxScale: 1,
+                    totalConstructionServiceRequired: 100,
+                    maximumConstructionServiceConsumption: 50,
+                    progress: 0,
+                    lastTickInvestedConstructionServices: 0,
+                },
+            },
+        );
+
+        agent.assets.p.shipyardFacilities = [shipyard];
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
+        const initialEfficiency = shipyard.lastTickResults.overallEfficiency;
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet, gs.tick);
+
+        expect(shipyard.lastTickResults.overallEfficiency).toBe(initialEfficiency);
+    });
+});
+
+describe('productionTick — shipyard facility (maintenance mode)', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('consumes maintenance cost (1% of building cost * maintenancePerTick) when ship exists', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('owner');
+        const shipType = makeTestShipType();
+
+        // maintenancePerTick = min(1, 3/90) = 3/90 = 1/30
+        // required = 900 * (1/30) * 0.01 = 0.3 steel per tick at full efficiency
+        const ship = {
+            name: 'SS Cargo',
+            builtAtTick: 0,
+            type: shipType,
+            state: { type: 'maintenance' as const, planetId: 'p', doneAtTick: 100 },
+            maintainanceStatus: 0.5,
+        };
+        agent.transportShips = [ship];
+
+        const shipyard = makeShipyardFacility({ secondary: 1 }, {
+            id: 'sy-maint',
+            scale: 1,
+            mode: 'maintenance',
+            shipOwner: agent.id,
+            shipName: 'SS Cargo',
+            progress: 0,
+        } as Partial<import('./facility').ShipyardFacility>);
+
+        agent.assets.p.shipyardFacilities = [shipyard];
+        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+            resource: steelResourceType,
+            quantity: 10,
+        };
+        agent.assets.p.storageFacility.current.volume = 10 * steelResourceType.volumePerQuantity;
+        agent.assets.p.storageFacility.current.mass = 10 * steelResourceType.massPerQuantity;
+
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet, gs.tick);
+
+        expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
+        const consumed = shipyard.lastTickResults.lastConsumed[steelResourceType.name] ?? 0;
+        // 900 * (3/90) * 0.01 = 0.3
+        expect(consumed).toBeCloseTo(0.3, 5);
+    });
+
+    it('does not consume anything when the referenced ship does not exist', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('owner');
+
+        const shipyard = makeShipyardFacility({ secondary: 1 }, {
+            id: 'sy-noship',
+            scale: 1,
+            mode: 'maintenance',
+            shipOwner: agent.id,
+            shipName: 'Nonexistent',
+            progress: 0,
+        } as Partial<import('./facility').ShipyardFacility>);
+
+        agent.assets.p.shipyardFacilities = [shipyard];
+        // No ships on agent
+        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+            resource: steelResourceType,
+            quantity: 10,
+        };
+
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
+
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        productionTick(gs.agents, planet, gs.tick);
+
+        // resolvedShip = undefined → processShipyardFacility skips maintenance → nothing consumed
+        const remaining = agent.assets.p.storageFacility.currentInStorage[steelResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBe(10);
     });
 });

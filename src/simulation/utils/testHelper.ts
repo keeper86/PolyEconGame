@@ -26,7 +26,8 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
-import type { ManagementFacility, ProductionFacility, StorageFacility } from '../planet/facility';
+import type { ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from '../planet/facility';
+import type { TransportShipType } from '../ships/ships';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -378,6 +379,51 @@ export function makeProductionFacility(
         produces: [],
         ...overrides,
     };
+}
+
+/**
+ * Create a ShipyardFacility in 'building' mode with given worker requirements.
+ * Pass `overrides` to switch to 'maintenance' or 'idle' mode and customise fields.
+ */
+export function makeShipyardFacility(
+    workerReq?: Partial<Record<EducationLevelType, number>>,
+    overrides?: Partial<ShipyardFacility> & { shipType?: TransportShipType },
+): ShipyardFacility {
+    const { shipType, ...rest } = overrides ?? {};
+    const defaultShipType: TransportShipType = shipType ?? {
+        name: 'Test Ship',
+        speed: 1,
+        cargoSpecification: { type: 'solid', volume: 1000, mass: 1000 },
+        requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
+        buildingCost: [],
+        buildingTime: 90,
+    };
+    return {
+        type: 'ships',
+        planetId: 'p',
+        id: 'shipyard-1',
+        name: 'Test Shipyard',
+        maxScale: 1,
+        scale: 1,
+        construction: null,
+        powerConsumptionPerTick: 0,
+        workerRequirement: (workerReq ?? {}) as Record<string, number>,
+        pollutionPerTick: { air: 0, water: 0, soil: 0 },
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            resourceEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+            lastConsumed: {},
+        },
+        mode: 'building',
+        shipName: 'SS Test',
+        produces: defaultShipType,
+        progress: 0,
+        ...rest,
+    } as ShipyardFacility;
 }
 
 // ============================================================================

@@ -68,7 +68,7 @@ export function advanceTick(gameState: GameState) {
 
         constructionTick(gameState.agents, planet);
 
-        productionTick(gameState.agents, planet);
+        productionTick(gameState.agents, planet, gameState.tick);
 
         automaticLoanRepayment(gameState.agents, planet, gameState.tick);
 
