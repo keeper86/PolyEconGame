@@ -5,7 +5,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { ChevronRight, Globe, Users } from 'lucide-react';
+import { ChevronRight, Globe, Ship, Users } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -16,6 +16,7 @@ import { PlanetIcon } from '../client/PlanetIcon';
 const PLANET_SUB_PAGES = [
     { segment: 'demographics', label: 'Demographics', icon: Users },
     { segment: 'claims', label: 'Resources', icon: GiAxeInStump },
+    { segment: 'ships', label: 'Ship Market', icon: Ship },
 ] as const;
 
 function ActivePlanetSubNav({ planetId, disabled }: { planetId: string | null; disabled: boolean }) {
