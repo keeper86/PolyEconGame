@@ -334,7 +334,6 @@ function processShipyardFacility(
     params: ShipyardParameters,
     tick: number,
     resolvedShip: TransportShip | undefined,
-    agents: Map<string, Agent>,
 ): void {
     const { facility, storage, overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, agent } =
         params;
@@ -373,38 +372,7 @@ function processShipyardFacility(
                 resolvedShip.maintainanceStatus + maintenancePerTick * overallEfficiency,
             );
             if (resolvedShip.maintainanceStatus >= 1) {
-                resolvedShip.state = {
-                    type: 'idle',
-                    planetId: resolvedShip.state.planetId,
-                };
                 (facility as { mode: TransportShipStatusType }).mode = 'idle';
-
-                // Find the matching maintenance offer and mark it fulfilled + transfer payment
-                const ownerAgent = agents.get(facility.shipOwner);
-                if (ownerAgent) {
-                    for (const ownerAssets of Object.values(ownerAgent.assets)) {
-                        const offerIndex = ownerAssets.shipMaintenanceOffers.findIndex(
-                            (o) =>
-                                o.status === 'accepted' &&
-                                o.shipName === facility.shipName &&
-                                o.maintenanceProviderAgentId === agent.id,
-                        );
-                        if (offerIndex !== -1) {
-                            const offer = ownerAssets.shipMaintenanceOffers[offerIndex];
-                            if (offer.status === 'accepted') {
-                                ownerAssets.shipMaintenanceOffers[offerIndex] = {
-                                    ...offer,
-                                    status: 'fulfilled',
-                                    maintenanceProviderAgentId: offer.maintenanceProviderAgentId,
-                                };
-                                // Release escrowed payment: deduct from hold, pay provider
-                                ownerAssets.depositHold -= offer.price;
-                                agent.assets[planet.id].deposits += offer.price;
-                            }
-                            break;
-                        }
-                    }
-                }
             }
         } else {
             for (const need of resolvedShip.type.buildingCost) {
@@ -566,7 +534,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'ships') {
-                processShipyardFacility({ ...productionParameterBase, facility }, tick, resolvedShip, agents);
+                processShipyardFacility({ ...productionParameterBase, facility }, tick, resolvedShip);
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
             }

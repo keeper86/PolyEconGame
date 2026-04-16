@@ -159,20 +159,23 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                 // Fulfil any accepted transport contract for this delivery
                 for (const posterAgent of agents.values()) {
                     for (const posterAssets of Object.values(posterAgent.assets)) {
-                        const contractIndex = posterAssets.transportContracts.findIndex(
+                        const contract = posterAssets.transportContracts.find(
                             (c) =>
                                 c.status === 'accepted' &&
                                 c.acceptedByAgentId === agent.id &&
                                 c.shipName === ship.name &&
                                 c.toPlanetId === arrivedPlanetId,
                         );
-                        if (contractIndex !== -1) {
-                            const contract = posterAssets.transportContracts[contractIndex];
+                        if (contract) {
                             if (contract.status === 'accepted') {
-                                posterAssets.transportContracts[contractIndex] = {
-                                    ...contract,
-                                    status: 'fulfilled',
-                                };
+                                const index = posterAssets.transportContracts.indexOf(contract);
+                                if (index === -1) {
+                                    console.warn(
+                                        `Contract not found in poster's assets for delivered cargo on ship ${ship.name} owned by agent ${agent.name}`,
+                                    );
+                                    break;
+                                }
+                                posterAssets.transportContracts.splice(index, 1);
                                 // Transfer reward: release from poster's hold, credit carrier
                                 posterAssets.depositHold -= contract.offeredReward;
                                 const carrierAssets =
@@ -182,6 +185,10 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                                 }
                             }
                             break;
+                        } else {
+                            console.warn(
+                                `No matching contract found for delivered cargo on ship ${ship.name} owned by agent ${agent.name}`,
+                            );
                         }
                     }
                 }
@@ -195,24 +202,33 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                     }
 
                     const offerIndex = relevantAssets.shipMaintenanceOffers.findIndex(
-                        (o) =>
-                            o.status === 'accepted' &&
-                            o.shipName === facility.shipName &&
-                            o.maintenanceProviderAgentId === agent.id,
+                        (o) => o.status === 'accepted' && o.shipName === ship.name,
                     );
                     if (offerIndex !== -1) {
-                        const offer = ownerAssets.shipMaintenanceOffers[offerIndex];
-                        if (offer.status === 'accepted') {
-                            ownerAssets.shipMaintenanceOffers[offerIndex] = {
-                                ...offer,
-                                status: 'fulfilled',
-                                maintenanceProviderAgentId: offer.maintenanceProviderAgentId,
-                            };
-                            // Release escrowed payment: deduct from hold, pay provider
-                            ownerAssets.depositHold -= offer.price;
-                            agent.assets[planet.id].deposits += offer.price;
+                        const [offer] = relevantAssets.shipMaintenanceOffers.splice(offerIndex, 1);
+
+                        if (offer.status !== 'accepted') {
+                            console.warn(`Accepted offer not found for ship ${ship.name} owned by agent ${agent.name}`);
+                            return;
                         }
-                        break;
+
+                        const providerAssets = agents.get(offer.maintenanceProviderAgentId)?.assets[
+                            ship.state.planetId
+                        ];
+
+                        if (!providerAssets) {
+                            console.warn(
+                                `Maintenance provider assets not found for ship ${ship.name} owned by agent ${agent.name}`,
+                            );
+                            return;
+                        }
+                        // Release escrowed payment: deduct from hold, pay provider
+                        relevantAssets.depositHold -= offer.price;
+                        providerAssets.deposits += offer.price;
+                    } else {
+                        console.warn(
+                            `No matching maintenance offer found for ship ${ship.name} owned by agent ${agent.name}`,
+                        );
                     }
 
                     ship.state = {
@@ -350,7 +366,7 @@ export const createTransportShip = (
     };
 };
 
-export type ContractStatus = 'open' | 'accepted' | 'fulfilled' | 'cancelled';
+export type ContractStatus = 'open' | 'accepted';
 
 export type ShipBuyingOffer = {
     id: string;
@@ -358,12 +374,7 @@ export type ShipBuyingOffer = {
     buyerAgentId: string;
     /** Escrowed from buyer's deposits when offer is posted. */
     price: number;
-} & (
-    | { status: 'open' }
-    | { status: 'accepted'; sellerAgentId: string; shipName: string }
-    | { status: 'fulfilled'; sellerAgentId: string; shipName: string }
-    | { status: 'cancelled' }
-);
+} & ({ status: 'open' } | { status: 'accepted'; sellerAgentId: string; shipName: string });
 
 export type ShipMaintenanceOffer = {
     id: string;
@@ -371,12 +382,7 @@ export type ShipMaintenanceOffer = {
     shipOwnerAgentId: string;
     price: number;
     maximumTicksAllowed: number;
-} & (
-    | { status: 'open' }
-    | { status: 'accepted'; maintenanceProviderAgentId: string; contractDueTick: number }
-    | { status: 'fulfilled'; maintenanceProviderAgentId: string }
-    | { status: 'cancelled' }
-);
+} & ({ status: 'open' } | { status: 'accepted'; maintenanceProviderAgentId: string; contractDueTick: number });
 
 export type TransportContractBase = {
     id: string;
@@ -393,6 +399,4 @@ export type TransportContract = TransportContractBase &
     (
         | { status: 'open' }
         | { status: 'accepted'; acceptedByAgentId: string; shipName: string; fulfillmentDueAtTick: number }
-        | { status: 'fulfilled'; acceptedByAgentId: string }
-        | { status: 'cancelled' }
     );
