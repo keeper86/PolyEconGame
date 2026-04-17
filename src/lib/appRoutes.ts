@@ -184,5 +184,4 @@ export const AGENT_SUB_PAGES: AgentSubPage[] = [
     { segment: 'storage', label: 'Storage', icon: Warehouse },
     { segment: 'market', label: 'Market', icon: ShoppingCartIcon },
     { segment: 'ships', label: 'Ships', icon: Ship },
-    { segment: 'history', label: 'History', icon: History },
 ];

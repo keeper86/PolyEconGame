@@ -1,17 +1,27 @@
 'use client';
 
-import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
-import { Card, CardContent } from '@/components/ui/card';
 import { tickToDate } from '@/components/client/TickDisplay';
+import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-type Granularity = 'monthly' | 'yearly' | 'decade';
+// ── Public types ──────────────────────────────────────────────────────────────
+
+export type AgentMetric =
+    | 'netBalance'
+    | 'monthlyNetIncome'
+    | 'productionValue'
+    | 'consumptionValue'
+    | 'wages'
+    | 'totalWorkers';
+
+export type Granularity = 'monthly' | 'yearly' | 'decade';
+
+// ── Internal types ────────────────────────────────────────────────────────────
 
 type HistoryPoint = {
     bucket: number;
@@ -30,14 +40,24 @@ type ChartConfig = {
     dataKey: keyof HistoryPoint;
 };
 
-const CHARTS: ChartConfig[] = [
-    { title: 'Net Balance', color: '#4f46e5', gradId: 'gradBalance', dataKey: 'avgNetBalance' },
-    { title: 'Monthly Net Income', color: '#10b981', gradId: 'gradIncome', dataKey: 'avgMonthlyNetIncome' },
-    { title: 'Production Value', color: '#f59e0b', gradId: 'gradProd', dataKey: 'sumProductionValue' },
-    { title: 'Consumption Value', color: '#8b5cf6', gradId: 'gradCons', dataKey: 'sumConsumptionValue' },
-    { title: 'Wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
-    { title: 'Total Workers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
-];
+const CHART_CONFIGS: Record<AgentMetric, ChartConfig> = {
+    netBalance: { title: 'Net Balance', color: '#4f46e5', gradId: 'gradBalance', dataKey: 'avgNetBalance' },
+    monthlyNetIncome: {
+        title: 'Monthly Net Income',
+        color: '#10b981',
+        gradId: 'gradIncome',
+        dataKey: 'avgMonthlyNetIncome',
+    },
+    productionValue: { title: 'Production Value', color: '#f59e0b', gradId: 'gradProd', dataKey: 'sumProductionValue' },
+    consumptionValue: {
+        title: 'Consumption Value',
+        color: '#8b5cf6',
+        gradId: 'gradCons',
+        dataKey: 'sumConsumptionValue',
+    },
+    wages: { title: 'Wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
+    totalWorkers: { title: 'Total Workers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
+};
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -65,7 +85,6 @@ function buildMonthlyMerged(
     const fractionalThreshold =
         currentMonthIdx + Math.max(tickToDate(currentTick > 0 ? currentTick : 0).day - 1, 0.001) / TICKS_PER_MONTH;
 
-    // Current year points (monthIdx 1‥12)
     const currentPts = sorted
         .filter((p) => tickToDate(p.bucket).year === currentYear)
         .map((p) => {
@@ -73,7 +92,6 @@ function buildMonthlyMerged(
             return { monthIdx: monthIndex + 1, value: p[dataKey] as number };
         });
 
-    // Anchor at monthIdx=0 (previous December or nearest predecessor)
     const prevDec = sorted.find((p) => {
         const { year, monthIndex } = tickToDate(p.bucket);
         return year === currentYear - 1 && monthIndex === 11;
@@ -83,7 +101,6 @@ function buildMonthlyMerged(
         ? { monthIdx: 0, value: anchorSrc[dataKey] as number, ghostValue: null }
         : null;
 
-    // Ghost: previous year points for months not yet reached
     const ghostPts = sorted
         .filter((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
@@ -94,7 +111,6 @@ function buildMonthlyMerged(
             return { monthIdx: monthIndex + 1, ghostValue: p[dataKey] as number };
         });
 
-    // Merge into a single array keyed by monthIdx
     const byIdx = new Map<number, MonthlyMergedPoint>();
     if (anchor) {
         byIdx.set(0, anchor);
@@ -150,6 +166,8 @@ function yDomainForBuckets(pts: { value: number }[]): [number, number] | ['auto'
     return [lo - pad, hi + pad];
 }
 
+// ── Sub-chart components ──────────────────────────────────────────────────────
+
 function MonthlyMetricChart({
     mergedData,
     config,
@@ -162,7 +180,6 @@ function MonthlyMetricChart({
     history: HistoryPoint[];
 }) {
     const yDomain = useMemo(() => yDomainForMerged(mergedData), [mergedData]);
-
     const { year: currentYear } = tickToDate(
         currentTick > 0 ? currentTick : (history[history.length - 1]?.bucket ?? 0),
     );
@@ -172,7 +189,6 @@ function MonthlyMetricChart({
         }
         return `End of ${MONTH_NAMES[(monthIdx + 11) % 12]} ${currentYear}`;
     };
-
     const xTicks = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
 
@@ -180,7 +196,6 @@ function MonthlyMetricChart({
         <Card>
             <CardContent className='px-3 pt-3 pb-2'>
                 <p className='text-xs font-semibold text-muted-foreground mb-2'>{config.title}</p>
-
                 <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width='100%' height='100%'>
                         <AreaChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -287,8 +302,6 @@ function MonthlyMetricChart({
     );
 }
 
-// ── Yearly / Decade MetricChart ───────────────────────────────────────────────
-
 function NonMonthlyMetricChart({
     data,
     config,
@@ -309,10 +322,8 @@ function NonMonthlyMetricChart({
         [data, config.dataKey, granularity],
     );
     const firstYear = chartData[0]?.year ?? START_YEAR;
-
     const yDomain = useMemo(() => yDomainForBuckets(chartData), [chartData]);
     const xdomain = useMemo(() => [firstYear, firstYear + 11], [firstYear]);
-
     const formatYearTick = (year: number): string => `${Math.floor(year)}`;
     const tooltipLabel = (year: number): string =>
         granularity === 'yearly' ? `Year ${Math.floor(year)}` : `Y${Math.round(year)}`;
@@ -371,88 +382,46 @@ function NonMonthlyMetricChart({
     );
 }
 
-// ── Granularity button ────────────────────────────────────────────────────────
+// ── Public component ──────────────────────────────────────────────────────────
 
-function GranularityButton({
-    active,
-    disabled,
-    onClick,
-    children,
-}: {
-    active: boolean;
-    disabled?: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={[
-                'px-2 py-0.5 rounded text-[11px] transition-colors',
-                active
-                    ? 'bg-slate-600 text-slate-100'
-                    : disabled
-                      ? 'text-slate-600 cursor-not-allowed'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700',
-            ].join(' ')}
-        >
-            {children}
-        </button>
-    );
+export interface AgentMetricChartProps {
+    agentId: string;
+    granularity: Granularity;
+    metric: AgentMetric;
+    loading?: boolean;
+    className?: string;
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
-export default function AgentHistoryPage() {
-    const { agentId, detail, myAgentId, isOwnAgent } = useAgentPlanetDetail();
+export function AgentMetricChart({ agentId, granularity, metric, loading = false }: AgentMetricChartProps) {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const config = CHART_CONFIGS[metric];
 
-    const { data: monthlyData, isLoading: loadingMonthly } = useSimulationQuery(
+    const { data: monthlyData } = useSimulationQuery(
         trpc.simulation.getAgentHistory.queryOptions(
             { agentId, granularity: 'monthly', limit: 26 },
             { enabled: granularity === 'monthly' },
         ),
     );
-    const { data: yearlyData, isLoading: loadingYearly } = useSimulationQuery(
+    const { data: yearlyData } = useSimulationQuery(
         trpc.simulation.getAgentHistory.queryOptions(
             { agentId, granularity: 'yearly', limit: 100 },
             { enabled: granularity === 'yearly' },
         ),
     );
-    const { data: decadeData, isLoading: loadingDecade } = useSimulationQuery(
+    const { data: decadeData } = useSimulationQuery(
         trpc.simulation.getAgentHistory.queryOptions(
             { agentId, granularity: 'decade', limit: 100 },
             { enabled: granularity === 'decade' },
         ),
     );
     const currentTickData = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions());
-
     const currentTick = currentTickData?.data?.tick ?? 0;
-    const foundedTick = monthlyData?.foundedTick ?? yearlyData?.foundedTick ?? decadeData?.foundedTick ?? 0;
-    const ticksElapsed = currentTick - foundedTick;
-    const showYearly = ticksElapsed >= 2 * TICKS_PER_YEAR;
-    const showDecade = ticksElapsed >= 11 * TICKS_PER_YEAR;
-
-    const isLoading =
-        (granularity === 'monthly' && loadingMonthly) ||
-        (granularity === 'yearly' && loadingYearly) ||
-        (granularity === 'decade' && loadingDecade);
 
     const monthlyHistory = useMemo(() => monthlyData?.history ?? [], [monthlyData]);
 
-    // Pre-compute merged monthly data for each metric once
-    const mergedByMetric = useMemo(
-        () =>
-            CHARTS.reduce(
-                (acc, cfg) => {
-                    acc[cfg.dataKey] = buildMonthlyMerged(monthlyHistory, currentTick, cfg.dataKey);
-                    return acc;
-                },
-                {} as Record<keyof HistoryPoint, MonthlyMergedPoint[]>,
-            ),
-        [monthlyHistory, currentTick],
+    const mergedData = useMemo(
+        () => buildMonthlyMerged(monthlyHistory, currentTick, config.dataKey),
+        [monthlyHistory, currentTick, config.dataKey],
     );
 
     const activeHistory =
@@ -462,67 +431,21 @@ export default function AgentHistoryPage() {
               ? (decadeData?.history ?? [])
               : [];
 
-    function selectGranularity(g: Granularity) {
-        if (g === 'yearly' && !showYearly) {
-            return;
-        }
-        if (g === 'decade' && !showDecade) {
-            return;
-        }
-        setGranularity(g);
+    const chart =
+        granularity === 'monthly' ? (
+            <MonthlyMetricChart
+                mergedData={mergedData}
+                config={config}
+                currentTick={currentTick}
+                history={monthlyHistory}
+            />
+        ) : (
+            <NonMonthlyMetricChart data={activeHistory} config={config} granularity={granularity} />
+        );
+
+    if (loading) {
+        return <div className='opacity-40 animate-pulse pointer-events-none select-none'>{chart}</div>;
     }
 
-    return (
-        <AgentAccessGuard
-            agentId={agentId}
-            agentName={detail?.agentName ?? 'Agent'}
-            isLoading={myAgentId.isLoading}
-            isOwnAgent={isOwnAgent}
-        >
-            <div className='space-y-4'>
-                <div className='flex gap-1 items-center'>
-                    <span className='text-xs text-muted-foreground mr-1'>Granularity:</span>
-                    <GranularityButton active={granularity === 'monthly'} onClick={() => selectGranularity('monthly')}>
-                        Monthly
-                    </GranularityButton>
-                    <GranularityButton
-                        active={granularity === 'yearly'}
-                        disabled={!showYearly}
-                        onClick={() => selectGranularity('yearly')}
-                    >
-                        Yearly
-                    </GranularityButton>
-                    <GranularityButton
-                        active={granularity === 'decade'}
-                        disabled={!showDecade}
-                        onClick={() => selectGranularity('decade')}
-                    >
-                        Decade
-                    </GranularityButton>
-                </div>
-                <div
-                    className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
-                >
-                    {CHARTS.map((cfg) =>
-                        granularity === 'monthly' ? (
-                            <MonthlyMetricChart
-                                key={cfg.dataKey}
-                                mergedData={mergedByMetric[cfg.dataKey] ?? []}
-                                config={cfg}
-                                currentTick={currentTick}
-                                history={monthlyHistory}
-                            />
-                        ) : (
-                            <NonMonthlyMetricChart
-                                key={cfg.dataKey}
-                                data={activeHistory}
-                                config={cfg}
-                                granularity={granularity}
-                            />
-                        ),
-                    )}
-                </div>
-            </div>
-        </AgentAccessGuard>
-    );
+    return chart;
 }
