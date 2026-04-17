@@ -1,4 +1,4 @@
-import { defaultHeight } from '@/components/client/FacilityIcon';
+import { defaultHeight } from '@/components/client/FacilityOrShipIcon';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import React from 'react';

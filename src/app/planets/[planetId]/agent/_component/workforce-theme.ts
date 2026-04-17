@@ -59,7 +59,7 @@ export function tenureYearColor(index: number, total: number): string {
 export const eduLabel = (edu: EducationLevelType): string => educationLevels[edu].name;
 
 /** Sum a Record<EducationLevelType, number> across all education levels. */
-export const sumByEdu = (rec: Record<EducationLevelType, number>): number =>
+export const sumByEdu = (rec: Partial<Record<EducationLevelType, number>>): number =>
     educationLevelKeys.reduce((sum, edu) => sum + (rec[edu] ?? 0), 0);
 
 /** Format a percentage, safe for zero denominators. */

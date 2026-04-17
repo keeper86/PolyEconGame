@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatNumbers } from '@/lib/utils';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
 import { educationLevelKeys } from '@/simulation/population/education';
+import type { EducationLevelType } from '@/simulation/population/education';
 import { Coins } from 'lucide-react';
 
 export default function WorkforcePage() {
@@ -49,7 +50,7 @@ export default function WorkforcePage() {
                 ) : !isLoading && assets ? (
                     <div className='space-y-6'>
                         <WorkforceDemographyPanel
-                            allocatedWorkers={assets.allocatedWorkers}
+                            allocatedWorkers={assets.allocatedWorkers as Record<EducationLevelType, number>}
                             workforceDemography={assets.workforceDemography}
                             unusedWorkers={undefined}
                             unusedWorkerFraction={undefined}
@@ -58,8 +59,6 @@ export default function WorkforcePage() {
                             deathsPrevMonth={assets.deaths?.prevMonth}
                             disabilitiesThisMonth={assets.disabilities?.thisMonth}
                             disabilitiesPrevMonth={assets.disabilities?.prevMonth}
-                            retirementsThisMonth={assets.retirements?.thisMonth}
-                            retirementsPrevMonth={assets.retirements?.prevMonth}
                         />
                         <AutomationPanel
                             agentId={agentId}

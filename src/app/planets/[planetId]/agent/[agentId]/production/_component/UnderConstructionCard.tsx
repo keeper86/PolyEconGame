@@ -5,7 +5,7 @@ import type { ProductionFacility } from '../../../../../../../simulation/planet/
 import { formatNumbers } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { FacilityIcon } from '@/components/client/FacilityIcon';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { HardHat } from 'lucide-react';
 import { FacilityCardShell } from './FacilityCardShell';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export function UnderConstructionCard({ facility }: { facility: ProductionFacili
             contentClassName='space-y-2'
             icon={
                 <div className='relative shrink-0'>
-                    <FacilityIcon facilityName={facility.name} />
+                    <FacilityOrShipIcon facilityOrShipName={facility.name} />
                     <div className='absolute inset-0 bg-background/50 rounded' />
                 </div>
             }

@@ -527,7 +527,7 @@ describe('productionTick idle worker persistence', () => {
             makeProductionFacility({ none: 10 }, { planetId: planet.id }),
         );
 
-        productionTick(agentMap(agent), planet,1);
+        productionTick(agentMap(agent), planet, 1);
 
         const results = agent.assets[planet.id].productionFacilities[0].lastTickResults!;
         expect(results.totalUsedByEdu.none).toBe(10);

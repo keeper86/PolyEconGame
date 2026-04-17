@@ -1,6 +1,6 @@
 'use client';
 
-import { defaultHeight, FacilityIcon } from '@/components/client/FacilityIcon';
+import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -93,7 +93,7 @@ export function ActiveFacilityCard({
     return (
         <FacilityCardShell
             contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityIcon facilityName={facility.name} />}
+            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
             headerContent={
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
                     <div className='flex items-center gap-1 flex-col mb-auto'>

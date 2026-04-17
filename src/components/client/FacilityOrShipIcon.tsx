@@ -1,20 +1,20 @@
 import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';
 
-export function FacilityIcon({
-    facilityName,
+export function FacilityOrShipIcon({
+    facilityOrShipName,
     size = 280,
     suffix,
 }: {
-    facilityName: string;
+    facilityOrShipName: string;
     size?: number;
     suffix?: string;
 }) {
     let src: string;
     if (suffix !== '') {
-        src = getAssetPath(facilityName + '_' + suffix);
+        src = getAssetPath(facilityOrShipName + '_' + suffix);
     } else {
-        src = getAssetPath(facilityName);
+        src = getAssetPath(facilityOrShipName);
     }
 
     return (
@@ -22,7 +22,7 @@ export function FacilityIcon({
             className='rounded overflow-hidden shrink-0 inline-block relative'
             style={{ width: size, height: (size * 2) / 3 }}
         >
-            <Image src={src} alt={facilityName} fill className='object-contain' />
+            <Image src={src} alt={facilityOrShipName} fill className='object-contain' />
         </span>
     );
 }

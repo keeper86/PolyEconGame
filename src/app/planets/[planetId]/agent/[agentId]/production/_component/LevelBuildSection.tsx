@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FacilityCardShell } from './FacilityCardShell';
 import { Separator } from '@/components/ui/separator';
-import { FacilityIcon } from '@/components/client/FacilityIcon';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { FacilityIORow } from './FacilityIORow';
 import { ScaleSelector } from './ScaleSelector';
 import { useTRPC } from '@/lib/trpc';
@@ -27,7 +27,7 @@ function MiniCard({ entry, onChoose }: { entry: FacilityCatalogEntry; onChoose: 
     return (
         <FacilityCardShell
             contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityIcon facilityName={facility.name} />}
+            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
             headerContent={
                 <>
                     <h3 className='font-semibold text-sm leading-tight'>{facility.name}</h3>
@@ -108,7 +108,7 @@ function BuildCard({
         <FacilityCardShell
             className='max-w-[600px]'
             contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityIcon facilityName={facility.name} />}
+            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
             headerContent={
                 <>
                     <h3 className='font-semibold text-sm leading-tight'>{facility.name}</h3>

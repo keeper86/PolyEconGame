@@ -360,12 +360,12 @@ export function EducationLevelCards({
     overallTenureProductivity: number;
     overqualifiedByEdu?: Record<EducationLevelType, number>;
     overqualifiedBreakdown?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
-    deathsByEdu?: Record<EducationLevelType, number>;
-    deathsPrevByEdu?: Record<EducationLevelType, number>;
-    disabilitiesByEdu?: Record<EducationLevelType, number>;
-    disabilitiesPrevByEdu?: Record<EducationLevelType, number>;
-    retirementsByEdu?: Record<EducationLevelType, number>;
-    retirementsPrevByEdu?: Record<EducationLevelType, number>;
+    deathsByEdu?: Partial<Record<EducationLevelType, number>>;
+    deathsPrevByEdu?: Partial<Record<EducationLevelType, number>>;
+    disabilitiesByEdu?: Partial<Record<EducationLevelType, number>>;
+    disabilitiesPrevByEdu?: Partial<Record<EducationLevelType, number>>;
+    retirementsByEdu?: Partial<Record<EducationLevelType, number>>;
+    retirementsPrevByEdu?: Partial<Record<EducationLevelType, number>>;
 }): React.ReactElement {
     const totalActive = sumByEdu(activeByEdu);
     const totalFired = sumByEdu(firedByEdu);

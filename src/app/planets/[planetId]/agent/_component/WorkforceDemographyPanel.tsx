@@ -25,17 +25,17 @@ export type WorkforceDemographyPanelProps = {
     /** Overqualified worker matrix aggregated across assets: jobEdu -> workerEdu -> count */
     overqualifiedMatrix?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
     /** Deaths this month per education level. */
-    deathsThisMonth?: Record<EducationLevelType, number>;
+    deathsThisMonth?: Partial<Record<EducationLevelType, number>>;
     /** Deaths previous month per education level. */
-    deathsPrevMonth?: Record<EducationLevelType, number>;
+    deathsPrevMonth?: Partial<Record<EducationLevelType, number>>;
     /** Disabilities this month per education level. */
-    disabilitiesThisMonth?: Record<EducationLevelType, number>;
+    disabilitiesThisMonth?: Partial<Record<EducationLevelType, number>>;
     /** Disabilities previous month per education level. */
-    disabilitiesPrevMonth?: Record<EducationLevelType, number>;
+    disabilitiesPrevMonth?: Partial<Record<EducationLevelType, number>>;
     /** Retirements this month per education level. */
-    retirementsThisMonth?: Record<EducationLevelType, number>;
+    retirementsThisMonth?: Partial<Record<EducationLevelType, number>>;
     /** Retirements previous month per education level. */
-    retirementsPrevMonth?: Record<EducationLevelType, number>;
+    retirementsPrevMonth?: Partial<Record<EducationLevelType, number>>;
 };
 
 // ---------------------------------------------------------------------------
