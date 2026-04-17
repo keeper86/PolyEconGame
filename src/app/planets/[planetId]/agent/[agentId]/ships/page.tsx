@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TransportShip } from '@/simulation/ships/ships';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostShipBuyingOfferDialog } from '@/app/planets/[planetId]/ships/_components/PostShipBuyingOfferDialog';
 import { PostShipMaintenanceOfferDialog } from '@/app/planets/[planetId]/ships/_components/PostShipMaintenanceOfferDialog';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
@@ -80,20 +81,27 @@ export default function AgentShipsPage() {
                             <Card key={ship.name}>
                                 <CardContent className='px-4 py-4'>
                                     <div className='flex items-start justify-between gap-4'>
-                                        <div className='space-y-1'>
-                                            <div className='flex items-center gap-2'>
-                                                <span className='font-medium'>{ship.name}</span>
-                                                {statusBadge(ship)}
+                                        <div className='flex items-start gap-3'>
+                                            <FacilityOrShipIcon
+                                                facilityOrShipName={ship.type.name}
+                                                suffix=''
+                                                size={80}
+                                            />
+                                            <div className='space-y-1'>
+                                                <div className='flex items-center gap-2'>
+                                                    <span className='font-medium'>{ship.name}</span>
+                                                    {statusBadge(ship)}
+                                                </div>
+                                                <p className='text-xs text-muted-foreground'>
+                                                    {ship.type.name} · {ship.type.cargoSpecification.type} ·{' '}
+                                                    {ship.type.cargoSpecification.volume} m³ · speed {ship.type.speed}
+                                                </p>
+                                                <p
+                                                    className={`text-xs font-medium ${conditionColor(ship.maintainanceStatus)}`}
+                                                >
+                                                    Condition: {Math.round(ship.maintainanceStatus * 100)}%
+                                                </p>
                                             </div>
-                                            <p className='text-xs text-muted-foreground'>
-                                                {ship.type.name} · {ship.type.cargoSpecification.type} ·{' '}
-                                                {ship.type.cargoSpecification.volume} m³ · speed {ship.type.speed}
-                                            </p>
-                                            <p
-                                                className={`text-xs font-medium ${conditionColor(ship.maintainanceStatus)}`}
-                                            >
-                                                Condition: {Math.round(ship.maintainanceStatus * 100)}%
-                                            </p>
                                         </div>
                                         {isIdle && (
                                             <div className='flex gap-2 flex-shrink-0'>

@@ -13,7 +13,8 @@ import { formatNumbers } from '@/lib/utils';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
 import { shiptypes } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Anchor, Wrench } from 'lucide-react';
+import { Wrench } from 'lucide-react';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import React, { useMemo, useState } from 'react';
 import type { ShipyardFacility } from '../../../../../../../simulation/planet/facility';
 import { FacilityCardShell } from './FacilityCardShell';
@@ -103,11 +104,7 @@ export function ActiveShipyardCard({
     return (
         <FacilityCardShell
             contentClassName='flex flex-col flex-1 gap-2'
-            icon={
-                <div className='flex items-center justify-center w-10 h-10 rounded bg-muted shrink-0'>
-                    <Anchor className='h-6 w-6 text-muted-foreground' />
-                </div>
-            }
+            icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' suffix={String(facility.scale)} size={60} />}
             headerContent={
                 <span className='flex flex-col gap-2'>
                     <div className='flex items-center gap-1 flex-col mb-auto'>

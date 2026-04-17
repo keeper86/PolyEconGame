@@ -392,6 +392,7 @@ export function makeShipyardFacility(
     const { shipType, ...rest } = overrides ?? {};
     const defaultShipType: TransportShipType = shipType ?? {
         name: 'Test Ship',
+        scale: 1,
         speed: 1,
         cargoSpecification: { type: 'solid', volume: 1000, mass: 1000 },
         requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },

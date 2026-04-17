@@ -11,7 +11,7 @@ export function FacilityOrShipIcon({
     suffix?: string;
 }) {
     let src: string;
-    if (suffix !== '') {
+    if (suffix && suffix !== '') {
         src = getAssetPath(facilityOrShipName + '_' + suffix);
     } else {
         src = getAssetPath(facilityOrShipName);
