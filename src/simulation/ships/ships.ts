@@ -242,7 +242,7 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
     });
 };
 
-const defaultBuildingCost: ResourceQuantity[] = [
+export const defaultBuildingCost: ResourceQuantity[] = [
     { type: steelResourceType, quantity: 100 },
     { type: electronicComponentResourceType, quantity: 50 },
     { type: machineryResourceType, quantity: 30 },

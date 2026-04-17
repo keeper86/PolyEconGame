@@ -23,28 +23,33 @@ export function ProductQuantity({
     isLimiting,
     planetId,
     agentId,
+    quantityLabel,
 }: ResourceEntry & {
     efficiency: number;
     isLimiting: boolean;
     planetId: string | null;
     agentId: string | null;
+    quantityLabel?: string;
 }): React.ReactElement {
     const href =
         planetId && agentId
             ? `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resource.name)}`
             : null;
+    const isUnknown = quantityLabel !== undefined;
     return (
         <Link
             href={(href ?? '#') as never}
             className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all'
         >
-            <span
-                className={`absolute bottom-0 left-0 right-0 ${fillColor(efficiency, isLimiting)} transition-all`}
-                style={{ height: `${Math.round(efficiency * 100)}%` }}
-            />
+            {!isUnknown && (
+                <span
+                    className={`absolute bottom-0 left-0 right-0 ${fillColor(efficiency, isLimiting)} transition-all`}
+                    style={{ height: `${Math.round(efficiency * 100)}%` }}
+                />
+            )}
             <span className='relative z-10 inline-flex flex-col items-center gap-1.5 text-xs text-outline-strong'>
                 <ProductIcon productName={resource.name} />
-                {formatNumbers(quantity)}
+                {isUnknown ? <span className='text-muted-foreground'>{quantityLabel}</span> : formatNumbers(quantity)}
             </span>
         </Link>
     );
