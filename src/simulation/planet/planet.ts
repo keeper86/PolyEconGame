@@ -268,11 +268,11 @@ export type AgentPlanetAssets = {
 
 export type Agent = {
     id: string;
-    automated: boolean; // whether this agent is controlled by the AI (true) or a human player (false)
-    /** When false (human player), the worker still auto-allocates workforce targets each tick. */
+    automated: boolean;
     automateWorkerAllocation: boolean;
     name: string;
     foundedTick: number;
+    starterLoanTaken: boolean;
     associatedPlanetId: string;
     transportShips: TransportShip[];
     assets: {

@@ -481,18 +481,12 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
     };
 }
 
-// ============================================================================
-// Agent
-// ============================================================================
-
-/**
- * Create an Agent with assets on one planet (default 'p').
- */
 export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', overrides?: Partial<Agent>): Agent {
     return {
         id,
         name,
         foundedTick: 0,
+        starterLoanTaken: false,
         associatedPlanetId: planetId,
         transportShips: [],
         automated: true,
@@ -504,10 +498,6 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
     };
 }
 
-/**
- * Create a government agent. By convention the id is `gov-1` and it
- * lives on planet `p`.
- */
 export function makeGovernmentAgent(id = 'gov-1', planetId = 'p'): Agent {
     return makeAgent(id, planetId);
 }

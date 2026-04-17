@@ -153,6 +153,7 @@ export function makeAgent(opts: {
         automated: true,
         automateWorkerAllocation: true,
         foundedTick: 0,
+        starterLoanTaken: false,
         assets: { [opts.planetId]: assets },
     };
 }

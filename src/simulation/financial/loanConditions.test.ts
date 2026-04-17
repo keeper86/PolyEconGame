@@ -15,7 +15,7 @@ function makeEstablishedAgent(
         existingLoans?: number;
     },
 ): Agent {
-    const a = makeAgent('a1', planet.id, 'Player', { automated: false });
+    const a = makeAgent('a1', planet.id, 'Player', { automated: false, starterLoanTaken: true });
     const assets = a.assets[planet.id]!;
     assets.loans = overrides?.existingLoans ?? 0;
     assets.lastMonthAcc = {
@@ -45,7 +45,7 @@ describe('computeLoanConditions', () => {
     // Starter-loan path
     // ----------------------------------------------------------------
 
-    it('grants STARTER_LOAN_AMOUNT to a brand-new agent (no revenue, no loans)', () => {
+    it('grants STARTER_LOAN_AMOUNT to a brand-new agent (starterLoanTaken=false)', () => {
         const planet = makePlanet();
         const agent = makeAgent('a1', planet.id, 'Player', { automated: false });
         const result = computeLoanConditions(agent, planet, 2);
@@ -53,18 +53,19 @@ describe('computeLoanConditions', () => {
         expect(result.maxLoanAmount).toBe(STARTER_LOAN_AMOUNT);
     });
 
-    it('does NOT use starter path when agent already has a loan', () => {
+    it('does NOT use starter path when starterLoanTaken=true', () => {
         const planet = makePlanet();
-        const agent = makeEstablishedAgent(planet, { existingLoans: 1 });
+        const agent = makeAgent('a1', planet.id, 'Player', { automated: false, starterLoanTaken: true });
         const result = computeLoanConditions(agent, planet, 2);
         expect(result.isNewAgent).toBe(false);
     });
 
-    it('does NOT use starter path when agent has revenue history', () => {
+    it('still uses starter path when agent has loans but starterLoanTaken=false', () => {
         const planet = makePlanet();
-        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 100 });
+        const agent = makeEstablishedAgent(planet, { existingLoans: 1 });
+        agent.starterLoanTaken = false;
         const result = computeLoanConditions(agent, planet, 2);
-        expect(result.isNewAgent).toBe(false);
+        expect(result.isNewAgent).toBe(true);
     });
 
     // ----------------------------------------------------------------

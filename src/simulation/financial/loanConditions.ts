@@ -45,7 +45,7 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
 
     const monthlyNetCashFlow = blendedMonthlyRevenue - blendedMonthlyExpenses;
 
-    const isNewAgent = blendedMonthlyRevenue === 0 && existingLoans === 0;
+    const isNewAgent = !agent.starterLoanTaken;
 
     let storageCollateral = 0;
     if (assets?.storageFacility?.currentInStorage) {

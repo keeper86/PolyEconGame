@@ -45,6 +45,9 @@ export function handleRequestLoan(
     planet.bank.loans += amount;
     planet.bank.deposits += amount;
     planet.bank.equity = planet.bank.deposits - planet.bank.loans;
+    if (conditions.isNewAgent) {
+        agent.starterLoanTaken = true;
+    }
     console.log(`[worker] Loan of ${amount} granted to agent '${agentId}' on planet '${planetId}'`);
     safePostMessage({ type: 'loanGranted', requestId, agentId, amount });
 }
