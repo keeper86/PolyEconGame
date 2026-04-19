@@ -12,7 +12,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { AcceptShipBuyingOfferDialog } from './_components/AcceptShipBuyingOfferDialog';
-import { AcceptShipMaintenanceOfferDialog } from './_components/AcceptShipMaintenanceOfferDialog';
 import { AcceptTransportContractDialog } from './_components/AcceptTransportContractDialog';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { shiptypes } from '@/simulation/ships/ships';
@@ -35,9 +34,6 @@ export default function PlanetShipsPage() {
     const { data: buyingData, isLoading: buyingLoading } = useSimulationQuery(
         trpc.listShipBuyingOffers.queryOptions({ planetId }),
     );
-    const { data: maintenanceData, isLoading: maintenanceLoading } = useSimulationQuery(
-        trpc.listShipMaintenanceOffers.queryOptions({ planetId }),
-    );
     const { data: myShipsData } = useSimulationQuery(
         trpc.listAgentShips.queryOptions({ agentId: agentId ?? '' }, { enabled: !!agentId }),
     );
@@ -52,9 +48,6 @@ export default function PlanetShipsPage() {
     const [acceptBuyingTarget, setAcceptBuyingTarget] = useState<
         NonNullable<typeof buyingData>['offers'][number] | null
     >(null);
-    const [acceptMaintenanceTarget, setAcceptMaintenanceTarget] = useState<
-        NonNullable<typeof maintenanceData>['offers'][number] | null
-    >(null);
 
     const cancelMutation = useMutation(
         trpc.cancelTransportContract.mutationOptions({
@@ -68,7 +61,6 @@ export default function PlanetShipsPage() {
 
     const openContracts = (contractsData?.contracts ?? []).filter((c) => c.status === 'open');
     const openBuyingOffers = (buyingData?.offers ?? []).filter((o) => o.status === 'open');
-    const openMaintenanceOffers = (maintenanceData?.offers ?? []).filter((o) => o.status === 'open');
 
     return (
         <div className='space-y-4'>
@@ -89,14 +81,6 @@ export default function PlanetShipsPage() {
                         {openBuyingOffers.length > 0 && (
                             <Badge variant='secondary' className='ml-2 text-xs'>
                                 {openBuyingOffers.length}
-                            </Badge>
-                        )}
-                    </TabsTrigger>
-                    <TabsTrigger value='maintenance'>
-                        Maintenance
-                        {openMaintenanceOffers.length > 0 && (
-                            <Badge variant='secondary' className='ml-2 text-xs'>
-                                {openMaintenanceOffers.length}
                             </Badge>
                         )}
                     </TabsTrigger>
@@ -230,42 +214,7 @@ export default function PlanetShipsPage() {
                     })}
                 </TabsContent>
 
-                {/* Maintenance Offers */}
-                <TabsContent value='maintenance' className='space-y-3 mt-4'>
-                    {maintenanceLoading && <p className='text-sm text-muted-foreground'>Loading offers…</p>}
-                    {!maintenanceLoading && openMaintenanceOffers.length === 0 && (
-                        <p className='text-sm text-muted-foreground'>No maintenance offers posted on this planet.</p>
-                    )}
-                    {openMaintenanceOffers.map((offer) => {
-                        const isMyOffer = offer._agentId === agentId;
-                        return (
-                            <Card key={offer.id}>
-                                <CardContent className='px-4 py-4 flex items-center justify-between gap-4'>
-                                    <div className='text-sm space-y-0.5'>
-                                        <p className='font-medium'>{offer.shipName}</p>
-                                        <p>
-                                            <span className='text-muted-foreground'>Payment:</span> {offer.price}
-                                        </p>
-                                        <p>
-                                            <span className='text-muted-foreground'>Max duration:</span>{' '}
-                                            {offer.maximumTicksAllowed} ticks
-                                        </p>
-                                    </div>
-                                    {!isMyOffer && agentId && (
-                                        <Button size='sm' onClick={() => setAcceptMaintenanceTarget(offer)}>
-                                            Accept
-                                        </Button>
-                                    )}
-                                    {isMyOffer && (
-                                        <Badge variant='secondary' className='text-xs'>
-                                            Your offer
-                                        </Badge>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
-                </TabsContent>
+                {/* Maintenance Offers — removed; maintenance is now service-based */}
             </Tabs>
 
             {/* Dialogs */}
@@ -286,15 +235,6 @@ export default function PlanetShipsPage() {
                     offer={acceptBuyingTarget}
                     open={!!acceptBuyingTarget}
                     onClose={() => setAcceptBuyingTarget(null)}
-                />
-            )}
-            {acceptMaintenanceTarget && agentId && (
-                <AcceptShipMaintenanceOfferDialog
-                    agentId={agentId}
-                    planetId={planetId}
-                    offer={acceptMaintenanceTarget}
-                    open={!!acceptMaintenanceTarget}
-                    onClose={() => setAcceptMaintenanceTarget(null)}
                 />
             )}
         </div>

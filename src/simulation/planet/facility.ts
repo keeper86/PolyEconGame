@@ -155,10 +155,7 @@ export type ShipyardFacility = ShipyardFacilityBase &
           }
         | {
               mode: 'maintenance';
-              shipOwner: string;
-              shipName: string;
-              maintained: TransportShipType;
-              progress: number;
+              produces: TransportShipType; // ship type whose recipe drives resource consumption
           }
         | {
               mode: 'idle';

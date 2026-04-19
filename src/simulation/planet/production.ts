@@ -11,7 +11,7 @@ import { extractFromClaimedResource, queryClaimedResource } from './claims';
 import type { Facility, ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
-import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
+import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType, maintenanceServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 
@@ -359,24 +359,22 @@ function processShipyardFacility(
                 actualConsumed[need.type.name] = 0;
             }
         }
-    } else if (facility.mode === 'maintenance' && resolvedShip && resolvedShip.state.type === 'maintenance') {
-        const maintenancePerTick = Math.min(1, 3 / resolvedShip.type.buildingTime);
+    } else if (facility.mode === 'maintenance') {
+        const shipType = facility.produces;
+        const maintenancePerTick = Math.min(1, 3 / shipType.buildingTime);
         if (overallEfficiency > 0) {
-            for (const need of resolvedShip.type.buildingCost) {
+            for (const need of shipType.buildingCost) {
                 const required = need.quantity * maintenancePerTick * MAINTENANCE_COST_MULTIPLIER;
                 const consumed = required * overallEfficiency;
                 const removed = removeFromStorageFacility(storage, need.type.name, consumed);
                 actualConsumed[need.type.name] = need.type.form === 'services' ? consumed : removed;
             }
-            resolvedShip.maintainanceStatus = Math.min(
-                1,
-                resolvedShip.maintainanceStatus + maintenancePerTick * overallEfficiency,
-            );
-            if (resolvedShip.maintainanceStatus >= 1) {
-                (facility as { mode: TransportShipStatusType }).mode = 'idle';
-            }
+            // Produce maintenance service into storage for ships to consume
+            const serviceProduced = maintenancePerTick * overallEfficiency;
+            putIntoStorageFacility(storage, maintenanceServiceResourceType, serviceProduced);
+            monthAcc.productionValue += serviceProduced * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
         } else {
-            for (const need of resolvedShip.type.buildingCost) {
+            for (const need of shipType.buildingCost) {
                 actualConsumed[need.type.name] = 0;
             }
         }
@@ -437,18 +435,8 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
             ...assets.shipyardFacilities.filter((f) => !f.construction),
         ];
 
-        // Pre-resolve ships for maintenance-mode shipyards — eliminates repeated agent/ship lookups.
         const enrichedFacilities: EnrichedFacility[] = activeFacilities.map((facility) => {
-            let resolvedShip: TransportShip | undefined;
-            if (facility.type === 'ships' && facility.mode === 'maintenance') {
-                resolvedShip = agents.get(facility.shipOwner)?.transportShips.find((s) => s.name === facility.shipName);
-                if (!resolvedShip) {
-                    console.warn(
-                        `Ship owner with id ${facility.shipOwner} not found for maintenance. Skipping maintenance consumption.`,
-                    );
-                }
-            }
-            return { facility, resourceEfficiencyMap: {}, resolvedShip };
+            return { facility, resourceEfficiencyMap: {}, resolvedShip: undefined };
         });
 
         const totalStorageDemand = computeTotalStorageDemand(enrichedFacilities);
@@ -538,6 +526,26 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
                 processShipyardFacility({ ...productionParameterBase, facility }, tick, resolvedShip);
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
+            }
+        }
+
+        // Consume maintenance service for ships in maintenance mode at this planet.
+        for (const ship of agent.transportShips) {
+            if (ship.state.type !== 'maintenance' || ship.state.planetId !== planet.id) {
+                continue;
+            }
+            const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+            const consumed = removeFromStorageFacility(
+                assets.storageFacility,
+                maintenanceServiceResourceType.name,
+                maintenancePerTick,
+            );
+            if (consumed > 0) {
+                ship.maintainanceStatus = Math.min(1, ship.maintainanceStatus + consumed);
+                assets.monthAcc.consumptionValue += consumed * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
+                if (ship.maintainanceStatus >= 1) {
+                    ship.state = { type: 'idle', planetId: planet.id };
+                }
             }
         }
     });

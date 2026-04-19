@@ -130,21 +130,18 @@ export type InboundMessage =
           shipName: string; // idle ship to transfer
       }
     | {
-          type: 'postShipMaintenanceOffer';
+          type: 'setShipMaintenance';
           requestId: string;
           agentId: string;
-          planetId: string; // ship's current planet
+          planetId: string;
           shipName: string;
-          price: number;
-          maximumTicksAllowed: number;
       }
     | {
-          type: 'acceptShipMaintenanceOffer';
+          type: 'cancelShipMaintenance';
           requestId: string;
           agentId: string;
-          planetId: string; // planet where offer was posted
-          posterAgentId: string;
-          offerId: string;
+          planetId: string;
+          shipName: string;
       }
     | {
           type: 'buildShipyard';
@@ -168,7 +165,7 @@ export type InboundMessage =
           agentId: string;
           planetId: string;
           facilityId: string;
-      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'idle' }))
+      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'maintenance'; shipTypeName: string } | { mode: 'idle' }))
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -213,10 +210,10 @@ export type OutboundMessage =
     | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string }
     | { type: 'shipBuyingOfferAccepted'; requestId: string; agentId: string; offerId: string }
     | { type: 'shipBuyingOfferAcceptFailed'; requestId: string; reason: string }
-    | { type: 'shipMaintenanceOfferPosted'; requestId: string; agentId: string; offerId: string }
-    | { type: 'shipMaintenanceOfferPostFailed'; requestId: string; reason: string }
-    | { type: 'shipMaintenanceOfferAccepted'; requestId: string; agentId: string; offerId: string }
-    | { type: 'shipMaintenanceOfferAcceptFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceSet'; requestId: string; agentId: string }
+    | { type: 'shipMaintenanceSetFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceCancelled'; requestId: string; agentId: string }
+    | { type: 'shipMaintenanceCancelFailed'; requestId: string; reason: string }
     | { type: 'shipyardBuilt'; requestId: string; agentId: string; facilityId: string }
     | { type: 'shipyardBuildFailed'; requestId: string; reason: string }
     | { type: 'shipyardExpanded'; requestId: string; agentId: string; facilityId: string }
@@ -367,21 +364,18 @@ export type PendingAction =
           shipName: string;
       }
     | {
-          type: 'postShipMaintenanceOffer';
+          type: 'setShipMaintenance';
           requestId: string;
           agentId: string;
           planetId: string;
           shipName: string;
-          price: number;
-          maximumTicksAllowed: number;
       }
     | {
-          type: 'acceptShipMaintenanceOffer';
+          type: 'cancelShipMaintenance';
           requestId: string;
           agentId: string;
           planetId: string;
-          posterAgentId: string;
-          offerId: string;
+          shipName: string;
       }
     | {
           type: 'buildShipyard';
@@ -405,4 +399,4 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           facilityId: string;
-      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'idle' }));
+      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'maintenance'; shipTypeName: string } | { mode: 'idle' }));

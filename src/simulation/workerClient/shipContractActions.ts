@@ -1,5 +1,5 @@
 import type { GameState } from '../planet/planet';
-import type { ShipBuyingOffer, ShipMaintenanceOffer, TransportContract } from '../ships/ships';
+import type { ShipBuyingOffer, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
 import type { OutboundMessage, PendingAction } from './messages';
 
@@ -313,141 +313,68 @@ export function handleAcceptShipBuyingOffer(
     safePostMessage({ type: 'shipBuyingOfferAccepted', requestId, agentId, offerId });
 }
 
-export function handlePostShipMaintenanceOffer(
+export function handleSetShipMaintenance(
     state: GameState,
-    action: Extract<PendingAction, { type: 'postShipMaintenanceOffer' }>,
+    action: Extract<PendingAction, { type: 'setShipMaintenance' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, planetId, shipName, price, maximumTicksAllowed } = action;
+    const { requestId, agentId, planetId, shipName } = action;
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipMaintenanceOfferPostFailed', requestId, reason: 'Agent not found' });
-        return;
-    }
-
-    const assets = agent.assets[planetId];
-    if (!assets) {
-        safePostMessage({ type: 'shipMaintenanceOfferPostFailed', requestId, reason: 'No assets on planet' });
+        safePostMessage({ type: 'shipMaintenanceSetFailed', requestId, reason: 'Agent not found' });
         return;
     }
 
     const ship = agent.transportShips.find((s) => s.name === shipName);
     if (!ship) {
-        safePostMessage({
-            type: 'shipMaintenanceOfferPostFailed',
-            requestId,
-            reason: `Ship '${shipName}' not found`,
-        });
+        safePostMessage({ type: 'shipMaintenanceSetFailed', requestId, reason: `Ship '${shipName}' not found` });
         return;
     }
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'shipMaintenanceOfferPostFailed', requestId, reason: 'Ship must be idle' });
+        safePostMessage({ type: 'shipMaintenanceSetFailed', requestId, reason: 'Ship must be idle' });
+        return;
+    }
+    if (ship.state.planetId !== planetId) {
+        safePostMessage({ type: 'shipMaintenanceSetFailed', requestId, reason: 'Ship is not on the specified planet' });
+        return;
+    }
+
+    ship.state = { type: 'maintenance', planetId };
+    safePostMessage({ type: 'shipMaintenanceSet', requestId, agentId });
+}
+
+export function handleCancelShipMaintenance(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'cancelShipMaintenance' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, shipName } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'shipMaintenanceCancelFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+
+    const ship = agent.transportShips.find((s) => s.name === shipName);
+    if (!ship) {
+        safePostMessage({ type: 'shipMaintenanceCancelFailed', requestId, reason: `Ship '${shipName}' not found` });
+        return;
+    }
+    if (ship.state.type !== 'maintenance') {
+        safePostMessage({ type: 'shipMaintenanceCancelFailed', requestId, reason: 'Ship is not in maintenance mode' });
         return;
     }
     if (ship.state.planetId !== planetId) {
         safePostMessage({
-            type: 'shipMaintenanceOfferPostFailed',
+            type: 'shipMaintenanceCancelFailed',
             requestId,
             reason: 'Ship is not on the specified planet',
         });
         return;
     }
 
-    if (assets.deposits < price) {
-        safePostMessage({ type: 'shipMaintenanceOfferPostFailed', requestId, reason: 'Insufficient deposits' });
-        return;
-    }
-
-    assets.deposits -= price;
-    assets.depositHold += price;
-
-    const offerId = generateId('smo');
-    const offer: ShipMaintenanceOffer = {
-        id: offerId,
-        shipName,
-        shipOwnerAgentId: agentId,
-        price,
-        maximumTicksAllowed,
-        status: 'open',
-    };
-
-    assets.shipMaintenanceOffers.push(offer);
-    safePostMessage({ type: 'shipMaintenanceOfferPosted', requestId, agentId, offerId });
-}
-
-export function handleAcceptShipMaintenanceOffer(
-    state: GameState,
-    action: Extract<PendingAction, { type: 'acceptShipMaintenanceOffer' }>,
-    safePostMessage: (msg: OutboundMessage) => void,
-): void {
-    const { requestId, agentId, planetId, posterAgentId, offerId } = action;
-
-    const providerAgent = state.agents.get(agentId);
-    if (!providerAgent) {
-        safePostMessage({ type: 'shipMaintenanceOfferAcceptFailed', requestId, reason: 'Agent not found' });
-        return;
-    }
-
-    const ownerAgent = state.agents.get(posterAgentId);
-    if (!ownerAgent) {
-        safePostMessage({ type: 'shipMaintenanceOfferAcceptFailed', requestId, reason: 'Ship owner agent not found' });
-        return;
-    }
-
-    const ownerAssets = ownerAgent.assets[planetId];
-    if (!ownerAssets) {
-        safePostMessage({ type: 'shipMaintenanceOfferAcceptFailed', requestId, reason: 'Offer planet not found' });
-        return;
-    }
-
-    const offerIndex = ownerAssets.shipMaintenanceOffers.findIndex((o) => o.id === offerId);
-    if (offerIndex === -1) {
-        safePostMessage({ type: 'shipMaintenanceOfferAcceptFailed', requestId, reason: 'Offer not found' });
-        return;
-    }
-
-    const offer = ownerAssets.shipMaintenanceOffers[offerIndex];
-    if (offer.status !== 'open') {
-        safePostMessage({ type: 'shipMaintenanceOfferAcceptFailed', requestId, reason: 'Offer is not open' });
-        return;
-    }
-
-    // Validate provider has an idle shipyard on this planet
-    const providerAssets = providerAgent.assets[planetId];
-    if (!providerAssets) {
-        safePostMessage({
-            type: 'shipMaintenanceOfferAcceptFailed',
-            requestId,
-            reason: 'Provider has no assets on this planet',
-        });
-        return;
-    }
-
-    const idleShipyard = providerAssets.shipyardFacilities.find((f) => !f.construction && f.mode === 'idle');
-    if (!idleShipyard) {
-        safePostMessage({
-            type: 'shipMaintenanceOfferAcceptFailed',
-            requestId,
-            reason: 'No idle shipyard available on this planet',
-        });
-        return;
-    }
-
-    const contractDueTick = state.tick + offer.maximumTicksAllowed;
-
-    // Set the shipyard into maintenance mode
-    idleShipyard.mode = 'maintenance';
-    (idleShipyard as Extract<typeof idleShipyard, { mode: 'maintenance' }>).shipOwner = posterAgentId;
-    (idleShipyard as Extract<typeof idleShipyard, { mode: 'maintenance' }>).shipName = offer.shipName;
-    (idleShipyard as Extract<typeof idleShipyard, { mode: 'maintenance' }>).progress = 0;
-
-    ownerAssets.shipMaintenanceOffers[offerIndex] = {
-        ...offer,
-        status: 'accepted',
-        maintenanceProviderAgentId: agentId,
-        contractDueTick,
-    };
-
-    safePostMessage({ type: 'shipMaintenanceOfferAccepted', requestId, agentId, offerId });
+    ship.state = { type: 'idle', planetId };
+    safePostMessage({ type: 'shipMaintenanceCancelled', requestId, agentId });
 }

@@ -44,6 +44,7 @@ import {
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
+    maintenanceServiceResourceType,
     retailServiceResourceType,
 } from './services';
 
@@ -91,6 +92,7 @@ export const ALL_RESOURCES: Resource[] = [
     retailServiceResourceType,
     healthcareServiceResourceType,
     educationServiceResourceType,
+    maintenanceServiceResourceType,
 ] as const;
 
 export type ResourceName = (typeof ALL_RESOURCES)[number]['name'];

@@ -10,8 +10,8 @@ import { useTRPC } from '@/lib/trpc';
 import type { TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostShipBuyingOfferDialog } from '@/app/planets/[planetId]/ships/_components/PostShipBuyingOfferDialog';
-import { PostShipMaintenanceOfferDialog } from '@/app/planets/[planetId]/ships/_components/PostShipMaintenanceOfferDialog';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 function statusBadge(ship: TransportShip) {
     const { state } = ship;
@@ -38,6 +38,18 @@ function conditionColor(status: number) {
 export default function AgentShipsPage() {
     const { agentId, planetId, detail, isLoading, isOwnAgent, myAgentId, tick } = useAgentPlanetDetail();
     const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    const setMaintenanceMutation = useMutation(
+        trpc.setShipMaintenance.mutationOptions({
+            onSuccess: () => void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) }),
+        }),
+    );
+    const cancelMaintenanceMutation = useMutation(
+        trpc.cancelShipMaintenance.mutationOptions({
+            onSuccess: () => void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) }),
+        }),
+    );
 
     const { data: shipsData, isLoading: shipsLoading } = useSimulationQuery(
         trpc.listAgentShips.queryOptions({ agentId }, { enabled: isOwnAgent }),
@@ -77,6 +89,7 @@ export default function AgentShipsPage() {
                 <div className='space-y-3'>
                     {shipsHere.map((ship) => {
                         const isIdle = ship.state.type === 'idle';
+                        const isInMaintenance = ship.state.type === 'maintenance';
                         return (
                             <Card key={ship.name}>
                                 <CardContent className='px-4 py-4'>
@@ -103,28 +116,51 @@ export default function AgentShipsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        {isIdle && (
-                                            <div className='flex gap-2 flex-shrink-0'>
-                                                <PostShipBuyingOfferDialog
-                                                    agentId={agentId}
-                                                    planetId={planetId}
-                                                    idleShips={idleShipsHere}
-                                                >
-                                                    <Button size='sm' variant='outline'>
-                                                        Sell
-                                                    </Button>
-                                                </PostShipBuyingOfferDialog>
-                                                <PostShipMaintenanceOfferDialog
-                                                    agentId={agentId}
-                                                    planetId={planetId}
-                                                    idleShips={idleShipsHere}
-                                                >
-                                                    <Button size='sm' variant='outline'>
+                                        <div className='flex gap-2 flex-shrink-0'>
+                                            {isIdle && (
+                                                <>
+                                                    <PostShipBuyingOfferDialog
+                                                        agentId={agentId}
+                                                        planetId={planetId}
+                                                        idleShips={idleShipsHere}
+                                                    >
+                                                        <Button size='sm' variant='outline'>
+                                                            Sell
+                                                        </Button>
+                                                    </PostShipBuyingOfferDialog>
+                                                    <Button
+                                                        size='sm'
+                                                        variant='outline'
+                                                        disabled={setMaintenanceMutation.isPending}
+                                                        onClick={() =>
+                                                            setMaintenanceMutation.mutate({
+                                                                agentId,
+                                                                planetId,
+                                                                shipName: ship.name,
+                                                            })
+                                                        }
+                                                    >
                                                         Maintenance
                                                     </Button>
-                                                </PostShipMaintenanceOfferDialog>
-                                            </div>
-                                        )}
+                                                </>
+                                            )}
+                                            {isInMaintenance && (
+                                                <Button
+                                                    size='sm'
+                                                    variant='outline'
+                                                    disabled={cancelMaintenanceMutation.isPending}
+                                                    onClick={() =>
+                                                        cancelMaintenanceMutation.mutate({
+                                                            agentId,
+                                                            planetId,
+                                                            shipName: ship.name,
+                                                        })
+                                                    }
+                                                >
+                                                    Cancel Maintenance
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

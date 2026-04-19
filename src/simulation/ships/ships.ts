@@ -57,7 +57,6 @@ export type TransportShipStatusIdle = {
 export type TransportShipStatusMaintenance = {
     type: 'maintenance';
     planetId: string;
-    contractId?: string;
 };
 
 export type TransportShipStatus =
@@ -208,47 +207,8 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                 return;
             }
             if (ship.state.type === 'maintenance') {
-                if (ship.maintainanceStatus === 1) {
-                    const relevantAssets = agent.assets[ship.state.planetId];
-                    if (!relevantAssets) {
-                        return;
-                    }
-
-                    const offerIndex = relevantAssets.shipMaintenanceOffers.findIndex(
-                        (o) => o.status === 'accepted' && o.shipName === ship.name,
-                    );
-                    if (offerIndex !== -1) {
-                        const [offer] = relevantAssets.shipMaintenanceOffers.splice(offerIndex, 1);
-
-                        if (offer.status !== 'accepted') {
-                            console.warn(`Accepted offer not found for ship ${ship.name} owned by agent ${agent.name}`);
-                            return;
-                        }
-
-                        const providerAssets = agents.get(offer.maintenanceProviderAgentId)?.assets[
-                            ship.state.planetId
-                        ];
-
-                        if (!providerAssets) {
-                            console.warn(
-                                `Maintenance provider assets not found for ship ${ship.name} owned by agent ${agent.name}`,
-                            );
-                            return;
-                        }
-                        // Release escrowed payment: deduct from hold, pay provider
-                        relevantAssets.depositHold -= offer.price;
-                        providerAssets.deposits += offer.price;
-                    } else {
-                        console.warn(
-                            `No matching maintenance offer found for ship ${ship.name} owned by agent ${agent.name}`,
-                        );
-                    }
-
-                    ship.state = {
-                        type: 'idle',
-                        planetId: ship.state.planetId,
-                    };
-                }
+                // maintainanceStatus is restored by productionTick via maintenance service consumption.
+                // Auto-idle is also handled there; nothing to do here.
             }
         });
     });
@@ -542,14 +502,6 @@ export type ShipBuyingOffer = {
     /** Escrowed from buyer's deposits when offer is posted. */
     price: number;
 } & ({ status: 'open' } | { status: 'accepted'; sellerAgentId: string; shipName: string });
-
-export type ShipMaintenanceOffer = {
-    id: string;
-    shipName: string;
-    shipOwnerAgentId: string;
-    price: number;
-    maximumTicksAllowed: number;
-} & ({ status: 'open' } | { status: 'accepted'; maintenanceProviderAgentId: string; contractDueTick: number });
 
 export type TransportContractBase = {
     id: string;

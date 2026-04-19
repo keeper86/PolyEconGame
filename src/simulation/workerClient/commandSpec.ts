@@ -254,30 +254,30 @@ export const acceptShipBuyingOfferSpec: CommandSpec<
     extract: (msg) => msg.offerId,
 };
 
-type PostShipMaintenanceOfferSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceOfferPosted' }>;
-type PostShipMaintenanceOfferFailure = Extract<OutboundMessage, { type: 'shipMaintenanceOfferPostFailed' }>;
-export const postShipMaintenanceOfferSpec: CommandSpec<
-    Extract<InboundMessage, { type: 'postShipMaintenanceOffer' }>,
-    PostShipMaintenanceOfferSuccess,
-    PostShipMaintenanceOfferFailure,
-    string
+type SetShipMaintenanceSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceSet' }>;
+type SetShipMaintenanceFailure = Extract<OutboundMessage, { type: 'shipMaintenanceSetFailed' }>;
+export const setShipMaintenanceSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'setShipMaintenance' }>,
+    SetShipMaintenanceSuccess,
+    SetShipMaintenanceFailure,
+    void
 > = {
-    successType: 'shipMaintenanceOfferPosted',
-    failureType: 'shipMaintenanceOfferPostFailed',
-    extract: (msg) => msg.offerId,
+    successType: 'shipMaintenanceSet',
+    failureType: 'shipMaintenanceSetFailed',
+    extract: () => undefined,
 };
 
-type AcceptShipMaintenanceOfferSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceOfferAccepted' }>;
-type AcceptShipMaintenanceOfferFailure = Extract<OutboundMessage, { type: 'shipMaintenanceOfferAcceptFailed' }>;
-export const acceptShipMaintenanceOfferSpec: CommandSpec<
-    Extract<InboundMessage, { type: 'acceptShipMaintenanceOffer' }>,
-    AcceptShipMaintenanceOfferSuccess,
-    AcceptShipMaintenanceOfferFailure,
-    string
+type CancelShipMaintenanceSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceCancelled' }>;
+type CancelShipMaintenanceFailure = Extract<OutboundMessage, { type: 'shipMaintenanceCancelFailed' }>;
+export const cancelShipMaintenanceSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelShipMaintenance' }>,
+    CancelShipMaintenanceSuccess,
+    CancelShipMaintenanceFailure,
+    void
 > = {
-    successType: 'shipMaintenanceOfferAccepted',
-    failureType: 'shipMaintenanceOfferAcceptFailed',
-    extract: (msg) => msg.offerId,
+    successType: 'shipMaintenanceCancelled',
+    failureType: 'shipMaintenanceCancelFailed',
+    extract: () => undefined,
 };
 
 // --- Shipyard management specs ---

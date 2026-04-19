@@ -28,8 +28,8 @@ import {
     handleCancelTransportContract,
     handlePostShipBuyingOffer,
     handleAcceptShipBuyingOffer,
-    handlePostShipMaintenanceOffer,
-    handleAcceptShipMaintenanceOffer,
+    handleSetShipMaintenance,
+    handleCancelShipMaintenance,
 } from './workerClient/shipContractActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
@@ -201,11 +201,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'acceptShipBuyingOffer':
                         handleAcceptShipBuyingOffer(state, action, safePostMessage);
                         break;
-                    case 'postShipMaintenanceOffer':
-                        handlePostShipMaintenanceOffer(state, action, safePostMessage);
+                    case 'setShipMaintenance':
+                        handleSetShipMaintenance(state, action, safePostMessage);
                         break;
-                    case 'acceptShipMaintenanceOffer':
-                        handleAcceptShipMaintenanceOffer(state, action, safePostMessage);
+                    case 'cancelShipMaintenance':
+                        handleCancelShipMaintenance(state, action, safePostMessage);
                         break;
                 }
             } catch (err) {
@@ -1108,57 +1108,26 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
-        if (msg.type === 'postShipMaintenanceOffer') {
-            const { requestId, agentId, planetId, shipName, price, maximumTicksAllowed } = msg;
+        if (msg.type === 'setShipMaintenance') {
+            const { requestId, agentId, planetId, shipName } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceOfferPostFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({ type: 'shipMaintenanceSetFailed', requestId, reason: 'Agent not found' });
                 return;
             }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({
-                    type: 'shipMaintenanceOfferPostFailed',
-                    requestId,
-                    reason: `Planet '${planetId}' not found`,
-                });
-                return;
-            }
-            pendingActions.push({
-                type: 'postShipMaintenanceOffer',
-                requestId,
-                agentId,
-                planetId,
-                shipName,
-                price,
-                maximumTicksAllowed,
-            });
+            pendingActions.push({ type: 'setShipMaintenance', requestId, agentId, planetId, shipName });
             if (!processingTick) {
                 drainActionQueue();
             }
             return;
         }
 
-        if (msg.type === 'acceptShipMaintenanceOffer') {
-            const { requestId, agentId, planetId, posterAgentId, offerId } = msg;
+        if (msg.type === 'cancelShipMaintenance') {
+            const { requestId, agentId, planetId, shipName } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceOfferAcceptFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({ type: 'shipMaintenanceCancelFailed', requestId, reason: 'Agent not found' });
                 return;
             }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({
-                    type: 'shipMaintenanceOfferAcceptFailed',
-                    requestId,
-                    reason: `Planet '${planetId}' not found`,
-                });
-                return;
-            }
-            pendingActions.push({
-                type: 'acceptShipMaintenanceOffer',
-                requestId,
-                agentId,
-                planetId,
-                posterAgentId,
-                offerId,
-            });
+            pendingActions.push({ type: 'cancelShipMaintenance', requestId, agentId, planetId, shipName });
             if (!processingTick) {
                 drainActionQueue();
             }

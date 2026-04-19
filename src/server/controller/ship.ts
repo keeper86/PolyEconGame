@@ -8,8 +8,8 @@ import {
     workerCancelTransportContract,
     workerPostShipBuyingOffer,
     workerAcceptShipBuyingOffer,
-    workerPostShipMaintenanceOffer,
-    workerAcceptShipMaintenanceOffer,
+    workerSetShipMaintenance,
+    workerCancelShipMaintenance,
 } from '../../simulation/workerClient/commands';
 import { workerQueries } from '../../simulation/workerClient/queries';
 
@@ -52,16 +52,6 @@ export const listShipBuyingOffers = () =>
         const offers = (agents ?? []).flatMap((agent) => {
             const assets = agent.assets?.[input.planetId];
             return (assets?.shipBuyingOffers ?? []).map((o) => ({ ...o, _agentId: agent.id }));
-        });
-        return { offers };
-    });
-
-export const listShipMaintenanceOffers = () =>
-    protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input }) => {
-        const { agents } = await workerQueries.getAllAgents();
-        const offers = (agents ?? []).flatMap((agent) => {
-            const assets = agent.assets?.[input.planetId];
-            return (assets?.shipMaintenanceOffers ?? []).map((o) => ({ ...o, _agentId: agent.id }));
         });
         return { offers };
     });
@@ -157,37 +147,32 @@ export const acceptShipBuyingOffer = () =>
             return { offerId };
         });
 
-export const postShipMaintenanceOffer = () =>
+export const setShipMaintenance = () =>
     protectedProcedure
         .input(
             z.object({
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
                 shipName: z.string().min(1),
-                price: z.number().positive(),
-                maximumTicksAllowed: z.number().int().positive(),
             }),
         )
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const offerId = await workerPostShipMaintenanceOffer(input);
-            return { offerId };
+            await workerSetShipMaintenance(input);
         });
 
-export const acceptShipMaintenanceOffer = () =>
+export const cancelShipMaintenance = () =>
     protectedProcedure
         .input(
             z.object({
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
-                posterAgentId: z.string().min(1),
-                offerId: z.string().min(1),
+                shipName: z.string().min(1),
             }),
         )
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const offerId = await workerAcceptShipMaintenanceOffer(input);
-            return { offerId };
+            await workerCancelShipMaintenance(input);
         });

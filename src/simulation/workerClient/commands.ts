@@ -19,8 +19,8 @@ import {
     cancelTransportContractSpec,
     postShipBuyingOfferSpec,
     acceptShipBuyingOfferSpec,
-    postShipMaintenanceOfferSpec,
-    acceptShipMaintenanceOfferSpec,
+    setShipMaintenanceSpec,
+    cancelShipMaintenanceSpec,
     buildShipyardSpec,
     expandShipyardSpec,
     setShipyardModeSpec,
@@ -308,41 +308,30 @@ export function workerAcceptShipBuyingOffer(opts: {
     );
 }
 
-export function workerPostShipMaintenanceOffer(opts: {
+export function workerSetShipMaintenance(opts: {
     agentId: string;
     planetId: string;
     shipName: string;
-    price: number;
-    maximumTicksAllowed: number;
     timeoutMs?: number;
-}): Promise<string> {
-    const { agentId, planetId, shipName, price, maximumTicksAllowed, timeoutMs } = opts;
+}): Promise<void> {
+    const { agentId, planetId, shipName, timeoutMs } = opts;
     return sendCommandSpec(
-        {
-            type: 'postShipMaintenanceOffer',
-            requestId: randomUUID(),
-            agentId,
-            planetId,
-            shipName,
-            price,
-            maximumTicksAllowed,
-        },
-        postShipMaintenanceOfferSpec,
+        { type: 'setShipMaintenance', requestId: randomUUID(), agentId, planetId, shipName },
+        setShipMaintenanceSpec,
         timeoutMs,
     );
 }
 
-export function workerAcceptShipMaintenanceOffer(opts: {
+export function workerCancelShipMaintenance(opts: {
     agentId: string;
     planetId: string;
-    posterAgentId: string;
-    offerId: string;
+    shipName: string;
     timeoutMs?: number;
-}): Promise<string> {
-    const { agentId, planetId, posterAgentId, offerId, timeoutMs } = opts;
+}): Promise<void> {
+    const { agentId, planetId, shipName, timeoutMs } = opts;
     return sendCommandSpec(
-        { type: 'acceptShipMaintenanceOffer', requestId: randomUUID(), agentId, planetId, posterAgentId, offerId },
-        acceptShipMaintenanceOfferSpec,
+        { type: 'cancelShipMaintenance', requestId: randomUUID(), agentId, planetId, shipName },
+        cancelShipMaintenanceSpec,
         timeoutMs,
     );
 }
@@ -383,13 +372,15 @@ export function workerSetShipyardMode(
         planetId: string;
         facilityId: string;
         timeoutMs?: number;
-    } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'idle' }),
+    } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'maintenance'; shipTypeName: string } | { mode: 'idle' }),
 ): Promise<string> {
     const { agentId, planetId, facilityId, timeoutMs } = opts;
     const modePayload =
         opts.mode === 'building'
             ? ({ mode: 'building', shipTypeName: opts.shipTypeName, shipName: opts.shipName } as const)
-            : ({ mode: 'idle' } as const);
+            : opts.mode === 'maintenance'
+              ? ({ mode: 'maintenance', shipTypeName: opts.shipTypeName } as const)
+              : ({ mode: 'idle' } as const);
     return sendCommandSpec(
         { type: 'setShipyardMode', requestId: randomUUID(), agentId, planetId, facilityId, ...modePayload },
         setShipyardModeSpec,
