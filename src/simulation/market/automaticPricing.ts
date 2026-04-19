@@ -21,11 +21,11 @@ import { educationLevelKeys } from '../population/education';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet, agents);
+        automaticPricingForAgent(agent, planet);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet, agents: Map<string, Agent>): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;

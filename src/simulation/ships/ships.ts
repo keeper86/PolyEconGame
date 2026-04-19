@@ -10,6 +10,13 @@ import {
 } from '../planet/resources';
 import type { EducationLevelType } from '../population/population';
 
+export const transportShipBuildResources = [
+    steelResourceType.name,
+    machineryResourceType.name,
+    plasticResourceType.name,
+    electronicComponentResourceType.name,
+];
+
 export type TransportShipType = {
     name: string;
     scale: number;
@@ -79,7 +86,6 @@ export type TransportShip = {
 export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
     agents.forEach((agent) => {
         agent.transportShips.forEach((ship) => {
-
             let maintenanceDecreasePerYear = 0.05;
             if (ship.state.type === 'transporting') {
                 maintenanceDecreasePerYear *= 5;
@@ -205,10 +211,6 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                     }
                 }
                 return;
-            }
-            if (ship.state.type === 'maintenance') {
-                // maintainanceStatus is restored by productionTick via maintenance service consumption.
-                // Auto-idle is also handled there; nothing to do here.
             }
         });
     });

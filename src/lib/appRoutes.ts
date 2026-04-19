@@ -4,7 +4,6 @@ import {
     FileText,
     FlaskConical,
     Gamepad,
-    History,
     Home,
     Network,
     Package,

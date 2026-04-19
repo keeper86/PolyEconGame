@@ -8,6 +8,7 @@ import type {
 import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
+import { transportShipBuildResources } from '@/simulation/ships/ships';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -164,21 +165,10 @@ export function buildResourceList(
     }
 
     for (const f of shipyardFacilities) {
-        if (f.mode === 'idle') {
-            continue;
-        }
-        if (f.mode === 'building') {
-            const { produces } = f;
-            produces.buildingCost.forEach(({ type }) => {
-                if (type.form !== 'landBoundResource') {
-                    add(type.name);
-                }
-            });
-        }
-        if (f.mode === 'maintenance') {
-            const { maintained } = f;
-            maintained.buildingCost.forEach(({ type }) => {
-                if (type.form !== 'landBoundResource') {
+        if (f.mode === 'building' || f.mode === 'maintenance') {
+            transportShipBuildResources.forEach((name) => {
+                const type = getResourceByName(name);
+                if (type && type.form !== 'landBoundResource') {
                     add(type.name);
                 }
             });

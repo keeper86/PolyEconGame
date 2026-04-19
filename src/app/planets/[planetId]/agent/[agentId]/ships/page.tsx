@@ -42,12 +42,14 @@ export default function AgentShipsPage() {
 
     const setMaintenanceMutation = useMutation(
         trpc.setShipMaintenance.mutationOptions({
-            onSuccess: () => void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) }),
+            onSuccess: () =>
+                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) }),
         }),
     );
     const cancelMaintenanceMutation = useMutation(
         trpc.cancelShipMaintenance.mutationOptions({
-            onSuccess: () => void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) }),
+            onSuccess: () =>
+                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) }),
         }),
     );
 

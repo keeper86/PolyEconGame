@@ -85,24 +85,20 @@ export function ActiveShipyardCard({
         : 1;
 
     const modeBadge =
-        facility.mode === 'idle' ? (
-            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                Idle
-            </Badge>
-        ) : facility.mode === 'building' ? (
+        facility.mode === 'building' ? (
             <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'>
                 Building: {facility.shipName}
             </Badge>
         ) : (
             <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-orange-600 border-orange-300'>
                 <Wrench className='h-2.5 w-2.5 mr-1' />
-                Maintenance: {facility.shipName}
+                Maintenance services.
             </Badge>
         );
 
     // Compute per-tick input quantities when building or in maintenance
     const activeShipType =
-        facility.mode === 'building' ? facility.produces : facility.mode === 'maintenance' ? facility.maintained : null;
+        facility.mode === 'building' ? facility.produces : facility.mode === 'maintenance' ? facility.produces : null;
 
     const proportionPerTick = activeShipType
         ? Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime)
@@ -164,7 +160,8 @@ export function ActiveShipyardCard({
                             if (activeShipType && proportionPerTick !== null) {
                                 // Building or maintenance: show actual per-tick cost for the active ship
                                 const costForThisShip = activeShipType.buildingCost.find(
-                                    (c) => c.type.name === costEntry.type.name,
+                                    (c: { type: { name: string }; quantity: number }) =>
+                                        c.type.name === costEntry.type.name,
                                 );
                                 const qty = costForThisShip ? costForThisShip.quantity * proportionPerTick * eff : 0;
                                 const resEff = results?.resourceEfficiency[costEntry.type.name] ?? 1;
@@ -219,11 +216,11 @@ export function ActiveShipyardCard({
                         ) : (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
                                 <div className='relative'>
-                                    <FacilityOrShipIcon facilityOrShipName={facility.maintained.name} size={80} />
+                                    <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={80} />
                                     <Wrench className='absolute bottom-0 right-0 h-4 w-4 text-orange-500' />
                                 </div>
                                 <span className='text-xs font-medium text-center leading-tight max-w-[80px] truncate'>
-                                    {facility.shipName}
+                                    {facility.produces.name}
                                 </span>
                             </div>
                         )}
@@ -231,10 +228,10 @@ export function ActiveShipyardCard({
                 </div>
 
                 {/* Build progress if active */}
-                {(facility.mode === 'building' || facility.mode === 'maintenance') && (
+                {facility.mode === 'building' && (
                     <div>
                         <div className='flex justify-between text-xs text-muted-foreground mb-1'>
-                            <span>{facility.mode === 'building' ? 'Build progress' : 'Maintenance progress'}</span>
+                            <span>Build progress</span>
                             <span className='tabular-nums font-medium text-foreground'>
                                 {Math.round(facility.progress * 100)}%
                             </span>

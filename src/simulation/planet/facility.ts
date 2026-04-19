@@ -155,10 +155,6 @@ export type ShipyardFacility = ShipyardFacilityBase &
           }
         | {
               mode: 'maintenance';
-              produces: TransportShipType; // ship type whose recipe drives resource consumption
-          }
-        | {
-              mode: 'idle';
           }
     );
 

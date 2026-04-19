@@ -2,8 +2,7 @@ import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import type { TransportShipStatusType } from '../ships/ships';
-import { createTransportShip, type TransportShip } from '../ships/ships';
+import { createTransportShip } from '../ships/ships';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
@@ -11,7 +10,11 @@ import { extractFromClaimedResource, queryClaimedResource } from './claims';
 import type { Facility, ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
-import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType, maintenanceServiceResourceType } from './services';
+import {
+    ALL_SERVICE_RESOURCE_TYPE_NAMES,
+    constructionServiceResourceType,
+    maintenanceServiceResourceType,
+} from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 
@@ -60,7 +63,6 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
 type EnrichedFacility = {
     facility: Facility;
     resourceEfficiencyMap: Record<string, number>;
-    resolvedShip: TransportShip | undefined; // only set for shipyard facilities in maintenance mode
 };
 
 function emptyEduRecord(): Record<EducationLevelType, number> {
@@ -176,7 +178,7 @@ function produceOutputs(params: ProductionParameters): Record<string, number> {
 
 function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<string, number> {
     const totalStorageDemand = new Map<string, number>();
-    for (const { facility, resolvedShip } of enrichedFacilities) {
+    for (const { facility } of enrichedFacilities) {
         if (facility.type === 'storage') {
             continue;
         }
@@ -331,11 +333,7 @@ function processManagementFacility(params: ManagementParameters): void {
     };
 }
 
-function processShipyardFacility(
-    params: ShipyardParameters,
-    tick: number,
-    resolvedShip: TransportShip | undefined,
-): void {
+function processShipyardFacility(params: ShipyardParameters, tick: number): void {
     const { facility, storage, overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, agent } =
         params;
     const actualConsumed: Record<string, number> = {};
@@ -372,7 +370,8 @@ function processShipyardFacility(
             // Produce maintenance service into storage for ships to consume
             const serviceProduced = maintenancePerTick * overallEfficiency;
             putIntoStorageFacility(storage, maintenanceServiceResourceType, serviceProduced);
-            monthAcc.productionValue += serviceProduced * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
+            monthAcc.productionValue +=
+                serviceProduced * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
         } else {
             for (const need of shipType.buildingCost) {
                 actualConsumed[need.type.name] = 0;
@@ -436,7 +435,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
         ];
 
         const enrichedFacilities: EnrichedFacility[] = activeFacilities.map((facility) => {
-            return { facility, resourceEfficiencyMap: {}, resolvedShip: undefined };
+            return { facility, resourceEfficiencyMap: {} };
         });
 
         const totalStorageDemand = computeTotalStorageDemand(enrichedFacilities);
@@ -484,7 +483,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
         // This makes services un-storable but allows producing services and using them next tick's production.
         depreciateServicesStorage(agent, planet);
 
-        for (const { facility, resourceEfficiencyMap, resolvedShip } of enrichedFacilities) {
+        for (const { facility, resourceEfficiencyMap } of enrichedFacilities) {
             // A facility with no worker slots won't appear in byFacility — treat it as fully efficient.
             const workerResults: WaterFillFacilityResult = byFacility.get(facility.id) ?? {
                 workerEfficiency: {},
@@ -523,7 +522,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'ships') {
-                processShipyardFacility({ ...productionParameterBase, facility }, tick, resolvedShip);
+                processShipyardFacility({ ...productionParameterBase, facility }, tick);
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
             }
@@ -542,7 +541,8 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
             );
             if (consumed > 0) {
                 ship.maintainanceStatus = Math.min(1, ship.maintainanceStatus + consumed);
-                assets.monthAcc.consumptionValue += consumed * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
+                assets.monthAcc.consumptionValue +=
+                    consumed * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
                 if (ship.maintainanceStatus >= 1) {
                     ship.state = { type: 'idle', planetId: planet.id };
                 }
