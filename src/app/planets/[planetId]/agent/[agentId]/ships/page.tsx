@@ -85,7 +85,7 @@ export default function AgentShipsPage() {
                                             <FacilityOrShipIcon
                                                 facilityOrShipName={ship.type.name}
                                                 suffix=''
-                                                size={80}
+                                                size={180}
                                             />
                                             <div className='space-y-1'>
                                                 <div className='flex items-center gap-2'>

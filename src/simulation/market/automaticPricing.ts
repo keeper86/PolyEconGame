@@ -185,7 +185,16 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, agents: Map<stri
 
     for (const facility of assets.shipyardFacilities) {
         if (facility.construction !== null) {
-            continue;
+            const facilityTarget = facility.construction.maximumConstructionServiceConsumption * 3;
+            const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
+            if (existing) {
+                existing.storageTarget += facilityTarget;
+            } else {
+                aggregatedBuyTargets.set(constructionServiceResourceType.name, {
+                    resource: constructionServiceResourceType,
+                    storageTarget: facilityTarget,
+                });
+            }
         }
         if (facility.mode === 'building') {
             const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
@@ -222,10 +231,10 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, agents: Map<stri
         }
     }
 
-    // Remove automated buy entries that are no longer needed (e.g. construction finished)
+    // Set automated buy entries that are no longer needed to 0 (e.g. construction finished)
     for (const resourceName of Object.keys(assets.market.buy)) {
         if (assets.market.buy[resourceName].automated && !aggregatedBuyTargets.has(resourceName)) {
-            delete assets.market.buy[resourceName];
+            assets.market.buy[resourceName].bidStorageTarget = 0;
         }
     }
 

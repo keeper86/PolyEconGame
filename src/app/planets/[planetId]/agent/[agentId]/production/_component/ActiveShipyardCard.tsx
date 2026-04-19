@@ -129,7 +129,7 @@ export function ActiveShipyardCard({
 
             <FacilityCardShell
                 contentClassName='flex flex-col flex-1 gap-2'
-                icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' suffix={String(facility.scale)} size={60} />}
+                icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' suffix={String(facility.scale)} />}
                 headerContent={
                     <span className='flex flex-col gap-2'>
                         <div className='flex items-center gap-1 flex-col mb-auto'>
@@ -204,25 +204,25 @@ export function ActiveShipyardCard({
                             <button
                                 type='button'
                                 onClick={() => setShipDialogOpen(true)}
-                                className='relative inline-flex flex-col items-center gap-1 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all border-2 border-dashed border-muted-foreground/40 hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/50'
+                                className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all border-2 border-dashed border-muted-foreground/40 hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/50'
                             >
-                                <Anchor className='h-6 w-6 text-muted-foreground mt-0.5' />
-                                <span className='text-[10px] text-muted-foreground whitespace-nowrap'>Choose ship</span>
+                                <Anchor className='h-12 w-16 text-muted-foreground mt-0.5' />
+                                <span className='text-xs text-muted-foreground whitespace-nowrap'>Choose ship</span>
                             </button>
                         ) : facility.mode === 'building' ? (
-                            <div className='relative inline-flex flex-col items-center gap-1 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={32} />
-                                <span className='text-[10px] font-medium text-center leading-tight max-w-[60px] truncate'>
+                            <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
+                                <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={80} />
+                                <span className='text-xs font-medium text-center leading-tight max-w-[80px] truncate'>
                                     {facility.shipName}
                                 </span>
                             </div>
                         ) : (
-                            <div className='relative inline-flex flex-col items-center gap-1 rounded bg-muted px-2 py-1 overflow-hidden'>
+                            <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
                                 <div className='relative'>
-                                    <FacilityOrShipIcon facilityOrShipName={facility.maintained.name} size={32} />
-                                    <Wrench className='absolute -bottom-0.5 -right-0.5 h-3 w-3 text-orange-500' />
+                                    <FacilityOrShipIcon facilityOrShipName={facility.maintained.name} size={80} />
+                                    <Wrench className='absolute bottom-0 right-0 h-4 w-4 text-orange-500' />
                                 </div>
-                                <span className='text-[10px] font-medium text-center leading-tight max-w-[60px] truncate'>
+                                <span className='text-xs font-medium text-center leading-tight max-w-[80px] truncate'>
                                     {facility.shipName}
                                 </span>
                             </div>

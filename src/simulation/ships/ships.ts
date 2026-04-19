@@ -1,4 +1,4 @@
-import { EPSILON } from '../constants';
+import { EPSILON, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import { putIntoStorageFacility, removeFromStorageFacility } from '../planet/facility';
 import type { Agent, Planet } from '../planet/planet';
@@ -77,11 +77,22 @@ export type TransportShip = {
     maintainanceStatus: number;
 };
 
-// There are planet bound ship actions and there are general one.
-// currently we do non-planet-bound ship actions for each planet -> 7 times.
 export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
     agents.forEach((agent) => {
         agent.transportShips.forEach((ship) => {
+            // depreciation maintenance
+            let maintenanceDecreasePerYear = 0.05;
+            if (ship.state.type === 'transporting') {
+                maintenanceDecreasePerYear *= 5;
+            }
+            if (ship.state.type === 'idle') {
+                maintenanceDecreasePerYear *= 0.5;
+            }
+            ship.maintainanceStatus = Math.max(
+                0,
+                ship.maintainanceStatus - maintenanceDecreasePerYear / TICKS_PER_YEAR,
+            );
+
             if (ship.state.type === 'loading') {
                 const storage = agent.assets[ship.state.planetId]?.storageFacility;
                 if (!storage || !ship.state.cargoGoal) {
@@ -113,6 +124,7 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                 }
                 return;
             }
+
             if (ship.state.type === 'transporting') {
                 if (tick >= ship.state.arrivalTick) {
                     const cargo = ship.state.cargo;
@@ -255,8 +267,6 @@ const defaultRequiredCrew = {
     secondary: 3,
     tertiary: 1,
 };
-
-const defaultBuildTime = 60;
 
 export const scaleShipType = (scale = 1, type: TransportShipType): TransportShipType => {
     return {
