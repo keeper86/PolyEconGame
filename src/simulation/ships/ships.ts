@@ -80,7 +80,7 @@ export type TransportShip = {
 export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
     agents.forEach((agent) => {
         agent.transportShips.forEach((ship) => {
-            // depreciation maintenance
+
             let maintenanceDecreasePerYear = 0.05;
             if (ship.state.type === 'transporting') {
                 maintenanceDecreasePerYear *= 5;

@@ -77,9 +77,7 @@ export function BalanceFlowChart({
                 netBalance: p.avgNetBalance,
                 netIncome:
                     p.avgMonthlyNetIncome -
-                    (p.avgWages +
-                        p.sumPurchases / monthsPerBucket +
-                        p.sumClaimPayments / monthsPerBucket),
+                    (p.avgWages + p.sumPurchases / monthsPerBucket + p.sumClaimPayments / monthsPerBucket),
                 ghostNetBalance: null,
                 ghostNetIncome: null,
             };
