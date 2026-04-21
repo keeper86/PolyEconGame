@@ -192,7 +192,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 });
             }
         }
-        if (facility.mode === 'building') {
+        if (facility.mode === 'building' && facility.produces) {
             const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
                 const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;

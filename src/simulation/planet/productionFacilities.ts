@@ -62,7 +62,7 @@ import {
 } from './services';
 import type { ProductionFacility } from './facility';
 
-const zeroLastTicksResults = {
+export const zeroLastTicksProductionResults = {
     overallEfficiency: 0,
     workerEfficiency: {},
     resourceEfficiency: {},
@@ -86,7 +86,7 @@ const makeFacilityDefaults = () => ({
     pollutionPerTick: { ...defaultPollutionPerTick },
     construction: null,
     lastTickResults: {
-        ...zeroLastTicksResults,
+        ...zeroLastTicksProductionResults,
         workerEfficiency: {},
         resourceEfficiency: {},
         overqualifiedWorkers: {},

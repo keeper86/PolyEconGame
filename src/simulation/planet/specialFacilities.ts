@@ -1,4 +1,8 @@
+import { defaultBuildingCost } from '../ships/ships';
 import type { LastManagementTickResults, ManagementFacility, ShipyardFacility } from './facility';
+import { MAINTENANCE_COST_MULTIPLIER } from './production';
+import { zeroLastTicksProductionResults } from './productionFacilities';
+import { maintenanceServiceResourceType } from './services';
 
 const zeroLastTicksResults: LastManagementTickResults = {
     overallEfficiency: 0,
@@ -52,22 +56,37 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     needs: [],
 });
 
-export const shipyardFacilityType = (planetId: string, id: string): ShipyardFacility => ({
-    planetId,
-    id,
-    type: 'ships',
-    name: 'Shipyard',
-    maxScale: 1,
-    scale: 1,
-    construction: null,
-    powerConsumptionPerTick: 2,
-    workerRequirement: {
-        none: 10,
-        primary: 20,
-        secondary: 10,
-        tertiary: 5,
-    },
-    pollutionPerTick: { ...defaultPollutionPerTick },
-    mode: 'idle',
-    lastTickResults: { ...zeroLastTicksResults },
-});
+export const shipyardFacilityType = (
+    planetId: string,
+    id: string,
+    mode: 'building' | 'maintenance',
+): ShipyardFacility => {
+    return {
+        planetId,
+        id,
+        type: 'ships',
+        name: 'Shipyard',
+        maxScale: 1,
+        scale: 1,
+        construction: null,
+        powerConsumptionPerTick: 2,
+        workerRequirement: {
+            none: 10,
+            primary: 20,
+            secondary: 10,
+            tertiary: 5,
+        },
+        pollutionPerTick: { ...defaultPollutionPerTick },
+        ...(mode === 'building'
+            ? { produces: null, mode, lastTickResults: { ...zeroLastTicksResults } }
+            : {
+                  needs: defaultBuildingCost.map((rq) => ({
+                      resource: rq.type,
+                      quantity: rq.quantity * MAINTENANCE_COST_MULTIPLIER,
+                  })),
+                  produces: [{ resource: maintenanceServiceResourceType, quantity: 10 }],
+                  mode,
+                  lastTickResults: { ...zeroLastTicksProductionResults },
+              }),
+    };
+};

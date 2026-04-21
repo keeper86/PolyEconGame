@@ -10,11 +10,7 @@ import { extractFromClaimedResource, queryClaimedResource } from './claims';
 import type { Facility, ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
-import {
-    ALL_SERVICE_RESOURCE_TYPE_NAMES,
-    constructionServiceResourceType,
-    maintenanceServiceResourceType,
-} from './services';
+import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 
@@ -110,13 +106,21 @@ export const MAINTENANCE_COST_MULTIPLIER = 0.01;
 
 // ---- resource consumption/production helpers ----
 
-function consumeNeeds(params: ProductionParameters | ManagementParameters): Record<string, number> {
+function consumeNeeds(
+    params: ProductionParameters | ManagementParameters | ShipyardParameters,
+): Record<string, number> {
     const { facility, storage, overallEfficiency, planet, agent } = params;
+    const actualConsumed: Record<string, number> = {};
+
+    if (facility.type === 'ships' && facility.mode !== 'maintenance') {
+        return actualConsumed;
+    }
+
     const needs = facility.needs;
     const scale = facility.scale;
     const efficiency = overallEfficiency;
     const facilityId = facility.id;
-    const actualConsumed: Record<string, number> = {};
+
     if (efficiency <= 0) {
         for (const need of needs) {
             actualConsumed[need.resource.name] = 0;
@@ -151,10 +155,15 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
     return actualConsumed;
 }
 
-function produceOutputs(params: ProductionParameters): Record<string, number> {
+function produceOutputs(params: ProductionParameters | ShipyardParameters): Record<string, number> {
     const { facility, storage, overallEfficiency } = params;
 
     const actualProduced: Record<string, number> = {};
+
+    if (facility.type === 'ships' && facility.mode !== 'maintenance') {
+        return actualProduced;
+    }
+
     if (overallEfficiency <= 0) {
         for (const output of facility.produces) {
             actualProduced[output.resource.name] = 0;
@@ -182,20 +191,16 @@ function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<
         if (facility.type === 'storage') {
             continue;
         }
-        if (facility.type === 'ships') {
-            if (facility.mode === 'building') {
-                const proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
-                for (const need of facility.produces.buildingCost) {
-                    const required = need.quantity * proportionPerTick;
-                    totalStorageDemand.set(need.type.name, (totalStorageDemand.get(need.type.name) ?? 0) + required);
-                }
-            } else if (facility.mode === 'maintenance' && resolvedShip) {
-                const maintenancePerTick = Math.min(1, 3 / resolvedShip.type.buildingTime);
-                for (const need of resolvedShip.type.buildingCost) {
-                    const required = need.quantity * maintenancePerTick * MAINTENANCE_COST_MULTIPLIER;
-                    totalStorageDemand.set(need.type.name, (totalStorageDemand.get(need.type.name) ?? 0) + required);
-                }
+        if (facility.type === 'ships' && facility.mode === 'building') {
+            if(!facility.produces) {
+                continue;
             }
+            const proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
+            for (const need of facility.produces.buildingCost) {
+                const required = need.quantity * proportionPerTick;
+                totalStorageDemand.set(need.type.name, (totalStorageDemand.get(need.type.name) ?? 0) + required);
+            }
+
             continue;
         }
         for (const need of facility.needs) {
@@ -216,33 +221,22 @@ function computeResourceEfficiencyMap(
     planet: Planet,
     agent: Agent,
 ): Record<string, number> {
-    const { facility, resolvedShip } = ef;
+    const { facility } = ef;
     const resourceEfficiencyMap: Record<string, number> = {};
     if (facility.type === 'storage') {
         return resourceEfficiencyMap;
     }
-    if (facility.type === 'ships') {
-        if (facility.mode === 'building') {
-            for (const need of facility.produces.buildingCost) {
-                const required =
-                    need.quantity * Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
-                const available = queryStorageFacility(storage, need.type.name);
-                const totalDemand = totalStorageDemand.get(need.type.name) ?? required;
-                const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
-                resourceEfficiencyMap[need.type.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
-            }
-        } else if (facility.mode === 'maintenance' && resolvedShip) {
-            const maintenancePerTick = Math.min(1, 3 / resolvedShip.type.buildingTime);
-            for (const need of resolvedShip.type.buildingCost) {
-                const required = need.quantity * maintenancePerTick * MAINTENANCE_COST_MULTIPLIER;
-                const available = queryStorageFacility(storage, need.type.name);
-                const totalDemand = totalStorageDemand.get(need.type.name) ?? required;
-                const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
-                resourceEfficiencyMap[need.type.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
-            }
+    if (facility.type === 'ships' && facility.mode === 'building') {
+        for (const need of facility.produces.buildingCost) {
+            const required = need.quantity * Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
+            const available = queryStorageFacility(storage, need.type.name);
+            const totalDemand = totalStorageDemand.get(need.type.name) ?? required;
+            const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
+            resourceEfficiencyMap[need.type.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
         }
         return resourceEfficiencyMap;
     }
+
     for (const need of facility.needs) {
         const required = need.quantity * facility.scale;
         if (need.resource.form === 'landBoundResource') {
@@ -288,7 +282,11 @@ type StorageParameters = IntermediateResults & {
     facility: StorageFacility;
 };
 
-function processProductionFacility(params: ProductionParameters): void {
+function processProductionFacility(params: ProductionParameters | ShipyardParameters): void {
+    if (params.facility.type === 'ships' && params.facility.mode !== 'maintenance') {
+        return;
+    }
+
     const actualProduced = produceOutputs(params);
     const actualConsumed = consumeNeeds(params);
     const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility } = params;
@@ -354,26 +352,6 @@ function processShipyardFacility(params: ShipyardParameters, tick: number): void
             }
         } else {
             for (const need of facility.produces.buildingCost) {
-                actualConsumed[need.type.name] = 0;
-            }
-        }
-    } else if (facility.mode === 'maintenance') {
-        const shipType = facility.produces;
-        const maintenancePerTick = Math.min(1, 3 / shipType.buildingTime);
-        if (overallEfficiency > 0) {
-            for (const need of shipType.buildingCost) {
-                const required = need.quantity * maintenancePerTick * MAINTENANCE_COST_MULTIPLIER;
-                const consumed = required * overallEfficiency;
-                const removed = removeFromStorageFacility(storage, need.type.name, consumed);
-                actualConsumed[need.type.name] = need.type.form === 'services' ? consumed : removed;
-            }
-            // Produce maintenance service into storage for ships to consume
-            const serviceProduced = maintenancePerTick * overallEfficiency;
-            putIntoStorageFacility(storage, maintenanceServiceResourceType, serviceProduced);
-            monthAcc.productionValue +=
-                serviceProduced * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
-        } else {
-            for (const need of shipType.buildingCost) {
                 actualConsumed[need.type.name] = 0;
             }
         }
@@ -522,30 +500,13 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'ships') {
-                processShipyardFacility({ ...productionParameterBase, facility }, tick);
+                if (facility.mode === 'maintenance') {
+                    processProductionFacility({ ...productionParameterBase, facility });
+                } else {
+                    processShipyardFacility({ ...productionParameterBase, facility }, tick);
+                }
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
-            }
-        }
-
-        // Consume maintenance service for ships in maintenance mode at this planet.
-        for (const ship of agent.transportShips) {
-            if (ship.state.type !== 'maintenance' || ship.state.planetId !== planet.id) {
-                continue;
-            }
-            const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
-            const consumed = removeFromStorageFacility(
-                assets.storageFacility,
-                maintenanceServiceResourceType.name,
-                maintenancePerTick,
-            );
-            if (consumed > 0) {
-                ship.maintainanceStatus = Math.min(1, ship.maintainanceStatus + consumed);
-                assets.monthAcc.consumptionValue +=
-                    consumed * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
-                if (ship.maintainanceStatus >= 1) {
-                    ship.state = { type: 'idle', planetId: planet.id };
-                }
             }
         }
     });

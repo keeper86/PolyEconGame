@@ -1,13 +1,14 @@
 import { EPSILON, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import { putIntoStorageFacility, removeFromStorageFacility } from '../planet/facility';
-import type { Agent, Planet } from '../planet/planet';
+import type { GameState, Planet } from '../planet/planet';
 import {
     electronicComponentResourceType,
     machineryResourceType,
     plasticResourceType,
     steelResourceType,
 } from '../planet/resources';
+import { maintenanceServiceResourceType } from '../planet/services';
 import type { EducationLevelType } from '../population/population';
 
 export const transportShipBuildResources = [
@@ -83,8 +84,8 @@ export type TransportShip = {
     maintainanceStatus: number;
 };
 
-export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
-    agents.forEach((agent) => {
+export const shipTick = (gameState: GameState): void => {
+    gameState.agents.forEach((agent) => {
         agent.transportShips.forEach((ship) => {
             let maintenanceDecreasePerYear = 0.05;
             if (ship.state.type === 'transporting') {
@@ -106,7 +107,7 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                         from: ship.state.planetId,
                         to: ship.state.to,
                         cargo: ship.state.currentCargo,
-                        arrivalTick: tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
+                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
                     };
                     return;
                 }
@@ -124,14 +125,43 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                         from: ship.state.planetId,
                         to: ship.state.to,
                         cargo: ship.state.currentCargo,
-                        arrivalTick: tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
+                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
                     };
                 }
                 return;
             }
 
+            // Consume maintenance service for ships in maintenance mode at this planet.
+
+            if (ship.state.type === 'maintenance') {
+                const assets = agent.assets[ship.state.planetId];
+                const storage = assets?.storageFacility;
+                if (!storage) {
+                    return;
+                }
+
+                const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+                const consumed = removeFromStorageFacility(
+                    storage,
+                    maintenanceServiceResourceType.name,
+                    maintenancePerTick,
+                );
+                if (consumed > 0) {
+                    ship.maintainanceStatus = Math.min(1, ship.maintainanceStatus + consumed);
+
+                    assets.monthAcc.consumptionValue +=
+                        consumed *
+                        (gameState.planets.get(ship.state.planetId)?.marketPrices[
+                            maintenanceServiceResourceType.name
+                        ] ?? 0);
+                    if (ship.maintainanceStatus >= 1) {
+                        ship.state = { type: 'idle', planetId: ship.state.planetId };
+                    }
+                }
+            }
+
             if (ship.state.type === 'transporting') {
-                if (tick >= ship.state.arrivalTick) {
+                if (gameState.tick >= ship.state.arrivalTick) {
                     const cargo = ship.state.cargo;
                     if (!cargo) {
                         // No cargo, just arrive at destination
@@ -175,7 +205,7 @@ export const shipTick = (agents: Map<string, Agent>, tick = 1): void => {
                 };
 
                 // Fulfil any accepted transport contract for this delivery
-                for (const posterAgent of agents.values()) {
+                for (const posterAgent of gameState.agents.values()) {
                     for (const posterAssets of Object.values(posterAgent.assets)) {
                         const contract = posterAssets.transportContracts.find(
                             (c) =>

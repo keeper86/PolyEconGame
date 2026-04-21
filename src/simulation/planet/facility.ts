@@ -143,18 +143,25 @@ export type ManagementFacility = FacilityBase & {
 
 export type ShipyardFacilityBase = FacilityBase & {
     type: 'ships';
-    lastTickResults: LastShipyardTickResults;
 };
 export type ShipyardFacility = ShipyardFacilityBase &
     (
-        | {
+        | ({
               mode: 'building';
-              shipName: string;
-              produces: TransportShipType; // productionCosts are defined in the ship catalog based on the ship type key
-              progress: number;
-          }
+          } & (
+              | {
+                    shipName: string;
+                    produces: TransportShipType; // productionCosts are defined in the ship catalog based on the ship type key
+                    progress: number;
+                    lastTickResults: LastShipyardTickResults;
+                }
+              | { produces: null, lastTickResults: LastShipyardTickResults }
+          ))
         | {
               mode: 'maintenance';
+              needs: { resource: Resource; quantity: number }[];
+              produces: { resource: Resource; quantity: number }[];
+              lastTickResults: LastProductionTickResults;
           }
     );
 

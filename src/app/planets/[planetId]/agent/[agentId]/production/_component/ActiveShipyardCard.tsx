@@ -1,26 +1,28 @@
 'use client';
 
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
+import { useAgentId } from '@/hooks/useAgentId';
+import { usePlanetId } from '@/hooks/usePlanetId';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
+import { maintenanceServiceResourceType } from '@/simulation/planet/services';
+import type { TransportShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Anchor, Wrench } from 'lucide-react';
-import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { Wrench } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import { RiArrowRightBoxFill } from 'react-icons/ri';
 import type { ShipyardFacility } from '../../../../../../../simulation/planet/facility';
 import { FacilityCardShell } from './FacilityCardShell';
-import { WorkerBars } from './WorkerBars';
 import { ProductQuantity } from './ProductQuantity';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
-import { RiArrowRightBoxFill } from 'react-icons/ri';
-import { useAgentId } from '@/hooks/useAgentId';
-import { usePlanetId } from '@/hooks/usePlanetId';
+import { WorkerBars } from './WorkerBars';
 
 export function ActiveShipyardCard({
     facility,
@@ -97,12 +99,16 @@ export function ActiveShipyardCard({
         );
 
     // Compute per-tick input quantities when building or in maintenance
-    const activeShipType =
-        facility.mode === 'building' ? facility.produces : facility.mode === 'maintenance' ? facility.produces : null;
+    let activeShipType: TransportShipType | null = null;
 
-    const proportionPerTick = activeShipType
-        ? Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime)
-        : null;
+    let proportionPerTick: number | null = null;
+
+    if (facility.mode === 'building') {
+        activeShipType = facility.produces;
+        proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime);
+    }  else {
+        console.log('ERROR: NO MODE', { facility });
+    }
 
     return (
         <>
@@ -197,30 +203,25 @@ export function ActiveShipyardCard({
 
                     {/* Output */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>
-                        {facility.mode === 'idle' ? (
-                            <button
-                                type='button'
-                                onClick={() => setShipDialogOpen(true)}
-                                className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all border-2 border-dashed border-muted-foreground/40 hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/50'
-                            >
-                                <Anchor className='h-12 w-16 text-muted-foreground mt-0.5' />
-                                <span className='text-xs text-muted-foreground whitespace-nowrap'>Choose ship</span>
-                            </button>
-                        ) : facility.mode === 'building' ? (
+                        {facility.mode === 'building' ? (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={80} />
-                                <span className='text-xs font-medium text-center leading-tight max-w-[80px] truncate'>
+                                <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={180} />
+                                <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
                                     {facility.shipName}
                                 </span>
                             </div>
                         ) : (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                <div className='relative'>
-                                    <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={80} />
-                                    <Wrench className='absolute bottom-0 right-0 h-4 w-4 text-orange-500' />
-                                </div>
-                                <span className='text-xs font-medium text-center leading-tight max-w-[80px] truncate'>
-                                    {facility.produces.name}
+                                <ProductQuantity
+                                    resource={maintenanceServiceResourceType}
+                                    quantity={proportionPerTick ? proportionPerTick * eff : 0}
+                                    efficiency={eff}
+                                    isLimiting={eff <= globalMin && globalMin < 0.99}
+                                    planetId={currentPlanetId}
+                                    agentId={currentAgentId}
+                                />
+                                <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
+                                    Maintenance services
                                 </span>
                             </div>
                         )}

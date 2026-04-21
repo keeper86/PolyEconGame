@@ -22,7 +22,7 @@ import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 export { seedRng };
 
 export function advanceTick(gameState: GameState) {
-    shipTick(gameState.agents, gameState.tick);
+    shipTick(gameState);
     gameState.planets.forEach((planet) => {
         const planetMap = new Map([[planet.id, planet]]);
 
