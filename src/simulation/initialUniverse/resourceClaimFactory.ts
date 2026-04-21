@@ -14,7 +14,7 @@ export function makeClaim(opts: {
     const passedCost = opts.tenantCostInCoins ?? 0;
     return {
         id: opts.id,
-        type: opts.type,
+        resource: opts.type,
         quantity: opts.quantity,
         regenerationRate: isRenewable ? opts.quantity : 0,
         maximumCapacity: opts.quantity,

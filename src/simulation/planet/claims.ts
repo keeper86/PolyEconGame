@@ -12,7 +12,7 @@ export type Resource = {
 export type ResourceType = Resource['form'];
 export type TransportableResourceType = Exclude<ResourceType, 'services' | 'landBoundResource'>;
 export type ResourceQuantity = {
-    type: Resource;
+    resource: Resource;
     quantity: number; // in tons or pieces, depending on the phase
 };
 

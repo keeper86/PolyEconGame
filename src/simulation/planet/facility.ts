@@ -1,6 +1,6 @@
 import type { EducationLevelType } from '../population/education';
 import type { TransportShipType } from '../ships/ships';
-import type { Resource, ResourceProcessLevel } from './claims';
+import type { Resource, ResourceProcessLevel, ResourceQuantity } from './claims';
 import type { PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
@@ -106,8 +106,8 @@ export type LastShipyardTickResults = LastManagementTickResults;
 
 export type ProductionFacility = FacilityBase & {
     type: 'production';
-    needs: { resource: Resource; quantity: number }[];
-    produces: { resource: Resource; quantity: number }[];
+    needs: ResourceQuantity[];
+    produces: ResourceQuantity[];
 
     lastTickResults: LastProductionTickResults;
 };
@@ -123,17 +123,17 @@ export type StorageFacility = FacilityBase & {
         mass: number;
     };
     currentInStorage: {
-        [resourceName in string]: { resource: Resource; quantity: number }; // in tons
+        [resourceName in string]: ResourceQuantity;
     };
 
     lastTickResults: LastTickResults;
 
-    escrow: { [resourceName: string]: number };
+    escrow: { [resourceName in string]: number };
 };
 
 export type ManagementFacility = FacilityBase & {
     type: 'management';
-    needs: { resource: Resource; quantity: number }[];
+    needs: ResourceQuantity[];
 
     bufferPerTickPerScale: number;
     maxBuffer: number;
@@ -155,12 +155,12 @@ export type ShipyardFacility = ShipyardFacilityBase &
                     progress: number;
                     lastTickResults: LastShipyardTickResults;
                 }
-              | { produces: null, lastTickResults: LastShipyardTickResults }
+              | { produces: null; lastTickResults: LastShipyardTickResults }
           ))
         | {
               mode: 'maintenance';
-              needs: { resource: Resource; quantity: number }[];
-              produces: { resource: Resource; quantity: number }[];
+              needs: ResourceQuantity[];
+              produces: ResourceQuantity[];
               lastTickResults: LastProductionTickResults;
           }
     );

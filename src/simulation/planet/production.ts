@@ -192,13 +192,16 @@ function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<
             continue;
         }
         if (facility.type === 'ships' && facility.mode === 'building') {
-            if(!facility.produces) {
+            if (!facility.produces) {
                 continue;
             }
             const proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
                 const required = need.quantity * proportionPerTick;
-                totalStorageDemand.set(need.type.name, (totalStorageDemand.get(need.type.name) ?? 0) + required);
+                totalStorageDemand.set(
+                    need.resource.name,
+                    (totalStorageDemand.get(need.resource.name) ?? 0) + required,
+                );
             }
 
             continue;
@@ -227,12 +230,15 @@ function computeResourceEfficiencyMap(
         return resourceEfficiencyMap;
     }
     if (facility.type === 'ships' && facility.mode === 'building') {
+        if (!facility.produces) {
+            return resourceEfficiencyMap;
+        }
         for (const need of facility.produces.buildingCost) {
             const required = need.quantity * Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
-            const available = queryStorageFacility(storage, need.type.name);
-            const totalDemand = totalStorageDemand.get(need.type.name) ?? required;
+            const available = queryStorageFacility(storage, need.resource.name);
+            const totalDemand = totalStorageDemand.get(need.resource.name) ?? required;
             const fairShare = totalDemand > 0 ? (required / totalDemand) * available : available;
-            resourceEfficiencyMap[need.type.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
+            resourceEfficiencyMap[need.resource.name] = required > 0 ? Math.min(1, fairShare / required) : 1;
         }
         return resourceEfficiencyMap;
     }
@@ -282,6 +288,7 @@ type StorageParameters = IntermediateResults & {
     facility: StorageFacility;
 };
 
+// shipyards in maintainance mode are effectively production facilities
 function processProductionFacility(params: ProductionParameters | ShipyardParameters): void {
     if (params.facility.type === 'ships' && params.facility.mode !== 'maintenance') {
         return;
@@ -331,18 +338,19 @@ function processManagementFacility(params: ManagementParameters): void {
     };
 }
 
+// only the building mode. Maintenance mode is processed as production facility.
 function processShipyardFacility(params: ShipyardParameters, tick: number): void {
     const { facility, storage, overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, agent } =
         params;
     const actualConsumed: Record<string, number> = {};
-    if (facility.mode === 'building') {
+    if (facility.mode === 'building' && facility.produces) {
         if (overallEfficiency > 0) {
             const part = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
                 const required = need.quantity * part;
                 const consumed = required * overallEfficiency;
-                const removed = removeFromStorageFacility(storage, need.type.name, consumed);
-                actualConsumed[need.type.name] = need.type.form === 'services' ? consumed : removed;
+                const removed = removeFromStorageFacility(storage, need.resource.name, consumed);
+                actualConsumed[need.resource.name] = need.resource.form === 'services' ? consumed : removed;
             }
             facility.progress += part * overallEfficiency;
             if (facility.progress >= 1) {
@@ -352,7 +360,7 @@ function processShipyardFacility(params: ShipyardParameters, tick: number): void
             }
         } else {
             for (const need of facility.produces.buildingCost) {
-                actualConsumed[need.type.name] = 0;
+                actualConsumed[need.resource.name] = 0;
             }
         }
     }

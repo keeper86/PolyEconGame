@@ -115,7 +115,7 @@ export const shipTick = (gameState: GameState): void => {
                 const missingCargo = ship.state.cargoGoal.quantity - ship.state.currentCargo.quantity;
                 const removedQuantity = removeFromStorageFacility(
                     storage,
-                    ship.state.cargoGoal.type.name,
+                    ship.state.cargoGoal.resource.name,
                     missingCargo,
                 );
                 ship.state.currentCargo.quantity += removedQuantity;
@@ -192,7 +192,11 @@ export const shipTick = (gameState: GameState): void => {
                 }
 
                 if (ship.state.cargo) {
-                    const stored = putIntoStorageFacility(storage, ship.state.cargo.type, ship.state.cargo.quantity);
+                    const stored = putIntoStorageFacility(
+                        storage,
+                        ship.state.cargo.resource,
+                        ship.state.cargo.quantity,
+                    );
                     ship.state.cargo.quantity -= stored;
                     if (ship.state.cargo.quantity > EPSILON) {
                         return;
@@ -247,10 +251,10 @@ export const shipTick = (gameState: GameState): void => {
 };
 
 export const defaultBuildingCost: ResourceQuantity[] = [
-    { type: steelResourceType, quantity: 100 },
-    { type: electronicComponentResourceType, quantity: 50 },
-    { type: machineryResourceType, quantity: 30 },
-    { type: plasticResourceType, quantity: 20 },
+    { resource: steelResourceType, quantity: 100 },
+    { resource: electronicComponentResourceType, quantity: 50 },
+    { resource: machineryResourceType, quantity: 30 },
+    { resource: plasticResourceType, quantity: 20 },
 ];
 
 const defaultRequiredCrew = {
@@ -268,7 +272,7 @@ export const scaleShipType = (scale = 1, type: TransportShipType): TransportShip
             volume: type.cargoSpecification.volume * scale,
             mass: type.cargoSpecification.mass * scale,
         },
-        buildingCost: type.buildingCost.map((rc) => ({ type: rc.type, quantity: rc.quantity * scale })),
+        buildingCost: type.buildingCost,
     };
 };
 
@@ -289,7 +293,7 @@ export const shiptypes = {
             speed: 7,
             cargoSpecification: { type: 'solid', volume: 400000, mass: 300000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 2 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
             buildingTime: 90,
         } as const satisfies TransportShipType,
         bulkCarrier3: {
@@ -298,7 +302,7 @@ export const shiptypes = {
             speed: 8,
             cargoSpecification: { type: 'solid', volume: 800000, mass: 600000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 4 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
             buildingTime: 120,
         } as const satisfies TransportShipType,
         bulkCarrier4: {
@@ -307,7 +311,7 @@ export const shiptypes = {
             speed: 9,
             cargoSpecification: { type: 'solid', volume: 1600000, mass: 1200000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 8 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
             buildingTime: 180,
         } as const satisfies TransportShipType,
     } as const,
@@ -327,7 +331,7 @@ export const shiptypes = {
             speed: 11,
             cargoSpecification: { type: 'liquid', volume: 200000, mass: 160000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 2 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
             buildingTime: 90,
         } as const satisfies TransportShipType,
         tanker3: {
@@ -336,7 +340,7 @@ export const shiptypes = {
             speed: 12,
             cargoSpecification: { type: 'liquid', volume: 400000, mass: 320000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 4 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
             buildingTime: 120,
         } as const satisfies TransportShipType,
         tanker4: {
@@ -345,7 +349,7 @@ export const shiptypes = {
             speed: 13,
             cargoSpecification: { type: 'liquid', volume: 800000, mass: 640000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 8 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
             buildingTime: 180,
         } as const satisfies TransportShipType,
     } as const,
@@ -365,7 +369,7 @@ export const shiptypes = {
             speed: 7,
             cargoSpecification: { type: 'gas', volume: 300000, mass: 240000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 2 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
             buildingTime: 90,
         } as const satisfies TransportShipType,
         gasCarrier3: {
@@ -374,7 +378,7 @@ export const shiptypes = {
             speed: 8,
             cargoSpecification: { type: 'gas', volume: 600000, mass: 480000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 4 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
             buildingTime: 120,
         } as const satisfies TransportShipType,
         gasCarrier4: {
@@ -383,7 +387,7 @@ export const shiptypes = {
             speed: 9,
             cargoSpecification: { type: 'gas', volume: 1200000, mass: 960000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 8 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
             buildingTime: 180,
         } as const satisfies TransportShipType,
     } as const,
@@ -403,7 +407,7 @@ export const shiptypes = {
             speed: 9,
             cargoSpecification: { type: 'pieces', volume: 200000, mass: 160000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 2 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
             buildingTime: 90,
         } as const satisfies TransportShipType,
         freighter3: {
@@ -412,7 +416,7 @@ export const shiptypes = {
             speed: 10,
             cargoSpecification: { type: 'pieces', volume: 400000, mass: 320000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 4 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
             buildingTime: 120,
         } as const satisfies TransportShipType,
         freighter4: {
@@ -421,7 +425,7 @@ export const shiptypes = {
             speed: 11,
             cargoSpecification: { type: 'pieces', volume: 800000, mass: 640000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 8 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
             buildingTime: 180,
         } as const satisfies TransportShipType,
     } as const,
@@ -441,7 +445,7 @@ export const shiptypes = {
             speed: 13,
             cargoSpecification: { type: 'persons', volume: 100000, mass: 400000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 2 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
             buildingTime: 90,
         } as const satisfies TransportShipType,
         passengerShip3: {
@@ -450,7 +454,7 @@ export const shiptypes = {
             speed: 14,
             cargoSpecification: { type: 'persons', volume: 200000, mass: 800000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 4 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
             buildingTime: 120,
         } as const satisfies TransportShipType,
         passengerShip4: {
@@ -459,7 +463,7 @@ export const shiptypes = {
             speed: 15,
             cargoSpecification: { type: 'persons', volume: 400000, mass: 1600000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 8 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
             buildingTime: 180,
         } as const satisfies TransportShipType,
     } as const,
@@ -479,7 +483,7 @@ export const shiptypes = {
             speed: 8,
             cargoSpecification: { type: 'frozenGoods', volume: 160000, mass: 120000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 2 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
             buildingTime: 90,
         } as const satisfies TransportShipType,
         reefer3: {
@@ -488,7 +492,7 @@ export const shiptypes = {
             speed: 9,
             cargoSpecification: { type: 'frozenGoods', volume: 320000, mass: 240000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 4 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
             buildingTime: 120,
         } as const satisfies TransportShipType,
         reefer4: {
@@ -497,7 +501,7 @@ export const shiptypes = {
             speed: 10,
             cargoSpecification: { type: 'frozenGoods', volume: 640000, mass: 480000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ type: r.type, quantity: r.quantity * 8 })),
+            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
             buildingTime: 180,
         } as const satisfies TransportShipType,
     } as const,

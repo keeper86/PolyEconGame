@@ -81,7 +81,7 @@ export const shipyardFacilityType = (
             ? { produces: null, mode, lastTickResults: { ...zeroLastTicksResults } }
             : {
                   needs: defaultBuildingCost.map((rq) => ({
-                      resource: rq.type,
+                      resource: rq.resource,
                       quantity: rq.quantity * MAINTENANCE_COST_MULTIPLIER,
                   })),
                   produces: [{ resource: maintenanceServiceResourceType, quantity: 10 }],

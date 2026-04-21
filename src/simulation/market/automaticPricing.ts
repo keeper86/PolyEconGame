@@ -16,7 +16,6 @@ import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
-import { MAINTENANCE_COST_MULTIPLIER } from '../planet/production';
 import { educationLevelKeys } from '../population/education';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
@@ -68,7 +67,11 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
     }
-    for (const facility of [...assets.productionFacilities, ...assets.managementFacilities]) {
+    for (const facility of [
+        ...assets.productionFacilities,
+        ...assets.managementFacilities,
+        ...assets.shipyardFacilities,
+    ]) {
         if (facility.construction === null) {
             continue;
         }
@@ -78,24 +81,17 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
         );
     }
+
     for (const facility of assets.shipyardFacilities) {
         if (facility.construction !== null) {
             continue;
         }
-        if (facility.mode === 'building') {
+        if (facility.mode === 'building' && facility.produces) {
             const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
-                const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                const bufferTarget = need.resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
                 const target = need.quantity * ratePerTick * bufferTarget;
-                inputReserve.set(need.type.name, (inputReserve.get(need.type.name) ?? 0) + target);
-            }
-        } else if (facility.mode === 'maintenance') {
-            const shipType = facility.produces;
-            const ratePerTick = Math.min(1, 3 / shipType.buildingTime) * MAINTENANCE_COST_MULTIPLIER;
-            for (const need of shipType.buildingCost) {
-                const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
-                const target = need.quantity * ratePerTick * bufferTarget;
-                inputReserve.set(need.type.name, (inputReserve.get(need.type.name) ?? 0) + target);
+                inputReserve.set(need.resource.name, (inputReserve.get(need.resource.name) ?? 0) + target);
             }
         }
     }
@@ -105,7 +101,10 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     const inputProfitGaps = buildInputProfitGaps(assets, planet, agent.id);
 
-    for (const facility of assets.productionFacilities) {
+    for (const facility of [...assets.productionFacilities, ...assets.shipyardFacilities]) {
+        if (facility.type === 'ships' && facility.mode !== 'maintenance') {
+            continue;
+        }
         for (const { resource } of facility.produces) {
             // For human-controlled agents only auto-adjust entries explicitly flagged
             if (!agent.automated && assets.market.sell[resource.name]?.automated !== true) {
@@ -141,9 +140,20 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         { resource: (typeof assets.productionFacilities)[number]['needs'][number]['resource']; storageTarget: number }
     >();
 
-    for (const facility of [...assets.productionFacilities, ...assets.managementFacilities]) {
+    for (const facility of [
+        ...assets.productionFacilities,
+        ...assets.managementFacilities,
+        ...assets.shipyardFacilities,
+    ]) {
         if (facility.construction === null) {
-            for (const { resource, quantity } of facility.needs) {
+            const needs =
+                facility.type === 'ships' && facility.mode === 'building'
+                    ? facility.produces?.buildingCost
+                    : facility.needs;
+            if (!needs) {
+                continue;
+            }
+            for (const { resource, quantity } of needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
                 }
@@ -179,51 +189,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
-    for (const facility of assets.shipyardFacilities) {
-        if (facility.construction !== null) {
-            const facilityTarget = facility.construction.maximumConstructionServiceConsumption * 3;
-            const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
-            if (existing) {
-                existing.storageTarget += facilityTarget;
-            } else {
-                aggregatedBuyTargets.set(constructionServiceResourceType.name, {
-                    resource: constructionServiceResourceType,
-                    storageTarget: facilityTarget,
-                });
-            }
-        }
-        if (facility.mode === 'building' && facility.produces) {
-            const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
-            for (const need of facility.produces.buildingCost) {
-                const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
-                const facilityTarget = need.quantity * ratePerTick * bufferTarget;
-                const existing = aggregatedBuyTargets.get(need.type.name);
-                if (existing) {
-                    existing.storageTarget += facilityTarget;
-                } else {
-                    aggregatedBuyTargets.set(need.type.name, { resource: need.type, storageTarget: facilityTarget });
-                }
-            }
-        } else if (facility.mode === 'maintenance') {
-            const shipType = facility.produces;
-            const ratePerTick = Math.min(1, 3 / shipType.buildingTime) * MAINTENANCE_COST_MULTIPLIER;
-            for (const need of shipType.buildingCost) {
-                const bufferTarget = need.type.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
-                const facilityTarget = need.quantity * ratePerTick * bufferTarget;
-                const existing = aggregatedBuyTargets.get(need.type.name);
-                if (existing) {
-                    existing.storageTarget += facilityTarget;
-                } else {
-                    aggregatedBuyTargets.set(need.type.name, {
-                        resource: need.type,
-                        storageTarget: facilityTarget,
-                    });
-                }
-            }
-        }
-    }
-
     // Set automated buy entries that are no longer needed to 0 (e.g. construction finished)
+    // but keep in object as it can be confusing if it just vanishes.
     for (const resourceName of Object.keys(assets.market.buy)) {
         if (assets.market.buy[resourceName].automated && !aggregatedBuyTargets.has(resourceName)) {
             assets.market.buy[resourceName].bidStorageTarget = 0;
@@ -255,12 +222,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 }
 
-/**
- * Returns the effective cost-per-unit for a land-bound resource held by an agent.
- * Renewable claims: costPerTick / quantity (recurring access fee per available unit).
- * Non-renewable claims: tenantCostInCoins / maximumCapacity (upfront purchase amortised
- * over the original deposit size).
- */
 function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: string): number {
     const entries = planet.resources[resourceName];
     if (!entries) {
@@ -356,21 +317,6 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: str
     return costFloors;
 }
 
-/**
- * For each input resource, compute a weighted-average profitability gap across
- * all facilities that consume it:
- *
- *   gap_facility = max(0, totalCost / outputRevenue − 1)
- *
- * where totalCost = Σ(inputPrice × qty × scale) + Σ(wage × workers × scale)
- * and outputRevenue = Σ(marketPrice[out] × qty × scale).
- *
- * The gap is weighted by the facility's consumption of that input (qty × scale).
- * A gap of 0.3 means the facility's costs are 30 % above its output revenue.
- *
- * Returns: input resource name → weighted-average profitability gap (≥ 0).
- * Profitable facilities (gap = 0) do not contribute to the spring.
- */
 function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
     const weightedGapSum = new Map<string, number>();
     const weightSum = new Map<string, number>();

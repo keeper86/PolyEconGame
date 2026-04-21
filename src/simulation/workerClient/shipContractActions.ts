@@ -62,7 +62,7 @@ export function handlePostTransportContract(
         id: contractId,
         fromPlanetId: planetId,
         toPlanetId,
-        cargo: { type: storageEntry.resource, quantity: cargo.quantity },
+        cargo: { resource: storageEntry.resource, quantity: cargo.quantity },
         maxDurationInTicks,
         offeredReward,
         postedByAgentId: agentId,
@@ -147,7 +147,7 @@ export function handleAcceptTransportContract(
         planetId: contract.fromPlanetId,
         to: contract.toPlanetId,
         cargoGoal: contract.cargo,
-        currentCargo: { type: contract.cargo.type, quantity: 0 },
+        currentCargo: { resource: contract.cargo.resource, quantity: 0 },
     };
 
     safePostMessage({ type: 'transportContractAccepted', requestId, agentId, contractId });
