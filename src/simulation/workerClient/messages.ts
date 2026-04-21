@@ -165,11 +165,7 @@ export type InboundMessage =
           agentId: string;
           planetId: string;
           facilityId: string;
-      } & (
-          | { mode: 'building'; shipTypeName: string; shipName: string }
-          | { mode: 'maintenance'; shipTypeName: string }
-          | { mode: 'idle' }
-      ))
+      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'maintenance' }))
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -403,8 +399,4 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           facilityId: string;
-      } & (
-          | { mode: 'building'; shipTypeName: string; shipName: string }
-          | { mode: 'maintenance'; shipTypeName: string }
-          | { mode: 'idle' }
-      ));
+      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'maintenance' }));

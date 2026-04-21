@@ -2,6 +2,7 @@ import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 import { facilityByName } from '../planet/productionFacilities';
 import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
+import type { ShipyardFacility } from '../planet/facility';
 import { shipyardFacilityType } from '../planet/specialFacilities';
 import { shiptypes } from '../ships/ships';
 
@@ -341,50 +342,33 @@ export function handleSetShipyardMode(
         safePostMessage({ type: 'shipyardModeSetFailed', requestId, reason: 'Shipyard is under construction' });
         return;
     }
-    if (facility.mode === 'maintenance' && action.mode !== 'idle') {
-        safePostMessage({
-            type: 'shipyardModeSetFailed',
-            requestId,
-            reason: 'Shipyard is already in maintenance mode; set to idle first',
-        });
-        return;
-    }
-
-    if (action.mode === 'idle') {
-        (facility as { mode: string }).mode = 'idle';
-        console.log(`[worker] Agent '${agentId}' set shipyard '${facilityId}' to idle on planet '${planetId}'`);
-        safePostMessage({ type: 'shipyardModeSet', requestId, agentId, facilityId });
-        return;
-    }
-
-    // Resolve ship type (used by both 'building' and 'maintenance' modes)
-    const allShipTypes = Object.values(shiptypes).flatMap((category) => Object.values(category));
-    const shipType = allShipTypes.find((t) => t.name === action.shipTypeName);
-    if (!shipType) {
-        safePostMessage({
-            type: 'shipyardModeSetFailed',
-            requestId,
-            reason: `Unknown ship type '${action.shipTypeName}'`,
-        });
-        return;
-    }
 
     if (action.mode === 'maintenance') {
-        (facility as { mode: string; produces: typeof shipType }).mode = 'maintenance';
-        (facility as { mode: string; produces: typeof shipType }).produces = shipType;
+        if (facility.mode === 'building' && facility.produces) {
+            safePostMessage({
+                type: 'shipyardModeSetFailed',
+                requestId,
+                reason: `Cannot set shipyard to maintenance mode while building '${facility.shipName}' (${facility.produces.name})`,
+            });
+            return;
+        }
+        const maintenanceTemplate = shipyardFacilityType(facility.planetId, facility.id, 'maintenance');
+        // Cast required: reassigning across discriminated union branches
+        const mutable = facility as unknown as Record<string, unknown>;
+        mutable.mode = 'maintenance';
+        mutable.needs = (maintenanceTemplate as unknown as Record<string, unknown>).needs;
+        mutable.produces = (maintenanceTemplate as unknown as Record<string, unknown>).produces;
+        mutable.lastTickResults = (maintenanceTemplate as unknown as Record<string, unknown>).lastTickResults;
         console.log(
-            `[worker] Agent '${agentId}' set shipyard '${facilityId}' to maintenance mode (${action.shipTypeName}) on planet '${planetId}'`,
+            `[worker] Agent '${agentId}' set shipyard '${facilityId}' to maintenance mode on planet '${planetId}'`,
         );
         safePostMessage({ type: 'shipyardModeSet', requestId, agentId, facilityId });
         return;
     }
 
-    // mode === 'building'
-    (facility as { mode: string; shipName: string; produces: typeof shipType; progress: number }).mode = 'building';
-    (facility as { mode: string; shipName: string; produces: typeof shipType; progress: number }).shipName =
-        action.shipName;
-    (facility as { mode: string; shipName: string; produces: typeof shipType; progress: number }).produces = shipType;
-    (facility as { mode: string; shipName: string; produces: typeof shipType; progress: number }).progress = 0;
+    facility.mode = action.mode;
+    facility.produces = null;
+
     console.log(
         `[worker] Agent '${agentId}' started building '${action.shipName}' (${action.shipTypeName}) at shipyard '${facilityId}' on planet '${planetId}'`,
     );

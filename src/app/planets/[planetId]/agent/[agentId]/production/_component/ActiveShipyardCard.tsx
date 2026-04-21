@@ -11,7 +11,6 @@ import { usePlanetId } from '@/hooks/usePlanetId';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
-import { maintenanceServiceResourceType } from '@/simulation/planet/services';
 import type { TransportShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -100,7 +99,7 @@ export function ActiveShipyardCard({
             </Badge>
         );
 
-    // Compute per-tick input quantities when building or in maintenance
+    // Compute per-tick input quantities when building
     let activeShipType: TransportShipType | null = null;
 
     let proportionPerTick: number | null = null;
@@ -110,8 +109,6 @@ export function ActiveShipyardCard({
             activeShipType = facility.produces;
             proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime);
         }
-    } else {
-        console.log('ERROR: NO MODE', { facility });
     }
 
     return (
@@ -156,6 +153,30 @@ export function ActiveShipyardCard({
                     </span>
                 }
             >
+                {/* Mode toggle */}
+                <div className='flex items-center gap-1 rounded-md border p-0.5 self-start'>
+                    <Button
+                        size='sm'
+                        variant={facility.mode === 'building' ? 'default' : 'ghost'}
+                        className='h-6 px-2.5 text-xs'
+                        disabled={setModeMutation.isPending || facility.mode === 'building'}
+                        onClick={() => setShipDialogOpen(true)}
+                    >
+                        Building
+                    </Button>
+                    <Button
+                        size='sm'
+                        variant={facility.mode === 'maintenance' ? 'default' : 'ghost'}
+                        className='h-6 px-2.5 text-xs'
+                        disabled={setModeMutation.isPending || facility.mode === 'maintenance'}
+                        onClick={() =>
+                            setModeMutation.mutate({ agentId, planetId, facilityId: facility.id, mode: 'maintenance' })
+                        }
+                    >
+                        Maintenance
+                    </Button>
+                </div>
+
                 {/* Efficiency */}
                 <div className='flex items-center gap-2 text-xs text-muted-foreground'>
                     <span>Overall efficiency</span>
@@ -166,40 +187,55 @@ export function ActiveShipyardCard({
                 <div className='grid w-full items-center gap-x-2 py-1' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
                     {/* Inputs */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>
-                        {defaultBuildingCost.map((costEntry) => {
-                            if (activeShipType && proportionPerTick !== null) {
-                                // Building or maintenance: show actual per-tick cost for the active ship
-                                const costForThisShip = activeShipType.buildingCost.find(
-                                    (c) => c.resource.name === costEntry.resource.name,
-                                );
-                                const qty = costForThisShip ? costForThisShip.quantity * proportionPerTick * eff : 0;
-                                const resEff = results?.resourceEfficiency[costEntry.resource.name] ?? 1;
-                                return (
-                                    <ProductQuantity
-                                        key={costEntry.resource.name}
-                                        resource={costEntry.resource}
-                                        quantity={qty}
-                                        efficiency={resEff}
-                                        isLimiting={resEff <= globalMin && globalMin < 0.99}
-                                        planetId={currentPlanetId}
-                                        agentId={currentAgentId}
-                                    />
-                                );
-                            }
-                            // Idle: show resource type with unknown quantity
-                            return (
-                                <ProductQuantity
-                                    key={costEntry.resource.name}
-                                    resource={costEntry.resource}
-                                    quantity={0}
-                                    efficiency={1}
-                                    isLimiting={false}
-                                    planetId={currentPlanetId}
-                                    agentId={currentAgentId}
-                                    quantityLabel='?'
-                                />
-                            );
-                        })}
+                        {facility.mode === 'building'
+                            ? defaultBuildingCost.map((costEntry) => {
+                                  if (activeShipType && proportionPerTick !== null) {
+                                      const costForThisShip = activeShipType.buildingCost.find(
+                                          (c) => c.resource.name === costEntry.resource.name,
+                                      );
+                                      const qty = costForThisShip
+                                          ? costForThisShip.quantity * proportionPerTick * eff
+                                          : 0;
+                                      const resEff = results?.resourceEfficiency[costEntry.resource.name] ?? 1;
+                                      return (
+                                          <ProductQuantity
+                                              key={costEntry.resource.name}
+                                              resource={costEntry.resource}
+                                              quantity={qty}
+                                              efficiency={resEff}
+                                              isLimiting={resEff <= globalMin && globalMin < 0.99}
+                                              planetId={currentPlanetId}
+                                              agentId={currentAgentId}
+                                          />
+                                      );
+                                  }
+                                  return (
+                                      <ProductQuantity
+                                          key={costEntry.resource.name}
+                                          resource={costEntry.resource}
+                                          quantity={0}
+                                          efficiency={1}
+                                          isLimiting={false}
+                                          planetId={currentPlanetId}
+                                          agentId={currentAgentId}
+                                          quantityLabel='?'
+                                      />
+                                  );
+                              })
+                            : (facility.needs ?? []).map((need) => {
+                                  const resEff = results?.resourceEfficiency[need.resource.name] ?? 1;
+                                  return (
+                                      <ProductQuantity
+                                          key={need.resource.name}
+                                          resource={need.resource}
+                                          quantity={need.quantity * facility.scale * eff}
+                                          efficiency={resEff}
+                                          isLimiting={resEff <= globalMin && globalMin < 0.99}
+                                          planetId={currentPlanetId}
+                                          agentId={currentAgentId}
+                                      />
+                                  );
+                              })}
                     </div>
 
                     <RiArrowRightBoxFill className='shrink-0 h-8 w-8 text-muted-foreground' />
@@ -218,18 +254,30 @@ export function ActiveShipyardCard({
                                             {facility.shipName}
                                         </span>
                                     </Badge>
-                                ) : null}
+                                ) : (
+                                    <Button
+                                        size='sm'
+                                        variant='outline'
+                                        className='text-xs'
+                                        onClick={() => setShipDialogOpen(true)}
+                                    >
+                                        Select ship to build
+                                    </Button>
+                                )}
                             </div>
                         ) : (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                <ProductQuantity
-                                    resource={maintenanceServiceResourceType}
-                                    quantity={proportionPerTick ? proportionPerTick * eff : 0}
-                                    efficiency={eff}
-                                    isLimiting={eff <= globalMin && globalMin < 0.99}
-                                    planetId={currentPlanetId}
-                                    agentId={currentAgentId}
-                                />
+                                {facility.produces.map((output) => (
+                                    <ProductQuantity
+                                        key={output.resource.name}
+                                        resource={output.resource}
+                                        quantity={output.quantity * facility.scale * eff}
+                                        efficiency={eff}
+                                        isLimiting={eff <= globalMin && globalMin < 0.99}
+                                        planetId={currentPlanetId}
+                                        agentId={currentAgentId}
+                                    />
+                                ))}
                                 <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
                                     Maintenance services
                                 </span>
@@ -249,20 +297,6 @@ export function ActiveShipyardCard({
                         </div>
                         <Progress value={facility.progress * 100} className='h-2' />
                     </div>
-                )}
-
-                {/* Cancel build order */}
-                {facility.mode === 'building' && (
-                    <Button
-                        size='sm'
-                        variant='outline'
-                        disabled={setModeMutation.isPending}
-                        onClick={() =>
-                            setModeMutation.mutate({ agentId, planetId, facilityId: facility.id, mode: 'idle' })
-                        }
-                    >
-                        Cancel build order
-                    </Button>
                 )}
 
                 <Separator />
@@ -290,7 +324,7 @@ export function ActiveShipyardCard({
                         </div>
                         <Slider
                             min={facility.maxScale + 1}
-                            max={facility.maxScale + 10}
+                            max={4}
                             step={1}
                             value={[targetScale]}
                             onValueChange={([v]) => setTargetScale(v)}

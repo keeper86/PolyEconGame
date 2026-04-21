@@ -846,13 +846,13 @@ export const setShipyardMode = () => {
                     facilityId: z.string().min(1),
                     mode: z.literal('building'),
                     shipTypeName: z.string().min(1),
-                    shipName: z.string().min(1).max(50),
+                    shipName: z.string().min(0).max(50),
                 }),
                 z.object({
                     agentId: z.string().min(1),
                     planetId: z.string().min(1),
                     facilityId: z.string().min(1),
-                    mode: z.literal('idle'),
+                    mode: z.literal('maintenance'),
                 }),
             ]),
         )
@@ -869,7 +869,7 @@ export const setShipyardMode = () => {
             const modePayload =
                 input.mode === 'building'
                     ? { mode: 'building' as const, shipTypeName: input.shipTypeName, shipName: input.shipName }
-                    : { mode: 'idle' as const };
+                    : { mode: 'maintenance' as const };
             const facilityId = await workerSetShipyardMode({
                 agentId: input.agentId,
                 planetId: input.planetId,

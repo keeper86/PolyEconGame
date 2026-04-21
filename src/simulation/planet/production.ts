@@ -355,8 +355,9 @@ function processShipyardFacility(params: ShipyardParameters, tick: number): void
             facility.progress += part * overallEfficiency;
             if (facility.progress >= 1) {
                 agent.transportShips.push(createTransportShip(facility.produces, tick, facility.shipName, planet));
-                // Cast to mutable to reset mode in-place (facility is still the array reference)
-                (facility as { mode: string }).mode = 'idle';
+                facility.progress = 0;
+                facility.produces = null;
+                facility.shipName = '';
             }
         } else {
             for (const need of facility.produces.buildingCost) {

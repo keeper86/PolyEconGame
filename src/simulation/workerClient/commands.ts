@@ -374,7 +374,7 @@ export function workerSetShipyardMode(
         timeoutMs?: number;
     } & (
         | { mode: 'building'; shipTypeName: string; shipName: string }
-        | { mode: 'maintenance'; shipTypeName: string }
+        | { mode: 'maintenance' }
         | { mode: 'idle' }
     ),
 ): Promise<string> {
@@ -383,7 +383,7 @@ export function workerSetShipyardMode(
         opts.mode === 'building'
             ? ({ mode: 'building', shipTypeName: opts.shipTypeName, shipName: opts.shipName } as const)
             : opts.mode === 'maintenance'
-              ? ({ mode: 'maintenance', shipTypeName: opts.shipTypeName } as const)
+              ? ({ mode: 'maintenance' } as const)
               : ({ mode: 'idle' } as const);
     return sendCommandSpec(
         { type: 'setShipyardMode', requestId: randomUUID(), agentId, planetId, facilityId, ...modePayload },

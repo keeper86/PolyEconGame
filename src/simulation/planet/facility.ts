@@ -148,15 +148,12 @@ export type ShipyardFacility = ShipyardFacilityBase &
     (
         | ({
               mode: 'building';
-          } & (
-              | {
-                    shipName: string;
-                    produces: TransportShipType; // productionCosts are defined in the ship catalog based on the ship type key
-                    progress: number;
-                    lastTickResults: LastShipyardTickResults;
-                }
-              | { produces: null; lastTickResults: LastShipyardTickResults }
-          ))
+          } & {
+              shipName: string;
+              produces: TransportShipType | null; // productionCosts are defined in the ship catalog based on the ship type key
+              progress: number;
+              lastTickResults: LastShipyardTickResults;
+          })
         | {
               mode: 'maintenance';
               needs: ResourceQuantity[];

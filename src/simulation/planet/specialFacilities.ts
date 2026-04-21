@@ -78,7 +78,7 @@ export const shipyardFacilityType = (
         },
         pollutionPerTick: { ...defaultPollutionPerTick },
         ...(mode === 'building'
-            ? { produces: null, mode, lastTickResults: { ...zeroLastTicksResults } }
+            ? { produces: null, mode, lastTickResults: { ...zeroLastTicksResults }, shipName: '', progress: 0 }
             : {
                   needs: defaultBuildingCost.map((rq) => ({
                       resource: rq.resource,
