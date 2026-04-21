@@ -109,7 +109,7 @@ export function handleLeaseClaim(
     }
     const newClaim = {
         id: claimId,
-        type: pool.resource,
+        resource: pool.resource,
         quantity,
         regenerationRate: pool.regenerationRate * ratio,
         maximumCapacity: quantity,

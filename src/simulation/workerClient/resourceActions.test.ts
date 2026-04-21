@@ -25,7 +25,7 @@ function addRenewablePool(gameState: GameState, planetId: string, quantity = 10_
     planet.resources[arableLandResourceType.name] = [
         {
             id: `${planetId}-arable-unclaimed`,
-            type: arableLandResourceType,
+            resource: arableLandResourceType,
             quantity,
             regenerationRate: quantity,
             maximumCapacity: quantity,
@@ -44,7 +44,7 @@ function addNonRenewablePool(gameState: GameState, planetId: string, quantity = 
     planet.resources[ironOreDepositResourceType.name] = [
         {
             id: `${planetId}-iron-unclaimed`,
-            type: ironOreDepositResourceType,
+            resource: ironOreDepositResourceType,
             quantity,
             regenerationRate: 0,
             maximumCapacity: quantity,
@@ -326,7 +326,7 @@ describe('handleQuitClaim', () => {
             planet.resources[arableLandResourceType.name] = [
                 {
                     id: 'arable-claim',
-                    type: arableLandResourceType,
+                    resource: arableLandResourceType,
                     quantity: 2000,
                     regenerationRate: 2000,
                     maximumCapacity: 2000,
@@ -362,7 +362,7 @@ describe('handleQuitClaim', () => {
             planet.resources[arableLandResourceType.name] = [
                 {
                     id: 'arable-claim',
-                    type: arableLandResourceType,
+                    resource: arableLandResourceType,
                     quantity: 2000,
                     regenerationRate: 2000,
                     maximumCapacity: 2000,
@@ -397,7 +397,7 @@ describe('handleQuitClaim', () => {
             planet.resources[arableLandResourceType.name] = [
                 {
                     id: 'arable-claim',
-                    type: arableLandResourceType,
+                    resource: arableLandResourceType,
                     quantity: 2000,
                     regenerationRate: 2000,
                     maximumCapacity: 2000,
@@ -433,7 +433,7 @@ describe('handleQuitClaim', () => {
             planet.resources[ironOreDepositResourceType.name] = [
                 {
                     id: 'iron-claim',
-                    type: ironOreDepositResourceType,
+                    resource: ironOreDepositResourceType,
                     quantity: 5000,
                     regenerationRate: 0,
                     maximumCapacity: 5000,
@@ -462,7 +462,7 @@ describe('handleQuitClaim', () => {
             planet.resources[ironOreDepositResourceType.name] = [
                 {
                     id: 'iron-claim',
-                    type: ironOreDepositResourceType,
+                    resource: ironOreDepositResourceType,
                     quantity: 5000,
                     regenerationRate: 0,
                     maximumCapacity: 5000,
@@ -512,7 +512,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         planet.resources[arableLandResourceType.name] = [
             {
                 id: claimId,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
                 maximumCapacity: 2000,
@@ -525,7 +525,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             },
             {
                 id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 8000,
                 regenerationRate: 8000,
                 maximumCapacity: 8000,
@@ -566,7 +566,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: claimId,
-                type: ironOreDepositResourceType,
+                resource: ironOreDepositResourceType,
                 quantity: 3000,
                 regenerationRate: 0,
                 maximumCapacity: 3000,
@@ -579,7 +579,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             },
             {
                 id: `${planet.id}-${ironOreDepositResourceType.name}-unclaimed`,
-                type: ironOreDepositResourceType,
+                resource: ironOreDepositResourceType,
                 quantity: 7000,
                 regenerationRate: 0,
                 maximumCapacity: 7000,
@@ -619,7 +619,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         planet.resources[arableLandResourceType.name] = [
             {
                 id: claimId,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
                 maximumCapacity: 2000,
@@ -632,7 +632,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             },
             {
                 id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 500,
                 regenerationRate: 500,
                 maximumCapacity: 500,
@@ -674,7 +674,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         planet.resources[arableLandResourceType.name] = [
             {
                 id: claimId,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
                 maximumCapacity: 2000,
@@ -687,7 +687,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             },
             {
                 id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 8000,
                 regenerationRate: 8000,
                 maximumCapacity: 8000,
@@ -724,7 +724,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         planet.resources[arableLandResourceType.name] = [
             {
                 id: claimId,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
                 maximumCapacity: 2000,
@@ -737,7 +737,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             },
             {
                 id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 8000,
                 regenerationRate: 8000,
                 maximumCapacity: 8000,
@@ -773,7 +773,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         planet.resources[arableLandResourceType.name] = [
             {
                 id: claimId,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 2000,
                 regenerationRate: 2000,
                 maximumCapacity: 2000,
@@ -786,7 +786,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             },
             {
                 id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                type: arableLandResourceType,
+                resource: arableLandResourceType,
                 quantity: 8000,
                 regenerationRate: 8000,
                 maximumCapacity: 8000,

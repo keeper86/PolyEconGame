@@ -88,9 +88,11 @@ export function ActiveShipyardCard({
 
     const modeBadge =
         facility.mode === 'building' ? (
-            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'>
-                Building: {facility.shipName}
-            </Badge>
+            facility.produces ? (
+                <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'>
+                    Building: {facility.shipName}
+                </Badge>
+            ) : null
         ) : (
             <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-orange-600 border-orange-300'>
                 <Wrench className='h-2.5 w-2.5 mr-1' />
@@ -104,9 +106,11 @@ export function ActiveShipyardCard({
     let proportionPerTick: number | null = null;
 
     if (facility.mode === 'building') {
-        activeShipType = facility.produces;
-        proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime);
-    }  else {
+        if (facility.produces) {
+            activeShipType = facility.produces;
+            proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime);
+        }
+    } else {
         console.log('ERROR: NO MODE', { facility });
     }
 
@@ -166,15 +170,14 @@ export function ActiveShipyardCard({
                             if (activeShipType && proportionPerTick !== null) {
                                 // Building or maintenance: show actual per-tick cost for the active ship
                                 const costForThisShip = activeShipType.buildingCost.find(
-                                    (c: { type: { name: string }; quantity: number }) =>
-                                        c.type.name === costEntry.type.name,
+                                    (c) => c.resource.name === costEntry.resource.name,
                                 );
                                 const qty = costForThisShip ? costForThisShip.quantity * proportionPerTick * eff : 0;
-                                const resEff = results?.resourceEfficiency[costEntry.type.name] ?? 1;
+                                const resEff = results?.resourceEfficiency[costEntry.resource.name] ?? 1;
                                 return (
                                     <ProductQuantity
-                                        key={costEntry.type.name}
-                                        resource={costEntry.type}
+                                        key={costEntry.resource.name}
+                                        resource={costEntry.resource}
                                         quantity={qty}
                                         efficiency={resEff}
                                         isLimiting={resEff <= globalMin && globalMin < 0.99}
@@ -186,8 +189,8 @@ export function ActiveShipyardCard({
                             // Idle: show resource type with unknown quantity
                             return (
                                 <ProductQuantity
-                                    key={costEntry.type.name}
-                                    resource={costEntry.type}
+                                    key={costEntry.resource.name}
+                                    resource={costEntry.resource}
                                     quantity={0}
                                     efficiency={1}
                                     isLimiting={false}
@@ -205,10 +208,17 @@ export function ActiveShipyardCard({
                     <div className='flex flex-wrap gap-1.5 justify-center'>
                         {facility.mode === 'building' ? (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={180} />
-                                <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
-                                    {facility.shipName}
-                                </span>
+                                {facility.produces ? (
+                                    <Badge
+                                        variant='outline'
+                                        className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'
+                                    >
+                                        <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={180} />
+                                        <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
+                                            {facility.shipName}
+                                        </span>
+                                    </Badge>
+                                ) : null}
                             </div>
                         ) : (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
@@ -229,7 +239,7 @@ export function ActiveShipyardCard({
                 </div>
 
                 {/* Build progress if active */}
-                {facility.mode === 'building' && (
+                {facility.mode === 'building' && facility.produces && (
                     <div>
                         <div className='flex justify-between text-xs text-muted-foreground mb-1'>
                             <span>Build progress</span>

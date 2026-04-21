@@ -50,7 +50,7 @@ describe('productionTick (basic)', () => {
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'iron-deposit-1',
-                type: ironOreDepositResourceType,
+                resource: ironOreDepositResourceType,
                 quantity: 5000,
                 regenerationRate: 0,
                 maximumCapacity: 5000,
@@ -97,7 +97,7 @@ describe('productionTick (basic)', () => {
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'iron-deposit-1',
-                type: ironOreDepositResourceType,
+                resource: ironOreDepositResourceType,
                 quantity: 0,
                 regenerationRate: 0,
                 maximumCapacity: 0,
@@ -144,7 +144,7 @@ describe('productionTick (basic)', () => {
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'd1',
-                type: ironOreDepositResourceType,
+                resource: ironOreDepositResourceType,
                 quantity: 10,
                 regenerationRate: 0,
                 maximumCapacity: 10,
@@ -191,7 +191,7 @@ describe('productionTick (basic)', () => {
         planet.resources[resA.name] = [
             {
                 id: 'a1',
-                type: resA,
+                resource: resA,
                 quantity: 10000,
                 regenerationRate: 0,
                 maximumCapacity: 10000,
@@ -206,7 +206,7 @@ describe('productionTick (basic)', () => {
         planet.resources[resB.name] = [
             {
                 id: 'b1',
-                type: resB,
+                resource: resB,
                 quantity: 100,
                 regenerationRate: 0,
                 maximumCapacity: 100,
@@ -248,7 +248,7 @@ describe('productionTick (basic)', () => {
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'd1',
-                type: ironOreDepositResourceType,
+                resource: ironOreDepositResourceType,
                 quantity: 10,
                 regenerationRate: 0,
                 maximumCapacity: 10,
@@ -376,7 +376,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'd1',
-                type: ironOreDepositResourceType,
+                resource: ironOreDepositResourceType,
                 quantity: 100,
                 regenerationRate: 0,
                 maximumCapacity: 100,
@@ -769,7 +769,7 @@ function makeTestShipType(): TransportShipType {
         speed: 1,
         cargoSpecification: { type: 'solid', volume: 5000, mass: 5000 },
         requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
-        buildingCost: [{ type: steelResourceType, quantity: 900 }],
+        buildingCost: [{ resource: steelResourceType, quantity: 900 }],
         buildingTime: 90,
     };
 }

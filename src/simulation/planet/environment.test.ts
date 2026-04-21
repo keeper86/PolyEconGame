@@ -36,7 +36,7 @@ describe('environmentTick', () => {
             resources: {
                 iron: [
                     {
-                        type: {
+                        resource: {
                             name: 'Iron',
                             form: 'solid',
                             level: 'raw',

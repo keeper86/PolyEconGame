@@ -20,7 +20,7 @@ function makeRenewableClaim(
 ) {
     return {
         id: 'claim-1',
-        type: arableLandResourceType,
+        resource: arableLandResourceType,
         quantity: 1000,
         regenerationRate: 1000,
         maximumCapacity: 1000,
@@ -37,7 +37,7 @@ function makeRenewableClaim(
 function makeNonRenewableClaim(overrides?: Partial<{ tenantAgentId: string | null }>) {
     return {
         id: 'mine-1',
-        type: ironOreDepositResourceType,
+        resource: ironOreDepositResourceType,
         quantity: 5000,
         regenerationRate: 0,
         maximumCapacity: 5000,
@@ -224,7 +224,7 @@ describe('claimBillingTick', () => {
                 }),
                 {
                     id: 'pool',
-                    type: arableLandResourceType,
+                    resource: arableLandResourceType,
                     quantity: 200,
                     regenerationRate: 200,
                     maximumCapacity: 200,
@@ -378,7 +378,7 @@ describe('claimBillingTick', () => {
                 }),
                 {
                     id: 'pool',
-                    type: arableLandResourceType,
+                    resource: arableLandResourceType,
                     quantity: 200,
                     regenerationRate: 200,
                     maximumCapacity: 200,

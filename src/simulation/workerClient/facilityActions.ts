@@ -236,7 +236,7 @@ export function handleBuildShipyard(
         return;
     }
     const facilityId = `${agentId}-shipyard-${shipyardName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const newFacility = shipyardFacilityType(planetId, facilityId);
+    const newFacility = shipyardFacilityType(planetId, facilityId, 'building');
     newFacility.name = shipyardName;
     const costs = calculateCostsForConstruction('ships', 0, targetScale);
     newFacility.construction = {
