@@ -25,4 +25,7 @@ export const workerQueries = {
     /** Get credit conditions the bank would offer an agent on a planet. */
     getLoanConditions: (agentId: string, planetId: string) =>
         sendQuery({ type: 'getLoanConditions', agentId, planetId }),
+
+    /** Get the ship capital market state (trade history + EMA prices). */
+    getShipCapitalMarket: () => sendQuery({ type: 'getShipCapitalMarket' }),
 };

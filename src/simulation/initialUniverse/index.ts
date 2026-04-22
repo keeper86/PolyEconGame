@@ -34,5 +34,6 @@ export function createInitialGameState(): GameState {
             ...smallPlanets.map(({ planet }) => [planet.id, planet] as [string, Planet]),
         ]),
         agents: new Map(allAgents.map((a) => [a.id, a])),
+        shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
     };
 }

@@ -1,4 +1,4 @@
-import { EPSILON, TICKS_PER_YEAR } from '../constants';
+import { EPSILON, MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import { putIntoStorageFacility, removeFromStorageFacility, transferFromEscrow } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
@@ -64,8 +64,20 @@ export type TransportShipStatusIdle = {
     planetId: string;
 };
 
+export type TransportShipStatusListed = {
+    type: 'listed';
+    planetId: string;
+};
+
+export type TransportShipStatusDerelict = {
+    type: 'derelict';
+    planetId: string;
+};
+
 export type TransportShipStatus =
     | TransportShipStatusIdle
+    | TransportShipStatusListed
+    | TransportShipStatusDerelict
     | TransportShipStatusTransporting
     | TransportShipStatusLoading
     | TransportShipStatusUnloading;
@@ -78,16 +90,25 @@ export type TransportShip = {
     type: TransportShipType;
     state: TransportShipStatus;
     maintainanceStatus: number;
+    /** Maximum maintainance level this ship can be restored to. Degrades each full repair cycle. */
+    maxMaintenance: number;
+    /** Accumulates repair consumed; triggers maxMaintenance degradation when >= 1. */
+    cumulativeRepairAcc: number;
 };
 
 export const shipTick = (gameState: GameState): void => {
     gameState.agents.forEach((agent) => {
         agent.transportShips.forEach((ship) => {
+            // Derelict ships are permanently non-operational — skip all processing
+            if (ship.state.type === 'derelict') {
+                return;
+            }
+
             let maintenanceDecreasePerYear = 0.05;
             if (ship.state.type === 'transporting') {
                 maintenanceDecreasePerYear *= 5;
             }
-            if (ship.state.type === 'idle') {
+            if (ship.state.type === 'idle' || ship.state.type === 'listed') {
                 maintenanceDecreasePerYear *= 0.5;
             }
             ship.maintainanceStatus = Math.max(
@@ -95,7 +116,7 @@ export const shipTick = (gameState: GameState): void => {
                 ship.maintainanceStatus - maintenanceDecreasePerYear / TICKS_PER_YEAR,
             );
 
-            if (ship.state.type === 'idle') {
+            if (ship.state.type === 'idle' || ship.state.type === 'listed') {
                 const assets = agent.assets[ship.state.planetId];
                 const storage = assets?.storageFacility;
                 if (storage) {
@@ -106,12 +127,40 @@ export const shipTick = (gameState: GameState): void => {
                         maintenancePerTick,
                     );
                     if (consumed > 0) {
-                        ship.maintainanceStatus = Math.min(1, ship.maintainanceStatus + consumed);
+                        // Cap repair at maxMaintenance
+                        ship.maintainanceStatus = Math.min(ship.maxMaintenance, ship.maintainanceStatus + consumed);
                         assets.monthAcc.consumptionValue +=
                             consumed *
                             (gameState.planets.get(ship.state.planetId)?.marketPrices[
                                 maintenanceServiceResourceType.name
                             ] ?? 0);
+
+                        // Aging: accumulate repair; degrade maxMaintenance after each full cycle
+                        ship.cumulativeRepairAcc += consumed;
+                        while (ship.cumulativeRepairAcc >= 1.0) {
+                            ship.cumulativeRepairAcc -= 1.0;
+                            ship.maxMaintenance = Math.max(
+                                0,
+                                ship.maxMaintenance - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
+                            );
+                        }
+
+                        // Transition to derelict when maxMaintenance reaches zero
+                        if (ship.maxMaintenance <= 0) {
+                            ship.maintainanceStatus = 0;
+                            // If ship was listed, remove its listing
+                            if (ship.state.type === 'listed') {
+                                const planetId = ship.state.planetId;
+                                const listingAssets = agent.assets[planetId];
+                                if (listingAssets) {
+                                    listingAssets.shipListings = listingAssets.shipListings.filter(
+                                        (l) => l.shipName !== ship.name,
+                                    );
+                                }
+                            }
+                            ship.state = { type: 'derelict', planetId: ship.state.planetId };
+                            return;
+                        }
                     }
                 }
             }
@@ -515,7 +564,34 @@ export const createTransportShip = (
             planetId: planet.id,
         },
         maintainanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
     };
+};
+
+export type ShipListing = {
+    id: string;
+    sellerAgentId: string;
+    shipName: string;
+    shipTypeName: string;
+    askPrice: number;
+    planetId: string;
+    postedAtTick: number;
+};
+
+export type ShipTradeRecord = {
+    shipTypeName: string;
+    price: number;
+    tick: number;
+    maintainanceStatus: number;
+    maxMaintenance: number;
+    effectiveValue: number;
+};
+
+export type ShipCapitalMarket = {
+    tradeHistory: ShipTradeRecord[];
+    /** EMA of trade price keyed by ship type name. */
+    emaPrice: Record<string, number>;
 };
 
 export type ContractStatus = 'open' | 'accepted';

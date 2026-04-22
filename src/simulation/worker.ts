@@ -28,6 +28,9 @@ import {
     handleCancelTransportContract,
     handlePostShipBuyingOffer,
     handleAcceptShipBuyingOffer,
+    handlePostShipListing,
+    handleCancelShipListing,
+    handleAcceptShipListing,
 } from './workerClient/shipContractActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
@@ -200,6 +203,15 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'acceptShipBuyingOffer':
                         handleAcceptShipBuyingOffer(state, action, safePostMessage);
+                        break;
+                    case 'postShipListing':
+                        handlePostShipListing(state, action, safePostMessage);
+                        break;
+                    case 'cancelShipListing':
+                        handleCancelShipListing(state, action, safePostMessage);
+                        break;
+                    case 'acceptShipListing':
+                        handleAcceptShipListing(state, action, safePostMessage);
                         break;
                 }
             } catch (err) {
@@ -577,6 +589,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     } else {
                         data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data, snap.tick) };
                     }
+                    break;
+                }
+                case 'getShipCapitalMarket': {
+                    data = { shipCapitalMarket: snap.shipCapitalMarket };
                     break;
                 }
                 default: {
@@ -1198,6 +1214,60 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 posterAgentId,
                 offerId,
                 shipName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'postShipListing') {
+            const { requestId, agentId, planetId, shipName, askPrice } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'postShipListing', requestId, agentId, planetId, shipName, askPrice });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'cancelShipListing') {
+            const { requestId, agentId, planetId, listingId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            pendingActions.push({ type: 'cancelShipListing', requestId, agentId, planetId, listingId });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acceptShipListing') {
+            const { requestId, buyerAgentId, buyerPlanetId, sellerAgentId, listingId } = msg;
+            if (!state.agents.has(buyerAgentId)) {
+                safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Buyer agent not found' });
+                return;
+            }
+            if (!state.agents.has(sellerAgentId)) {
+                safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Seller agent not found' });
+                return;
+            }
+            pendingActions.push({
+                type: 'acceptShipListing',
+                requestId,
+                buyerAgentId,
+                buyerPlanetId,
+                sellerAgentId,
+                listingId,
             });
             if (!processingTick) {
                 drainActionQueue();

@@ -66,7 +66,7 @@ describe('productionTick (basic)', () => {
         const gameState: GameState = {
             tick: 0,
             planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
+            agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} }
         };
 
         productionTick(gameState.agents, planet, gameState.tick);
@@ -113,7 +113,7 @@ describe('productionTick (basic)', () => {
         const gameState: GameState = {
             tick: 0,
             planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
+            agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} }
         };
 
         productionTick(gameState.agents, planet, gameState.tick);
@@ -157,7 +157,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         // facility should record overqualified usage for jobEdu 'none'
@@ -219,7 +219,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'scale-fac');
@@ -261,7 +261,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         // Only 1 slot needed — totalUsedByEdu.secondary should be ≤ 1 (the slot capacity)
@@ -305,7 +305,7 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         // Both facilities must have run (efficiency > 0)
@@ -349,7 +349,7 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
@@ -423,7 +423,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         wf[30].none.novice.active = 1;
         agent.assets.p.productionFacilities = [facility];
 
-        const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         const produced = facility.lastTickResults.lastProduced[vehicleResourceType.name] ?? 0;
@@ -456,7 +456,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
         wf[30].none.novice.active = 1;
         agent.assets.p.productionFacilities = [facility];
 
-        const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([['p', planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         const consumed = facility.lastTickResults.lastConsumed[waterResourceType.name] ?? 0;
@@ -495,7 +495,7 @@ describe('constructionTick', () => {
             quantity: 80,
         };
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         constructionTick(gs.agents, planet);
 
         expect(facility.construction).not.toBeNull();
@@ -525,7 +525,7 @@ describe('constructionTick', () => {
             quantity: 20,
         };
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         constructionTick(gs.agents, planet);
 
         expect(facility.construction).toBeNull();
@@ -549,7 +549,7 @@ describe('constructionTick', () => {
         agent.assets.p.productionFacilities = [facility];
         // No construction service in storage
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         constructionTick(gs.agents, planet);
 
         expect(facility.construction).not.toBeNull();
@@ -578,7 +578,7 @@ describe('constructionTick', () => {
             quantity: 30,
         };
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         constructionTick(gs.agents, planet);
 
         expect(mgmtFacility.construction!.progress).toBe(30);
@@ -609,7 +609,7 @@ describe('productionTick — storage facility', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.novice.active = 2; // 2 workers, 1 for storage
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         const results = agent.assets.p.storageFacility.lastTickResults;
@@ -641,7 +641,7 @@ describe('productionTick — storage facility', () => {
 
         const initialEfficiency = agent.assets.p.storageFacility.lastTickResults.overallEfficiency;
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         // lastTickResults should not have been updated (still 0 from initialization)
@@ -685,7 +685,7 @@ describe('productionTick — management facility', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.novice.active = 1;
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBeGreaterThan(0);
@@ -715,7 +715,7 @@ describe('productionTick — management facility', () => {
         agent.assets.p.managementFacilities = [mgmtFacility];
         // No workers → efficiency = 0
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(0);
@@ -749,7 +749,7 @@ describe('productionTick — management facility', () => {
 
         const initialEfficiency = mgmtFacility.lastTickResults.overallEfficiency;
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
@@ -799,7 +799,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 9; // scale=9 needs 9 effective workers
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
@@ -823,7 +823,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         };
         // No workers added
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBe(0);
@@ -860,7 +860,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         wf[30].secondary.novice.active = 1;
         const initialEfficiency = shipyard.lastTickResults.overallEfficiency;
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBe(initialEfficiency);
@@ -896,7 +896,7 @@ describe('productionTick — ship maintenance facility', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(maintenanceFacility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
@@ -924,7 +924,7 @@ describe('productionTick — ship maintenance facility', () => {
         };
         // No workers added
 
-        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
+        const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov), shipCapitalMarket: { tradeHistory: [], emaPrice: {} } };
         productionTick(gs.agents, planet, gs.tick);
 
         expect(maintenanceFacility.lastTickResults.overallEfficiency).toBe(0);

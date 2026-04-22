@@ -217,6 +217,27 @@ export const GENERATION_KERNEL_N = 2;
 
 export const EPSILON = 1e-4;
 
+// ---------------------------------------------------------------------------
+// Ship capital market & aging
+// ---------------------------------------------------------------------------
+
+/**
+ * Fraction by which maxMaintenance degrades each time a ship has been repaired
+ * by a cumulative total of 1.0 units (one full repair cycle).
+ * At 0.01 a ship fully repaired from ~0 → maxMaintenance each year will reach
+ * maxMaintenance = 0 (derelict) after roughly 100 repair cycles.
+ */
+export const MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE = 0.01;
+
+/**
+ * EMA smoothing factor for ship trade prices (0 < α ≤ 1).
+ * Higher values weight recent trades more heavily.
+ */
+export const SHIP_MARKET_EMA_ALPHA = 0.3;
+
+/** Maximum number of trade records kept per ship-type in the capital market history. */
+export const SHIP_MARKET_MAX_TRADE_HISTORY = 200;
+
 export const LAND_CLAIM_COST_PER_UNIT: Record<string, number> = {
     'Arable Land': 1,
     'Water Source': 1,

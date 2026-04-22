@@ -1,7 +1,8 @@
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { GameState } from '../planet/planet';
-import type { ShipBuyingOffer, TransportContract } from '../ships/ships';
+import type { ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
+import { appendTradeRecord, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
 import type { OutboundMessage, PendingAction } from './messages';
 
 function generateId(prefix: string): string {
@@ -359,5 +360,214 @@ export function handleAcceptShipBuyingOffer(
 
     buyerAssets.shipBuyingOffers.splice(offerIndex, 1);
 
+    // Record trade in ship capital market
+    const ev = effectiveShipValue(ship, state);
+    updateShipEma(state.shipCapitalMarket, ship.type.name, offer.price);
+    appendTradeRecord(state.shipCapitalMarket, {
+        shipTypeName: ship.type.name,
+        price: offer.price,
+        tick: state.tick,
+        maintainanceStatus: ship.maintainanceStatus,
+        maxMaintenance: ship.maxMaintenance,
+        effectiveValue: ev,
+    });
+
     safePostMessage({ type: 'shipBuyingOfferAccepted', requestId, agentId, offerId });
+}
+
+export function handlePostShipListing(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'postShipListing' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, shipName, askPrice } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'No assets on planet' });
+        return;
+    }
+
+    const ship = agent.transportShips.find((s) => s.name === shipName);
+    if (!ship) {
+        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Ship '${shipName}' not found` });
+        return;
+    }
+    if (ship.state.type === 'derelict') {
+        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Cannot list a derelict ship' });
+        return;
+    }
+    if (ship.state.type !== 'idle') {
+        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Ship must be idle to be listed' });
+        return;
+    }
+    if (ship.state.planetId !== planetId) {
+        safePostMessage({
+            type: 'shipListingPostFailed',
+            requestId,
+            reason: `Ship is not on planet '${planetId}'`,
+        });
+        return;
+    }
+    if (assets.shipListings.some((l) => l.shipName === shipName)) {
+        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Ship is already listed for sale' });
+        return;
+    }
+
+    ship.state = { type: 'listed', planetId };
+
+    const listingId = generateId('sl');
+    const listing: ShipListing = {
+        id: listingId,
+        sellerAgentId: agentId,
+        shipName,
+        shipTypeName: ship.type.name,
+        askPrice,
+        planetId,
+        postedAtTick: state.tick,
+    };
+    assets.shipListings.push(listing);
+
+    safePostMessage({ type: 'shipListingPosted', requestId, agentId, listingId });
+}
+
+export function handleCancelShipListing(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'cancelShipListing' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, listingId } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'No assets on planet' });
+        return;
+    }
+
+    const listingIndex = assets.shipListings.findIndex((l) => l.id === listingId);
+    if (listingIndex === -1) {
+        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'Listing not found' });
+        return;
+    }
+
+    const listing = assets.shipListings[listingIndex];
+    if (listing.sellerAgentId !== agentId) {
+        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'You do not own this listing' });
+        return;
+    }
+
+    // Restore ship state to idle
+    const ship = agent.transportShips.find((s) => s.name === listing.shipName);
+    if (ship && ship.state.type === 'listed') {
+        ship.state = { type: 'idle', planetId };
+    }
+
+    assets.shipListings.splice(listingIndex, 1);
+    safePostMessage({ type: 'shipListingCancelled', requestId, agentId, listingId });
+}
+
+export function handleAcceptShipListing(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'acceptShipListing' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, buyerAgentId, buyerPlanetId, sellerAgentId, listingId } = action;
+
+    const buyerAgent = state.agents.get(buyerAgentId);
+    if (!buyerAgent) {
+        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Buyer agent not found' });
+        return;
+    }
+
+    const sellerAgent = state.agents.get(sellerAgentId);
+    if (!sellerAgent) {
+        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Seller agent not found' });
+        return;
+    }
+
+    const buyerAssets = buyerAgent.assets[buyerPlanetId];
+    if (!buyerAssets) {
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Buyer has no assets on specified planet',
+        });
+        return;
+    }
+
+    // Find the listing in seller's assets
+    let listing: ShipListing | undefined;
+    let sellerAssets: (typeof sellerAgent.assets)[string] | undefined;
+    for (const [, assets] of Object.entries(sellerAgent.assets)) {
+        const found = assets.shipListings.find((l) => l.id === listingId);
+        if (found) {
+            listing = found;
+            sellerAssets = assets;
+            break;
+        }
+    }
+
+    if (!listing || !sellerAssets) {
+        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Listing not found' });
+        return;
+    }
+    if (listing.sellerAgentId !== sellerAgentId) {
+        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Seller agent mismatch' });
+        return;
+    }
+
+    const shipIndex = sellerAgent.transportShips.findIndex((s) => s.name === listing!.shipName);
+    if (shipIndex === -1) {
+        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Ship no longer exists' });
+        return;
+    }
+    const ship = sellerAgent.transportShips[shipIndex];
+    if (ship.state.type !== 'listed') {
+        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Ship is no longer listed' });
+        return;
+    }
+    if (buyerAssets.deposits < listing.askPrice) {
+        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Insufficient deposits' });
+        return;
+    }
+
+    // Atomic settlement
+    // Transfer ship
+    sellerAgent.transportShips.splice(shipIndex, 1);
+    ship.state = { type: 'idle', planetId: listing.planetId };
+    buyerAgent.transportShips.push(ship);
+
+    // Transfer funds
+    buyerAssets.deposits -= listing.askPrice;
+    sellerAssets.deposits += listing.askPrice;
+
+    // Remove listing
+    const listingIndex = sellerAssets.shipListings.indexOf(listing);
+    sellerAssets.shipListings.splice(listingIndex, 1);
+
+    // Record trade
+    const ev = effectiveShipValue(ship, state);
+    updateShipEma(state.shipCapitalMarket, ship.type.name, listing.askPrice);
+    appendTradeRecord(state.shipCapitalMarket, {
+        shipTypeName: ship.type.name,
+        price: listing.askPrice,
+        tick: state.tick,
+        maintainanceStatus: ship.maintainanceStatus,
+        maxMaintenance: ship.maxMaintenance,
+        effectiveValue: ev,
+    });
+
+    safePostMessage({ type: 'shipListingAccepted', requestId, buyerAgentId, listingId });
 }

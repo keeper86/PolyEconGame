@@ -20,6 +20,7 @@ import { encode, decode } from '@msgpack/msgpack';
 import { toImmutableGameState, fromImmutableGameState } from './immutableTypes';
 import type { GameStateRecord } from './immutableTypes';
 import type { Planet, Agent, GameState } from './planet/planet';
+import type { ShipCapitalMarket } from './ships/ships';
 
 // ---------------------------------------------------------------------------
 // Wire format (MessagePack-safe — uses arrays instead of Maps)
@@ -31,6 +32,7 @@ interface WireGameState {
     tick: number;
     planets: Planet[];
     agents: Agent[];
+    shipCapitalMarket?: ShipCapitalMarket;
 }
 
 function gameStateToWire(gs: GameState): WireGameState {
@@ -38,6 +40,7 @@ function gameStateToWire(gs: GameState): WireGameState {
         tick: gs.tick,
         planets: [...gs.planets.values()],
         agents: [...gs.agents.values()],
+        shipCapitalMarket: gs.shipCapitalMarket,
     };
 }
 
@@ -48,9 +51,29 @@ function wireToGameState(wire: WireGameState): GameState {
     }
     const agents = new Map<string, Agent>();
     for (const a of wire.agents) {
+        // Backward-compat: older snapshots may lack new ship fields
+        for (const ship of a.transportShips) {
+            if ((ship as { maxMaintenance?: number }).maxMaintenance === undefined) {
+                ship.maxMaintenance = ship.maintainanceStatus;
+            }
+            if ((ship as { cumulativeRepairAcc?: number }).cumulativeRepairAcc === undefined) {
+                ship.cumulativeRepairAcc = 0;
+            }
+        }
+        // Backward-compat: older snapshots may lack shipListings in assets
+        for (const assets of Object.values(a.assets)) {
+            if (!assets.shipListings) {
+                assets.shipListings = [];
+            }
+        }
         agents.set(a.id, a);
     }
-    return { tick: wire.tick, planets, agents };
+    return {
+        tick: wire.tick,
+        planets,
+        agents,
+        shipCapitalMarket: wire.shipCapitalMarket ?? { tradeHistory: [], emaPrice: {} },
+    };
 }
 
 // ---------------------------------------------------------------------------

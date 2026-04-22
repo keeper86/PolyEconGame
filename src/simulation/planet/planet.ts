@@ -5,7 +5,7 @@ import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce'
 import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
 import type { ResourceName } from './resourceCatalog';
-import type { ShipBuyingOffer, TransportContract } from '../ships/ships';
+import type { ShipBuyingOffer, ShipCapitalMarket, ShipListing, TransportContract } from '../ships/ships';
 
 export interface Bank {
     loans: number;
@@ -230,6 +230,7 @@ export type AgentPlanetAssets = {
 
     transportContracts: TransportContract[];
     shipBuyingOffers: ShipBuyingOffer[];
+    shipListings: ShipListing[];
 
     deposits: number;
 
@@ -284,6 +285,7 @@ export interface GameState {
     tick: number;
     planets: Map<string, Planet>;
     agents: Map<string, Agent>;
+    shipCapitalMarket: ShipCapitalMarket;
 }
 
 export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): void {

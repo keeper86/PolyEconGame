@@ -19,6 +19,9 @@ import {
     cancelTransportContractSpec,
     postShipBuyingOfferSpec,
     acceptShipBuyingOfferSpec,
+    postShipListingSpec,
+    cancelShipListingSpec,
+    acceptShipListingSpec,
     buildShipConstructionFacilitySpec,
     expandShipConstructionFacilitySpec,
     setShipConstructionTargetSpec,
@@ -395,6 +398,50 @@ export function workerExpandShipMaintenanceFacility(opts: {
     return sendCommandSpec(
         { type: 'expandShipMaintenanceFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
         expandShipMaintenanceFacilitySpec,
+        timeoutMs,
+    );
+}
+
+export function workerPostShipListing(opts: {
+    agentId: string;
+    planetId: string;
+    shipName: string;
+    askPrice: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, shipName, askPrice, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'postShipListing', requestId: randomUUID(), agentId, planetId, shipName, askPrice },
+        postShipListingSpec,
+        timeoutMs,
+    );
+}
+
+export function workerCancelShipListing(opts: {
+    agentId: string;
+    planetId: string;
+    listingId: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, listingId, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'cancelShipListing', requestId: randomUUID(), agentId, planetId, listingId },
+        cancelShipListingSpec,
+        timeoutMs,
+    );
+}
+
+export function workerAcceptShipListing(opts: {
+    buyerAgentId: string;
+    buyerPlanetId: string;
+    sellerAgentId: string;
+    listingId: string;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { buyerAgentId, buyerPlanetId, sellerAgentId, listingId, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'acceptShipListing', requestId: randomUUID(), buyerAgentId, buyerPlanetId, sellerAgentId, listingId },
+        acceptShipListingSpec,
         timeoutMs,
     );
 }

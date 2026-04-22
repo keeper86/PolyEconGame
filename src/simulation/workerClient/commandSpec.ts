@@ -254,6 +254,47 @@ export const acceptShipBuyingOfferSpec: CommandSpec<
     extract: (msg) => msg.offerId,
 };
 
+// --- Ship listing specs ---
+
+type PostShipListingSuccess = Extract<OutboundMessage, { type: 'shipListingPosted' }>;
+type PostShipListingFailure = Extract<OutboundMessage, { type: 'shipListingPostFailed' }>;
+export const postShipListingSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postShipListing' }>,
+    PostShipListingSuccess,
+    PostShipListingFailure,
+    string
+> = {
+    successType: 'shipListingPosted',
+    failureType: 'shipListingPostFailed',
+    extract: (msg) => msg.listingId,
+};
+
+type CancelShipListingSuccess = Extract<OutboundMessage, { type: 'shipListingCancelled' }>;
+type CancelShipListingFailure = Extract<OutboundMessage, { type: 'shipListingCancelFailed' }>;
+export const cancelShipListingSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelShipListing' }>,
+    CancelShipListingSuccess,
+    CancelShipListingFailure,
+    string
+> = {
+    successType: 'shipListingCancelled',
+    failureType: 'shipListingCancelFailed',
+    extract: (msg) => msg.listingId,
+};
+
+type AcceptShipListingSuccess = Extract<OutboundMessage, { type: 'shipListingAccepted' }>;
+type AcceptShipListingFailure = Extract<OutboundMessage, { type: 'shipListingAcceptFailed' }>;
+export const acceptShipListingSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptShipListing' }>,
+    AcceptShipListingSuccess,
+    AcceptShipListingFailure,
+    string
+> = {
+    successType: 'shipListingAccepted',
+    failureType: 'shipListingAcceptFailed',
+    extract: (msg) => msg.listingId,
+};
+
 // --- Ship construction facility specs ---
 
 type BuildShipConstructionFacilitySuccess = Extract<OutboundMessage, { type: 'shipConstructionFacilityBuilt' }>;

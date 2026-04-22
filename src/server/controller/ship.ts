@@ -8,8 +8,12 @@ import {
     workerCancelTransportContract,
     workerPostShipBuyingOffer,
     workerAcceptShipBuyingOffer,
+    workerPostShipListing,
+    workerCancelShipListing,
+    workerAcceptShipListing,
 } from '../../simulation/workerClient/commands';
 import { workerQueries } from '../../simulation/workerClient/queries';
+import { findCompatibleTrades, effectiveShipValue } from '../../simulation/ships/shipMarket';
 
 async function assertAgentOwnership(userId: string, agentId: string): Promise<void> {
     const row = await db('user_data').where({ user_id: userId }).first();
@@ -143,4 +147,85 @@ export const acceptShipBuyingOffer = () =>
             await assertAgentOwnership(userId, input.agentId);
             const offerId = await workerAcceptShipBuyingOffer(input);
             return { offerId };
+        });
+
+export const listShipListings = () =>
+    protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input }) => {
+        const { agents } = await workerQueries.getAllAgents();
+        const listings = (agents ?? []).flatMap((agent) => {
+            const assets = agent.assets?.[input.planetId];
+            return (assets?.shipListings ?? []).map((l) => ({ ...l, _agentId: agent.id }));
+        });
+        return { listings };
+    });
+
+export const getShipMarketHints = () =>
+    protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input: _input }) => {
+        const [{ agents }, { shipCapitalMarket }] = await Promise.all([
+            workerQueries.getAllAgents(),
+            workerQueries.getShipCapitalMarket(),
+        ]);
+        const agentMap = new Map((agents ?? []).map((a) => [a.id, a]));
+        const mockState = { tick: 0, planets: new Map(), agents: agentMap, shipCapitalMarket };
+        const compatibleTrades = findCompatibleTrades(mockState);
+        return { compatibleTrades: compatibleTrades.slice(0, 50) };
+    });
+
+export const getShipMarketHistory = () =>
+    protectedProcedure.query(async () => {
+        const { shipCapitalMarket } = await workerQueries.getShipCapitalMarket();
+        return {
+            emaPrice: shipCapitalMarket.emaPrice,
+            recentTrades: shipCapitalMarket.tradeHistory.slice(-50),
+        };
+    });
+
+export const postShipListing = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                shipName: z.string().min(1),
+                askPrice: z.number().positive(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const listingId = await workerPostShipListing(input);
+            return { listingId };
+        });
+
+export const cancelShipListing = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                listingId: z.string().min(1),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const listingId = await workerCancelShipListing(input);
+            return { listingId };
+        });
+
+export const acceptShipListing = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                buyerAgentId: z.string().min(1),
+                buyerPlanetId: z.string().min(1),
+                sellerAgentId: z.string().min(1),
+                listingId: z.string().min(1),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.buyerAgentId);
+            const listingId = await workerAcceptShipListing(input);
+            return { listingId };
         });

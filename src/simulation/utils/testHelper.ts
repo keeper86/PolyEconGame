@@ -452,6 +452,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         shipMaintenanceFacilities: [],
         transportContracts: [],
         shipBuyingOffers: [],
+        shipListings: [],
         deposits: 0,
         depositHold: 0,
         loans: 0,
@@ -570,6 +571,7 @@ export function makeGameState(
         tick,
         planets: new Map(planets.map((p) => [p.id, p])),
         agents: new Map(agents.map((a) => [a.id, a])),
+        shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
     };
 }
 

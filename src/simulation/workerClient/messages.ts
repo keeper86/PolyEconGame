@@ -170,6 +170,29 @@ export type InboundMessage =
           facilityId: string;
           targetScale: number;
       }
+    | {
+          type: 'postShipListing';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          shipName: string;
+          askPrice: number;
+      }
+    | {
+          type: 'cancelShipListing';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          listingId: string;
+      }
+    | {
+          type: 'acceptShipListing';
+          requestId: string;
+          buyerAgentId: string;
+          buyerPlanetId: string;
+          sellerAgentId: string;
+          listingId: string;
+      }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -214,6 +237,12 @@ export type OutboundMessage =
     | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string }
     | { type: 'shipBuyingOfferAccepted'; requestId: string; agentId: string; offerId: string }
     | { type: 'shipBuyingOfferAcceptFailed'; requestId: string; reason: string }
+    | { type: 'shipListingPosted'; requestId: string; agentId: string; listingId: string }
+    | { type: 'shipListingPostFailed'; requestId: string; reason: string }
+    | { type: 'shipListingCancelled'; requestId: string; agentId: string; listingId: string }
+    | { type: 'shipListingCancelFailed'; requestId: string; reason: string }
+    | { type: 'shipListingAccepted'; requestId: string; buyerAgentId: string; listingId: string }
+    | { type: 'shipListingAcceptFailed'; requestId: string; reason: string }
     | { type: 'shipConstructionFacilityBuilt'; requestId: string; agentId: string; facilityId: string }
     | { type: 'shipConstructionFacilityBuildFailed'; requestId: string; reason: string }
     | { type: 'shipConstructionFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
@@ -408,4 +437,27 @@ export type PendingAction =
           planetId: string;
           facilityId: string;
           targetScale: number;
+      }
+    | {
+          type: 'postShipListing';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          shipName: string;
+          askPrice: number;
+      }
+    | {
+          type: 'cancelShipListing';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          listingId: string;
+      }
+    | {
+          type: 'acceptShipListing';
+          requestId: string;
+          buyerAgentId: string;
+          buyerPlanetId: string;
+          sellerAgentId: string;
+          listingId: string;
       };

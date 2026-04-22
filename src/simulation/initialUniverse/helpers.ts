@@ -105,6 +105,7 @@ export function makeAgentPlanetAssets(
         storageFacility: storage,
         transportContracts: [],
         shipBuyingOffers: [],
+        shipListings: [],
         deposits: 0,
         depositHold: 0,
         loans: 0,
