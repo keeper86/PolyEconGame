@@ -1,4 +1,5 @@
 import type { Agent, Planet } from '../planet/planet';
+import { hasActiveLicense } from '../planet/planet';
 import type { Resource } from '../planet/claims';
 import { lockIntoEscrow, queryStorageFacility } from '../planet/facility';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
@@ -11,6 +12,9 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets?.market) {
+            return;
+        }
+        if (!hasActiveLicense(assets, 'commercial')) {
             return;
         }
 
@@ -61,7 +65,9 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         if (!assets?.market?.buy) {
             return;
         }
-
+        if (!hasActiveLicense(assets, 'commercial')) {
+            return;
+        }
         // Gather all valid bids and their maximum possible cost.
         const pendingBids: {
             resourceName: string;

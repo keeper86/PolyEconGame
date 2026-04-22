@@ -27,6 +27,7 @@ import {
     setShipConstructionTargetSpec,
     buildShipMaintenanceFacilitySpec,
     expandShipMaintenanceFacilitySpec,
+    acquireLicenseSpec,
 } from './commandSpec';
 
 export function workerCreateAgent(opts: {
@@ -442,6 +443,20 @@ export function workerAcceptShipListing(opts: {
     return sendCommandSpec(
         { type: 'acceptShipListing', requestId: randomUUID(), buyerAgentId, buyerPlanetId, sellerAgentId, listingId },
         acceptShipListingSpec,
+        timeoutMs,
+    );
+}
+
+export function workerAcquireLicense(opts: {
+    agentId: string;
+    planetId: string;
+    licenseType: 'commercial' | 'workforce';
+    timeoutMs?: number;
+}): Promise<{ agentId: string; planetId: string; licenseType: 'commercial' | 'workforce' }> {
+    const { agentId, planetId, licenseType, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'acquireLicense', requestId: randomUUID(), agentId, planetId, licenseType },
+        acquireLicenseSpec,
         timeoutMs,
     );
 }

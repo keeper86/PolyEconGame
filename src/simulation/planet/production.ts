@@ -16,6 +16,7 @@ import type {
 } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
+import { hasActiveLicense } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
@@ -387,6 +388,9 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
+            return;
+        }
+        if (!hasActiveLicense(assets, 'workforce')) {
             return;
         }
 

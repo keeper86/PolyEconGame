@@ -20,6 +20,7 @@ import {
     workerSetShipConstructionTarget,
     workerBuildShipMaintenanceFacility,
     workerExpandShipMaintenanceFacility,
+    workerAcquireLicense,
 } from '@/simulation/workerClient/commands';
 import { workerQueries } from '@/simulation/workerClient/queries';
 
@@ -409,6 +410,15 @@ export const setWorkerAllocationTargets = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
+            const { agent: allocAgent } = await workerQueries.getAgent(input.agentId);
+            const allocAssets = allocAgent?.assets[input.planetId];
+            if (!allocAssets?.licenses?.workforce || allocAssets.licenses.workforce.frozen) {
+                throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'An active workforce license is required to set worker allocation targets on this planet',
+                });
+            }
+
             logger.info(
                 { component: 'set-worker-allocation' },
                 `User ${userId} setting worker targets for agent ${input.agentId} on planet ${input.planetId}: ` +
@@ -467,6 +477,12 @@ export const setSellOffers = () => {
             const sellAssets = sellAgent.assets[input.planetId];
             if (!sellAssets) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
+            }
+            if (!sellAssets.licenses?.commercial || sellAssets.licenses.commercial.frozen) {
+                throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'An active commercial license is required to place sell offers on this planet',
+                });
             }
 
             // Validate each offer using the shared validation module
@@ -618,6 +634,12 @@ export const setBuyBids = () => {
             if (!bidAssets) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent has no assets on this planet' });
             }
+            if (!bidAssets.licenses?.commercial || bidAssets.licenses.commercial.frozen) {
+                throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'A active commercial license is required to place buy bids on this planet',
+                });
+            }
 
             // Validate each bid using the shared validation module
             for (const [resourceName, bid] of Object.entries(input.bids)) {
@@ -674,6 +696,15 @@ export const buildFacility = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
+            const { agent: buildAgent } = await workerQueries.getAgent(input.agentId);
+            const buildAssets = buildAgent?.assets[input.planetId];
+            if (!buildAssets?.licenses?.workforce || buildAssets.licenses.workforce.frozen) {
+                throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'An active workforce license is required to build facilities on this planet',
+                });
+            }
+
             logger.info(
                 { component: 'build-facility' },
                 `User ${userId} building '${input.facilityKey}' for agent ${input.agentId} on planet ${input.planetId}`,
@@ -712,6 +743,15 @@ export const expandFacility = () => {
             }
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            const { agent: expandAgent } = await workerQueries.getAgent(input.agentId);
+            const expandAssets = expandAgent?.assets[input.planetId];
+            if (!expandAssets?.licenses?.workforce || expandAssets.licenses.workforce.frozen) {
+                throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'An active workforce license is required to expand facilities on this planet',
+                });
             }
 
             logger.info(
@@ -985,5 +1025,53 @@ export const quitClaim = () => {
                 claimId: input.claimId,
             });
             return { claimId };
+        });
+};
+
+/**
+ * Acquire a commercial or workforce license for the user's agent on a planet.
+ *
+ * Commercial license: grants bank account + storage + market access.
+ * Workforce license: grants the right to hire and run production.
+ *
+ * Home planet licenses are granted free on agent creation.
+ * For any other planet the license fee is funded via an initial loan
+ * that is created automatically when the agent first enters that planet.
+ */
+export const acquireLicense = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                licenseType: z.enum(['commercial', 'workforce']),
+            }),
+        )
+        .output(
+            z.object({ agentId: z.string(), planetId: z.string(), licenseType: z.enum(['commercial', 'workforce']) }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            logger.info(
+                { component: 'acquire-license' },
+                `User ${userId} acquiring '${input.licenseType}' license for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+            const result = await workerAcquireLicense({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                licenseType: input.licenseType,
+            });
+            logger.info(
+                { component: 'acquire-license' },
+                `Agent ${input.agentId} acquired '${input.licenseType}' license on planet ${input.planetId}`,
+            );
+            return result;
         });
 };

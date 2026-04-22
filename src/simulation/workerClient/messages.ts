@@ -194,6 +194,13 @@ export type InboundMessage =
           listingId: string;
       }
     | { type: 'shutdown' }
+    | {
+          type: 'acquireLicense';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          licenseType: 'commercial' | 'workforce';
+      }
     | WorkerQueryMessage;
 
 export type OutboundMessage =
@@ -253,6 +260,14 @@ export type OutboundMessage =
     | { type: 'shipMaintenanceFacilityBuildFailed'; requestId: string; reason: string }
     | { type: 'shipMaintenanceFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
     | { type: 'shipMaintenanceFacilityExpandFailed'; requestId: string; reason: string }
+    | {
+          type: 'licenseAcquired';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          licenseType: 'commercial' | 'workforce';
+      }
+    | { type: 'licenseAcquisitionFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
     | { type: 'workerLog'; level: 'log' | 'warn' | 'error'; message: string }
     | WorkerSuccessResponse
@@ -460,4 +475,11 @@ export type PendingAction =
           buyerPlanetId: string;
           sellerAgentId: string;
           listingId: string;
+      }
+    | {
+          type: 'acquireLicense';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          licenseType: 'commercial' | 'workforce';
       };

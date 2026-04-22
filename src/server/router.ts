@@ -66,6 +66,7 @@ import {
     setShipConstructionTarget,
     buildShipMaintenanceFacility,
     expandShipMaintenanceFacility,
+    acquireLicense,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -132,6 +133,7 @@ const protectedAppRouter = trpcRoot.router({
     setShipConstructionTarget: setShipConstructionTarget(),
     buildShipMaintenanceFacility: buildShipMaintenanceFacility(),
     expandShipMaintenanceFacility: expandShipMaintenanceFacility(),
+    acquireLicense: acquireLicense(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

@@ -220,6 +220,13 @@ export type MarketResult = {
     }[];
 };
 
+export type LicenseType = 'commercial' | 'workforce';
+
+export type PlanetLicense = {
+    acquiredTick: number;
+    frozen: boolean;
+};
+
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
     managementFacilities: ManagementFacility[];
@@ -265,7 +272,20 @@ export type AgentPlanetAssets = {
         claimPayments: number;
         totalWorkersTicks: number;
     };
+
+    licenses: {
+        commercial?: PlanetLicense;
+        workforce?: PlanetLicense;
+    };
 };
+
+/**
+ * Returns true if the agent has the given license on a planet and it is not frozen.
+ */
+export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): boolean {
+    const license = assets.licenses?.[type];
+    return license !== undefined && !license.frozen;
+}
 
 export type Agent = {
     id: string;

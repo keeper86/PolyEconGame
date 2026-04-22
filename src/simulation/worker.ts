@@ -32,6 +32,7 @@ import {
     handleCancelShipListing,
     handleAcceptShipListing,
 } from './workerClient/shipContractActions';
+import { handleAcquireLicense } from './workerClient/licenseActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
@@ -212,6 +213,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'acceptShipListing':
                         handleAcceptShipListing(state, action, safePostMessage);
+                        break;
+                    case 'acquireLicense':
+                        handleAcquireLicense(state, action, safePostMessage);
                         break;
                 }
             } catch (err) {
@@ -1269,6 +1273,27 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 sellerAgentId,
                 listingId,
             });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acquireLicense') {
+            const { requestId, agentId, planetId, licenseType } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'licenseAcquisitionFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'licenseAcquisitionFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'acquireLicense', requestId, agentId, planetId, licenseType });
             if (!processingTick) {
                 drainActionQueue();
             }

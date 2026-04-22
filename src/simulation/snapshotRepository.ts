@@ -217,6 +217,10 @@ export type AgentPlanetSummary = {
     totalWorkers: number;
     unusedWorkerFraction: number;
     topResources: Array<{ name: string; quantity: number }>;
+    licenses: {
+        commercial?: { acquiredTick: number; frozen: boolean };
+        workforce?: { acquiredTick: number; frozen: boolean };
+    };
 };
 
 /** Shape returned by getAgentOverview. */
@@ -277,5 +281,6 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         totalWorkers,
         unusedWorkerFraction: 0,
         topResources,
+        licenses: assets.licenses ?? {},
     };
 };

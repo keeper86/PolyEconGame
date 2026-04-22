@@ -363,3 +363,16 @@ export const expandShipMaintenanceFacilitySpec: CommandSpec<
     failureType: 'shipMaintenanceFacilityExpandFailed',
     extract: (msg) => msg.facilityId,
 };
+
+type AcquireLicenseSuccess = Extract<OutboundMessage, { type: 'licenseAcquired' }>;
+type AcquireLicenseFailure = Extract<OutboundMessage, { type: 'licenseAcquisitionFailed' }>;
+export const acquireLicenseSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acquireLicense' }>,
+    AcquireLicenseSuccess,
+    AcquireLicenseFailure,
+    { agentId: string; planetId: string; licenseType: 'commercial' | 'workforce' }
+> = {
+    successType: 'licenseAcquired',
+    failureType: 'licenseAcquisitionFailed',
+    extract: (msg) => ({ agentId: msg.agentId, planetId: msg.planetId, licenseType: msg.licenseType }),
+};

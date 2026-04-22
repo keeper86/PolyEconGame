@@ -132,6 +132,7 @@ export function makeAgentPlanetAssets(
             claimPayments: 0,
             totalWorkersTicks: 0,
         },
+        licenses: {},
     };
 }
 
@@ -146,6 +147,11 @@ export function makeAgent(opts: {
     tenancies?: string[];
 }): Agent {
     const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage);
+    // All procedural/government agents start with full licenses on their home planet
+    assets.licenses = {
+        commercial: { acquiredTick: 0, frozen: false },
+        workforce: { acquiredTick: 0, frozen: false },
+    };
     return {
         id: opts.id,
         name: opts.name,

@@ -1,4 +1,9 @@
 export const START_YEAR = 2200;
+
+/** One-time upfront fee for a commercial license (bank + storage + market access) on a new planet. */
+export const COMMERCIAL_LICENSE_COST = 50_000;
+/** One-time upfront fee for a workforce license (hiring + production) on a new planet. */
+export const WORKFORCE_LICENSE_COST = 25_000;
 export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently

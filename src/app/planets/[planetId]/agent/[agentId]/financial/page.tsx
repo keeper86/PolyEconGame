@@ -14,6 +14,7 @@ import { useTRPC } from '@/lib/trpc';
 import { EuroIcon } from 'lucide-react';
 import { ChevronDown } from 'lucide-react';
 import BankPanel from './_components/BankPanel';
+import { LicensePanel } from '../../_component/LicensePanel';
 
 export default function FinancialPage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
@@ -51,7 +52,7 @@ export default function FinancialPage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetName={planetId} agentId={agentId} />
+                <NoAssetsMessage planetName={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
                 <Card>
                     <CardContent className='px-3 py-3 space-y-3'>
@@ -79,6 +80,15 @@ export default function FinancialPage() {
                         <Separator />
 
                         <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} />
+
+                        <Separator />
+
+                        <LicensePanel
+                            agentId={agentId}
+                            planetId={detail?.planetId ?? ''}
+                            isOwnAgent={isOwnAgent}
+                            licenses={assets.licenses}
+                        />
                     </CardContent>
                 </Card>
             ) : (
