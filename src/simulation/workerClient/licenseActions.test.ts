@@ -28,7 +28,13 @@ describe('handleAcquireLicense — new planet (no prior assets)', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r1', agentId: company.id, planetId: planet.id, licenseType: 'commercial' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r1',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'commercial',
+            },
             post,
         );
 
@@ -55,7 +61,13 @@ describe('handleAcquireLicense — new planet (no prior assets)', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r2', agentId: company.id, planetId: planet.id, licenseType: 'workforce' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r2',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'workforce',
+            },
             post,
         );
 
@@ -74,7 +86,13 @@ describe('handleAcquireLicense — new planet (no prior assets)', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r3', agentId: company.id, planetId: planet.id, licenseType: 'commercial' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r3',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'commercial',
+            },
             post,
         );
 
@@ -93,7 +111,13 @@ describe('handleAcquireLicense — existing planet assets', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r4', agentId: company.id, planetId: planet.id, licenseType: 'commercial' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r4',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'commercial',
+            },
             post,
         );
 
@@ -110,7 +134,13 @@ describe('handleAcquireLicense — existing planet assets', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r5', agentId: company.id, planetId: planet.id, licenseType: 'workforce' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r5',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'workforce',
+            },
             post,
         );
 
@@ -126,7 +156,13 @@ describe('handleAcquireLicense — existing planet assets', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r6', agentId: company.id, planetId: planet.id, licenseType: 'commercial' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r6',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'commercial',
+            },
             post,
         );
 
@@ -145,7 +181,13 @@ describe('handleAcquireLicense — duplicate prevention', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r7', agentId: company.id, planetId: planet.id, licenseType: 'commercial' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r7',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'commercial',
+            },
             post,
         );
 
@@ -161,7 +203,13 @@ describe('handleAcquireLicense — duplicate prevention', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r8', agentId: company.id, planetId: planet.id, licenseType: 'workforce' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r8',
+                agentId: company.id,
+                planetId: planet.id,
+                licenseType: 'workforce',
+            },
             post,
         );
 
@@ -177,7 +225,13 @@ describe('handleAcquireLicense — invalid inputs', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r9', agentId: 'no-such-agent', planetId: planet.id, licenseType: 'commercial' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r9',
+                agentId: 'no-such-agent',
+                planetId: planet.id,
+                licenseType: 'commercial',
+            },
             post,
         );
 
@@ -190,7 +244,13 @@ describe('handleAcquireLicense — invalid inputs', () => {
 
         handleAcquireLicense(
             gameState,
-            { type: 'acquireLicense', requestId: 'r10', agentId: company.id, planetId: 'no-such-planet', licenseType: 'commercial' },
+            {
+                type: 'acquireLicense',
+                requestId: 'r10',
+                agentId: company.id,
+                planetId: 'no-such-planet',
+                licenseType: 'commercial',
+            },
             post,
         );
 

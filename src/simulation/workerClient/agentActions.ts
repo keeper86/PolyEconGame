@@ -1,7 +1,6 @@
-import type { GameState, Agent } from '../planet/planet';
-import type { OutboundMessage, PendingAction } from './messages';
+import type { Agent, GameState } from '../planet/planet';
 import { makeAgent } from '../utils/testHelper';
-import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
+import type { OutboundMessage, PendingAction } from './messages';
 
 /**
  * Handle 'createAgent' action
