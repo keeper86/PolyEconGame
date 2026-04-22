@@ -14,10 +14,9 @@ import { calculateCostsForConstruction } from '@/simulation/planet/facility';
 import type { TransportShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wrench } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
-import type { ShipyardFacility } from '../../../../../../../simulation/planet/facility';
+import type { ShipConstructionFacility } from '../../../../../../../simulation/planet/facility';
 import { FacilityCardShell } from './FacilityCardShell';
 import { ProductQuantity } from './ProductQuantity';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
@@ -30,7 +29,7 @@ export function ActiveShipyardCard({
     constructionServicePrice,
     onExpanded,
 }: {
-    facility: ShipyardFacility;
+    facility: ShipConstructionFacility;
     agentId: string;
     planetId: string;
     constructionServicePrice?: number;
@@ -51,7 +50,7 @@ export function ActiveShipyardCard({
         });
 
     const expandMutation = useMutation(
-        trpc.expandShipyard.mutationOptions({
+        trpc.expandShipConstructionFacility.mutationOptions({
             onSuccess: () => {
                 invalidate();
                 setShowExpand(false);
@@ -60,8 +59,8 @@ export function ActiveShipyardCard({
         }),
     );
 
-    const setModeMutation = useMutation(
-        trpc.setShipyardMode.mutationOptions({
+    const setTargetMutation = useMutation(
+        trpc.setShipConstructionTarget.mutationOptions({
             onSuccess: () => {
                 invalidate();
                 setShipDialogOpen(false);
@@ -70,7 +69,7 @@ export function ActiveShipyardCard({
     );
 
     const expandCost = useMemo(
-        () => calculateCostsForConstruction('ships', facility.maxScale, targetScale),
+        () => calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale),
         [facility.maxScale, targetScale],
     );
     const estimatedCredits =
@@ -85,30 +84,24 @@ export function ActiveShipyardCard({
           )
         : 1;
 
-    const modeBadge =
-        facility.mode === 'building' ? (
-            facility.produces ? (
-                <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'>
-                    Building: {facility.shipName}
-                </Badge>
-            ) : null
-        ) : (
-            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-orange-600 border-orange-300'>
-                <Wrench className='h-2.5 w-2.5 mr-1' />
-                Maintenance services.
-            </Badge>
-        );
+    const modeBadge = facility.produces ? (
+        <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'>
+            Building: {facility.shipName}
+        </Badge>
+    ) : (
+        <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
+            Idle
+        </Badge>
+    );
 
     // Compute per-tick input quantities when building
     let activeShipType: TransportShipType | null = null;
 
     let proportionPerTick: number | null = null;
 
-    if (facility.mode === 'building') {
-        if (facility.produces) {
-            activeShipType = facility.produces;
-            proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime);
-        }
+    if (facility.produces) {
+        activeShipType = facility.produces;
+        proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / activeShipType.buildingTime);
     }
 
     return (
@@ -116,14 +109,13 @@ export function ActiveShipyardCard({
             <ShipSelectionDialog
                 open={shipDialogOpen}
                 onOpenChange={setShipDialogOpen}
-                isPending={setModeMutation.isPending}
-                error={setModeMutation.error?.message}
+                isPending={setTargetMutation.isPending}
+                error={setTargetMutation.error?.message}
                 onConfirm={(shipTypeName, shipName) =>
-                    setModeMutation.mutate({
+                    setTargetMutation.mutate({
                         agentId,
                         planetId,
                         facilityId: facility.id,
-                        mode: 'building',
                         shipTypeName,
                         shipName,
                     })
@@ -153,27 +145,33 @@ export function ActiveShipyardCard({
                     </span>
                 }
             >
-                {/* Mode toggle */}
+                {/* Set target / idle */}
                 <div className='flex items-center gap-1 rounded-md border p-0.5 self-start'>
                     <Button
                         size='sm'
-                        variant={facility.mode === 'building' ? 'default' : 'ghost'}
+                        variant={facility.produces !== null ? 'default' : 'ghost'}
                         className='h-6 px-2.5 text-xs'
-                        disabled={setModeMutation.isPending || facility.mode === 'building'}
+                        disabled={setTargetMutation.isPending || facility.produces !== null}
                         onClick={() => setShipDialogOpen(true)}
                     >
                         Building
                     </Button>
                     <Button
                         size='sm'
-                        variant={facility.mode === 'maintenance' ? 'default' : 'ghost'}
+                        variant={facility.produces === null ? 'default' : 'ghost'}
                         className='h-6 px-2.5 text-xs'
-                        disabled={setModeMutation.isPending || facility.mode === 'maintenance'}
+                        disabled={setTargetMutation.isPending || facility.produces === null}
                         onClick={() =>
-                            setModeMutation.mutate({ agentId, planetId, facilityId: facility.id, mode: 'maintenance' })
+                            setTargetMutation.mutate({
+                                agentId,
+                                planetId,
+                                facilityId: facility.id,
+                                shipTypeName: null,
+                                shipName: '',
+                            })
                         }
                     >
-                        Maintenance
+                        Idle
                     </Button>
                 </div>
 
@@ -187,7 +185,7 @@ export function ActiveShipyardCard({
                 <div className='grid w-full items-center gap-x-2 py-1' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
                     {/* Inputs */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>
-                        {facility.mode === 'building'
+                        {facility.produces !== null
                             ? defaultBuildingCost.map((costEntry) => {
                                   if (activeShipType && proportionPerTick !== null) {
                                       const costForThisShip = activeShipType.buildingCost.find(
@@ -222,72 +220,40 @@ export function ActiveShipyardCard({
                                       />
                                   );
                               })
-                            : (facility.needs ?? []).map((need) => {
-                                  const resEff = results?.resourceEfficiency[need.resource.name] ?? 1;
-                                  return (
-                                      <ProductQuantity
-                                          key={need.resource.name}
-                                          resource={need.resource}
-                                          quantity={need.quantity * facility.scale * eff}
-                                          efficiency={resEff}
-                                          isLimiting={resEff <= globalMin && globalMin < 0.99}
-                                          planetId={currentPlanetId}
-                                          agentId={currentAgentId}
-                                      />
-                                  );
-                              })}
+                            : null}
                     </div>
 
                     <RiArrowRightBoxFill className='shrink-0 h-8 w-8 text-muted-foreground' />
 
                     {/* Output */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>
-                        {facility.mode === 'building' ? (
+                        {facility.produces !== null ? (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                {facility.produces ? (
-                                    <Badge
-                                        variant='outline'
-                                        className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'
-                                    >
-                                        <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={180} />
-                                        <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
-                                            {facility.shipName}
-                                        </span>
-                                    </Badge>
-                                ) : (
-                                    <Button
-                                        size='sm'
-                                        variant='outline'
-                                        className='text-xs'
-                                        onClick={() => setShipDialogOpen(true)}
-                                    >
-                                        Select ship to build
-                                    </Button>
-                                )}
+                                <Badge
+                                    variant='outline'
+                                    className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'
+                                >
+                                    <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={180} />
+                                    <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
+                                        {facility.shipName}
+                                    </span>
+                                </Badge>
                             </div>
                         ) : (
-                            <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                {facility.produces.map((output) => (
-                                    <ProductQuantity
-                                        key={output.resource.name}
-                                        resource={output.resource}
-                                        quantity={output.quantity * facility.scale * eff}
-                                        efficiency={eff}
-                                        isLimiting={eff <= globalMin && globalMin < 0.99}
-                                        planetId={currentPlanetId}
-                                        agentId={currentAgentId}
-                                    />
-                                ))}
-                                <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
-                                    Maintenance services
-                                </span>
-                            </div>
+                            <Button
+                                size='sm'
+                                variant='outline'
+                                className='text-xs'
+                                onClick={() => setShipDialogOpen(true)}
+                            >
+                                Select ship to build
+                            </Button>
                         )}
                     </div>
                 </div>
 
                 {/* Build progress if active */}
-                {facility.mode === 'building' && facility.produces && (
+                {facility.produces && (
                     <div>
                         <div className='flex justify-between text-xs text-muted-foreground mb-1'>
                             <span>Build progress</span>

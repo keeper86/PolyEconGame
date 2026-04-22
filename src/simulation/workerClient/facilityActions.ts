@@ -2,8 +2,7 @@ import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 import { facilityByName } from '../planet/productionFacilities';
 import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
-import type { ShipyardFacility } from '../planet/facility';
-import { shipyardFacilityType } from '../planet/specialFacilities';
+import { shipConstructionFacilityType, shipMaintenanceFacilityType } from '../planet/specialFacilities';
 import { shiptypes } from '../ships/ships';
 
 /**
@@ -189,14 +188,20 @@ export function handleFacilityAction(
         case 'setFacilityScale':
             handleSetFacilityScale(state, action, safePostMessage);
             break;
-        case 'buildShipyard':
-            handleBuildShipyard(state, action, safePostMessage);
+        case 'buildShipConstructionFacility':
+            handleBuildShipConstructionFacility(state, action, safePostMessage);
             break;
-        case 'expandShipyard':
-            handleExpandShipyard(state, action, safePostMessage);
+        case 'expandShipConstructionFacility':
+            handleExpandShipConstructionFacility(state, action, safePostMessage);
             break;
-        case 'setShipyardMode':
-            handleSetShipyardMode(state, action, safePostMessage);
+        case 'setShipConstructionTarget':
+            handleSetShipConstructionTarget(state, action, safePostMessage);
+            break;
+        case 'buildShipMaintenanceFacility':
+            handleBuildShipMaintenanceFacility(state, action, safePostMessage);
+            break;
+        case 'expandShipMaintenanceFacility':
+            handleExpandShipMaintenanceFacility(state, action, safePostMessage);
             break;
         default:
             // This function only handles facility actions
@@ -205,41 +210,41 @@ export function handleFacilityAction(
 }
 
 /**
- * Handle 'buildShipyard' action — build a new shipyard facility on a planet
+ * Handle 'buildShipConstructionFacility' action
  */
-export function handleBuildShipyard(
+export function handleBuildShipConstructionFacility(
     state: GameState,
-    action: Extract<PendingAction, { type: 'buildShipyard' }>,
+    action: Extract<PendingAction, { type: 'buildShipConstructionFacility' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, planetId, shipyardName, targetScale = 1 } = action;
+    const { requestId, agentId, planetId, facilityName, targetScale = 1 } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipyardBuildFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'shipConstructionFacilityBuildFailed', requestId, reason: 'Agent not found' });
         return;
     }
     const assets = agent.assets[planetId];
     if (!assets) {
         safePostMessage({
-            type: 'shipyardBuildFailed',
+            type: 'shipConstructionFacilityBuildFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
         });
         return;
     }
-    const alreadyExists = assets.shipyardFacilities.some((f) => f.name === shipyardName);
+    const alreadyExists = assets.shipConstructionFacilities.some((f) => f.name === facilityName);
     if (alreadyExists) {
         safePostMessage({
-            type: 'shipyardBuildFailed',
+            type: 'shipConstructionFacilityBuildFailed',
             requestId,
-            reason: `Shipyard '${shipyardName}' already exists on planet '${planetId}'`,
+            reason: `Ship construction facility '${facilityName}' already exists on planet '${planetId}'`,
         });
         return;
     }
-    const facilityId = `${agentId}-shipyard-${shipyardName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const newFacility = shipyardFacilityType(planetId, facilityId, 'building');
-    newFacility.name = shipyardName;
-    const costs = calculateCostsForConstruction('ships', 0, targetScale);
+    const facilityId = `${agentId}-ship-construction-${facilityName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    const newFacility = shipConstructionFacilityType(planetId, facilityId);
+    newFacility.name = facilityName;
+    const costs = calculateCostsForConstruction('ship_construction', 0, targetScale);
     newFacility.construction = {
         progress: 0,
         constructionTargetMaxScale: targetScale,
@@ -249,54 +254,62 @@ export function handleBuildShipyard(
     };
     newFacility.scale = targetScale;
     newFacility.maxScale = 0;
-    assets.shipyardFacilities.push(newFacility);
+    assets.shipConstructionFacilities.push(newFacility);
     console.log(
-        `[worker] Agent '${agentId}' built shipyard '${shipyardName}' (scale ${targetScale}) on planet '${planetId}'`,
+        `[worker] Agent '${agentId}' built ship construction facility '${facilityName}' (scale ${targetScale}) on planet '${planetId}'`,
     );
-    safePostMessage({ type: 'shipyardBuilt', requestId, agentId, facilityId });
+    safePostMessage({ type: 'shipConstructionFacilityBuilt', requestId, agentId, facilityId });
 }
 
 /**
- * Handle 'expandShipyard' action — increase scale of an existing active shipyard
+ * Handle 'expandShipConstructionFacility' action
  */
-export function handleExpandShipyard(
+export function handleExpandShipConstructionFacility(
     state: GameState,
-    action: Extract<PendingAction, { type: 'expandShipyard' }>,
+    action: Extract<PendingAction, { type: 'expandShipConstructionFacility' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
     const { requestId, agentId, planetId, facilityId, targetScale } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipyardExpandFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'shipConstructionFacilityExpandFailed', requestId, reason: 'Agent not found' });
         return;
     }
     const assets = agent.assets[planetId];
     if (!assets) {
         safePostMessage({
-            type: 'shipyardExpandFailed',
+            type: 'shipConstructionFacilityExpandFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
         });
         return;
     }
-    const facility = assets.shipyardFacilities.find((f) => f.id === facilityId);
+    const facility = assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
-        safePostMessage({ type: 'shipyardExpandFailed', requestId, reason: `Shipyard '${facilityId}' not found` });
+        safePostMessage({
+            type: 'shipConstructionFacilityExpandFailed',
+            requestId,
+            reason: `Ship construction facility '${facilityId}' not found`,
+        });
         return;
     }
     if (facility.construction !== null) {
-        safePostMessage({ type: 'shipyardExpandFailed', requestId, reason: 'Shipyard is already under construction' });
+        safePostMessage({
+            type: 'shipConstructionFacilityExpandFailed',
+            requestId,
+            reason: 'Facility is already under construction',
+        });
         return;
     }
     if (targetScale <= facility.maxScale) {
         safePostMessage({
-            type: 'shipyardExpandFailed',
+            type: 'shipConstructionFacilityExpandFailed',
             requestId,
             reason: `Target scale ${targetScale} must be greater than current max scale ${facility.maxScale}`,
         });
         return;
     }
-    const costs = calculateCostsForConstruction('ships', facility.maxScale, targetScale);
+    const costs = calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale);
     facility.construction = {
         progress: 0,
         constructionTargetMaxScale: targetScale,
@@ -305,72 +318,189 @@ export function handleExpandShipyard(
         lastTickInvestedConstructionServices: 0,
     };
     console.log(
-        `[worker] Agent '${agentId}' expanding shipyard '${facilityId}' to scale ${targetScale} on planet '${planetId}'`,
+        `[worker] Agent '${agentId}' expanding ship construction facility '${facilityId}' to scale ${targetScale} on planet '${planetId}'`,
     );
-    safePostMessage({ type: 'shipyardExpanded', requestId, agentId, facilityId });
+    safePostMessage({ type: 'shipConstructionFacilityExpanded', requestId, agentId, facilityId });
 }
 
 /**
- * Handle 'setShipyardMode' action — set shipyard to 'building', 'maintenance', or 'idle'
+ * Handle 'setShipConstructionTarget' action — set or clear the ship being built
  */
-export function handleSetShipyardMode(
+export function handleSetShipConstructionTarget(
     state: GameState,
-    action: Extract<PendingAction, { type: 'setShipyardMode' }>,
+    action: Extract<PendingAction, { type: 'setShipConstructionTarget' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, planetId, facilityId } = action;
+    const { requestId, agentId, planetId, facilityId, shipTypeName, shipName } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipyardModeSetFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'shipConstructionTargetSetFailed', requestId, reason: 'Agent not found' });
         return;
     }
     const assets = agent.assets[planetId];
     if (!assets) {
         safePostMessage({
-            type: 'shipyardModeSetFailed',
+            type: 'shipConstructionTargetSetFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
         });
         return;
     }
-    const facility = assets.shipyardFacilities.find((f) => f.id === facilityId);
+    const facility = assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
-        safePostMessage({ type: 'shipyardModeSetFailed', requestId, reason: `Shipyard '${facilityId}' not found` });
+        safePostMessage({
+            type: 'shipConstructionTargetSetFailed',
+            requestId,
+            reason: `Ship construction facility '${facilityId}' not found`,
+        });
         return;
     }
     if (facility.construction !== null) {
-        safePostMessage({ type: 'shipyardModeSetFailed', requestId, reason: 'Shipyard is under construction' });
+        safePostMessage({
+            type: 'shipConstructionTargetSetFailed',
+            requestId,
+            reason: 'Facility is under construction',
+        });
         return;
     }
-
-    if (action.mode === 'maintenance') {
-        if (facility.mode === 'building' && facility.produces) {
+    if (shipTypeName === null) {
+        facility.produces = null;
+        facility.shipName = '';
+        console.log(
+            `[worker] Agent '${agentId}' cleared ship construction target at facility '${facilityId}' on planet '${planetId}'`,
+        );
+    } else {
+        const shipType = Object.values(shiptypes)
+            .flatMap((cat) => Object.values(cat))
+            .find((s) => s.name === shipTypeName);
+        if (!shipType) {
             safePostMessage({
-                type: 'shipyardModeSetFailed',
+                type: 'shipConstructionTargetSetFailed',
                 requestId,
-                reason: `Cannot set shipyard to maintenance mode while building '${facility.shipName}' (${facility.produces.name})`,
+                reason: `Unknown ship type '${shipTypeName}'`,
             });
             return;
         }
-        const maintenanceTemplate = shipyardFacilityType(facility.planetId, facility.id, 'maintenance');
-        // Cast required: reassigning across discriminated union branches
-        const mutable = facility as unknown as Record<string, unknown>;
-        mutable.mode = 'maintenance';
-        mutable.needs = (maintenanceTemplate as unknown as Record<string, unknown>).needs;
-        mutable.produces = (maintenanceTemplate as unknown as Record<string, unknown>).produces;
-        mutable.lastTickResults = (maintenanceTemplate as unknown as Record<string, unknown>).lastTickResults;
+        facility.produces = shipType;
+        facility.shipName = shipName;
+        facility.progress = 0;
         console.log(
-            `[worker] Agent '${agentId}' set shipyard '${facilityId}' to maintenance mode on planet '${planetId}'`,
+            `[worker] Agent '${agentId}' set ship construction target to '${shipName}' (${shipTypeName}) at facility '${facilityId}' on planet '${planetId}'`,
         );
-        safePostMessage({ type: 'shipyardModeSet', requestId, agentId, facilityId });
+    }
+    safePostMessage({ type: 'shipConstructionTargetSet', requestId, agentId, facilityId });
+}
+
+/**
+ * Handle 'buildShipMaintenanceFacility' action
+ */
+export function handleBuildShipMaintenanceFacility(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'buildShipMaintenanceFacility' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, facilityName, targetScale = 1 } = action;
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'shipMaintenanceFacilityBuildFailed', requestId, reason: 'Agent not found' });
         return;
     }
-
-    facility.mode = action.mode;
-    facility.produces = null;
-
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'shipMaintenanceFacilityBuildFailed',
+            requestId,
+            reason: `Agent has no assets on planet '${planetId}'`,
+        });
+        return;
+    }
+    const alreadyExists = assets.shipMaintenanceFacilities.some((f) => f.name === facilityName);
+    if (alreadyExists) {
+        safePostMessage({
+            type: 'shipMaintenanceFacilityBuildFailed',
+            requestId,
+            reason: `Ship maintenance facility '${facilityName}' already exists on planet '${planetId}'`,
+        });
+        return;
+    }
+    const facilityId = `${agentId}-ship-maintenance-${facilityName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    const newFacility = shipMaintenanceFacilityType(planetId, facilityId);
+    newFacility.name = facilityName;
+    const costs = calculateCostsForConstruction(getFacilityType(newFacility), 0, targetScale);
+    newFacility.construction = {
+        progress: 0,
+        constructionTargetMaxScale: targetScale,
+        totalConstructionServiceRequired: costs,
+        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        lastTickInvestedConstructionServices: 0,
+    };
+    newFacility.scale = targetScale;
+    newFacility.maxScale = 0;
+    assets.shipMaintenanceFacilities.push(newFacility);
     console.log(
-        `[worker] Agent '${agentId}' started building '${action.shipName}' (${action.shipTypeName}) at shipyard '${facilityId}' on planet '${planetId}'`,
+        `[worker] Agent '${agentId}' built ship maintenance facility '${facilityName}' (scale ${targetScale}) on planet '${planetId}'`,
     );
-    safePostMessage({ type: 'shipyardModeSet', requestId, agentId, facilityId });
+    safePostMessage({ type: 'shipMaintenanceFacilityBuilt', requestId, agentId, facilityId });
+}
+
+/**
+ * Handle 'expandShipMaintenanceFacility' action
+ */
+export function handleExpandShipMaintenanceFacility(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'expandShipMaintenanceFacility' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, facilityId, targetScale } = action;
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'shipMaintenanceFacilityExpandFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'shipMaintenanceFacilityExpandFailed',
+            requestId,
+            reason: `Agent has no assets on planet '${planetId}'`,
+        });
+        return;
+    }
+    const facility = assets.shipMaintenanceFacilities.find((f) => f.id === facilityId);
+    if (!facility) {
+        safePostMessage({
+            type: 'shipMaintenanceFacilityExpandFailed',
+            requestId,
+            reason: `Ship maintenance facility '${facilityId}' not found`,
+        });
+        return;
+    }
+    if (facility.construction !== null) {
+        safePostMessage({
+            type: 'shipMaintenanceFacilityExpandFailed',
+            requestId,
+            reason: 'Facility is already under construction',
+        });
+        return;
+    }
+    if (targetScale <= facility.maxScale) {
+        safePostMessage({
+            type: 'shipMaintenanceFacilityExpandFailed',
+            requestId,
+            reason: `Target scale ${targetScale} must be greater than current max scale ${facility.maxScale}`,
+        });
+        return;
+    }
+    const costs = calculateCostsForConstruction(getFacilityType(facility), facility.maxScale, targetScale);
+    facility.construction = {
+        progress: 0,
+        constructionTargetMaxScale: targetScale,
+        totalConstructionServiceRequired: costs,
+        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        lastTickInvestedConstructionServices: 0,
+    };
+    console.log(
+        `[worker] Agent '${agentId}' expanding ship maintenance facility '${facilityId}' to scale ${targetScale} on planet '${planetId}'`,
+    );
+    safePostMessage({ type: 'shipMaintenanceFacilityExpanded', requestId, agentId, facilityId });
 }

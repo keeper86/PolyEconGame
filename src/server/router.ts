@@ -57,9 +57,11 @@ import {
     setSellOffers,
     setWorkerAllocationTargets,
     updateUser,
-    buildShipyard,
-    expandShipyard,
-    setShipyardMode,
+    buildShipConstructionFacility,
+    expandShipConstructionFacility,
+    setShipConstructionTarget,
+    buildShipMaintenanceFacility,
+    expandShipMaintenanceFacility,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -117,9 +119,11 @@ const protectedAppRouter = trpcRoot.router({
     acceptShipBuyingOffer: acceptShipBuyingOffer(),
     setShipMaintenance: setShipMaintenance(),
     cancelShipMaintenance: cancelShipMaintenance(),
-    buildShipyard: buildShipyard(),
-    expandShipyard: expandShipyard(),
-    setShipyardMode: setShipyardMode(),
+    buildShipConstructionFacility: buildShipConstructionFacility(),
+    expandShipConstructionFacility: expandShipConstructionFacility(),
+    setShipConstructionTarget: setShipConstructionTarget(),
+    buildShipMaintenanceFacility: buildShipMaintenanceFacility(),
+    expandShipMaintenanceFacility: expandShipMaintenanceFacility(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

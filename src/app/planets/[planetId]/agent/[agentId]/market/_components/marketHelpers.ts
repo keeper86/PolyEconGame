@@ -2,7 +2,7 @@ import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import type {
     ManagementFacility,
     ProductionFacility,
-    ShipyardFacility,
+    ShipConstructionFacility,
     StorageFacility,
 } from '@/simulation/planet/facility';
 import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
@@ -125,7 +125,7 @@ export function buildResourceList(
     storageFacility: StorageFacility,
     showAll: boolean,
     managementFacilities: ManagementFacility[] = [],
-    shipyardFacilities: ShipyardFacility[] = [],
+    shipConstructionFacilities: ShipConstructionFacility[] = [],
     forceInclude: string[] = [],
 ): { name: string }[] {
     if (showAll) {
@@ -164,8 +164,8 @@ export function buildResourceList(
         }
     }
 
-    for (const f of shipyardFacilities) {
-        if (f.mode === 'building' || f.mode === 'maintenance') {
+    for (const f of shipConstructionFacilities) {
+        if (f.produces !== null) {
             transportShipBuildResources.forEach((name) => {
                 const type = getResourceByName(name);
                 if (type && type.form !== 'landBoundResource') {
@@ -189,7 +189,7 @@ export function buildResourceList(
         }
     }
 
-    const allFacilities = [...facilities, ...managementFacilities, storageFacility, ...shipyardFacilities];
+    const allFacilities = [...facilities, ...managementFacilities, storageFacility, ...shipConstructionFacilities];
     if (allFacilities.some((f) => f.construction !== null)) {
         add(constructionServiceResourceType.name);
     }

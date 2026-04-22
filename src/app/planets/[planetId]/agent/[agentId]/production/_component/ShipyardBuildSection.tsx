@@ -30,12 +30,12 @@ export function ShipyardBuildSection({
     const [targetScale, setTargetScale] = useState(1);
     const [shipyardName, setShipyardName] = useState('');
 
-    const buildCost = useMemo(() => calculateCostsForConstruction('ships', 0, targetScale), [targetScale]);
+    const buildCost = useMemo(() => calculateCostsForConstruction('ship_construction', 0, targetScale), [targetScale]);
     const estimatedCredits =
         constructionServicePrice && constructionServicePrice > 0 ? buildCost * constructionServicePrice : null;
 
     const buildMutation = useMutation(
-        trpc.buildShipyard.mutationOptions({
+        trpc.buildShipConstructionFacility.mutationOptions({
             onSuccess: () => {
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
@@ -115,7 +115,7 @@ export function ShipyardBuildSection({
                         buildMutation.mutate({
                             agentId,
                             planetId,
-                            shipyardName: shipyardName.trim(),
+                            facilityName: shipyardName.trim(),
                             targetScale,
                         })
                     }

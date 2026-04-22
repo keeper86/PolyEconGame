@@ -26,7 +26,8 @@ export default function ProductionPage() {
                     </div>
                     <ProductionFacilitiesPanel
                         facilities={assets.productionFacilities}
-                        shipyardFacilities={assets.shipyardFacilities}
+                        shipConstructionFacilities={assets.shipConstructionFacilities}
+                        shipMaintenanceFacilities={assets.shipMaintenanceFacilities}
                         agentId={agentId}
                         planetId={planetId}
                     />

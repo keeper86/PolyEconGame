@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { ShipyardFacility } from '../../../../../../../simulation/planet/facility';
+import type { ShipConstructionFacility } from '../../../../../../../simulation/planet/facility';
 import { formatNumbers } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -12,7 +12,11 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Anchor } from 'lucide-react';
 
-export function UnderConstructionShipyardCard({ facility }: { facility: ShipyardFacility }): React.ReactElement {
+export function UnderConstructionShipyardCard({
+    facility,
+}: {
+    facility: ShipConstructionFacility;
+}): React.ReactElement {
     const cs = facility.construction!;
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const pct =

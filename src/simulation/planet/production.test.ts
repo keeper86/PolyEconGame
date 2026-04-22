@@ -8,7 +8,7 @@ import {
     makeManagementFacility,
     makePlanetWithPopulation,
     makeProductionFacility,
-    makeShipyardFacility,
+    makeShipConstructionFacility,
     makeStorageFacility,
 } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
@@ -786,9 +786,9 @@ describe('productionTick — shipyard facility (building mode)', () => {
 
         // scale=9 → proportionPerTick = sqrt(9)/90 = 3/90 = 1/30
         // required steel = 900 * (1/30) = 30 per tick at full efficiency
-        const shipyard = makeShipyardFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
+        const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
 
-        agent.assets.p.shipyardFacilities = [shipyard];
+        agent.assets.p.shipConstructionFacilities = [shipyard];
         agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 60,
@@ -815,8 +815,8 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const agent = makeAgent('builder');
         const shipType = makeTestShipType();
 
-        const shipyard = makeShipyardFacility({ secondary: 1 }, { id: 'sy-zero', scale: 1, shipType });
-        agent.assets.p.shipyardFacilities = [shipyard];
+        const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-zero', scale: 1, shipType });
+        agent.assets.p.shipConstructionFacilities = [shipyard];
         agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 100,
@@ -838,7 +838,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const agent = makeAgent('builder');
         const shipType = makeTestShipType();
 
-        const shipyard = makeShipyardFacility(
+        const shipyard = makeShipConstructionFacility(
             { secondary: 1 },
             {
                 id: 'sy-uc',
@@ -855,7 +855,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
             },
         );
 
-        agent.assets.p.shipyardFacilities = [shipyard];
+        agent.assets.p.shipConstructionFacilities = [shipyard];
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
         const initialEfficiency = shipyard.lastTickResults.overallEfficiency;
@@ -867,37 +867,25 @@ describe('productionTick — shipyard facility (building mode)', () => {
     });
 });
 
-describe('productionTick — shipyard facility (maintenance mode)', () => {
+describe('productionTick — ship maintenance facility', () => {
     beforeEach(() => {
         seedRng(12345);
     });
 
-    it('consumes maintenance cost (1% of building cost * maintenancePerTick) when ship exists', () => {
+    it('consumes needs and produces maintenance service when workers are available', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('owner');
-        const shipType = makeTestShipType();
 
-        // maintenancePerTick = min(1, 3/90) = 3/90 = 1/30
-        // required = 900 * (1/30) * 0.01 = 0.3 steel per tick at full efficiency
-        const ship = {
-            name: 'SS Cargo',
-            builtAtTick: 0,
-            type: shipType,
-            state: { type: 'maintenance' as const, planetId: 'p', doneAtTick: 100 },
-            maintainanceStatus: 0.5,
-        };
-        agent.transportShips = [ship];
+        const maintenanceFacility = makeProductionFacility(
+            { secondary: 1 },
+            {
+                id: 'maint-1',
+                needs: [{ resource: steelResourceType, quantity: 1 }],
+                produces: [],
+            },
+        );
 
-        const shipyard = makeShipyardFacility({ secondary: 1 }, {
-            id: 'sy-maint',
-            scale: 1,
-            mode: 'maintenance',
-            shipOwner: agent.id,
-            shipName: 'SS Cargo',
-            progress: 0,
-        } as Partial<import('./facility').ShipyardFacility>);
-
-        agent.assets.p.shipyardFacilities = [shipyard];
+        agent.assets.p.shipMaintenanceFacilities = [maintenanceFacility];
         agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 10,
@@ -911,39 +899,35 @@ describe('productionTick — shipyard facility (maintenance mode)', () => {
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
         productionTick(gs.agents, planet, gs.tick);
 
-        expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
-        const consumed = shipyard.lastTickResults.lastConsumed[steelResourceType.name] ?? 0;
-        // 900 * (3/90) * 0.01 = 0.3
-        expect(consumed).toBeCloseTo(0.3, 5);
+        expect(maintenanceFacility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
+        const consumed = maintenanceFacility.lastTickResults.lastConsumed[steelResourceType.name] ?? 0;
+        expect(consumed).toBeCloseTo(1, 5);
     });
 
-    it('does not consume anything when the referenced ship does not exist', () => {
+    it('does not consume anything when no workers are available', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('owner');
 
-        const shipyard = makeShipyardFacility({ secondary: 1 }, {
-            id: 'sy-noship',
-            scale: 1,
-            mode: 'maintenance',
-            shipOwner: agent.id,
-            shipName: 'Nonexistent',
-            progress: 0,
-        } as Partial<import('./facility').ShipyardFacility>);
+        const maintenanceFacility = makeProductionFacility(
+            { secondary: 1 },
+            {
+                id: 'maint-noworker',
+                needs: [{ resource: steelResourceType, quantity: 1 }],
+                produces: [],
+            },
+        );
 
-        agent.assets.p.shipyardFacilities = [shipyard];
-        // No ships on agent
+        agent.assets.p.shipMaintenanceFacilities = [maintenanceFacility];
         agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 10,
         };
-
-        const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        // No workers added
 
         const gs: GameState = { tick: 0, planets: new Map([[planet.id, planet]]), agents: agentMap(agent, gov) };
         productionTick(gs.agents, planet, gs.tick);
 
-        // resolvedShip = undefined → processShipyardFacility skips maintenance → nothing consumed
+        expect(maintenanceFacility.lastTickResults.overallEfficiency).toBe(0);
         const remaining = agent.assets.p.storageFacility.currentInStorage[steelResourceType.name]?.quantity ?? 0;
         expect(remaining).toBe(10);
     });

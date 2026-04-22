@@ -7,7 +7,13 @@ import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 import { extractFromClaimedResource, queryClaimedResource } from './claims';
-import type { Facility, ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from './facility';
+import type {
+    Facility,
+    ManagementFacility,
+    ProductionFacility,
+    ShipConstructionFacility,
+    StorageFacility,
+} from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
@@ -74,9 +80,10 @@ export function constructionTick(agents: Map<string, Agent>, planet: Planet): vo
 
         const allFacilities: Array<Facility> = [
             ...assets.productionFacilities,
+            ...assets.shipMaintenanceFacilities,
             assets.storageFacility,
             ...assets.managementFacilities,
-            ...assets.shipyardFacilities,
+            ...assets.shipConstructionFacilities,
         ];
 
         for (const facility of allFacilities) {
@@ -106,15 +113,9 @@ export const MAINTENANCE_COST_MULTIPLIER = 0.01;
 
 // ---- resource consumption/production helpers ----
 
-function consumeNeeds(
-    params: ProductionParameters | ManagementParameters | ShipyardParameters,
-): Record<string, number> {
+function consumeNeeds(params: ProductionParameters | ManagementParameters): Record<string, number> {
     const { facility, storage, overallEfficiency, planet, agent } = params;
     const actualConsumed: Record<string, number> = {};
-
-    if (facility.type === 'ships' && facility.mode !== 'maintenance') {
-        return actualConsumed;
-    }
 
     const needs = facility.needs;
     const scale = facility.scale;
@@ -155,14 +156,10 @@ function consumeNeeds(
     return actualConsumed;
 }
 
-function produceOutputs(params: ProductionParameters | ShipyardParameters): Record<string, number> {
+function produceOutputs(params: ProductionParameters): Record<string, number> {
     const { facility, storage, overallEfficiency } = params;
 
     const actualProduced: Record<string, number> = {};
-
-    if (facility.type === 'ships' && facility.mode !== 'maintenance') {
-        return actualProduced;
-    }
 
     if (overallEfficiency <= 0) {
         for (const output of facility.produces) {
@@ -191,7 +188,7 @@ function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<
         if (facility.type === 'storage') {
             continue;
         }
-        if (facility.type === 'ships' && facility.mode === 'building') {
+        if (facility.type === 'ship_construction') {
             if (!facility.produces) {
                 continue;
             }
@@ -229,7 +226,7 @@ function computeResourceEfficiencyMap(
     if (facility.type === 'storage') {
         return resourceEfficiencyMap;
     }
-    if (facility.type === 'ships' && facility.mode === 'building') {
+    if (facility.type === 'ship_construction') {
         if (!facility.produces) {
             return resourceEfficiencyMap;
         }
@@ -280,20 +277,15 @@ type ManagementParameters = IntermediateResults & {
     facility: ManagementFacility;
 };
 
-type ShipyardParameters = IntermediateResults & {
-    facility: ShipyardFacility;
+type ShipConstructionParameters = IntermediateResults & {
+    facility: ShipConstructionFacility;
 };
 
 type StorageParameters = IntermediateResults & {
     facility: StorageFacility;
 };
 
-// shipyards in maintainance mode are effectively production facilities
-function processProductionFacility(params: ProductionParameters | ShipyardParameters): void {
-    if (params.facility.type === 'ships' && params.facility.mode !== 'maintenance') {
-        return;
-    }
-
+function processProductionFacility(params: ProductionParameters): void {
     const actualProduced = produceOutputs(params);
     const actualConsumed = consumeNeeds(params);
     const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility } = params;
@@ -338,12 +330,11 @@ function processManagementFacility(params: ManagementParameters): void {
     };
 }
 
-// only the building mode. Maintenance mode is processed as production facility.
-function processShipyardFacility(params: ShipyardParameters, tick: number): void {
+function processShipConstructionFacility(params: ShipConstructionParameters, tick: number): void {
     const { facility, storage, overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, agent } =
         params;
     const actualConsumed: Record<string, number> = {};
-    if (facility.mode === 'building' && facility.produces) {
+    if (facility.produces) {
         if (overallEfficiency > 0) {
             const part = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
@@ -416,9 +407,10 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
         // All active (non-construction) facilities in one flat array.
         const activeFacilities: Array<Facility> = [
             ...assets.productionFacilities.filter((f) => !f.construction),
+            ...assets.shipMaintenanceFacilities.filter((f) => !f.construction),
             ...(assets.storageFacility.construction === null ? [assets.storageFacility] : []),
             ...assets.managementFacilities.filter((f) => !f.construction),
-            ...assets.shipyardFacilities.filter((f) => !f.construction),
+            ...assets.shipConstructionFacilities.filter((f) => !f.construction),
         ];
 
         const enrichedFacilities: EnrichedFacility[] = activeFacilities.map((facility) => {
@@ -508,12 +500,8 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
                 processProductionFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
-            } else if (facility.type === 'ships') {
-                if (facility.mode === 'maintenance') {
-                    processProductionFacility({ ...productionParameterBase, facility });
-                } else {
-                    processShipyardFacility({ ...productionParameterBase, facility }, tick);
-                }
+            } else if (facility.type === 'ship_construction') {
+                processShipConstructionFacility({ ...productionParameterBase, facility }, tick);
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
             }

@@ -3,31 +3,32 @@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
+import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
-import type { ShipyardFacility } from '../../../../../../../simulation/planet/facility';
+import type { ProductionFacility, ShipConstructionFacility } from '../../../../../../../simulation/planet/facility';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
-import { LevelBuildSection } from './LevelBuildSection';
-import { UnderConstructionCard } from './UnderConstructionCard';
 import { ActiveShipyardCard } from './ActiveShipyardCard';
-import { UnderConstructionShipyardCard } from './UnderConstructionShipyardCard';
+import { LevelBuildSection } from './LevelBuildSection';
 import { ShipyardBuildSection } from './ShipyardBuildSection';
+import { UnderConstructionCard } from './UnderConstructionCard';
+import { UnderConstructionShipyardCard } from './UnderConstructionShipyardCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
 export default function ProductionFacilitiesPanel({
     facilities,
-    shipyardFacilities,
+    shipConstructionFacilities,
+    shipMaintenanceFacilities: _shipMaintenanceFacilities,
     agentId,
     planetId,
 }: {
     facilities: ProductionFacility[];
-    shipyardFacilities: ShipyardFacility[];
+    shipConstructionFacilities: ShipConstructionFacility[];
+    shipMaintenanceFacilities: ProductionFacility[];
     agentId: string;
     planetId: string;
 }): React.ReactElement {
@@ -53,7 +54,7 @@ export default function ProductionFacilitiesPanel({
     }, [facilities]);
 
     const activeCount = facilities.filter((f) => f.construction === null).length;
-    const activeShipyards = shipyardFacilities.filter((f) => f.construction === null).length;
+    const activeShipConstructionFacilities = shipConstructionFacilities.filter((f) => f.construction === null).length;
 
     const defaultTab = useMemo(() => {
         return (
@@ -133,9 +134,9 @@ export default function ProductionFacilitiesPanel({
                         className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                     >
                         Ships
-                        {shipyardFacilities.length > 0 && (
+                        {shipConstructionFacilities.length > 0 && (
                             <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
-                                {activeShipyards}/{shipyardFacilities.length}
+                                {activeShipConstructionFacilities}/{shipConstructionFacilities.length}
                             </Badge>
                         )}
                     </TabsTrigger>
@@ -189,7 +190,7 @@ export default function ProductionFacilitiesPanel({
                             onBuilt={refresh}
                         />
                         <div className='flex flex-row gap-3 flex-wrap'>
-                            {shipyardFacilities.map((sy) => {
+                            {shipConstructionFacilities.map((sy) => {
                                 if (sy.construction !== null) {
                                     return <UnderConstructionShipyardCard key={sy.id} facility={sy} />;
                                 }

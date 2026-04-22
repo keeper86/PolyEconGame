@@ -100,7 +100,8 @@ export function makeAgentPlanetAssets(
     return {
         productionFacilities: facilities,
         managementFacilities: [],
-        shipyardFacilities: [],
+        shipConstructionFacilities: [],
+        shipMaintenanceFacilities: [],
         storageFacility: storage,
         transportContracts: [],
         shipBuyingOffers: [],

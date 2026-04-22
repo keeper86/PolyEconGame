@@ -181,9 +181,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'buildFacility':
                     case 'expandFacility':
                     case 'setFacilityScale':
-                    case 'buildShipyard':
-                    case 'expandShipyard':
-                    case 'setShipyardMode':
+                    case 'buildShipConstructionFacility':
+                    case 'expandShipConstructionFacility':
+                    case 'setShipConstructionTarget':
+                    case 'buildShipMaintenanceFacility':
+                    case 'expandShipMaintenanceFacility':
                         handleFacilityAction(state, action, safePostMessage);
                         break;
                     case 'postTransportContract':
@@ -855,55 +857,141 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
-        if (msg.type === 'buildShipyard') {
-            const { requestId, agentId, planetId, shipyardName, targetScale } = msg;
+        if (msg.type === 'buildShipConstructionFacility') {
+            const { requestId, agentId, planetId, facilityName, targetScale } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipyardBuildFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({ type: 'shipConstructionFacilityBuildFailed', requestId, reason: 'Agent not found' });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipyardBuildFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipConstructionFacilityBuildFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            pendingActions.push({ type: 'buildShipyard', requestId, agentId, planetId, shipyardName, targetScale });
+            pendingActions.push({
+                type: 'buildShipConstructionFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityName,
+                targetScale,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }
             return;
         }
 
-        if (msg.type === 'expandShipyard') {
+        if (msg.type === 'expandShipConstructionFacility') {
             const { requestId, agentId, planetId, facilityId, targetScale } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipyardExpandFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({ type: 'shipConstructionFacilityExpandFailed', requestId, reason: 'Agent not found' });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipyardExpandFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipConstructionFacilityExpandFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            pendingActions.push({ type: 'expandShipyard', requestId, agentId, planetId, facilityId, targetScale });
+            pendingActions.push({
+                type: 'expandShipConstructionFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityId,
+                targetScale,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }
             return;
         }
 
-        if (msg.type === 'setShipyardMode') {
-            const { requestId, agentId, planetId, facilityId } = msg;
+        if (msg.type === 'setShipConstructionTarget') {
+            const { requestId, agentId, planetId, facilityId, shipTypeName, shipName } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipyardModeSetFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({ type: 'shipConstructionTargetSetFailed', requestId, reason: 'Agent not found' });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipyardModeSetFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipConstructionTargetSetFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
                 return;
             }
-            const modePayload =
-                msg.mode === 'building'
-                    ? { mode: 'building' as const, shipTypeName: msg.shipTypeName, shipName: msg.shipName }
-                    : { mode: 'idle' as const };
-            pendingActions.push({ type: 'setShipyardMode', requestId, agentId, planetId, facilityId, ...modePayload });
+            pendingActions.push({
+                type: 'setShipConstructionTarget',
+                requestId,
+                agentId,
+                planetId,
+                facilityId,
+                shipTypeName,
+                shipName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'buildShipMaintenanceFacility') {
+            const { requestId, agentId, planetId, facilityName, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipMaintenanceFacilityBuildFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipMaintenanceFacilityBuildFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'buildShipMaintenanceFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityName,
+                targetScale,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'expandShipMaintenanceFacility') {
+            const { requestId, agentId, planetId, facilityId, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipMaintenanceFacilityExpandFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipMaintenanceFacilityExpandFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'expandShipMaintenanceFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityId,
+                targetScale,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }

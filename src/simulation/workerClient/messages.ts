@@ -144,28 +144,46 @@ export type InboundMessage =
           shipName: string;
       }
     | {
-          type: 'buildShipyard';
+          type: 'buildShipConstructionFacility';
           requestId: string;
           agentId: string;
           planetId: string;
-          shipyardName: string;
+          facilityName: string;
           targetScale: number;
       }
     | {
-          type: 'expandShipyard';
+          type: 'expandShipConstructionFacility';
           requestId: string;
           agentId: string;
           planetId: string;
           facilityId: string;
           targetScale: number;
       }
-    | ({
-          type: 'setShipyardMode';
+    | {
+          type: 'setShipConstructionTarget';
           requestId: string;
           agentId: string;
           planetId: string;
           facilityId: string;
-      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'maintenance' }))
+          shipTypeName: string | null;
+          shipName: string;
+      }
+    | {
+          type: 'buildShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityName: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
+      }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
@@ -214,12 +232,16 @@ export type OutboundMessage =
     | { type: 'shipMaintenanceSetFailed'; requestId: string; reason: string }
     | { type: 'shipMaintenanceCancelled'; requestId: string; agentId: string }
     | { type: 'shipMaintenanceCancelFailed'; requestId: string; reason: string }
-    | { type: 'shipyardBuilt'; requestId: string; agentId: string; facilityId: string }
-    | { type: 'shipyardBuildFailed'; requestId: string; reason: string }
-    | { type: 'shipyardExpanded'; requestId: string; agentId: string; facilityId: string }
-    | { type: 'shipyardExpandFailed'; requestId: string; reason: string }
-    | { type: 'shipyardModeSet'; requestId: string; agentId: string; facilityId: string }
-    | { type: 'shipyardModeSetFailed'; requestId: string; reason: string }
+    | { type: 'shipConstructionFacilityBuilt'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipConstructionFacilityBuildFailed'; requestId: string; reason: string }
+    | { type: 'shipConstructionFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipConstructionFacilityExpandFailed'; requestId: string; reason: string }
+    | { type: 'shipConstructionTargetSet'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipConstructionTargetSetFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceFacilityBuilt'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipMaintenanceFacilityBuildFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipMaintenanceFacilityExpandFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
     | WorkerSuccessResponse
     | WorkerErrorResponse;
@@ -378,25 +400,43 @@ export type PendingAction =
           shipName: string;
       }
     | {
-          type: 'buildShipyard';
+          type: 'buildShipConstructionFacility';
           requestId: string;
           agentId: string;
           planetId: string;
-          shipyardName: string;
+          facilityName: string;
           targetScale: number;
       }
     | {
-          type: 'expandShipyard';
+          type: 'expandShipConstructionFacility';
           requestId: string;
           agentId: string;
           planetId: string;
           facilityId: string;
           targetScale: number;
       }
-    | ({
-          type: 'setShipyardMode';
+    | {
+          type: 'setShipConstructionTarget';
           requestId: string;
           agentId: string;
           planetId: string;
           facilityId: string;
-      } & ({ mode: 'building'; shipTypeName: string; shipName: string } | { mode: 'maintenance' }));
+          shipTypeName: string | null;
+          shipName: string;
+      }
+    | {
+          type: 'buildShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityName: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
+      };

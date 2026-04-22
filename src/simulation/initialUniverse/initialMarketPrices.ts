@@ -43,6 +43,7 @@ import {
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
+    maintenanceServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
 
@@ -102,4 +103,5 @@ export const initialMarketPrices: Record<string, number> = {
     [retailServiceResourceType.name]: 1.0,
     [constructionServiceResourceType.name]: 1.0,
     [educationServiceResourceType.name]: 1.0,
+    [maintenanceServiceResourceType.name]: 1.0,
 };

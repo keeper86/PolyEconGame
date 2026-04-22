@@ -12,7 +12,7 @@ export type ConstructionState = {
     lastTickInvestedConstructionServices: number;
 } | null;
 
-export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management' | 'ships';
+export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management' | 'ship_construction';
 export const getFacilityType = (facility: Facility): FacilityType => {
     if (facility.type === 'production') {
         return facility.produces.reduce((prev, curr) => {
@@ -39,7 +39,7 @@ export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scal
     services: (scale: number) => (300 * Math.pow(scale, 1.1)) / scale + 100,
     storage: (scale: number) => (150 * Math.pow(scale, 1.1)) / scale + 100,
     management: (scale: number) => (250 * Math.pow(scale, 1.1)) / scale + 100,
-    ships: (scale: number) => (500 * Math.pow(scale, 1.1)) / scale + 100,
+    ship_construction: (scale: number) => (500 * Math.pow(scale, 1.1)) / scale + 100,
 };
 
 export const calculateCostsForConstruction = (
@@ -56,7 +56,7 @@ export const calculateCostsForConstruction = (
 };
 
 export type FacilityBase = PlanetaryId & {
-    type: 'production' | 'storage' | 'management' | 'ships';
+    type: 'production' | 'storage' | 'management' | 'ship_construction';
     name: string;
     maxScale: number;
     scale: number;
@@ -102,8 +102,6 @@ export type LastManagementTickResults = LastTickResults & {
     lastConsumed: { [resourceName: string]: number };
 };
 
-export type LastShipyardTickResults = LastManagementTickResults;
-
 export type ProductionFacility = FacilityBase & {
     type: 'production';
     needs: ResourceQuantity[];
@@ -141,28 +139,15 @@ export type ManagementFacility = FacilityBase & {
     lastTickResults: LastManagementTickResults;
 };
 
-export type ShipyardFacilityBase = FacilityBase & {
-    type: 'ships';
+export type ShipConstructionFacility = FacilityBase & {
+    type: 'ship_construction';
+    shipName: string;
+    produces: TransportShipType | null; // null = idle (no ship being built)
+    progress: number;
+    lastTickResults: LastManagementTickResults;
 };
-export type ShipyardFacility = ShipyardFacilityBase &
-    (
-        | ({
-              mode: 'building';
-          } & {
-              shipName: string;
-              produces: TransportShipType | null; // productionCosts are defined in the ship catalog based on the ship type key
-              progress: number;
-              lastTickResults: LastShipyardTickResults;
-          })
-        | {
-              mode: 'maintenance';
-              needs: ResourceQuantity[];
-              produces: ResourceQuantity[];
-              lastTickResults: LastProductionTickResults;
-          }
-    );
 
-export type Facility = ProductionFacility | StorageFacility | ManagementFacility | ShipyardFacility;
+export type Facility = ProductionFacility | StorageFacility | ManagementFacility | ShipConstructionFacility;
 
 export const putIntoStorageFacility = (
     storage: StorageFacility,

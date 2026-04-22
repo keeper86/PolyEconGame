@@ -116,7 +116,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
 
     const trpc = useTRPC();
 
-    const { productionFacilities, managementFacilities, storageFacility, shipyardFacilities, market } = assets;
+    const { productionFacilities, managementFacilities, storageFacility, shipConstructionFacilities, market } = assets;
 
     // ── Hoisted market overview query ──────────────────────────────────
     const { data: overviewData } = useSimulationQuery(
@@ -144,7 +144,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                 storageFacility,
                 showAll,
                 managementFacilities,
-                shipyardFacilities,
+                shipConstructionFacilities,
                 hashResource ? [hashResource] : [],
             ),
         // eslint-disable-next-line react-hooks/exhaustive-deps

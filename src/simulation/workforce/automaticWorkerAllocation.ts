@@ -17,7 +17,8 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             ...assets.productionFacilities,
             ...assets.managementFacilities,
             assets.storageFacility,
-            ...assets.shipyardFacilities,
+            ...assets.shipConstructionFacilities,
+            ...assets.shipMaintenanceFacilities,
         ];
 
         // 1. Compute total raw requirement per education level

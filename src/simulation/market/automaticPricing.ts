@@ -69,8 +69,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
     for (const facility of [
         ...assets.productionFacilities,
+        ...assets.shipMaintenanceFacilities,
         ...assets.managementFacilities,
-        ...assets.shipyardFacilities,
+        ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null) {
             continue;
@@ -82,11 +83,11 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         );
     }
 
-    for (const facility of assets.shipyardFacilities) {
+    for (const facility of assets.shipConstructionFacilities) {
         if (facility.construction !== null) {
             continue;
         }
-        if (facility.mode === 'building' && facility.produces) {
+        if (facility.produces) {
             const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
                 const bufferTarget = need.resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
@@ -101,10 +102,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     const inputProfitGaps = buildInputProfitGaps(assets, planet, agent.id);
 
-    for (const facility of [...assets.productionFacilities, ...assets.shipyardFacilities]) {
-        if (facility.type === 'ships' && facility.mode !== 'maintenance') {
-            continue;
-        }
+    for (const facility of [...assets.productionFacilities, ...assets.shipMaintenanceFacilities]) {
         for (const { resource } of facility.produces) {
             // For human-controlled agents only auto-adjust entries explicitly flagged
             if (!agent.automated && assets.market.sell[resource.name]?.automated !== true) {
@@ -142,18 +140,15 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const facility of [
         ...assets.productionFacilities,
+        ...assets.shipMaintenanceFacilities,
         ...assets.managementFacilities,
-        ...assets.shipyardFacilities,
+        ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null) {
-            const needs =
-                facility.type === 'ships' && facility.mode === 'building'
-                    ? facility.produces?.buildingCost
-                    : facility.needs;
-            if (!needs) {
-                continue;
+            if (facility.type === 'ship_construction') {
+                continue; // building-cost reserve handled separately above
             }
-            for (const { resource, quantity } of needs) {
+            for (const { resource, quantity } of facility.needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
                 }

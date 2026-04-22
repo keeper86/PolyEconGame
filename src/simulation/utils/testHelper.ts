@@ -26,7 +26,12 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
-import type { ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from '../planet/facility';
+import type {
+    ManagementFacility,
+    ProductionFacility,
+    ShipConstructionFacility,
+    StorageFacility,
+} from '../planet/facility';
 import type { TransportShipType } from '../ships/ships';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -382,13 +387,12 @@ export function makeProductionFacility(
 }
 
 /**
- * Create a ShipyardFacility in 'building' mode with given worker requirements.
- * Pass `overrides` to switch to 'maintenance' or 'idle' mode and customise fields.
+ * Create a ShipConstructionFacility with given worker requirements.
  */
-export function makeShipyardFacility(
+export function makeShipConstructionFacility(
     workerReq?: Partial<Record<EducationLevelType, number>>,
-    overrides?: Partial<ShipyardFacility> & { shipType?: TransportShipType },
-): ShipyardFacility {
+    overrides?: Partial<ShipConstructionFacility> & { shipType?: TransportShipType },
+): ShipConstructionFacility {
     const { shipType, ...rest } = overrides ?? {};
     const defaultShipType: TransportShipType = shipType ?? {
         name: 'Test Ship',
@@ -400,7 +404,7 @@ export function makeShipyardFacility(
         buildingTime: 90,
     };
     return {
-        type: 'ships',
+        type: 'ship_construction',
         planetId: 'p',
         id: 'shipyard-1',
         name: 'Test Shipyard',
@@ -413,18 +417,15 @@ export function makeShipyardFacility(
         lastTickResults: {
             overallEfficiency: 0,
             workerEfficiency: {},
-            resourceEfficiency: {},
             overqualifiedWorkers: {},
             exactUsedByEdu: {},
             totalUsedByEdu: {},
-            lastConsumed: {},
         },
-        mode: 'building',
         shipName: 'SS Test',
         produces: defaultShipType,
         progress: 0,
         ...rest,
-    } as ShipyardFacility;
+    } as ShipConstructionFacility;
 }
 
 // ============================================================================
@@ -447,7 +448,8 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
     return {
         productionFacilities: [],
         managementFacilities: [],
-        shipyardFacilities: [],
+        shipConstructionFacilities: [],
+        shipMaintenanceFacilities: [],
         transportContracts: [],
         shipBuyingOffers: [],
         deposits: 0,

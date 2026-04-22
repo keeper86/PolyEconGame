@@ -1,5 +1,10 @@
 import { defaultBuildingCost } from '../ships/ships';
-import type { LastManagementTickResults, ManagementFacility, ShipyardFacility } from './facility';
+import type {
+    LastManagementTickResults,
+    ManagementFacility,
+    ProductionFacility,
+    ShipConstructionFacility,
+} from './facility';
 import { MAINTENANCE_COST_MULTIPLIER } from './production';
 import { zeroLastTicksProductionResults } from './productionFacilities';
 import { maintenanceServiceResourceType } from './services';
@@ -56,16 +61,12 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     needs: [],
 });
 
-export const shipyardFacilityType = (
-    planetId: string,
-    id: string,
-    mode: 'building' | 'maintenance',
-): ShipyardFacility => {
+export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {
     return {
         planetId,
         id,
-        type: 'ships',
-        name: 'Shipyard',
+        type: 'ship_construction',
+        name: 'Ship Construction Facility',
         maxScale: 1,
         scale: 1,
         construction: null,
@@ -77,16 +78,35 @@ export const shipyardFacilityType = (
             tertiary: 5,
         },
         pollutionPerTick: { ...defaultPollutionPerTick },
-        ...(mode === 'building'
-            ? { produces: null, mode, lastTickResults: { ...zeroLastTicksResults }, shipName: '', progress: 0 }
-            : {
-                  needs: defaultBuildingCost.map((rq) => ({
-                      resource: rq.resource,
-                      quantity: rq.quantity * MAINTENANCE_COST_MULTIPLIER,
-                  })),
-                  produces: [{ resource: maintenanceServiceResourceType, quantity: 10 }],
-                  mode,
-                  lastTickResults: { ...zeroLastTicksProductionResults },
-              }),
+        shipName: '',
+        produces: null,
+        progress: 0,
+        lastTickResults: { ...zeroLastTicksResults },
+    };
+};
+
+export const shipMaintenanceFacilityType = (planetId: string, id: string): ProductionFacility => {
+    return {
+        planetId,
+        id,
+        type: 'production',
+        name: 'Ship Maintenance Facility',
+        maxScale: 1,
+        scale: 1,
+        construction: null,
+        powerConsumptionPerTick: 2,
+        workerRequirement: {
+            none: 10,
+            primary: 20,
+            secondary: 10,
+            tertiary: 5,
+        },
+        pollutionPerTick: { ...defaultPollutionPerTick },
+        needs: defaultBuildingCost.map((rq) => ({
+            resource: rq.resource,
+            quantity: rq.quantity * MAINTENANCE_COST_MULTIPLIER,
+        })),
+        produces: [{ resource: maintenanceServiceResourceType, quantity: 10 }],
+        lastTickResults: { ...zeroLastTicksProductionResults },
     };
 };

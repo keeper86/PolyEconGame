@@ -3,7 +3,7 @@ import type { EducationLevelType, Population } from '../population/population';
 import type { TransportShip } from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
-import type { ManagementFacility, ProductionFacility, ShipyardFacility, StorageFacility } from './facility';
+import type { ManagementFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
 import type { ResourceName } from './resourceCatalog';
 import type { ShipBuyingOffer, TransportContract } from '../ships/ships';
 
@@ -223,7 +223,8 @@ export type MarketResult = {
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
     managementFacilities: ManagementFacility[];
-    shipyardFacilities: ShipyardFacility[];
+    shipConstructionFacilities: ShipConstructionFacility[];
+    shipMaintenanceFacilities: ProductionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 
