@@ -1,3 +1,4 @@
+import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import type { ShipBuyingOffer, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
@@ -34,11 +35,12 @@ export function handlePostTransportContract(
         return;
     }
 
-    // Find the resource type. We need to look up from all resources.
-    // For now we store just the name + quantity; the full resource type is resolved at acceptance.
-    const planet = state.planets.get(planetId);
-    if (!planet) {
-        safePostMessage({ type: 'transportContractPostFailed', requestId, reason: 'Planet not found' });
+    if (expiresAtTick <= state.tick) {
+        safePostMessage({
+            type: 'transportContractPostFailed',
+            requestId,
+            reason: 'Contract expiry is in the past',
+        });
         return;
     }
 
@@ -53,9 +55,22 @@ export function handlePostTransportContract(
         return;
     }
 
+    const availableQuantity = queryStorageFacility(assets.storageFacility, cargo.resourceName);
+    if (cargo.quantity > availableQuantity) {
+        safePostMessage({
+            type: 'transportContractPostFailed',
+            requestId,
+            reason: 'Insufficient cargo quantity in storage',
+        });
+        return;
+    }
+
     // Escrow the reward
     assets.deposits -= offeredReward;
     assets.depositHold += offeredReward;
+
+    // Escrow the cargo so it cannot be sold after posting
+    lockIntoEscrow(assets.storageFacility, cargo.resourceName, cargo.quantity);
 
     const contractId = generateId('tc');
     const contract: TransportContract = {
@@ -108,6 +123,11 @@ export function handleAcceptTransportContract(
     const contract = posterAssets.transportContracts[contractIndex];
     if (contract.status !== 'open') {
         safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Contract is not open' });
+        return;
+    }
+
+    if (state.tick > contract.expiresAtTick) {
+        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Contract has expired' });
         return;
     }
 
@@ -193,6 +213,9 @@ export function handleCancelTransportContract(
     // Release escrowed reward
     assets.depositHold -= contract.offeredReward;
     assets.deposits += contract.offeredReward;
+
+    // Release escrowed cargo
+    releaseFromEscrow(assets.storageFacility, contract.cargo.resource.name, contract.cargo.quantity);
 
     assets.transportContracts.splice(contractIndex, 1);
     safePostMessage({ type: 'transportContractCancelled', requestId, agentId, contractId });

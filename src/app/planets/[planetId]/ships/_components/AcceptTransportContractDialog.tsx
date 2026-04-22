@@ -13,7 +13,7 @@ type Contract = {
     id: string;
     fromPlanetId: string;
     toPlanetId: string;
-    cargo: { resourceName?: string; type?: { name: string }; quantity: number };
+    cargo: { resource: { name: string }; quantity: number };
     offeredReward: number;
     _agentId: string;
 };
@@ -47,7 +47,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
         }),
     );
 
-    const cargoName = contract.cargo.resourceName ?? contract.cargo.type?.name ?? '?';
+    const cargoName = contract.cargo.resource.name;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

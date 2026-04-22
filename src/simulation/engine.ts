@@ -1,4 +1,4 @@
-import { isFirstTickInMonth, isYearBoundary } from './constants';
+import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { automaticLoanRepayment, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
@@ -73,7 +73,7 @@ export function advanceTick(gameState: GameState) {
 
         automaticLoanRepayment(gameState.agents, planet, gameState.tick);
 
-        if (isFirstTickInMonth(gameState.tick)) {
+        if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);
         }
 

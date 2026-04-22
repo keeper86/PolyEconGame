@@ -1,6 +1,6 @@
 import { EPSILON, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
-import { putIntoStorageFacility, removeFromStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, removeFromStorageFacility, transferFromEscrow } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
 import {
     electronicComponentResourceType,
@@ -133,11 +133,9 @@ export const shipTick = (gameState: GameState): void => {
                 }
 
                 const missingCargo = ship.state.cargoGoal.quantity - ship.state.currentCargo.quantity;
-                const removedQuantity = removeFromStorageFacility(
-                    storage,
-                    ship.state.cargoGoal.resource.name,
-                    missingCargo,
-                );
+                const removedQuantity = ship.state.contractId
+                    ? transferFromEscrow(storage, ship.state.cargoGoal.resource.name, missingCargo)
+                    : removeFromStorageFacility(storage, ship.state.cargoGoal.resource.name, missingCargo);
                 ship.state.currentCargo.quantity += removedQuantity;
                 if (removedQuantity === missingCargo) {
                     ship.state = {
