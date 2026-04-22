@@ -45,8 +45,6 @@ export default function AgentShipsPage() {
         (s) => 'planetId' in s.state && (s.state as { planetId: string }).planetId === planetId,
     );
 
-    const idleShipsHere = shipsHere.filter((s) => s.state.type === 'idle');
-
     return (
         <AgentAccessGuard
             agentId={agentId}
@@ -103,11 +101,7 @@ export default function AgentShipsPage() {
                                         </div>
                                         <div className='flex gap-2 flex-shrink-0'>
                                             {isIdle && (
-                                                <PostShipBuyingOfferDialog
-                                                    agentId={agentId}
-                                                    planetId={planetId}
-                                                    idleShips={idleShipsHere}
-                                                >
+                                                <PostShipBuyingOfferDialog agentId={agentId} planetId={planetId}>
                                                     <Button size='sm' variant='outline'>
                                                         Sell
                                                     </Button>

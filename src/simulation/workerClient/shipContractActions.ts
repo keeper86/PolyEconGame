@@ -141,13 +141,15 @@ export function handleAcceptTransportContract(
         fulfillmentDueAtTick,
     };
 
-    // Transition ship to loading state
+    // Transition ship to loading state; cargo is pulled from the poster's storage
     ship.state = {
         type: 'loading',
         planetId: contract.fromPlanetId,
         to: contract.toPlanetId,
         cargoGoal: contract.cargo,
         currentCargo: { resource: contract.cargo.resource, quantity: 0 },
+        contractId,
+        posterAgentId,
     };
 
     safePostMessage({ type: 'transportContractAccepted', requestId, agentId, contractId });
@@ -294,6 +296,22 @@ export function handleAcceptShipBuyingOffer(
     const ship = sellerAgent.transportShips[shipIndex];
     if (ship.state.type !== 'idle') {
         safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Ship is not idle' });
+        return;
+    }
+    if (ship.type.name !== offer.shipType) {
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: `Ship type '${ship.type.name}' does not match offer ship type '${offer.shipType}'`,
+        });
+        return;
+    }
+    if (ship.state.planetId !== planetId) {
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: `Ship is not on the offer planet '${planetId}'`,
+        });
         return;
     }
 

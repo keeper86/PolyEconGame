@@ -6,23 +6,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTRPC } from '@/lib/trpc';
-import type { TransportShip } from '@/simulation/ships/ships';
+import { shiptypes } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+
+const allShipTypeEntries = Object.values(shiptypes).flatMap((cat) => Object.entries(cat)) as [
+    string,
+    { name: string },
+][];
 
 type Props = {
     agentId: string;
     planetId: string;
-    idleShips: TransportShip[];
     children: React.ReactNode;
 };
 
-export function PostShipBuyingOfferDialog({ agentId, planetId, idleShips, children }: Props) {
+export function PostShipBuyingOfferDialog({ agentId, planetId, children }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
 
-    const [shipName, setShipName] = useState('');
+    const [shipType, setShipType] = useState('');
     const [price, setPrice] = useState('');
 
     const mutation = useMutation(
@@ -31,11 +35,8 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, idleShips, childr
                 void queryClient.invalidateQueries({
                     queryKey: trpc.listShipBuyingOffers.queryKey({ planetId }),
                 });
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.listAgentShips.queryKey({ agentId }),
-                });
                 setOpen(false);
-                setShipName('');
+                setShipType('');
                 setPrice('');
             },
         }),
@@ -46,7 +47,7 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, idleShips, childr
         mutation.mutate({
             agentId,
             planetId,
-            shipType: idleShips.find((s) => s.name === shipName)?.type.name ?? shipName,
+            shipType,
             price: Number(price),
         });
     };
@@ -56,26 +57,26 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, idleShips, childr
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Post Ship for Sale</DialogTitle>
+                    <DialogTitle>Post Ship Buy Offer</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <div className='space-y-1.5'>
-                        <Label>Ship</Label>
-                        <Select value={shipName} onValueChange={setShipName} required>
+                        <Label>Ship Type</Label>
+                        <Select value={shipType} onValueChange={setShipType} required>
                             <SelectTrigger>
-                                <SelectValue placeholder='Select idle ship…' />
+                                <SelectValue placeholder='Select ship type…' />
                             </SelectTrigger>
                             <SelectContent>
-                                {idleShips.map((s) => (
-                                    <SelectItem key={s.name} value={s.name}>
-                                        {s.name} ({s.type.name})
+                                {allShipTypeEntries.map(([key, def]) => (
+                                    <SelectItem key={key} value={key}>
+                                        {def.name}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className='space-y-1.5'>
-                        <Label>Asking Price</Label>
+                        <Label>Offered Price</Label>
                         <Input
                             type='number'
                             min={1}
@@ -87,8 +88,8 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, idleShips, childr
                     </div>
                     {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
                     <DialogFooter>
-                        <Button type='submit' disabled={mutation.isPending}>
-                            {mutation.isPending ? 'Posting…' : 'Post for Sale'}
+                        <Button type='submit' disabled={mutation.isPending || !shipType}>
+                            {mutation.isPending ? 'Posting…' : 'Post Buy Offer'}
                         </Button>
                     </DialogFooter>
                 </form>

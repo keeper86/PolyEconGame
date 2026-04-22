@@ -94,10 +94,7 @@ export default function PlanetShipsPage() {
                     )}
                     {openContracts.map((contract) => {
                         const isMyContract = contract._agentId === agentId;
-                        const cargoName =
-                            (contract.cargo as { resourceName?: string }).resourceName ??
-                            (contract.cargo as { type?: { name: string } }).type?.name ??
-                            '?';
+                        const cargoName = contract.cargo.resource.name;
                         const hasEligibleShip = idleShipsHere.length > 0;
 
                         return (
@@ -175,11 +172,14 @@ export default function PlanetShipsPage() {
                 <TabsContent value='buying' className='space-y-3 mt-4'>
                     {buyingLoading && <p className='text-sm text-muted-foreground'>Loading offers…</p>}
                     {!buyingLoading && openBuyingOffers.length === 0 && (
-                        <p className='text-sm text-muted-foreground'>No ships for sale on this planet.</p>
+                        <p className='text-sm text-muted-foreground'>No open ship buy offers on this planet.</p>
                     )}
                     {openBuyingOffers.map((offer) => {
                         const isMyOffer = offer._agentId === agentId;
                         const shipTypeDef = allShipTypesByKey[offer.shipType];
+                        const idleMatchingShips = idleShipsHere.filter((s) => s.type.name === offer.shipType);
+                        const canSell = !isMyOffer && agentId && idleMatchingShips.length > 0;
+                        const canSellNoShip = !isMyOffer && agentId && idleMatchingShips.length === 0;
                         return (
                             <Card key={offer.id}>
                                 <CardContent className='px-4 py-4 flex items-center justify-between gap-4'>
@@ -194,14 +194,31 @@ export default function PlanetShipsPage() {
                                         <div className='text-sm space-y-0.5'>
                                             <p className='font-medium'>{offer.shipType}</p>
                                             <p>
-                                                <span className='text-muted-foreground'>Price:</span> {offer.price}
+                                                <span className='text-muted-foreground'>Offered price:</span>{' '}
+                                                {offer.price}
                                             </p>
                                         </div>
                                     </div>
-                                    {!isMyOffer && agentId && (
+                                    {canSell && (
                                         <Button size='sm' onClick={() => setAcceptBuyingTarget(offer)}>
-                                            Buy
+                                            Sell
                                         </Button>
+                                    )}
+                                    {canSellNoShip && (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span>
+                                                        <Button size='sm' disabled>
+                                                            Sell
+                                                        </Button>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    No idle {offer.shipType} ship available on this planet
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     )}
                                     {isMyOffer && (
                                         <Badge variant='secondary' className='text-xs'>
@@ -233,6 +250,7 @@ export default function PlanetShipsPage() {
                     agentId={agentId}
                     planetId={planetId}
                     offer={acceptBuyingTarget}
+                    idleMatchingShips={idleShipsHere.filter((s) => s.type.name === acceptBuyingTarget.shipType)}
                     open={!!acceptBuyingTarget}
                     onClose={() => setAcceptBuyingTarget(null)}
                 />

@@ -48,6 +48,8 @@ export type TransportShipStatusLoading = {
     cargoGoal: ResourceQuantity | null;
     currentCargo: ResourceQuantity;
     contractId?: string;
+    /** Agent who posted the transport contract; cargo is escrowed from their storage. */
+    posterAgentId?: string;
 };
 
 export type TransportShipStatusUnloading = {
@@ -115,7 +117,10 @@ export const shipTick = (gameState: GameState): void => {
             }
 
             if (ship.state.type === 'loading') {
-                const storage = agent.assets[ship.state.planetId]?.storageFacility;
+                const storageAgent = ship.state.posterAgentId
+                    ? (gameState.agents.get(ship.state.posterAgentId) ?? agent)
+                    : agent;
+                const storage = storageAgent.assets[ship.state.planetId]?.storageFacility;
                 if (!storage || !ship.state.cargoGoal) {
                     ship.state = {
                         type: 'transporting',
