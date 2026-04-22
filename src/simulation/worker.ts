@@ -247,6 +247,23 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
+    // Forward console output to the main thread so it appears in the server logger.
+    const _origLog = console.log.bind(console);
+    const _origWarn = console.warn.bind(console);
+    const _origError = console.error.bind(console);
+    function forwardLog(level: 'log' | 'warn' | 'error', args: unknown[]): void {
+        const message = args.map((a) => (a instanceof Error ? (a.stack ?? a.message) : String(a))).join(' ');
+        try {
+            safePostMessage({ type: 'workerLog', level, message });
+        } catch {
+            // If posting fails, fall back to original console to avoid silent loss
+            _origError('[worker] Failed to forward log:', message);
+        }
+    }
+    console.log = (...args: unknown[]) => forwardLog('log', args);
+    console.warn = (...args: unknown[]) => forwardLog('warn', args);
+    console.error = (...args: unknown[]) => forwardLog('error', args);
+
     function tryFlushMessages(now: number) {
         if (pendingTickMsg && now - lastMessagePost >= DEBOUNCE_MS) {
             safePostMessage(pendingTickMsg);

@@ -243,6 +243,7 @@ export type OutboundMessage =
     | { type: 'shipMaintenanceFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
     | { type: 'shipMaintenanceFacilityExpandFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
+    | { type: 'workerLog'; level: 'log' | 'warn' | 'error'; message: string }
     | WorkerSuccessResponse
     | WorkerErrorResponse;
 

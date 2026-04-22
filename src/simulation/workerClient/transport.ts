@@ -4,17 +4,42 @@ import type { InboundMessage, OutboundMessage } from './messages';
 import type { CommandSpec } from './commandSpec';
 import type { WorkerQuery, WorkerQueryResult, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 import { getPending } from './pendingRequests';
+import { logger } from '../../server/logger';
 export { rejectAllPending } from './pendingRequests';
 
 // globalThis-backed singletons prevent duplicate state when Turbopack
 // re-evaluates this module in development.
 const GLOBAL_KEY_LISTENER = Symbol.for('__polyecon_workerQueries_listener__');
+const GLOBAL_KEY_LOG_LISTENER = Symbol.for('__polyecon_workerLog_listener__');
 
 const g = globalThis as unknown as {
     [GLOBAL_KEY_LISTENER]?: boolean;
+    [GLOBAL_KEY_LOG_LISTENER]?: boolean;
 };
 
 export const DEFAULT_TIMEOUT_MS = 5_000;
+
+function ensureLogListener(): void {
+    if (g[GLOBAL_KEY_LOG_LISTENER]) {
+        return;
+    }
+    g[GLOBAL_KEY_LOG_LISTENER] = true;
+
+    onWorkerMessage((msg: OutboundMessage) => {
+        if (msg.type !== 'workerLog') {
+            return;
+        }
+        if (msg.level === 'error') {
+            logger.error(msg.message);
+        } else if (msg.level === 'warn') {
+            logger.warn(msg.message);
+        } else {
+            logger.info(msg.message);
+        }
+    });
+}
+
+ensureLogListener();
 
 function ensureQueryResponseListener(): void {
     if (g[GLOBAL_KEY_LISTENER]) {
