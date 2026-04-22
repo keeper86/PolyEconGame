@@ -338,16 +338,24 @@ export function handleAcceptShipBuyingOffer(
         return;
     }
 
+    // Resolve seller's assets before mutating state so we can fail cleanly
+    const sellerAssets = sellerAgent.assets[planetId] ?? sellerAgent.assets[sellerAgent.associatedPlanetId];
+    if (!sellerAssets) {
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Seller has no assets on the offer planet or their home planet',
+        });
+        return;
+    }
+
     // Transfer ship from seller to buyer
     sellerAgent.transportShips.splice(shipIndex, 1);
     buyerAgent.transportShips.push(ship);
 
     // Transfer escrowed payment from buyer's hold to seller's deposits
     buyerAssets.depositHold -= offer.price;
-    const sellerAssets = sellerAgent.assets[planetId] ?? sellerAgent.assets[sellerAgent.associatedPlanetId];
-    if (sellerAssets) {
-        sellerAssets.deposits += offer.price;
-    }
+    sellerAssets.deposits += offer.price;
 
     buyerAssets.shipBuyingOffers.splice(offerIndex, 1);
 
