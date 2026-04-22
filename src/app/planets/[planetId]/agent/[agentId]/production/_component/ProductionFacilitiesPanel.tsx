@@ -3,25 +3,32 @@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
+import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
+import type { ProductionFacility, ShipConstructionFacility } from '../../../../../../../simulation/planet/facility';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
-import { BuildFacilityDialog } from './BuildFacilityDialog';
+import { ActiveShipyardCard } from './ActiveShipyardCard';
+import { LevelBuildSection } from './LevelBuildSection';
+import { ShipyardBuildSection } from './ShipyardBuildSection';
 import { UnderConstructionCard } from './UnderConstructionCard';
+import { UnderConstructionShipyardCard } from './UnderConstructionShipyardCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
 export default function ProductionFacilitiesPanel({
     facilities,
+    shipConstructionFacilities,
+    shipMaintenanceFacilities: _shipMaintenanceFacilities,
     agentId,
     planetId,
 }: {
     facilities: ProductionFacility[];
+    shipConstructionFacilities: ShipConstructionFacility[];
+    shipMaintenanceFacilities: ProductionFacility[];
     agentId: string;
     planetId: string;
 }): React.ReactElement {
@@ -47,6 +54,7 @@ export default function ProductionFacilitiesPanel({
     }, [facilities]);
 
     const activeCount = facilities.filter((f) => f.construction === null).length;
+    const activeShipConstructionFacilities = shipConstructionFacilities.filter((f) => f.construction === null).length;
 
     const defaultTab = useMemo(() => {
         return (
@@ -58,12 +66,14 @@ export default function ProductionFacilitiesPanel({
         );
     }, [ownedByName]);
 
-    const [activeTab, setActiveTab] = useState<ResourceProcessLevel>(() => {
+    const [activeTab, setActiveTab] = useState<ResourceProcessLevel | 'ships'>(() => {
         if (typeof window === 'undefined') {
             return defaultTab;
         }
         const hash = window.location.hash.slice(1);
-        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as ResourceProcessLevel;
+        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as
+            | ResourceProcessLevel
+            | 'ships';
     });
 
     useEffect(() => {
@@ -71,13 +81,13 @@ export default function ProductionFacilitiesPanel({
         if (!hash) {
             return;
         }
-        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel)) {
-            setActiveTab(hash as ResourceProcessLevel);
+        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) || hash === 'ships') {
+            setActiveTab(hash as ResourceProcessLevel | 'ships');
         }
     }, []);
 
     const handleTabChange = (value: string) => {
-        setActiveTab(value as ResourceProcessLevel);
+        setActiveTab(value as ResourceProcessLevel | 'ships');
         window.history.replaceState(null, '', `#${value}`);
     };
 
@@ -93,13 +103,6 @@ export default function ProductionFacilitiesPanel({
                             </Badge>
                         )}
                     </h2>
-                    <BuildFacilityDialog
-                        agentId={agentId}
-                        planetId={planetId}
-                        constructionServicePrice={constructionServicePrice}
-                        ownedByName={ownedByName}
-                        onBuilt={refresh}
-                    />
                 </div>
                 <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
                     {FACILITY_LEVELS.map((level) => {
@@ -115,7 +118,6 @@ export default function ProductionFacilitiesPanel({
                             <TabsTrigger
                                 key={level}
                                 value={level}
-                                disabled={ownedTotal === 0}
                                 className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                             >
                                 {FACILITY_LEVEL_LABELS[level]}
@@ -127,33 +129,85 @@ export default function ProductionFacilitiesPanel({
                             </TabsTrigger>
                         );
                     })}
+                    <TabsTrigger
+                        value='ships'
+                        className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                        Ships
+                        {shipConstructionFacilities.length > 0 && (
+                            <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
+                                {activeShipConstructionFacilities}/{shipConstructionFacilities.length}
+                            </Badge>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
-                {FACILITY_LEVELS.map((level) => (
-                    <TabsContent key={level} value={level} className='mt-3'>
-                        <div className='flex flex-row gap-3 flex-wrap'>
-                            {facilitiesByLevel[level].map((entry) => {
-                                const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
-                                const owned = ownedByName.get(previewName);
-                                if (owned) {
-                                    if (owned.construction !== null) {
-                                        return <UnderConstructionCard key={owned.id} facility={owned} />;
+                {FACILITY_LEVELS.map((level) => {
+                    const unbuildableEntries = facilitiesByLevel[level].filter(
+                        (e) => !ownedByName.has(e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name),
+                    );
+                    return (
+                        <TabsContent key={level} value={level} className='mt-3'>
+                            <div className='flex flex-row gap-3 flex-wrap'>
+                                {facilitiesByLevel[level].map((entry) => {
+                                    const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
+                                    const owned = ownedByName.get(previewName);
+                                    if (owned) {
+                                        if (owned.construction !== null) {
+                                            return <UnderConstructionCard key={owned.id} facility={owned} />;
+                                        }
+                                        return (
+                                            <ActiveFacilityCard
+                                                key={owned.id}
+                                                facility={owned}
+                                                agentId={agentId}
+                                                planetId={planetId}
+                                                constructionServicePrice={constructionServicePrice}
+                                                onExpanded={refresh}
+                                            />
+                                        );
                                     }
-                                    return (
-                                        <ActiveFacilityCard
-                                            key={owned.id}
-                                            facility={owned}
-                                            agentId={agentId}
-                                            planetId={planetId}
-                                            constructionServicePrice={constructionServicePrice}
-                                            onExpanded={refresh}
-                                        />
-                                    );
+                                    return null;
+                                })}
+                                {unbuildableEntries.length > 0 && (
+                                    <LevelBuildSection
+                                        entries={unbuildableEntries}
+                                        agentId={agentId}
+                                        planetId={planetId}
+                                        constructionServicePrice={constructionServicePrice}
+                                        onBuilt={refresh}
+                                    />
+                                )}
+                            </div>
+                        </TabsContent>
+                    );
+                })}
+                <TabsContent value='ships' className='mt-3'>
+                    <div className='flex flex-col gap-4'>
+                        <ShipyardBuildSection
+                            agentId={agentId}
+                            planetId={planetId}
+                            constructionServicePrice={constructionServicePrice}
+                            onBuilt={refresh}
+                        />
+                        <div className='flex flex-row gap-3 flex-wrap'>
+                            {shipConstructionFacilities.map((sy) => {
+                                if (sy.construction !== null) {
+                                    return <UnderConstructionShipyardCard key={sy.id} facility={sy} />;
                                 }
-                                return null;
+                                return (
+                                    <ActiveShipyardCard
+                                        key={sy.id}
+                                        facility={sy}
+                                        agentId={agentId}
+                                        planetId={planetId}
+                                        constructionServicePrice={constructionServicePrice}
+                                        onExpanded={refresh}
+                                    />
+                                );
                             })}
                         </div>
-                    </TabsContent>
-                ))}
+                    </div>
+                </TabsContent>
             </Tabs>
         </div>
     );

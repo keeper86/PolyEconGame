@@ -66,6 +66,7 @@ export function BalanceFlowChart({
                     };
                 });
         }
+        const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
         return (data as FinancialPoint[]).map((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
             return {
@@ -74,7 +75,9 @@ export function BalanceFlowChart({
                 monthIndex,
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 netBalance: p.avgNetBalance,
-                netIncome: p.avgMonthlyNetIncome - (p.avgWages + p.sumPurchases + p.sumClaimPayments),
+                netIncome:
+                    p.avgMonthlyNetIncome -
+                    (p.avgWages + p.sumPurchases / monthsPerBucket + p.sumClaimPayments / monthsPerBucket),
                 ghostNetBalance: null,
                 ghostNetIncome: null,
             };

@@ -10,7 +10,16 @@ import {
     getPlanetMarketOverview,
     getPlanetOverview,
 } from './controller/planet';
-import { ship } from './controller/ship';
+import {
+    listAgentShips,
+    listTransportContracts,
+    listShipBuyingOffers,
+    postTransportContract,
+    acceptTransportContract,
+    cancelTransportContract,
+    postShipBuyingOffer,
+    acceptShipBuyingOffer,
+} from './controller/ship';
 import {
     getAgentDetail,
     getAgentFinancials,
@@ -46,6 +55,11 @@ import {
     setSellOffers,
     setWorkerAllocationTargets,
     updateUser,
+    buildShipConstructionFacility,
+    expandShipConstructionFacility,
+    setShipConstructionTarget,
+    buildShipMaintenanceFacility,
+    expandShipMaintenanceFacility,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -93,12 +107,24 @@ const protectedAppRouter = trpcRoot.router({
     setFacilityScale: setFacilityScale(),
     leaseClaim: leaseClaim(),
     quitClaim: quitClaim(),
+    listAgentShips: listAgentShips(),
+    listTransportContracts: listTransportContracts(),
+    listShipBuyingOffers: listShipBuyingOffers(),
+    postTransportContract: postTransportContract(),
+    acceptTransportContract: acceptTransportContract(),
+    cancelTransportContract: cancelTransportContract(),
+    postShipBuyingOffer: postShipBuyingOffer(),
+    acceptShipBuyingOffer: acceptShipBuyingOffer(),
+    buildShipConstructionFacility: buildShipConstructionFacility(),
+    expandShipConstructionFacility: expandShipConstructionFacility(),
+    setShipConstructionTarget: setShipConstructionTarget(),
+    buildShipMaintenanceFacility: buildShipMaintenanceFacility(),
+    expandShipMaintenanceFacility: expandShipMaintenanceFacility(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({
     logs: logs(),
     health: health(),
-    ship: ship(),
     simulation: simulationRouter,
 });
 

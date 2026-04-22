@@ -97,12 +97,12 @@ export const clayResourceType: Resource = {
 };
 
 export const steelResourceType: Resource = {
-    name: 'Steel',
+    name: 'Steel' as const,
     form: 'solid',
     level: 'refined',
     volumePerQuantity: 0.3,
     massPerQuantity: 1,
-};
+} as const;
 
 export const copperResourceType: Resource = {
     name: 'Copper',

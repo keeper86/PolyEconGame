@@ -727,7 +727,7 @@ export const getPlanetClaims = () =>
             }
 
             const summaries: ClaimResourceSummary[] = Object.entries(planet.resources)
-                .filter(([, claims]) => claims.length > 0 && claims[0]?.type.form === 'landBoundResource')
+                .filter(([, claims]) => claims.length > 0 && claims[0]?.resource.form === 'landBoundResource')
                 .map(([resourceName, claims]) => {
                     let tenantedCapacity = 0;
                     let tenantedClaims = 0;

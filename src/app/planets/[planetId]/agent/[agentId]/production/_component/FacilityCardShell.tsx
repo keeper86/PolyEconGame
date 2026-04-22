@@ -1,4 +1,4 @@
-import { defaultHeight } from '@/components/client/FacilityIcon';
+import { defaultHeight } from '@/components/client/FacilityOrShipIcon';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import React from 'react';
@@ -17,7 +17,7 @@ export function FacilityCardShell({
     contentClassName?: string;
 }): React.ReactElement {
     return (
-        <Card className={cn('overflow-hidden flex flex-col min-w-[300px]', className)}>
+        <Card className={cn('overflow-hidden flex flex-col min-w-[300px] sm:min-w-[485px]', className)}>
             <CardHeader className='p-3 pb-2'>
                 <div className='flex items-start gap-3 flex-wrap'>
                     {icon}

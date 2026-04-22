@@ -24,13 +24,14 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/planets/[planetId]", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/financial", { "planetId": string; "agentId": string }>
-    | DynamicRoute<"/planets/[planetId]/agent/[agentId]/history", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/market", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/production", { "planetId": string; "agentId": string }>
+    | DynamicRoute<"/planets/[planetId]/agent/[agentId]/ships", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/storage", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/workforce", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/claims", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
+    | DynamicRoute<"/planets/[planetId]/ships", { "planetId": string }>
     | StaticRoute<"/pong">
     | StaticRoute<"/simulation">
     | StaticRoute<"/supply-chain">;

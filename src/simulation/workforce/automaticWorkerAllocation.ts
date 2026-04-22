@@ -13,7 +13,13 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             continue;
         }
 
-        const allFacilities = [...assets.productionFacilities, ...assets.managementFacilities, assets.storageFacility];
+        const allFacilities = [
+            ...assets.productionFacilities,
+            ...assets.managementFacilities,
+            assets.storageFacility,
+            ...assets.shipConstructionFacilities,
+            ...assets.shipMaintenanceFacilities,
+        ];
 
         // 1. Compute total raw requirement per education level
         const totalRequirement: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };

@@ -6,10 +6,12 @@ import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAss
 import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/_component/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/_component/WorkforceDemographyPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
+import { AgentMetricChart } from '@/components/client/AgentMetricChart';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatNumbers } from '@/lib/utils';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
 import { educationLevelKeys } from '@/simulation/population/education';
+import type { EducationLevelType } from '@/simulation/population/education';
 import { Coins } from 'lucide-react';
 
 export default function WorkforcePage() {
@@ -48,8 +50,12 @@ export default function WorkforcePage() {
                     <NoAssetsMessage planetName={planetId} agentId={agentId} />
                 ) : !isLoading && assets ? (
                     <div className='space-y-6'>
+                        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
+                            <AgentMetricChart agentId={agentId} granularity='monthly' metric='totalWorkers' />
+                            <AgentMetricChart agentId={agentId} granularity='monthly' metric='wages' />
+                        </div>
                         <WorkforceDemographyPanel
-                            allocatedWorkers={assets.allocatedWorkers}
+                            allocatedWorkers={assets.allocatedWorkers as Record<EducationLevelType, number>}
                             workforceDemography={assets.workforceDemography}
                             unusedWorkers={undefined}
                             unusedWorkerFraction={undefined}
@@ -58,8 +64,6 @@ export default function WorkforcePage() {
                             deathsPrevMonth={assets.deaths?.prevMonth}
                             disabilitiesThisMonth={assets.disabilities?.thisMonth}
                             disabilitiesPrevMonth={assets.disabilities?.prevMonth}
-                            retirementsThisMonth={assets.retirements?.thisMonth}
-                            retirementsPrevMonth={assets.retirements?.prevMonth}
                         />
                         <AutomationPanel
                             agentId={agentId}

@@ -4,10 +4,10 @@ import {
     FileText,
     FlaskConical,
     Gamepad,
-    History,
     Home,
     Network,
     Package,
+    Ship,
     ShoppingCartIcon,
     User,
     Users,
@@ -182,5 +182,5 @@ export const AGENT_SUB_PAGES: AgentSubPage[] = [
     { segment: 'production', label: 'Production', icon: Package },
     { segment: 'storage', label: 'Storage', icon: Warehouse },
     { segment: 'market', label: 'Market', icon: ShoppingCartIcon },
-    { segment: 'history', label: 'History', icon: History },
+    { segment: 'ships', label: 'Ships', icon: Ship },
 ];

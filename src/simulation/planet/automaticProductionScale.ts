@@ -2,28 +2,6 @@ import { OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import type { Agent, Planet } from './planet';
 import { queryStorageFacility } from './facility';
 
-/**
- * Automatically adjusts the `scale` of each production facility for automated
- * agents based on their output buffer levels and service market data.
- *
- * Rules (per facility, automated agents only):
- *
- * - SNAP UP: If any storable output has inventory === 0, OR any service output
- *   had unfilledDemand > 0 last tick (or has no market data yet), snap scale
- *   immediately to maxScale.
- *
- * - SCALE DOWN: If ALL storable outputs have inventory >= OUTPUT_BUFFER_MAX_TICKS
- *   × output/tick AND all service outputs had unsoldSupply > 0 last tick,
- *   reduce scale by 1 (floors at 0). Gradual, one step per tick.
- *
- * - Otherwise scale is unchanged.
- *
- * For vacuous cases: an all-storable facility ignores service conditions
- * (allServicesOverSupplied is vacuously true), and an all-service facility
- * ignores storable inventory (allStorablesOverBuffered is vacuously true).
- *
- * Scale constraints enforced: 0 ≤ scale ≤ maxScale, scale is an integer.
- */
 export function updateAgentProductionScale(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
         if (!agent.automated) {

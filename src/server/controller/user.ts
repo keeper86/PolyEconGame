@@ -15,6 +15,11 @@ import {
     workerSetBuyBids,
     workerSetSellOffers,
     workerSetWorkerAllocationTargets,
+    workerBuildShipConstructionFacility,
+    workerExpandShipConstructionFacility,
+    workerSetShipConstructionTarget,
+    workerBuildShipMaintenanceFacility,
+    workerExpandShipMaintenanceFacility,
 } from '@/simulation/workerClient/commands';
 import { workerQueries } from '@/simulation/workerClient/queries';
 
@@ -761,6 +766,166 @@ export const setFacilityScale = () => {
                 scaleFraction: input.scaleFraction,
             });
 
+            return { facilityId };
+        });
+};
+
+export const buildShipConstructionFacility = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityName: z.string().min(1).max(50),
+                targetScale: z.number().int().min(1).max(100).default(1),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            logger.info(
+                { component: 'build-ship-construction-facility' },
+                `User ${userId} building ship construction facility '${input.facilityName}' for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+            const facilityId = await workerBuildShipConstructionFacility({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityName: input.facilityName,
+                targetScale: input.targetScale,
+            });
+            return { facilityId };
+        });
+};
+
+export const expandShipConstructionFacility = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+                targetScale: z.number().int().min(2).max(100),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            const facilityId = await workerExpandShipConstructionFacility({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
+                targetScale: input.targetScale,
+            });
+            return { facilityId };
+        });
+};
+
+export const setShipConstructionTarget = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+                shipTypeName: z.string().min(1).nullable(),
+                shipName: z.string().max(50),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            const facilityId = await workerSetShipConstructionTarget({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
+                shipTypeName: input.shipTypeName,
+                shipName: input.shipName,
+            });
+            return { facilityId };
+        });
+};
+
+export const buildShipMaintenanceFacility = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityName: z.string().min(1).max(50),
+                targetScale: z.number().int().min(1).max(100).default(1),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            logger.info(
+                { component: 'build-ship-maintenance-facility' },
+                `User ${userId} building ship maintenance facility '${input.facilityName}' for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+            const facilityId = await workerBuildShipMaintenanceFacility({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityName: input.facilityName,
+                targetScale: input.targetScale,
+            });
+            return { facilityId };
+        });
+};
+
+export const expandShipMaintenanceFacility = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+                targetScale: z.number().int().min(2).max(100),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+            const facilityId = await workerExpandShipMaintenanceFacility({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
+                targetScale: input.targetScale,
+            });
             return { facilityId };
         });
 };

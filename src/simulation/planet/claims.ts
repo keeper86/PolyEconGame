@@ -10,8 +10,9 @@ export type Resource = {
     massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
 };
 export type ResourceType = Resource['form'];
+export type TransportableResourceType = Exclude<ResourceType, 'services' | 'landBoundResource'>;
 export type ResourceQuantity = {
-    type: Resource;
+    resource: Resource;
     quantity: number; // in tons or pieces, depending on the phase
 };
 

@@ -1,4 +1,3 @@
-import type { TransportShip } from '../planet/planet';
 import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 
 export type InboundMessage =
@@ -86,21 +85,97 @@ export type InboundMessage =
           planetId: string;
           claimId: string;
       }
+    | {
+          type: 'postTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string; // fromPlanetId — contract lives in poster's assets on this planet
+          toPlanetId: string;
+          cargo: { resourceName: string; quantity: number };
+          maxDurationInTicks: number;
+          offeredReward: number;
+          expiresAtTick: number;
+      }
+    | {
+          type: 'acceptTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string; // planet where contract was posted
+          posterAgentId: string;
+          contractId: string;
+          shipName: string;
+      }
+    | {
+          type: 'cancelTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          contractId: string;
+      }
+    | {
+          type: 'postShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          shipType: string; // ShipTypeKey
+          price: number;
+      }
+    | {
+          type: 'acceptShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string; // planet where offer was posted
+          posterAgentId: string;
+          offerId: string;
+          shipName: string; // idle ship to transfer
+      }
+    | {
+          type: 'buildShipConstructionFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityName: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandShipConstructionFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
+      }
+    | {
+          type: 'setShipConstructionTarget';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          shipTypeName: string | null;
+          shipName: string;
+      }
+    | {
+          type: 'buildShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityName: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
+      }
     | { type: 'shutdown' }
     | WorkerQueryMessage;
 
 export type OutboundMessage =
     | { type: 'pong'; tick: number }
     | { type: 'tick'; tick: number; elapsedMs: number }
-    | { type: 'shipArrived'; shipId: string; to: string; cargo: { metal: number; energy: number }; tick: number }
-    | { type: 'shipCreated'; ship: TransportShip; tick: number }
-    | {
-          type: 'shipCreationFailed';
-          reason: string;
-          requested: { metal: number; energy: number };
-          available?: { metal: number; energy: number };
-          from?: string;
-      }
     | { type: 'agentCreated'; requestId: string; agentId: string }
     | { type: 'agentCreationFailed'; requestId: string; reason: string }
     | { type: 'loanGranted'; requestId: string; agentId: string; amount: number }
@@ -129,7 +204,28 @@ export type OutboundMessage =
     | { type: 'claimLeaseFailed'; requestId: string; reason: string }
     | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string }
     | { type: 'claimQuitFailed'; requestId: string; reason: string }
+    | { type: 'transportContractPosted'; requestId: string; agentId: string; contractId: string }
+    | { type: 'transportContractPostFailed'; requestId: string; reason: string }
+    | { type: 'transportContractAccepted'; requestId: string; agentId: string; contractId: string }
+    | { type: 'transportContractAcceptFailed'; requestId: string; reason: string }
+    | { type: 'transportContractCancelled'; requestId: string; agentId: string; contractId: string }
+    | { type: 'transportContractCancelFailed'; requestId: string; reason: string }
+    | { type: 'shipBuyingOfferPosted'; requestId: string; agentId: string; offerId: string }
+    | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string }
+    | { type: 'shipBuyingOfferAccepted'; requestId: string; agentId: string; offerId: string }
+    | { type: 'shipBuyingOfferAcceptFailed'; requestId: string; reason: string }
+    | { type: 'shipConstructionFacilityBuilt'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipConstructionFacilityBuildFailed'; requestId: string; reason: string }
+    | { type: 'shipConstructionFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipConstructionFacilityExpandFailed'; requestId: string; reason: string }
+    | { type: 'shipConstructionTargetSet'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipConstructionTargetSetFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceFacilityBuilt'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipMaintenanceFacilityBuildFailed'; requestId: string; reason: string }
+    | { type: 'shipMaintenanceFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'shipMaintenanceFacilityExpandFailed'; requestId: string; reason: string }
     | { type: 'workerRestarted'; reason?: string }
+    | { type: 'workerLog'; level: 'log' | 'warn' | 'error'; message: string }
     | WorkerSuccessResponse
     | WorkerErrorResponse;
 
@@ -227,4 +323,89 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           claimId: string;
+      }
+    | {
+          type: 'postTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          toPlanetId: string;
+          cargo: { resourceName: string; quantity: number };
+          maxDurationInTicks: number;
+          offeredReward: number;
+          expiresAtTick: number;
+      }
+    | {
+          type: 'acceptTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          posterAgentId: string;
+          contractId: string;
+          shipName: string;
+      }
+    | {
+          type: 'cancelTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          contractId: string;
+      }
+    | {
+          type: 'postShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          shipType: string;
+          price: number;
+      }
+    | {
+          type: 'acceptShipBuyingOffer';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          posterAgentId: string;
+          offerId: string;
+          shipName: string;
+      }
+    | {
+          type: 'buildShipConstructionFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityName: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandShipConstructionFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
+      }
+    | {
+          type: 'setShipConstructionTarget';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          shipTypeName: string | null;
+          shipName: string;
+      }
+    | {
+          type: 'buildShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityName: string;
+          targetScale: number;
+      }
+    | {
+          type: 'expandShipMaintenanceFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
       };

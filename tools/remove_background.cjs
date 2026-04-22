@@ -1,4 +1,6 @@
 const sharp = require("sharp");
+const fs = require("fs");
+const path = require("path");
 
 function idx(x, y, w) {
   return y * w + x;
@@ -86,7 +88,7 @@ function smoothAlpha(alpha){
   return alpha;
 }
 
-async function run(input){
+async function run(input, outputDir){
 
   const {data,info} = await sharp(input)
     .ensureAlpha()
@@ -259,6 +261,9 @@ for (let i = 0; i < components.length; i++) {
   const w = c.maxX - c.minX + 1;
   const h = c.maxY - c.minY + 1;
 
+  const baseName = path.basename(input, path.extname(input));
+  const suffix = components.length > 1 ? `_${i + 1}` : "";
+
   const cropped = sharp(data, {
     raw: { width, height, channels }
   }).extract({
@@ -272,7 +277,7 @@ for (let i = 0; i < components.length; i++) {
   await cropped
     .clone()
     .png()
-    .toFile(`asset_${i + 1}.png`);
+    .toFile(path.join(outputDir, `${baseName}${suffix}.png`));
 
   // WebP (optimized delivery)
   await cropped
@@ -282,13 +287,48 @@ for (let i = 0; i < components.length; i++) {
       alphaQuality: 100,
       effort: 6
     })
-    .toFile(`asset_${i + 1}.webp`);
+    .toFile(path.join(outputDir, `${baseName}${suffix}.webp`));
 }
 
-console.log("Assets written (PNG + WebP).");
+console.log(`  -> ${components.length} asset(s) written.`);
 
   
 }
 
-run("Gemini_Generated_Image_xpm73jxpm73jxpm7 (1).png");
+async function main() {
+  const inputDir = process.argv[2] || ".";
+  const outputDir = process.argv[3] || inputDir;
+
+  const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".tiff", ".bmp"]);
+
+  const files = fs.readdirSync(inputDir)
+    .filter(f => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
+    .map(f => path.join(inputDir, f));
+
+  if (files.length === 0) {
+    console.error("No image files found in:", inputDir);
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  console.log(`Found ${files.length} image(s) in ${inputDir}:`);
+  files.forEach(f => console.log(" ", path.basename(f)));
+  console.log();
+
+  for (const file of files) {
+    console.log(`Processing: ${path.basename(file)}`);
+    try {
+      await run(file, outputDir);
+    } catch (err) {
+      console.error(`  ERROR: ${err.message}`);
+    }
+  }
+
+  console.log("\nDone.");
+}
+
+main();
 

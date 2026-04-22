@@ -100,7 +100,11 @@ export function makeAgentPlanetAssets(
     return {
         productionFacilities: facilities,
         managementFacilities: [],
+        shipConstructionFacilities: [],
+        shipMaintenanceFacilities: [],
         storageFacility: storage,
+        transportContracts: [],
+        shipBuyingOffers: [],
         deposits: 0,
         depositHold: 0,
         loans: 0,
@@ -149,6 +153,7 @@ export function makeAgent(opts: {
         automated: true,
         automateWorkerAllocation: true,
         foundedTick: 0,
+        starterLoanTaken: false,
         assets: { [opts.planetId]: assets },
     };
 }

@@ -186,3 +186,139 @@ export const quitClaimSpec: CommandSpec<
     failureType: 'claimQuitFailed',
     extract: (msg) => msg.claimId,
 };
+
+// --- Ship contract specs ---
+
+type PostTransportContractSuccess = Extract<OutboundMessage, { type: 'transportContractPosted' }>;
+type PostTransportContractFailure = Extract<OutboundMessage, { type: 'transportContractPostFailed' }>;
+export const postTransportContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postTransportContract' }>,
+    PostTransportContractSuccess,
+    PostTransportContractFailure,
+    string
+> = {
+    successType: 'transportContractPosted',
+    failureType: 'transportContractPostFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type AcceptTransportContractSuccess = Extract<OutboundMessage, { type: 'transportContractAccepted' }>;
+type AcceptTransportContractFailure = Extract<OutboundMessage, { type: 'transportContractAcceptFailed' }>;
+export const acceptTransportContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptTransportContract' }>,
+    AcceptTransportContractSuccess,
+    AcceptTransportContractFailure,
+    string
+> = {
+    successType: 'transportContractAccepted',
+    failureType: 'transportContractAcceptFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type CancelTransportContractSuccess = Extract<OutboundMessage, { type: 'transportContractCancelled' }>;
+type CancelTransportContractFailure = Extract<OutboundMessage, { type: 'transportContractCancelFailed' }>;
+export const cancelTransportContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelTransportContract' }>,
+    CancelTransportContractSuccess,
+    CancelTransportContractFailure,
+    string
+> = {
+    successType: 'transportContractCancelled',
+    failureType: 'transportContractCancelFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type PostShipBuyingOfferSuccess = Extract<OutboundMessage, { type: 'shipBuyingOfferPosted' }>;
+type PostShipBuyingOfferFailure = Extract<OutboundMessage, { type: 'shipBuyingOfferPostFailed' }>;
+export const postShipBuyingOfferSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postShipBuyingOffer' }>,
+    PostShipBuyingOfferSuccess,
+    PostShipBuyingOfferFailure,
+    string
+> = {
+    successType: 'shipBuyingOfferPosted',
+    failureType: 'shipBuyingOfferPostFailed',
+    extract: (msg) => msg.offerId,
+};
+
+type AcceptShipBuyingOfferSuccess = Extract<OutboundMessage, { type: 'shipBuyingOfferAccepted' }>;
+type AcceptShipBuyingOfferFailure = Extract<OutboundMessage, { type: 'shipBuyingOfferAcceptFailed' }>;
+export const acceptShipBuyingOfferSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptShipBuyingOffer' }>,
+    AcceptShipBuyingOfferSuccess,
+    AcceptShipBuyingOfferFailure,
+    string
+> = {
+    successType: 'shipBuyingOfferAccepted',
+    failureType: 'shipBuyingOfferAcceptFailed',
+    extract: (msg) => msg.offerId,
+};
+
+// --- Ship construction facility specs ---
+
+type BuildShipConstructionFacilitySuccess = Extract<OutboundMessage, { type: 'shipConstructionFacilityBuilt' }>;
+type BuildShipConstructionFacilityFailure = Extract<OutboundMessage, { type: 'shipConstructionFacilityBuildFailed' }>;
+export const buildShipConstructionFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'buildShipConstructionFacility' }>,
+    BuildShipConstructionFacilitySuccess,
+    BuildShipConstructionFacilityFailure,
+    string
+> = {
+    successType: 'shipConstructionFacilityBuilt',
+    failureType: 'shipConstructionFacilityBuildFailed',
+    extract: (msg) => msg.facilityId,
+};
+
+type ExpandShipConstructionFacilitySuccess = Extract<OutboundMessage, { type: 'shipConstructionFacilityExpanded' }>;
+type ExpandShipConstructionFacilityFailure = Extract<OutboundMessage, { type: 'shipConstructionFacilityExpandFailed' }>;
+export const expandShipConstructionFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'expandShipConstructionFacility' }>,
+    ExpandShipConstructionFacilitySuccess,
+    ExpandShipConstructionFacilityFailure,
+    string
+> = {
+    successType: 'shipConstructionFacilityExpanded',
+    failureType: 'shipConstructionFacilityExpandFailed',
+    extract: (msg) => msg.facilityId,
+};
+
+type SetShipConstructionTargetSuccess = Extract<OutboundMessage, { type: 'shipConstructionTargetSet' }>;
+type SetShipConstructionTargetFailure = Extract<OutboundMessage, { type: 'shipConstructionTargetSetFailed' }>;
+export const setShipConstructionTargetSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'setShipConstructionTarget' }>,
+    SetShipConstructionTargetSuccess,
+    SetShipConstructionTargetFailure,
+    string
+> = {
+    successType: 'shipConstructionTargetSet',
+    failureType: 'shipConstructionTargetSetFailed',
+    extract: (msg) => msg.facilityId,
+};
+
+// --- Ship maintenance facility specs ---
+
+type BuildShipMaintenanceFacilitySuccess = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityBuilt' }>;
+type BuildShipMaintenanceFacilityFailure = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityBuildFailed' }>;
+export const buildShipMaintenanceFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'buildShipMaintenanceFacility' }>,
+    BuildShipMaintenanceFacilitySuccess,
+    BuildShipMaintenanceFacilityFailure,
+    string
+> = {
+    successType: 'shipMaintenanceFacilityBuilt',
+    failureType: 'shipMaintenanceFacilityBuildFailed',
+    extract: (msg) => msg.facilityId,
+};
+
+type ExpandShipMaintenanceFacilitySuccess = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityExpanded' }>;
+type ExpandShipMaintenanceFacilityFailure = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityExpandFailed' }>;
+export const expandShipMaintenanceFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'expandShipMaintenanceFacility' }>,
+    ExpandShipMaintenanceFacilitySuccess,
+    ExpandShipMaintenanceFacilityFailure,
+    string
+> = {
+    successType: 'shipMaintenanceFacilityExpanded',
+    failureType: 'shipMaintenanceFacilityExpandFailed',
+    extract: (msg) => msg.facilityId,
+};

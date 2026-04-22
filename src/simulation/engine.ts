@@ -6,10 +6,11 @@ import { intergenerationalTransfersForPlanet } from './market/intergenerationalT
 import { marketTick } from './market/market';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
-import type { Agent, GameState } from './planet/planet';
-import { resetAgentMetrics, accumulatePlanetPrices } from './planet/planet';
+import type { GameState } from './planet/planet';
+import { accumulatePlanetPrices, resetAgentMetrics } from './planet/planet';
 import { constructionTick, productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
+import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
 import { automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
@@ -21,64 +22,64 @@ import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 export { seedRng };
 
 export function advanceTick(gameState: GameState) {
+    shipTick(gameState);
     gameState.planets.forEach((planet) => {
-        const planetAgents = new Map<string, Agent>();
-        for (const agent of gameState.agents.values()) {
-            planetAgents.set(agent.id, agent);
-        }
-
         const planetMap = new Map([[planet.id, planet]]);
 
         if (isFirstTickInMonth(gameState.tick)) {
-            resetAgentMetrics(planetAgents, planet);
+            resetAgentMetrics(gameState.agents, planet);
         }
 
         environmentTick(planet);
 
         if (process.env.SIM_DEBUG) {
-            assertPerCellWorkforcePopulationConsistency(planetAgents, planet, `${planet.name} before workforce tick`);
+            assertPerCellWorkforcePopulationConsistency(
+                gameState.agents,
+                planet,
+                `${planet.name} before workforce tick`,
+            );
         }
 
-        const workforceEvents = workforceDemographicTick(planetAgents, planet);
+        const workforceEvents = workforceDemographicTick(gameState.agents, planet);
         populationTick(planet, workforceEvents);
 
         if (process.env.SIM_DEBUG) {
-            assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'after');
+            assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'after');
         }
 
-        if (isMonthBoundary(gameState.tick)) {
-            automaticWorkerAllocation(planetAgents, planet);
-            hireWorkforce(planetAgents, planet);
+        if (isFirstTickInMonth(gameState.tick)) {
+            automaticWorkerAllocation(gameState.agents, planet);
+            hireWorkforce(gameState.agents, planet);
             if (process.env.SIM_DEBUG) {
-                assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'othermonth');
+                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
             }
         }
-        claimBillingTick(planetAgents, planet, gameState.tick);
-        preProductionFinancialTick(planetAgents, planet);
+        claimBillingTick(gameState.agents, planet, gameState.tick);
+        preProductionFinancialTick(gameState.agents, planet);
 
-        // updateAgentProductionScale(planetAgents, planet);
+        // updateAgentProductionScale(gameState.agents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 
-        automaticPricing(planetAgents, planet);
+        automaticPricing(gameState.agents, planet);
 
-        marketTick(planetAgents, planet);
+        marketTick(gameState.agents, planet);
 
         accumulatePlanetPrices(planet, gameState.tick);
 
-        constructionTick(planetAgents, planet);
+        constructionTick(gameState.agents, planet);
 
-        productionTick(planetAgents, planet);
+        productionTick(gameState.agents, planet, gameState.tick);
 
-        automaticLoanRepayment(planetAgents, planet, gameState.tick);
+        automaticLoanRepayment(gameState.agents, planet, gameState.tick);
 
         if (isMonthBoundary(gameState.tick)) {
-            postProductionLaborMarketTick(planetAgents, planet);
+            postProductionLaborMarketTick(gameState.agents, planet);
         }
 
         if (isYearBoundary(gameState.tick)) {
             if (process.env.SIM_DEBUG) {
-                assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'beforeYear');
+                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'beforeYear');
             }
             for (const entries of Object.values(planet.resources)) {
                 for (const entry of entries) {
@@ -86,13 +87,13 @@ export function advanceTick(gameState: GameState) {
                 }
             }
             populationAdvanceYearTick(planet);
-            workforceAdvanceYearTick(planetAgents, planet);
+            workforceAdvanceYearTick(gameState.agents, planet);
             if (process.env.SIM_DEBUG) {
-                assertPerCellWorkforcePopulationConsistency(planetAgents, planet, 'afterYear');
+                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'afterYear');
             }
         }
         if (process.env.SIM_DEBUG) {
-            assertPerCellWorkforcePopulationConsistency(planetAgents, planet, `${planet.name} end of tick`);
+            assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, `${planet.name} end of tick`);
             const wealthBankIssues = checkWealthBankConsistency(planetMap, 'end of tick');
             if (wealthBankIssues.length > 0) {
                 console.error(

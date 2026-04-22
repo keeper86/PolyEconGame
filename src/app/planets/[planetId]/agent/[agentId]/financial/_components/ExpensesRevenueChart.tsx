@@ -101,8 +101,11 @@ export function ExpensesRevenueChart({
                     };
                 });
         }
+        const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
         return (data as FinancialPoint[]).map((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
+            const normPurchases = p.sumPurchases / monthsPerBucket;
+            const normClaimPayments = p.sumClaimPayments / monthsPerBucket;
             return {
                 xVal: year + 1,
                 year: year + 1,
@@ -110,8 +113,8 @@ export function ExpensesRevenueChart({
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
                 wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
-                purchases: scale === 'log' && p.sumPurchases <= 0 ? null : p.sumPurchases,
-                claimPayments: scale === 'log' && p.sumClaimPayments <= 0 ? null : p.sumClaimPayments,
+                purchases: scale === 'log' && normPurchases <= 0 ? null : normPurchases,
+                claimPayments: scale === 'log' && normClaimPayments <= 0 ? null : normClaimPayments,
                 ghostRevenue: null,
                 ghostWages: null,
                 ghostPurchases: null,

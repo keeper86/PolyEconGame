@@ -22,6 +22,13 @@ import { computePopulationTotal } from './snapshotRepository';
 import { createInitialGameState } from './utils/initialWorld';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
+import {
+    handlePostTransportContract,
+    handleAcceptTransportContract,
+    handleCancelTransportContract,
+    handlePostShipBuyingOffer,
+    handleAcceptShipBuyingOffer,
+} from './workerClient/shipContractActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
@@ -172,7 +179,27 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'buildFacility':
                     case 'expandFacility':
                     case 'setFacilityScale':
+                    case 'buildShipConstructionFacility':
+                    case 'expandShipConstructionFacility':
+                    case 'setShipConstructionTarget':
+                    case 'buildShipMaintenanceFacility':
+                    case 'expandShipMaintenanceFacility':
                         handleFacilityAction(state, action, safePostMessage);
+                        break;
+                    case 'postTransportContract':
+                        handlePostTransportContract(state, action, safePostMessage);
+                        break;
+                    case 'acceptTransportContract':
+                        handleAcceptTransportContract(state, action, safePostMessage);
+                        break;
+                    case 'cancelTransportContract':
+                        handleCancelTransportContract(state, action, safePostMessage);
+                        break;
+                    case 'postShipBuyingOffer':
+                        handlePostShipBuyingOffer(state, action, safePostMessage);
+                        break;
+                    case 'acceptShipBuyingOffer':
+                        handleAcceptShipBuyingOffer(state, action, safePostMessage);
                         break;
                 }
             } catch (err) {
@@ -211,6 +238,23 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             throw err;
         }
     }
+
+    // Forward console output to the main thread so it appears in the server logger.
+    const _origLog = console.log.bind(console);
+    const _origWarn = console.warn.bind(console);
+    const _origError = console.error.bind(console);
+    function forwardLog(level: 'log' | 'warn' | 'error', args: unknown[]): void {
+        const message = args.map((a) => (a instanceof Error ? (a.stack ?? a.message) : String(a))).join(' ');
+        try {
+            safePostMessage({ type: 'workerLog', level, message });
+        } catch {
+            // If posting fails, fall back to original console to avoid silent loss
+            _origError('[worker] Failed to forward log:', message);
+        }
+    }
+    console.log = (...args: unknown[]) => forwardLog('log', args);
+    console.warn = (...args: unknown[]) => forwardLog('warn', args);
+    console.error = (...args: unknown[]) => forwardLog('error', args);
 
     function tryFlushMessages(now: number) {
         if (pendingTickMsg && now - lastMessagePost >= DEBOUNCE_MS) {
@@ -822,6 +866,147 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
+        if (msg.type === 'buildShipConstructionFacility') {
+            const { requestId, agentId, planetId, facilityName, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipConstructionFacilityBuildFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipConstructionFacilityBuildFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'buildShipConstructionFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityName,
+                targetScale,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'expandShipConstructionFacility') {
+            const { requestId, agentId, planetId, facilityId, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipConstructionFacilityExpandFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipConstructionFacilityExpandFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'expandShipConstructionFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityId,
+                targetScale,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'setShipConstructionTarget') {
+            const { requestId, agentId, planetId, facilityId, shipTypeName, shipName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipConstructionTargetSetFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipConstructionTargetSetFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'setShipConstructionTarget',
+                requestId,
+                agentId,
+                planetId,
+                facilityId,
+                shipTypeName,
+                shipName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'buildShipMaintenanceFacility') {
+            const { requestId, agentId, planetId, facilityName, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipMaintenanceFacilityBuildFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipMaintenanceFacilityBuildFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'buildShipMaintenanceFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityName,
+                targetScale,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'expandShipMaintenanceFacility') {
+            const { requestId, agentId, planetId, facilityId, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipMaintenanceFacilityExpandFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipMaintenanceFacilityExpandFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'expandShipMaintenanceFacility',
+                requestId,
+                agentId,
+                planetId,
+                facilityId,
+                targetScale,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
         if (msg.type === 'buildFacility') {
             const { requestId, agentId, planetId, facilityKey, targetScale } = msg;
             if (!state.agents.has(agentId)) {
@@ -874,6 +1059,146 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             pendingActions.push({ type: 'setFacilityScale', requestId, agentId, planetId, facilityId, scaleFraction });
             // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'postTransportContract') {
+            const {
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                cargo,
+                maxDurationInTicks,
+                offeredReward,
+                expiresAtTick,
+            } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'transportContractPostFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'transportContractPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'postTransportContract',
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                cargo,
+                maxDurationInTicks,
+                offeredReward,
+                expiresAtTick,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acceptTransportContract') {
+            const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'transportContractAcceptFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'acceptTransportContract',
+                requestId,
+                agentId,
+                planetId,
+                posterAgentId,
+                contractId,
+                shipName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'cancelTransportContract') {
+            const { requestId, agentId, planetId, contractId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'transportContractCancelFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'transportContractCancelFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'cancelTransportContract', requestId, agentId, planetId, contractId });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'postShipBuyingOffer') {
+            const { requestId, agentId, planetId, shipType, price } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipBuyingOfferPostFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipBuyingOfferPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'postShipBuyingOffer', requestId, agentId, planetId, shipType, price });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acceptShipBuyingOffer') {
+            const { requestId, agentId, planetId, posterAgentId, offerId, shipName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'shipBuyingOfferAcceptFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'acceptShipBuyingOffer',
+                requestId,
+                agentId,
+                planetId,
+                posterAgentId,
+                offerId,
+                shipName,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }

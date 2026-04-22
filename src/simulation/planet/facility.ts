@@ -1,6 +1,7 @@
 import type { EducationLevelType } from '../population/education';
+import type { TransportShipType } from '../ships/ships';
+import type { Resource, ResourceProcessLevel, ResourceQuantity } from './claims';
 import type { PlanetaryId } from './planet';
-import type { Resource, ResourceProcessLevel } from './claims';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {
@@ -11,7 +12,7 @@ export type ConstructionState = {
     lastTickInvestedConstructionServices: number;
 } | null;
 
-export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management';
+export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management' | 'ship_construction';
 export const getFacilityType = (facility: Facility): FacilityType => {
     if (facility.type === 'production') {
         return facility.produces.reduce((prev, curr) => {
@@ -38,6 +39,7 @@ export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scal
     services: (scale: number) => (300 * Math.pow(scale, 1.1)) / scale + 100,
     storage: (scale: number) => (150 * Math.pow(scale, 1.1)) / scale + 100,
     management: (scale: number) => (250 * Math.pow(scale, 1.1)) / scale + 100,
+    ship_construction: (scale: number) => (500 * Math.pow(scale, 1.1)) / scale + 100,
 };
 
 export const calculateCostsForConstruction = (
@@ -54,7 +56,7 @@ export const calculateCostsForConstruction = (
 };
 
 export type FacilityBase = PlanetaryId & {
-    type: 'production' | 'storage' | 'management';
+    type: 'production' | 'storage' | 'management' | 'ship_construction';
     name: string;
     maxScale: number;
     scale: number;
@@ -70,6 +72,8 @@ export type FacilityBase = PlanetaryId & {
         soil: number;
     };
 };
+
+export type FacilityCategory = FacilityBase['type'];
 
 export type LastTickResults = {
     overallEfficiency: number;
@@ -100,8 +104,8 @@ export type LastManagementTickResults = LastTickResults & {
 
 export type ProductionFacility = FacilityBase & {
     type: 'production';
-    needs: { resource: Resource; quantity: number }[];
-    produces: { resource: Resource; quantity: number }[];
+    needs: ResourceQuantity[];
+    produces: ResourceQuantity[];
 
     lastTickResults: LastProductionTickResults;
 };
@@ -117,17 +121,17 @@ export type StorageFacility = FacilityBase & {
         mass: number;
     };
     currentInStorage: {
-        [resourceName in string]: { resource: Resource; quantity: number }; // in tons
+        [resourceName in string]: ResourceQuantity;
     };
 
     lastTickResults: LastTickResults;
 
-    escrow: { [resourceName: string]: number };
+    escrow: { [resourceName in string]: number };
 };
 
 export type ManagementFacility = FacilityBase & {
     type: 'management';
-    needs: { resource: Resource; quantity: number }[];
+    needs: ResourceQuantity[];
 
     bufferPerTickPerScale: number;
     maxBuffer: number;
@@ -135,7 +139,15 @@ export type ManagementFacility = FacilityBase & {
     lastTickResults: LastManagementTickResults;
 };
 
-export type Facility = ProductionFacility | StorageFacility | ManagementFacility;
+export type ShipConstructionFacility = FacilityBase & {
+    type: 'ship_construction';
+    shipName: string;
+    produces: TransportShipType | null; // null = idle (no ship being built)
+    progress: number;
+    lastTickResults: LastManagementTickResults;
+};
+
+export type Facility = ProductionFacility | StorageFacility | ManagementFacility | ShipConstructionFacility;
 
 export const putIntoStorageFacility = (
     storage: StorageFacility,
@@ -186,6 +198,7 @@ export const getAvailableStorageCapacity = (storage: StorageFacility, resource: 
     return Math.max(0, Math.min(byVolume, byMass));
 };
 
+// TODO: USE resource not only name
 export const removeFromStorageFacility = (
     storage: StorageFacility | undefined,
     resourceName: string,

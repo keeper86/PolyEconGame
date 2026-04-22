@@ -26,7 +26,13 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
-import type { ManagementFacility, ProductionFacility, StorageFacility } from '../planet/facility';
+import type {
+    ManagementFacility,
+    ProductionFacility,
+    ShipConstructionFacility,
+    StorageFacility,
+} from '../planet/facility';
+import type { TransportShipType } from '../ships/ships';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -380,6 +386,48 @@ export function makeProductionFacility(
     };
 }
 
+/**
+ * Create a ShipConstructionFacility with given worker requirements.
+ */
+export function makeShipConstructionFacility(
+    workerReq?: Partial<Record<EducationLevelType, number>>,
+    overrides?: Partial<ShipConstructionFacility> & { shipType?: TransportShipType },
+): ShipConstructionFacility {
+    const { shipType, ...rest } = overrides ?? {};
+    const defaultShipType: TransportShipType = shipType ?? {
+        name: 'Test Ship',
+        scale: 1,
+        speed: 1,
+        cargoSpecification: { type: 'solid', volume: 1000, mass: 1000 },
+        requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
+        buildingCost: [],
+        buildingTime: 90,
+    };
+    return {
+        type: 'ship_construction',
+        planetId: 'p',
+        id: 'shipyard-1',
+        name: 'Test Shipyard',
+        maxScale: 1,
+        scale: 1,
+        construction: null,
+        powerConsumptionPerTick: 0,
+        workerRequirement: (workerReq ?? {}) as Record<string, number>,
+        pollutionPerTick: { air: 0, water: 0, soil: 0 },
+        lastTickResults: {
+            overallEfficiency: 0,
+            workerEfficiency: {},
+            overqualifiedWorkers: {},
+            exactUsedByEdu: {},
+            totalUsedByEdu: {},
+        },
+        shipName: 'SS Test',
+        produces: defaultShipType,
+        progress: 0,
+        ...rest,
+    } as ShipConstructionFacility;
+}
+
 // ============================================================================
 // AgentPlanetAssets
 // ============================================================================
@@ -400,6 +448,10 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
     return {
         productionFacilities: [],
         managementFacilities: [],
+        shipConstructionFacilities: [],
+        shipMaintenanceFacilities: [],
+        transportContracts: [],
+        shipBuyingOffers: [],
         deposits: 0,
         depositHold: 0,
         loans: 0,
@@ -431,18 +483,12 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
     };
 }
 
-// ============================================================================
-// Agent
-// ============================================================================
-
-/**
- * Create an Agent with assets on one planet (default 'p').
- */
 export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', overrides?: Partial<Agent>): Agent {
     return {
         id,
         name,
         foundedTick: 0,
+        starterLoanTaken: false,
         associatedPlanetId: planetId,
         transportShips: [],
         automated: true,
@@ -454,10 +500,6 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
     };
 }
 
-/**
- * Create a government agent. By convention the id is `gov-1` and it
- * lives on planet `p`.
- */
 export function makeGovernmentAgent(id = 'gov-1', planetId = 'p'): Agent {
     return makeAgent(id, planetId);
 }

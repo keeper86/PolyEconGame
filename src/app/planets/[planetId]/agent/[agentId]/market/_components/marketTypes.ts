@@ -1,6 +1,5 @@
 import type { MarketOverviewRow } from '@/server/controller/planet';
-import type { AgentPlanetAssets } from '../../../_component/useAgentPlanetDetail';
-
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
