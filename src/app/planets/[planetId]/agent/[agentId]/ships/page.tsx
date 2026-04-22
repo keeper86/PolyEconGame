@@ -5,12 +5,14 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { PostShipBuyingOfferDialog } from '@/app/planets/[planetId]/ships/_components/PostShipBuyingOfferDialog';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
 function statusBadge(ship: TransportShip) {
     const { state } = ship;
@@ -36,6 +38,34 @@ function conditionColor(status: number) {
 export default function AgentShipsPage() {
     const { agentId, planetId, detail, isLoading, isOwnAgent, myAgentId, tick } = useAgentPlanetDetail();
     const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    const [sellMode, setSellMode] = useState<Record<string, boolean>>({});
+    const [sellPrice, setSellPrice] = useState<Record<string, string>>({});
+
+    const sellMutation = useMutation(
+        trpc.postShipListing.mutationOptions({
+            onSuccess: (_data, variables) => {
+                setSellMode((prev) => ({ ...prev, [variables.shipName]: false }));
+                setSellPrice((prev) => ({ ...prev, [variables.shipName]: '' }));
+                void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
+                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+            },
+        }),
+    );
+
+    const cancelListingMutation = useMutation(
+        trpc.cancelShipListing.mutationOptions({
+            onSuccess: () => {
+                void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
+                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+            },
+        }),
+    );
+
+    const { data: listingsData } = useSimulationQuery(
+        trpc.listShipListings.queryOptions({ planetId }, { enabled: isOwnAgent }),
+    );
 
     const { data: shipsData, isLoading: shipsLoading } = useSimulationQuery(
         trpc.listAgentShips.queryOptions({ agentId }, { enabled: isOwnAgent }),
@@ -99,13 +129,82 @@ export default function AgentShipsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className='flex gap-2 flex-shrink-0'>
-                                            {isIdle && (
-                                                <PostShipBuyingOfferDialog agentId={agentId} planetId={planetId}>
-                                                    <Button size='sm' variant='outline'>
-                                                        Sell
+                                        <div className='flex gap-2 flex-shrink-0 items-center'>
+                                            {ship.state.type === 'listed' &&
+                                                (() => {
+                                                    const listing = (listingsData?.listings ?? []).find(
+                                                        (l) => l.shipName === ship.name && l._agentId === agentId,
+                                                    );
+                                                    return listing ? (
+                                                        <Button
+                                                            size='sm'
+                                                            variant='outline'
+                                                            disabled={cancelListingMutation.isPending}
+                                                            onClick={() =>
+                                                                cancelListingMutation.mutate({
+                                                                    agentId,
+                                                                    planetId,
+                                                                    listingId: listing.id,
+                                                                })
+                                                            }
+                                                        >
+                                                            Cancel Listing
+                                                        </Button>
+                                                    ) : null;
+                                                })()}
+                                            {isIdle && !sellMode[ship.name] && (
+                                                <Button
+                                                    size='sm'
+                                                    variant='outline'
+                                                    onClick={() =>
+                                                        setSellMode((prev) => ({ ...prev, [ship.name]: true }))
+                                                    }
+                                                >
+                                                    Sell
+                                                </Button>
+                                            )}
+                                            {isIdle && sellMode[ship.name] && (
+                                                <>
+                                                    <Input
+                                                        type='number'
+                                                        min={1}
+                                                        className='w-28 h-8 text-sm'
+                                                        placeholder='Ask price'
+                                                        value={sellPrice[ship.name] ?? ''}
+                                                        onChange={(e) =>
+                                                            setSellPrice((prev) => ({
+                                                                ...prev,
+                                                                [ship.name]: e.target.value,
+                                                            }))
+                                                        }
+                                                    />
+                                                    <Button
+                                                        size='sm'
+                                                        disabled={!sellPrice[ship.name] || sellMutation.isPending}
+                                                        onClick={() =>
+                                                            sellMutation.mutate({
+                                                                agentId,
+                                                                planetId,
+                                                                shipName: ship.name,
+                                                                askPrice: Number(sellPrice[ship.name]),
+                                                            })
+                                                        }
+                                                    >
+                                                        Confirm
                                                     </Button>
-                                                </PostShipBuyingOfferDialog>
+                                                    <Button
+                                                        size='sm'
+                                                        variant='ghost'
+                                                        onClick={() =>
+                                                            setSellMode((prev) => ({
+                                                                ...prev,
+                                                                [ship.name]: false,
+                                                            }))
+                                                        }
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </>
                                             )}
                                         </div>
                                     </div>

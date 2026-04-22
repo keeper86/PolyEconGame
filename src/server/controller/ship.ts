@@ -1,19 +1,19 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { db } from '../db';
-import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
+import { findCompatibleTrades } from '../../simulation/ships/shipMarket';
 import {
-    workerPostTransportContract,
+    workerAcceptShipBuyingOffer,
+    workerAcceptShipListing,
     workerAcceptTransportContract,
+    workerCancelShipListing,
     workerCancelTransportContract,
     workerPostShipBuyingOffer,
-    workerAcceptShipBuyingOffer,
     workerPostShipListing,
-    workerCancelShipListing,
-    workerAcceptShipListing,
+    workerPostTransportContract,
 } from '../../simulation/workerClient/commands';
 import { workerQueries } from '../../simulation/workerClient/queries';
-import { findCompatibleTrades, effectiveShipValue } from '../../simulation/ships/shipMarket';
+import { db } from '../db';
+import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
 
 async function assertAgentOwnership(userId: string, agentId: string): Promise<void> {
     const row = await db('user_data').where({ user_id: userId }).first();
