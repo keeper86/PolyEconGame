@@ -8,8 +8,6 @@ import {
     workerCancelTransportContract,
     workerPostShipBuyingOffer,
     workerAcceptShipBuyingOffer,
-    workerSetShipMaintenance,
-    workerCancelShipMaintenance,
 } from '../../simulation/workerClient/commands';
 import { workerQueries } from '../../simulation/workerClient/queries';
 
@@ -145,34 +143,4 @@ export const acceptShipBuyingOffer = () =>
             await assertAgentOwnership(userId, input.agentId);
             const offerId = await workerAcceptShipBuyingOffer(input);
             return { offerId };
-        });
-
-export const setShipMaintenance = () =>
-    protectedProcedure
-        .input(
-            z.object({
-                agentId: z.string().min(1),
-                planetId: z.string().min(1),
-                shipName: z.string().min(1),
-            }),
-        )
-        .mutation(async ({ input, ctx }) => {
-            const userId = getUserIdFromContext(ctx);
-            await assertAgentOwnership(userId, input.agentId);
-            await workerSetShipMaintenance(input);
-        });
-
-export const cancelShipMaintenance = () =>
-    protectedProcedure
-        .input(
-            z.object({
-                agentId: z.string().min(1),
-                planetId: z.string().min(1),
-                shipName: z.string().min(1),
-            }),
-        )
-        .mutation(async ({ input, ctx }) => {
-            const userId = getUserIdFromContext(ctx);
-            await assertAgentOwnership(userId, input.agentId);
-            await workerCancelShipMaintenance(input);
         });

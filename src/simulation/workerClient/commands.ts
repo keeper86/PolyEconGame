@@ -19,8 +19,6 @@ import {
     cancelTransportContractSpec,
     postShipBuyingOfferSpec,
     acceptShipBuyingOfferSpec,
-    setShipMaintenanceSpec,
-    cancelShipMaintenanceSpec,
     buildShipConstructionFacilitySpec,
     expandShipConstructionFacilitySpec,
     setShipConstructionTargetSpec,
@@ -306,34 +304,6 @@ export function workerAcceptShipBuyingOffer(opts: {
     return sendCommandSpec(
         { type: 'acceptShipBuyingOffer', requestId: randomUUID(), agentId, planetId, posterAgentId, offerId, shipName },
         acceptShipBuyingOfferSpec,
-        timeoutMs,
-    );
-}
-
-export function workerSetShipMaintenance(opts: {
-    agentId: string;
-    planetId: string;
-    shipName: string;
-    timeoutMs?: number;
-}): Promise<void> {
-    const { agentId, planetId, shipName, timeoutMs } = opts;
-    return sendCommandSpec(
-        { type: 'setShipMaintenance', requestId: randomUUID(), agentId, planetId, shipName },
-        setShipMaintenanceSpec,
-        timeoutMs,
-    );
-}
-
-export function workerCancelShipMaintenance(opts: {
-    agentId: string;
-    planetId: string;
-    shipName: string;
-    timeoutMs?: number;
-}): Promise<void> {
-    const { agentId, planetId, shipName, timeoutMs } = opts;
-    return sendCommandSpec(
-        { type: 'cancelShipMaintenance', requestId: randomUUID(), agentId, planetId, shipName },
-        cancelShipMaintenanceSpec,
         timeoutMs,
     );
 }

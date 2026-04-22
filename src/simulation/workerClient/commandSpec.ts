@@ -254,32 +254,6 @@ export const acceptShipBuyingOfferSpec: CommandSpec<
     extract: (msg) => msg.offerId,
 };
 
-type SetShipMaintenanceSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceSet' }>;
-type SetShipMaintenanceFailure = Extract<OutboundMessage, { type: 'shipMaintenanceSetFailed' }>;
-export const setShipMaintenanceSpec: CommandSpec<
-    Extract<InboundMessage, { type: 'setShipMaintenance' }>,
-    SetShipMaintenanceSuccess,
-    SetShipMaintenanceFailure,
-    void
-> = {
-    successType: 'shipMaintenanceSet',
-    failureType: 'shipMaintenanceSetFailed',
-    extract: () => undefined,
-};
-
-type CancelShipMaintenanceSuccess = Extract<OutboundMessage, { type: 'shipMaintenanceCancelled' }>;
-type CancelShipMaintenanceFailure = Extract<OutboundMessage, { type: 'shipMaintenanceCancelFailed' }>;
-export const cancelShipMaintenanceSpec: CommandSpec<
-    Extract<InboundMessage, { type: 'cancelShipMaintenance' }>,
-    CancelShipMaintenanceSuccess,
-    CancelShipMaintenanceFailure,
-    void
-> = {
-    successType: 'shipMaintenanceCancelled',
-    failureType: 'shipMaintenanceCancelFailed',
-    extract: () => undefined,
-};
-
 // --- Ship construction facility specs ---
 
 type BuildShipConstructionFacilitySuccess = Extract<OutboundMessage, { type: 'shipConstructionFacilityBuilt' }>;

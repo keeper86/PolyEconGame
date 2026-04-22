@@ -130,20 +130,6 @@ export type InboundMessage =
           shipName: string; // idle ship to transfer
       }
     | {
-          type: 'setShipMaintenance';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          shipName: string;
-      }
-    | {
-          type: 'cancelShipMaintenance';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          shipName: string;
-      }
-    | {
           type: 'buildShipConstructionFacility';
           requestId: string;
           agentId: string;
@@ -228,10 +214,6 @@ export type OutboundMessage =
     | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string }
     | { type: 'shipBuyingOfferAccepted'; requestId: string; agentId: string; offerId: string }
     | { type: 'shipBuyingOfferAcceptFailed'; requestId: string; reason: string }
-    | { type: 'shipMaintenanceSet'; requestId: string; agentId: string }
-    | { type: 'shipMaintenanceSetFailed'; requestId: string; reason: string }
-    | { type: 'shipMaintenanceCancelled'; requestId: string; agentId: string }
-    | { type: 'shipMaintenanceCancelFailed'; requestId: string; reason: string }
     | { type: 'shipConstructionFacilityBuilt'; requestId: string; agentId: string; facilityId: string }
     | { type: 'shipConstructionFacilityBuildFailed'; requestId: string; reason: string }
     | { type: 'shipConstructionFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
@@ -384,20 +366,6 @@ export type PendingAction =
           planetId: string;
           posterAgentId: string;
           offerId: string;
-          shipName: string;
-      }
-    | {
-          type: 'setShipMaintenance';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          shipName: string;
-      }
-    | {
-          type: 'cancelShipMaintenance';
-          requestId: string;
-          agentId: string;
-          planetId: string;
           shipName: string;
       }
     | {

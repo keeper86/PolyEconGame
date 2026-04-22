@@ -102,7 +102,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     const inputProfitGaps = buildInputProfitGaps(assets, planet, agent.id);
 
-    for (const facility of [...assets.productionFacilities, ...assets.shipMaintenanceFacilities]) {
+    for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
             // For human-controlled agents only auto-adjust entries explicitly flagged
             if (!agent.automated && assets.market.sell[resource.name]?.automated !== true) {
@@ -145,10 +145,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null) {
-            if (facility.type === 'ship_construction') {
-                continue; // building-cost reserve handled separately above
-            }
-            for (const { resource, quantity } of facility.needs) {
+            const needs =
+                facility.type === 'ship_construction' ? (facility.produces?.buildingCost ?? []) : facility.needs;
+            for (const { resource, quantity } of needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
                 }

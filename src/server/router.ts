@@ -19,8 +19,6 @@ import {
     cancelTransportContract,
     postShipBuyingOffer,
     acceptShipBuyingOffer,
-    setShipMaintenance,
-    cancelShipMaintenance,
 } from './controller/ship';
 import {
     getAgentDetail,
@@ -117,8 +115,6 @@ const protectedAppRouter = trpcRoot.router({
     cancelTransportContract: cancelTransportContract(),
     postShipBuyingOffer: postShipBuyingOffer(),
     acceptShipBuyingOffer: acceptShipBuyingOffer(),
-    setShipMaintenance: setShipMaintenance(),
-    cancelShipMaintenance: cancelShipMaintenance(),
     buildShipConstructionFacility: buildShipConstructionFacility(),
     expandShipConstructionFacility: expandShipConstructionFacility(),
     setShipConstructionTarget: setShipConstructionTarget(),

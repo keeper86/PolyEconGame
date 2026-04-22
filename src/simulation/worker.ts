@@ -28,8 +28,6 @@ import {
     handleCancelTransportContract,
     handlePostShipBuyingOffer,
     handleAcceptShipBuyingOffer,
-    handleSetShipMaintenance,
-    handleCancelShipMaintenance,
 } from './workerClient/shipContractActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
@@ -202,12 +200,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'acceptShipBuyingOffer':
                         handleAcceptShipBuyingOffer(state, action, safePostMessage);
-                        break;
-                    case 'setShipMaintenance':
-                        handleSetShipMaintenance(state, action, safePostMessage);
-                        break;
-                    case 'cancelShipMaintenance':
-                        handleCancelShipMaintenance(state, action, safePostMessage);
                         break;
                 }
             } catch (err) {
@@ -1207,32 +1199,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 offerId,
                 shipName,
             });
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
-        if (msg.type === 'setShipMaintenance') {
-            const { requestId, agentId, planetId, shipName } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceSetFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            pendingActions.push({ type: 'setShipMaintenance', requestId, agentId, planetId, shipName });
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
-        if (msg.type === 'cancelShipMaintenance') {
-            const { requestId, agentId, planetId, shipName } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceCancelFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            pendingActions.push({ type: 'cancelShipMaintenance', requestId, agentId, planetId, shipName });
             if (!processingTick) {
                 drainActionQueue();
             }

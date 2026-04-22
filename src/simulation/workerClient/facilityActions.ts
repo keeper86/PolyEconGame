@@ -1,8 +1,8 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
-import { facilityByName } from '../planet/productionFacilities';
+import { facilityByName, shipMaintenanceFacilityType } from '../planet/productionFacilities';
 import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
-import { shipConstructionFacilityType, shipMaintenanceFacilityType } from '../planet/specialFacilities';
+import { shipConstructionFacilityType } from '../planet/specialFacilities';
 import { shiptypes } from '../ships/ships';
 
 /**

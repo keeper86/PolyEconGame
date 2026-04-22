@@ -62,14 +62,8 @@ export type TransportShipStatusIdle = {
     planetId: string;
 };
 
-export type TransportShipStatusMaintenance = {
-    type: 'maintenance';
-    planetId: string;
-};
-
 export type TransportShipStatus =
     | TransportShipStatusIdle
-    | TransportShipStatusMaintenance
     | TransportShipStatusTransporting
     | TransportShipStatusLoading
     | TransportShipStatusUnloading;
@@ -98,6 +92,27 @@ export const shipTick = (gameState: GameState): void => {
                 0,
                 ship.maintainanceStatus - maintenanceDecreasePerYear / TICKS_PER_YEAR,
             );
+
+            if (ship.state.type === 'idle') {
+                const assets = agent.assets[ship.state.planetId];
+                const storage = assets?.storageFacility;
+                if (storage) {
+                    const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+                    const consumed = removeFromStorageFacility(
+                        storage,
+                        maintenanceServiceResourceType.name,
+                        maintenancePerTick,
+                    );
+                    if (consumed > 0) {
+                        ship.maintainanceStatus = Math.min(1, ship.maintainanceStatus + consumed);
+                        assets.monthAcc.consumptionValue +=
+                            consumed *
+                            (gameState.planets.get(ship.state.planetId)?.marketPrices[
+                                maintenanceServiceResourceType.name
+                            ] ?? 0);
+                    }
+                }
+            }
 
             if (ship.state.type === 'loading') {
                 const storage = agent.assets[ship.state.planetId]?.storageFacility;
@@ -129,35 +144,6 @@ export const shipTick = (gameState: GameState): void => {
                     };
                 }
                 return;
-            }
-
-            // Consume maintenance service for ships in maintenance mode at this planet.
-
-            if (ship.state.type === 'maintenance') {
-                const assets = agent.assets[ship.state.planetId];
-                const storage = assets?.storageFacility;
-                if (!storage) {
-                    return;
-                }
-
-                const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
-                const consumed = removeFromStorageFacility(
-                    storage,
-                    maintenanceServiceResourceType.name,
-                    maintenancePerTick,
-                );
-                if (consumed > 0) {
-                    ship.maintainanceStatus = Math.min(1, ship.maintainanceStatus + consumed);
-
-                    assets.monthAcc.consumptionValue +=
-                        consumed *
-                        (gameState.planets.get(ship.state.planetId)?.marketPrices[
-                            maintenanceServiceResourceType.name
-                        ] ?? 0);
-                    if (ship.maintainanceStatus >= 1) {
-                        ship.state = { type: 'idle', planetId: ship.state.planetId };
-                    }
-                }
             }
 
             if (ship.state.type === 'transporting') {
