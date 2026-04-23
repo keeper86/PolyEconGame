@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { AcceptShipBuyingOfferDialog } from './_components/AcceptShipBuyingOfferDialog';
 import { AcceptTransportContractDialog } from './_components/AcceptTransportContractDialog';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import type { TransportShip } from '@/simulation/ships/ships';
 import { shiptypes } from '@/simulation/ships/ships';
 
 const allShipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
@@ -41,8 +42,9 @@ export default function PlanetShipsPage() {
         trpc.listAgentShips.queryOptions({ agentId: agentId ?? '' }, { enabled: !!agentId }),
     );
 
-    const idleShipsHere = (myShipsData?.ships ?? []).filter(
-        (s) => s.state.type === 'idle' && (s.state as { planetId: string }).planetId === planetId,
+    const idleTransportShipsHere = (myShipsData?.ships ?? []).filter(
+        (s): s is TransportShip =>
+            s.state.type === 'idle' && s.state.planetId === planetId && s.type.type === 'transport',
     );
 
     const [acceptContractTarget, setAcceptContractTarget] = useState<
@@ -110,7 +112,7 @@ export default function PlanetShipsPage() {
                     {openContracts.map((contract) => {
                         const isMyContract = contract._agentId === agentId;
                         const cargoName = contract.cargo.resource.name;
-                        const hasEligibleShip = idleShipsHere.length > 0;
+                        const hasEligibleShip = idleTransportShipsHere.length > 0;
 
                         return (
                             <Card key={contract.id}>
@@ -249,7 +251,7 @@ export default function PlanetShipsPage() {
                     {openBuyingOffers.map((offer) => {
                         const isMyOffer = offer._agentId === agentId;
                         const shipTypeDef = allShipTypesByKey[offer.shipType];
-                        const idleMatchingShips = idleShipsHere.filter((s) => s.type.name === offer.shipType);
+                        const idleMatchingShips = idleTransportShipsHere.filter((s) => s.type.name === offer.shipType);
                         const canSell = !isMyOffer && agentId && idleMatchingShips.length > 0;
                         const canSellNoShip = !isMyOffer && agentId && idleMatchingShips.length === 0;
                         return (
@@ -312,7 +314,7 @@ export default function PlanetShipsPage() {
                     agentId={agentId}
                     planetId={planetId}
                     contract={acceptContractTarget}
-                    eligibleShips={idleShipsHere}
+                    eligibleShips={idleTransportShipsHere}
                     open={!!acceptContractTarget}
                     onClose={() => setAcceptContractTarget(null)}
                 />
@@ -322,7 +324,9 @@ export default function PlanetShipsPage() {
                     agentId={agentId}
                     planetId={planetId}
                     offer={acceptBuyingTarget}
-                    idleMatchingShips={idleShipsHere.filter((s) => s.type.name === acceptBuyingTarget.shipType)}
+                    idleMatchingShips={idleTransportShipsHere.filter(
+                        (s) => s.type.name === acceptBuyingTarget.shipType,
+                    )}
                     open={!!acceptBuyingTarget}
                     onClose={() => setAcceptBuyingTarget(null)}
                 />

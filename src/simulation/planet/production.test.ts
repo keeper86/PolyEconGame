@@ -853,6 +853,7 @@ function makeTestShipType(): TransportShipType {
         requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
         buildingCost: [{ resource: steelResourceType, quantity: 900 }],
         buildingTime: 90,
+        type: 'transport',
     };
 }
 

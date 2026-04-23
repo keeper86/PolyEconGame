@@ -1,11 +1,17 @@
 import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
-import type { TransportShip } from '../ships/ships';
+import type {
+    ConstructionContract,
+    Ship,
+    ShipBuyingOffer,
+    ShipCapitalMarket,
+    ShipListing,
+    TransportContract,
+} from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
 import type { ResourceName } from './resourceCatalog';
-import type { ShipBuyingOffer, ShipCapitalMarket, ShipListing, TransportContract } from '../ships/ships';
 
 export interface Bank {
     loans: number;
@@ -236,6 +242,7 @@ export type AgentPlanetAssets = {
     storageFacility: StorageFacility;
 
     transportContracts: TransportContract[];
+    constructionContracts: ConstructionContract[];
     shipBuyingOffers: ShipBuyingOffer[];
     shipListings: ShipListing[];
 
@@ -295,7 +302,7 @@ export type Agent = {
     foundedTick: number;
     starterLoanTaken: boolean;
     associatedPlanetId: string;
-    transportShips: TransportShip[];
+    ships: Ship[];
     assets: {
         [planetId in string]: AgentPlanetAssets;
     };

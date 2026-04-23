@@ -113,6 +113,33 @@ export type InboundMessage =
           contractId: string;
       }
     | {
+          type: 'postConstructionContract';
+          requestId: string;
+          agentId: string;
+          planetId: string; // fromPlanetId — contract lives in poster's assets on this planet
+          toPlanetId: string;
+          facilityName: string; // name of the facility to construct
+          commissioningAgentId: string; // agent who will receive the completed facility
+          offeredReward: number;
+          expiresAtTick: number;
+      }
+    | {
+          type: 'acceptConstructionContract';
+          requestId: string;
+          agentId: string;
+          planetId: string; // planet where contract was posted
+          posterAgentId: string;
+          contractId: string;
+          shipName: string; // idle construction ship to assign
+      }
+    | {
+          type: 'cancelConstructionContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          contractId: string;
+      }
+    | {
           type: 'postShipBuyingOffer';
           requestId: string;
           agentId: string;
@@ -240,6 +267,12 @@ export type OutboundMessage =
     | { type: 'transportContractAcceptFailed'; requestId: string; reason: string }
     | { type: 'transportContractCancelled'; requestId: string; agentId: string; contractId: string }
     | { type: 'transportContractCancelFailed'; requestId: string; reason: string }
+    | { type: 'constructionContractPosted'; requestId: string; agentId: string; contractId: string }
+    | { type: 'constructionContractPostFailed'; requestId: string; reason: string }
+    | { type: 'constructionContractAccepted'; requestId: string; agentId: string; contractId: string }
+    | { type: 'constructionContractAcceptFailed'; requestId: string; reason: string }
+    | { type: 'constructionContractCancelled'; requestId: string; agentId: string; contractId: string }
+    | { type: 'constructionContractCancelFailed'; requestId: string; reason: string }
     | { type: 'shipBuyingOfferPosted'; requestId: string; agentId: string; offerId: string }
     | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string }
     | { type: 'shipBuyingOfferAccepted'; requestId: string; agentId: string; offerId: string }
@@ -390,6 +423,33 @@ export type PendingAction =
       }
     | {
           type: 'cancelTransportContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          contractId: string;
+      }
+    | {
+          type: 'postConstructionContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          toPlanetId: string;
+          facilityName: string;
+          commissioningAgentId: string;
+          offeredReward: number;
+          expiresAtTick: number;
+      }
+    | {
+          type: 'acceptConstructionContract';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          posterAgentId: string;
+          contractId: string;
+          shipName: string;
+      }
+    | {
+          type: 'cancelConstructionContract';
           requestId: string;
           agentId: string;
           planetId: string;

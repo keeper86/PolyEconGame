@@ -8,13 +8,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { TransportShip } from '@/simulation/ships/ships';
+import type { ConstructionShip, TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-function statusBadge(ship: TransportShip) {
+function statusBadge(ship: TransportShip | ConstructionShip) {
     const { state } = ship;
     const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
         idle: 'secondary',
@@ -118,10 +118,17 @@ export default function AgentShipsPage() {
                                                     <span className='font-medium'>{ship.name}</span>
                                                     {statusBadge(ship)}
                                                 </div>
-                                                <p className='text-xs text-muted-foreground'>
-                                                    {ship.type.name} · {ship.type.cargoSpecification.type} ·{' '}
-                                                    {ship.type.cargoSpecification.volume} m³ · speed {ship.type.speed}
-                                                </p>
+                                                {ship.type.type === 'transport' ? (
+                                                    <p className='text-xs text-muted-foreground'>
+                                                        {ship.type.name} · {ship.type.cargoSpecification.type} ·{' '}
+                                                        {ship.type.cargoSpecification.volume} m³ · speed{' '}
+                                                        {ship.type.speed}
+                                                    </p>
+                                                ) : (
+                                                    <p className='text-xs text-muted-foreground'>
+                                                        {ship.type.name} · speed {ship.type.speed}
+                                                    </p>
+                                                )}
                                                 <p
                                                     className={`text-xs font-medium ${conditionColor(ship.maintainanceStatus)}`}
                                                 >

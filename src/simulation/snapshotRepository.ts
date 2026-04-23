@@ -188,7 +188,7 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
         totalWorkers,
         unusedWorkerFraction,
         topResources,
-        shipCount: a?.transportShips?.length ?? 0,
+        shipCount: a?.ships?.length ?? 0,
     };
 };
 

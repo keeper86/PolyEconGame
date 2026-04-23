@@ -1,7 +1,14 @@
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { GameState } from '../planet/planet';
-import type { ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
+import type {
+    ConstructionContract,
+    ShipBuyingOffer,
+    ShipListing,
+    TransportContract,
+    TransportShip,
+} from '../ships/ships';
 import { shiptypes } from '../ships/ships';
+import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { appendTradeRecord, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
 import type { OutboundMessage, PendingAction } from './messages';
 
@@ -133,7 +140,7 @@ export function handleAcceptTransportContract(
     }
 
     // Validate the ship is idle and currently on fromPlanetId
-    const ship = carrierAgent.transportShips.find((s) => s.name === shipName);
+    const ship = carrierAgent.ships.find((s) => s.name === shipName);
     if (!ship) {
         safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: `Ship '${shipName}' not found` });
         return;
@@ -220,6 +227,234 @@ export function handleCancelTransportContract(
 
     assets.transportContracts.splice(contractIndex, 1);
     safePostMessage({ type: 'transportContractCancelled', requestId, agentId, contractId });
+}
+
+export function handlePostConstructionContract(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'postConstructionContract' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const {
+        requestId,
+        agentId,
+        planetId,
+        toPlanetId,
+        facilityName,
+        commissioningAgentId,
+        offeredReward,
+        expiresAtTick,
+    } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'constructionContractPostFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({ type: 'constructionContractPostFailed', requestId, reason: 'No assets on planet' });
+        return;
+    }
+    if (assets.deposits < offeredReward) {
+        safePostMessage({
+            type: 'constructionContractPostFailed',
+            requestId,
+            reason: 'Insufficient deposits to escrow reward',
+        });
+        return;
+    }
+    if (expiresAtTick <= state.tick) {
+        safePostMessage({
+            type: 'constructionContractPostFailed',
+            requestId,
+            reason: 'Contract expiry is in the past',
+        });
+        return;
+    }
+    if (!state.agents.has(commissioningAgentId)) {
+        safePostMessage({
+            type: 'constructionContractPostFailed',
+            requestId,
+            reason: 'Commissioning agent not found',
+        });
+        return;
+    }
+    const PLACEHOLDER = 'catalog';
+    const facilityEntry = ALL_FACILITY_ENTRIES.find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName);
+    if (!facilityEntry) {
+        safePostMessage({
+            type: 'constructionContractPostFailed',
+            requestId,
+            reason: `Unknown facility '${facilityName}'`,
+        });
+        return;
+    }
+
+    assets.deposits -= offeredReward;
+    assets.depositHold += offeredReward;
+
+    const contractId = generateId('cc');
+    const contract: ConstructionContract = {
+        id: contractId,
+        fromPlanetId: planetId,
+        toPlanetId,
+        facilityName,
+        commissioningAgentId,
+        offeredReward,
+        postedByAgentId: agentId,
+        expiresAtTick,
+        status: 'open',
+    };
+
+    assets.constructionContracts.push(contract);
+    safePostMessage({ type: 'constructionContractPosted', requestId, agentId, contractId });
+}
+
+export function handleAcceptConstructionContract(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'acceptConstructionContract' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = action;
+
+    const carrierAgent = state.agents.get(agentId);
+    if (!carrierAgent) {
+        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const posterAgent = state.agents.get(posterAgentId);
+    if (!posterAgent) {
+        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Poster agent not found' });
+        return;
+    }
+    const posterAssets = posterAgent.assets[planetId];
+    if (!posterAssets) {
+        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract planet not found' });
+        return;
+    }
+
+    const contractIndex = posterAssets.constructionContracts.findIndex((c) => c.id === contractId);
+    if (contractIndex === -1) {
+        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract not found' });
+        return;
+    }
+    const contract = posterAssets.constructionContracts[contractIndex];
+    if (contract.status !== 'open') {
+        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract is not open' });
+        return;
+    }
+    if (state.tick > contract.expiresAtTick) {
+        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract has expired' });
+        return;
+    }
+
+    const ship = carrierAgent.ships.find((s) => s.name === shipName && s.type.type === 'construction');
+    if (!ship) {
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: `Construction ship '${shipName}' not found`,
+        });
+        return;
+    }
+    if (ship.state.type !== 'idle') {
+        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Ship is not idle' });
+        return;
+    }
+    if (ship.state.planetId !== contract.fromPlanetId) {
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: `Ship is not on the departure planet '${contract.fromPlanetId}'`,
+        });
+        return;
+    }
+
+    // Create the facility blueprint for pre-fabrication (starts in 'under construction' state)
+    const PLACEHOLDER = 'catalog';
+    const facilityEntry = ALL_FACILITY_ENTRIES.find(
+        (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === contract.facilityName,
+    );
+    if (!facilityEntry) {
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: `Unknown facility '${contract.facilityName}'`,
+        });
+        return;
+    }
+
+    const facilityId = generateId('cf');
+    const facilityBlueprint = facilityEntry.factory(contract.fromPlanetId, facilityId);
+    // Put it under construction
+    facilityBlueprint.construction = {
+        constructionTargetMaxScale: 1,
+        totalConstructionServiceRequired: 100,
+        maximumConstructionServiceConsumption: 10,
+        progress: 0,
+        lastTickInvestedConstructionServices: 0,
+    };
+
+    const fulfillmentDueAtTick = state.tick + (contract.expiresAtTick - state.tick);
+    posterAssets.constructionContracts[contractIndex] = {
+        ...contract,
+        status: 'accepted',
+        acceptedByAgentId: agentId,
+        shipName,
+        fulfillmentDueAtTick,
+    };
+
+    ship.state = {
+        type: 'pre-fabrication',
+        planetId: contract.fromPlanetId,
+        to: contract.toPlanetId,
+        buildingTarget: facilityBlueprint,
+        progress: 0,
+        contractId,
+        posterAgentId,
+    };
+
+    safePostMessage({ type: 'constructionContractAccepted', requestId, agentId, contractId });
+}
+
+export function handleCancelConstructionContract(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'cancelConstructionContract' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, contractId } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'No assets on planet' });
+        return;
+    }
+
+    const contractIndex = assets.constructionContracts.findIndex((c) => c.id === contractId);
+    if (contractIndex === -1) {
+        safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'Contract not found' });
+        return;
+    }
+    const contract = assets.constructionContracts[contractIndex];
+    if (contract.status !== 'open') {
+        safePostMessage({
+            type: 'constructionContractCancelFailed',
+            requestId,
+            reason: 'Only open contracts can be cancelled',
+        });
+        return;
+    }
+
+    assets.depositHold -= contract.offeredReward;
+    assets.deposits += contract.offeredReward;
+
+    assets.constructionContracts.splice(contractIndex, 1);
+    safePostMessage({ type: 'constructionContractCancelled', requestId, agentId, contractId });
 }
 
 export function handlePostShipBuyingOffer(
@@ -312,12 +547,12 @@ export function handleAcceptShipBuyingOffer(
     }
 
     // Validate the ship is idle
-    const shipIndex = sellerAgent.transportShips.findIndex((s) => s.name === shipName);
+    const shipIndex = sellerAgent.ships.findIndex((s) => s.name === shipName);
     if (shipIndex === -1) {
         safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: `Ship '${shipName}' not found` });
         return;
     }
-    const ship = sellerAgent.transportShips[shipIndex];
+    const ship = sellerAgent.ships[shipIndex];
     if (ship.state.type !== 'idle') {
         safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Ship is not idle' });
         return;
@@ -351,8 +586,8 @@ export function handleAcceptShipBuyingOffer(
     }
 
     // Transfer ship from seller to buyer
-    sellerAgent.transportShips.splice(shipIndex, 1);
-    buyerAgent.transportShips.push(ship);
+    sellerAgent.ships.splice(shipIndex, 1);
+    buyerAgent.ships.push(ship);
 
     // Transfer escrowed payment from buyer's hold to seller's deposits
     buyerAssets.depositHold -= offer.price;
@@ -361,7 +596,7 @@ export function handleAcceptShipBuyingOffer(
     buyerAssets.shipBuyingOffers.splice(offerIndex, 1);
 
     // Record trade in ship capital market
-    const ev = effectiveShipValue(ship, state);
+    const ev = effectiveShipValue(ship as TransportShip, state);
     updateShipEma(state.shipCapitalMarket, ship.type.name, offer.price);
     appendTradeRecord(state.shipCapitalMarket, {
         shipTypeName: ship.type.name,
@@ -394,7 +629,7 @@ export function handlePostShipListing(
         return;
     }
 
-    const ship = agent.transportShips.find((s) => s.name === shipName);
+    const ship = agent.ships.find((s) => s.name === shipName);
     if (!ship) {
         safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Ship '${shipName}' not found` });
         return;
@@ -469,7 +704,7 @@ export function handleCancelShipListing(
     }
 
     // Restore ship state to idle
-    const ship = agent.transportShips.find((s) => s.name === listing.shipName);
+    const ship = agent.ships.find((s) => s.name === listing.shipName);
     if (ship && ship.state.type === 'listed') {
         ship.state = { type: 'idle', planetId };
     }
@@ -528,12 +763,12 @@ export function handleAcceptShipListing(
         return;
     }
 
-    const shipIndex = sellerAgent.transportShips.findIndex((s) => s.name === listing!.shipName);
+    const shipIndex = sellerAgent.ships.findIndex((s) => s.name === listing!.shipName);
     if (shipIndex === -1) {
         safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Ship no longer exists' });
         return;
     }
-    const ship = sellerAgent.transportShips[shipIndex];
+    const ship = sellerAgent.ships[shipIndex];
     if (ship.state.type !== 'listed') {
         safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Ship is no longer listed' });
         return;
@@ -545,9 +780,9 @@ export function handleAcceptShipListing(
 
     // Atomic settlement
     // Transfer ship
-    sellerAgent.transportShips.splice(shipIndex, 1);
+    sellerAgent.ships.splice(shipIndex, 1);
     ship.state = { type: 'idle', planetId: listing.planetId };
-    buyerAgent.transportShips.push(ship);
+    buyerAgent.ships.push(ship);
 
     // Transfer funds
     buyerAssets.deposits -= listing.askPrice;
@@ -558,7 +793,7 @@ export function handleAcceptShipListing(
     sellerAssets.shipListings.splice(listingIndex, 1);
 
     // Record trade
-    const ev = effectiveShipValue(ship, state);
+    const ev = effectiveShipValue(ship as TransportShip, state);
     updateShipEma(state.shipCapitalMarket, ship.type.name, listing.askPrice);
     appendTradeRecord(state.shipCapitalMarket, {
         shipTypeName: ship.type.name,

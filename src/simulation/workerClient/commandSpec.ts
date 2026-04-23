@@ -228,6 +228,45 @@ export const cancelTransportContractSpec: CommandSpec<
     extract: (msg) => msg.contractId,
 };
 
+type PostConstructionContractSuccess = Extract<OutboundMessage, { type: 'constructionContractPosted' }>;
+type PostConstructionContractFailure = Extract<OutboundMessage, { type: 'constructionContractPostFailed' }>;
+export const postConstructionContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postConstructionContract' }>,
+    PostConstructionContractSuccess,
+    PostConstructionContractFailure,
+    string
+> = {
+    successType: 'constructionContractPosted',
+    failureType: 'constructionContractPostFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type AcceptConstructionContractSuccess = Extract<OutboundMessage, { type: 'constructionContractAccepted' }>;
+type AcceptConstructionContractFailure = Extract<OutboundMessage, { type: 'constructionContractAcceptFailed' }>;
+export const acceptConstructionContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptConstructionContract' }>,
+    AcceptConstructionContractSuccess,
+    AcceptConstructionContractFailure,
+    string
+> = {
+    successType: 'constructionContractAccepted',
+    failureType: 'constructionContractAcceptFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type CancelConstructionContractSuccess = Extract<OutboundMessage, { type: 'constructionContractCancelled' }>;
+type CancelConstructionContractFailure = Extract<OutboundMessage, { type: 'constructionContractCancelFailed' }>;
+export const cancelConstructionContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelConstructionContract' }>,
+    CancelConstructionContractSuccess,
+    CancelConstructionContractFailure,
+    string
+> = {
+    successType: 'constructionContractCancelled',
+    failureType: 'constructionContractCancelFailed',
+    extract: (msg) => msg.contractId,
+};
+
 type PostShipBuyingOfferSuccess = Extract<OutboundMessage, { type: 'shipBuyingOfferPosted' }>;
 type PostShipBuyingOfferFailure = Extract<OutboundMessage, { type: 'shipBuyingOfferPostFailed' }>;
 export const postShipBuyingOfferSpec: CommandSpec<

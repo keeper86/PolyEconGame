@@ -1,8 +1,14 @@
 import { EPSILON, MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import type { Facility } from '../planet/facility';
-import { putIntoStorageFacility, removeFromStorageFacility, transferFromEscrow } from '../planet/facility';
+import {
+    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+    putIntoStorageFacility,
+    removeFromStorageFacility,
+    transferFromEscrow,
+} from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
+import { consumeConstructionForFacility } from '../planet/production';
 import {
     electronicComponentResourceType,
     machineryResourceType,
@@ -19,16 +25,16 @@ export const transportShipBuildResources = [
     electronicComponentResourceType.name,
 ];
 
-export type ShipType = {
+export type BaseShipType = {
     name: string;
     scale: 'small' | 'medium' | 'large' | 'super';
     speed: number;
     requiredCrew: Record<EducationLevelType, number>;
     buildingCost: ResourceQuantity[];
-    buildingTime: number; // in ticks
+    buildingTime: number;
 };
 
-export type ShipScale = ShipType['scale'];
+export type ShipScale = BaseShipType['scale'];
 
 export const scaleMapping: Record<ShipScale, number> = {
     small: 1,
@@ -48,13 +54,12 @@ export const scaleArrayToLevel = (quantity: ResourceQuantity[], scale: ShipScale
     return quantity.map((q) => ({ resource: q.resource, quantity: q.quantity * scaleToLevel[scale] }));
 };
 
-export type ConstructionShipType = ShipType & {
-    // scale allows for larger scale building targets; scale 1->1,  scale 2->2, scale 3->4, scale 4->8
-    buildingTarget: Facility | null;
-    loaded: number; // 0..100, loading consumes construction services. When 100% we create the facility in the buildingTarget. when unloading we slowly decrease this value and at 0 we transfer buildingTarget to to the target agents planet assets and set buildingTarget to null.
+export type ConstructionShipType = BaseShipType & {
+    type: 'construction';
 };
 
-export type TransportShipType = ShipType & {
+export type TransportShipType = BaseShipType & {
+    type: 'transport';
     cargoSpecification: {
         type: TransportableResourceType; // type of resource this ship can carry
         volume: number; // in cubic meters
@@ -62,73 +67,138 @@ export type TransportShipType = ShipType & {
     };
 };
 
-export type TransportShipStatusTransporting = {
-    type: 'transporting';
+export type ShipType = ConstructionShipType | TransportShipType;
+
+export type BaseShipStatusTransporting = {
     from: string; // planet id
     to: string; // planet id
-    cargo: ResourceQuantity | null;
     arrivalTick: number; // tick when the ship will arrive at destination
     contractId?: string;
-};
-
-export type TransportShipStatusLoading = {
-    type: 'loading';
-    planetId: string;
-    to: string; // planet id
-    cargoGoal: ResourceQuantity | null;
-    currentCargo: ResourceQuantity;
-    contractId?: string;
-    /** Agent who posted the transport contract; cargo is escrowed from their storage. */
     posterAgentId?: string;
 };
 
-export type TransportShipStatusUnloading = {
-    type: 'unloading';
+export type TransportShipStatusTransporting = BaseShipStatusTransporting & {
+    type: 'transporting';
+    cargo: ResourceQuantity | null;
+};
+
+export type ConstructionShipStatusTransporting = BaseShipStatusTransporting & {
+    type: 'construction_transporting';
+    buildingTarget: Facility | null;
+    loaded: number; // should be 1 when buildingTarget isnt null
+};
+
+export type BaseShipStatusLoading = {
     planetId: string;
-    cargo: ResourceQuantity;
+    to: string;
+    contractId?: string;
+    posterAgentId?: string;
+};
+
+export type TransportShipStatusLoading = BaseShipStatusLoading & {
+    type: 'loading';
+    cargoGoal: ResourceQuantity | null;
+    currentCargo: ResourceQuantity;
+};
+
+export type ConstructionShipStatusLoading = BaseShipStatusLoading & {
+    type: 'pre-fabrication';
+    buildingTarget: Facility | null;
+    progress: number; // if buildingTarget is not null, this should be filled up to 1 over time
+};
+
+export type BaseShipStatusUnloading = {
+    planetId: string;
     contractId?: string;
 };
 
-export type TransportShipStatusIdle = {
+export type TransportShipStatusUnloading = BaseShipStatusUnloading & {
+    type: 'unloading';
+    cargo: ResourceQuantity;
+};
+
+export type ConstructionShipStatusUnloading = BaseShipStatusUnloading & {
+    type: 'reconstruction';
+    buildingTarget: Facility;
+    progress: number; // should decrease from 1 to 0 over time
+};
+
+export type ShipStatusIdle = {
     type: 'idle';
     planetId: string;
 };
 
-export type TransportShipStatusListed = {
+export type ShipStatusListed = {
     type: 'listed';
     planetId: string;
 };
 
-export type TransportShipStatusDerelict = {
+export type ShipStatusDerelict = {
     type: 'derelict';
     planetId: string;
 };
 
 export type TransportShipStatus =
-    | TransportShipStatusIdle
-    | TransportShipStatusListed
-    | TransportShipStatusDerelict
+    | ShipStatusIdle
+    | ShipStatusListed
+    | ShipStatusDerelict
     | TransportShipStatusTransporting
     | TransportShipStatusLoading
     | TransportShipStatusUnloading;
 
 export type TransportShipStatusType = TransportShipStatus['type'];
 
-export type TransportShip = {
+export type ConstructionShipStatus =
+    | ShipStatusIdle
+    | ShipStatusListed
+    | ShipStatusDerelict
+    | ConstructionShipStatusTransporting
+    | ConstructionShipStatusLoading
+    | ConstructionShipStatusUnloading;
+
+export type ConstructionShipStatusType = ConstructionShipStatus['type'];
+
+export type BaseShip = {
     name: string;
     builtAtTick: number;
+    maintainanceStatus: number; // 0..1, degrades over time and with use, can be restored by consuming maintenance services up to maxMaintenance
+    maxMaintenance: number; // degrades after each full repair cycle, when it reaches 0 the ship becomes derelict
+    cumulativeRepairAcc: number; // accumulates repair consumed; triggers maxMaintenance degradation when >= 1
+};
+
+export type TransportShip = BaseShip & {
     type: TransportShipType;
     state: TransportShipStatus;
-    maintainanceStatus: number;
-    /** Maximum maintainance level this ship can be restored to. Degrades each full repair cycle. */
-    maxMaintenance: number;
-    /** Accumulates repair consumed; triggers maxMaintenance degradation when >= 1. */
-    cumulativeRepairAcc: number;
 };
+
+export type ConstructionShip = BaseShip & {
+    type: ConstructionShipType;
+    state: ConstructionShipStatus; // uses same status types as transport ships for simplicity, but only idle, loading (construction), unloading (deconstruction) and derelict are relevant
+};
+
+export type ConstructionContractBase = {
+    id: string;
+    fromPlanetId: string;
+    toPlanetId: string;
+    facilityName: string; // name matching a FacilityFactory (used for display / validation)
+    commissioningAgentId: string; // agent who will receive the completed facility
+    offeredReward: number;
+    postedByAgentId: string;
+    expiresAtTick: number;
+};
+
+export type ConstructionContract = ConstructionContractBase &
+    (
+        | { status: 'open' }
+        | { status: 'accepted'; acceptedByAgentId: string; shipName: string; fulfillmentDueAtTick: number }
+        | { status: 'completed' }
+    );
+
+export type Ship = TransportShip | ConstructionShip;
 
 export const shipTick = (gameState: GameState): void => {
     gameState.agents.forEach((agent) => {
-        agent.transportShips.forEach((ship) => {
+        agent.ships.forEach((ship) => {
             // Derelict ships are permanently non-operational — skip all processing
             if (ship.state.type === 'derelict') {
                 return;
@@ -228,6 +298,40 @@ export const shipTick = (gameState: GameState): void => {
                 return;
             }
 
+            if (ship.state.type === 'pre-fabrication') {
+                if (!ship.state.buildingTarget) {
+                    // No building target, just start transporting to construction site
+                    ship.state = {
+                        type: 'construction_transporting',
+                        from: ship.state.planetId,
+                        to: ship.state.to,
+                        buildingTarget: null,
+                        loaded: 0,
+                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
+                    };
+                    return;
+                }
+
+                // Progress pre-fabrication; look up target and consume construction
+                const target = ship.state.buildingTarget;
+                if (target.construction === null) {
+                    ship.state = {
+                        type: 'construction_transporting',
+                        from: ship.state.planetId,
+                        to: ship.state.to,
+                        buildingTarget: target,
+                        loaded: 1,
+                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
+                        contractId: ship.state.contractId,
+                        posterAgentId: ship.state.posterAgentId,
+                    };
+                    return;
+                }
+                const assets = agent.assets[ship.state.planetId];
+                consumeConstructionForFacility(target, assets?.storageFacility);
+                ship.state.progress = target.construction?.progress;
+            }
+
             if (ship.state.type === 'transporting') {
                 if (gameState.tick >= ship.state.arrivalTick) {
                     const cargo = ship.state.cargo;
@@ -248,6 +352,30 @@ export const shipTick = (gameState: GameState): void => {
                 }
                 return;
             }
+
+            if (ship.state.type === 'construction_transporting') {
+                if (gameState.tick >= ship.state.arrivalTick) {
+                    const target = ship.state.buildingTarget;
+                    if (!target) {
+                        // No building target, just arrive at destination
+                        ship.state = {
+                            type: 'idle',
+                            planetId: ship.state.to,
+                        };
+                        return;
+                    }
+                    // Arrive at construction site
+                    ship.state = {
+                        type: 'reconstruction',
+                        planetId: ship.state.to,
+                        buildingTarget: target,
+                        progress: 1,
+                        contractId: ship.state.contractId,
+                    };
+                }
+                return;
+            }
+
             if (ship.state.type === 'unloading') {
                 const assets = agent.assets[ship.state.planetId];
                 if (!assets) {
@@ -314,6 +442,63 @@ export const shipTick = (gameState: GameState): void => {
                 }
                 return;
             }
+
+            if (ship.state.type === 'reconstruction') {
+                const reconState = ship.state;
+                const target = reconState.buildingTarget;
+                reconState.progress = Math.max(0, reconState.progress - 1 / MINIMUM_CONSTRUCTION_TIME_IN_TICKS);
+                if (reconState.progress <= 0) {
+                    const arrivedPlanetId = reconState.planetId;
+
+                    // Determine which agent receives the facility
+                    let receivingAgentId: string = agent.id;
+                    let matchedContract: ConstructionContract | undefined;
+
+                    if (reconState.contractId) {
+                        // Find the construction contract in the poster agent's assets
+                        for (const posterAgent of gameState.agents.values()) {
+                            for (const posterAssets of Object.values(posterAgent.assets)) {
+                                const contract = posterAssets.constructionContracts.find(
+                                    (c) => c.id === reconState.contractId,
+                                );
+                                if (contract && contract.status === 'accepted') {
+                                    matchedContract = contract;
+                                    receivingAgentId = contract.commissioningAgentId;
+                                    // Mark complete and pay reward
+                                    const idx = posterAssets.constructionContracts.indexOf(contract);
+                                    posterAssets.constructionContracts[idx] = { ...contract, status: 'completed' };
+                                    posterAssets.depositHold -= contract.offeredReward;
+                                    const carrierAssets =
+                                        agent.assets[arrivedPlanetId] ?? agent.assets[agent.associatedPlanetId];
+                                    if (carrierAssets) {
+                                        carrierAssets.deposits += contract.offeredReward;
+                                    }
+                                    break;
+                                }
+                            }
+                            if (matchedContract) {
+                                break;
+                            }
+                        }
+                    }
+
+                    // Place the facility into the receiving agent's assets on the destination planet
+                    const receivingAgent = gameState.agents.get(receivingAgentId);
+                    if (receivingAgent) {
+                        const destAssets = receivingAgent.assets[arrivedPlanetId];
+                        if (destAssets) {
+                            // Update the facility's planetId to match the destination
+                            const placedFacility = { ...target, planetId: arrivedPlanetId };
+                            destAssets.productionFacilities.push(
+                                placedFacility as typeof target & { type: 'production' },
+                            );
+                        }
+                    }
+
+                    ship.state = { type: 'idle', planetId: arrivedPlanetId };
+                }
+                return;
+            }
         });
     });
 };
@@ -353,234 +538,119 @@ export const scaleShipType = (newScale: ShipScale, newName: string, template: Tr
     };
 };
 
+export const constructionShipType: ConstructionShipType = {
+    type: 'construction',
+    name: 'Construction Ship',
+    scale: 'medium',
+    speed: 4,
+    buildingCost: [...defaultBuildingCost],
+    buildingTime: 120,
+    requiredCrew: { ...defaultRequiredCrew },
+};
+
+const smallBulkCarrier: TransportShipType = {
+    type: 'transport',
+    name: 'Small Bulk Carrier',
+    scale: 'small',
+    speed: 6,
+    cargoSpecification: { type: 'solid', volume: 200000, mass: 150000 },
+    requiredCrew: { ...defaultRequiredCrew },
+    buildingCost: [...defaultBuildingCost],
+    buildingTime: 60,
+};
+
+const smallTanker: TransportShipType = {
+    type: 'transport',
+    name: 'Small Tanker',
+    scale: 'small',
+    speed: 5,
+    cargoSpecification: { type: 'liquid', volume: 150000, mass: 120000 },
+    requiredCrew: { ...defaultRequiredCrew },
+    buildingCost: [...defaultBuildingCost],
+    buildingTime: 60,
+};
+
+const smallGasCarrier: TransportShipType = {
+    type: 'transport',
+    name: 'Small Gas Carrier',
+    scale: 'small',
+    speed: 6,
+    cargoSpecification: { type: 'gas', volume: 150000, mass: 120000 },
+    requiredCrew: { ...defaultRequiredCrew },
+    buildingCost: [...defaultBuildingCost],
+    buildingTime: 60,
+};
+
+const smallFreighter: TransportShipType = {
+    type: 'transport',
+    name: 'Small Freighter',
+    scale: 'small',
+    speed: 8,
+    cargoSpecification: { type: 'pieces', volume: 100000, mass: 80000 },
+    requiredCrew: { ...defaultRequiredCrew },
+    buildingCost: [...defaultBuildingCost],
+    buildingTime: 60,
+};
+
+const smallPassengerShip: TransportShipType = {
+    type: 'transport',
+    name: 'Small Passenger Ship',
+    scale: 'small',
+    speed: 12,
+    cargoSpecification: { type: 'persons', volume: 50000, mass: 200000 },
+    requiredCrew: { ...defaultRequiredCrew },
+    buildingCost: [...defaultBuildingCost],
+    buildingTime: 60,
+};
+
+const smallReefer: TransportShipType = {
+    type: 'transport',
+    name: 'Small Reefer',
+    scale: 'small',
+    speed: 7,
+    cargoSpecification: { type: 'frozenGoods', volume: 80000, mass: 60000 },
+    requiredCrew: { ...defaultRequiredCrew },
+    buildingCost: [...defaultBuildingCost],
+    buildingTime: 60,
+};
+
 export const shiptypes = {
     solid: {
-        bulkCarrier1: {
-            name: 'Bulk Carrier 1',
-            scale: 'small',
-            speed: 6,
-            cargoSpecification: { type: 'solid', volume: 200000, mass: 150000 },
-            requiredCrew: { ...defaultRequiredCrew },
-            buildingCost: [...defaultBuildingCost],
-            buildingTime: 60,
-        } as const satisfies TransportShipType,
-        bulkCarrier2: {
-            name: 'Bulk Carrier 2',
-            scale: 'medium',
-            speed: 7,
-            cargoSpecification: { type: 'solid', volume: 400000, mass: 300000 },
-            requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
-            buildingTime: 90,
-        } as const satisfies TransportShipType,
-        bulkCarrier3: {
-            name: 'Bulk Carrier 3',
-            scale: 'large',
-            speed: 8,
-            cargoSpecification: { type: 'solid', volume: 800000, mass: 600000 },
-            requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
-            buildingTime: 120,
-        } as const satisfies TransportShipType,
-        bulkCarrier4: {
-            name: 'Bulk Carrier 4',
-            scale: 'super',
-            speed: 9,
-            cargoSpecification: { type: 'solid', volume: 1600000, mass: 1200000 },
-            requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
-            buildingTime: 180,
-        } as const satisfies TransportShipType,
+        bulkCarrier1: smallBulkCarrier,
+        bulkCarrier2: scaleShipType('medium', 'Bulk Carrier 2', smallBulkCarrier),
+        bulkCarrier3: scaleShipType('large', 'Bulk Carrier 3', smallBulkCarrier),
+        bulkCarrier4: scaleShipType('super', 'Bulk Carrier 4', smallBulkCarrier),
     } as const,
     liquid: {
-        tanker1: {
-            name: 'Tanker 1',
-            scale: 'small',
-            speed: 10,
-            cargoSpecification: { type: 'liquid', volume: 100000, mass: 80000 },
-            requiredCrew: { ...defaultRequiredCrew },
-            buildingCost: [...defaultBuildingCost],
-            buildingTime: 60,
-        } as const satisfies TransportShipType,
-        tanker2: {
-            name: 'Tanker 2',
-            scale: 'medium',
-            speed: 11,
-            cargoSpecification: { type: 'liquid', volume: 200000, mass: 160000 },
-            requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
-            buildingTime: 90,
-        } as const satisfies TransportShipType,
-        tanker3: {
-            name: 'Tanker 3',
-            scale: 'large',
-            speed: 12,
-            cargoSpecification: { type: 'liquid', volume: 400000, mass: 320000 },
-            requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
-            buildingTime: 120,
-        } as const satisfies TransportShipType,
-        tanker4: {
-            name: 'Tanker 4',
-            scale: 'super',
-            speed: 13,
-            cargoSpecification: { type: 'liquid', volume: 800000, mass: 640000 },
-            requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
-            buildingTime: 180,
-        } as const satisfies TransportShipType,
+        tanker1: smallTanker,
+        tanker2: scaleShipType('medium', 'Tanker 2', smallTanker),
+        tanker3: scaleShipType('large', 'Tanker 3', smallTanker),
+        tanker4: scaleShipType('super', 'Tanker 4', smallTanker),
     } as const,
     gas: {
-        gasCarrier1: {
-            name: 'Gas Carrier 1',
-            scale: 'small',
-            speed: 6,
-            cargoSpecification: { type: 'gas', volume: 150000, mass: 120000 },
-            requiredCrew: { ...defaultRequiredCrew },
-            buildingCost: [...defaultBuildingCost],
-            buildingTime: 60,
-        } as const satisfies TransportShipType,
-        gasCarrier2: {
-            name: 'Gas Carrier 2',
-            scale: 'medium',
-            speed: 7,
-            cargoSpecification: { type: 'gas', volume: 300000, mass: 240000 },
-            requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
-            buildingTime: 90,
-        } as const satisfies TransportShipType,
-        gasCarrier3: {
-            name: 'Gas Carrier 3',
-            scale: 'large',
-            speed: 8,
-            cargoSpecification: { type: 'gas', volume: 600000, mass: 480000 },
-            requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
-            buildingTime: 120,
-        } as const satisfies TransportShipType,
-        gasCarrier4: {
-            name: 'Gas Carrier 4',
-            scale: 'super',
-            speed: 9,
-            cargoSpecification: { type: 'gas', volume: 1200000, mass: 960000 },
-            requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
-            buildingTime: 180,
-        } as const satisfies TransportShipType,
+        gasCarrier1: smallGasCarrier,
+        gasCarrier2: scaleShipType('medium', 'Gas Carrier 2', smallGasCarrier),
+        gasCarrier3: scaleShipType('large', 'Gas Carrier 3', smallGasCarrier),
+        gasCarrier4: scaleShipType('super', 'Gas Carrier 4', smallGasCarrier),
     } as const,
     pieces: {
-        freighter1: {
-            name: 'Freighter 1',
-            scale: 'small',
-            speed: 8,
-            cargoSpecification: { type: 'pieces', volume: 100000, mass: 80000 },
-            requiredCrew: { ...defaultRequiredCrew },
-            buildingCost: [...defaultBuildingCost],
-            buildingTime: 60,
-        } as const satisfies TransportShipType,
-        freighter2: {
-            name: 'Freighter 2',
-            scale: 'medium',
-            speed: 9,
-            cargoSpecification: { type: 'pieces', volume: 200000, mass: 160000 },
-            requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
-            buildingTime: 90,
-        } as const satisfies TransportShipType,
-        freighter3: {
-            name: 'Freighter 3',
-            scale: 'large',
-            speed: 10,
-            cargoSpecification: { type: 'pieces', volume: 400000, mass: 320000 },
-            requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
-            buildingTime: 120,
-        } as const satisfies TransportShipType,
-        freighter4: {
-            name: 'Freighter 4',
-            scale: 'super',
-            speed: 11,
-            cargoSpecification: { type: 'pieces', volume: 800000, mass: 640000 },
-            requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
-            buildingTime: 180,
-        } as const satisfies TransportShipType,
+        freighter1: smallFreighter,
+        freighter2: scaleShipType('medium', 'Freighter 2', smallFreighter),
+        freighter3: scaleShipType('large', 'Freighter 3', smallFreighter),
+        freighter4: scaleShipType('super', 'Freighter 4', smallFreighter),
     } as const,
     persons: {
-        passengerShip1: {
-            name: 'Passenger Ship 1',
-            scale: 'small',
-            speed: 12,
-            cargoSpecification: { type: 'persons', volume: 50000, mass: 200000 },
-            requiredCrew: { ...defaultRequiredCrew },
-            buildingCost: [...defaultBuildingCost],
-            buildingTime: 60,
-        } as const satisfies TransportShipType,
-        passengerShip2: {
-            name: 'Passenger Ship 2',
-            scale: 'medium',
-            speed: 13,
-            cargoSpecification: { type: 'persons', volume: 100000, mass: 400000 },
-            requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
-            buildingTime: 90,
-        } as const satisfies TransportShipType,
-        passengerShip3: {
-            name: 'Passenger Ship 3',
-            scale: 'large',
-            speed: 14,
-            cargoSpecification: { type: 'persons', volume: 200000, mass: 800000 },
-            requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
-            buildingTime: 120,
-        } as const satisfies TransportShipType,
-        passengerShip4: {
-            name: 'Passenger Ship 4',
-            scale: 'super',
-            speed: 15,
-            cargoSpecification: { type: 'persons', volume: 400000, mass: 1600000 },
-            requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
-            buildingTime: 180,
-        } as const satisfies TransportShipType,
+        passengerShip1: smallPassengerShip,
+        passengerShip2: scaleShipType('medium', 'Passenger Ship 2', smallPassengerShip),
+        passengerShip3: scaleShipType('large', 'Passenger Ship 3', smallPassengerShip),
+        passengerShip4: scaleShipType('super', 'Passenger Ship 4', smallPassengerShip),
     } as const,
+
     frozenGoods: {
-        reefer1: {
-            name: 'Reefer 1',
-            scale: 'small',
-            speed: 7,
-            cargoSpecification: { type: 'frozenGoods', volume: 80000, mass: 60000 },
-            requiredCrew: { ...defaultRequiredCrew },
-            buildingCost: [...defaultBuildingCost],
-            buildingTime: 60,
-        } as const satisfies TransportShipType,
-        reefer2: {
-            name: 'Reefer 2',
-            scale: 'medium',
-            speed: 8,
-            cargoSpecification: { type: 'frozenGoods', volume: 160000, mass: 120000 },
-            requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 2 })),
-            buildingTime: 90,
-        } as const satisfies TransportShipType,
-        reefer3: {
-            name: 'Reefedr 3',
-            scale: 'large',
-            speed: 9,
-            cargoSpecification: { type: 'frozenGoods', volume: 320000, mass: 240000 },
-            requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 4 })),
-            buildingTime: 120,
-        } as const satisfies TransportShipType,
-        reefer4: {
-            name: 'Reefer 4',
-            scale: 'super',
-            speed: 10,
-            cargoSpecification: { type: 'frozenGoods', volume: 640000, mass: 480000 },
-            requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
-            buildingCost: defaultBuildingCost.map((r) => ({ resource: r.resource, quantity: r.quantity * 8 })),
-            buildingTime: 180,
-        } as const satisfies TransportShipType,
+        reefer1: smallReefer,
+        reefer2: scaleShipType('medium', 'Reefer 2', smallReefer),
+        reefer3: scaleShipType('large', 'Reefer 3', smallReefer),
+        reefer4: scaleShipType('super', 'Reefer 4', smallReefer),
     } as const,
 } as const;
 
@@ -588,16 +658,30 @@ export type ShipTypeKey = {
     [K in keyof typeof shiptypes]: keyof (typeof shiptypes)[K];
 }[keyof typeof shiptypes];
 
-export const createTransportShip = (
-    type: TransportShipType,
+export const createShip = (
+    shipTemplate: TransportShipType | ConstructionShipType,
     builtAtTick: number,
     name: string,
     planet: Planet,
-): TransportShip => {
+): Ship => {
+    if (shipTemplate.type === 'construction') {
+        return {
+            name,
+            type: shipTemplate,
+            state: {
+                type: 'idle',
+                planetId: planet.id,
+            },
+            maintainanceStatus: 1,
+            maxMaintenance: 1,
+            cumulativeRepairAcc: 0,
+            builtAtTick,
+        };
+    }
     return {
         name,
         builtAtTick,
-        type,
+        type: shipTemplate,
         state: {
             type: 'idle',
             planetId: planet.id,

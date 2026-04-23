@@ -26,6 +26,9 @@ import {
     handlePostTransportContract,
     handleAcceptTransportContract,
     handleCancelTransportContract,
+    handlePostConstructionContract,
+    handleAcceptConstructionContract,
+    handleCancelConstructionContract,
     handlePostShipBuyingOffer,
     handleAcceptShipBuyingOffer,
     handlePostShipListing,
@@ -198,6 +201,15 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'cancelTransportContract':
                         handleCancelTransportContract(state, action, safePostMessage);
+                        break;
+                    case 'postConstructionContract':
+                        handlePostConstructionContract(state, action, safePostMessage);
+                        break;
+                    case 'acceptConstructionContract':
+                        handleAcceptConstructionContract(state, action, safePostMessage);
+                        break;
+                    case 'cancelConstructionContract':
+                        handleCancelConstructionContract(state, action, safePostMessage);
                         break;
                     case 'postShipBuyingOffer':
                         handlePostShipBuyingOffer(state, action, safePostMessage);
@@ -1169,6 +1181,96 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'cancelTransportContract', requestId, agentId, planetId, contractId });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'postConstructionContract') {
+            const {
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                facilityName,
+                commissioningAgentId,
+                offeredReward,
+                expiresAtTick,
+            } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionContractPostFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'constructionContractPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'postConstructionContract',
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                facilityName,
+                commissioningAgentId,
+                offeredReward,
+                expiresAtTick,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acceptConstructionContract') {
+            const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'constructionContractAcceptFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'acceptConstructionContract',
+                requestId,
+                agentId,
+                planetId,
+                posterAgentId,
+                contractId,
+                shipName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'cancelConstructionContract') {
+            const { requestId, agentId, planetId, contractId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'constructionContractCancelFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'cancelConstructionContract', requestId, agentId, planetId, contractId });
             if (!processingTick) {
                 drainActionQueue();
             }

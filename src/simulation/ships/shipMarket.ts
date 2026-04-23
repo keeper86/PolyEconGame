@@ -1,8 +1,8 @@
 import { SHIP_MARKET_EMA_ALPHA, SHIP_MARKET_MAX_TRADE_HISTORY } from '../constants';
-import { maintenanceServiceResourceType } from '../planet/services';
 import type { GameState } from '../planet/planet';
-import { scaleMapping, type ShipCapitalMarket, type ShipListing, type ShipTradeRecord, type TransportShip } from './ships';
-import type { ShipBuyingOffer } from './ships';
+import { maintenanceServiceResourceType } from '../planet/services';
+import type { Ship, ShipBuyingOffer } from './ships';
+import { scaleMapping, type ShipCapitalMarket, type ShipListing, type ShipTradeRecord } from './ships';
 
 /**
  * Computes a heuristic effective value for a ship.
@@ -22,7 +22,7 @@ import type { ShipBuyingOffer } from './ships';
  * @param gameState - Optional game state for market price lookup.
  * @returns A non-negative heuristic value.
  */
-export function effectiveShipValue(ship: TransportShip, gameState?: GameState): number {
+export function effectiveShipValue(ship: Ship, gameState?: GameState): number {
     const { scale, speed } = ship.type;
     const { maintainanceStatus, maxMaintenance } = ship;
 
@@ -130,8 +130,8 @@ export function findCompatibleTrades(gameState: GameState): CompatibleTrade[] {
     return results;
 }
 
-function findShip(gameState: GameState, agentId: string, shipName: string): TransportShip | undefined {
-    return gameState.agents.get(agentId)?.transportShips.find((s) => s.name === shipName);
+function findShip(gameState: GameState, agentId: string, shipName: string): Ship | undefined {
+    return gameState.agents.get(agentId)?.ships.find((s) => s.name === shipName);
 }
 
 /**

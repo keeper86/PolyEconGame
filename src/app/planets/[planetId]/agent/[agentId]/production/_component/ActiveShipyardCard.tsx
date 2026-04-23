@@ -11,7 +11,7 @@ import { usePlanetId } from '@/hooks/usePlanetId';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
-import type { TransportShipType } from '@/simulation/ships/ships';
+import type { BaseShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
@@ -95,7 +95,7 @@ export function ActiveShipyardCard({
     );
 
     // Compute per-tick input quantities when building
-    let activeShipType: TransportShipType | null = null;
+    let activeShipType: BaseShipType | null = null;
 
     let proportionPerTick: number | null = null;
 

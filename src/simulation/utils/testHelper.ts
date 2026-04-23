@@ -395,6 +395,7 @@ export function makeShipConstructionFacility(
 ): ShipConstructionFacility {
     const { shipType, ...rest } = overrides ?? {};
     const defaultShipType: TransportShipType = shipType ?? {
+        type: 'transport',
         name: 'Test Ship',
         scale: 'small',
         speed: 1,
@@ -451,6 +452,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         shipConstructionFacilities: [],
         shipMaintenanceFacilities: [],
         transportContracts: [],
+        constructionContracts: [],
         shipBuyingOffers: [],
         shipListings: [],
         deposits: 0,
@@ -495,7 +497,7 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
         foundedTick: 0,
         starterLoanTaken: false,
         associatedPlanetId: planetId,
-        transportShips: [],
+        ships: [],
         automated: true,
         automateWorkerAllocation: true,
         assets: {

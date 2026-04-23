@@ -52,7 +52,7 @@ function wireToGameState(wire: WireGameState): GameState {
     const agents = new Map<string, Agent>();
     for (const a of wire.agents) {
         // Backward-compat: older snapshots may lack new ship fields
-        for (const ship of a.transportShips) {
+        for (const ship of a.ships) {
             if ((ship as { maxMaintenance?: number }).maxMaintenance === undefined) {
                 ship.maxMaintenance = ship.maintainanceStatus;
             }

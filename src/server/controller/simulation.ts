@@ -270,7 +270,7 @@ export const getAgentOverview = () =>
                     balance: agent.assets
                         ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
                         : 0,
-                    shipCount: agent.transportShips?.length ?? 0,
+                    shipCount: agent.ships?.length ?? 0,
                     planets,
                 },
             };
