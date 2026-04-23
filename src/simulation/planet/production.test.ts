@@ -847,7 +847,7 @@ describe('productionTick — management facility', () => {
 function makeTestShipType(): TransportShipType {
     return {
         name: 'Freighter',
-        scale: 1,
+        scale: 'small',
         speed: 1,
         cargoSpecification: { type: 'solid', volume: 5000, mass: 5000 },
         requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },

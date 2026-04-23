@@ -1,5 +1,6 @@
 import { EPSILON, MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
+import type { Facility } from '../planet/facility';
 import { putIntoStorageFacility, removeFromStorageFacility, transferFromEscrow } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
 import {
@@ -18,18 +19,47 @@ export const transportShipBuildResources = [
     electronicComponentResourceType.name,
 ];
 
-export type TransportShipType = {
+export type ShipType = {
     name: string;
-    scale: number;
+    scale: 'small' | 'medium' | 'large' | 'super';
     speed: number;
+    requiredCrew: Record<EducationLevelType, number>;
+    buildingCost: ResourceQuantity[];
+    buildingTime: number; // in ticks
+};
+
+export type ShipScale = ShipType['scale'];
+
+export const scaleMapping: Record<ShipScale, number> = {
+    small: 1,
+    medium: 2,
+    large: 4,
+    super: 8,
+} as const;
+
+export const scaleToLevel: Record<ShipScale, number> = {
+    small: 1,
+    medium: 2,
+    large: 3,
+    super: 4,
+} as const;
+
+export const scaleArrayToLevel = (quantity: ResourceQuantity[], scale: ShipScale): ResourceQuantity[] => {
+    return quantity.map((q) => ({ resource: q.resource, quantity: q.quantity * scaleToLevel[scale] }));
+};
+
+export type ConstructionShipType = ShipType & {
+    // scale allows for larger scale building targets; scale 1->1,  scale 2->2, scale 3->4, scale 4->8
+    buildingTarget: Facility | null;
+    loaded: number; // 0..100, loading consumes construction services. When 100% we create the facility in the buildingTarget. when unloading we slowly decrease this value and at 0 we transfer buildingTarget to to the target agents planet assets and set buildingTarget to null.
+};
+
+export type TransportShipType = ShipType & {
     cargoSpecification: {
         type: TransportableResourceType; // type of resource this ship can carry
         volume: number; // in cubic meters
         mass: number; // in tons
     };
-    requiredCrew: Record<EducationLevelType, number>;
-    buildingCost: ResourceQuantity[];
-    buildingTime: number;
 };
 
 export type TransportShipStatusTransporting = {
@@ -302,15 +332,24 @@ const defaultRequiredCrew = {
     tertiary: 1,
 };
 
-export const scaleShipType = (scale = 1, type: TransportShipType): TransportShipType => {
+export const scaleShipType = (newScale: ShipScale, newName: string, template: TransportShipType): TransportShipType => {
     return {
-        ...type,
+        ...template,
+        name: newName,
+        scale: newScale,
         cargoSpecification: {
-            type: type.cargoSpecification.type,
-            volume: type.cargoSpecification.volume * scale,
-            mass: type.cargoSpecification.mass * scale,
+            type: template.cargoSpecification.type,
+            volume: template.cargoSpecification.volume * scaleMapping[newScale],
+            mass: template.cargoSpecification.mass * scaleMapping[newScale],
         },
-        buildingCost: type.buildingCost,
+        requiredCrew: {
+            none: template.requiredCrew.none * scaleToLevel[newScale],
+            primary: template.requiredCrew.primary * scaleToLevel[newScale],
+            secondary: template.requiredCrew.secondary * scaleToLevel[newScale],
+            tertiary: template.requiredCrew.tertiary * scaleToLevel[newScale],
+        },
+        buildingTime: template.buildingTime * scaleToLevel[newScale],
+        buildingCost: scaleArrayToLevel(template.buildingCost, newScale),
     };
 };
 
@@ -318,7 +357,7 @@ export const shiptypes = {
     solid: {
         bulkCarrier1: {
             name: 'Bulk Carrier 1',
-            scale: 1,
+            scale: 'small',
             speed: 6,
             cargoSpecification: { type: 'solid', volume: 200000, mass: 150000 },
             requiredCrew: { ...defaultRequiredCrew },
@@ -327,7 +366,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         bulkCarrier2: {
             name: 'Bulk Carrier 2',
-            scale: 2,
+            scale: 'medium',
             speed: 7,
             cargoSpecification: { type: 'solid', volume: 400000, mass: 300000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
@@ -336,7 +375,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         bulkCarrier3: {
             name: 'Bulk Carrier 3',
-            scale: 3,
+            scale: 'large',
             speed: 8,
             cargoSpecification: { type: 'solid', volume: 800000, mass: 600000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
@@ -345,7 +384,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         bulkCarrier4: {
             name: 'Bulk Carrier 4',
-            scale: 4,
+            scale: 'super',
             speed: 9,
             cargoSpecification: { type: 'solid', volume: 1600000, mass: 1200000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
@@ -356,7 +395,7 @@ export const shiptypes = {
     liquid: {
         tanker1: {
             name: 'Tanker 1',
-            scale: 1,
+            scale: 'small',
             speed: 10,
             cargoSpecification: { type: 'liquid', volume: 100000, mass: 80000 },
             requiredCrew: { ...defaultRequiredCrew },
@@ -365,7 +404,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         tanker2: {
             name: 'Tanker 2',
-            scale: 2,
+            scale: 'medium',
             speed: 11,
             cargoSpecification: { type: 'liquid', volume: 200000, mass: 160000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
@@ -374,7 +413,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         tanker3: {
             name: 'Tanker 3',
-            scale: 3,
+            scale: 'large',
             speed: 12,
             cargoSpecification: { type: 'liquid', volume: 400000, mass: 320000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
@@ -383,7 +422,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         tanker4: {
             name: 'Tanker 4',
-            scale: 4,
+            scale: 'super',
             speed: 13,
             cargoSpecification: { type: 'liquid', volume: 800000, mass: 640000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
@@ -394,7 +433,7 @@ export const shiptypes = {
     gas: {
         gasCarrier1: {
             name: 'Gas Carrier 1',
-            scale: 1,
+            scale: 'small',
             speed: 6,
             cargoSpecification: { type: 'gas', volume: 150000, mass: 120000 },
             requiredCrew: { ...defaultRequiredCrew },
@@ -403,7 +442,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         gasCarrier2: {
             name: 'Gas Carrier 2',
-            scale: 2,
+            scale: 'medium',
             speed: 7,
             cargoSpecification: { type: 'gas', volume: 300000, mass: 240000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
@@ -412,7 +451,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         gasCarrier3: {
             name: 'Gas Carrier 3',
-            scale: 3,
+            scale: 'large',
             speed: 8,
             cargoSpecification: { type: 'gas', volume: 600000, mass: 480000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
@@ -421,7 +460,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         gasCarrier4: {
             name: 'Gas Carrier 4',
-            scale: 4,
+            scale: 'super',
             speed: 9,
             cargoSpecification: { type: 'gas', volume: 1200000, mass: 960000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
@@ -432,7 +471,7 @@ export const shiptypes = {
     pieces: {
         freighter1: {
             name: 'Freighter 1',
-            scale: 1,
+            scale: 'small',
             speed: 8,
             cargoSpecification: { type: 'pieces', volume: 100000, mass: 80000 },
             requiredCrew: { ...defaultRequiredCrew },
@@ -441,7 +480,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         freighter2: {
             name: 'Freighter 2',
-            scale: 2,
+            scale: 'medium',
             speed: 9,
             cargoSpecification: { type: 'pieces', volume: 200000, mass: 160000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
@@ -450,7 +489,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         freighter3: {
             name: 'Freighter 3',
-            scale: 3,
+            scale: 'large',
             speed: 10,
             cargoSpecification: { type: 'pieces', volume: 400000, mass: 320000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
@@ -459,7 +498,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         freighter4: {
             name: 'Freighter 4',
-            scale: 4,
+            scale: 'super',
             speed: 11,
             cargoSpecification: { type: 'pieces', volume: 800000, mass: 640000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
@@ -470,7 +509,7 @@ export const shiptypes = {
     persons: {
         passengerShip1: {
             name: 'Passenger Ship 1',
-            scale: 1,
+            scale: 'small',
             speed: 12,
             cargoSpecification: { type: 'persons', volume: 50000, mass: 200000 },
             requiredCrew: { ...defaultRequiredCrew },
@@ -479,7 +518,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         passengerShip2: {
             name: 'Passenger Ship 2',
-            scale: 2,
+            scale: 'medium',
             speed: 13,
             cargoSpecification: { type: 'persons', volume: 100000, mass: 400000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
@@ -488,7 +527,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         passengerShip3: {
             name: 'Passenger Ship 3',
-            scale: 3,
+            scale: 'large',
             speed: 14,
             cargoSpecification: { type: 'persons', volume: 200000, mass: 800000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
@@ -497,7 +536,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         passengerShip4: {
             name: 'Passenger Ship 4',
-            scale: 4,
+            scale: 'super',
             speed: 15,
             cargoSpecification: { type: 'persons', volume: 400000, mass: 1600000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },
@@ -508,7 +547,7 @@ export const shiptypes = {
     frozenGoods: {
         reefer1: {
             name: 'Reefer 1',
-            scale: 1,
+            scale: 'small',
             speed: 7,
             cargoSpecification: { type: 'frozenGoods', volume: 80000, mass: 60000 },
             requiredCrew: { ...defaultRequiredCrew },
@@ -517,7 +556,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         reefer2: {
             name: 'Reefer 2',
-            scale: 2,
+            scale: 'medium',
             speed: 8,
             cargoSpecification: { type: 'frozenGoods', volume: 160000, mass: 120000 },
             requiredCrew: { none: 0, primary: 8, secondary: 5, tertiary: 2 },
@@ -525,8 +564,8 @@ export const shiptypes = {
             buildingTime: 90,
         } as const satisfies TransportShipType,
         reefer3: {
-            name: 'Reefer 3',
-            scale: 3,
+            name: 'Reefedr 3',
+            scale: 'large',
             speed: 9,
             cargoSpecification: { type: 'frozenGoods', volume: 320000, mass: 240000 },
             requiredCrew: { none: 0, primary: 12, secondary: 7, tertiary: 3 },
@@ -535,7 +574,7 @@ export const shiptypes = {
         } as const satisfies TransportShipType,
         reefer4: {
             name: 'Reefer 4',
-            scale: 4,
+            scale: 'super',
             speed: 10,
             cargoSpecification: { type: 'frozenGoods', volume: 640000, mass: 480000 },
             requiredCrew: { none: 0, primary: 18, secondary: 10, tertiary: 4 },

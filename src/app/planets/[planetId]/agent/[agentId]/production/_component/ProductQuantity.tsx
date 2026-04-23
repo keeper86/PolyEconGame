@@ -16,6 +16,16 @@ export function fillColor(efficiency: number, isLimiting: boolean): string {
     return 'bg-green-500/30';
 }
 
+export function borderColor(efficiency: number, isLimiting: boolean): string {
+    if (isLimiting) {
+        return 'border border-red-500';
+    }
+    if (efficiency < 0.95) {
+        return 'border border-amber-400';
+    }
+    return 'border border-green-500';
+}
+
 export function ProductQuantity({
     resource,
     quantity,
@@ -39,11 +49,11 @@ export function ProductQuantity({
     return (
         <Link
             href={(href ?? '#') as never}
-            className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all'
+            className={`relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all ${borderColor(efficiency, isLimiting)}`}
         >
             {!isUnknown && (
                 <span
-                    className={`absolute bottom-0 left-0 right-0 ${fillColor(efficiency, isLimiting)} transition-all`}
+                    className={`absolute bottom-0 left-0 right-0 ${fillColor(efficiency, isLimiting)}  transition-all`}
                     style={{ height: `${Math.round(efficiency * 100)}%` }}
                 />
             )}

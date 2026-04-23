@@ -19,6 +19,16 @@ function fillColor(efficiency: number, isLimiting: boolean): string {
     return 'bg-green-500/40';
 }
 
+function borderColor(efficiency: number, isLimiting: boolean): string {
+    if (isLimiting) {
+        return 'border border-red-500';
+    }
+    if (efficiency < 0.95) {
+        return 'border border-amber-400';
+    }
+    return 'border border-green-500';
+}
+
 export function WorkerBars({
     workerRequirement,
     scale,
@@ -49,7 +59,7 @@ export function WorkerBars({
                     <Tooltip key={edu}>
                         <TooltipTrigger asChild>
                             <div
-                                className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} cursor-default`}
+                                className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} cursor-default ${borderColor(eff, isLimiting)}`}
                             >
                                 <span
                                     className={`absolute inset-y-0 left-0 ${fillColor(eff, isLimiting)} transition-all`}

@@ -1,7 +1,7 @@
 import { SHIP_MARKET_EMA_ALPHA, SHIP_MARKET_MAX_TRADE_HISTORY } from '../constants';
 import { maintenanceServiceResourceType } from '../planet/services';
 import type { GameState } from '../planet/planet';
-import type { ShipCapitalMarket, ShipListing, ShipTradeRecord, TransportShip } from './ships';
+import { scaleMapping, type ShipCapitalMarket, type ShipListing, type ShipTradeRecord, type TransportShip } from './ships';
 import type { ShipBuyingOffer } from './ships';
 
 /**
@@ -30,7 +30,7 @@ export function effectiveShipValue(ship: TransportShip, gameState?: GameState): 
     const qualityFactor = maxMaintenance > 0 ? maintainanceStatus / maxMaintenance : 0;
 
     // Base heuristic: scale × speed × quality × remaining life ceiling
-    const baseValue = scale * speed * qualityFactor * maxMaintenance;
+    const baseValue = scaleMapping[scale] * speed * qualityFactor * maxMaintenance;
 
     // Maintenance cost discount: estimate cost to keep ship at maintainanceStatus for its
     // remaining life. Uses the maintenance service price on the planet where the ship sits.
