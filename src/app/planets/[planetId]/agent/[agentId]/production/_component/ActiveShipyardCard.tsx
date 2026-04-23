@@ -233,7 +233,11 @@ export function ActiveShipyardCard({
                                     variant='outline'
                                     className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'
                                 >
-                                    <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={180} />
+                                    <FacilityOrShipIcon
+                                        facilityOrShipName={facility.produces.name}
+                                        size={180}
+                                        buildProgress={facility.progress}
+                                    />
                                     <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
                                         {facility.shipName}
                                     </span>

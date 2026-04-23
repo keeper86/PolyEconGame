@@ -29,12 +29,7 @@ export function UnderConstructionCard({ facility }: { facility: ProductionFacili
         <FacilityCardShell
             className='sm:w-[500px]'
             contentClassName='space-y-2'
-            icon={
-                <div className='relative shrink-0'>
-                    <FacilityOrShipIcon facilityOrShipName={facility.name} />
-                    <div className='absolute inset-0 bg-background/50 rounded' />
-                </div>
-            }
+            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} buildProgress={pct / 100} />}
             headerContent={
                 <>
                     <div className='flex items-center gap-2 flex-wrap'>

@@ -149,6 +149,13 @@ html {
 
 .text-outline-strong {
     text-shadow:
+        0 0 2px white,
+        0 0 4px white,
+        0 0 6px white;
+}
+
+.dark .text-outline-strong {
+    text-shadow:
         0 0 2px black,
         0 0 4px black,
         0 0 6px black;
