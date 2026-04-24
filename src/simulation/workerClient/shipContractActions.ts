@@ -1,4 +1,5 @@
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
+import type { Facility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import type {
     ConstructionContract,
@@ -947,8 +948,10 @@ export function handleDispatchConstructionShip(
     }
 
     const PLACEHOLDER = 'catalog';
-    const facilityEntry = ALL_FACILITY_ENTRIES.find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName);
-    if (!facilityEntry) {
+    const facilityEntry = facilityName
+        ? ALL_FACILITY_ENTRIES.find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName)
+        : undefined;
+    if (facilityName && !facilityEntry) {
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
@@ -957,15 +960,18 @@ export function handleDispatchConstructionShip(
         return;
     }
 
-    const facilityId = generateId('cf');
-    const facilityBlueprint = facilityEntry.factory(fromPlanetId, facilityId);
-    facilityBlueprint.construction = {
-        constructionTargetMaxScale: 1,
-        totalConstructionServiceRequired: 100,
-        maximumConstructionServiceConsumption: 10,
-        progress: 0,
-        lastTickInvestedConstructionServices: 0,
-    };
+    let facilityBlueprint: Facility | null = null;
+    if (facilityEntry) {
+        const facilityId = generateId('cf');
+        facilityBlueprint = facilityEntry.factory(fromPlanetId, facilityId);
+        facilityBlueprint.construction = {
+            constructionTargetMaxScale: 1,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 10,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+    }
 
     ship.state = {
         type: 'pre-fabrication',

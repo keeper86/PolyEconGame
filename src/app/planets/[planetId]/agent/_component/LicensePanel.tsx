@@ -70,7 +70,7 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
                         <span className='text-xs text-muted-foreground'>
                             Cost:{' '}
                             {formatNumbers(type === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST)}{' '}
-                            (initial loan)
+                            {type === 'commercial' && '(initial loan)'}
                         </span>
                         <Button
                             size='sm'

@@ -155,7 +155,7 @@ export type InboundMessage =
           fromPlanetId: string;
           toPlanetId: string;
           shipName: string;
-          facilityName: string;
+          facilityName?: string;
       }
     | {
           type: 'postShipBuyingOffer';
@@ -493,7 +493,7 @@ export type PendingAction =
           fromPlanetId: string;
           toPlanetId: string;
           shipName: string;
-          facilityName: string;
+          facilityName?: string;
       }
     | {
           type: 'postShipBuyingOffer';

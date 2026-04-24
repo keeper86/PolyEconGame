@@ -82,6 +82,23 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
         );
     }
+    for (const ship of agent.ships) {
+        if (
+            ship.type.type === 'construction' &&
+            ship.state.type === 'pre-fabrication' &&
+            ship.state.planetId === planet.id &&
+            ship.state.buildingTarget !== null &&
+            ship.state.buildingTarget.construction !== null
+        ) {
+            const target =
+                ship.state.buildingTarget.construction.maximumConstructionServiceConsumption *
+                INPUT_BUFFER_TARGET_TICKS;
+            inputReserve.set(
+                constructionServiceResourceType.name,
+                (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
+            );
+        }
+    }
 
     for (const facility of assets.shipConstructionFacilities) {
         if (facility.construction !== null) {
@@ -178,6 +195,26 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 aggregatedBuyTargets.set(constructionServiceResourceType.name, {
                     resource: constructionServiceResourceType,
                     storageTarget: facilityTarget,
+                });
+            }
+        }
+    }
+    for (const ship of agent.ships) {
+        if (
+            ship.type.type === 'construction' &&
+            ship.state.type === 'pre-fabrication' &&
+            ship.state.planetId === planet.id &&
+            ship.state.buildingTarget !== null &&
+            ship.state.buildingTarget.construction !== null
+        ) {
+            const shipTarget = ship.state.buildingTarget.construction.maximumConstructionServiceConsumption * 3;
+            const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
+            if (existing) {
+                existing.storageTarget += shipTarget;
+            } else {
+                aggregatedBuyTargets.set(constructionServiceResourceType.name, {
+                    resource: constructionServiceResourceType,
+                    storageTarget: shipTarget,
                 });
             }
         }

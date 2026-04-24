@@ -548,7 +548,7 @@ export function workerDispatchConstructionShip(opts: {
     fromPlanetId: string;
     toPlanetId: string;
     shipName: string;
-    facilityName: string;
+    facilityName?: string;
     timeoutMs?: number;
 }): Promise<string> {
     const { agentId, fromPlanetId, toPlanetId, shipName, facilityName, timeoutMs } = opts;
