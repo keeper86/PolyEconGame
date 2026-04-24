@@ -12,6 +12,7 @@ import type { ConstructionShip, TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
 import { DispatchShipDialog } from './_components/DispatchShipDialog';
+import { DispatchConstructionShipDialog } from './_components/DispatchConstructionShipDialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -109,11 +110,7 @@ export default function AgentShipsPage() {
                                 <CardContent className='px-4 py-4'>
                                     <div className='flex items-start justify-between gap-4'>
                                         <div className='flex items-start gap-3'>
-                                            <FacilityOrShipIcon
-                                                facilityOrShipName={ship.type.name}
-                                                suffix=''
-                                                size={180}
-                                            />
+                                            <FacilityOrShipIcon facilityOrShipName={ship.type.name} suffix='' />
                                             <div className='space-y-1'>
                                                 <div className='flex items-center gap-2'>
                                                     <span className='font-medium'>{ship.name}</span>
@@ -174,6 +171,17 @@ export default function AgentShipsPage() {
                                                                 Dispatch
                                                             </Button>
                                                         </DispatchShipDialog>
+                                                    )}
+                                                    {ship.type.type === 'construction' && (
+                                                        <DispatchConstructionShipDialog
+                                                            agentId={agentId}
+                                                            planetId={planetId}
+                                                            shipName={ship.name}
+                                                        >
+                                                            <Button size='sm' variant='outline'>
+                                                                Dispatch
+                                                            </Button>
+                                                        </DispatchConstructionShipDialog>
                                                     )}
                                                     <Button
                                                         size='sm'

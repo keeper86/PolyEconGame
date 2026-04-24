@@ -27,6 +27,7 @@ import {
     handleAcceptTransportContract,
     handleCancelTransportContract,
     handleDispatchShip,
+    handleDispatchConstructionShip,
     handlePostConstructionContract,
     handleAcceptConstructionContract,
     handleCancelConstructionContract,
@@ -205,6 +206,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'dispatchShip':
                         handleDispatchShip(state, action, safePostMessage);
+                        break;
+                    case 'dispatchConstructionShip':
+                        handleDispatchConstructionShip(state, action, safePostMessage);
                         break;
                     case 'postConstructionContract':
                         handlePostConstructionContract(state, action, safePostMessage);
@@ -1201,7 +1205,44 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Planet '${toPlanetId}' not found` });
                 return;
             }
-            pendingActions.push({ type: 'dispatchShip', requestId, agentId, fromPlanetId, toPlanetId, shipName, cargoGoal });
+            pendingActions.push({
+                type: 'dispatchShip',
+                requestId,
+                agentId,
+                fromPlanetId,
+                toPlanetId,
+                shipName,
+                cargoGoal,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'dispatchConstructionShip') {
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, facilityName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(toPlanetId)) {
+                safePostMessage({
+                    type: 'constructionShipDispatchFailed',
+                    requestId,
+                    reason: `Planet '${toPlanetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'dispatchConstructionShip',
+                requestId,
+                agentId,
+                fromPlanetId,
+                toPlanetId,
+                shipName,
+                facilityName,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }

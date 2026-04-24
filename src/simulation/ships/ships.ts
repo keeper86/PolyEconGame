@@ -58,6 +58,11 @@ export type ConstructionShipType = BaseShipType & {
     type: 'construction';
 };
 
+export type PassengerShipType = BaseShipType & {
+    type: 'passenger';
+    passengerCapacity: number;
+};
+
 export type TransportShipType = BaseShipType & {
     type: 'transport';
     cargoSpecification: {
@@ -75,6 +80,11 @@ export type BaseShipStatusTransporting = {
     arrivalTick: number; // tick when the ship will arrive at destination
     contractId?: string;
     posterAgentId?: string;
+};
+
+export type PassengerShipStatusTransporting = BaseShipStatusTransporting & {
+    type: 'passenger_transporting';
+    passengers: number;
 };
 
 export type TransportShipStatusTransporting = BaseShipStatusTransporting & {
@@ -105,6 +115,12 @@ export type ConstructionShipStatusLoading = BaseShipStatusLoading & {
     type: 'pre-fabrication';
     buildingTarget: Facility | null;
     progress: number; // if buildingTarget is not null, this should be filled up to 1 over time
+};
+
+export type PassengerShipStatusLoading = BaseShipStatusLoading & {
+    type: 'passenger_boarding';
+    passengerGoal: number;
+    currentPassengers: number;
 };
 
 export type BaseShipStatusUnloading = {
@@ -596,17 +612,6 @@ const smallFreighter: TransportShipType = {
     buildingTime: 60,
 };
 
-const smallPassengerShip: TransportShipType = {
-    type: 'transport',
-    name: 'Small Passenger Ship',
-    scale: 'small',
-    speed: 12,
-    cargoSpecification: { type: 'persons', volume: 50000, mass: 200000 },
-    requiredCrew: { ...defaultRequiredCrew },
-    buildingCost: [...defaultBuildingCost],
-    buildingTime: 60,
-};
-
 const smallReefer: TransportShipType = {
     type: 'transport',
     name: 'Small Reefer',
@@ -642,12 +647,6 @@ export const shiptypes = {
         freighter2: scaleShipType('medium', 'Freighter 2', smallFreighter),
         freighter3: scaleShipType('large', 'Freighter 3', smallFreighter),
         freighter4: scaleShipType('super', 'Freighter 4', smallFreighter),
-    } as const,
-    persons: {
-        passengerShip1: smallPassengerShip,
-        passengerShip2: scaleShipType('medium', 'Passenger Ship 2', smallPassengerShip),
-        passengerShip3: scaleShipType('large', 'Passenger Ship 3', smallPassengerShip),
-        passengerShip4: scaleShipType('super', 'Passenger Ship 4', smallPassengerShip),
     } as const,
 
     frozenGoods: {
@@ -717,7 +716,6 @@ export type ShipTradeRecord = {
 
 export type ShipCapitalMarket = {
     tradeHistory: ShipTradeRecord[];
-    /** EMA of trade price keyed by ship type name. */
     emaPrice: Record<string, number>;
 };
 
@@ -727,7 +725,6 @@ export type ShipBuyingOffer = {
     id: string;
     shipType: ShipTypeKey;
     buyerAgentId: string;
-    /** Escrowed from buyer's deposits when offer is posted. */
     price: number;
 } & ({ status: 'open' } | { status: 'accepted'; sellerAgentId: string; shipName: string });
 

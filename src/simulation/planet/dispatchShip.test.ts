@@ -9,7 +9,9 @@ import type { TransportShip } from '../ships/ships';
 import { putIntoStorageFacility } from './facility';
 
 function makeGameState(agents: ReturnType<typeof makeAgent>[], planetIds: string[]): GameState {
-    const planets = new Map(planetIds.map((id) => [id, { id } as GameState['planets'] extends Map<string, infer V> ? V : never]));
+    const planets = new Map(
+        planetIds.map((id) => [id, { id } as GameState['planets'] extends Map<string, infer V> ? V : never]),
+    );
     const agentsMap = new Map(agents.map((a) => [a.id, a]));
     return { tick: 0, planets, agents: agentsMap } as unknown as GameState;
 }
@@ -39,7 +41,10 @@ describe('handleDispatchShip', () => {
     function dispatch(
         state: GameState,
         partial: Partial<Extract<PendingAction, { type: 'dispatchShip' }>> &
-            Pick<Extract<PendingAction, { type: 'dispatchShip' }>, 'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipName'>,
+            Pick<
+                Extract<PendingAction, { type: 'dispatchShip' }>,
+                'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipName'
+            >,
     ) {
         handleDispatchShip(
             state,
@@ -152,7 +157,10 @@ describe('handleDispatchShip', () => {
             shipName: 'S1',
             cargoGoal: { resourceName: 'Steel', quantity: 200 },
         });
-        expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Insufficient cargo quantity in storage' });
+        expect(messages[0]).toMatchObject({
+            type: 'shipDispatchFailed',
+            reason: 'Insufficient cargo quantity in storage',
+        });
     });
 
     it('dispatches with cargo into loading state and cargo drawn from own storage', () => {

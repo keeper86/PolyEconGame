@@ -897,3 +897,83 @@ export function handleDispatchShip(
 
     safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
 }
+
+export function handleDispatchConstructionShip(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'dispatchConstructionShip' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, fromPlanetId, toPlanetId, shipName, facilityName } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+
+    if (!state.planets.has(toPlanetId)) {
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: `Destination planet '${toPlanetId}' not found`,
+        });
+        return;
+    }
+
+    const ship = agent.ships.find((s) => s.name === shipName);
+    if (!ship) {
+        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: `Ship '${shipName}' not found` });
+        return;
+    }
+    if (ship.state.type !== 'idle') {
+        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Ship is not idle' });
+        return;
+    }
+    if (ship.state.planetId !== fromPlanetId) {
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: `Ship is not on planet '${fromPlanetId}'`,
+        });
+        return;
+    }
+    if (ship.type.type !== 'construction') {
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: 'Only construction ships can be dispatched for construction',
+        });
+        return;
+    }
+
+    const PLACEHOLDER = 'catalog';
+    const facilityEntry = ALL_FACILITY_ENTRIES.find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName);
+    if (!facilityEntry) {
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: `Unknown facility '${facilityName}'`,
+        });
+        return;
+    }
+
+    const facilityId = generateId('cf');
+    const facilityBlueprint = facilityEntry.factory(fromPlanetId, facilityId);
+    facilityBlueprint.construction = {
+        constructionTargetMaxScale: 1,
+        totalConstructionServiceRequired: 100,
+        maximumConstructionServiceConsumption: 10,
+        progress: 0,
+        lastTickInvestedConstructionServices: 0,
+    };
+
+    ship.state = {
+        type: 'pre-fabrication',
+        planetId: fromPlanetId,
+        to: toPlanetId,
+        buildingTarget: facilityBlueprint,
+        progress: 0,
+    };
+
+    safePostMessage({ type: 'constructionShipDispatched', requestId, agentId, shipName });
+}

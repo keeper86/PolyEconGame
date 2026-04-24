@@ -232,7 +232,7 @@ export const EPSILON = 1e-4;
  * At 0.01 a ship fully repaired from ~0 → maxMaintenance each year will reach
  * maxMaintenance = 0 (derelict) after roughly 100 repair cycles.
  */
-export const MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE = 0.001;
+export const MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE = 0.01;
 
 /**
  * EMA smoothing factor for ship trade prices (0 < α ≤ 1).
