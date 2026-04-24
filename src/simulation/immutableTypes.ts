@@ -19,6 +19,7 @@
 import { Record, Map } from 'immutable';
 
 import type { Agent, GameState, Planet } from './planet/planet';
+import type { ShipCapitalMarket } from './ships/ships';
 
 // ---------------------------------------------------------------------------
 // PlanetRecord
@@ -81,12 +82,14 @@ interface GameStateRecordShape {
     tick: number;
     planets: Map<string, PlanetRecord>;
     agents: Map<string, AgentRecord>;
+    shipCapitalMarket: ShipCapitalMarket;
 }
 
 const GAME_STATE_RECORD_DEFAULTS: GameStateRecordShape = {
     tick: 0,
     planets: Map<string, PlanetRecord>(),
     agents: Map<string, AgentRecord>(),
+    shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
 };
 
 export class GameStateRecord extends Record(GAME_STATE_RECORD_DEFAULTS) {}
@@ -115,7 +118,7 @@ export function toImmutableGameState(state: GameState): GameStateRecord {
         [...state.agents.entries()].map(([id, a]) => [id, new AgentRecord({ id: a.id, name: a.name, data: a })]),
     );
 
-    return new GameStateRecord({ tick: state.tick, planets, agents });
+    return new GameStateRecord({ tick: state.tick, planets, agents, shipCapitalMarket: state.shipCapitalMarket });
 }
 
 /**
@@ -139,5 +142,6 @@ export function fromImmutableGameState(record: GameStateRecord): GameState {
         tick: record.tick,
         planets,
         agents,
+        shipCapitalMarket: record.shipCapitalMarket,
     };
 }

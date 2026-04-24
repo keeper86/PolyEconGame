@@ -141,57 +141,6 @@ export const getPlanetDemographics = () =>
             };
         });
 
-// ---------------------------------------------------------------------------
-// Economy
-// ---------------------------------------------------------------------------
-
-/**
- * Data for the economy sub-page: bank, wagePerEdu, priceLevel, and
- * a slim demography that retains only wealth moments (mean, variance) and
- * total per (age, occ, edu, skill) cell — everything else (foodStock,
- * starvation, death stats) is dropped.
- *
- * Also includes the lastTransferMatrix for IntergenerationalTransferChart.
- */
-
-type SlimCategory = {
-    total: number;
-    wealthMean: number;
-    wealthVariance: number;
-};
-
-type SlimCohort = {
-    [occ: string]: {
-        [edu: string]: {
-            [skill: string]: SlimCategory;
-        };
-    };
-};
-
-function buildSlimDemographyForEconomy(planet: Planet): SlimCohort[] {
-    return planet.population.demography.map((cohort) => {
-        if (!cohort) {
-            return {} as SlimCohort;
-        }
-        const slimCohort: SlimCohort = {};
-        for (const occ of OCCUPATIONS) {
-            slimCohort[occ] = {};
-            for (const edu of educationLevelKeys) {
-                slimCohort[occ][edu] = {};
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    slimCohort[occ][edu][skill] = {
-                        total: cat.total,
-                        wealthMean: cat.wealth.mean,
-                        wealthVariance: cat.wealth.variance,
-                    };
-                }
-            }
-        }
-        return slimCohort;
-    });
-}
-
 export const getPlanetEconomy = () =>
     protectedProcedure
         .input(z.object({ planetId: z.string() }))
@@ -204,10 +153,6 @@ export const getPlanetEconomy = () =>
                         bank: z.any(),
                         wagePerEdu: z.record(z.string(), z.number()).nullable(),
                         priceLevel: z.number().nullable(),
-                        /** Slim demography: wealth moments only, no food/starvation data. */
-                        demography: z.array(z.any()),
-                        /** Transfer matrix for intergenerational chart. */
-                        lastTransferMatrix: z.array(z.any()),
                     })
                     .nullable(),
             }),
@@ -227,8 +172,6 @@ export const getPlanetEconomy = () =>
                     bank: planet.bank,
                     wagePerEdu: (planet.wagePerEdu as Record<string, number> | null) ?? null,
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? null,
-                    demography: buildSlimDemographyForEconomy(planet),
-                    lastTransferMatrix: planet.population.lastTransferMatrix,
                 },
             };
         });

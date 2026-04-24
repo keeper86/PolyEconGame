@@ -5,14 +5,18 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { TransportShip } from '@/simulation/ships/ships';
+import type { ConstructionShip, TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { PostShipBuyingOfferDialog } from '@/app/planets/[planetId]/ships/_components/PostShipBuyingOfferDialog';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
+import { DispatchShipDialog } from './_components/DispatchShipDialog';
+import { DispatchConstructionShipDialog } from './_components/DispatchConstructionShipDialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
-function statusBadge(ship: TransportShip) {
+function statusBadge(ship: TransportShip | ConstructionShip) {
     const { state } = ship;
     const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
         idle: 'secondary',
@@ -36,6 +40,34 @@ function conditionColor(status: number) {
 export default function AgentShipsPage() {
     const { agentId, planetId, detail, isLoading, isOwnAgent, myAgentId, tick } = useAgentPlanetDetail();
     const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    const [sellMode, setSellMode] = useState<Record<string, boolean>>({});
+    const [sellPrice, setSellPrice] = useState<Record<string, string>>({});
+
+    const sellMutation = useMutation(
+        trpc.postShipListing.mutationOptions({
+            onSuccess: (_data, variables) => {
+                setSellMode((prev) => ({ ...prev, [variables.shipName]: false }));
+                setSellPrice((prev) => ({ ...prev, [variables.shipName]: '' }));
+                void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
+                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+            },
+        }),
+    );
+
+    const cancelListingMutation = useMutation(
+        trpc.cancelShipListing.mutationOptions({
+            onSuccess: () => {
+                void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
+                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+            },
+        }),
+    );
+
+    const { data: listingsData } = useSimulationQuery(
+        trpc.listShipListings.queryOptions({ planetId }, { enabled: isOwnAgent }),
+    );
 
     const { data: shipsData, isLoading: shipsLoading } = useSimulationQuery(
         trpc.listAgentShips.queryOptions({ agentId }, { enabled: isOwnAgent }),
@@ -78,34 +110,132 @@ export default function AgentShipsPage() {
                                 <CardContent className='px-4 py-4'>
                                     <div className='flex items-start justify-between gap-4'>
                                         <div className='flex items-start gap-3'>
-                                            <FacilityOrShipIcon
-                                                facilityOrShipName={ship.type.name}
-                                                suffix=''
-                                                size={180}
-                                            />
+                                            <FacilityOrShipIcon facilityOrShipName={ship.type.name} suffix='' />
                                             <div className='space-y-1'>
                                                 <div className='flex items-center gap-2'>
                                                     <span className='font-medium'>{ship.name}</span>
                                                     {statusBadge(ship)}
                                                 </div>
-                                                <p className='text-xs text-muted-foreground'>
-                                                    {ship.type.name} · {ship.type.cargoSpecification.type} ·{' '}
-                                                    {ship.type.cargoSpecification.volume} m³ · speed {ship.type.speed}
-                                                </p>
+                                                {ship.type.type === 'transport' ? (
+                                                    <p className='text-xs text-muted-foreground'>
+                                                        {ship.type.name} · {ship.type.cargoSpecification.type} ·{' '}
+                                                        {ship.type.cargoSpecification.volume} m³ · speed{' '}
+                                                        {ship.type.speed}
+                                                    </p>
+                                                ) : (
+                                                    <p className='text-xs text-muted-foreground'>
+                                                        {ship.type.name} · speed {ship.type.speed}
+                                                    </p>
+                                                )}
                                                 <p
                                                     className={`text-xs font-medium ${conditionColor(ship.maintainanceStatus)}`}
                                                 >
-                                                    Condition: {Math.round(ship.maintainanceStatus * 100)}%
+                                                    Condition: {Math.round(ship.maintainanceStatus * 100)}% Max:{' '}
+                                                    {Math.round(ship.maxMaintenance * 100)}%
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className='flex gap-2 flex-shrink-0'>
-                                            {isIdle && (
-                                                <PostShipBuyingOfferDialog agentId={agentId} planetId={planetId}>
-                                                    <Button size='sm' variant='outline'>
+                                        <div className='flex gap-2 flex-shrink-0 items-center'>
+                                            {ship.state.type === 'listed' &&
+                                                (() => {
+                                                    const listing = (listingsData?.listings ?? []).find(
+                                                        (l) => l.shipName === ship.name && l._agentId === agentId,
+                                                    );
+                                                    return listing ? (
+                                                        <Button
+                                                            size='sm'
+                                                            variant='outline'
+                                                            disabled={cancelListingMutation.isPending}
+                                                            onClick={() =>
+                                                                cancelListingMutation.mutate({
+                                                                    agentId,
+                                                                    planetId,
+                                                                    listingId: listing.id,
+                                                                })
+                                                            }
+                                                        >
+                                                            Cancel Listing
+                                                        </Button>
+                                                    ) : null;
+                                                })()}
+                                            {isIdle && !sellMode[ship.name] && (
+                                                <>
+                                                    {ship.type.type === 'transport' && (
+                                                        <DispatchShipDialog
+                                                            agentId={agentId}
+                                                            planetId={planetId}
+                                                            shipName={ship.name}
+                                                            shipCargoType={ship.type.cargoSpecification.type}
+                                                        >
+                                                            <Button size='sm' variant='outline'>
+                                                                Dispatch
+                                                            </Button>
+                                                        </DispatchShipDialog>
+                                                    )}
+                                                    {ship.type.type === 'construction' && (
+                                                        <DispatchConstructionShipDialog
+                                                            agentId={agentId}
+                                                            planetId={planetId}
+                                                            shipName={ship.name}
+                                                        >
+                                                            <Button size='sm' variant='outline'>
+                                                                Dispatch
+                                                            </Button>
+                                                        </DispatchConstructionShipDialog>
+                                                    )}
+                                                    <Button
+                                                        size='sm'
+                                                        variant='outline'
+                                                        onClick={() =>
+                                                            setSellMode((prev) => ({ ...prev, [ship.name]: true }))
+                                                        }
+                                                    >
                                                         Sell
                                                     </Button>
-                                                </PostShipBuyingOfferDialog>
+                                                </>
+                                            )}
+                                            {isIdle && sellMode[ship.name] && (
+                                                <>
+                                                    <Input
+                                                        type='number'
+                                                        min={1}
+                                                        className='w-28 h-8 text-sm'
+                                                        placeholder='Ask price'
+                                                        value={sellPrice[ship.name] ?? ''}
+                                                        onChange={(e) =>
+                                                            setSellPrice((prev) => ({
+                                                                ...prev,
+                                                                [ship.name]: e.target.value,
+                                                            }))
+                                                        }
+                                                    />
+                                                    <Button
+                                                        size='sm'
+                                                        disabled={!sellPrice[ship.name] || sellMutation.isPending}
+                                                        onClick={() =>
+                                                            sellMutation.mutate({
+                                                                agentId,
+                                                                planetId,
+                                                                shipName: ship.name,
+                                                                askPrice: Number(sellPrice[ship.name]),
+                                                            })
+                                                        }
+                                                    >
+                                                        Confirm
+                                                    </Button>
+                                                    <Button
+                                                        size='sm'
+                                                        variant='ghost'
+                                                        onClick={() =>
+                                                            setSellMode((prev) => ({
+                                                                ...prev,
+                                                                [ship.name]: false,
+                                                            }))
+                                                        }
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </>
                                             )}
                                         </div>
                                     </div>

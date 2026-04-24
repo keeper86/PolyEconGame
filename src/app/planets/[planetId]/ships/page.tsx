@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { AcceptShipBuyingOfferDialog } from './_components/AcceptShipBuyingOfferDialog';
 import { AcceptTransportContractDialog } from './_components/AcceptTransportContractDialog';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import type { TransportShip } from '@/simulation/ships/ships';
 import { shiptypes } from '@/simulation/ships/ships';
 
 const allShipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
@@ -34,12 +35,16 @@ export default function PlanetShipsPage() {
     const { data: buyingData, isLoading: buyingLoading } = useSimulationQuery(
         trpc.listShipBuyingOffers.queryOptions({ planetId }),
     );
+    const { data: listingsData, isLoading: listingsLoading } = useSimulationQuery(
+        trpc.listShipListings.queryOptions({ planetId }),
+    );
     const { data: myShipsData } = useSimulationQuery(
         trpc.listAgentShips.queryOptions({ agentId: agentId ?? '' }, { enabled: !!agentId }),
     );
 
-    const idleShipsHere = (myShipsData?.ships ?? []).filter(
-        (s) => s.state.type === 'idle' && (s.state as { planetId: string }).planetId === planetId,
+    const idleTransportShipsHere = (myShipsData?.ships ?? []).filter(
+        (s): s is TransportShip =>
+            s.state.type === 'idle' && s.state.planetId === planetId && s.type.type === 'transport',
     );
 
     const [acceptContractTarget, setAcceptContractTarget] = useState<
@@ -59,8 +64,20 @@ export default function PlanetShipsPage() {
         }),
     );
 
+    const acceptListingMutation = useMutation(
+        trpc.acceptShipListing.mutationOptions({
+            onSuccess: () => {
+                void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
+                void queryClient.invalidateQueries({
+                    queryKey: trpc.listAgentShips.queryKey({ agentId: agentId ?? '' }),
+                });
+            },
+        }),
+    );
+
     const openContracts = (contractsData?.contracts ?? []).filter((c) => c.status === 'open');
     const openBuyingOffers = (buyingData?.offers ?? []).filter((o) => o.status === 'open');
+    const openListings = listingsData?.listings ?? [];
 
     return (
         <div className='space-y-4'>
@@ -78,9 +95,9 @@ export default function PlanetShipsPage() {
                     </TabsTrigger>
                     <TabsTrigger value='buying'>
                         Ship Market
-                        {openBuyingOffers.length > 0 && (
+                        {openBuyingOffers.length + openListings.length > 0 && (
                             <Badge variant='secondary' className='ml-2 text-xs'>
-                                {openBuyingOffers.length}
+                                {openBuyingOffers.length + openListings.length}
                             </Badge>
                         )}
                     </TabsTrigger>
@@ -95,7 +112,7 @@ export default function PlanetShipsPage() {
                     {openContracts.map((contract) => {
                         const isMyContract = contract._agentId === agentId;
                         const cargoName = contract.cargo.resource.name;
-                        const hasEligibleShip = idleShipsHere.length > 0;
+                        const hasEligibleShip = idleTransportShipsHere.length > 0;
 
                         return (
                             <Card key={contract.id}>
@@ -170,14 +187,73 @@ export default function PlanetShipsPage() {
 
                 {/* Ship Market */}
                 <TabsContent value='buying' className='space-y-3 mt-4'>
-                    {buyingLoading && <p className='text-sm text-muted-foreground'>Loading offers…</p>}
-                    {!buyingLoading && openBuyingOffers.length === 0 && (
-                        <p className='text-sm text-muted-foreground'>No open ship buy offers on this planet.</p>
+                    {(buyingLoading || listingsLoading) && <p className='text-sm text-muted-foreground'>Loading…</p>}
+                    {!buyingLoading &&
+                        !listingsLoading &&
+                        openBuyingOffers.length === 0 &&
+                        openListings.length === 0 && (
+                            <p className='text-sm text-muted-foreground'>No open ship offers on this planet.</p>
+                        )}
+                    {openListings.length > 0 && (
+                        <>
+                            <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
+                                For Sale
+                            </p>
+                            {openListings.map((listing) => {
+                                const isMyListing = listing._agentId === agentId;
+                                return (
+                                    <Card key={listing.id}>
+                                        <CardContent className='px-4 py-4 flex items-center justify-between gap-4'>
+                                            <div className='flex items-center gap-3'>
+                                                <FacilityOrShipIcon
+                                                    facilityOrShipName={listing.shipTypeName}
+                                                    suffix=''
+                                                    size={80}
+                                                />
+                                                <div className='text-sm space-y-0.5'>
+                                                    <p className='font-medium'>{listing.shipName}</p>
+                                                    <p className='text-muted-foreground'>{listing.shipTypeName}</p>
+                                                    <p>
+                                                        <span className='text-muted-foreground'>Ask price:</span>{' '}
+                                                        {listing.askPrice}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {isMyListing ? (
+                                                <Badge variant='secondary' className='text-xs'>
+                                                    Your listing
+                                                </Badge>
+                                            ) : agentId ? (
+                                                <Button
+                                                    size='sm'
+                                                    disabled={acceptListingMutation.isPending}
+                                                    onClick={() =>
+                                                        acceptListingMutation.mutate({
+                                                            buyerAgentId: agentId,
+                                                            buyerPlanetId: planetId,
+                                                            sellerAgentId: listing._agentId,
+                                                            listingId: listing.id,
+                                                        })
+                                                    }
+                                                >
+                                                    Buy
+                                                </Button>
+                                            ) : null}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </>
+                    )}
+                    {openBuyingOffers.length > 0 && (
+                        <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>Buy Offers</p>
                     )}
                     {openBuyingOffers.map((offer) => {
                         const isMyOffer = offer._agentId === agentId;
                         const shipTypeDef = allShipTypesByKey[offer.shipType];
-                        const idleMatchingShips = idleShipsHere.filter((s) => s.type.name === offer.shipType);
+                        const idleMatchingShips = idleTransportShipsHere.filter(
+                            (s) => s.type.name === shipTypeDef?.name,
+                        );
                         const canSell = !isMyOffer && agentId && idleMatchingShips.length > 0;
                         const canSellNoShip = !isMyOffer && agentId && idleMatchingShips.length === 0;
                         return (
@@ -230,8 +306,6 @@ export default function PlanetShipsPage() {
                         );
                     })}
                 </TabsContent>
-
-                {/* Maintenance Offers — removed; maintenance is now service-based */}
             </Tabs>
 
             {/* Dialogs */}
@@ -240,7 +314,7 @@ export default function PlanetShipsPage() {
                     agentId={agentId}
                     planetId={planetId}
                     contract={acceptContractTarget}
-                    eligibleShips={idleShipsHere}
+                    eligibleShips={idleTransportShipsHere}
                     open={!!acceptContractTarget}
                     onClose={() => setAcceptContractTarget(null)}
                 />
@@ -250,7 +324,9 @@ export default function PlanetShipsPage() {
                     agentId={agentId}
                     planetId={planetId}
                     offer={acceptBuyingTarget}
-                    idleMatchingShips={idleShipsHere.filter((s) => s.type.name === acceptBuyingTarget.shipType)}
+                    idleMatchingShips={idleTransportShipsHere.filter(
+                        (s) => s.type.name === acceptBuyingTarget.shipType,
+                    )}
                     open={!!acceptBuyingTarget}
                     onClose={() => setAcceptBuyingTarget(null)}
                 />

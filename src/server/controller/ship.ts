@@ -1,15 +1,21 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { db } from '../db';
-import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
+import { findCompatibleTrades } from '../../simulation/ships/shipMarket';
 import {
-    workerPostTransportContract,
-    workerAcceptTransportContract,
-    workerCancelTransportContract,
-    workerPostShipBuyingOffer,
     workerAcceptShipBuyingOffer,
+    workerAcceptShipListing,
+    workerAcceptTransportContract,
+    workerCancelShipListing,
+    workerCancelTransportContract,
+    workerDispatchShip,
+    workerDispatchConstructionShip,
+    workerPostShipBuyingOffer,
+    workerPostShipListing,
+    workerPostTransportContract,
 } from '../../simulation/workerClient/commands';
 import { workerQueries } from '../../simulation/workerClient/queries';
+import { db } from '../db';
+import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
 
 async function assertAgentOwnership(userId: string, agentId: string): Promise<void> {
     const row = await db('user_data').where({ user_id: userId }).first();
@@ -31,7 +37,7 @@ export const listAgentShips = () =>
         if (!agent) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
         }
-        return { ships: agent.transportShips ?? [] };
+        return { ships: agent.ships ?? [] };
     });
 
 export const listTransportContracts = () =>
@@ -110,6 +116,47 @@ export const cancelTransportContract = () =>
             return { contractId };
         });
 
+export const dispatchShip = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                fromPlanetId: z.string().min(1),
+                toPlanetId: z.string().min(1),
+                shipName: z.string().min(1),
+                cargoGoal: z
+                    .object({
+                        resourceName: z.string().min(1),
+                        quantity: z.number().positive(),
+                    })
+                    .nullable(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const shipName = await workerDispatchShip(input);
+            return { shipName };
+        });
+
+export const dispatchConstructionShip = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                fromPlanetId: z.string().min(1),
+                toPlanetId: z.string().min(1),
+                shipName: z.string().min(1),
+                facilityName: z.string().min(1).optional(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const shipName = await workerDispatchConstructionShip(input);
+            return { shipName };
+        });
+
 export const postShipBuyingOffer = () =>
     protectedProcedure
         .input(
@@ -143,4 +190,107 @@ export const acceptShipBuyingOffer = () =>
             await assertAgentOwnership(userId, input.agentId);
             const offerId = await workerAcceptShipBuyingOffer(input);
             return { offerId };
+        });
+
+export const listShipListings = () =>
+    protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input }) => {
+        const { agents } = await workerQueries.getAllAgents();
+        const listings = (agents ?? []).flatMap((agent) => {
+            const assets = agent.assets?.[input.planetId];
+            return (assets?.shipListings ?? []).map((l) => ({ ...l, _agentId: agent.id }));
+        });
+        return { listings };
+    });
+
+export const getShipMarketHints = () =>
+    protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input: _input }) => {
+        const [{ agents }, { shipCapitalMarket }] = await Promise.all([
+            workerQueries.getAllAgents(),
+            workerQueries.getShipCapitalMarket(),
+        ]);
+        const agentMap = new Map((agents ?? []).map((a) => [a.id, a]));
+        const mockState = { tick: 0, planets: new Map(), agents: agentMap, shipCapitalMarket };
+        const compatibleTrades = findCompatibleTrades(mockState);
+        return { compatibleTrades: compatibleTrades.slice(0, 50) };
+    });
+
+export const getShipMarketHistory = () =>
+    protectedProcedure.query(async () => {
+        const { shipCapitalMarket } = await workerQueries.getShipCapitalMarket();
+        return {
+            emaPrice: shipCapitalMarket.emaPrice,
+            recentTrades: shipCapitalMarket.tradeHistory.slice(-50),
+        };
+    });
+
+export const postShipListing = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                shipName: z.string().min(1),
+                askPrice: z.number().positive(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const listingId = await workerPostShipListing(input);
+            return { listingId };
+        });
+
+export const cancelShipListing = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                listingId: z.string().min(1),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const listingId = await workerCancelShipListing(input);
+            return { listingId };
+        });
+
+export const acceptShipListing = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                buyerAgentId: z.string().min(1),
+                buyerPlanetId: z.string().min(1),
+                sellerAgentId: z.string().min(1),
+                listingId: z.string().min(1),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.buyerAgentId);
+            const listingId = await workerAcceptShipListing(input);
+            return { listingId };
+        });
+
+export const getAgentPlanetStorage = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string().min(1), planetId: z.string().min(1) }))
+        .output(z.record(z.string(), z.number()))
+        .query(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const { agent } = await workerQueries.getAgent(input.agentId);
+            if (!agent) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+            }
+            const inStorage = agent.assets?.[input.planetId]?.storageFacility?.currentInStorage ?? {};
+            const result: Record<string, number> = {};
+            for (const [resourceName, entry] of Object.entries(inStorage)) {
+                const qty = (entry as { quantity?: number })?.quantity ?? 0;
+                if (qty > 0) {
+                    result[resourceName] = qty;
+                }
+            }
+            return result;
         });

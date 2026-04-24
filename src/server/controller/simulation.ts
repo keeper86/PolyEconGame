@@ -238,6 +238,10 @@ export const getAgentOverview = () =>
                                 totalWorkers: z.number(),
                                 unusedWorkerFraction: z.number(),
                                 topResources: z.array(z.object({ name: z.string(), quantity: z.number() })),
+                                licenses: z.object({
+                                    commercial: z.object({ acquiredTick: z.number(), frozen: z.boolean() }).optional(),
+                                    workforce: z.object({ acquiredTick: z.number(), frozen: z.boolean() }).optional(),
+                                }),
                             }),
                         ),
                     })
@@ -266,7 +270,7 @@ export const getAgentOverview = () =>
                     balance: agent.assets
                         ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
                         : 0,
-                    shipCount: agent.transportShips?.length ?? 0,
+                    shipCount: agent.ships?.length ?? 0,
                     planets,
                 },
             };

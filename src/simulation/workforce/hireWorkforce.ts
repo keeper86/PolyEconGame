@@ -6,6 +6,7 @@
 
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
+import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
@@ -18,6 +19,9 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
     for (const agent of agents.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             if (planetId !== planet.id) {
+                continue;
+            }
+            if (!hasActiveLicense(assets, 'workforce')) {
                 continue;
             }
             const workforce = assets.workforceDemography;

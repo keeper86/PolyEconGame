@@ -54,7 +54,53 @@ export type PlanetAssetSummary = {
     totalWorkers: number;
     unusedWorkerFraction: number;
     topResources: Array<{ name: string; quantity: number }>;
+    licenses?: {
+        commercial?: { acquiredTick: number; frozen: boolean };
+        workforce?: { acquiredTick: number; frozen: boolean };
+    };
 };
+
+/* ------------------------------------------------------------------ */
+/*  License badges                                                     */
+/* ------------------------------------------------------------------ */
+
+function LicenseBadges({ licenses }: { licenses?: PlanetAssetSummary['licenses'] }): React.ReactElement | null {
+    if (!licenses) {
+        return null;
+    }
+    const hasCommercial = !!licenses.commercial;
+    const hasWorkforce = !!licenses.workforce;
+    const commercialFrozen = licenses.commercial?.frozen;
+    const workforceFrozen = licenses.workforce?.frozen;
+    return (
+        <div className='flex flex-wrap gap-1 pt-1'>
+            <Badge
+                variant='outline'
+                className={`text-[10px] px-1 py-0 ${
+                    hasCommercial
+                        ? commercialFrozen
+                            ? 'border-red-400 text-red-500'
+                            : 'border-green-500 text-green-600'
+                        : 'border-dashed text-muted-foreground'
+                }`}
+            >
+                {hasCommercial ? (commercialFrozen ? '⚠ Commercial' : '✓ Commercial') : '✗ No Commercial'}
+            </Badge>
+            <Badge
+                variant='outline'
+                className={`text-[10px] px-1 py-0 ${
+                    hasWorkforce
+                        ? workforceFrozen
+                            ? 'border-red-400 text-red-500'
+                            : 'border-green-500 text-green-600'
+                        : 'border-dashed text-muted-foreground'
+                }`}
+            >
+                {hasWorkforce ? (workforceFrozen ? '⚠ Workforce' : '✓ Workforce') : '✗ No Workforce'}
+            </Badge>
+        </div>
+    );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -95,6 +141,9 @@ export default function PlanetAssetCard({
 
                 {isOwner ? (
                     <>
+                        {/* License badges */}
+                        <LicenseBadges licenses={p.licenses} />
+
                         {/* Facilities */}
                         <Stat
                             label={

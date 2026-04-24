@@ -1,6 +1,6 @@
-import type { GameState, Agent } from '../planet/planet';
-import type { OutboundMessage, PendingAction } from './messages';
+import type { Agent, GameState } from '../planet/planet';
 import { makeAgent } from '../utils/testHelper';
+import type { OutboundMessage, PendingAction } from './messages';
 
 /**
  * Handle 'createAgent' action
@@ -16,6 +16,16 @@ export function handleCreateAgent(
     newAgent.automated = false;
     newAgent.automateWorkerAllocation = false;
     newAgent.foundedTick = state.tick;
+
+    // Grant both licenses on the home planet at no cost
+    const homeAssets = newAgent.assets[planetId];
+    if (homeAssets) {
+        homeAssets.licenses = {
+            commercial: { acquiredTick: state.tick, frozen: false },
+            workforce: { acquiredTick: state.tick, frozen: false },
+        };
+    }
+
     state.agents.set(agentId, newAgent);
     console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
     safePostMessage({ type: 'agentCreated', requestId, agentId });

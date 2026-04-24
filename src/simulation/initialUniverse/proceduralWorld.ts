@@ -1,21 +1,3 @@
-/**
- * Procedural world generator.
- *
- * Given a target scale table (facility type → total scale + agent count),
- * this file builds a complete initial GameState whose aggregate facility
- * scales exactly match the targets.  Agents that sit in a supply chain
- * can own multiple facility types.
- *
- * The approach:
- *  1. For each facility type, split the total target scale among N agents
- *     using a weighted share (slightly randomised but deterministic via a
- *     simple LCG so the output is always the same).
- *  2. Resource-extracting facilities also receive proportional land claims.
- *  3. Supply-chain agents (e.g. a company that both smelts steel and runs
- *     a coal power plant) are created by composing specs from multiple
- *     facility types before creating the agent.
- */
-
 import {
     administrativeCenter,
     agriculturalProductionFacility,
@@ -206,6 +188,7 @@ const TARGETS: Record<string, FacilityTarget> = {
 // ---------------------------------------------------------------------------
 
 const NAMES: Record<string, string[]> = {
+    tankerTransport: [],
     coalMine: [
         'Blackrock Coal Co',
         'Carbon Energy Group',

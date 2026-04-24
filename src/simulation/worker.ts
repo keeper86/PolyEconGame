@@ -26,9 +26,18 @@ import {
     handlePostTransportContract,
     handleAcceptTransportContract,
     handleCancelTransportContract,
+    handleDispatchShip,
+    handleDispatchConstructionShip,
+    handlePostConstructionContract,
+    handleAcceptConstructionContract,
+    handleCancelConstructionContract,
     handlePostShipBuyingOffer,
     handleAcceptShipBuyingOffer,
+    handlePostShipListing,
+    handleCancelShipListing,
+    handleAcceptShipListing,
 } from './workerClient/shipContractActions';
+import { handleAcquireLicense } from './workerClient/licenseActions';
 import { handleFinancialAction } from './workerClient/financialActions';
 import { handleMarketAction } from './workerClient/marketActions';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
@@ -195,11 +204,38 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'cancelTransportContract':
                         handleCancelTransportContract(state, action, safePostMessage);
                         break;
+                    case 'dispatchShip':
+                        handleDispatchShip(state, action, safePostMessage);
+                        break;
+                    case 'dispatchConstructionShip':
+                        handleDispatchConstructionShip(state, action, safePostMessage);
+                        break;
+                    case 'postConstructionContract':
+                        handlePostConstructionContract(state, action, safePostMessage);
+                        break;
+                    case 'acceptConstructionContract':
+                        handleAcceptConstructionContract(state, action, safePostMessage);
+                        break;
+                    case 'cancelConstructionContract':
+                        handleCancelConstructionContract(state, action, safePostMessage);
+                        break;
                     case 'postShipBuyingOffer':
                         handlePostShipBuyingOffer(state, action, safePostMessage);
                         break;
                     case 'acceptShipBuyingOffer':
                         handleAcceptShipBuyingOffer(state, action, safePostMessage);
+                        break;
+                    case 'postShipListing':
+                        handlePostShipListing(state, action, safePostMessage);
+                        break;
+                    case 'cancelShipListing':
+                        handleCancelShipListing(state, action, safePostMessage);
+                        break;
+                    case 'acceptShipListing':
+                        handleAcceptShipListing(state, action, safePostMessage);
+                        break;
+                    case 'acquireLicense':
+                        handleAcquireLicense(state, action, safePostMessage);
                         break;
                 }
             } catch (err) {
@@ -577,6 +613,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     } else {
                         data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data, snap.tick) };
                     }
+                    break;
+                }
+                case 'getShipCapitalMarket': {
+                    data = { shipCapitalMarket: snap.shipCapitalMarket };
                     break;
                 }
                 default: {
@@ -1155,6 +1195,150 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
+        if (msg.type === 'dispatchShip') {
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, cargoGoal } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(toPlanetId)) {
+                safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Planet '${toPlanetId}' not found` });
+                return;
+            }
+            pendingActions.push({
+                type: 'dispatchShip',
+                requestId,
+                agentId,
+                fromPlanetId,
+                toPlanetId,
+                shipName,
+                cargoGoal,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'dispatchConstructionShip') {
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, facilityName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(toPlanetId)) {
+                safePostMessage({
+                    type: 'constructionShipDispatchFailed',
+                    requestId,
+                    reason: `Planet '${toPlanetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'dispatchConstructionShip',
+                requestId,
+                agentId,
+                fromPlanetId,
+                toPlanetId,
+                shipName,
+                facilityName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'postConstructionContract') {
+            const {
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                facilityName,
+                commissioningAgentId,
+                offeredReward,
+                expiresAtTick,
+            } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionContractPostFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'constructionContractPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'postConstructionContract',
+                requestId,
+                agentId,
+                planetId,
+                toPlanetId,
+                facilityName,
+                commissioningAgentId,
+                offeredReward,
+                expiresAtTick,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acceptConstructionContract') {
+            const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'constructionContractAcceptFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'acceptConstructionContract',
+                requestId,
+                agentId,
+                planetId,
+                posterAgentId,
+                contractId,
+                shipName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'cancelConstructionContract') {
+            const { requestId, agentId, planetId, contractId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'constructionContractCancelFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'cancelConstructionContract', requestId, agentId, planetId, contractId });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
         if (msg.type === 'postShipBuyingOffer') {
             const { requestId, agentId, planetId, shipType, price } = msg;
             if (!state.agents.has(agentId)) {
@@ -1199,6 +1383,81 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 offerId,
                 shipName,
             });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'postShipListing') {
+            const { requestId, agentId, planetId, shipName, askPrice } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'postShipListing', requestId, agentId, planetId, shipName, askPrice });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'cancelShipListing') {
+            const { requestId, agentId, planetId, listingId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            pendingActions.push({ type: 'cancelShipListing', requestId, agentId, planetId, listingId });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acceptShipListing') {
+            const { requestId, buyerAgentId, buyerPlanetId, sellerAgentId, listingId } = msg;
+            if (!state.agents.has(buyerAgentId)) {
+                safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Buyer agent not found' });
+                return;
+            }
+            if (!state.agents.has(sellerAgentId)) {
+                safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Seller agent not found' });
+                return;
+            }
+            pendingActions.push({
+                type: 'acceptShipListing',
+                requestId,
+                buyerAgentId,
+                buyerPlanetId,
+                sellerAgentId,
+                listingId,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acquireLicense') {
+            const { requestId, agentId, planetId, licenseType } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'licenseAcquisitionFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'licenseAcquisitionFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'acquireLicense', requestId, agentId, planetId, licenseType });
             if (!processingTick) {
                 drainActionQueue();
             }

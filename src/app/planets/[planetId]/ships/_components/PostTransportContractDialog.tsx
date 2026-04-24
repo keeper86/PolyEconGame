@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StorageResourceSelect } from '@/components/client/StorageResourceSelect';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -92,10 +93,11 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                     <div className='grid grid-cols-2 gap-3'>
                         <div className='space-y-1.5'>
                             <Label>Resource</Label>
-                            <Input
+                            <StorageResourceSelect
+                                agentId={agentId}
+                                planetId={planetId}
                                 value={resourceName}
-                                onChange={(e) => setResourceName(e.target.value)}
-                                placeholder='e.g. wheat'
+                                onValueChange={setResourceName}
                                 required
                             />
                         </div>

@@ -395,8 +395,9 @@ export function makeShipConstructionFacility(
 ): ShipConstructionFacility {
     const { shipType, ...rest } = overrides ?? {};
     const defaultShipType: TransportShipType = shipType ?? {
+        type: 'transport',
         name: 'Test Ship',
-        scale: 1,
+        scale: 'small',
         speed: 1,
         cargoSpecification: { type: 'solid', volume: 1000, mass: 1000 },
         requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
@@ -451,7 +452,9 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         shipConstructionFacilities: [],
         shipMaintenanceFacilities: [],
         transportContracts: [],
+        constructionContracts: [],
         shipBuyingOffers: [],
+        shipListings: [],
         deposits: 0,
         depositHold: 0,
         loans: 0,
@@ -479,6 +482,10 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
             claimPayments: 0,
             totalWorkersTicks: 0,
         },
+        licenses: {
+            commercial: { acquiredTick: 0, frozen: false },
+            workforce: { acquiredTick: 0, frozen: false },
+        },
         ...overrides,
     };
 }
@@ -490,7 +497,7 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
         foundedTick: 0,
         starterLoanTaken: false,
         associatedPlanetId: planetId,
-        transportShips: [],
+        ships: [],
         automated: true,
         automateWorkerAllocation: true,
         assets: {
@@ -570,6 +577,7 @@ export function makeGameState(
         tick,
         planets: new Map(planets.map((p) => [p.id, p])),
         agents: new Map(agents.map((a) => [a.id, a])),
+        shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
     };
 }
 

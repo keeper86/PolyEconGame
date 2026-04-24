@@ -11,10 +11,10 @@ import { usePlanetId } from '@/hooks/usePlanetId';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumbers } from '@/lib/utils';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
-import type { TransportShipType } from '@/simulation/ships/ships';
+import type { BaseShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import type { ShipConstructionFacility } from '../../../../../../../simulation/planet/facility';
 import { FacilityCardShell } from './FacilityCardShell';
@@ -42,7 +42,22 @@ export function ActiveShipyardCard({
 
     const [targetScale, setTargetScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
+    const [showSetScale, setShowSetScale] = useState(false);
     const [shipDialogOpen, setShipDialogOpen] = useState(false);
+
+    const SCALE_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
+    const computeScaleFractionIndex = (scale: number, maxScale: number) => {
+        const fraction = maxScale > 0 ? Math.round((scale / maxScale) * 4) / 4 : 1;
+        const idx = SCALE_FRACTIONS.indexOf(fraction as (typeof SCALE_FRACTIONS)[number]);
+        return idx >= 0 ? idx : 4;
+    };
+    const [scaleFractionIndex, setScaleFractionIndex] = useState(() =>
+        computeScaleFractionIndex(facility.scale, facility.maxScale),
+    );
+    useEffect(() => {
+        setScaleFractionIndex(computeScaleFractionIndex(facility.scale, facility.maxScale));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [facility.scale, facility.maxScale]);
 
     const invalidate = () =>
         void queryClient.invalidateQueries({
@@ -68,6 +83,15 @@ export function ActiveShipyardCard({
         }),
     );
 
+    const setScaleMutation = useMutation(
+        trpc.setFacilityScale.mutationOptions({
+            onSuccess: () => {
+                invalidate();
+                setShowSetScale(false);
+            },
+        }),
+    );
+
     const expandCost = useMemo(
         () => calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale),
         [facility.maxScale, targetScale],
@@ -76,7 +100,6 @@ export function ActiveShipyardCard({
         constructionServicePrice && constructionServicePrice > 0 ? expandCost * constructionServicePrice : null;
 
     const results = facility.lastTickResults;
-    const eff = results?.overallEfficiency ?? 0;
     const globalMin = results
         ? Math.min(
               ...Object.values(results.resourceEfficiency),
@@ -84,18 +107,8 @@ export function ActiveShipyardCard({
           )
         : 1;
 
-    const modeBadge = facility.produces ? (
-        <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'>
-            Building: {facility.shipName}
-        </Badge>
-    ) : (
-        <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-            Idle
-        </Badge>
-    );
-
     // Compute per-tick input quantities when building
-    let activeShipType: TransportShipType | null = null;
+    let activeShipType: BaseShipType | null = null;
 
     let proportionPerTick: number | null = null;
 
@@ -133,7 +146,6 @@ export function ActiveShipyardCard({
                                 <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
                                     Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
                                 </Badge>
-                                {modeBadge}
                             </div>
                         </div>
                         <WorkerBars
@@ -145,82 +157,37 @@ export function ActiveShipyardCard({
                     </span>
                 }
             >
-                {/* Set target / idle */}
-                <div className='flex items-center gap-1 rounded-md border p-0.5 self-start'>
-                    <Button
-                        size='sm'
-                        variant={facility.produces !== null ? 'default' : 'ghost'}
-                        className='h-6 px-2.5 text-xs'
-                        disabled={setTargetMutation.isPending || facility.produces !== null}
-                        onClick={() => setShipDialogOpen(true)}
-                    >
-                        Building
-                    </Button>
-                    <Button
-                        size='sm'
-                        variant={facility.produces === null ? 'default' : 'ghost'}
-                        className='h-6 px-2.5 text-xs'
-                        disabled={setTargetMutation.isPending || facility.produces === null}
-                        onClick={() =>
-                            setTargetMutation.mutate({
-                                agentId,
-                                planetId,
-                                facilityId: facility.id,
-                                shipTypeName: null,
-                                shipName: '',
-                            })
-                        }
-                    >
-                        Idle
-                    </Button>
-                </div>
-
-                {/* Efficiency */}
-                <div className='flex items-center gap-2 text-xs text-muted-foreground'>
-                    <span>Overall efficiency</span>
-                    <span className='tabular-nums font-medium text-foreground'>{Math.round(eff * 100)}%</span>
-                </div>
-
-                {/* IO row — always visible */}
                 <div className='grid w-full items-center gap-x-2 py-1' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
                     {/* Inputs */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>
-                        {facility.produces !== null
-                            ? defaultBuildingCost.map((costEntry) => {
-                                  if (activeShipType && proportionPerTick !== null) {
-                                      const costForThisShip = activeShipType.buildingCost.find(
-                                          (c) => c.resource.name === costEntry.resource.name,
-                                      );
-                                      const qty = costForThisShip
-                                          ? costForThisShip.quantity * proportionPerTick * eff
-                                          : 0;
-                                      const resEff = results?.resourceEfficiency[costEntry.resource.name] ?? 1;
-                                      return (
-                                          <ProductQuantity
-                                              key={costEntry.resource.name}
-                                              resource={costEntry.resource}
-                                              quantity={qty}
-                                              efficiency={resEff}
-                                              isLimiting={resEff <= globalMin && globalMin < 0.99}
-                                              planetId={currentPlanetId}
-                                              agentId={currentAgentId}
-                                          />
-                                      );
-                                  }
+                        {facility.produces !== null && activeShipType !== null && proportionPerTick !== null
+                            ? activeShipType.buildingCost.map((costEntry) => {
+                                  const qty = costEntry.quantity * proportionPerTick;
+                                  const resEff = results?.resourceEfficiency[costEntry.resource.name] ?? 1;
                                   return (
                                       <ProductQuantity
                                           key={costEntry.resource.name}
                                           resource={costEntry.resource}
-                                          quantity={0}
-                                          efficiency={1}
-                                          isLimiting={false}
+                                          quantity={qty}
+                                          efficiency={resEff}
+                                          isLimiting={resEff <= globalMin && globalMin < 0.99}
                                           planetId={currentPlanetId}
                                           agentId={currentAgentId}
-                                          quantityLabel='?'
                                       />
                                   );
                               })
-                            : null}
+                            : defaultBuildingCost.map((costEntry) => (
+                                  <ProductQuantity
+                                      key={costEntry.resource.name}
+                                      resource={costEntry.resource}
+                                      quantity={costEntry.quantity}
+                                      efficiency={1}
+                                      isLimiting={false}
+                                      planetId={currentPlanetId}
+                                      agentId={currentAgentId}
+                                      quantityLabel='?'
+                                  />
+                              ))}
                     </div>
 
                     <RiArrowRightBoxFill className='shrink-0 h-8 w-8 text-muted-foreground' />
@@ -233,11 +200,15 @@ export function ActiveShipyardCard({
                                     variant='outline'
                                     className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'
                                 >
-                                    <FacilityOrShipIcon facilityOrShipName={facility.produces.name} size={180} />
-                                    <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
-                                        {facility.shipName}
-                                    </span>
+                                    <FacilityOrShipIcon
+                                        facilityOrShipName={facility.produces.name}
+                                        size={180}
+                                        buildProgress={facility.progress}
+                                    />
                                 </Badge>
+                                <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
+                                    {facility.shipName}
+                                </span>
                             </div>
                         ) : (
                             <Button
@@ -251,8 +222,6 @@ export function ActiveShipyardCard({
                         )}
                     </div>
                 </div>
-
-                {/* Build progress if active */}
                 {facility.produces && (
                     <div>
                         <div className='flex justify-between text-xs text-muted-foreground mb-1'>
@@ -264,24 +233,31 @@ export function ActiveShipyardCard({
                         <Progress value={facility.progress * 100} className='h-2' />
                     </div>
                 )}
-
                 <Separator />
-
                 {/* Expand section */}
                 {!showExpand && (
-                    <Button
-                        size='sm'
-                        variant='ghost'
-                        className='self-start text-xs'
-                        onClick={() => {
-                            setTargetScale(facility.maxScale + 1);
-                            setShowExpand(true);
-                        }}
-                    >
-                        Expand shipyard
-                    </Button>
+                    <div className='flex gap-2'>
+                        <Button
+                            size='sm'
+                            variant='ghost'
+                            className='self-start text-xs'
+                            onClick={() => {
+                                setTargetScale(facility.maxScale + 1);
+                                setShowExpand(true);
+                            }}
+                        >
+                            Expand shipyard
+                        </Button>
+                        <Button
+                            size='sm'
+                            variant='ghost'
+                            className='self-start text-xs'
+                            onClick={() => setShowSetScale(true)}
+                        >
+                            Set scale
+                        </Button>
+                    </div>
                 )}
-
                 {showExpand && (
                     <div className='space-y-2 text-xs'>
                         <div className='flex items-center gap-2'>
@@ -320,6 +296,66 @@ export function ActiveShipyardCard({
                         </div>
                         {expandMutation.error && <p className='text-destructive'>{expandMutation.error.message}</p>}
                     </div>
+                )}
+                {showSetScale && (
+                    <>
+                        <Separator />
+                        <p className='text-xs font-medium'>Operating scale</p>
+                        <Slider
+                            min={0}
+                            max={SCALE_FRACTIONS.length - 1}
+                            step={1}
+                            value={[scaleFractionIndex]}
+                            onValueChange={([v]) => setScaleFractionIndex(v ?? 0)}
+                            disabled={setScaleMutation.isPending}
+                        />
+                        <div className='relative h-4 text-[10px] text-muted-foreground'>
+                            {SCALE_FRACTIONS.map((f, i) => {
+                                const pct = (i / (SCALE_FRACTIONS.length - 1)) * 100;
+                                const translate = i === 0 ? '0%' : i === SCALE_FRACTIONS.length - 1 ? '-100%' : '-50%';
+                                return (
+                                    <span
+                                        key={f}
+                                        className='absolute'
+                                        style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
+                                    >
+                                        {f * 100}%
+                                    </span>
+                                );
+                            })}
+                        </div>
+                        <div className='flex justify-between text-xs'>
+                            <span className='text-muted-foreground'>Resulting scale</span>
+                            <span className='font-medium tabular-nums'>
+                                {formatNumbers(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1))}
+                            </span>
+                        </div>
+                        <div className='flex gap-2'>
+                            <Button
+                                size='sm'
+                                variant='outline'
+                                className='flex-1 text-xs'
+                                onClick={() => setShowSetScale(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size='sm'
+                                className='flex-1 text-xs'
+                                disabled={setScaleMutation.isPending}
+                                onClick={() =>
+                                    setScaleMutation.mutate({
+                                        agentId,
+                                        planetId,
+                                        facilityId: facility.id,
+                                        scaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
+                                    })
+                                }
+                            >
+                                {setScaleMutation.isPending ? 'Applying…' : 'Confirm'}
+                            </Button>
+                        </div>
+                    </>
                 )}
             </FacilityCardShell>
         </>

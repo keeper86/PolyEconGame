@@ -2,7 +2,7 @@ import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { createTransportShip } from '../ships/ships';
+import { createShip } from '../ships/ships';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
@@ -16,6 +16,7 @@ import type {
 } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, Planet } from './planet';
+import { hasActiveLicense } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
@@ -71,6 +72,28 @@ function emptyEduRecord(): Record<EducationLevelType, number> {
     return { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 }
 
+export function consumeConstructionForFacility(facility: Facility, storage: StorageFacility | null): number {
+    if (!facility.construction || !storage) {
+        return 0;
+    }
+    const cs = facility.construction;
+    const available = queryStorageFacility(storage, constructionServiceResourceType.name);
+    const toConsume = Math.min(cs.maximumConstructionServiceConsumption, available);
+    cs.lastTickInvestedConstructionServices = toConsume;
+
+    if (toConsume > 0) {
+        removeFromStorageFacility(storage, constructionServiceResourceType.name, toConsume);
+        cs.progress += toConsume;
+    }
+
+    if (cs.progress >= cs.totalConstructionServiceRequired) {
+        facility.maxScale = cs.constructionTargetMaxScale;
+        facility.construction = null;
+    }
+
+    return toConsume;
+}
+
 export function constructionTick(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -87,24 +110,7 @@ export function constructionTick(agents: Map<string, Agent>, planet: Planet): vo
         ];
 
         for (const facility of allFacilities) {
-            if (!facility.construction) {
-                continue;
-            }
-
-            const cs = facility.construction;
-            const available = queryStorageFacility(assets.storageFacility, constructionServiceResourceType.name);
-            const toConsume = Math.min(cs.maximumConstructionServiceConsumption, available);
-            cs.lastTickInvestedConstructionServices = toConsume;
-
-            if (toConsume > 0) {
-                removeFromStorageFacility(assets.storageFacility, constructionServiceResourceType.name, toConsume);
-                cs.progress += toConsume;
-            }
-
-            if (cs.progress >= cs.totalConstructionServiceRequired) {
-                facility.maxScale = cs.constructionTargetMaxScale;
-                facility.construction = null;
-            }
+            consumeConstructionForFacility(facility, assets.storageFacility);
         }
     });
 }
@@ -345,7 +351,7 @@ function processShipConstructionFacility(params: ShipConstructionParameters, tic
             }
             facility.progress += part * overallEfficiency;
             if (facility.progress >= 1) {
-                agent.transportShips.push(createTransportShip(facility.produces, tick, facility.shipName, planet));
+                agent.ships.push(createShip(facility.produces, tick, facility.shipName, planet));
                 facility.progress = 0;
                 facility.produces = null;
                 facility.shipName = '';
@@ -387,6 +393,9 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
+            return;
+        }
+        if (!hasActiveLicense(assets, 'workforce')) {
             return;
         }
 

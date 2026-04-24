@@ -1,5 +1,5 @@
 import type { EducationLevelType } from '../population/education';
-import type { TransportShipType } from '../ships/ships';
+import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceProcessLevel, ResourceQuantity } from './claims';
 import type { PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
@@ -142,7 +142,7 @@ export type ManagementFacility = FacilityBase & {
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
     shipName: string;
-    produces: TransportShipType | null; // null = idle (no ship being built)
+    produces: ShipType | null; // null = idle (no ship being built)
     progress: number;
     lastTickResults: LastManagementTickResults;
 };

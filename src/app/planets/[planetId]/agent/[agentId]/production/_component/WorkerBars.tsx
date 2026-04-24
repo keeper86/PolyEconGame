@@ -19,6 +19,16 @@ function fillColor(efficiency: number, isLimiting: boolean): string {
     return 'bg-green-500/40';
 }
 
+function borderColor(efficiency: number, isLimiting: boolean): string {
+    if (isLimiting) {
+        return 'border border-red-500';
+    }
+    if (efficiency < 0.95) {
+        return 'border border-amber-400';
+    }
+    return 'border border-green-500';
+}
+
 export function WorkerBars({
     workerRequirement,
     scale,
@@ -42,14 +52,14 @@ export function WorkerBars({
         <div className='flex flex-col gap-2 mb-3'>
             {entries.map(([edu, req]) => {
                 const required = (req ?? 0) * scale;
-                const eff = workerEfficiency[edu] ?? 1;
+                const eff = workerEfficiency[edu] ?? 0;
                 const isLimiting = eff <= globalMin && globalMin < 0.99;
 
                 return (
                     <Tooltip key={edu}>
                         <TooltipTrigger asChild>
                             <div
-                                className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} cursor-default`}
+                                className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} cursor-default ${borderColor(eff, isLimiting)}`}
                             >
                                 <span
                                     className={`absolute inset-y-0 left-0 ${fillColor(eff, isLimiting)} transition-all`}
@@ -57,7 +67,7 @@ export function WorkerBars({
                                 />
                                 <span className='relative z-10 flex items-center justify-between w-full px-2 py-0.5 text-xs text-outline-strong'>
                                     <span>{educationLevels[edu].name}</span>
-                                    <span className='tabular-nums'>{formatNumbers(required)}</span>
+                                    <span className='tabular-nums'>{formatNumbers(Math.round(eff * required))}</span>
                                 </span>
                             </div>
                         </TooltipTrigger>

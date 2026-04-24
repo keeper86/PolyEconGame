@@ -228,6 +228,45 @@ export const cancelTransportContractSpec: CommandSpec<
     extract: (msg) => msg.contractId,
 };
 
+type PostConstructionContractSuccess = Extract<OutboundMessage, { type: 'constructionContractPosted' }>;
+type PostConstructionContractFailure = Extract<OutboundMessage, { type: 'constructionContractPostFailed' }>;
+export const postConstructionContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postConstructionContract' }>,
+    PostConstructionContractSuccess,
+    PostConstructionContractFailure,
+    string
+> = {
+    successType: 'constructionContractPosted',
+    failureType: 'constructionContractPostFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type AcceptConstructionContractSuccess = Extract<OutboundMessage, { type: 'constructionContractAccepted' }>;
+type AcceptConstructionContractFailure = Extract<OutboundMessage, { type: 'constructionContractAcceptFailed' }>;
+export const acceptConstructionContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptConstructionContract' }>,
+    AcceptConstructionContractSuccess,
+    AcceptConstructionContractFailure,
+    string
+> = {
+    successType: 'constructionContractAccepted',
+    failureType: 'constructionContractAcceptFailed',
+    extract: (msg) => msg.contractId,
+};
+
+type CancelConstructionContractSuccess = Extract<OutboundMessage, { type: 'constructionContractCancelled' }>;
+type CancelConstructionContractFailure = Extract<OutboundMessage, { type: 'constructionContractCancelFailed' }>;
+export const cancelConstructionContractSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelConstructionContract' }>,
+    CancelConstructionContractSuccess,
+    CancelConstructionContractFailure,
+    string
+> = {
+    successType: 'constructionContractCancelled',
+    failureType: 'constructionContractCancelFailed',
+    extract: (msg) => msg.contractId,
+};
+
 type PostShipBuyingOfferSuccess = Extract<OutboundMessage, { type: 'shipBuyingOfferPosted' }>;
 type PostShipBuyingOfferFailure = Extract<OutboundMessage, { type: 'shipBuyingOfferPostFailed' }>;
 export const postShipBuyingOfferSpec: CommandSpec<
@@ -252,6 +291,73 @@ export const acceptShipBuyingOfferSpec: CommandSpec<
     successType: 'shipBuyingOfferAccepted',
     failureType: 'shipBuyingOfferAcceptFailed',
     extract: (msg) => msg.offerId,
+};
+
+// --- Ship listing specs ---
+
+type PostShipListingSuccess = Extract<OutboundMessage, { type: 'shipListingPosted' }>;
+type PostShipListingFailure = Extract<OutboundMessage, { type: 'shipListingPostFailed' }>;
+export const postShipListingSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'postShipListing' }>,
+    PostShipListingSuccess,
+    PostShipListingFailure,
+    string
+> = {
+    successType: 'shipListingPosted',
+    failureType: 'shipListingPostFailed',
+    extract: (msg) => msg.listingId,
+};
+
+type CancelShipListingSuccess = Extract<OutboundMessage, { type: 'shipListingCancelled' }>;
+type CancelShipListingFailure = Extract<OutboundMessage, { type: 'shipListingCancelFailed' }>;
+export const cancelShipListingSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelShipListing' }>,
+    CancelShipListingSuccess,
+    CancelShipListingFailure,
+    string
+> = {
+    successType: 'shipListingCancelled',
+    failureType: 'shipListingCancelFailed',
+    extract: (msg) => msg.listingId,
+};
+
+type AcceptShipListingSuccess = Extract<OutboundMessage, { type: 'shipListingAccepted' }>;
+type AcceptShipListingFailure = Extract<OutboundMessage, { type: 'shipListingAcceptFailed' }>;
+export const acceptShipListingSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acceptShipListing' }>,
+    AcceptShipListingSuccess,
+    AcceptShipListingFailure,
+    string
+> = {
+    successType: 'shipListingAccepted',
+    failureType: 'shipListingAcceptFailed',
+    extract: (msg) => msg.listingId,
+};
+
+type DispatchShipSuccess = Extract<OutboundMessage, { type: 'shipDispatched' }>;
+type DispatchShipFailure = Extract<OutboundMessage, { type: 'shipDispatchFailed' }>;
+export const dispatchShipSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'dispatchShip' }>,
+    DispatchShipSuccess,
+    DispatchShipFailure,
+    string
+> = {
+    successType: 'shipDispatched',
+    failureType: 'shipDispatchFailed',
+    extract: (msg) => msg.shipName,
+};
+
+type DispatchConstructionShipSuccess = Extract<OutboundMessage, { type: 'constructionShipDispatched' }>;
+type DispatchConstructionShipFailure = Extract<OutboundMessage, { type: 'constructionShipDispatchFailed' }>;
+export const dispatchConstructionShipSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'dispatchConstructionShip' }>,
+    DispatchConstructionShipSuccess,
+    DispatchConstructionShipFailure,
+    string
+> = {
+    successType: 'constructionShipDispatched',
+    failureType: 'constructionShipDispatchFailed',
+    extract: (msg) => msg.shipName,
 };
 
 // --- Ship construction facility specs ---
@@ -321,4 +427,17 @@ export const expandShipMaintenanceFacilitySpec: CommandSpec<
     successType: 'shipMaintenanceFacilityExpanded',
     failureType: 'shipMaintenanceFacilityExpandFailed',
     extract: (msg) => msg.facilityId,
+};
+
+type AcquireLicenseSuccess = Extract<OutboundMessage, { type: 'licenseAcquired' }>;
+type AcquireLicenseFailure = Extract<OutboundMessage, { type: 'licenseAcquisitionFailed' }>;
+export const acquireLicenseSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acquireLicense' }>,
+    AcquireLicenseSuccess,
+    AcquireLicenseFailure,
+    { agentId: string; planetId: string; licenseType: 'commercial' | 'workforce' }
+> = {
+    successType: 'licenseAcquired',
+    failureType: 'licenseAcquisitionFailed',
+    extract: (msg) => ({ agentId: msg.agentId, planetId: msg.planetId, licenseType: msg.licenseType }),
 };

@@ -14,11 +14,20 @@ import {
     listAgentShips,
     listTransportContracts,
     listShipBuyingOffers,
+    listShipListings,
+    getShipMarketHints,
+    getShipMarketHistory,
     postTransportContract,
     acceptTransportContract,
     cancelTransportContract,
+    dispatchShip,
+    dispatchConstructionShip,
     postShipBuyingOffer,
     acceptShipBuyingOffer,
+    postShipListing,
+    cancelShipListing,
+    acceptShipListing,
+    getAgentPlanetStorage,
 } from './controller/ship';
 import {
     getAgentDetail,
@@ -60,6 +69,7 @@ import {
     setShipConstructionTarget,
     buildShipMaintenanceFacility,
     expandShipMaintenanceFacility,
+    acquireLicense,
 } from './controller/user';
 import { trpcRoot } from './trpcRoot';
 
@@ -110,16 +120,26 @@ const protectedAppRouter = trpcRoot.router({
     listAgentShips: listAgentShips(),
     listTransportContracts: listTransportContracts(),
     listShipBuyingOffers: listShipBuyingOffers(),
+    listShipListings: listShipListings(),
+    getShipMarketHints: getShipMarketHints(),
+    getShipMarketHistory: getShipMarketHistory(),
     postTransportContract: postTransportContract(),
     acceptTransportContract: acceptTransportContract(),
     cancelTransportContract: cancelTransportContract(),
+    dispatchShip: dispatchShip(),
+    dispatchConstructionShip: dispatchConstructionShip(),
     postShipBuyingOffer: postShipBuyingOffer(),
     acceptShipBuyingOffer: acceptShipBuyingOffer(),
+    postShipListing: postShipListing(),
+    cancelShipListing: cancelShipListing(),
+    acceptShipListing: acceptShipListing(),
+    getAgentPlanetStorage: getAgentPlanetStorage(),
     buildShipConstructionFacility: buildShipConstructionFacility(),
     expandShipConstructionFacility: expandShipConstructionFacility(),
     setShipConstructionTarget: setShipConstructionTarget(),
     buildShipMaintenanceFacility: buildShipMaintenanceFacility(),
     expandShipMaintenanceFacility: expandShipMaintenanceFacility(),
+    acquireLicense: acquireLicense(),
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

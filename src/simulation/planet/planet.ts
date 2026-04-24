@@ -1,11 +1,17 @@
 import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType, Population } from '../population/population';
-import type { TransportShip } from '../ships/ships';
+import type {
+    ConstructionContract,
+    Ship,
+    ShipBuyingOffer,
+    ShipCapitalMarket,
+    ShipListing,
+    TransportContract,
+} from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
 import type { ResourceName } from './resourceCatalog';
-import type { ShipBuyingOffer, TransportContract } from '../ships/ships';
 
 export interface Bank {
     loans: number;
@@ -220,6 +226,13 @@ export type MarketResult = {
     }[];
 };
 
+export type LicenseType = 'commercial' | 'workforce';
+
+export type PlanetLicense = {
+    acquiredTick: number;
+    frozen: boolean;
+};
+
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
     managementFacilities: ManagementFacility[];
@@ -229,7 +242,9 @@ export type AgentPlanetAssets = {
     storageFacility: StorageFacility;
 
     transportContracts: TransportContract[];
+    constructionContracts: ConstructionContract[];
     shipBuyingOffers: ShipBuyingOffer[];
+    shipListings: ShipListing[];
 
     deposits: number;
 
@@ -264,7 +279,20 @@ export type AgentPlanetAssets = {
         claimPayments: number;
         totalWorkersTicks: number;
     };
+
+    licenses: {
+        commercial?: PlanetLicense;
+        workforce?: PlanetLicense;
+    };
 };
+
+/**
+ * Returns true if the agent has the given license on a planet and it is not frozen.
+ */
+export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): boolean {
+    const license = assets.licenses?.[type];
+    return license !== undefined && !license.frozen;
+}
 
 export type Agent = {
     id: string;
@@ -274,7 +302,7 @@ export type Agent = {
     foundedTick: number;
     starterLoanTaken: boolean;
     associatedPlanetId: string;
-    transportShips: TransportShip[];
+    ships: Ship[];
     assets: {
         [planetId in string]: AgentPlanetAssets;
     };
@@ -284,6 +312,7 @@ export interface GameState {
     tick: number;
     planets: Map<string, Planet>;
     agents: Map<string, Agent>;
+    shipCapitalMarket: ShipCapitalMarket;
 }
 
 export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): void {

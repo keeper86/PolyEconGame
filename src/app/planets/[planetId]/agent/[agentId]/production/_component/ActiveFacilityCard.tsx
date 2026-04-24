@@ -88,7 +88,7 @@ export function ActiveFacilityCard({
               ...Object.values(results.resourceEfficiency),
               ...Object.values(results.workerEfficiency).filter((v): v is number => v !== undefined),
           )
-        : 1;
+        : 0;
 
     return (
         <FacilityCardShell

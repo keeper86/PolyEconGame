@@ -1,9 +1,9 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
-import { facilityByName, shipMaintenanceFacilityType } from '../planet/productionFacilities';
+import { facilityByName, maintenanceFacilityType } from '../planet/productionFacilities';
 import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
 import { shipConstructionFacilityType } from '../planet/specialFacilities';
-import { shiptypes } from '../ships/ships';
+import { shiptypes, constructionShipType } from '../ships/ships';
 
 /**
  * Handle 'buildFacility' action
@@ -150,12 +150,14 @@ export function handleSetFacilityScale(
         });
         return;
     }
-    const facility = assets.productionFacilities.find((f) => f.id === facilityId);
+    const facility =
+        assets.productionFacilities.find((f) => f.id === facilityId) ??
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: `Facility '${facilityId}' not found` });
         return;
     }
-    if (facility.construction !== null) {
+    if ('construction' in facility && facility.construction !== null) {
         safePostMessage({
             type: 'facilityScaleSetFailed',
             requestId,
@@ -370,9 +372,11 @@ export function handleSetShipConstructionTarget(
             `[worker] Agent '${agentId}' cleared ship construction target at facility '${facilityId}' on planet '${planetId}'`,
         );
     } else {
-        const shipType = Object.values(shiptypes)
-            .flatMap((cat) => Object.values(cat))
-            .find((s) => s.name === shipTypeName);
+        const shipType =
+            Object.values(shiptypes)
+                .flatMap((cat) => Object.values(cat))
+                .find((s) => s.name === shipTypeName) ??
+            (constructionShipType.name === shipTypeName ? constructionShipType : undefined);
         if (!shipType) {
             safePostMessage({
                 type: 'shipConstructionTargetSetFailed',
@@ -424,7 +428,7 @@ export function handleBuildShipMaintenanceFacility(
         return;
     }
     const facilityId = `${agentId}-ship-maintenance-${facilityName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const newFacility = shipMaintenanceFacilityType(planetId, facilityId);
+    const newFacility = maintenanceFacilityType(planetId, facilityId);
     newFacility.name = facilityName;
     const costs = calculateCostsForConstruction(getFacilityType(newFacility), 0, targetScale);
     newFacility.construction = {

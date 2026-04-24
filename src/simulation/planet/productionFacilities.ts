@@ -910,12 +910,12 @@ export const educationCenter = (planetId: string, id: string): ProductionFacilit
     produces: [{ resource: educationServiceResourceType, quantity: 300 }],
 });
 
-export const shipMaintenanceFacilityType = (planetId: string, id: string): ProductionFacility => {
+export const maintenanceFacilityType = (planetId: string, id: string): ProductionFacility => {
     return {
         planetId,
         id,
         type: 'production',
-        name: 'Ship Maintenance Facility',
+        name: 'Maintenance Facility',
         maxScale: 1,
         scale: 1,
         construction: null,
@@ -999,7 +999,7 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(hospital),
     entry(educationCenter),
     entry(siliconWaferFactory),
-    entry(shipMaintenanceFacilityType),
+    entry(maintenanceFacilityType),
 ];
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;
 export type FacilityLevel = ResourceProcessLevel[] | 'refined' | 'manufactured' | 'services';
