@@ -100,7 +100,6 @@ export function ActiveShipyardCard({
         constructionServicePrice && constructionServicePrice > 0 ? expandCost * constructionServicePrice : null;
 
     const results = facility.lastTickResults;
-    const eff = results?.overallEfficiency ?? 0;
     const globalMin = results
         ? Math.min(
               ...Object.values(results.resourceEfficiency),
@@ -223,8 +222,6 @@ export function ActiveShipyardCard({
                         )}
                     </div>
                 </div>
-
-                {/* Build progress if active */}
                 {facility.produces && (
                     <div>
                         <div className='flex justify-between text-xs text-muted-foreground mb-1'>
@@ -236,9 +233,7 @@ export function ActiveShipyardCard({
                         <Progress value={facility.progress * 100} className='h-2' />
                     </div>
                 )}
-
                 <Separator />
-
                 {/* Expand section */}
                 {!showExpand && (
                     <div className='flex gap-2'>
@@ -263,7 +258,6 @@ export function ActiveShipyardCard({
                         </Button>
                     </div>
                 )}
-
                 {showExpand && (
                     <div className='space-y-2 text-xs'>
                         <div className='flex items-center gap-2'>
@@ -362,7 +356,8 @@ export function ActiveShipyardCard({
                             </Button>
                         </div>
                     </>
-                )}            </FacilityCardShell>
+                )}
+            </FacilityCardShell>
         </>
     );
 }

@@ -1,6 +1,6 @@
 import { EPSILON, MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
-import type { Facility } from '../planet/facility';
+import type { Facility, ProductionFacility } from '../planet/facility';
 import {
     MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
     putIntoStorageFacility,
@@ -507,11 +507,13 @@ export const shipTick = (gameState: GameState): void => {
                     if (receivingAgent) {
                         const destAssets = receivingAgent.assets[arrivedPlanetId];
                         if (destAssets) {
-                            // Update the facility's planetId to match the destination
-                            const placedFacility = { ...target, planetId: arrivedPlanetId };
-                            destAssets.productionFacilities.push(
-                                placedFacility as typeof target & { type: 'production' },
-                            );
+                            // Deep-clone the facility so the ship's buildingTarget reference is severed.
+                            // A shallow spread would leave nested objects (needs, produces,
+                            // workerRequirement, lastTickResults) shared between the placed facility
+                            // and the ship state, causing silent cross-reference mutations.
+                            const placedFacility = structuredClone({ ...target, planetId: arrivedPlanetId });
+
+                            destAssets.productionFacilities.push(placedFacility as ProductionFacility);
                         }
                     }
 

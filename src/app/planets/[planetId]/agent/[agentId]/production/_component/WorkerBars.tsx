@@ -52,7 +52,7 @@ export function WorkerBars({
         <div className='flex flex-col gap-2 mb-3'>
             {entries.map(([edu, req]) => {
                 const required = (req ?? 0) * scale;
-                const eff = workerEfficiency[edu] ?? 1;
+                const eff = workerEfficiency[edu] ?? 0;
                 const isLimiting = eff <= globalMin && globalMin < 0.99;
 
                 return (
@@ -67,7 +67,7 @@ export function WorkerBars({
                                 />
                                 <span className='relative z-10 flex items-center justify-between w-full px-2 py-0.5 text-xs text-outline-strong'>
                                     <span>{educationLevels[edu].name}</span>
-                                    <span className='tabular-nums'>{formatNumbers(required)}</span>
+                                    <span className='tabular-nums'>{formatNumbers(Math.round(eff * required))}</span>
                                 </span>
                             </div>
                         </TooltipTrigger>
