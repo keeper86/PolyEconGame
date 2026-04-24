@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { ConstructionShip, TransportShip } from '@/simulation/ships/ships';
+import type { ConstructionShip, PassengerShip, TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
 import { DispatchShipDialog } from './_components/DispatchShipDialog';
@@ -16,7 +16,7 @@ import { DispatchConstructionShipDialog } from './_components/DispatchConstructi
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-function statusBadge(ship: TransportShip | ConstructionShip) {
+function statusBadge(ship: TransportShip | ConstructionShip | PassengerShip) {
     const { state } = ship;
     const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
         idle: 'secondary',

@@ -17,6 +17,14 @@ import {
 } from '../planet/resources';
 import { maintenanceServiceResourceType } from '../planet/services';
 import type { EducationLevelType } from '../population/population';
+import type { PassengerManifest } from '../population/manifest';
+import {
+    boardPassengersFromWorkforce,
+    calculateAndDeductProvisions,
+    refundBoardedPassengers,
+    advanceManifestAge,
+    unloadPassengersToPlanet,
+} from '../population/manifest';
 
 export const transportShipBuildResources = [
     steelResourceType.name,
@@ -72,7 +80,7 @@ export type TransportShipType = BaseShipType & {
     };
 };
 
-export type ShipType = ConstructionShipType | TransportShipType;
+export type ShipType = ConstructionShipType | TransportShipType | PassengerShipType;
 
 export type BaseShipStatusTransporting = {
     from: string; // planet id
@@ -84,7 +92,7 @@ export type BaseShipStatusTransporting = {
 
 export type PassengerShipStatusTransporting = BaseShipStatusTransporting & {
     type: 'passenger_transporting';
-    passengers: number;
+    manifest: PassengerManifest;
 };
 
 export type TransportShipStatusTransporting = BaseShipStatusTransporting & {
@@ -117,10 +125,14 @@ export type ConstructionShipStatusLoading = BaseShipStatusLoading & {
     progress: number; // if buildingTarget is not null, this should be filled up to 1 over time
 };
 
-export type PassengerShipStatusLoading = BaseShipStatusLoading & {
+export type PassengerShipStatusLoading = {
     type: 'passenger_boarding';
+    agentId: string;
+    planetId: string;
+    toPlanetId: string;
     passengerGoal: number;
     currentPassengers: number;
+    manifest: PassengerManifest;
 };
 
 export type BaseShipStatusUnloading = {
@@ -210,7 +222,21 @@ export type ConstructionContract = ConstructionContractBase &
         | { status: 'completed' }
     );
 
-export type Ship = TransportShip | ConstructionShip;
+export type PassengerShipStatus =
+    | ShipStatusIdle
+    | ShipStatusListed
+    | ShipStatusDerelict
+    | PassengerShipStatusLoading
+    | PassengerShipStatusTransporting;
+
+export type PassengerShipStatusType = PassengerShipStatus['type'];
+
+export type PassengerShip = BaseShip & {
+    type: PassengerShipType;
+    state: PassengerShipStatus;
+};
+
+export type Ship = TransportShip | ConstructionShip | PassengerShip;
 
 export const shipTick = (gameState: GameState): void => {
     gameState.agents.forEach((agent) => {
@@ -521,6 +547,84 @@ export const shipTick = (gameState: GameState): void => {
                 }
                 return;
             }
+
+            // ---------------------------------------------------------------
+            // Passenger ship: boarding
+            // ---------------------------------------------------------------
+            if (ship.state.type === 'passenger_boarding' && ship.type.type === 'passenger') {
+                const boardingState = ship.state;
+                const sourcePlanet = gameState.planets.get(boardingState.planetId);
+                if (!sourcePlanet) {
+                    ship.state = { type: 'idle', planetId: boardingState.planetId };
+                    return;
+                }
+
+                const needed = boardingState.passengerGoal - boardingState.currentPassengers;
+                const boarded = boardPassengersFromWorkforce(
+                    agent,
+                    sourcePlanet,
+                    boardingState.planetId,
+                    boardingState.manifest,
+                    needed,
+                );
+                boardingState.currentPassengers += boarded;
+
+                const done = boardingState.currentPassengers >= boardingState.passengerGoal || boarded === 0;
+
+                if (done) {
+                    if (boardingState.currentPassengers === 0) {
+                        // Nothing to transport — abort
+                        ship.state = { type: 'idle', planetId: boardingState.planetId };
+                        return;
+                    }
+
+                    const flightTicks = Math.ceil(1000 / ship.type.speed);
+                    const provisionsOk = calculateAndDeductProvisions(
+                        agent,
+                        boardingState.planetId,
+                        boardingState.manifest,
+                        flightTicks,
+                    );
+
+                    if (!provisionsOk) {
+                        refundBoardedPassengers(agent, sourcePlanet, boardingState.planetId, boardingState.manifest);
+                        ship.state = { type: 'idle', planetId: boardingState.planetId };
+                        return;
+                    }
+
+                    const travelYears = flightTicks / TICKS_PER_YEAR;
+                    ship.state = {
+                        type: 'passenger_transporting',
+                        from: boardingState.planetId,
+                        to: boardingState.toPlanetId,
+                        arrivalTick: gameState.tick + flightTicks,
+                        manifest: advanceManifestAge(boardingState.manifest, travelYears),
+                    };
+                }
+                return;
+            }
+
+            // ---------------------------------------------------------------
+            // Passenger ship: transporting / arrival
+            // ---------------------------------------------------------------
+            if (ship.state.type === 'passenger_transporting') {
+                const tState = ship.state;
+                if (gameState.tick < tState.arrivalTick) {
+                    return;
+                }
+
+                const destPlanet = gameState.planets.get(tState.to);
+                if (!destPlanet) {
+                    // Destination gone — become idle wherever we are
+                    ship.state = { type: 'idle', planetId: tState.from };
+                    return;
+                }
+
+                unloadPassengersToPlanet(destPlanet, tState.manifest);
+
+                ship.state = { type: 'idle', planetId: tState.to };
+                return;
+            }
         });
     });
 };
@@ -625,6 +729,27 @@ const smallReefer: TransportShipType = {
     buildingTime: 60,
 };
 
+export const passengerLiner: PassengerShipType = {
+    type: 'passenger',
+    name: 'Passenger Liner',
+    scale: 'large',
+    speed: 8,
+    passengerCapacity: 50_000,
+    requiredCrew: {
+        none: 0,
+        primary: 10,
+        secondary: 8,
+        tertiary: 4,
+    },
+    buildingCost: [
+        { resource: steelResourceType, quantity: 600 },
+        { resource: electronicComponentResourceType, quantity: 200 },
+        { resource: machineryResourceType, quantity: 150 },
+        { resource: plasticResourceType, quantity: 100 },
+    ],
+    buildingTime: 240,
+};
+
 export const shiptypes = {
     solid: {
         bulkCarrier1: smallBulkCarrier,
@@ -657,6 +782,10 @@ export const shiptypes = {
         reefer3: scaleShipType('large', 'Reefer 3', smallReefer),
         reefer4: scaleShipType('super', 'Reefer 4', smallReefer),
     } as const,
+
+    passenger: {
+        liner: passengerLiner,
+    } as const,
 } as const;
 
 export type ShipTypeKey = {
@@ -664,7 +793,7 @@ export type ShipTypeKey = {
 }[keyof typeof shiptypes];
 
 export const createShip = (
-    shipTemplate: TransportShipType | ConstructionShipType,
+    shipTemplate: TransportShipType | ConstructionShipType | PassengerShipType,
     builtAtTick: number,
     name: string,
     planet: Planet,
@@ -683,6 +812,20 @@ export const createShip = (
             builtAtTick,
         };
     }
+    if (shipTemplate.type === 'passenger') {
+        return {
+            name,
+            builtAtTick,
+            type: shipTemplate,
+            state: {
+                type: 'idle',
+                planetId: planet.id,
+            },
+            maintainanceStatus: 1,
+            maxMaintenance: 1,
+            cumulativeRepairAcc: 0,
+        } satisfies PassengerShip;
+    }
     return {
         name,
         builtAtTick,
@@ -694,7 +837,7 @@ export const createShip = (
         maintainanceStatus: 1,
         maxMaintenance: 1,
         cumulativeRepairAcc: 0,
-    };
+    } satisfies TransportShip;
 };
 
 export type ShipListing = {

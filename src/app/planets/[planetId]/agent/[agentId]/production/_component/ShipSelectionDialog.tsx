@@ -18,6 +18,7 @@ const categoryLabels: Record<keyof typeof shiptypes, string> = {
     gas: 'Gas Carriers',
     pieces: 'Freighters',
     frozenGoods: 'Reefer Ships',
+    passenger: 'Passenger Ships',
 };
 
 const allShipTypesByCategory = Object.entries(shiptypes).map(([key, types]) => ({

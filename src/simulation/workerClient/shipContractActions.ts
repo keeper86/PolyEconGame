@@ -915,6 +915,87 @@ export function handleDispatchShip(
     safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
 }
 
+export function handleDispatchPassengerShip(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'dispatchPassengerShip' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, fromPlanetId, toPlanetId, shipName, passengerCount } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+
+    if (!state.planets.has(fromPlanetId)) {
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: `Source planet '${fromPlanetId}' not found`,
+        });
+        return;
+    }
+
+    if (!state.planets.has(toPlanetId)) {
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: `Destination planet '${toPlanetId}' not found`,
+        });
+        return;
+    }
+
+    const ship = agent.ships.find((s) => s.name === shipName);
+    if (!ship) {
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: `Ship '${shipName}' not found`,
+        });
+        return;
+    }
+    if (ship.state.type !== 'idle') {
+        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Ship is not idle' });
+        return;
+    }
+    if (ship.state.planetId !== fromPlanetId) {
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: `Ship is not on planet '${fromPlanetId}'`,
+        });
+        return;
+    }
+    if (ship.type.type !== 'passenger') {
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: 'Only passenger ships can transport passengers',
+        });
+        return;
+    }
+
+    const capacity = ship.type.passengerCapacity;
+    const goal = Math.min(passengerCount, capacity);
+    if (goal <= 0) {
+        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Passenger count must be > 0' });
+        return;
+    }
+
+    ship.state = {
+        type: 'passenger_boarding',
+        agentId,
+        planetId: fromPlanetId,
+        toPlanetId,
+        passengerGoal: goal,
+        currentPassengers: 0,
+        manifest: {},
+    };
+
+    safePostMessage({ type: 'passengerShipDispatched', requestId, agentId, shipName });
+}
+
 export function handleDispatchConstructionShip(
     state: GameState,
     action: Extract<PendingAction, { type: 'dispatchConstructionShip' }>,

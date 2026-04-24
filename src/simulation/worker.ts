@@ -27,6 +27,7 @@ import {
     handleAcceptTransportContract,
     handleCancelTransportContract,
     handleDispatchShip,
+    handleDispatchPassengerShip,
     handleDispatchConstructionShip,
     handlePostConstructionContract,
     handleAcceptConstructionContract,
@@ -206,6 +207,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'dispatchShip':
                         handleDispatchShip(state, action, safePostMessage);
+                        break;
+                    case 'dispatchPassengerShip':
+                        handleDispatchPassengerShip(state, action, safePostMessage);
                         break;
                     case 'dispatchConstructionShip':
                         handleDispatchConstructionShip(state, action, safePostMessage);
