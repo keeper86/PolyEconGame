@@ -43,26 +43,26 @@ function GranularityButton({
     );
 }
 
-export default function AgentFinancialCharts({ agentId }: { agentId: string }) {
+export default function AgentFinancialCharts({ agentId, planetId }: { agentId: string; planetId: string }) {
     const trpc = useTRPC();
     const [granularity, setGranularity] = useState<Granularity>('monthly');
 
     const { data: monthlyData, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, granularity: 'monthly', limit: 13 },
+            { agentId, planetId, granularity: 'monthly', limit: 13 },
             { enabled: granularity === 'monthly' },
         ),
     );
 
     const { data: yearlyData, isLoading: loadingYearly } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, granularity: 'yearly', limit: 11 },
+            { agentId, planetId, granularity: 'yearly', limit: 11 },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decadeData, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, granularity: 'decade', limit: 100 },
+            { agentId, planetId, granularity: 'decade', limit: 100 },
             { enabled: granularity === 'decade' },
         ),
     );

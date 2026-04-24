@@ -308,6 +308,7 @@ export interface AgentFinancialBucket {
 export async function getAgentHistoryAggregated(
     db: Knex,
     agentId: string,
+    planetId: string,
     granularity: HistoryGranularity = 'monthly',
     limit: number = 100,
 ): Promise<AgentSummaryBucket[]> {
@@ -319,7 +320,7 @@ export async function getAgentHistoryAggregated(
               : 'agent_monthly_summary';
 
     return db(view)
-        .where({ agent_id: agentId })
+        .where({ agent_id: agentId, planet_id: planetId })
         .orderBy('bucket', 'desc')
         .limit(limit)
         .select(
@@ -338,6 +339,7 @@ export async function getAgentHistoryAggregated(
 export async function getAgentFinancialHistoryAggregated(
     db: Knex,
     agentId: string,
+    planetId: string,
     granularity: HistoryGranularity = 'monthly',
     limit: number = 26,
 ): Promise<AgentFinancialBucket[]> {
@@ -349,7 +351,7 @@ export async function getAgentFinancialHistoryAggregated(
               : 'agent_monthly_summary';
 
     return db(view)
-        .where({ agent_id: agentId })
+        .where({ agent_id: agentId, planet_id: planetId })
         .orderBy('bucket', 'desc')
         .limit(limit)
         .select(

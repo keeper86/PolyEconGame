@@ -21,8 +21,18 @@ export default function ProductionPage() {
             ) : !isLoading && assets ? (
                 <>
                     <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
-                        <AgentMetricChart agentId={agentId} granularity='monthly' metric='consumptionValue' />
-                        <AgentMetricChart agentId={agentId} granularity='monthly' metric='productionValue' />
+                        <AgentMetricChart
+                            agentId={agentId}
+                            planetId={planetId}
+                            granularity='monthly'
+                            metric='consumptionValue'
+                        />
+                        <AgentMetricChart
+                            agentId={agentId}
+                            planetId={planetId}
+                            granularity='monthly'
+                            metric='productionValue'
+                        />
                     </div>
                     <ProductionFacilitiesPanel
                         facilities={assets.productionFacilities}
