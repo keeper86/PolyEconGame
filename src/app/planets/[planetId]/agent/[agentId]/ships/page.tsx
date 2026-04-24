@@ -11,6 +11,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { ConstructionShip, TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
+import { DispatchShipDialog } from './_components/DispatchShipDialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -132,7 +133,8 @@ export default function AgentShipsPage() {
                                                 <p
                                                     className={`text-xs font-medium ${conditionColor(ship.maintainanceStatus)}`}
                                                 >
-                                                    Condition: {Math.round(ship.maintainanceStatus * 100)}%
+                                                    Condition: {Math.round(ship.maintainanceStatus * 100)}% Max:{' '}
+                                                    {Math.round(ship.maxMaintenance * 100)}%
                                                 </p>
                                             </div>
                                         </div>
@@ -160,15 +162,29 @@ export default function AgentShipsPage() {
                                                     ) : null;
                                                 })()}
                                             {isIdle && !sellMode[ship.name] && (
-                                                <Button
-                                                    size='sm'
-                                                    variant='outline'
-                                                    onClick={() =>
-                                                        setSellMode((prev) => ({ ...prev, [ship.name]: true }))
-                                                    }
-                                                >
-                                                    Sell
-                                                </Button>
+                                                <>
+                                                    {ship.type.type === 'transport' && (
+                                                        <DispatchShipDialog
+                                                            agentId={agentId}
+                                                            planetId={planetId}
+                                                            shipName={ship.name}
+                                                            shipCargoType={ship.type.cargoSpecification.type}
+                                                        >
+                                                            <Button size='sm' variant='outline'>
+                                                                Dispatch
+                                                            </Button>
+                                                        </DispatchShipDialog>
+                                                    )}
+                                                    <Button
+                                                        size='sm'
+                                                        variant='outline'
+                                                        onClick={() =>
+                                                            setSellMode((prev) => ({ ...prev, [ship.name]: true }))
+                                                        }
+                                                    >
+                                                        Sell
+                                                    </Button>
+                                                </>
                                             )}
                                             {isIdle && sellMode[ship.name] && (
                                                 <>

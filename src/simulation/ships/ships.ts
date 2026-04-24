@@ -209,7 +209,7 @@ export const shipTick = (gameState: GameState): void => {
                 maintenanceDecreasePerYear *= 5;
             }
             if (ship.state.type === 'idle' || ship.state.type === 'listed') {
-                maintenanceDecreasePerYear *= 0.5;
+                maintenanceDecreasePerYear /= 5;
             }
             ship.maintainanceStatus = Math.max(
                 0,
@@ -221,10 +221,14 @@ export const shipTick = (gameState: GameState): void => {
                 const storage = assets?.storageFacility;
                 if (storage) {
                     const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+                    const maintenanceNeeded = Math.min(
+                        maintenancePerTick,
+                        ship.maxMaintenance - ship.maintainanceStatus,
+                    );
                     const consumed = removeFromStorageFacility(
                         storage,
                         maintenanceServiceResourceType.name,
-                        maintenancePerTick,
+                        maintenanceNeeded,
                     );
                     if (consumed > 0) {
                         // Cap repair at maxMaintenance

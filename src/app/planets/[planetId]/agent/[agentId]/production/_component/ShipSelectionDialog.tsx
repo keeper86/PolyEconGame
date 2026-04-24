@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { formatNumbers } from '@/lib/utils';
-import { shiptypes } from '@/simulation/ships/ships';
-import type { TransportShipType } from '@/simulation/ships/ships';
+import { shiptypes, constructionShipType } from '@/simulation/ships/ships';
+import type { TransportShipType, ConstructionShipType } from '@/simulation/ships/ships';
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Zap, Package, Clock } from 'lucide-react';
@@ -40,7 +40,7 @@ export function ShipSelectionDialog({
     isPending: boolean;
     error?: string | null;
 }): React.ReactElement {
-    const [selectedShipType, setSelectedShipType] = useState<TransportShipType | null>(null);
+    const [selectedShipType, setSelectedShipType] = useState<TransportShipType | ConstructionShipType | null>(null);
     const [shipName, setShipName] = useState('');
 
     const handleConfirm = () => {
@@ -66,6 +66,43 @@ export function ShipSelectionDialog({
                 </DialogHeader>
 
                 <div className='flex-1 overflow-y-auto space-y-4 pr-1'>
+                    <div>
+                        <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>
+                            Construction Ships
+                        </p>
+                        <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
+                            {[constructionShipType].map((shipType) => {
+                                const isSelected = selectedShipType?.name === shipType.name;
+                                return (
+                                    <button
+                                        key={shipType.name}
+                                        type='button'
+                                        onClick={() => setSelectedShipType(shipType)}
+                                        className={`flex flex-col items-center rounded-lg border p-2 gap-2 text-left transition-all hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+                                            isSelected
+                                                ? 'border-primary bg-primary/5 ring-2 ring-primary/40'
+                                                : 'border-border bg-muted/30'
+                                        }`}
+                                    >
+                                        <FacilityOrShipIcon facilityOrShipName={shipType.name} size={80} />
+                                        <span className='text-xs font-medium text-center leading-tight'>
+                                            {shipType.name}
+                                        </span>
+                                        <div className='flex flex-wrap gap-1 justify-center'>
+                                            <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
+                                                <Zap className='h-2.5 w-2.5' />
+                                                {shipType.speed}
+                                            </Badge>
+                                            <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
+                                                <Clock className='h-2.5 w-2.5' />
+                                                {shipType.buildingTime}t
+                                            </Badge>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                     {allShipTypesByCategory.map(({ key, label, ships }) => (
                         <div key={key}>
                             <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>

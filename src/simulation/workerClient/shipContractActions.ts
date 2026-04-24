@@ -806,3 +806,94 @@ export function handleAcceptShipListing(
 
     safePostMessage({ type: 'shipListingAccepted', requestId, buyerAgentId, listingId });
 }
+
+export function handleDispatchShip(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'dispatchShip' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, fromPlanetId, toPlanetId, shipName, cargoGoal } = action;
+
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+
+    if (!state.planets.has(toPlanetId)) {
+        safePostMessage({
+            type: 'shipDispatchFailed',
+            requestId,
+            reason: `Destination planet '${toPlanetId}' not found`,
+        });
+        return;
+    }
+
+    const ship = agent.ships.find((s) => s.name === shipName);
+    if (!ship) {
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Ship '${shipName}' not found` });
+        return;
+    }
+    if (ship.state.type !== 'idle') {
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Ship is not idle' });
+        return;
+    }
+    if (ship.state.planetId !== fromPlanetId) {
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Ship is not on planet '${fromPlanetId}'` });
+        return;
+    }
+    if (ship.type.type !== 'transport') {
+        safePostMessage({
+            type: 'shipDispatchFailed',
+            requestId,
+            reason: 'Only transport ships can be self-dispatched',
+        });
+        return;
+    }
+
+    if (!cargoGoal) {
+        // Ferry-mode: transit without cargo — go directly to transporting
+        ship.state = {
+            type: 'transporting',
+            from: fromPlanetId,
+            to: toPlanetId,
+            cargo: null,
+            arrivalTick: state.tick + Math.ceil(1000 / ship.type.speed),
+        };
+        safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
+        return;
+    }
+
+    const assets = agent.assets[fromPlanetId];
+    if (!assets?.storageFacility) {
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'No storage facility on departure planet' });
+        return;
+    }
+
+    const storageEntry = assets.storageFacility.currentInStorage[cargoGoal.resourceName];
+    if (!storageEntry) {
+        safePostMessage({
+            type: 'shipDispatchFailed',
+            requestId,
+            reason: `Unknown resource '${cargoGoal.resourceName}'`,
+        });
+        return;
+    }
+
+    const available = queryStorageFacility(assets.storageFacility, cargoGoal.resourceName);
+    if (cargoGoal.quantity > available) {
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Insufficient cargo quantity in storage' });
+        return;
+    }
+
+    ship.state = {
+        type: 'loading',
+        planetId: fromPlanetId,
+        to: toPlanetId,
+        cargoGoal: { resource: storageEntry.resource, quantity: cargoGoal.quantity },
+        currentCargo: { resource: storageEntry.resource, quantity: 0 },
+        // No contractId or posterAgentId — cargo is loaded from own storage
+    };
+
+    safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
+}

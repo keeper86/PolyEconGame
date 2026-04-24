@@ -304,8 +304,6 @@ export default function PlanetShipsPage() {
                         );
                     })}
                 </TabsContent>
-
-                {/* Maintenance Offers — removed; maintenance is now service-based */}
             </Tabs>
 
             {/* Dialogs */}

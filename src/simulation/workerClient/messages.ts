@@ -113,6 +113,15 @@ export type InboundMessage =
           contractId: string;
       }
     | {
+          type: 'dispatchShip';
+          requestId: string;
+          agentId: string;
+          fromPlanetId: string;
+          toPlanetId: string;
+          shipName: string;
+          cargoGoal: { resourceName: string; quantity: number } | null;
+      }
+    | {
           type: 'postConstructionContract';
           requestId: string;
           agentId: string;
@@ -267,6 +276,8 @@ export type OutboundMessage =
     | { type: 'transportContractAcceptFailed'; requestId: string; reason: string }
     | { type: 'transportContractCancelled'; requestId: string; agentId: string; contractId: string }
     | { type: 'transportContractCancelFailed'; requestId: string; reason: string }
+    | { type: 'shipDispatched'; requestId: string; agentId: string; shipName: string }
+    | { type: 'shipDispatchFailed'; requestId: string; reason: string }
     | { type: 'constructionContractPosted'; requestId: string; agentId: string; contractId: string }
     | { type: 'constructionContractPostFailed'; requestId: string; reason: string }
     | { type: 'constructionContractAccepted'; requestId: string; agentId: string; contractId: string }
@@ -427,6 +438,15 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           contractId: string;
+      }
+    | {
+          type: 'dispatchShip';
+          requestId: string;
+          agentId: string;
+          fromPlanetId: string;
+          toPlanetId: string;
+          shipName: string;
+          cargoGoal: { resourceName: string; quantity: number } | null;
       }
     | {
           type: 'postConstructionContract';

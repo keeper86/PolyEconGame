@@ -7,6 +7,7 @@ import {
     workerAcceptTransportContract,
     workerCancelShipListing,
     workerCancelTransportContract,
+    workerDispatchShip,
     workerPostShipBuyingOffer,
     workerPostShipListing,
     workerPostTransportContract,
@@ -112,6 +113,29 @@ export const cancelTransportContract = () =>
             await assertAgentOwnership(userId, input.agentId);
             const contractId = await workerCancelTransportContract(input);
             return { contractId };
+        });
+
+export const dispatchShip = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                fromPlanetId: z.string().min(1),
+                toPlanetId: z.string().min(1),
+                shipName: z.string().min(1),
+                cargoGoal: z
+                    .object({
+                        resourceName: z.string().min(1),
+                        quantity: z.number().positive(),
+                    })
+                    .nullable(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const shipName = await workerDispatchShip(input);
+            return { shipName };
         });
 
 export const postShipBuyingOffer = () =>
@@ -228,4 +252,26 @@ export const acceptShipListing = () =>
             await assertAgentOwnership(userId, input.buyerAgentId);
             const listingId = await workerAcceptShipListing(input);
             return { listingId };
+        });
+
+export const getAgentPlanetStorage = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string().min(1), planetId: z.string().min(1) }))
+        .output(z.record(z.string(), z.number()))
+        .query(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const { agent } = await workerQueries.getAgent(input.agentId);
+            if (!agent) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
+            }
+            const inStorage = agent.assets?.[input.planetId]?.storageFacility?.currentInStorage ?? {};
+            const result: Record<string, number> = {};
+            for (const [resourceName, entry] of Object.entries(inStorage)) {
+                const qty = (entry as { quantity?: number })?.quantity ?? 0;
+                if (qty > 0) {
+                    result[resourceName] = qty;
+                }
+            }
+            return result;
         });

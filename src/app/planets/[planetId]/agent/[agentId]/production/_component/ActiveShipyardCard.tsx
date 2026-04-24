@@ -145,43 +145,6 @@ export function ActiveShipyardCard({
                     </span>
                 }
             >
-                {/* Set target / idle */}
-                <div className='flex items-center gap-1 rounded-md border p-0.5 self-start'>
-                    <Button
-                        size='sm'
-                        variant={facility.produces !== null ? 'default' : 'ghost'}
-                        className='h-6 px-2.5 text-xs'
-                        disabled={setTargetMutation.isPending || facility.produces !== null}
-                        onClick={() => setShipDialogOpen(true)}
-                    >
-                        Building
-                    </Button>
-                    <Button
-                        size='sm'
-                        variant={facility.produces === null ? 'default' : 'ghost'}
-                        className='h-6 px-2.5 text-xs'
-                        disabled={setTargetMutation.isPending || facility.produces === null}
-                        onClick={() =>
-                            setTargetMutation.mutate({
-                                agentId,
-                                planetId,
-                                facilityId: facility.id,
-                                shipTypeName: null,
-                                shipName: '',
-                            })
-                        }
-                    >
-                        Idle
-                    </Button>
-                </div>
-
-                {/* Efficiency */}
-                <div className='flex items-center gap-2 text-xs text-muted-foreground'>
-                    <span>Overall efficiency</span>
-                    <span className='tabular-nums font-medium text-foreground'>{Math.round(eff * 100)}%</span>
-                </div>
-
-                {/* IO row — always visible */}
                 <div className='grid w-full items-center gap-x-2 py-1' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
                     {/* Inputs */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>

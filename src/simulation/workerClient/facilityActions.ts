@@ -3,7 +3,7 @@ import type { OutboundMessage, PendingAction } from './messages';
 import { facilityByName, shipMaintenanceFacilityType } from '../planet/productionFacilities';
 import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
 import { shipConstructionFacilityType } from '../planet/specialFacilities';
-import { shiptypes } from '../ships/ships';
+import { shiptypes, constructionShipType } from '../ships/ships';
 
 /**
  * Handle 'buildFacility' action
@@ -370,9 +370,11 @@ export function handleSetShipConstructionTarget(
             `[worker] Agent '${agentId}' cleared ship construction target at facility '${facilityId}' on planet '${planetId}'`,
         );
     } else {
-        const shipType = Object.values(shiptypes)
-            .flatMap((cat) => Object.values(cat))
-            .find((s) => s.name === shipTypeName);
+        const shipType =
+            Object.values(shiptypes)
+                .flatMap((cat) => Object.values(cat))
+                .find((s) => s.name === shipTypeName) ??
+            (constructionShipType.name === shipTypeName ? constructionShipType : undefined);
         if (!shipType) {
             safePostMessage({
                 type: 'shipConstructionTargetSetFailed',
