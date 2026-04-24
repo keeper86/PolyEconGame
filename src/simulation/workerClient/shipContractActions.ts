@@ -1,13 +1,7 @@
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { Facility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
-import type {
-    ConstructionContract,
-    ShipBuyingOffer,
-    ShipListing,
-    TransportContract,
-    TransportShip,
-} from '../ships/ships';
+import type { ConstructionContract, ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
 import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { appendTradeRecord, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
@@ -144,6 +138,14 @@ export function handleAcceptTransportContract(
     const ship = carrierAgent.ships.find((s) => s.name === shipName);
     if (!ship) {
         safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: `Ship '${shipName}' not found` });
+        return;
+    }
+    if (ship.type.type !== 'transport') {
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Only transport ships can accept transport contracts',
+        });
         return;
     }
     if (ship.state.type !== 'idle') {
@@ -558,7 +560,21 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Ship is not idle' });
         return;
     }
-    if (ship.type.name !== offer.shipType) {
+    if (ship.type.type !== 'transport') {
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Only transport ships can be sold via buy offers',
+        });
+        return;
+    }
+    // offer.shipType is a ShipTypeKey; resolve to display name for comparison
+    const shipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
+        string,
+        { name: string }
+    >;
+    const expectedTypeName = shipTypesByKey[offer.shipType]?.name;
+    if (!expectedTypeName || ship.type.name !== expectedTypeName) {
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
@@ -597,7 +613,7 @@ export function handleAcceptShipBuyingOffer(
     buyerAssets.shipBuyingOffers.splice(offerIndex, 1);
 
     // Record trade in ship capital market
-    const ev = effectiveShipValue(ship as TransportShip, state);
+    const ev = effectiveShipValue(ship, state);
     updateShipEma(state.shipCapitalMarket, ship.type.name, offer.price);
     appendTradeRecord(state.shipCapitalMarket, {
         shipTypeName: ship.type.name,
@@ -794,7 +810,7 @@ export function handleAcceptShipListing(
     sellerAssets.shipListings.splice(listingIndex, 1);
 
     // Record trade
-    const ev = effectiveShipValue(ship as TransportShip, state);
+    const ev = effectiveShipValue(ship, state);
     updateShipEma(state.shipCapitalMarket, ship.type.name, listing.askPrice);
     appendTradeRecord(state.shipCapitalMarket, {
         shipTypeName: ship.type.name,

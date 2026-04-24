@@ -35,6 +35,16 @@ export function handleAcquireLicense(
         agent.assets[planetId] = assets;
     }
 
+    // Enforce commercial license must be acquired before workforce
+    if (licenseType === 'workforce' && !assets.licenses?.commercial) {
+        safePostMessage({
+            type: 'licenseAcquisitionFailed',
+            requestId,
+            reason: `A commercial license must be acquired before a workforce license on planet '${planetId}'`,
+        });
+        return;
+    }
+
     // Check for duplicate
     if (assets.licenses?.[licenseType]) {
         safePostMessage({
@@ -64,7 +74,8 @@ export function handleAcquireLicense(
             return;
         }
         assets.deposits -= cost;
-        planet.bank.deposits -= cost; // money leaves aggregate deposits
+        // No change to planet.bank.deposits: money moves from this agent to the government,
+        // keeping aggregate bank deposits (Σ agent deposits) constant.
     }
 
     // Grant the license

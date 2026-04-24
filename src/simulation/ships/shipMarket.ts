@@ -1,8 +1,12 @@
-import { SHIP_MARKET_EMA_ALPHA, SHIP_MARKET_MAX_TRADE_HISTORY } from '../constants';
+import {
+    SHIP_MARKET_EMA_ALPHA,
+    SHIP_MARKET_MAX_TRADE_HISTORY,
+    MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
+} from '../constants';
 import type { GameState } from '../planet/planet';
 import { maintenanceServiceResourceType } from '../planet/services';
 import type { Ship, ShipBuyingOffer } from './ships';
-import { scaleMapping, type ShipCapitalMarket, type ShipListing, type ShipTradeRecord } from './ships';
+import { shiptypes, scaleMapping, type ShipCapitalMarket, type ShipListing, type ShipTradeRecord } from './ships';
 
 /**
  * Computes a heuristic effective value for a ship.
@@ -50,7 +54,7 @@ export function effectiveShipValue(ship: Ship, gameState?: GameState): number {
                 // Remaining repair cycles ≈ maxMaintenance / MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE
                 // Cost per cycle ≈ maintenancePrice * 1 (one full unit of maintenance per cycle)
                 // We use a simple linear discount: penalty = cost × remaining life fraction
-                const remainingRepairCycles = maxMaintenance / 0.01; // inverse of degradation constant
+                const remainingRepairCycles = maxMaintenance / MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE; // inverse of degradation constant
                 maintenanceCostPenalty = maintenancePrice * remainingRepairCycles * maxMaintenance * 0.5;
             }
         }
@@ -105,12 +109,17 @@ export function findCompatibleTrades(gameState: GameState): CompatibleTrade[] {
 
     const results: CompatibleTrade[] = [];
 
+    // Build a lookup from ShipTypeKey -> display name for offer.shipType comparison
+    const shipTypeKeyToName = Object.fromEntries(
+        Object.values(shiptypes).flatMap((cat) => Object.entries(cat).map(([k, v]) => [k, v.name])),
+    ) as Record<string, string>;
+
     for (const listing of allListings) {
         const ship = findShip(gameState, listing.sellerAgentId, listing.shipName);
         const ev = ship ? effectiveShipValue(ship, gameState) : 0;
 
         for (const offer of allOffers) {
-            if (offer.shipType !== listing.shipTypeName) {
+            if (shipTypeKeyToName[offer.shipType] !== listing.shipTypeName) {
                 continue;
             }
             if (offer.price < listing.askPrice) {

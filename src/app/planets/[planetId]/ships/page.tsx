@@ -251,7 +251,9 @@ export default function PlanetShipsPage() {
                     {openBuyingOffers.map((offer) => {
                         const isMyOffer = offer._agentId === agentId;
                         const shipTypeDef = allShipTypesByKey[offer.shipType];
-                        const idleMatchingShips = idleTransportShipsHere.filter((s) => s.type.name === offer.shipType);
+                        const idleMatchingShips = idleTransportShipsHere.filter(
+                            (s) => s.type.name === shipTypeDef?.name,
+                        );
                         const canSell = !isMyOffer && agentId && idleMatchingShips.length > 0;
                         const canSellNoShip = !isMyOffer && agentId && idleMatchingShips.length === 0;
                         return (

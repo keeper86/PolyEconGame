@@ -52,7 +52,7 @@ export default function FinancialPage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetName={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
+                <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
                 <Card>
                     <CardContent className='px-3 py-3 space-y-3'>

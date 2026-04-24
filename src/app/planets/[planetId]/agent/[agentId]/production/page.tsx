@@ -17,7 +17,7 @@ export default function ProductionPage() {
             isOwnAgent={isOwnAgent}
         >
             {hasNoAssets ? (
-                <NoAssetsMessage planetName={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
+                <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
                 <>
                     <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
