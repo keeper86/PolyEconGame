@@ -9,7 +9,7 @@ import {
 } from '../planet/resources';
 import type { PassengerManifest } from '../population/manifest';
 import type { EducationLevelType } from '../population/population';
-import type { ShipTickContext, TransitionResult } from './shipHandlers';
+import type { TransitionResult } from './shipHandlers';
 import { applyMaintenance, constructionHandlers, passengerHandlers, transportHandlers } from './shipHandlers';
 
 export const transportShipBuildResources = [
@@ -68,6 +68,67 @@ export type TransportShipType = BaseShipType & {
 
 export type ShipType = ConstructionShipType | TransportShipType | PassengerShipType;
 
+// ship status types
+export type ShipStatusIdle = {
+    type: 'idle';
+    planetId: string;
+};
+
+export type ShipStatusListed = {
+    type: 'listed';
+    planetId: string;
+};
+
+export type ShipStatusDerelict = {
+    type: 'derelict';
+    planetId: string;
+};
+
+export type ShipStatusLost = {
+    type: 'lost';
+    lostAtTick: number;
+};
+
+export type CommonShipStatus = ShipStatusIdle | ShipStatusListed | ShipStatusDerelict | ShipStatusLost;
+
+export type BaseShipStatusLoading = {
+    planetId: string;
+    to: string;
+    contractId?: string;
+    posterAgentId?: string;
+    deadlineTick?: number;
+};
+
+export type TransportShipStatusLoading = BaseShipStatusLoading & {
+    type: 'loading';
+    cargoGoal: ResourceQuantity | null;
+    currentCargo: ResourceQuantity;
+};
+
+export type ConstructionShipStatusLoading = BaseShipStatusLoading & {
+    type: 'pre-fabrication';
+    buildingTarget: Facility | null;
+    progress: number; // if buildingTarget is not null, this should be filled up to 1 over time
+};
+
+export type PassengerShipStatusLoading = BaseShipStatusLoading & {
+    type: 'passenger_boarding';
+    passengerGoal: number;
+    currentPassengers: number;
+    manifest: PassengerManifest;
+};
+
+export type Provision = {
+    groceryProvisioned: { currently: number; goal: number };
+    healthcareProvisioned: { currently: number; goal: number };
+    educationProvisioned: { currently: number; goal: number };
+};
+export type PassengerShipStatusProvisioning = BaseShipStatusLoading &
+    Provision & {
+        type: 'passenger_provisioning';
+        manifest: PassengerManifest;
+    };
+
 export type BaseShipStatusTransporting = {
     from: string; // planet id
     to: string; // planet id
@@ -89,57 +150,16 @@ export type TransportShipStatusTransporting = BaseShipStatusTransporting & {
 export type ConstructionShipStatusTransporting = BaseShipStatusTransporting & {
     type: 'construction_transporting';
     buildingTarget: Facility | null;
-    loaded: number; // should be 1 when buildingTarget isnt null
-};
-
-export type BaseShipStatusLoading = {
-    planetId: string;
-    to: string;
-    contractId?: string;
-    posterAgentId?: string;
-};
-
-export type TransportShipStatusLoading = BaseShipStatusLoading & {
-    type: 'loading';
-    cargoGoal: ResourceQuantity | null;
-    currentCargo: ResourceQuantity;
-    deadlineTick?: number;
-};
-
-export type ConstructionShipStatusLoading = BaseShipStatusLoading & {
-    type: 'pre-fabrication';
-    buildingTarget: Facility | null;
-    progress: number; // if buildingTarget is not null, this should be filled up to 1 over time
-    deadlineTick?: number;
-};
-
-export type PassengerShipStatusLoading = {
-    type: 'passenger_boarding';
-    agentId: string;
-    planetId: string;
-    toPlanetId: string;
-    passengerGoal: number;
-    currentPassengers: number;
-    manifest: PassengerManifest;
-    deadlineTick?: number;
-};
-
-export type PassengerShipStatusProvisioning = {
-    type: 'passenger_provisioning';
-    planetId: string;
-    toPlanetId: string;
-    manifest: PassengerManifest;
-};
-
-export type PassengerShipStatusUnloading = {
-    type: 'passenger_unloading';
-    planetId: string;
-    manifest: PassengerManifest;
 };
 
 export type BaseShipStatusUnloading = {
     planetId: string;
     contractId?: string;
+};
+
+export type PassengerShipStatusUnloading = BaseShipStatusUnloading & {
+    type: 'passenger_unloading';
+    manifest: PassengerManifest;
 };
 
 export type TransportShipStatusUnloading = BaseShipStatusUnloading & {
@@ -153,25 +173,8 @@ export type ConstructionShipStatusUnloading = BaseShipStatusUnloading & {
     progress: number; // should decrease from 1 to 0 over time
 };
 
-export type ShipStatusIdle = {
-    type: 'idle';
-    planetId: string;
-};
-
-export type ShipStatusListed = {
-    type: 'listed';
-    planetId: string;
-};
-
-export type ShipStatusDerelict = {
-    type: 'derelict';
-    planetId: string;
-};
-
 export type TransportShipStatus =
-    | ShipStatusIdle
-    | ShipStatusListed
-    | ShipStatusDerelict
+    | CommonShipStatus
     | TransportShipStatusTransporting
     | TransportShipStatusLoading
     | TransportShipStatusUnloading;
@@ -179,14 +182,21 @@ export type TransportShipStatus =
 export type TransportShipStatusType = TransportShipStatus['type'];
 
 export type ConstructionShipStatus =
-    | ShipStatusIdle
-    | ShipStatusListed
-    | ShipStatusDerelict
+    | CommonShipStatus
     | ConstructionShipStatusTransporting
     | ConstructionShipStatusLoading
     | ConstructionShipStatusUnloading;
 
 export type ConstructionShipStatusType = ConstructionShipStatus['type'];
+
+export type PassengerShipStatus =
+    | CommonShipStatus
+    | PassengerShipStatusLoading
+    | PassengerShipStatusProvisioning
+    | PassengerShipStatusTransporting
+    | PassengerShipStatusUnloading;
+
+export type PassengerShipStatusType = PassengerShipStatus['type'];
 
 export type BaseShip = {
     name: string;
@@ -224,17 +234,6 @@ export type ConstructionContract = ConstructionContractBase &
         | { status: 'completed' }
     );
 
-export type PassengerShipStatus =
-    | ShipStatusIdle
-    | ShipStatusListed
-    | ShipStatusDerelict
-    | PassengerShipStatusLoading
-    | PassengerShipStatusProvisioning
-    | PassengerShipStatusTransporting
-    | PassengerShipStatusUnloading;
-
-export type PassengerShipStatusType = PassengerShipStatus['type'];
-
 export type PassengerShip = BaseShip & {
     type: PassengerShipType;
     state: PassengerShipStatus;
@@ -242,22 +241,14 @@ export type PassengerShip = BaseShip & {
 
 export type Ship = TransportShip | ConstructionShip | PassengerShip;
 
-export type { ShipTickContext, TransitionResult } from './shipHandlers';
-
 export const shipTick = (gameState: GameState): void => {
-    const ctx: ShipTickContext = {
-        tick: gameState.tick,
-        planets: gameState.planets,
-        agents: gameState.agents,
-    };
-
     for (const agent of gameState.agents.values()) {
         for (const ship of agent.ships) {
             if (ship.state.type === 'derelict') {
                 continue;
             }
 
-            if (applyMaintenance(ship, agent, ctx)) {
+            if (applyMaintenance(ship, agent, gameState)) {
                 continue;
             }
 
@@ -265,19 +256,19 @@ export const shipTick = (gameState: GameState): void => {
             if (ship.type.type === 'transport') {
                 result = transportHandlers[ship.state.type as TransportShipStatusType](
                     ship as TransportShip,
-                    ctx,
+                    gameState,
                     agent,
                 );
             } else if (ship.type.type === 'construction') {
                 result = constructionHandlers[ship.state.type as ConstructionShipStatusType](
                     ship as ConstructionShip,
-                    ctx,
+                    gameState,
                     agent,
                 );
             } else {
                 result = passengerHandlers[ship.state.type as PassengerShipStatusType](
                     ship as PassengerShip,
-                    ctx,
+                    gameState,
                     agent,
                 );
             }

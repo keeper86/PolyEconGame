@@ -1,60 +1,25 @@
-/**
- * simulation/population/manifest.ts
- *
- * Sparse in-flight population manifest for passenger ships.
- *
- * A PassengerManifest is a plain-object map keyed by a composite demographic
- * string "${age}:${occ}:${edu}:${skill}".  Using a plain object (rather than
- * a JS Map) ensures the manifest serialises transparently with MessagePack
- * during snapshot compression.
- */
-
+import {
+    EDUCATION_BUFFER_TARGET_TICKS,
+    GROCERY_BUFFER_TARGET_TICKS,
+    HEALTHCARE_BUFFER_TARGET_TICKS,
+    SERVICE_PER_PERSON_PER_TICK
+} from '../constants';
 import type { Agent, Planet } from '../planet/planet';
-import { queryStorageFacility, removeFromStorageFacility } from '../planet/facility';
+import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import {
     MAX_AGE,
     SKILL,
     mergeGaussianMoments,
     nullPopulationCategory,
     type Occupation,
-    type Skill,
     type PopulationCategory,
     type PopulationCategoryIndex,
     type ServiceName,
+    type Skill,
 } from '../population/population';
-import { educationLevelKeys, type EducationLevelType } from '../population/education';
-import {
-    MIN_EMPLOYABLE_AGE,
-    GROCERY_BUFFER_TARGET_TICKS,
-    HEALTHCARE_BUFFER_TARGET_TICKS,
-    EDUCATION_BUFFER_TARGET_TICKS,
-    RETAIL_BUFFER_TARGET_TICKS,
-    LOGISTICS_BUFFER_TARGET_TICKS,
-    CONSTRUCTION_BUFFER_TARGET_TICKS,
-    ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-    SERVICE_PER_PERSON_PER_TICK,
-} from '../constants';
-import {
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
-    educationServiceResourceType,
-} from '../planet/services';
+import type { Provision } from '../ships/ships';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * Sparse map from composite demographic key → PopulationCategory.
- *
- * Plain object so it serialises naturally with MessagePack (no Map → array
- * conversion needed in snapshotCompression.ts).
- */
 export type PassengerManifest = Record<string, PopulationCategory>;
-
-// ---------------------------------------------------------------------------
-// Key helpers
-// ---------------------------------------------------------------------------
 
 export function manifestKey(age: number, occ: Occupation, edu: EducationLevelType, skill: Skill): string {
     return `${age}:${occ}:${edu}:${skill}`;
@@ -69,10 +34,6 @@ export function parseManifestKey(key: string): PopulationCategoryIndex {
         skill: skill as Skill,
     };
 }
-
-// ---------------------------------------------------------------------------
-// Internal merge helper
-// ---------------------------------------------------------------------------
 
 function mergeIntoManifest(
     manifest: PassengerManifest,
@@ -116,18 +77,6 @@ function mergeIntoManifest(
     existing.wealth = mergedWealth;
 }
 
-// ---------------------------------------------------------------------------
-// Boarding: planet → manifest
-// ---------------------------------------------------------------------------
-
-/**
- * Board up to `targetCount` employed workers from the agent's workforce on
- * `planetId` into `manifest`.  Removes workers from both
- * `agent.assets[planetId].workforceDemography` and
- * `planet.population.demography[age].employed[edu][skill]`.
- *
- * Returns the actual number of passengers boarded.
- */
 export function boardPassengersFromWorkforce(
     agent: Agent,
     planet: Planet,
@@ -200,33 +149,7 @@ export function boardPassengersFromWorkforce(
     return boarded;
 }
 
-// ---------------------------------------------------------------------------
-// Provision deduction
-// ---------------------------------------------------------------------------
-
-/**
- * Compute required provisions for the voyage and deduct them from agent storage.
- *
- * Provisions per resource = totalPassengers × ratePerTick × (flightTicks + bufferTarget)
- *
- * Education provisions apply only to passengers in the 'education' occupation or
- * below MIN_EMPLOYABLE_AGE.
- *
- * Returns `true` if all provisions were available and deducted; `false` if
- * any resource was insufficient (no deductions are made).
- */
-export function calculateAndDeductProvisions(
-    agent: Agent,
-    planetId: string,
-    manifest: PassengerManifest,
-    flightTicks: number,
-): boolean {
-    const assets = agent.assets[planetId];
-    if (!assets) {
-        return false;
-    }
-    const storage = assets.storageFacility;
-
+export function calculateProvisions(manifest: PassengerManifest, flightTicks: number): Provision {
     let totalPassengers = 0;
     let educationPassengers = 0;
     for (const [key, cat] of Object.entries(manifest)) {
@@ -235,61 +158,42 @@ export function calculateAndDeductProvisions(
         }
         totalPassengers += cat.total;
         const idx = parseManifestKey(key);
-        if (idx.occ === 'education' || idx.age < MIN_EMPLOYABLE_AGE) {
+        if (idx.occ === 'education') {
             educationPassengers += cat.total;
         }
     }
+    const provisionList: Provision = {
+        groceryProvisioned: { currently: 0, goal: 0 },
+        healthcareProvisioned: { currently: 0, goal: 0 },
+        educationProvisioned: { currently: 0, goal: 0 },
+    };
 
     if (totalPassengers === 0) {
-        return true;
+        return provisionList;
     }
-
-    const provisionList: { resourceName: string; required: number }[] = [];
 
     const groceryRequired = totalPassengers * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS);
     if (groceryRequired > 0) {
-        provisionList.push({ resourceName: groceryServiceResourceType.name, required: groceryRequired });
+        provisionList.groceryProvisioned.goal = groceryRequired;
     }
 
     const healthcareRequired =
         totalPassengers * SERVICE_PER_PERSON_PER_TICK * (flightTicks + HEALTHCARE_BUFFER_TARGET_TICKS);
     if (healthcareRequired > 0) {
-        provisionList.push({ resourceName: healthcareServiceResourceType.name, required: healthcareRequired });
+        provisionList.healthcareProvisioned.goal = healthcareRequired;
     }
 
     if (educationPassengers > 0) {
         const educationRequired =
             educationPassengers * SERVICE_PER_PERSON_PER_TICK * (flightTicks + EDUCATION_BUFFER_TARGET_TICKS);
         if (educationRequired > 0) {
-            provisionList.push({ resourceName: educationServiceResourceType.name, required: educationRequired });
+            provisionList.educationProvisioned.goal = educationRequired;
         }
     }
 
-    // Check availability before deducting anything
-    for (const { resourceName, required } of provisionList) {
-        const available = queryStorageFacility(storage, resourceName);
-        if (available < required) {
-            return false;
-        }
-    }
-
-    // Deduct all at once
-    for (const { resourceName, required } of provisionList) {
-        removeFromStorageFacility(storage, resourceName, required);
-    }
-
-    return true;
+    return provisionList;
 }
 
-// ---------------------------------------------------------------------------
-// Refund: manifest → planet (boarding abort)
-// ---------------------------------------------------------------------------
-
-/**
- * Return all passengers in `manifest` to planet population + agent workforce.
- * Called when the boarding is aborted (e.g. insufficient provisions).
- * Clears the manifest in place after refunding.
- */
 export function refundBoardedPassengers(
     agent: Agent,
     planet: Planet,
@@ -345,20 +249,6 @@ export function refundBoardedPassengers(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Age progression
-// ---------------------------------------------------------------------------
-
-/**
- * Advance all manifest entries by `travelYears`.
- *
- * Uses the fractional year split algorithm:
- *   - Full integer years shift age directly.
- *   - The fractional part is distributed: fraction × count advances one more
- *     year, the rest stays (capped at MAX_AGE).
- *
- * Returns a new manifest (does not mutate the input).
- */
 export function advanceManifestAge(manifest: PassengerManifest, travelYears: number): PassengerManifest {
     if (travelYears <= 0) {
         return { ...manifest };
@@ -406,15 +296,6 @@ export function advanceManifestAge(manifest: PassengerManifest, travelYears: num
     return result;
 }
 
-// ---------------------------------------------------------------------------
-// Unloading: manifest → planet
-// ---------------------------------------------------------------------------
-
-/**
- * Merge all passengers in `manifest` into the destination planet's population.
- * All service buffers are set to their maximum target values after merging —
- * the ship's provisions ensure passengers arrive fully provisioned.
- */
 export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerManifest): void {
     const demography = planet.population.demography;
 
@@ -446,9 +327,5 @@ export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerMani
 function setBuffersToMax(category: PopulationCategory): void {
     category.services.grocery = { buffer: GROCERY_BUFFER_TARGET_TICKS, starvationLevel: 0 };
     category.services.healthcare = { buffer: HEALTHCARE_BUFFER_TARGET_TICKS, starvationLevel: 0 };
-    category.services.retail = { buffer: RETAIL_BUFFER_TARGET_TICKS, starvationLevel: 0 };
-    category.services.logistics = { buffer: LOGISTICS_BUFFER_TARGET_TICKS, starvationLevel: 0 };
-    category.services.construction = { buffer: CONSTRUCTION_BUFFER_TARGET_TICKS, starvationLevel: 0 };
-    category.services.administrative = { buffer: ADMINISTRATIVE_BUFFER_TARGET_TICKS, starvationLevel: 0 };
     category.services.education = { buffer: EDUCATION_BUFFER_TARGET_TICKS, starvationLevel: 0 };
 }

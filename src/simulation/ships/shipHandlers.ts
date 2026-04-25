@@ -16,20 +16,25 @@ import {
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     TICKS_PER_YEAR,
 } from '../constants';
+import type { Facility, ProductionFacility } from '../planet/facility';
 import {
     MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
     putIntoStorageFacility,
     removeFromStorageFacility,
     transferFromEscrow,
 } from '../planet/facility';
-import type { Facility, ProductionFacility } from '../planet/facility';
-import type { Agent, Planet } from '../planet/planet';
+import type { Agent, GameState } from '../planet/planet';
 import { consumeConstructionForFacility } from '../planet/production';
-import { maintenanceServiceResourceType } from '../planet/services';
+import {
+    educationServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    maintenanceServiceResourceType,
+} from '../planet/services';
 import {
     advanceManifestAge,
     boardPassengersFromWorkforce,
-    calculateAndDeductProvisions,
+    calculateProvisions,
     refundBoardedPassengers,
     unloadPassengersToPlanet,
 } from '../population/manifest';
@@ -44,6 +49,7 @@ import type {
     PassengerShip,
     PassengerShipStatus,
     PassengerShipStatusLoading,
+    PassengerShipStatusProvisioning,
     PassengerShipStatusType,
     Ship,
     ShipStatusDerelict,
@@ -55,58 +61,27 @@ import type {
     TransportShipStatusUnloading,
 } from './ships';
 
-// ---------------------------------------------------------------------------
-// Context & result types
-// ---------------------------------------------------------------------------
-
-export type ShipTickContext = {
-    tick: number;
-    planets: Map<string, Planet>;
-    agents: Map<string, Agent>;
-};
-
 export type TransitionResult =
     | { action: 'stay' }
     | { action: 'transition'; newState: TransportShipStatus | ConstructionShipStatus | PassengerShipStatus };
 
 const STAY: TransitionResult = { action: 'stay' };
 
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Returns the number of ticks needed to travel between any two planets.
- * Currently distance-independent — replace the body when distance data is
- * available without changing callers.
- */
 export function travelTime(ship: Ship): number {
     return Math.ceil(1000 / ship.type.speed);
 }
 
-/**
- * Applies one tick of maintenance to a ship.
- *
- * - Degrades maintainanceStatus at a rate that depends on the current state.
- * - Attempts repairs from storage when idle or listed.
- * - Transitions to derelict when maxMaintenance reaches zero after repair.
- *
- * @returns `true` if the ship became derelict this tick (caller should skip
- *          further processing for the ship).
- */
-export function applyMaintenance(ship: Ship, agent: Agent, ctx: ShipTickContext): boolean {
+export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState): boolean {
     // Degradation rate depends on ship activity
     let maintenanceDecreasePerYear = 0.05;
-    if (ship.state.type === 'transporting' || ship.state.type === 'construction_transporting') {
+    if (
+        ship.state.type === 'transporting' ||
+        ship.state.type === 'construction_transporting' ||
+        ship.state.type === 'passenger_transporting'
+    ) {
         maintenanceDecreasePerYear *= 5;
     }
-    if (
-        ship.state.type === 'idle' ||
-        ship.state.type === 'listed' ||
-        ship.state.type === 'passenger_boarding' ||
-        ship.state.type === 'passenger_provisioning' ||
-        ship.state.type === 'passenger_unloading'
-    ) {
+    if (ship.state.type === 'idle' || ship.state.type === 'listed') {
         maintenanceDecreasePerYear /= 5;
     }
     ship.maintainanceStatus = Math.max(0, ship.maintainanceStatus - maintenanceDecreasePerYear / TICKS_PER_YEAR);
@@ -132,7 +107,7 @@ export function applyMaintenance(ship: Ship, agent: Agent, ctx: ShipTickContext)
 
     ship.maintainanceStatus = Math.min(ship.maxMaintenance, ship.maintainanceStatus + consumed);
     assets.monthAcc.consumptionValue +=
-        consumed * (ctx.planets.get(planetId)?.marketPrices[maintenanceServiceResourceType.name] ?? 0);
+        consumed * (gameState.planets.get(planetId)?.marketPrices[maintenanceServiceResourceType.name] ?? 0);
 
     // Aging: accumulate repair; degrade maxMaintenance after each full cycle
     ship.cumulativeRepairAcc += consumed;
@@ -157,20 +132,15 @@ export function applyMaintenance(ship: Ship, agent: Agent, ctx: ShipTickContext)
     return true;
 }
 
-/**
- * Searches all agents for an accepted transport contract that matches the
- * just-delivered cargo, pays the reward to the carrier, and removes the
- * contract from the poster's assets.
- */
 export function settleTransportContract(
     shipName: string,
     carrierAgentId: string,
     arrivedPlanetId: string,
-    ctx: ShipTickContext,
+    gameState: GameState,
 ): void {
-    const carrierAgent = ctx.agents.get(carrierAgentId);
+    const carrierAgent = gameState.agents.get(carrierAgentId);
 
-    for (const posterAgent of ctx.agents.values()) {
+    for (const posterAgent of gameState.agents.values()) {
         for (const posterAssets of Object.values(posterAgent.assets)) {
             const contract = posterAssets.transportContracts.find(
                 (c) =>
@@ -212,14 +182,14 @@ export function settleConstructionContract(
     buildingTarget: Facility,
     carrierAgentId: string,
     arrivedPlanetId: string,
-    ctx: ShipTickContext,
+    gameState: GameState,
 ): void {
-    const carrierAgent = ctx.agents.get(carrierAgentId);
+    const carrierAgent = gameState.agents.get(carrierAgentId);
 
     let receivingAgentId: string = carrierAgentId;
     let matched = false;
 
-    for (const posterAgent of ctx.agents.values()) {
+    for (const posterAgent of gameState.agents.values()) {
         for (const posterAssets of Object.values(posterAgent.assets)) {
             const contract = posterAssets.constructionContracts.find(
                 (c): c is ConstructionContract & { status: 'accepted' } =>
@@ -246,7 +216,7 @@ export function settleConstructionContract(
     }
 
     // Place the facility into the receiving agent's assets
-    const receivingAgent = ctx.agents.get(receivingAgentId);
+    const receivingAgent = gameState.agents.get(receivingAgentId);
     if (receivingAgent) {
         const destAssets = receivingAgent.assets[arrivedPlanetId];
         if (destAssets) {
@@ -260,16 +230,16 @@ export function settleConstructionContract(
 // Transport ship handlers
 // ---------------------------------------------------------------------------
 
-function handleIdle(_ship: Ship, _ctx: ShipTickContext, _agent: Agent): TransitionResult {
+function handleIdle(_ship: Ship, _ctx: GameState, _agent: Agent): TransitionResult {
     // Maintenance is applied before dispatch; nothing further to do.
     return STAY;
 }
 
-function handleListed(_ship: Ship, _ctx: ShipTickContext, _agent: Agent): TransitionResult {
+function handleListed(_ship: Ship, _ctx: GameState, _agent: Agent): TransitionResult {
     return STAY;
 }
 
-function handleTransportLoading(ship: TransportShip, ctx: ShipTickContext, agent: Agent): TransitionResult {
+function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as TransportShipStatusLoading;
 
     // Dispatch timeout — abort mission, go idle
@@ -326,7 +296,7 @@ function handleTransportLoading(ship: TransportShip, ctx: ShipTickContext, agent
     return STAY;
 }
 
-function handleTransporting(ship: TransportShip, ctx: ShipTickContext): TransitionResult {
+function handleTransporting(ship: TransportShip, ctx: GameState): TransitionResult {
     const s = ship.state;
     if (s.type !== 'transporting') {
         return STAY;
@@ -345,7 +315,7 @@ function handleTransporting(ship: TransportShip, ctx: ShipTickContext): Transiti
     };
 }
 
-function handleTransportUnloading(ship: TransportShip, ctx: ShipTickContext, agent: Agent): TransitionResult {
+function handleTransportUnloading(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as TransportShipStatusUnloading;
     const assets = agent.assets[s.planetId];
     if (!assets) {
@@ -374,7 +344,7 @@ function handleTransportUnloading(ship: TransportShip, ctx: ShipTickContext, age
 // Construction ship handlers
 // ---------------------------------------------------------------------------
 
-function handlePreFabrication(ship: ConstructionShip, ctx: ShipTickContext, agent: Agent): TransitionResult {
+function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as ConstructionShipStatusLoading;
 
     // Dispatch timeout — abort, go idle
@@ -390,7 +360,6 @@ function handlePreFabrication(ship: ConstructionShip, ctx: ShipTickContext, agen
                 from: s.planetId,
                 to: s.to,
                 buildingTarget: null,
-                loaded: 0,
                 arrivalTick: ctx.tick + travelTime(ship),
             } satisfies ConstructionShipStatusTransporting,
         };
@@ -405,7 +374,6 @@ function handlePreFabrication(ship: ConstructionShip, ctx: ShipTickContext, agen
                 from: s.planetId,
                 to: s.to,
                 buildingTarget: target,
-                loaded: 1,
                 arrivalTick: ctx.tick + travelTime(ship),
                 contractId: s.contractId,
                 posterAgentId: s.posterAgentId,
@@ -419,7 +387,7 @@ function handlePreFabrication(ship: ConstructionShip, ctx: ShipTickContext, agen
     return STAY;
 }
 
-function handleConstructionTransporting(ship: ConstructionShip, ctx: ShipTickContext): TransitionResult {
+function handleConstructionTransporting(ship: ConstructionShip, ctx: GameState): TransitionResult {
     const s = ship.state as ConstructionShipStatusTransporting;
     if (ctx.tick < s.arrivalTick) {
         return STAY;
@@ -441,7 +409,7 @@ function handleConstructionTransporting(ship: ConstructionShip, ctx: ShipTickCon
     };
 }
 
-function handleReconstruction(ship: ConstructionShip, ctx: ShipTickContext, agent: Agent): TransitionResult {
+function handleReconstruction(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as ConstructionShipStatusUnloading;
     const updatedProgress = Math.max(0, s.progress - 1 / MINIMUM_CONSTRUCTION_TIME_IN_TICKS);
     s.progress = updatedProgress;
@@ -470,92 +438,116 @@ function handleReconstruction(ship: ConstructionShip, ctx: ShipTickContext, agen
 // Passenger ship handlers
 // ---------------------------------------------------------------------------
 
-function handlePassengerBoarding(ship: PassengerShip, ctx: ShipTickContext, agent: Agent): TransitionResult {
-    const s = ship.state as PassengerShipStatusLoading;
+function handlePassengerBoarding(ship: PassengerShip, ctx: GameState, agent: Agent): TransitionResult {
+    const shipState = ship.state as PassengerShipStatusLoading;
 
     // Dispatch timeout — de-board any passengers already on the manifest back
     // to the source planet, then go idle.
-    if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
-        const sourcePlanet = ctx.planets.get(s.planetId);
-        if (sourcePlanet && Object.keys(s.manifest).length > 0) {
-            unloadPassengersToPlanet(sourcePlanet, s.manifest);
+    if (shipState.deadlineTick !== undefined && ctx.tick > shipState.deadlineTick) {
+        const sourcePlanet = ctx.planets.get(shipState.planetId);
+        if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
+            unloadPassengersToPlanet(sourcePlanet, shipState.manifest);
         }
-        return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
+        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }
 
-    const sourcePlanet = ctx.planets.get(s.planetId);
+    const sourcePlanet = ctx.planets.get(shipState.planetId);
     if (!sourcePlanet) {
-        return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
+        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }
 
-    const needed = s.passengerGoal - s.currentPassengers;
-    const boarded = boardPassengersFromWorkforce(agent, sourcePlanet, s.planetId, s.manifest, needed);
-    s.currentPassengers += boarded;
+    const needed = shipState.passengerGoal - shipState.currentPassengers;
+    const boarded = boardPassengersFromWorkforce(agent, sourcePlanet, shipState.planetId, shipState.manifest, needed);
+    shipState.currentPassengers += boarded;
 
-    const goalReached = s.currentPassengers >= s.passengerGoal;
-    const noMoreAvailable = boarded === 0 && s.currentPassengers > 0;
+    const goalReached = shipState.currentPassengers >= shipState.passengerGoal;
+    const noMoreAvailable = boarded === 0 && shipState.currentPassengers > 0;
     // No workers available at all — abort immediately
-    const noWorkersAtAll = boarded === 0 && s.currentPassengers === 0;
+    const noWorkersAtAll = boarded === 0 && shipState.currentPassengers === 0;
 
     if (noWorkersAtAll) {
-        return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
+        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }
 
     if (!goalReached && !noMoreAvailable) {
         return STAY;
     }
 
-    // Attempt to provision; if provisions are insufficient, de-board everyone
-    // and go idle (ship cannot depart without supplies).
-    const flightTicks = travelTime(ship);
-    const provisionsOk = calculateAndDeductProvisions(agent, s.planetId, s.manifest, flightTicks);
-    if (!provisionsOk) {
-        // Refund passengers to source planet + agent workforce
-        if (Object.keys(s.manifest).length > 0) {
-            refundBoardedPassengers(agent, sourcePlanet, s.planetId, s.manifest);
-        }
-        return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
-    }
-
-    const travelYears = flightTicks / TICKS_PER_YEAR;
+    // Boarding complete — hand off to provisioning phase.
+    const provisionsTracker = calculateProvisions(shipState.manifest, travelTime(ship));
     return {
         action: 'transition',
         newState: {
-            type: 'passenger_transporting',
-            from: s.planetId,
-            to: s.toPlanetId,
-            arrivalTick: ctx.tick + flightTicks,
-            manifest: advanceManifestAge(s.manifest, travelYears),
-        },
+            type: 'passenger_provisioning',
+            planetId: shipState.planetId,
+            to: shipState.to,
+            manifest: shipState.manifest,
+            deadlineTick: ctx.tick + MAX_DISPATCH_TIMEOUT_TICKS,
+            ...provisionsTracker,
+        } satisfies PassengerShipStatusProvisioning,
     };
 }
 
-function handlePassengerProvisioning(ship: PassengerShip, ctx: ShipTickContext, agent: Agent): TransitionResult {
-    const s = ship.state;
-    if (s.type !== 'passenger_provisioning') {
+function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, agent: Agent): TransitionResult {
+    const shipState = ship.state;
+    if (shipState.type !== 'passenger_provisioning') {
         return STAY;
     }
 
-    const flightTicks = travelTime(ship);
-    const provisionsOk = calculateAndDeductProvisions(agent, s.planetId, s.manifest, flightTicks);
+    // Provisioning timeout — refund passengers and go idle.
+    if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
+        const sourcePlanet = gameState.planets.get(shipState.planetId);
+        if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
+            refundBoardedPassengers(agent, sourcePlanet, shipState.planetId, shipState.manifest);
+        }
+        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
+    }
+
+    const storage = gameState.agents.get(agent.id)?.assets[shipState.planetId]?.storageFacility;
+    if (!storage) {
+        return STAY;
+    }
+
+    shipState.groceryProvisioned.currently += removeFromStorageFacility(
+        storage,
+        groceryServiceResourceType.name,
+        shipState.groceryProvisioned.goal - shipState.groceryProvisioned.currently,
+    );
+    shipState.healthcareProvisioned.currently += removeFromStorageFacility(
+        storage,
+        healthcareServiceResourceType.name,
+        shipState.healthcareProvisioned.goal - shipState.healthcareProvisioned.currently,
+    );
+    shipState.educationProvisioned.currently += removeFromStorageFacility(
+        storage,
+        educationServiceResourceType.name,
+        shipState.educationProvisioned.goal - shipState.educationProvisioned.currently,
+    );
+
+    const provisionsOk =
+        shipState.groceryProvisioned.currently >= shipState.groceryProvisioned.goal &&
+        shipState.healthcareProvisioned.currently >= shipState.healthcareProvisioned.goal &&
+        shipState.educationProvisioned.currently >= shipState.educationProvisioned.goal;
+
     if (!provisionsOk) {
         return STAY;
     } // Wait for production to catch up
 
+    const flightTicks = travelTime(ship);
     const travelYears = flightTicks / TICKS_PER_YEAR;
     return {
         action: 'transition',
         newState: {
             type: 'passenger_transporting',
-            from: s.planetId,
-            to: s.toPlanetId,
-            arrivalTick: ctx.tick + flightTicks,
-            manifest: advanceManifestAge(s.manifest, travelYears),
+            from: shipState.planetId,
+            to: shipState.to,
+            arrivalTick: gameState.tick + flightTicks,
+            manifest: advanceManifestAge(shipState.manifest, travelYears),
         },
     };
 }
 
-function handlePassengerTransporting(ship: PassengerShip, ctx: ShipTickContext): TransitionResult {
+function handlePassengerTransporting(ship: PassengerShip, ctx: GameState): TransitionResult {
     const s = ship.state;
     if (s.type !== 'passenger_transporting') {
         return STAY;
@@ -574,7 +566,7 @@ function handlePassengerTransporting(ship: PassengerShip, ctx: ShipTickContext):
     return { action: 'transition', newState: { type: 'idle', planetId: s.to } };
 }
 
-function handlePassengerUnloading(ship: PassengerShip, ctx: ShipTickContext, _agent: Agent): TransitionResult {
+function handlePassengerUnloading(ship: PassengerShip, ctx: GameState, _agent: Agent): TransitionResult {
     const s = ship.state;
     if (s.type !== 'passenger_unloading') {
         return STAY;
@@ -595,7 +587,7 @@ function handlePassengerUnloading(ship: PassengerShip, ctx: ShipTickContext, _ag
 
 export const transportHandlers: Record<
     TransportShipStatusType,
-    (ship: TransportShip, ctx: ShipTickContext, agent: Agent) => TransitionResult
+    (ship: TransportShip, ctx: GameState, agent: Agent) => TransitionResult
 > = {
     idle: handleIdle,
     listed: handleListed,
@@ -603,11 +595,12 @@ export const transportHandlers: Record<
     transporting: handleTransporting,
     unloading: handleTransportUnloading,
     derelict: () => STAY, // Never reached — derelict is skipped before dispatch
+    lost: () => STAY, // Never reached — lost is skipped before dispatch
 };
 
 export const constructionHandlers: Record<
     ConstructionShipStatusType,
-    (ship: ConstructionShip, ctx: ShipTickContext, agent: Agent) => TransitionResult
+    (ship: ConstructionShip, ctx: GameState, agent: Agent) => TransitionResult
 > = {
     'idle': handleIdle,
     'listed': handleListed,
@@ -615,11 +608,12 @@ export const constructionHandlers: Record<
     'construction_transporting': handleConstructionTransporting,
     'reconstruction': handleReconstruction,
     'derelict': () => STAY,
+    'lost': () => STAY,
 };
 
 export const passengerHandlers: Record<
     PassengerShipStatusType,
-    (ship: PassengerShip, ctx: ShipTickContext, agent: Agent) => TransitionResult
+    (ship: PassengerShip, ctx: GameState, agent: Agent) => TransitionResult
 > = {
     idle: handleIdle,
     listed: handleListed,
@@ -628,4 +622,5 @@ export const passengerHandlers: Record<
     passenger_transporting: handlePassengerTransporting,
     passenger_unloading: handlePassengerUnloading,
     derelict: () => STAY,
+    lost: () => STAY,
 };

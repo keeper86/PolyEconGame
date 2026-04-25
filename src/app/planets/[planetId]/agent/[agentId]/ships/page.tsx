@@ -14,6 +14,7 @@ import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_com
 import { DispatchShipDialog } from './_components/DispatchShipDialog';
 import { DispatchConstructionShipDialog } from './_components/DispatchConstructionShipDialog';
 import { DispatchPassengerShipDialog } from './_components/DispatchPassengerShipDialog';
+import { ShipStatusDetail } from './_components/ShipStatusDetail';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -73,6 +74,9 @@ export default function AgentShipsPage() {
     const { data: shipsData, isLoading: shipsLoading } = useSimulationQuery(
         trpc.listAgentShips.queryOptions({ agentId }, { enabled: isOwnAgent }),
     );
+
+    const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const planetSummaries = planetSummariesData?.planets ?? [];
 
     const shipsHere = (shipsData?.ships ?? []).filter(
         (s) => 'planetId' in s.state && (s.state as { planetId: string }).planetId === planetId,
@@ -134,6 +138,15 @@ export default function AgentShipsPage() {
                                                     Condition: {Math.round(ship.maintainanceStatus * 100)}% Max:{' '}
                                                     {Math.round(ship.maxMaintenance * 100)}%
                                                 </p>
+                                                {ship.state.type !== 'idle' &&
+                                                    ship.state.type !== 'listed' &&
+                                                    ship.state.type !== 'derelict' && (
+                                                        <ShipStatusDetail
+                                                            ship={ship}
+                                                            planetSummaries={planetSummaries}
+                                                            tick={tick ?? 0}
+                                                        />
+                                                    )}
                                             </div>
                                         </div>
                                         <div className='flex gap-2 flex-shrink-0 items-center'>

@@ -12,7 +12,12 @@ import { nullPopulationCategory } from '../population/population';
 import { makeAgent, makeGameState, makePlanet } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from '../workerClient/messages';
 import { handleDispatchPassengerShip } from '../workerClient/shipContractActions';
-import type { PassengerShip, PassengerShipStatusTransporting, ShipStatusIdle } from './ships';
+import type {
+    PassengerShip,
+    PassengerShipStatusProvisioning,
+    PassengerShipStatusTransporting,
+    ShipStatusIdle,
+} from './ships';
 import { passengerLiner, shipTick } from './ships';
 
 // ---------------------------------------------------------------------------
@@ -140,9 +145,9 @@ describe('handleDispatchPassengerShip validation', () => {
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
-            agentId: 'a1',
+            posterAgentId: 'a1',
             planetId: 'p1',
-            toPlanetId: 'p2',
+            to: 'p2',
             passengerGoal: 10,
             currentPassengers: 0,
             manifest: {},
@@ -217,7 +222,7 @@ describe('handleDispatchPassengerShip validation', () => {
         expect(ship.state.type).toBe('passenger_boarding');
         if (ship.state.type === 'passenger_boarding') {
             expect(ship.state.passengerGoal).toBe(200);
-            expect(ship.state.toPlanetId).toBe('p2');
+            expect(ship.state.to).toBe('p2');
             expect(ship.state.manifest).toEqual({});
         }
     });
@@ -257,9 +262,9 @@ describe('shipTick passenger boarding', () => {
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
-            agentId: 'a1',
+            posterAgentId: 'a1',
             planetId: 'p1',
-            toPlanetId: 'p2',
+            to: 'p2',
             passengerGoal: 200,
             currentPassengers: 0,
             manifest: {},
@@ -267,7 +272,9 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state);
+        shipTick(state); // boarding → passenger_provisioning
+        expect(ship.state.type).toBe('passenger_provisioning');
+        shipTick(state); // provisioning → passenger_transporting
 
         expect(ship.state.type).toBe('passenger_transporting');
 
@@ -294,9 +301,9 @@ describe('shipTick passenger boarding', () => {
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
-            agentId: 'a1',
+            posterAgentId: 'a1',
             planetId: 'p1',
-            toPlanetId: 'p2',
+            to: 'p2',
             passengerGoal: 300,
             currentPassengers: 0,
             manifest: {},
@@ -310,19 +317,19 @@ describe('shipTick passenger boarding', () => {
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(0);
     });
 
-    it('aborts boarding and refunds workers when provisions insufficient', () => {
+    it('boarding succeeds even without provisions — transitions to provisioning phase', () => {
         const agent = makeAgent('a1', 'p1');
         const planet = makePlanet({ id: 'p1' });
         const planet2 = makePlanet({ id: 'p2' });
 
         seedWorkforce(agent, planet, 30, 500);
-        // Provide no provisions
+        // Provide no provisions — provisioning phase will wait
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
-            agentId: 'a1',
+            posterAgentId: 'a1',
             planetId: 'p1',
-            toPlanetId: 'p2',
+            to: 'p2',
             passengerGoal: 500,
             currentPassengers: 0,
             manifest: {},
@@ -330,6 +337,43 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
+        shipTick(state);
+
+        // Boarding succeeded; now waiting for provisions
+        expect(ship.state.type).toBe('passenger_provisioning');
+        // Workers have left the planet (in manifest)
+        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(0);
+    });
+
+    it('refunds workers when provisioning deadline expires with insufficient provisions', () => {
+        const agent = makeAgent('a1', 'p1');
+        const planet = makePlanet({ id: 'p1' });
+        const planet2 = makePlanet({ id: 'p2' });
+
+        seedWorkforce(agent, planet, 30, 500);
+        // Board workers first
+        const ship = makePassengerShip('S1', 'p1');
+        ship.state = {
+            type: 'passenger_boarding',
+            posterAgentId: 'a1',
+            planetId: 'p1',
+            to: 'p2',
+            passengerGoal: 500,
+            currentPassengers: 0,
+            manifest: {},
+        };
+        agent.ships.push(ship);
+        const state = makeGameState([planet, planet2], [agent]);
+
+        shipTick(state); // tick 0: boarding → passenger_provisioning with deadline
+        expect(ship.state.type).toBe('passenger_provisioning');
+
+        // Advance past the deadline (no provisions provided)
+        const shipState = ship.state as unknown as PassengerShipStatusProvisioning;
+        if (shipState.type === 'passenger_provisioning') {
+            ship.state = { ...ship.state, deadlineTick: 0 };
+        }
+        state.tick = 1; // past deadline
         shipTick(state);
 
         expect(ship.state.type).toBe('idle');
@@ -347,9 +391,9 @@ describe('shipTick passenger boarding', () => {
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
-            agentId: 'a1',
+            posterAgentId: 'a1',
             planetId: 'p1',
-            toPlanetId: 'p2',
+            to: 'p2',
             passengerGoal: 100,
             currentPassengers: 0,
             manifest: {},
@@ -375,9 +419,9 @@ describe('shipTick passenger boarding', () => {
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
-            agentId: 'a1',
+            posterAgentId: 'a1',
             planetId: 'p1',
-            toPlanetId: 'p2',
+            to: 'p2',
             passengerGoal: 100,
             currentPassengers: 0,
             manifest: {},
@@ -385,9 +429,10 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state);
+        shipTick(state); // boarding → passenger_provisioning
+        shipTick(state); // provisioning → passenger_transporting
 
-        // After boarding is done the manifest is already age-advanced
+        // After boarding + provisioning the manifest is already age-advanced
         expect(ship.state.type).toBe('passenger_transporting');
 
         const shipState = ship.state as unknown as PassengerShipStatusTransporting;
@@ -421,9 +466,9 @@ describe('shipTick passenger boarding', () => {
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
-            agentId: 'a1',
+            posterAgentId: 'a1',
             planetId: 'p1',
-            toPlanetId: 'p2',
+            to: 'p2',
             passengerGoal: count,
             currentPassengers: 0,
             manifest: {},
@@ -431,7 +476,8 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state);
+        shipTick(state); // boarding → passenger_provisioning
+        shipTick(state); // provisioning → passenger_transporting
 
         expect(ship.state.type).toBe('passenger_transporting');
         const storage = agent.assets.p1!.storageFacility;

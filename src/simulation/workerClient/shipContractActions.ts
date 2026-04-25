@@ -988,9 +988,9 @@ export function handleDispatchPassengerShip(
 
     ship.state = {
         type: 'passenger_boarding',
-        agentId,
+        posterAgentId: agentId,
         planetId: fromPlanetId,
-        toPlanetId,
+        to: toPlanetId,
         passengerGoal: goal,
         currentPassengers: 0,
         manifest: {},
