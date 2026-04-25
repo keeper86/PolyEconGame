@@ -1253,6 +1253,35 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
+        if (msg.type === 'dispatchPassengerShip') {
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, passengerCount } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(toPlanetId)) {
+                safePostMessage({
+                    type: 'passengerShipDispatchFailed',
+                    requestId,
+                    reason: `Planet '${toPlanetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'dispatchPassengerShip',
+                requestId,
+                agentId,
+                fromPlanetId,
+                toPlanetId,
+                shipName,
+                passengerCount,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
         if (msg.type === 'postConstructionContract') {
             const {
                 requestId,

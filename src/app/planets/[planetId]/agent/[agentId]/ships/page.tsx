@@ -13,6 +13,7 @@ import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
 import { DispatchShipDialog } from './_components/DispatchShipDialog';
 import { DispatchConstructionShipDialog } from './_components/DispatchConstructionShipDialog';
+import { DispatchPassengerShipDialog } from './_components/DispatchPassengerShipDialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -182,6 +183,18 @@ export default function AgentShipsPage() {
                                                                 Dispatch
                                                             </Button>
                                                         </DispatchConstructionShipDialog>
+                                                    )}
+                                                    {ship.type.type === 'passenger' && (
+                                                        <DispatchPassengerShipDialog
+                                                            agentId={agentId}
+                                                            planetId={planetId}
+                                                            shipName={ship.name}
+                                                            passengerCapacity={ship.type.passengerCapacity}
+                                                        >
+                                                            <Button size='sm' variant='outline'>
+                                                                Dispatch
+                                                            </Button>
+                                                        </DispatchPassengerShipDialog>
                                                     )}
                                                     <Button
                                                         size='sm'
