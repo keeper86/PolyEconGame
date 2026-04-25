@@ -1,3 +1,4 @@
+import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { Facility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
@@ -181,6 +182,7 @@ export function handleAcceptTransportContract(
         currentCargo: { resource: contract.cargo.resource, quantity: 0 },
         contractId,
         posterAgentId,
+        deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
 
     safePostMessage({ type: 'transportContractAccepted', requestId, agentId, contractId });
@@ -909,6 +911,7 @@ export function handleDispatchShip(
         to: toPlanetId,
         cargoGoal: { resource: storageEntry.resource, quantity: cargoGoal.quantity },
         currentCargo: { resource: storageEntry.resource, quantity: 0 },
+        deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
         // No contractId or posterAgentId — cargo is loaded from own storage
     };
 
@@ -991,6 +994,7 @@ export function handleDispatchPassengerShip(
         passengerGoal: goal,
         currentPassengers: 0,
         manifest: {},
+        deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
 
     safePostMessage({ type: 'passengerShipDispatched', requestId, agentId, shipName });
@@ -1076,6 +1080,7 @@ export function handleDispatchConstructionShip(
         to: toPlanetId,
         buildingTarget: facilityBlueprint,
         progress: 0,
+        deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
 
     safePostMessage({ type: 'constructionShipDispatched', requestId, agentId, shipName });

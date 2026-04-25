@@ -235,6 +235,13 @@ export const EPSILON = 1e-4;
 export const MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE = 0.01;
 
 /**
+ * Maximum number of ticks a ship may remain in a loading / boarding state
+ * before the mission is automatically aborted and the ship returns to idle.
+ * 600 ticks ≈ 20 months at 30 ticks/month.
+ */
+export const MAX_DISPATCH_TIMEOUT_TICKS = 600;
+
+/**
  * EMA smoothing factor for ship trade prices (0 < α ≤ 1).
  * Higher values weight recent trades more heavily.
  */
