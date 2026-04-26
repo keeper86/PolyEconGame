@@ -129,6 +129,11 @@ export function boardPassengersFromWorkforce(
                     continue;
                 }
 
+                // Snapshot wealth before mutating planetCell — if take exhausts
+                // the cohort we zero out planetCell.wealth, but boarded
+                // passengers should inherit the original wealth.
+                const preMutationWealth = { ...planetCell.wealth };
+
                 // Remove from agent workforce
                 workforce.active -= take;
 
@@ -139,9 +144,9 @@ export function boardPassengersFromWorkforce(
                     planetCell.wealth = { mean: 0, variance: 0 };
                 }
 
-                // Add to manifest
+                // Add to manifest using the pre-mutation wealth snapshot
                 const key = manifestKey(age, 'employed', edu, skill);
-                mergeIntoManifest(manifest, key, planetCell, take);
+                mergeIntoManifest(manifest, key, { ...planetCell, wealth: preMutationWealth }, take);
 
                 boarded += take;
                 remaining -= take;
@@ -318,11 +323,24 @@ export function advanceManifestAge(
         void deaths; // intentionally unused — could log if desired
     }
 
-    // Redistribute orphaned wealth to a random surviving category.
+    // Redistribute orphaned wealth to a deterministically chosen surviving
+    // category (highest total; ties broken by key order) so manifest aging
+    // remains reproducible across runs.
     if (orphanedWealth > 0) {
         const survivingKeys = Object.keys(working).filter((k) => working[k]!.total > 0);
         if (survivingKeys.length > 0) {
-            const target = working[survivingKeys[Math.floor(Math.random() * survivingKeys.length)]!]!;
+            const targetKey = survivingKeys.reduce((bestKey, key) => {
+                const best = working[bestKey]!;
+                const current = working[key]!;
+                if (current.total > best.total) {
+                    return key;
+                }
+                if (current.total === best.total && key < bestKey) {
+                    return key;
+                }
+                return bestKey;
+            });
+            const target = working[targetKey]!;
             // Boost mean of the chosen category.
             target.wealth = {
                 mean: target.wealth.mean + orphanedWealth / target.total,

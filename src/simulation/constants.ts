@@ -237,9 +237,9 @@ export const MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE = 0.01;
 /**
  * Maximum number of ticks a ship may remain in a loading / boarding state
  * before the mission is automatically aborted and the ship returns to idle.
- * 600 ticks ≈ 20 months at 30 ticks/month.
+ * 60 ticks ≈ 2 months at 30 ticks/month.
  */
-export const MAX_DISPATCH_TIMEOUT_TICKS = 600;
+export const MAX_DISPATCH_TIMEOUT_TICKS = 60;
 
 /**
  * EMA smoothing factor for ship trade prices (0 < α ≤ 1).
@@ -248,7 +248,7 @@ export const MAX_DISPATCH_TIMEOUT_TICKS = 600;
 export const SHIP_MARKET_EMA_ALPHA = 0.3;
 
 /** Maximum number of trade records kept per ship-type in the capital market history. */
-export const SHIP_MARKET_MAX_TRADE_HISTORY = 200;
+export const SHIP_MARKET_MAX_TRADE_HISTORY = 100;
 
 export const LAND_CLAIM_COST_PER_UNIT: Record<string, number> = {
     'Arable Land': 1,

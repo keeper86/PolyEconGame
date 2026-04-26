@@ -37,7 +37,6 @@ import {
     calculateProvisions,
     refundBoardedPassengers,
     unloadPassengersToWorkforce,
-    unloadPassengersToPlanet,
 } from './manifest';
 import type {
     ConstructionContract,
@@ -141,7 +140,7 @@ export function settleTransportContract(
 ): void {
     const carrierAgent = gameState.agents.get(carrierAgentId);
 
-    for (const posterAgent of gameState.agents.values()) {
+    outer: for (const posterAgent of gameState.agents.values()) {
         for (const posterAssets of Object.values(posterAgent.assets)) {
             const contract = posterAssets.transportContracts.find(
                 (c) =>
@@ -151,28 +150,22 @@ export function settleTransportContract(
                     c.toPlanetId === arrivedPlanetId,
             );
             if (contract) {
-                if (contract.status === 'accepted') {
-                    const index = posterAssets.transportContracts.indexOf(contract);
-                    if (index === -1) {
-                        console.warn(
-                            `Contract not found in poster's assets for delivered cargo on ship ${shipName} owned by agent ${carrierAgentId}`,
-                        );
-                        break;
-                    }
-                    posterAssets.transportContracts.splice(index, 1);
-                    posterAssets.depositHold -= contract.offeredReward;
-                    const carrierAssets =
-                        carrierAgent?.assets[arrivedPlanetId] ??
-                        (carrierAgent ? carrierAgent.assets[carrierAgent.associatedPlanetId] : undefined);
-                    if (carrierAssets) {
-                        carrierAssets.deposits += contract.offeredReward;
-                    }
+                const index = posterAssets.transportContracts.indexOf(contract);
+                if (index === -1) {
+                    console.warn(
+                        `Contract not found in poster's assets for delivered cargo on ship ${shipName} owned by agent ${carrierAgentId}`,
+                    );
+                    break outer;
                 }
-                break;
-            } else {
-                console.warn(
-                    `No matching contract found for delivered cargo on ship ${shipName} owned by agent ${carrierAgentId}`,
-                );
+                posterAssets.transportContracts.splice(index, 1);
+                posterAssets.depositHold -= contract.offeredReward;
+                const carrierAssets =
+                    carrierAgent?.assets[arrivedPlanetId] ??
+                    (carrierAgent ? carrierAgent.assets[carrierAgent.associatedPlanetId] : undefined);
+                if (carrierAssets) {
+                    carrierAssets.deposits += contract.offeredReward;
+                }
+                break outer;
             }
         }
     }
@@ -449,11 +442,14 @@ function handlePassengerBoarding(ship: PassengerShip, gameState: GameState, agen
     const shipState = ship.state as PassengerShipStatusLoading;
 
     // Dispatch timeout — de-board any passengers already on the manifest back
-    // to the source planet, then go idle.
+    // to the source planet and restore agent workforce, then go idle.
     if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
         const sourcePlanet = gameState.planets.get(shipState.planetId);
         if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
-            unloadPassengersToPlanet(sourcePlanet, shipState.manifest);
+            const refundAgent = shipState.posterAgentId
+                ? (gameState.agents.get(shipState.posterAgentId) ?? agent)
+                : agent;
+            refundBoardedPassengers(refundAgent, sourcePlanet, shipState.planetId, shipState.manifest);
         }
         return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }

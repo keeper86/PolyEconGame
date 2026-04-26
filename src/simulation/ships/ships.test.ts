@@ -14,7 +14,7 @@
  *  - handleAcceptTransportContract
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
 import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS, putIntoStorageFacility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
@@ -228,6 +228,58 @@ describe('settleTransportContract', () => {
         expect(poster.assets.p1!.transportContracts).toHaveLength(0);
         expect(poster.assets.p1!.depositHold).toBe(0);
         expect(carrier.assets.p2.deposits).toBe(500);
+    });
+
+    it('does not emit a console.warn when no contract exists (non-contract delivery)', () => {
+        // settleTransportContract is called for non-contract deliveries too;
+        // it must not warn for every agent asset that has no matching contract.
+        const carrier = makeAgent('carrier', 'p2');
+        carrier.assets.p2 = makeAgentPlanetAssets('p2');
+        const state = makeGameState([makePlanet({ id: 'p2' })], [carrier]);
+
+        const warnSpy = vi.spyOn(console, 'warn');
+        settleTransportContract('S_NOCONTRACT', 'carrier', 'p2', state);
+        expect(warnSpy).not.toHaveBeenCalled();
+        warnSpy.mockRestore();
+    });
+
+    it('processes only the first matching contract and stops scanning', () => {
+        // If two agents both have a matching contract (unlikely but possible in
+        // theory), only the first one encountered should be settled — i.e. the
+        // outer loop breaks after a match.
+        const poster1 = makeAgent('poster1', 'p1');
+        const poster2 = makeAgent('poster2', 'p1');
+        const carrier = makeAgent('carrier', 'p2');
+        carrier.assets.p2 = makeAgentPlanetAssets('p2');
+        carrier.assets.p2.deposits = 0;
+
+        const contractBase = {
+            id: 'c_dup',
+            fromPlanetId: 'p1',
+            toPlanetId: 'p2',
+            cargo: { resource: steelResourceType, quantity: 10 },
+            maxDurationInTicks: 200,
+            offeredReward: 100,
+            postedByAgentId: 'poster1',
+            expiresAtTick: 999,
+            status: 'accepted' as const,
+            acceptedByAgentId: 'carrier',
+            shipName: 'S_DUP',
+            fulfillmentDueAtTick: 999,
+        };
+        poster1.assets.p1!.depositHold = 100;
+        poster1.assets.p1!.transportContracts.push({ ...contractBase });
+        poster2.assets.p1!.depositHold = 100;
+        poster2.assets.p1!.transportContracts.push({ ...contractBase, postedByAgentId: 'poster2' });
+
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [poster1, poster2, carrier]);
+        settleTransportContract('S_DUP', 'carrier', 'p2', state);
+
+        // Exactly one contract settled — combined contracts reduced by 1
+        const remaining = poster1.assets.p1!.transportContracts.length + poster2.assets.p1!.transportContracts.length;
+        expect(remaining).toBe(1);
+        // Carrier paid exactly once
+        expect(carrier.assets.p2!.deposits).toBe(100);
     });
 });
 
