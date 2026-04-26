@@ -72,6 +72,17 @@ export default defineConfig([
             ],
             'no-fallthrough': 0,
             'curly': ['error', 'all'],
+            '@typescript-eslint/no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            regex: '^(\\.\\./){3}',
+                            message: 'Use the @/ path alias instead of deep relative imports (../../../).',
+                        },
+                    ],
+                },
+            ],
             '@typescript-eslint/no-unused-vars': [
                 'error',
                 {

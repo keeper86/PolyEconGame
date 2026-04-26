@@ -27,6 +27,7 @@ import {
     acceptShipListingSpec,
     dispatchShipSpec,
     dispatchConstructionShipSpec,
+    dispatchPassengerShipSpec,
     buildShipConstructionFacilitySpec,
     expandShipConstructionFacilitySpec,
     setShipConstructionTargetSpec,
@@ -563,6 +564,30 @@ export function workerDispatchConstructionShip(opts: {
             facilityName,
         },
         dispatchConstructionShipSpec,
+        timeoutMs,
+    );
+}
+
+export function workerDispatchPassengerShip(opts: {
+    agentId: string;
+    fromPlanetId: string;
+    toPlanetId: string;
+    shipName: string;
+    passengerCount: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, fromPlanetId, toPlanetId, shipName, passengerCount, timeoutMs } = opts;
+    return sendCommandSpec(
+        {
+            type: 'dispatchPassengerShip',
+            requestId: randomUUID(),
+            agentId,
+            fromPlanetId,
+            toPlanetId,
+            shipName,
+            passengerCount,
+        },
+        dispatchPassengerShipSpec,
         timeoutMs,
     );
 }

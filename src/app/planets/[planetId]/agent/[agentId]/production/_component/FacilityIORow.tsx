@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
-import type { ResourceEntry } from './ProductQuantity';
-import { ProductQuantity } from './ProductQuantity';
+import type { ResourceEntry } from '@/components/client/ProductQuantity';
+import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { useAgentId } from '@/hooks/useAgentId';
 import { usePlanetId } from '@/hooks/usePlanetId';
 

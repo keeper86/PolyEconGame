@@ -360,6 +360,19 @@ export const dispatchConstructionShipSpec: CommandSpec<
     extract: (msg) => msg.shipName,
 };
 
+type DispatchPassengerShipSuccess = Extract<OutboundMessage, { type: 'passengerShipDispatched' }>;
+type DispatchPassengerShipFailure = Extract<OutboundMessage, { type: 'passengerShipDispatchFailed' }>;
+export const dispatchPassengerShipSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'dispatchPassengerShip' }>,
+    DispatchPassengerShipSuccess,
+    DispatchPassengerShipFailure,
+    string
+> = {
+    successType: 'passengerShipDispatched',
+    failureType: 'passengerShipDispatchFailed',
+    extract: (msg) => msg.shipName,
+};
+
 // --- Ship construction facility specs ---
 
 type BuildShipConstructionFacilitySuccess = Extract<OutboundMessage, { type: 'shipConstructionFacilityBuilt' }>;

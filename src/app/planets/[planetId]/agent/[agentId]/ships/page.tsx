@@ -8,15 +8,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { ConstructionShip, TransportShip } from '@/simulation/ships/ships';
+import type { ConstructionShip, PassengerShip, TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/ships/_components/PostTransportContractDialog';
 import { DispatchShipDialog } from './_components/DispatchShipDialog';
 import { DispatchConstructionShipDialog } from './_components/DispatchConstructionShipDialog';
+import { DispatchPassengerShipDialog } from './_components/DispatchPassengerShipDialog';
+import { ShipStatusDetail } from './_components/ShipStatusDetail';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-function statusBadge(ship: TransportShip | ConstructionShip) {
+function statusBadge(ship: TransportShip | ConstructionShip | PassengerShip) {
     const { state } = ship;
     const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
         idle: 'secondary',
@@ -72,6 +74,9 @@ export default function AgentShipsPage() {
     const { data: shipsData, isLoading: shipsLoading } = useSimulationQuery(
         trpc.listAgentShips.queryOptions({ agentId }, { enabled: isOwnAgent }),
     );
+
+    const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const planetSummaries = planetSummariesData?.planets ?? [];
 
     const shipsHere = (shipsData?.ships ?? []).filter(
         (s) => 'planetId' in s.state && (s.state as { planetId: string }).planetId === planetId,
@@ -133,6 +138,15 @@ export default function AgentShipsPage() {
                                                     Condition: {Math.round(ship.maintainanceStatus * 100)}% Max:{' '}
                                                     {Math.round(ship.maxMaintenance * 100)}%
                                                 </p>
+                                                {ship.state.type !== 'idle' &&
+                                                    ship.state.type !== 'listed' &&
+                                                    ship.state.type !== 'derelict' && (
+                                                        <ShipStatusDetail
+                                                            ship={ship}
+                                                            planetSummaries={planetSummaries}
+                                                            tick={tick ?? 0}
+                                                        />
+                                                    )}
                                             </div>
                                         </div>
                                         <div className='flex gap-2 flex-shrink-0 items-center'>
@@ -182,6 +196,18 @@ export default function AgentShipsPage() {
                                                                 Dispatch
                                                             </Button>
                                                         </DispatchConstructionShipDialog>
+                                                    )}
+                                                    {ship.type.type === 'passenger' && (
+                                                        <DispatchPassengerShipDialog
+                                                            agentId={agentId}
+                                                            planetId={planetId}
+                                                            shipName={ship.name}
+                                                            passengerCapacity={ship.type.passengerCapacity}
+                                                        >
+                                                            <Button size='sm' variant='outline'>
+                                                                Dispatch
+                                                            </Button>
+                                                        </DispatchPassengerShipDialog>
                                                     )}
                                                     <Button
                                                         size='sm'

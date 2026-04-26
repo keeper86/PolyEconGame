@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import type { WorkforceSummary } from './workforce-summary';
 import { CHART_COLORS, EDU_COLORS, eduLabel } from './workforce-theme';
-import { Tabs, TabsList, TabsTrigger } from '../../../../../components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumbers } from '@/lib/utils';
 

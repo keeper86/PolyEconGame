@@ -9,6 +9,7 @@ import {
     workerCancelTransportContract,
     workerDispatchShip,
     workerDispatchConstructionShip,
+    workerDispatchPassengerShip,
     workerPostShipBuyingOffer,
     workerPostShipListing,
     workerPostTransportContract,
@@ -154,6 +155,24 @@ export const dispatchConstructionShip = () =>
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
             const shipName = await workerDispatchConstructionShip(input);
+            return { shipName };
+        });
+
+export const dispatchPassengerShip = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                fromPlanetId: z.string().min(1),
+                toPlanetId: z.string().min(1),
+                shipName: z.string().min(1),
+                passengerCount: z.number().int().positive(),
+            }),
+        )
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await assertAgentOwnership(userId, input.agentId);
+            const shipName = await workerDispatchPassengerShip(input);
             return { shipName };
         });
 

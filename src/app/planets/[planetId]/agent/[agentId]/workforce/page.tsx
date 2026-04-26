@@ -51,8 +51,18 @@ export default function WorkforcePage() {
                 ) : !isLoading && assets ? (
                     <div className='space-y-6'>
                         <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
-                            <AgentMetricChart agentId={agentId} granularity='monthly' metric='totalWorkers' />
-                            <AgentMetricChart agentId={agentId} granularity='monthly' metric='wages' />
+                            <AgentMetricChart
+                                agentId={agentId}
+                                planetId={planetId}
+                                granularity='monthly'
+                                metric='totalWorkers'
+                            />
+                            <AgentMetricChart
+                                agentId={agentId}
+                                planetId={planetId}
+                                granularity='monthly'
+                                metric='wages'
+                            />
                         </div>
                         <WorkforceDemographyPanel
                             allocatedWorkers={assets.allocatedWorkers as Record<EducationLevelType, number>}

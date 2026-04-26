@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 import { formatNumbers } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';

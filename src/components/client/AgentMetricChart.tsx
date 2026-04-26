@@ -386,31 +386,32 @@ function NonMonthlyMetricChart({
 
 export interface AgentMetricChartProps {
     agentId: string;
+    planetId: string;
     granularity: Granularity;
     metric: AgentMetric;
     loading?: boolean;
     className?: string;
 }
 
-export function AgentMetricChart({ agentId, granularity, metric, loading = false }: AgentMetricChartProps) {
+export function AgentMetricChart({ agentId, planetId, granularity, metric, loading = false }: AgentMetricChartProps) {
     const trpc = useTRPC();
     const config = CHART_CONFIGS[metric];
 
     const { data: monthlyData } = useSimulationQuery(
         trpc.simulation.getAgentHistory.queryOptions(
-            { agentId, granularity: 'monthly', limit: 26 },
+            { agentId, planetId, granularity: 'monthly', limit: 26 },
             { enabled: granularity === 'monthly' },
         ),
     );
     const { data: yearlyData } = useSimulationQuery(
         trpc.simulation.getAgentHistory.queryOptions(
-            { agentId, granularity: 'yearly', limit: 100 },
+            { agentId, planetId, granularity: 'yearly', limit: 11 },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decadeData } = useSimulationQuery(
         trpc.simulation.getAgentHistory.queryOptions(
-            { agentId, granularity: 'decade', limit: 100 },
+            { agentId, planetId, granularity: 'decade', limit: 100 },
             { enabled: granularity === 'decade' },
         ),
     );

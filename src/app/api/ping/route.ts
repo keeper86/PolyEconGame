@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { OutboundMessage } from '../../../simulation/worker';
+import type { OutboundMessage } from '@/simulation/worker';
 import { onWorkerMessage, sendToWorker } from '@/simulation/workerClient/manager';
 
 const TIMEOUT_MS = 5000;

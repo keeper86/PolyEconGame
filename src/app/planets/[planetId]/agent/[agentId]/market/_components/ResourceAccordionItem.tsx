@@ -15,7 +15,7 @@ import { TTL_FEEDBACK, MARKET_STATUS_CONFIG } from './marketTypes';
 import { getResourceByName } from './marketHelpers';
 import { classifyMarket } from './marketHelpers';
 import { cn, formatNumbers } from '@/lib/utils';
-import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/_component/columnConfig';
+import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
 import ResourceTrigger from './ResourceTrigger';
 import BuySection from './BuySection';
 import SellSection from './SellSection';

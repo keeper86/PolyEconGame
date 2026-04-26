@@ -1,0 +1,715 @@
+/**
+ * Per-state handler functions for shipTick.
+ *
+ * Each handler encapsulates the logic for a single ship state type and returns
+ * a TransitionResult describing whether the state should change. The main
+ * shipTick loop applies the result.
+ *
+ * Shared helpers (applyMaintenance, travelTime, settleTransportContract,
+ * settleConstructionContract) are also exported so they can be tested in
+ * isolation.
+ */
+
+import {
+    EPSILON,
+    MAX_DISPATCH_TIMEOUT_TICKS,
+    MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
+    TICKS_PER_YEAR,
+} from '../constants';
+import type { Facility, ProductionFacility } from '../planet/facility';
+import {
+    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+    lockIntoEscrow,
+    putIntoStorageFacility,
+    removeFromStorageFacility,
+    transferFromEscrow,
+} from '../planet/facility';
+import type { Agent, GameState } from '../planet/planet';
+import { consumeConstructionForFacility } from '../planet/production';
+import {
+    educationServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    maintenanceServiceResourceType,
+} from '../planet/services';
+import {
+    advanceManifestAge,
+    boardPassengersFromWorkforce,
+    calculateProvisions,
+    refundBoardedPassengers,
+    unloadPassengersToWorkforce,
+} from './manifest';
+import type {
+    ConstructionContract,
+    ConstructionShip,
+    ConstructionShipStatus,
+    ConstructionShipStatusLoading,
+    ConstructionShipStatusTransporting,
+    ConstructionShipStatusType,
+    ConstructionShipStatusUnloading,
+    PassengerShip,
+    PassengerShipStatus,
+    PassengerShipStatusLoading,
+    PassengerShipStatusProvisioning,
+    PassengerShipStatusType,
+    Ship,
+    ShipStatusDerelict,
+    ShipStatusIdle,
+    TransportContract,
+    TransportShip,
+    TransportShipStatus,
+    TransportShipStatusLoading,
+    TransportShipStatusType,
+    TransportShipStatusUnloading,
+} from './ships';
+
+export type TransitionResult =
+    | { action: 'stay' }
+    | { action: 'transition'; newState: TransportShipStatus | ConstructionShipStatus | PassengerShipStatus };
+
+const STAY: TransitionResult = { action: 'stay' };
+
+export function travelTime(ship: Ship): number {
+    return Math.ceil(1000 / ship.type.speed);
+}
+
+export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState): boolean {
+    // Degradation rate depends on ship activity
+    let maintenanceDecreasePerYear = 0.05;
+    if (
+        ship.state.type === 'transporting' ||
+        ship.state.type === 'construction_transporting' ||
+        ship.state.type === 'passenger_transporting'
+    ) {
+        maintenanceDecreasePerYear *= 5;
+    }
+    if (ship.state.type === 'idle' || ship.state.type === 'listed') {
+        maintenanceDecreasePerYear /= 5;
+    }
+    ship.maintainanceStatus = Math.max(0, ship.maintainanceStatus - maintenanceDecreasePerYear / TICKS_PER_YEAR);
+
+    // Repair is only possible when the ship is sitting at a planet with storage
+    if (ship.state.type !== 'idle' && ship.state.type !== 'listed') {
+        return false;
+    }
+
+    const planetId = ship.state.planetId;
+    const assets = agent.assets[planetId];
+    const storage = assets?.storageFacility;
+    if (!storage) {
+        return false;
+    }
+
+    const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
+    const maintenanceNeeded = Math.min(maintenancePerTick, ship.maxMaintenance - ship.maintainanceStatus);
+    const consumed = removeFromStorageFacility(storage, maintenanceServiceResourceType.name, maintenanceNeeded);
+    if (consumed <= 0) {
+        return false;
+    }
+
+    ship.maintainanceStatus = Math.min(ship.maxMaintenance, ship.maintainanceStatus + consumed);
+    assets.monthAcc.consumptionValue +=
+        consumed * (gameState.planets.get(planetId)?.marketPrices[maintenanceServiceResourceType.name] ?? 0);
+
+    // Aging: accumulate repair; degrade maxMaintenance after each full cycle
+    ship.cumulativeRepairAcc += consumed;
+    while (ship.cumulativeRepairAcc >= 1.0) {
+        ship.cumulativeRepairAcc -= 1.0;
+        ship.maxMaintenance = Math.max(0, ship.maxMaintenance - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE);
+    }
+
+    if (ship.maxMaintenance > 0) {
+        return false;
+    }
+
+    // Transition to derelict
+    ship.maintainanceStatus = 0;
+    if (ship.state.type === 'listed') {
+        const listingAssets = agent.assets[planetId];
+        if (listingAssets) {
+            listingAssets.shipListings = listingAssets.shipListings.filter((l) => l.shipName !== ship.name);
+        }
+    }
+    ship.state = { type: 'derelict', planetId } satisfies ShipStatusDerelict;
+    return true;
+}
+
+export function settleTransportContract(
+    shipName: string,
+    carrierAgentId: string,
+    arrivedPlanetId: string,
+    gameState: GameState,
+): void {
+    const carrierAgent = gameState.agents.get(carrierAgentId);
+
+    outer: for (const posterAgent of gameState.agents.values()) {
+        for (const posterAssets of Object.values(posterAgent.assets)) {
+            const contract = posterAssets.transportContracts.find(
+                (c) =>
+                    c.status === 'accepted' &&
+                    c.acceptedByAgentId === carrierAgentId &&
+                    c.shipName === shipName &&
+                    c.toPlanetId === arrivedPlanetId,
+            );
+            if (contract) {
+                const index = posterAssets.transportContracts.indexOf(contract);
+                if (index === -1) {
+                    console.warn(
+                        `Contract not found in poster's assets for delivered cargo on ship ${shipName} owned by agent ${carrierAgentId}`,
+                    );
+                    break outer;
+                }
+                posterAssets.transportContracts.splice(index, 1);
+                posterAssets.depositHold -= contract.offeredReward;
+                const carrierAssets =
+                    carrierAgent?.assets[arrivedPlanetId] ??
+                    (carrierAgent ? carrierAgent.assets[carrierAgent.associatedPlanetId] : undefined);
+                if (carrierAssets) {
+                    carrierAssets.deposits += contract.offeredReward;
+                }
+                break outer;
+            }
+        }
+    }
+}
+
+export function settleConstructionContract(
+    contractId: string,
+    buildingTarget: Facility,
+    carrierAgentId: string,
+    arrivedPlanetId: string,
+    gameState: GameState,
+): void {
+    const carrierAgent = gameState.agents.get(carrierAgentId);
+
+    let receivingAgentId: string = carrierAgentId;
+    let matched = false;
+
+    for (const posterAgent of gameState.agents.values()) {
+        for (const posterAssets of Object.values(posterAgent.assets)) {
+            const contract = posterAssets.constructionContracts.find(
+                (c): c is ConstructionContract & { status: 'accepted' } =>
+                    c.id === contractId && c.status === 'accepted',
+            );
+            if (contract) {
+                matched = true;
+                receivingAgentId = contract.commissioningAgentId;
+                const idx = posterAssets.constructionContracts.indexOf(contract);
+                posterAssets.constructionContracts[idx] = { ...contract, status: 'completed' };
+                posterAssets.depositHold -= contract.offeredReward;
+                const carrierAssets =
+                    carrierAgent?.assets[arrivedPlanetId] ??
+                    (carrierAgent ? carrierAgent.assets[carrierAgent.associatedPlanetId] : undefined);
+                if (carrierAssets) {
+                    carrierAssets.deposits += contract.offeredReward;
+                }
+                break;
+            }
+        }
+        if (matched) {
+            break;
+        }
+    }
+
+    // Place the facility into the receiving agent's assets
+    const receivingAgent = gameState.agents.get(receivingAgentId);
+    if (receivingAgent) {
+        const destAssets = receivingAgent.assets[arrivedPlanetId];
+        if (destAssets) {
+            const placedFacility = structuredClone({ ...buildingTarget, planetId: arrivedPlanetId });
+            destAssets.productionFacilities.push(placedFacility as ProductionFacility);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Transport ship handlers
+// ---------------------------------------------------------------------------
+
+function handleIdle(_ship: Ship, _ctx: GameState, _agent: Agent): TransitionResult {
+    // Maintenance is applied before dispatch; nothing further to do.
+    return STAY;
+}
+
+function handleListed(_ship: Ship, _ctx: GameState, _agent: Agent): TransitionResult {
+    return STAY;
+}
+
+function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
+    const s = ship.state as TransportShipStatusLoading;
+
+    // Dispatch timeout — return any loaded cargo to escrow and reset contract to open, then go idle
+    if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
+        if (s.contractId) {
+            const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+            const storage = storageAgent.assets[s.planetId]?.storageFacility;
+            if (storage && s.currentCargo.quantity > 0) {
+                lockIntoEscrow(storage, s.currentCargo.resource.name, s.currentCargo.quantity);
+            }
+            outer: for (const a of ctx.agents.values()) {
+                for (const assets of Object.values(a.assets)) {
+                    const idx = assets.transportContracts.findIndex(
+                        (c): c is TransportContract & { status: 'accepted' } =>
+                            c.id === s.contractId && c.status === 'accepted',
+                    );
+                    if (idx !== -1) {
+                        const acc = assets.transportContracts[idx] as TransportContract & { status: 'accepted' };
+                        assets.transportContracts[idx] = {
+                            id: acc.id,
+                            fromPlanetId: acc.fromPlanetId,
+                            toPlanetId: acc.toPlanetId,
+                            cargo: acc.cargo,
+                            maxDurationInTicks: acc.maxDurationInTicks,
+                            offeredReward: acc.offeredReward,
+                            postedByAgentId: acc.postedByAgentId,
+                            expiresAtTick: acc.expiresAtTick,
+                            status: 'open',
+                        };
+                        break outer;
+                    }
+                }
+            }
+        }
+        return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } satisfies ShipStatusIdle };
+    }
+
+    if (!s.cargoGoal) {
+        return {
+            action: 'transition',
+            newState: {
+                type: 'transporting',
+                from: s.planetId,
+                to: s.to,
+                cargo: s.currentCargo,
+                arrivalTick: ctx.tick + travelTime(ship),
+            },
+        };
+    }
+
+    const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+    const storage = storageAgent.assets[s.planetId]?.storageFacility;
+    if (!storage) {
+        return {
+            action: 'transition',
+            newState: {
+                type: 'transporting',
+                from: s.planetId,
+                to: s.to,
+                cargo: s.currentCargo,
+                arrivalTick: ctx.tick + travelTime(ship),
+            },
+        };
+    }
+
+    const missingCargo = s.cargoGoal.quantity - s.currentCargo.quantity;
+    const removedQuantity = s.contractId
+        ? transferFromEscrow(storage, s.cargoGoal.resource.name, missingCargo)
+        : removeFromStorageFacility(storage, s.cargoGoal.resource.name, missingCargo);
+    s.currentCargo.quantity += removedQuantity;
+
+    if (removedQuantity === missingCargo) {
+        return {
+            action: 'transition',
+            newState: {
+                type: 'transporting',
+                from: s.planetId,
+                to: s.to,
+                cargo: s.currentCargo,
+                arrivalTick: ctx.tick + travelTime(ship),
+            },
+        };
+    }
+    return STAY;
+}
+
+function handleTransporting(ship: TransportShip, ctx: GameState): TransitionResult {
+    const s = ship.state;
+    if (s.type !== 'transporting') {
+        return STAY;
+    }
+    if (ctx.tick < s.arrivalTick) {
+        return STAY;
+    }
+
+    const cargo = s.cargo;
+    if (!cargo) {
+        return { action: 'transition', newState: { type: 'idle', planetId: s.to } };
+    }
+    return {
+        action: 'transition',
+        newState: {
+            type: 'unloading',
+            planetId: s.to,
+            cargo,
+            posterAgentId: s.posterAgentId,
+        } satisfies TransportShipStatusUnloading,
+    };
+}
+
+function handleTransportUnloading(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
+    const s = ship.state as TransportShipStatusUnloading;
+    const receivingAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+    const assets = receivingAgent.assets[s.planetId];
+    if (!assets) {
+        return STAY;
+    }
+    const storage = assets.storageFacility;
+    if (!storage) {
+        return STAY;
+    }
+
+    if (s.cargo) {
+        const stored = putIntoStorageFacility(storage, s.cargo.resource, s.cargo.quantity);
+        s.cargo.quantity -= stored;
+        if (s.cargo.quantity > EPSILON) {
+            return STAY;
+        }
+    }
+
+    const arrivedPlanetId = s.planetId;
+    // Settle any matching transport contract
+    settleTransportContract(ship.name, agent.id, arrivedPlanetId, ctx);
+    return { action: 'transition', newState: { type: 'idle', planetId: arrivedPlanetId } };
+}
+
+// ---------------------------------------------------------------------------
+// Construction ship handlers
+// ---------------------------------------------------------------------------
+
+function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
+    const s = ship.state as ConstructionShipStatusLoading;
+
+    // Dispatch timeout — reset construction contract to open (with 10% penalty fee), then go idle
+    if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
+        if (s.contractId) {
+            const contractId = s.contractId;
+            outer: for (const posterAgent of ctx.agents.values()) {
+                for (const posterAssets of Object.values(posterAgent.assets)) {
+                    const idx = posterAssets.constructionContracts.findIndex(
+                        (c): c is ConstructionContract & { status: 'accepted' } =>
+                            c.id === contractId && c.status === 'accepted',
+                    );
+                    if (idx !== -1) {
+                        const contract = posterAssets.constructionContracts[idx] as ConstructionContract & {
+                            status: 'accepted';
+                        };
+                        const penalty = contract.offeredReward * 0.1;
+                        posterAssets.constructionContracts[idx] = {
+                            id: contract.id,
+                            fromPlanetId: contract.fromPlanetId,
+                            toPlanetId: contract.toPlanetId,
+                            facilityName: contract.facilityName,
+                            commissioningAgentId: contract.commissioningAgentId,
+                            offeredReward: contract.offeredReward,
+                            postedByAgentId: contract.postedByAgentId,
+                            expiresAtTick: contract.expiresAtTick,
+                            status: 'open',
+                        };
+                        // Charge carrier 10% penalty fee (create working-capital loan if needed)
+                        const carrierAssets = agent.assets[s.planetId];
+                        const bank = ctx.planets.get(s.planetId)?.bank;
+                        if (carrierAssets && bank) {
+                            if (carrierAssets.deposits < penalty) {
+                                const shortfall = penalty - carrierAssets.deposits;
+                                bank.loans += shortfall;
+                                bank.deposits += shortfall;
+                                carrierAssets.deposits += shortfall;
+                                carrierAssets.loans += shortfall;
+                            }
+                            carrierAssets.deposits -= penalty;
+                        }
+                        posterAssets.deposits += penalty;
+                        break outer;
+                    }
+                }
+            }
+        }
+        return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
+    }
+
+    if (!s.buildingTarget) {
+        return {
+            action: 'transition',
+            newState: {
+                type: 'construction_transporting',
+                from: s.planetId,
+                to: s.to,
+                buildingTarget: null,
+                arrivalTick: ctx.tick + travelTime(ship),
+            } satisfies ConstructionShipStatusTransporting,
+        };
+    }
+
+    const target = s.buildingTarget;
+    if (target.construction === null) {
+        return {
+            action: 'transition',
+            newState: {
+                type: 'construction_transporting',
+                from: s.planetId,
+                to: s.to,
+                buildingTarget: target,
+                arrivalTick: ctx.tick + travelTime(ship),
+                contractId: s.contractId,
+                posterAgentId: s.posterAgentId,
+            } satisfies ConstructionShipStatusTransporting,
+        };
+    }
+
+    const assets = agent.assets[s.planetId];
+    consumeConstructionForFacility(target, assets?.storageFacility);
+    s.progress = target.construction?.progress ?? s.progress;
+    return STAY;
+}
+
+function handleConstructionTransporting(ship: ConstructionShip, ctx: GameState): TransitionResult {
+    const s = ship.state as ConstructionShipStatusTransporting;
+    if (ctx.tick < s.arrivalTick) {
+        return STAY;
+    }
+
+    const target = s.buildingTarget;
+    if (!target) {
+        return { action: 'transition', newState: { type: 'idle', planetId: s.to } };
+    }
+    return {
+        action: 'transition',
+        newState: {
+            type: 'reconstruction',
+            planetId: s.to,
+            buildingTarget: target,
+            progress: 1,
+            contractId: s.contractId,
+        } satisfies ConstructionShipStatusUnloading,
+    };
+}
+
+function handleReconstruction(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
+    const s = ship.state as ConstructionShipStatusUnloading;
+    const updatedProgress = Math.max(0, s.progress - 1 / MINIMUM_CONSTRUCTION_TIME_IN_TICKS);
+    s.progress = updatedProgress;
+
+    if (updatedProgress > 0) {
+        return STAY;
+    }
+
+    const arrivedPlanetId = s.planetId;
+
+    if (s.contractId) {
+        settleConstructionContract(s.contractId, s.buildingTarget, agent.id, arrivedPlanetId, ctx);
+    } else {
+        // No contract — place facility directly for the carrying agent
+        const destAssets = agent.assets[arrivedPlanetId];
+        if (destAssets) {
+            const placedFacility = structuredClone({ ...s.buildingTarget, planetId: arrivedPlanetId });
+            destAssets.productionFacilities.push(placedFacility as ProductionFacility);
+        }
+    }
+
+    return { action: 'transition', newState: { type: 'idle', planetId: arrivedPlanetId } };
+}
+
+// ---------------------------------------------------------------------------
+// Passenger ship handlers
+// ---------------------------------------------------------------------------
+
+function handlePassengerBoarding(ship: PassengerShip, gameState: GameState, agent: Agent): TransitionResult {
+    const shipState = ship.state as PassengerShipStatusLoading;
+
+    // Dispatch timeout — de-board any passengers already on the manifest back
+    // to the source planet and restore agent workforce, then go idle.
+    if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
+        const sourcePlanet = gameState.planets.get(shipState.planetId);
+        if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
+            const refundAgent = shipState.posterAgentId
+                ? (gameState.agents.get(shipState.posterAgentId) ?? agent)
+                : agent;
+            refundBoardedPassengers(refundAgent, sourcePlanet, shipState.planetId, shipState.manifest);
+        }
+        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
+    }
+
+    const sourcePlanet = gameState.planets.get(shipState.planetId);
+    if (!sourcePlanet) {
+        console.warn(`Source planet '${shipState.planetId}' not found for passenger boarding`);
+        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
+    }
+
+    const needed = shipState.passengerGoal - shipState.currentPassengers;
+    const boardingAgent = shipState.posterAgentId ? (gameState.agents.get(shipState.posterAgentId) ?? agent) : agent;
+    const boarded = boardPassengersFromWorkforce(
+        boardingAgent,
+        sourcePlanet,
+        shipState.planetId,
+        shipState.manifest,
+        needed,
+    );
+    shipState.currentPassengers += boarded;
+
+    const goalReached = shipState.currentPassengers >= shipState.passengerGoal;
+
+    if (!goalReached) {
+        return STAY;
+    }
+
+    // Boarding complete — hand off to provisioning phase.
+    const provisionsTracker = calculateProvisions(shipState.manifest, travelTime(ship));
+    return {
+        action: 'transition',
+        newState: {
+            type: 'passenger_provisioning',
+            planetId: shipState.planetId,
+            to: shipState.to,
+            manifest: shipState.manifest,
+            deadlineTick: gameState.tick + MAX_DISPATCH_TIMEOUT_TICKS,
+            posterAgentId: shipState.posterAgentId,
+            ...provisionsTracker,
+        } satisfies PassengerShipStatusProvisioning,
+    };
+}
+
+function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, agent: Agent): TransitionResult {
+    const shipState = ship.state;
+    if (shipState.type !== 'passenger_provisioning') {
+        return STAY;
+    }
+
+    // Provisioning timeout — refund passengers and go idle.
+    if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
+        const sourcePlanet = gameState.planets.get(shipState.planetId);
+        if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
+            const refundAgent = shipState.posterAgentId
+                ? (gameState.agents.get(shipState.posterAgentId) ?? agent)
+                : agent;
+            refundBoardedPassengers(refundAgent, sourcePlanet, shipState.planetId, shipState.manifest);
+        }
+        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
+    }
+
+    const storage = gameState.agents.get(agent.id)?.assets[shipState.planetId]?.storageFacility;
+    if (!storage) {
+        console.warn(`No storage facility found on planet '${shipState.planetId}' for passenger provisioning`);
+        return STAY;
+    }
+
+    shipState.groceryProvisioned.currently += removeFromStorageFacility(
+        storage,
+        groceryServiceResourceType.name,
+        shipState.groceryProvisioned.goal - shipState.groceryProvisioned.currently,
+    );
+    shipState.healthcareProvisioned.currently += removeFromStorageFacility(
+        storage,
+        healthcareServiceResourceType.name,
+        shipState.healthcareProvisioned.goal - shipState.healthcareProvisioned.currently,
+    );
+    shipState.educationProvisioned.currently += removeFromStorageFacility(
+        storage,
+        educationServiceResourceType.name,
+        shipState.educationProvisioned.goal - shipState.educationProvisioned.currently,
+    );
+
+    const provisionsOk =
+        shipState.groceryProvisioned.currently >= shipState.groceryProvisioned.goal &&
+        shipState.healthcareProvisioned.currently >= shipState.healthcareProvisioned.goal &&
+        shipState.educationProvisioned.currently >= shipState.educationProvisioned.goal;
+
+    if (!provisionsOk) {
+        return STAY;
+    } // Wait for production to catch up
+
+    const flightTicks = travelTime(ship);
+    return {
+        action: 'transition',
+        newState: {
+            type: 'passenger_transporting',
+            from: shipState.planetId,
+            to: shipState.to,
+            arrivalTick: gameState.tick + flightTicks,
+            manifest: advanceManifestAge(shipState.manifest, gameState.tick, flightTicks),
+            posterAgentId: shipState.posterAgentId,
+        },
+    };
+}
+
+function handlePassengerTransporting(ship: PassengerShip, ctx: GameState, agent: Agent): TransitionResult {
+    const s = ship.state;
+    if (s.type !== 'passenger_transporting') {
+        return STAY;
+    }
+    if (ctx.tick < s.arrivalTick) {
+        return STAY;
+    }
+
+    const destPlanet = ctx.planets.get(s.to);
+    if (!destPlanet) {
+        throw new Error(
+            `Destination planet '${s.to}' is missing at passenger arrival (tick ${ctx.tick}). ` +
+                `This is an unrecoverable state — the simulation cannot proceed.`,
+        );
+    }
+
+    // Unload immediately on arrival — no separate unloading tick needed
+    const unloadAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+    unloadPassengersToWorkforce(unloadAgent, destPlanet, s.to, s.manifest);
+    return { action: 'transition', newState: { type: 'idle', planetId: s.to } };
+}
+
+function handlePassengerUnloading(ship: PassengerShip, ctx: GameState, agent: Agent): TransitionResult {
+    const s = ship.state;
+    if (s.type !== 'passenger_unloading') {
+        return STAY;
+    }
+
+    const destPlanet = ctx.planets.get(s.planetId);
+    if (!destPlanet) {
+        return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
+    }
+
+    const unloadAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+    unloadPassengersToWorkforce(unloadAgent, destPlanet, s.planetId, s.manifest);
+    return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
+}
+
+// ---------------------------------------------------------------------------
+// Dispatch tables
+// ---------------------------------------------------------------------------
+
+export const transportHandlers: Record<
+    TransportShipStatusType,
+    (ship: TransportShip, ctx: GameState, agent: Agent) => TransitionResult
+> = {
+    idle: handleIdle,
+    listed: handleListed,
+    loading: handleTransportLoading,
+    transporting: handleTransporting,
+    unloading: handleTransportUnloading,
+    derelict: () => STAY, // Never reached — derelict is skipped before dispatch
+    lost: () => STAY, // Never reached — lost is skipped before dispatch
+};
+
+export const constructionHandlers: Record<
+    ConstructionShipStatusType,
+    (ship: ConstructionShip, ctx: GameState, agent: Agent) => TransitionResult
+> = {
+    'idle': handleIdle,
+    'listed': handleListed,
+    'pre-fabrication': handlePreFabrication,
+    'construction_transporting': handleConstructionTransporting,
+    'reconstruction': handleReconstruction,
+    'derelict': () => STAY,
+    'lost': () => STAY,
+};
+
+export const passengerHandlers: Record<
+    PassengerShipStatusType,
+    (ship: PassengerShip, ctx: GameState, agent: Agent) => TransitionResult
+> = {
+    idle: handleIdle,
+    listed: handleListed,
+    passenger_boarding: handlePassengerBoarding,
+    passenger_provisioning: handlePassengerProvisioning,
+    passenger_transporting: handlePassengerTransporting,
+    passenger_unloading: handlePassengerUnloading,
+    derelict: () => STAY,
+    lost: () => STAY,
+};

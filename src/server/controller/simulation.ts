@@ -448,6 +448,7 @@ export const getAgentHistory = () =>
         .input(
             z.object({
                 agentId: z.string(),
+                planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
                 limit: z.number().int().min(1).max(1000).default(100),
             }),
@@ -473,7 +474,7 @@ export const getAgentHistory = () =>
         .query(async ({ input }) => {
             const [{ agent }, rows] = await Promise.all([
                 workerQueries.getAgent(input.agentId),
-                dbGetAgentHistory(db, input.agentId, input.granularity, input.limit),
+                dbGetAgentHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
             ]);
             return {
                 agentId: input.agentId,
@@ -498,6 +499,7 @@ export const getAgentFinancialHistory = () =>
         .input(
             z.object({
                 agentId: z.string(),
+                planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
                 limit: z.number().int().min(1).max(1000).default(26),
             }),
@@ -522,7 +524,7 @@ export const getAgentFinancialHistory = () =>
         .query(async ({ input }) => {
             const [{ agent }, rows] = await Promise.all([
                 workerQueries.getAgent(input.agentId),
-                dbGetAgentFinancialHistory(db, input.agentId, input.granularity, input.limit),
+                dbGetAgentFinancialHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
             ]);
             return {
                 agentId: input.agentId,

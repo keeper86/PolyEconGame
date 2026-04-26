@@ -27,6 +27,7 @@ import {
     handleAcceptTransportContract,
     handleCancelTransportContract,
     handleDispatchShip,
+    handleDispatchPassengerShip,
     handleDispatchConstructionShip,
     handlePostConstructionContract,
     handleAcceptConstructionContract,
@@ -206,6 +207,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'dispatchShip':
                         handleDispatchShip(state, action, safePostMessage);
+                        break;
+                    case 'dispatchPassengerShip':
+                        handleDispatchPassengerShip(state, action, safePostMessage);
                         break;
                     case 'dispatchConstructionShip':
                         handleDispatchConstructionShip(state, action, safePostMessage);
@@ -1242,6 +1246,35 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 toPlanetId,
                 shipName,
                 facilityName,
+            });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'dispatchPassengerShip') {
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, passengerCount } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(toPlanetId)) {
+                safePostMessage({
+                    type: 'passengerShipDispatchFailed',
+                    requestId,
+                    reason: `Planet '${toPlanetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'dispatchPassengerShip',
+                requestId,
+                agentId,
+                fromPlanetId,
+                toPlanetId,
+                shipName,
+                passengerCount,
             });
             if (!processingTick) {
                 drainActionQueue();

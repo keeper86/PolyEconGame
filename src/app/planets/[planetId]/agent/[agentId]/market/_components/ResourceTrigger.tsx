@@ -6,7 +6,7 @@ import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
 import { classifyMarket } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
-import { getColumnClasses } from '../../../_component/columnConfig';
+import { getColumnClasses } from './columnConfig';
 
 export default function ResourceTrigger({
     name,

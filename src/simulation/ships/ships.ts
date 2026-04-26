@@ -1,22 +1,16 @@
-import { EPSILON, MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, TICKS_PER_YEAR } from '../constants';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
-import type { Facility, ProductionFacility } from '../planet/facility';
-import {
-    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
-    putIntoStorageFacility,
-    removeFromStorageFacility,
-    transferFromEscrow,
-} from '../planet/facility';
+import type { Facility } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
-import { consumeConstructionForFacility } from '../planet/production';
 import {
     electronicComponentResourceType,
     machineryResourceType,
     plasticResourceType,
     steelResourceType,
 } from '../planet/resources';
-import { maintenanceServiceResourceType } from '../planet/services';
+import type { PassengerManifest } from './manifest';
 import type { EducationLevelType } from '../population/population';
+import type { TransitionResult } from './shipHandlers';
+import { applyMaintenance, constructionHandlers, passengerHandlers, transportHandlers } from './shipHandlers';
 
 export const transportShipBuildResources = [
     steelResourceType.name,
@@ -72,37 +66,37 @@ export type TransportShipType = BaseShipType & {
     };
 };
 
-export type ShipType = ConstructionShipType | TransportShipType;
+export type ShipType = ConstructionShipType | TransportShipType | PassengerShipType;
 
-export type BaseShipStatusTransporting = {
-    from: string; // planet id
-    to: string; // planet id
-    arrivalTick: number; // tick when the ship will arrive at destination
-    contractId?: string;
-    posterAgentId?: string;
+// ship status types
+export type ShipStatusIdle = {
+    type: 'idle';
+    planetId: string;
 };
 
-export type PassengerShipStatusTransporting = BaseShipStatusTransporting & {
-    type: 'passenger_transporting';
-    passengers: number;
+export type ShipStatusListed = {
+    type: 'listed';
+    planetId: string;
 };
 
-export type TransportShipStatusTransporting = BaseShipStatusTransporting & {
-    type: 'transporting';
-    cargo: ResourceQuantity | null;
+export type ShipStatusDerelict = {
+    type: 'derelict';
+    planetId: string;
 };
 
-export type ConstructionShipStatusTransporting = BaseShipStatusTransporting & {
-    type: 'construction_transporting';
-    buildingTarget: Facility | null;
-    loaded: number; // should be 1 when buildingTarget isnt null
+export type ShipStatusLost = {
+    type: 'lost';
+    lostAtTick: number;
 };
+
+export type CommonShipStatus = ShipStatusIdle | ShipStatusListed | ShipStatusDerelict | ShipStatusLost;
 
 export type BaseShipStatusLoading = {
     planetId: string;
     to: string;
     contractId?: string;
     posterAgentId?: string;
+    deadlineTick?: number;
 };
 
 export type TransportShipStatusLoading = BaseShipStatusLoading & {
@@ -121,11 +115,52 @@ export type PassengerShipStatusLoading = BaseShipStatusLoading & {
     type: 'passenger_boarding';
     passengerGoal: number;
     currentPassengers: number;
+    manifest: PassengerManifest;
+};
+
+export type Provision = {
+    groceryProvisioned: { currently: number; goal: number };
+    healthcareProvisioned: { currently: number; goal: number };
+    educationProvisioned: { currently: number; goal: number };
+};
+export type PassengerShipStatusProvisioning = BaseShipStatusLoading &
+    Provision & {
+        type: 'passenger_provisioning';
+        manifest: PassengerManifest;
+    };
+
+export type BaseShipStatusTransporting = {
+    from: string; // planet id
+    to: string; // planet id
+    arrivalTick: number; // tick when the ship will arrive at destination
+    contractId?: string;
+    posterAgentId?: string;
+};
+
+export type PassengerShipStatusTransporting = BaseShipStatusTransporting & {
+    type: 'passenger_transporting';
+    manifest: PassengerManifest;
+};
+
+export type TransportShipStatusTransporting = BaseShipStatusTransporting & {
+    type: 'transporting';
+    cargo: ResourceQuantity | null;
+};
+
+export type ConstructionShipStatusTransporting = BaseShipStatusTransporting & {
+    type: 'construction_transporting';
+    buildingTarget: Facility | null;
 };
 
 export type BaseShipStatusUnloading = {
     planetId: string;
     contractId?: string;
+    posterAgentId?: string;
+};
+
+export type PassengerShipStatusUnloading = BaseShipStatusUnloading & {
+    type: 'passenger_unloading';
+    manifest: PassengerManifest;
 };
 
 export type TransportShipStatusUnloading = BaseShipStatusUnloading & {
@@ -139,25 +174,8 @@ export type ConstructionShipStatusUnloading = BaseShipStatusUnloading & {
     progress: number; // should decrease from 1 to 0 over time
 };
 
-export type ShipStatusIdle = {
-    type: 'idle';
-    planetId: string;
-};
-
-export type ShipStatusListed = {
-    type: 'listed';
-    planetId: string;
-};
-
-export type ShipStatusDerelict = {
-    type: 'derelict';
-    planetId: string;
-};
-
 export type TransportShipStatus =
-    | ShipStatusIdle
-    | ShipStatusListed
-    | ShipStatusDerelict
+    | CommonShipStatus
     | TransportShipStatusTransporting
     | TransportShipStatusLoading
     | TransportShipStatusUnloading;
@@ -165,14 +183,23 @@ export type TransportShipStatus =
 export type TransportShipStatusType = TransportShipStatus['type'];
 
 export type ConstructionShipStatus =
-    | ShipStatusIdle
-    | ShipStatusListed
-    | ShipStatusDerelict
+    | CommonShipStatus
     | ConstructionShipStatusTransporting
     | ConstructionShipStatusLoading
     | ConstructionShipStatusUnloading;
 
 export type ConstructionShipStatusType = ConstructionShipStatus['type'];
+
+export type PassengerShipStatus =
+    | CommonShipStatus
+    | PassengerShipStatusLoading
+    | PassengerShipStatusProvisioning
+    | PassengerShipStatusTransporting
+    | PassengerShipStatusUnloading;
+
+export type PassengerShipStatusType = PassengerShipStatus['type'];
+
+export type ShipState = TransportShipStatus | ConstructionShipStatus | PassengerShipStatus;
 
 export type BaseShip = {
     name: string;
@@ -210,321 +237,52 @@ export type ConstructionContract = ConstructionContractBase &
         | { status: 'completed' }
     );
 
-export type Ship = TransportShip | ConstructionShip;
-
-export const shipTick = (gameState: GameState): void => {
-    gameState.agents.forEach((agent) => {
-        agent.ships.forEach((ship) => {
-            // Derelict ships are permanently non-operational — skip all processing
-            if (ship.state.type === 'derelict') {
-                return;
-            }
-
-            let maintenanceDecreasePerYear = 0.05;
-            if (ship.state.type === 'transporting') {
-                maintenanceDecreasePerYear *= 5;
-            }
-            if (ship.state.type === 'idle' || ship.state.type === 'listed') {
-                maintenanceDecreasePerYear /= 5;
-            }
-            ship.maintainanceStatus = Math.max(
-                0,
-                ship.maintainanceStatus - maintenanceDecreasePerYear / TICKS_PER_YEAR,
-            );
-
-            if (ship.state.type === 'idle' || ship.state.type === 'listed') {
-                const assets = agent.assets[ship.state.planetId];
-                const storage = assets?.storageFacility;
-                if (storage) {
-                    const maintenancePerTick = Math.min(1, 3 / ship.type.buildingTime);
-                    const maintenanceNeeded = Math.min(
-                        maintenancePerTick,
-                        ship.maxMaintenance - ship.maintainanceStatus,
-                    );
-                    const consumed = removeFromStorageFacility(
-                        storage,
-                        maintenanceServiceResourceType.name,
-                        maintenanceNeeded,
-                    );
-                    if (consumed > 0) {
-                        // Cap repair at maxMaintenance
-                        ship.maintainanceStatus = Math.min(ship.maxMaintenance, ship.maintainanceStatus + consumed);
-                        assets.monthAcc.consumptionValue +=
-                            consumed *
-                            (gameState.planets.get(ship.state.planetId)?.marketPrices[
-                                maintenanceServiceResourceType.name
-                            ] ?? 0);
-
-                        // Aging: accumulate repair; degrade maxMaintenance after each full cycle
-                        ship.cumulativeRepairAcc += consumed;
-                        while (ship.cumulativeRepairAcc >= 1.0) {
-                            ship.cumulativeRepairAcc -= 1.0;
-                            ship.maxMaintenance = Math.max(
-                                0,
-                                ship.maxMaintenance - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
-                            );
-                        }
-
-                        // Transition to derelict when maxMaintenance reaches zero
-                        if (ship.maxMaintenance <= 0) {
-                            ship.maintainanceStatus = 0;
-                            // If ship was listed, remove its listing
-                            if (ship.state.type === 'listed') {
-                                const planetId = ship.state.planetId;
-                                const listingAssets = agent.assets[planetId];
-                                if (listingAssets) {
-                                    listingAssets.shipListings = listingAssets.shipListings.filter(
-                                        (l) => l.shipName !== ship.name,
-                                    );
-                                }
-                            }
-                            ship.state = { type: 'derelict', planetId: ship.state.planetId };
-                            return;
-                        }
-                    }
-                }
-            }
-
-            if (ship.state.type === 'loading') {
-                const storageAgent = ship.state.posterAgentId
-                    ? (gameState.agents.get(ship.state.posterAgentId) ?? agent)
-                    : agent;
-                const storage = storageAgent.assets[ship.state.planetId]?.storageFacility;
-                if (!storage || !ship.state.cargoGoal) {
-                    ship.state = {
-                        type: 'transporting',
-                        from: ship.state.planetId,
-                        to: ship.state.to,
-                        cargo: ship.state.currentCargo,
-                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
-                    };
-                    return;
-                }
-
-                const missingCargo = ship.state.cargoGoal.quantity - ship.state.currentCargo.quantity;
-                const removedQuantity = ship.state.contractId
-                    ? transferFromEscrow(storage, ship.state.cargoGoal.resource.name, missingCargo)
-                    : removeFromStorageFacility(storage, ship.state.cargoGoal.resource.name, missingCargo);
-                ship.state.currentCargo.quantity += removedQuantity;
-                if (removedQuantity === missingCargo) {
-                    ship.state = {
-                        type: 'transporting',
-                        from: ship.state.planetId,
-                        to: ship.state.to,
-                        cargo: ship.state.currentCargo,
-                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
-                    };
-                }
-                return;
-            }
-
-            if (ship.state.type === 'pre-fabrication') {
-                if (!ship.state.buildingTarget) {
-                    // No building target, just start transporting to construction site
-                    ship.state = {
-                        type: 'construction_transporting',
-                        from: ship.state.planetId,
-                        to: ship.state.to,
-                        buildingTarget: null,
-                        loaded: 0,
-                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
-                    };
-                    return;
-                }
-
-                // Progress pre-fabrication; look up target and consume construction
-                const target = ship.state.buildingTarget;
-                if (target.construction === null) {
-                    ship.state = {
-                        type: 'construction_transporting',
-                        from: ship.state.planetId,
-                        to: ship.state.to,
-                        buildingTarget: target,
-                        loaded: 1,
-                        arrivalTick: gameState.tick + Math.ceil(1000 / ship.type.speed), // TODO: distance-based travel time
-                        contractId: ship.state.contractId,
-                        posterAgentId: ship.state.posterAgentId,
-                    };
-                    return;
-                }
-                const assets = agent.assets[ship.state.planetId];
-                consumeConstructionForFacility(target, assets?.storageFacility);
-                ship.state.progress = target.construction?.progress;
-            }
-
-            if (ship.state.type === 'transporting') {
-                if (gameState.tick >= ship.state.arrivalTick) {
-                    const cargo = ship.state.cargo;
-                    if (!cargo) {
-                        // No cargo, just arrive at destination
-                        ship.state = {
-                            type: 'idle',
-                            planetId: ship.state.to,
-                        };
-                        return;
-                    }
-                    // Arrive at destination
-                    ship.state = {
-                        type: 'unloading',
-                        planetId: ship.state.to,
-                        cargo,
-                    };
-                }
-                return;
-            }
-
-            if (ship.state.type === 'construction_transporting') {
-                if (gameState.tick >= ship.state.arrivalTick) {
-                    const target = ship.state.buildingTarget;
-                    if (!target) {
-                        // No building target, just arrive at destination
-                        ship.state = {
-                            type: 'idle',
-                            planetId: ship.state.to,
-                        };
-                        return;
-                    }
-                    // Arrive at construction site
-                    ship.state = {
-                        type: 'reconstruction',
-                        planetId: ship.state.to,
-                        buildingTarget: target,
-                        progress: 1,
-                        contractId: ship.state.contractId,
-                    };
-                }
-                return;
-            }
-
-            if (ship.state.type === 'unloading') {
-                const assets = agent.assets[ship.state.planetId];
-                if (!assets) {
-                    return;
-                }
-
-                const storage = assets.storageFacility;
-                if (!storage) {
-                    return;
-                }
-
-                if (ship.state.cargo) {
-                    const stored = putIntoStorageFacility(
-                        storage,
-                        ship.state.cargo.resource,
-                        ship.state.cargo.quantity,
-                    );
-                    ship.state.cargo.quantity -= stored;
-                    if (ship.state.cargo.quantity > EPSILON) {
-                        return;
-                    }
-                }
-                const arrivedPlanetId = ship.state.planetId;
-                ship.state = {
-                    type: 'idle',
-                    planetId: arrivedPlanetId,
-                };
-
-                // Fulfil any accepted transport contract for this delivery
-                for (const posterAgent of gameState.agents.values()) {
-                    for (const posterAssets of Object.values(posterAgent.assets)) {
-                        const contract = posterAssets.transportContracts.find(
-                            (c) =>
-                                c.status === 'accepted' &&
-                                c.acceptedByAgentId === agent.id &&
-                                c.shipName === ship.name &&
-                                c.toPlanetId === arrivedPlanetId,
-                        );
-                        if (contract) {
-                            if (contract.status === 'accepted') {
-                                const index = posterAssets.transportContracts.indexOf(contract);
-                                if (index === -1) {
-                                    console.warn(
-                                        `Contract not found in poster's assets for delivered cargo on ship ${ship.name} owned by agent ${agent.name}`,
-                                    );
-                                    break;
-                                }
-                                posterAssets.transportContracts.splice(index, 1);
-                                // Transfer reward: release from poster's hold, credit carrier
-                                posterAssets.depositHold -= contract.offeredReward;
-                                const carrierAssets =
-                                    agent.assets[arrivedPlanetId] ?? agent.assets[agent.associatedPlanetId];
-                                if (carrierAssets) {
-                                    carrierAssets.deposits += contract.offeredReward;
-                                }
-                            }
-                            break;
-                        } else {
-                            console.warn(
-                                `No matching contract found for delivered cargo on ship ${ship.name} owned by agent ${agent.name}`,
-                            );
-                        }
-                    }
-                }
-                return;
-            }
-
-            if (ship.state.type === 'reconstruction') {
-                const reconState = ship.state;
-                const target = reconState.buildingTarget;
-                reconState.progress = Math.max(0, reconState.progress - 1 / MINIMUM_CONSTRUCTION_TIME_IN_TICKS);
-                if (reconState.progress <= 0) {
-                    const arrivedPlanetId = reconState.planetId;
-
-                    // Determine which agent receives the facility
-                    let receivingAgentId: string = agent.id;
-                    let matchedContract: ConstructionContract | undefined;
-
-                    if (reconState.contractId) {
-                        // Find the construction contract in the poster agent's assets
-                        for (const posterAgent of gameState.agents.values()) {
-                            for (const posterAssets of Object.values(posterAgent.assets)) {
-                                const contract = posterAssets.constructionContracts.find(
-                                    (c) => c.id === reconState.contractId,
-                                );
-                                if (contract && contract.status === 'accepted') {
-                                    matchedContract = contract;
-                                    receivingAgentId = contract.commissioningAgentId;
-                                    // Mark complete and pay reward
-                                    const idx = posterAssets.constructionContracts.indexOf(contract);
-                                    posterAssets.constructionContracts[idx] = { ...contract, status: 'completed' };
-                                    posterAssets.depositHold -= contract.offeredReward;
-                                    const carrierAssets =
-                                        agent.assets[arrivedPlanetId] ?? agent.assets[agent.associatedPlanetId];
-                                    if (carrierAssets) {
-                                        carrierAssets.deposits += contract.offeredReward;
-                                    }
-                                    break;
-                                }
-                            }
-                            if (matchedContract) {
-                                break;
-                            }
-                        }
-                    }
-
-                    // Place the facility into the receiving agent's assets on the destination planet
-                    const receivingAgent = gameState.agents.get(receivingAgentId);
-                    if (receivingAgent) {
-                        const destAssets = receivingAgent.assets[arrivedPlanetId];
-                        if (destAssets) {
-                            // Deep-clone the facility so the ship's buildingTarget reference is severed.
-                            // A shallow spread would leave nested objects (needs, produces,
-                            // workerRequirement, lastTickResults) shared between the placed facility
-                            // and the ship state, causing silent cross-reference mutations.
-                            const placedFacility = structuredClone({ ...target, planetId: arrivedPlanetId });
-
-                            destAssets.productionFacilities.push(placedFacility as ProductionFacility);
-                        }
-                    }
-
-                    ship.state = { type: 'idle', planetId: arrivedPlanetId };
-                }
-                return;
-            }
-        });
-    });
+export type PassengerShip = BaseShip & {
+    type: PassengerShipType;
+    state: PassengerShipStatus;
 };
 
+export type Ship = TransportShip | ConstructionShip | PassengerShip;
+
+export const shipTick = (gameState: GameState): void => {
+    for (const agent of gameState.agents.values()) {
+        for (const ship of agent.ships) {
+            if (ship.state.type === 'derelict' || ship.state.type === 'lost') {
+                continue;
+            }
+
+            if (applyMaintenance(ship, agent, gameState)) {
+                continue;
+            }
+
+            let result: TransitionResult;
+            if (ship.type.type === 'transport') {
+                result = transportHandlers[ship.state.type as TransportShipStatusType](
+                    ship as TransportShip,
+                    gameState,
+                    agent,
+                );
+            } else if (ship.type.type === 'construction') {
+                result = constructionHandlers[ship.state.type as ConstructionShipStatusType](
+                    ship as ConstructionShip,
+                    gameState,
+                    agent,
+                );
+            } else {
+                result = passengerHandlers[ship.state.type as PassengerShipStatusType](
+                    ship as PassengerShip,
+                    gameState,
+                    agent,
+                );
+            }
+
+            if (result.action === 'transition') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ship.state = result.newState as any;
+            }
+        }
+    }
+};
 export const defaultBuildingCost: ResourceQuantity[] = [
     { resource: steelResourceType, quantity: 100 },
     { resource: electronicComponentResourceType, quantity: 50 },
@@ -625,6 +383,27 @@ const smallReefer: TransportShipType = {
     buildingTime: 60,
 };
 
+export const passengerLiner: PassengerShipType = {
+    type: 'passenger',
+    name: 'Passenger Liner',
+    scale: 'large',
+    speed: 8,
+    passengerCapacity: 50_000,
+    requiredCrew: {
+        none: 0,
+        primary: 10,
+        secondary: 8,
+        tertiary: 4,
+    },
+    buildingCost: [
+        { resource: steelResourceType, quantity: 600 },
+        { resource: electronicComponentResourceType, quantity: 200 },
+        { resource: machineryResourceType, quantity: 150 },
+        { resource: plasticResourceType, quantity: 100 },
+    ],
+    buildingTime: 240,
+};
+
 export const shiptypes = {
     solid: {
         bulkCarrier1: smallBulkCarrier,
@@ -657,6 +436,10 @@ export const shiptypes = {
         reefer3: scaleShipType('large', 'Reefer 3', smallReefer),
         reefer4: scaleShipType('super', 'Reefer 4', smallReefer),
     } as const,
+
+    passenger: {
+        liner: passengerLiner,
+    } as const,
 } as const;
 
 export type ShipTypeKey = {
@@ -664,7 +447,7 @@ export type ShipTypeKey = {
 }[keyof typeof shiptypes];
 
 export const createShip = (
-    shipTemplate: TransportShipType | ConstructionShipType,
+    shipTemplate: TransportShipType | ConstructionShipType | PassengerShipType,
     builtAtTick: number,
     name: string,
     planet: Planet,
@@ -683,6 +466,20 @@ export const createShip = (
             builtAtTick,
         };
     }
+    if (shipTemplate.type === 'passenger') {
+        return {
+            name,
+            builtAtTick,
+            type: shipTemplate,
+            state: {
+                type: 'idle',
+                planetId: planet.id,
+            },
+            maintainanceStatus: 1,
+            maxMaintenance: 1,
+            cumulativeRepairAcc: 0,
+        } satisfies PassengerShip;
+    }
     return {
         name,
         builtAtTick,
@@ -694,7 +491,7 @@ export const createShip = (
         maintainanceStatus: 1,
         maxMaintenance: 1,
         cumulativeRepairAcc: 0,
-    };
+    } satisfies TransportShip;
 };
 
 export type ShipListing = {

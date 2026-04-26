@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { formatNumbers } from '@/lib/utils';
 import { shiptypes, constructionShipType } from '@/simulation/ships/ships';
-import type { TransportShipType, ConstructionShipType } from '@/simulation/ships/ships';
+import type { TransportShipType, ConstructionShipType, PassengerShipType } from '@/simulation/ships/ships';
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Zap, Package, Clock } from 'lucide-react';
+import { Zap, Package, Clock, Users } from 'lucide-react';
 
 const categoryLabels: Record<keyof typeof shiptypes, string> = {
     solid: 'Bulk Carriers',
@@ -18,12 +18,13 @@ const categoryLabels: Record<keyof typeof shiptypes, string> = {
     gas: 'Gas Carriers',
     pieces: 'Freighters',
     frozenGoods: 'Reefer Ships',
+    passenger: 'Passenger Ships',
 };
 
 const allShipTypesByCategory = Object.entries(shiptypes).map(([key, types]) => ({
     key: key as keyof typeof shiptypes,
     label: categoryLabels[key as keyof typeof shiptypes],
-    ships: Object.values(types) as TransportShipType[],
+    ships: Object.values(types) as (TransportShipType | PassengerShipType)[],
 }));
 
 export function ShipSelectionDialog({
@@ -39,7 +40,9 @@ export function ShipSelectionDialog({
     isPending: boolean;
     error?: string | null;
 }): React.ReactElement {
-    const [selectedShipType, setSelectedShipType] = useState<TransportShipType | ConstructionShipType | null>(null);
+    const [selectedShipType, setSelectedShipType] = useState<
+        TransportShipType | ConstructionShipType | PassengerShipType | null
+    >(null);
     const [shipName, setShipName] = useState('');
 
     const handleConfirm = () => {
@@ -130,10 +133,17 @@ export function ShipSelectionDialog({
                                                     <Zap className='h-2.5 w-2.5' />
                                                     {shipType.speed}
                                                 </Badge>
-                                                <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
-                                                    <Package className='h-2.5 w-2.5' />
-                                                    {formatNumbers(shipType.cargoSpecification.volume / 1000)}k m³
-                                                </Badge>
+                                                {shipType.type === 'transport' ? (
+                                                    <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
+                                                        <Package className='h-2.5 w-2.5' />
+                                                        {formatNumbers(shipType.cargoSpecification.volume / 1000)}k m³
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
+                                                        <Users className='h-2.5 w-2.5' />
+                                                        {formatNumbers(shipType.passengerCapacity / 1000)}k pax
+                                                    </Badge>
+                                                )}
                                                 <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                                                     <Clock className='h-2.5 w-2.5' />
                                                     {shipType.buildingTime}t

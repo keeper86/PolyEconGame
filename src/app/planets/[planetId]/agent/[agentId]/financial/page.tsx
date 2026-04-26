@@ -74,7 +74,7 @@ export default function FinancialPage() {
                                 Historical Trends
                             </CollapsibleTrigger>
                             <CollapsibleContent className='pt-3'>
-                                <AgentFinancialCharts agentId={agentId} />
+                                <AgentFinancialCharts agentId={agentId} planetId={planetId} />
                             </CollapsibleContent>
                         </Collapsible>
                         <Separator />

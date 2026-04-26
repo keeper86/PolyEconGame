@@ -5,7 +5,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumbers } from '@/lib/utils';
-import { EDU_COLORS } from '../../../_component/workforce-theme';
+import { EDU_COLORS } from '@/app/planets/[planetId]/agent/_component/workforce-theme';
 
 export const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 
