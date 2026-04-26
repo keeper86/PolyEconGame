@@ -247,7 +247,7 @@ export type Ship = TransportShip | ConstructionShip | PassengerShip;
 export const shipTick = (gameState: GameState): void => {
     for (const agent of gameState.agents.values()) {
         for (const ship of agent.ships) {
-            if (ship.state.type === 'derelict') {
+            if (ship.state.type === 'derelict' || ship.state.type === 'lost') {
                 continue;
             }
 

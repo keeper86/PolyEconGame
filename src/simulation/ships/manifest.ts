@@ -9,6 +9,7 @@ import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import { ageDependentBaseDisabilityProb } from '../population/disability';
 import { mortalityProbability } from '../population/mortality';
+import { stochasticRound } from '../utils/stochasticRound';
 import {
     MAX_AGE,
     SKILL,
@@ -299,8 +300,8 @@ export function advanceManifestAge(
         const idx = parseManifestKey(key);
         const annualMort = mortalityProbability(idx.age);
         const survivalFactor = Math.pow(1 - annualMort, yearsElapsed);
-        const newTotal = category.total * survivalFactor;
-        const deaths = category.total - newTotal;
+        const deaths = stochasticRound(category.total * (1 - survivalFactor));
+        const newTotal = category.total - deaths;
 
         if (newTotal > 0) {
             // Redistribute dead wealth to survivors: conservation of total wealth.
@@ -367,7 +368,7 @@ export function advanceManifestAge(
 
         const annualDisab = ageDependentBaseDisabilityProb(idx.age);
         const disabledFraction = 1 - Math.pow(1 - annualDisab, yearsElapsed);
-        const disabledCount = category.total * disabledFraction;
+        const disabledCount = stochasticRound(category.total * disabledFraction);
 
         if (disabledCount <= 0) {
             continue;

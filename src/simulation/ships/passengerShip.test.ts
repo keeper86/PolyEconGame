@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { seedRng } from '../utils/stochasticRound';
 import {
     EDUCATION_BUFFER_TARGET_TICKS,
     GROCERY_BUFFER_TARGET_TICKS,
@@ -19,6 +20,8 @@ import {
     refundBoardedPassengers,
     unloadPassengersToWorkforce,
     advanceManifestAge,
+    manifestKey,
+    type PassengerManifest,
 } from './manifest';
 import type {
     PassengerShip,
@@ -420,18 +423,19 @@ describe('shipTick passenger boarding', () => {
         const planet = makePlanet({ id: 'p1' });
         const planet2 = makePlanet({ id: 'p2' });
 
-        seedWorkforce(agent, planet, 30, 100);
+        const count = 10_000;
+        seedWorkforce(agent, planet, 30, count);
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
-        const prov = 100 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS) * 2;
+        const prov = count * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS) * 2;
         putProvisions(agent, 'p1', prov, prov);
 
-        const ship = makePassengerShip('S1', 'p1');
+        const ship = makePassengerShip('S1', 'p1', 50_000);
         ship.state = {
             type: 'passenger_boarding',
             posterAgentId: 'a1',
             planetId: 'p1',
             to: 'p2',
-            passengerGoal: 100,
+            passengerGoal: count,
             currentPassengers: 0,
             manifest: {},
         };
@@ -460,7 +464,7 @@ describe('shipTick passenger boarding', () => {
             // Some passengers should have died during transit (mortality > 0 for age 30)
             const shipState = ship.state as unknown as PassengerShipStatusTransporting;
             const totalPassengers = keys.reduce((sum, k) => sum + shipState.manifest[k]!.total, 0);
-            expect(totalPassengers).toBeLessThan(100);
+            expect(totalPassengers).toBeLessThan(count);
         }
     });
 
@@ -601,7 +605,7 @@ describe('shipTick passenger transporting / arrival', () => {
         expect(cell.services.healthcare.buffer).toBe(HEALTHCARE_BUFFER_TARGET_TICKS);
     });
 
-    it('goes idle on source planet when destination is gone', () => {
+    it('throws when destination planet is missing at arrival', () => {
         const agent = makeAgent('a1', 'p1');
         const planet = makePlanet({ id: 'p1' });
 
@@ -614,16 +618,10 @@ describe('shipTick passenger transporting / arrival', () => {
             manifest: { '30:employed:none:novice': { ...nullPopulationCategory(), total: 5 } },
         };
         agent.ships.push(ship);
-        // No p2 in gameState
+        // No p2 in gameState — unrecoverable
         const state = makeGameState([planet], [agent], 10);
 
-        shipTick(state);
-
-        expect(ship.state.type).toBe('idle');
-        const shipState = ship.state as unknown as ShipStatusIdle;
-        if (shipState.type === 'idle') {
-            expect(shipState.planetId).toBe('p1');
-        }
+        expect(() => shipTick(state)).toThrow(/Destination planet 'p2' is missing at passenger arrival/);
     });
 });
 
@@ -866,13 +864,15 @@ describe('advanceManifestAge orphaned wealth redistribution', () => {
             },
         };
 
+        seedRng(42);
         const result1 = advanceManifestAge(structuredClone(manifest), 0, flightTicks);
+        seedRng(42);
         const result2 = advanceManifestAge(structuredClone(manifest), 0, flightTicks);
 
-        // The two runs must produce identical results (deterministic)
+        // The two runs must produce identical results (deterministic given same seed)
         const keys = new Set([...Object.keys(result1), ...Object.keys(result2)]);
         for (const k of keys) {
-            expect(result1[k]?.total ?? 0).toBeCloseTo(result2[k]?.total ?? 0, 6);
+            expect(result1[k]?.total ?? 0).toBe(result2[k]?.total ?? 0);
             expect(result1[k]?.wealth.mean ?? 0).toBeCloseTo(result2[k]?.wealth.mean ?? 0, 6);
         }
     });
@@ -899,15 +899,42 @@ describe('advanceManifestAge orphaned wealth redistribution', () => {
             },
         };
 
+        seedRng(99);
         const result = advanceManifestAge(structuredClone(manifest), 0, flightTicks);
 
         // The age-90 cohort might survive partially due to the short-flight approximation;
         // what matters is reproducibility and that wealth went to a survivor.
-        // Verify that running twice always yields identical wealth distributions.
+        // Verify that running twice with same seed always yields identical wealth distributions.
+        seedRng(99);
         const result2 = advanceManifestAge(structuredClone(manifest), 0, flightTicks);
         const allKeys = new Set([...Object.keys(result), ...Object.keys(result2)]);
         for (const k of allKeys) {
             expect(result[k]?.wealth.mean ?? 0).toBeCloseTo(result2[k]?.wealth.mean ?? 0, 6);
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// advanceManifestAge — integer population invariant
+// ---------------------------------------------------------------------------
+
+describe('advanceManifestAge integer population invariant', () => {
+    it('all category totals remain integers after mortality and disability', () => {
+        const manifest: PassengerManifest = {};
+        // Seed a variety of ages so both mortality and disability are exercised
+        for (const age of [20, 35, 50, 65, 80]) {
+            const key = manifestKey(age, 'employed', 'none', 'novice');
+            manifest[key] = {
+                ...nullPopulationCategory(),
+                total: 1000,
+                wealth: { mean: 100, variance: 10 },
+            };
+        }
+        // ~1 year flight
+        const flightTicks = TICKS_PER_YEAR;
+        const result = advanceManifestAge(manifest, 0, flightTicks);
+        for (const [key, category] of Object.entries(result)) {
+            expect(Number.isInteger(category.total), `${key}.total = ${category.total} is not an integer`).toBe(true);
         }
     });
 });

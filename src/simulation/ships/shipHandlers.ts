@@ -19,6 +19,7 @@ import {
 import type { Facility, ProductionFacility } from '../planet/facility';
 import {
     MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+    lockIntoEscrow,
     putIntoStorageFacility,
     removeFromStorageFacility,
     transferFromEscrow,
@@ -54,6 +55,7 @@ import type {
     Ship,
     ShipStatusDerelict,
     ShipStatusIdle,
+    TransportContract,
     TransportShip,
     TransportShipStatus,
     TransportShipStatusLoading,
@@ -236,8 +238,38 @@ function handleListed(_ship: Ship, _ctx: GameState, _agent: Agent): TransitionRe
 function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as TransportShipStatusLoading;
 
-    // Dispatch timeout — abort mission, go idle
+    // Dispatch timeout — return any loaded cargo to escrow and reset contract to open, then go idle
     if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
+        if (s.contractId) {
+            const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+            const storage = storageAgent.assets[s.planetId]?.storageFacility;
+            if (storage && s.currentCargo.quantity > 0) {
+                lockIntoEscrow(storage, s.currentCargo.resource.name, s.currentCargo.quantity);
+            }
+            outer: for (const a of ctx.agents.values()) {
+                for (const assets of Object.values(a.assets)) {
+                    const idx = assets.transportContracts.findIndex(
+                        (c): c is TransportContract & { status: 'accepted' } =>
+                            c.id === s.contractId && c.status === 'accepted',
+                    );
+                    if (idx !== -1) {
+                        const acc = assets.transportContracts[idx] as TransportContract & { status: 'accepted' };
+                        assets.transportContracts[idx] = {
+                            id: acc.id,
+                            fromPlanetId: acc.fromPlanetId,
+                            toPlanetId: acc.toPlanetId,
+                            cargo: acc.cargo,
+                            maxDurationInTicks: acc.maxDurationInTicks,
+                            offeredReward: acc.offeredReward,
+                            postedByAgentId: acc.postedByAgentId,
+                            expiresAtTick: acc.expiresAtTick,
+                            status: 'open',
+                        };
+                        break outer;
+                    }
+                }
+            }
+        }
         return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } satisfies ShipStatusIdle };
     }
 
@@ -347,8 +379,51 @@ function handleTransportUnloading(ship: TransportShip, ctx: GameState, agent: Ag
 function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as ConstructionShipStatusLoading;
 
-    // Dispatch timeout — abort, go idle
+    // Dispatch timeout — reset construction contract to open (with 10% penalty fee), then go idle
     if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
+        if (s.contractId) {
+            const contractId = s.contractId;
+            outer: for (const posterAgent of ctx.agents.values()) {
+                for (const posterAssets of Object.values(posterAgent.assets)) {
+                    const idx = posterAssets.constructionContracts.findIndex(
+                        (c): c is ConstructionContract & { status: 'accepted' } =>
+                            c.id === contractId && c.status === 'accepted',
+                    );
+                    if (idx !== -1) {
+                        const contract = posterAssets.constructionContracts[idx] as ConstructionContract & {
+                            status: 'accepted';
+                        };
+                        const penalty = contract.offeredReward * 0.1;
+                        posterAssets.constructionContracts[idx] = {
+                            id: contract.id,
+                            fromPlanetId: contract.fromPlanetId,
+                            toPlanetId: contract.toPlanetId,
+                            facilityName: contract.facilityName,
+                            commissioningAgentId: contract.commissioningAgentId,
+                            offeredReward: contract.offeredReward,
+                            postedByAgentId: contract.postedByAgentId,
+                            expiresAtTick: contract.expiresAtTick,
+                            status: 'open',
+                        };
+                        // Charge carrier 10% penalty fee (create working-capital loan if needed)
+                        const carrierAssets = agent.assets[s.planetId];
+                        const bank = ctx.planets.get(s.planetId)?.bank;
+                        if (carrierAssets && bank) {
+                            if (carrierAssets.deposits < penalty) {
+                                const shortfall = penalty - carrierAssets.deposits;
+                                bank.loans += shortfall;
+                                bank.deposits += shortfall;
+                                carrierAssets.deposits += shortfall;
+                                carrierAssets.loans += shortfall;
+                            }
+                            carrierAssets.deposits -= penalty;
+                        }
+                        posterAssets.deposits += penalty;
+                        break outer;
+                    }
+                }
+            }
+        }
         return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
     }
 
@@ -487,6 +562,7 @@ function handlePassengerBoarding(ship: PassengerShip, gameState: GameState, agen
             to: shipState.to,
             manifest: shipState.manifest,
             deadlineTick: gameState.tick + MAX_DISPATCH_TIMEOUT_TICKS,
+            posterAgentId: shipState.posterAgentId,
             ...provisionsTracker,
         } satisfies PassengerShipStatusProvisioning,
     };
@@ -566,7 +642,10 @@ function handlePassengerTransporting(ship: PassengerShip, ctx: GameState, agent:
 
     const destPlanet = ctx.planets.get(s.to);
     if (!destPlanet) {
-        return { action: 'transition', newState: { type: 'idle', planetId: s.from } };
+        throw new Error(
+            `Destination planet '${s.to}' is missing at passenger arrival (tick ${ctx.tick}). ` +
+                `This is an unrecoverable state — the simulation cannot proceed.`,
+        );
     }
 
     // Unload immediately on arrival — no separate unloading tick needed

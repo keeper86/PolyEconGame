@@ -980,7 +980,7 @@ export function handleDispatchPassengerShip(
     }
 
     const capacity = ship.type.passengerCapacity;
-    const goal = Math.min(passengerCount, capacity);
+    const goal = Math.min(Math.floor(passengerCount), capacity);
     if (goal <= 0) {
         safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Passenger count must be > 0' });
         return;
