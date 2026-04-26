@@ -40,7 +40,9 @@ export function ShipSelectionDialog({
     isPending: boolean;
     error?: string | null;
 }): React.ReactElement {
-    const [selectedShipType, setSelectedShipType] = useState<TransportShipType | ConstructionShipType | PassengerShipType | null>(null);
+    const [selectedShipType, setSelectedShipType] = useState<
+        TransportShipType | ConstructionShipType | PassengerShipType | null
+    >(null);
     const [shipName, setShipName] = useState('');
 
     const handleConfirm = () => {

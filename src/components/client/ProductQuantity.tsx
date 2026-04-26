@@ -1,7 +1,7 @@
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumbers } from '@/lib/utils';
 
-import { resourceNameToSlug } from '../../market/_components/marketHelpers';
+import { resourceNameToSlug } from '../../app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 import Link from 'next/link';
 
 export type ResourceEntry = { resource: { name: string }; quantity: number };

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+    EDUCATION_BUFFER_TARGET_TICKS,
     GROCERY_BUFFER_TARGET_TICKS,
     HEALTHCARE_BUFFER_TARGET_TICKS,
     SERVICE_PER_PERSON_PER_TICK,
@@ -12,6 +13,13 @@ import { nullPopulationCategory } from '../population/population';
 import { makeAgent, makeGameState, makePlanet } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from '../workerClient/messages';
 import { handleDispatchPassengerShip } from '../workerClient/shipContractActions';
+import {
+    boardPassengersFromWorkforce,
+    calculateProvisions,
+    refundBoardedPassengers,
+    unloadPassengersToWorkforce,
+    advanceManifestAge,
+} from './manifest';
 import type {
     PassengerShip,
     PassengerShipStatusProvisioning,
@@ -383,7 +391,7 @@ describe('shipTick passenger boarding', () => {
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(500);
     });
 
-    it('aborts boarding when no workers available and goes idle', () => {
+    it('stays in boarding when no workers are available (waits for workers)', () => {
         const agent = makeAgent('a1', 'p1');
         const planet = makePlanet({ id: 'p1' });
         const planet2 = makePlanet({ id: 'p2' });
@@ -403,7 +411,8 @@ describe('shipTick passenger boarding', () => {
 
         shipTick(state);
 
-        expect(ship.state.type).toBe('idle');
+        // No workers available — ship waits in boarding state until deadline
+        expect(ship.state.type).toBe('passenger_boarding');
     });
 
     it('applies age progression to manifest at departure, not on arrival', () => {
@@ -437,16 +446,21 @@ describe('shipTick passenger boarding', () => {
 
         const shipState = ship.state as unknown as PassengerShipStatusTransporting;
         if (shipState.type === 'passenger_transporting') {
-            const travelYears = flightTicks / TICKS_PER_YEAR;
-            const fullYears = Math.floor(travelYears);
-            // All passengers were age 30; they should now appear at age 30+fullYears or 30+fullYears+1
+            // departureTick is 0 (initial state.tick); flight starts at tick 0
+            const departureTick = 0;
+            const yearBoundariesCrossed =
+                Math.floor((departureTick + flightTicks) / TICKS_PER_YEAR) - Math.floor(departureTick / TICKS_PER_YEAR);
+            // All passengers were age 30; after yearBoundariesCrossed years they should be 30+yearBoundariesCrossed
             const keys = Object.keys(ship.state.manifest);
             for (const key of keys) {
                 const [ageStr] = key.split(':');
                 const age = parseInt(ageStr!);
-                expect(age).toBeGreaterThanOrEqual(30 + fullYears);
-                expect(age).toBeLessThanOrEqual(30 + fullYears + 1);
+                expect(age).toBe(30 + yearBoundariesCrossed);
             }
+            // Some passengers should have died during transit (mortality > 0 for age 30)
+            const shipState = ship.state as unknown as PassengerShipStatusTransporting;
+            const totalPassengers = keys.reduce((sum, k) => sum + shipState.manifest[k]!.total, 0);
+            expect(totalPassengers).toBeLessThan(100);
         }
     });
 
@@ -610,5 +624,179 @@ describe('shipTick passenger transporting / arrival', () => {
         if (shipState.type === 'idle') {
             expect(shipState.planetId).toBe('p1');
         }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// boardPassengersFromWorkforce — direct unit test
+// ---------------------------------------------------------------------------
+
+describe('boardPassengersFromWorkforce', () => {
+    it('removes workers from agent workforce and planet demography, adds to manifest', () => {
+        const agent = makeAgent('a1', 'p1');
+        const planet = makePlanet({ id: 'p1' });
+        seedWorkforce(agent, planet, 35, 200);
+
+        const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
+        const boarded = boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 100);
+
+        expect(boarded).toBe(100);
+        // Workforce reduced
+        expect(agent.assets.p1!.workforceDemography[35].none.novice.active).toBe(100);
+        // Planet demography reduced
+        expect(planet.population.demography[35].employed.none.novice.total).toBe(100);
+        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(100);
+        // Manifest populated
+        const keys = Object.keys(manifest);
+        expect(keys.length).toBeGreaterThan(0);
+        const total = Object.values(manifest).reduce((s, c) => s + c.total, 0);
+        expect(total).toBeCloseTo(100, 0);
+    });
+
+    it('returns 0 when agent has no assets for the planet', () => {
+        const agent = makeAgent('a1', 'p1');
+        const planet = makePlanet({ id: 'p2' }); // different planet
+        const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
+        const boarded = boardPassengersFromWorkforce(agent, planet, 'p2', manifest, 100);
+        expect(boarded).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// refundBoardedPassengers — direct unit test
+// ---------------------------------------------------------------------------
+
+describe('refundBoardedPassengers', () => {
+    it('restores workers to agent workforce and planet demography', () => {
+        const agent = makeAgent('a1', 'p1');
+        const planet = makePlanet({ id: 'p1' });
+        seedWorkforce(agent, planet, 40, 300);
+
+        const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
+        boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 300);
+
+        // All workers are in the manifest now
+        expect(agent.assets.p1!.workforceDemography[40].none.novice.active).toBe(0);
+
+        refundBoardedPassengers(agent, planet, 'p1', manifest);
+
+        // Workers restored
+        expect(agent.assets.p1!.workforceDemography[40].none.novice.active).toBe(300);
+        expect(planet.population.demography[40].employed.none.novice.total).toBe(300);
+        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(300);
+        // Manifest cleared
+        expect(Object.keys(manifest)).toHaveLength(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// calculateProvisions — direct unit test
+// ---------------------------------------------------------------------------
+
+describe('calculateProvisions', () => {
+    it('computes correct grocery and healthcare goals for a manifest', () => {
+        const manifest = {
+            '30:employed:none:novice': { ...nullPopulationCategory(), total: 100 },
+        };
+        const flightTicks = 50;
+        const provisions = calculateProvisions(manifest, flightTicks);
+
+        const expectedGrocery = 100 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS);
+        const expectedHealthcare = 100 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + HEALTHCARE_BUFFER_TARGET_TICKS);
+
+        expect(provisions.groceryProvisioned.goal).toBeCloseTo(expectedGrocery, 5);
+        expect(provisions.healthcareProvisioned.goal).toBeCloseTo(expectedHealthcare, 5);
+        // No education passengers
+        expect(provisions.educationProvisioned.goal).toBe(0);
+    });
+
+    it('includes education provision for education-occupation passengers', () => {
+        const manifest = {
+            '25:education:primary:novice': { ...nullPopulationCategory(), total: 50 },
+        };
+        const flightTicks = 30;
+        const provisions = calculateProvisions(manifest, flightTicks);
+
+        const expectedEducation = 50 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + EDUCATION_BUFFER_TARGET_TICKS);
+        expect(provisions.educationProvisioned.goal).toBeCloseTo(expectedEducation, 5);
+    });
+
+    it('returns zero goals for an empty manifest', () => {
+        const provisions = calculateProvisions({}, 100);
+        expect(provisions.groceryProvisioned.goal).toBe(0);
+        expect(provisions.healthcareProvisioned.goal).toBe(0);
+        expect(provisions.educationProvisioned.goal).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// advanceManifestAge — disability phase
+// ---------------------------------------------------------------------------
+
+describe('advanceManifestAge disability phase', () => {
+    it('moves some passengers to unableToWork over a long flight', () => {
+        // Use a long flight time to make disability observable (many years)
+        const flightTicks = TICKS_PER_YEAR * 10; // 10 years
+        const manifest = {
+            '50:employed:none:novice': {
+                ...nullPopulationCategory(),
+                total: 10_000,
+                wealth: { mean: 100, variance: 0 },
+            },
+        };
+
+        const advanced = advanceManifestAge(manifest, 0, flightTicks);
+
+        const unableKeys = Object.keys(advanced).filter((k) => k.includes(':unableToWork:'));
+        expect(unableKeys.length).toBeGreaterThan(0);
+        const unableTotal = unableKeys.reduce((s, k) => s + advanced[k]!.total, 0);
+        expect(unableTotal).toBeGreaterThan(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// unloadPassengersToWorkforce — direct unit test
+// ---------------------------------------------------------------------------
+
+describe('unloadPassengersToWorkforce', () => {
+    it('adds employed manifest entries to agent workforce and planet demography', () => {
+        const agent = makeAgent('a1', 'p2');
+        agent.assets.p2 = agent.assets.p2 ?? { ...agent.assets[agent.associatedPlanetId]! };
+        const planet = makePlanet({ id: 'p2' });
+
+        const manifest = {
+            '30:employed:none:novice': {
+                ...nullPopulationCategory(),
+                total: 75,
+                wealth: { mean: 200, variance: 5 },
+            },
+        };
+
+        unloadPassengersToWorkforce(agent, planet, 'p2', manifest);
+
+        expect(planet.population.demography[30].employed.none.novice.total).toBe(75);
+        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(75);
+        expect(agent.assets.p2!.workforceDemography[30].none.novice.active).toBe(75);
+    });
+
+    it('does not add unableToWork passengers to workforce', () => {
+        const agent = makeAgent('a1', 'p2');
+        agent.assets.p2 = agent.assets.p2 ?? agent.assets[agent.associatedPlanetId]!;
+        const planet = makePlanet({ id: 'p2' });
+
+        const manifest = {
+            '30:unableToWork:none:novice': {
+                ...nullPopulationCategory(),
+                total: 20,
+                wealth: { mean: 50, variance: 0 },
+            },
+        };
+
+        unloadPassengersToWorkforce(agent, planet, 'p2', manifest);
+
+        // Planet demography should have them
+        expect(planet.population.demography[30].unableToWork.none.novice.total).toBe(20);
+        // Workforce should NOT have them
+        expect(agent.assets.p2!.workforceDemography[30].none.novice.active).toBe(0);
     });
 });

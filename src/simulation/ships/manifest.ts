@@ -2,10 +2,13 @@ import {
     EDUCATION_BUFFER_TARGET_TICKS,
     GROCERY_BUFFER_TARGET_TICKS,
     HEALTHCARE_BUFFER_TARGET_TICKS,
-    SERVICE_PER_PERSON_PER_TICK
+    SERVICE_PER_PERSON_PER_TICK,
+    TICKS_PER_YEAR,
 } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
+import { ageDependentBaseDisabilityProb } from '../population/disability';
+import { mortalityProbability } from '../population/mortality';
 import {
     MAX_AGE,
     SKILL,
@@ -17,7 +20,7 @@ import {
     type ServiceName,
     type Skill,
 } from '../population/population';
-import type { Provision } from '../ships/ships';
+import type { Provision } from './ships';
 
 export type PassengerManifest = Record<string, PopulationCategory>;
 
@@ -249,51 +252,191 @@ export function refundBoardedPassengers(
     }
 }
 
-export function advanceManifestAge(manifest: PassengerManifest, travelYears: number): PassengerManifest {
-    if (travelYears <= 0) {
+export function advanceManifestAge(
+    manifest: PassengerManifest,
+    departureTick: number,
+    flightTicks: number,
+): PassengerManifest {
+    if (flightTicks <= 0) {
         return { ...manifest };
     }
 
-    const fullYears = Math.floor(travelYears);
-    const frac = travelYears - fullYears;
+    const yearsElapsed = flightTicks / TICKS_PER_YEAR;
 
-    const result: PassengerManifest = {};
-
+    // -----------------------------------------------------------------------
+    // Phase 1: Mortality — compound per-tick rate over the full flight
+    // -----------------------------------------------------------------------
+    // Work on a shallow-cloned result so we don't mutate the input.
+    const working: PassengerManifest = {};
     for (const [key, category] of Object.entries(manifest)) {
+        if (category.total <= 0) {
+            continue;
+        }
+        working[key] = {
+            ...nullPopulationCategory(),
+            total: category.total,
+            wealth: { ...category.wealth },
+            services: {
+                grocery: { ...category.services.grocery },
+                retail: { ...category.services.retail },
+                logistics: { ...category.services.logistics },
+                healthcare: { ...category.services.healthcare },
+                construction: { ...category.services.construction },
+                administrative: { ...category.services.administrative },
+                education: { ...category.services.education },
+            },
+        };
+    }
+
+    let orphanedWealth = 0;
+
+    for (const [key, category] of Object.entries(working)) {
+        const idx = parseManifestKey(key);
+        const annualMort = mortalityProbability(idx.age);
+        const survivalFactor = Math.pow(1 - annualMort, yearsElapsed);
+        const newTotal = category.total * survivalFactor;
+        const deaths = category.total - newTotal;
+
+        if (newTotal > 0) {
+            // Redistribute dead wealth to survivors: conservation of total wealth.
+            // total_wealth = total * mean  →  new_mean = total_wealth / newTotal
+            category.wealth = {
+                mean: (category.total * category.wealth.mean) / newTotal,
+                variance: category.wealth.variance,
+            };
+            category.total = newTotal;
+        } else {
+            // Category entirely wiped out — accumulate orphaned wealth.
+            orphanedWealth += category.total * category.wealth.mean;
+            category.total = 0;
+            category.wealth = { mean: 0, variance: 0 };
+        }
+
+        // Starvation: no active consumption in transit, buffers drain but we
+        // have no tick-by-tick simulation here. Leave service state as-is;
+        // provisions were loaded at departure for exactly flightTicks.
+        void deaths; // intentionally unused — could log if desired
+    }
+
+    // Redistribute orphaned wealth to a random surviving category.
+    if (orphanedWealth > 0) {
+        const survivingKeys = Object.keys(working).filter((k) => working[k]!.total > 0);
+        if (survivingKeys.length > 0) {
+            const target = working[survivingKeys[Math.floor(Math.random() * survivingKeys.length)]!]!;
+            // Boost mean of the chosen category.
+            target.wealth = {
+                mean: target.wealth.mean + orphanedWealth / target.total,
+                variance: target.wealth.variance,
+            };
+        }
+        // If no survivors remain, wealth is truly lost (all passengers dead).
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 2: Disability — compound per-tick rate, all occ except unableToWork
+    // -----------------------------------------------------------------------
+    // Iterate over a snapshot of keys because we may add new unableToWork keys.
+    for (const key of Object.keys(working)) {
+        const category = working[key]!;
         if (category.total <= 0) {
             continue;
         }
 
         const idx = parseManifestKey(key);
-        const baseAge = Math.min(idx.age + fullYears, MAX_AGE);
+        if (idx.occ === 'unableToWork') {
+            continue;
+        }
 
-        if (frac <= 0) {
-            const newKey = manifestKey(baseAge, idx.occ, idx.edu, idx.skill);
-            mergeIntoManifest(result, newKey, category, category.total);
-        } else {
-            const advanceAge = Math.min(baseAge + 1, MAX_AGE);
+        const annualDisab = ageDependentBaseDisabilityProb(idx.age);
+        const disabledFraction = 1 - Math.pow(1 - annualDisab, yearsElapsed);
+        const disabledCount = category.total * disabledFraction;
 
-            if (advanceAge === baseAge) {
-                // Already at MAX_AGE — all people clamp here
-                const newKey = manifestKey(baseAge, idx.occ, idx.edu, idx.skill);
-                mergeIntoManifest(result, newKey, category, category.total);
-            } else {
-                const countStay = category.total * (1 - frac);
-                const countAdvance = category.total * frac;
+        if (disabledCount <= 0) {
+            continue;
+        }
 
-                if (countStay > 0) {
-                    const stayKey = manifestKey(baseAge, idx.occ, idx.edu, idx.skill);
-                    mergeIntoManifest(result, stayKey, category, countStay);
-                }
-                if (countAdvance > 0) {
-                    const advKey = manifestKey(advanceAge, idx.occ, idx.edu, idx.skill);
-                    mergeIntoManifest(result, advKey, category, countAdvance);
-                }
+        // Remove from source cohort (wealth mean unchanged — proportional split).
+        category.total -= disabledCount;
+
+        // Merge into the unableToWork cohort at the same age/edu/skill.
+        const disabledKey = manifestKey(idx.age, 'unableToWork', idx.edu, idx.skill);
+        mergeIntoManifest(working, disabledKey, category, disabledCount);
+        // Note: mergeIntoManifest uses sourceCategory.wealth for the incoming
+        // slice, which still holds the original mean — correct for a proportional split.
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 3: Age advancement — discrete, one year per boundary crossed
+    // -----------------------------------------------------------------------
+    const yearBoundariesCrossed =
+        Math.floor((departureTick + flightTicks) / TICKS_PER_YEAR) - Math.floor(departureTick / TICKS_PER_YEAR);
+
+    if (yearBoundariesCrossed <= 0) {
+        // No boundaries: remove zero-total entries and return.
+        for (const key of Object.keys(working)) {
+            if (working[key]!.total <= 0) {
+                delete working[key];
             }
         }
+        return working;
+    }
+
+    const result: PassengerManifest = {};
+
+    // Process keys in descending age order to avoid aliasing when multiple
+    // source ages can map to the same target age (including MAX_AGE merging).
+    const sortedKeys = Object.keys(working).sort((a, b) => {
+        return parseManifestKey(b).age - parseManifestKey(a).age;
+    });
+
+    for (const key of sortedKeys) {
+        const category = working[key]!;
+        if (category.total <= 0) {
+            continue;
+        }
+
+        const idx = parseManifestKey(key);
+        const targetAge = Math.min(idx.age + yearBoundariesCrossed, MAX_AGE);
+        const newKey = manifestKey(targetAge, idx.occ, idx.edu, idx.skill);
+        mergeIntoManifest(result, newKey, category, category.total);
     }
 
     return result;
+}
+
+export function unloadPassengersToWorkforce(
+    agent: Agent,
+    planet: Planet,
+    planetId: string,
+    manifest: PassengerManifest,
+): void {
+    unloadPassengersToPlanet(planet, manifest);
+
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        return;
+    }
+    const workforceDemography = assets.workforceDemography;
+
+    for (const [key, category] of Object.entries(manifest)) {
+        if (category.total <= 0) {
+            continue;
+        }
+        const idx = parseManifestKey(key);
+        if (idx.occ !== 'employed') {
+            continue;
+        }
+        const age = Math.min(idx.age, MAX_AGE);
+        const wfCohort = workforceDemography[age];
+        if (!wfCohort) {
+            continue;
+        }
+        const wfCell = wfCohort[idx.edu]?.[idx.skill];
+        if (!wfCell) {
+            continue;
+        }
+        wfCell.active += category.total;
+    }
 }
 
 export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerManifest): void {

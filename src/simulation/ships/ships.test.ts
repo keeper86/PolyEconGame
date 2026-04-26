@@ -14,27 +14,28 @@
  *  - handleAcceptTransportContract
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
-import {
-    putIntoStorageFacility,
-    removeFromStorageFacility,
-    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
-} from '../planet/facility';
-import type { Agent, GameState } from '../planet/planet';
+import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS, putIntoStorageFacility } from '../planet/facility';
+import type { GameState } from '../planet/planet';
 import { steelResourceType } from '../planet/resources';
 import { maintenanceServiceResourceType } from '../planet/services';
+import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from '../workerClient/messages';
 import {
     handleAcceptTransportContract,
     handleDispatchConstructionShip,
     handleDispatchShip,
 } from '../workerClient/shipContractActions';
-import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet, makeStorageFacility } from '../utils/testHelper';
-import { applyMaintenance, settleTransportContract, settleConstructionContract, travelTime } from './shipHandlers';
-import type { ShipTickContext } from './shipHandlers';
-import type { ConstructionShip, TransportShip, TransportShipStatusLoading } from './ships';
-import { constructionShipType, createShip, shipTick, shiptypes } from './ships';
+import { applyMaintenance, settleConstructionContract, settleTransportContract, travelTime } from './shipHandlers';
+import type {
+    ConstructionShip,
+    ConstructionShipStatusTransporting,
+    ShipStatusIdle,
+    TransportShip,
+    TransportShipStatusUnloading,
+} from './ships';
+import { constructionShipType, createShip, passengerLiner, shipTick, shiptypes } from './ships';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -54,14 +55,6 @@ function makeConstructionShip(name: string, planetId: string): ConstructionShip 
     const planet = makePlanet({ id: planetId });
     return createShip(constructionShipType, 0, name, planet) as ConstructionShip;
 }
-
-function ctx(gameState: GameState): ShipTickContext {
-    return { tick: gameState.tick, planets: gameState.planets, agents: gameState.agents };
-}
-
-// ---------------------------------------------------------------------------
-// travelTime
-// ---------------------------------------------------------------------------
 
 describe('travelTime', () => {
     it('returns ceil(1000 / speed) for a transport ship', () => {
@@ -90,7 +83,7 @@ describe('applyMaintenance', () => {
         ship.maintainanceStatus = 1.0;
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        const c = ctx(state);
+        const c = state;
 
         const became_derelict = applyMaintenance(ship, agent, c);
         expect(became_derelict).toBe(false);
@@ -108,7 +101,7 @@ describe('applyMaintenance', () => {
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        applyMaintenance(ship, agent, ctx(state));
+        applyMaintenance(ship, agent, state);
 
         expect(ship.maintainanceStatus).toBeGreaterThan(0.5);
     });
@@ -129,7 +122,7 @@ describe('applyMaintenance', () => {
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        applyMaintenance(ship, agent, ctx(state));
+        applyMaintenance(ship, agent, state);
 
         // Maintenance should have dropped, not risen
         expect(ship.maintainanceStatus).toBeLessThan(0.5);
@@ -149,7 +142,7 @@ describe('applyMaintenance', () => {
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
         // Run enough ticks to consume all 1.0
         for (let i = 0; i < 40; i++) {
-            applyMaintenance(ship, agent, ctx(state));
+            applyMaintenance(ship, agent, state);
         }
 
         expect(ship.maxMaintenance).toBeLessThan(1.0);
@@ -166,7 +159,7 @@ describe('applyMaintenance', () => {
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        const became_derelict = applyMaintenance(ship, agent, ctx(state));
+        const became_derelict = applyMaintenance(ship, agent, state);
 
         expect(became_derelict).toBe(true);
         expect(ship.state.type).toBe('derelict');
@@ -194,7 +187,7 @@ describe('applyMaintenance', () => {
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        applyMaintenance(ship, agent, ctx(state));
+        applyMaintenance(ship, agent, state);
 
         expect(ship.state.type).toBe('derelict');
         expect(agent.assets.p1!.shipListings).toHaveLength(0);
@@ -230,7 +223,7 @@ describe('settleTransportContract', () => {
         carrier.assets.p2.deposits = 0;
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [poster, carrier]);
-        settleTransportContract('S1', 'carrier', 'p2', ctx(state));
+        settleTransportContract('S1', 'carrier', 'p2', state);
 
         expect(poster.assets.p1!.transportContracts).toHaveLength(0);
         expect(poster.assets.p1!.depositHold).toBe(0);
@@ -290,7 +283,7 @@ describe('settleConstructionContract', () => {
         };
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [poster, carrier]);
-        settleConstructionContract('cc1', fakeFacility as never, 'carrier', 'p2', ctx(state));
+        settleConstructionContract('cc1', fakeFacility as never, 'carrier', 'p2', state);
 
         const contract = poster.assets.p1!.constructionContracts[0]!;
         expect(contract.status).toBe('completed');
@@ -367,9 +360,7 @@ describe('transport ship: loading → transporting', () => {
         shipTick(state);
 
         expect(ship.state.type).toBe('idle');
-        if (ship.state.type === 'idle') {
-            expect(ship.state.planetId).toBe('p1');
-        }
+        expect(ship.state.planetId).toBe('p1');
     });
 
     it('ferry mode: transitions loading without cargo to transporting with null cargo', () => {
@@ -429,10 +420,9 @@ describe('transport ship: transporting → unloading', () => {
 
         shipTick(state);
 
-        expect(ship.state.type).toBe('unloading');
-        if (ship.state.type === 'unloading') {
-            expect(ship.state.planetId).toBe('p2');
-        }
+        const shipState = ship.state as unknown as TransportShipStatusUnloading;
+        expect(shipState.type).toBe('unloading');
+        expect(shipState.planetId).toBe('p2');
     });
 
     it('ferry mode: goes idle at destination when cargo is null', () => {
@@ -451,10 +441,9 @@ describe('transport ship: transporting → unloading', () => {
 
         shipTick(state);
 
-        expect(ship.state.type).toBe('idle');
-        if (ship.state.type === 'idle') {
-            expect(ship.state.planetId).toBe('p2');
-        }
+        const shipState = ship.state as unknown as ShipStatusIdle;
+        expect(shipState.type).toBe('idle');
+        expect(shipState.planetId).toBe('p2');
     });
 });
 
@@ -475,9 +464,8 @@ describe('transport ship: unloading → idle', () => {
         shipTick(state);
 
         expect(ship.state.type).toBe('idle');
-        if (ship.state.type === 'idle') {
-            expect(ship.state.planetId).toBe('p2');
-        }
+        const shipState = ship.state as unknown as ShipStatusIdle;
+        expect(shipState.planetId).toBe('p2');
         const stored = agent.assets.p2!.storageFacility.currentInStorage.Steel?.quantity ?? 0;
         expect(stored).toBe(200);
     });
@@ -641,7 +629,7 @@ describe('handleDispatchConstructionShip validation', () => {
     ) {
         handleDispatchConstructionShip(
             state,
-            { type: 'dispatchConstructionShip', requestId: 'r1', facilityName: null, ...overrides },
+            { type: 'dispatchConstructionShip', requestId: 'r1', ...overrides },
             post,
         );
     }
@@ -683,13 +671,11 @@ describe('handleDispatchConstructionShip validation', () => {
         const ship = makeConstructionShip('C1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 20);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'C1', facilityName: null });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'C1' });
         expect(messages[0]).toMatchObject({ type: 'constructionShipDispatched' });
         expect(ship.state.type).toBe('pre-fabrication');
         if (ship.state.type === 'pre-fabrication') {
-            expect((ship.state as TransportShipStatusLoading & { deadlineTick?: number }).deadlineTick).toBe(
-                20 + MAX_DISPATCH_TIMEOUT_TICKS,
-            );
+            expect(ship.state.deadlineTick).toBe(20 + MAX_DISPATCH_TIMEOUT_TICKS);
         }
     });
 });
@@ -708,9 +694,10 @@ describe('construction ship: pre-fabrication → transporting', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         shipTick(state);
 
-        expect(ship.state.type).toBe('construction_transporting');
-        if (ship.state.type === 'construction_transporting') {
-            expect(ship.state.to).toBe('p2');
+        const shipState = ship.state as unknown as ConstructionShipStatusTransporting;
+        expect(shipState.type).toBe('construction_transporting');
+        if (shipState.type === 'construction_transporting') {
+            expect(shipState.to).toBe('p2');
         }
     });
 
@@ -743,7 +730,6 @@ describe('construction ship: construction_transporting → reconstruction', () =
             from: 'p1',
             to: 'p2',
             buildingTarget: null,
-            loaded: 0,
             arrivalTick: 500,
         };
         agent.ships.push(ship);
@@ -762,7 +748,7 @@ describe('construction ship: construction_transporting → reconstruction', () =
             from: 'p1',
             to: 'p2',
             buildingTarget: null,
-            loaded: 0,
+
             arrivalTick: 10,
         };
         agent.ships.push(ship);
@@ -770,10 +756,10 @@ describe('construction ship: construction_transporting → reconstruction', () =
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
         shipTick(state);
 
-        expect(ship.state.type).toBe('idle');
-        if (ship.state.type === 'idle') {
-            expect(ship.state.planetId).toBe('p2');
-        }
+        const shipState = ship.state as unknown as ShipStatusIdle;
+        expect(shipState.type).toBe('idle');
+
+        expect(shipState.planetId).toBe('p2');
     });
 });
 
@@ -820,7 +806,8 @@ describe('construction ship: reconstruction places facility', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         shipTick(state);
 
-        expect(ship.state.type).toBe('idle');
+        const shipState = ship.state as unknown as ShipStatusIdle;
+        expect(shipState.type).toBe('idle');
         expect(agent.assets.p2!.productionFacilities).toHaveLength(1);
         expect(agent.assets.p2!.productionFacilities[0]!.planetId).toBe('p2');
     });
@@ -913,5 +900,265 @@ describe('derelict ship skipping', () => {
         shipTick(state);
 
         expect(ship.state.type).toBe('derelict');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// lost state handler — STAY, no crash
+// ---------------------------------------------------------------------------
+
+describe('lost ship is left alone', () => {
+    it('does not change state of a lost ship', () => {
+        const agent = makeAgent('a1', 'p1');
+        const ship = makeTransportShip('S1', 'p1');
+        ship.state = { type: 'lost', lostAtTick: 0 };
+        agent.ships.push(ship);
+
+        const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
+        expect(() => shipTick(state)).not.toThrow();
+        expect(ship.state.type).toBe('lost');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// scaleShipType
+// ---------------------------------------------------------------------------
+
+describe('scaleShipType', () => {
+    it('scales volume and mass by scaleMapping value', () => {
+        const base = shiptypes.solid.bulkCarrier1; // small scale = 1
+        const medium = shiptypes.solid.bulkCarrier2; // medium scale = 2
+        const large = shiptypes.solid.bulkCarrier3; // large scale = 4
+        const superShip = shiptypes.solid.bulkCarrier4; // super scale = 8
+
+        expect(medium.cargoSpecification.volume).toBe(base.cargoSpecification.volume * 2);
+        expect(medium.cargoSpecification.mass).toBe(base.cargoSpecification.mass * 2);
+        expect(large.cargoSpecification.volume).toBe(base.cargoSpecification.volume * 4);
+        expect(superShip.cargoSpecification.volume).toBe(base.cargoSpecification.volume * 8);
+    });
+
+    it('scales buildingTime by scaleToLevel value', () => {
+        const base = shiptypes.solid.bulkCarrier1; // small = level 1
+        const medium = shiptypes.solid.bulkCarrier2; // medium = level 2
+        const large = shiptypes.solid.bulkCarrier3; // large = level 3
+
+        expect(medium.buildingTime).toBe(base.buildingTime * 2);
+        expect(large.buildingTime).toBe(base.buildingTime * 3);
+    });
+
+    it('scales requiredCrew by scaleToLevel value', () => {
+        const base = shiptypes.solid.bulkCarrier1;
+        const medium = shiptypes.solid.bulkCarrier2;
+
+        expect(medium.requiredCrew.primary).toBe(base.requiredCrew.primary * 2);
+        expect(medium.requiredCrew.secondary).toBe(base.requiredCrew.secondary * 2);
+    });
+
+    it('preserves cargo type across scales', () => {
+        const base = shiptypes.solid.bulkCarrier1;
+        const superShip = shiptypes.solid.bulkCarrier4;
+        expect(superShip.cargoSpecification.type).toBe(base.cargoSpecification.type);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// createShip — all three branches
+// ---------------------------------------------------------------------------
+
+describe('createShip', () => {
+    it('creates a transport ship with state=idle', () => {
+        const planet = makePlanet({ id: 'p1' });
+        const ship = createShip(shiptypes.solid.bulkCarrier1, 0, 'T1', planet);
+        expect(ship.state.type).toBe('idle');
+        expect(ship.type.type).toBe('transport');
+    });
+
+    it('creates a construction ship with state=idle', () => {
+        const planet = makePlanet({ id: 'p1' });
+        const ship = createShip(constructionShipType, 0, 'C1', planet);
+        expect(ship.state.type).toBe('idle');
+        expect(ship.type.type).toBe('construction');
+    });
+
+    it('creates a passenger ship with state=idle', () => {
+        const planet = makePlanet({ id: 'p1' });
+        const ship = createShip(passengerLiner, 0, 'P1', planet);
+        expect(ship.state.type).toBe('idle');
+        expect(ship.type.type).toBe('passenger');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// settleTransportContract — no matching contract (console.warn path)
+// ---------------------------------------------------------------------------
+
+describe('settleTransportContract — no matching contract', () => {
+    it('does not crash when no matching contract exists', () => {
+        const carrier = makeAgent('carrier', 'p2');
+        carrier.assets.p2 = makeAgentPlanetAssets('p2');
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [carrier]);
+
+        // No transport contracts anywhere in the state
+        expect(() => settleTransportContract('S-ghost', 'carrier', 'p2', state)).not.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-agent contract loading: posterAgentId points to a different agent
+// ---------------------------------------------------------------------------
+
+describe('transport ship loading: cross-agent storage via posterAgentId', () => {
+    it('loads cargo from posterAgent storage, not carrier storage', () => {
+        const poster = makeAgent('poster', 'p1');
+        const carrier = makeAgent('carrier', 'p1');
+
+        // Put steel in poster's storage only
+        putIntoStorageFacility(poster.assets.p1!.storageFacility, steelResourceType, 500);
+
+        const ship = makeTransportShip('S1', 'p1');
+        ship.state = {
+            type: 'loading',
+            planetId: 'p1',
+            to: 'p2',
+            cargoGoal: { resource: steelResourceType, quantity: 200 },
+            currentCargo: { resource: steelResourceType, quantity: 0 },
+            posterAgentId: 'poster',
+        };
+        carrier.ships.push(ship);
+
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [poster, carrier]);
+        shipTick(state);
+
+        expect(ship.state.type).toBe('transporting');
+        // Carrier's storage untouched; poster's storage decreased
+        const posterSteelLeft = poster.assets.p1!.storageFacility.currentInStorage.Steel?.quantity ?? 0;
+        expect(posterSteelLeft).toBeCloseTo(300, 1);
+        const carrierSteelLeft = carrier.assets.p1!.storageFacility.currentInStorage.Steel?.quantity ?? 0;
+        expect(carrierSteelLeft).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// handlePreFabrication: buildingTarget.construction === null → skip to transporting
+// ---------------------------------------------------------------------------
+
+describe('construction ship: pre-fabrication with buildingTarget.construction === null', () => {
+    it('skips loading and goes directly to construction_transporting', () => {
+        const agent = makeAgent('a1', 'p1');
+        const ship = makeConstructionShip('C1', 'p1');
+
+        const facilityNoConstruction = {
+            type: 'production' as const,
+            planetId: 'p1',
+            id: 'f1',
+            name: 'Ready Facility',
+            maxScale: 1,
+            scale: 1,
+            construction: null, // already built — no construction phase
+            powerConsumptionPerTick: 0,
+            workerRequirement: {},
+            pollutionPerTick: { air: 0, water: 0, soil: 0 },
+            needs: [],
+            produces: [],
+            lastTickResults: {
+                overallEfficiency: 0,
+                workerEfficiency: {},
+                overqualifiedWorkers: {},
+                resourceEfficiency: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+            },
+        };
+
+        ship.state = {
+            type: 'pre-fabrication',
+            planetId: 'p1',
+            to: 'p2',
+            buildingTarget: facilityNoConstruction as never,
+            progress: 0,
+        };
+        agent.ships.push(ship);
+
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
+        shipTick(state);
+
+        const shipState = ship.state as unknown as ConstructionShipStatusTransporting;
+        expect(shipState.type).toBe('construction_transporting');
+        if (shipState.type === 'construction_transporting') {
+            expect(shipState.to).toBe('p2');
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// settleConstructionContract: commissioningAgentId !== carrierAgentId
+// ---------------------------------------------------------------------------
+
+describe('settleConstructionContract — facility placed on third agent', () => {
+    it('places facility on commissioningAgent, pays carrier', () => {
+        const poster = makeAgent('poster', 'p1');
+        const carrier = makeAgent('carrier', 'p2');
+        const commissioner = makeAgent('commissioner', 'p2');
+
+        carrier.assets.p2 = makeAgentPlanetAssets('p2');
+        carrier.assets.p2.deposits = 0;
+        commissioner.assets.p2 = makeAgentPlanetAssets('p2');
+
+        poster.assets.p1!.depositHold = 800;
+        poster.assets.p1!.constructionContracts.push({
+            id: 'cc2',
+            fromPlanetId: 'p1',
+            toPlanetId: 'p2',
+            facilityName: 'Third Party Fac',
+            commissioningAgentId: 'commissioner', // <-- different from carrier
+            offeredReward: 800,
+            postedByAgentId: 'poster',
+            expiresAtTick: 9999,
+            status: 'accepted',
+            acceptedByAgentId: 'carrier',
+            shipName: 'C1',
+            fulfillmentDueAtTick: 9999,
+        });
+
+        const fakeFacility = {
+            type: 'production' as const,
+            planetId: 'p1',
+            id: 'fac-3p',
+            name: 'Third Party Fac',
+            maxScale: 1,
+            scale: 1,
+            construction: null,
+            powerConsumptionPerTick: 0,
+            workerRequirement: {},
+            pollutionPerTick: { air: 0, water: 0, soil: 0 },
+            needs: [],
+            produces: [],
+            lastTickResults: {
+                overallEfficiency: 0,
+                overqualifiedWorkers: {},
+                resourceEfficiency: {},
+                workerEfficiency: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+            },
+        };
+
+        const state = makeGameState(
+            [makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })],
+            [poster, carrier, commissioner],
+        );
+        settleConstructionContract('cc2', fakeFacility as never, 'carrier', 'p2', state);
+
+        // Carrier gets paid
+        expect(carrier.assets.p2.deposits).toBe(800);
+        // Facility placed on commissioner, not carrier
+        expect(commissioner.assets.p2!.productionFacilities).toHaveLength(1);
+        expect(carrier.assets.p2.productionFacilities).toHaveLength(0);
+        // Commission agent's facility has correct planetId
+        expect(commissioner.assets.p2!.productionFacilities[0]!.planetId).toBe('p2');
     });
 });

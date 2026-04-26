@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import type { TransportShip, ConstructionShip, PassengerShip } from '@/simulation/ships/ships';
 import { PassengerManifestDialog } from './PassengerManifestDialog';
+import { ProductQuantity } from '@/components/client/ProductQuantity';
+import { formatNumbers } from '@/lib/utils';
 
 type PlanetSummary = { planetId: string; name: string };
 
@@ -187,10 +189,10 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
     // Passenger ship states
     if (ship.type.type === 'passenger') {
         const ps = ship as PassengerShip;
-        const s = ps.state;
+        const shipState = ps.state;
 
-        if (s.type === 'passenger_boarding') {
-            const pct = s.passengerGoal > 0 ? (s.currentPassengers / s.passengerGoal) * 100 : 0;
+        if (shipState.type === 'passenger_boarding') {
+            const pct = shipState.passengerGoal > 0 ? (shipState.currentPassengers / shipState.passengerGoal) * 100 : 0;
             return (
                 <>
                     <div className='space-y-1.5'>
@@ -198,13 +200,14 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                             <span>
                                 Boarding:{' '}
                                 <span className='tabular-nums text-foreground'>
-                                    {s.currentPassengers.toLocaleString()}
+                                    {shipState.currentPassengers.toLocaleString()}
                                 </span>
                                 {' / '}
-                                <span className='tabular-nums'>{s.passengerGoal.toLocaleString()}</span> passengers
+                                <span className='tabular-nums'>{shipState.passengerGoal.toLocaleString()}</span>{' '}
+                                passengers
                             </span>
                             <ArrowRight className='h-3 w-3' />
-                            <span>{planetName(planetSummaries, s.toPlanetId)}</span>
+                            <span>{planetName(planetSummaries, shipState.to)}</span>
                             <Button
                                 size='sm'
                                 variant='ghost'
@@ -219,48 +222,87 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                     <PassengerManifestDialog
                         open={manifestOpen}
                         onOpenChange={setManifestOpen}
-                        manifest={s.manifest}
-                        toPlanetName={planetName(planetSummaries, s.toPlanetId)}
-                        phase={s.type}
+                        manifest={shipState.manifest}
+                        toPlanetName={planetName(planetSummaries, shipState.to)}
+                        phase={shipState.type}
                     />
                 </>
             );
         }
 
-        if (s.type === 'passenger_provisioning') {
-            const total = Object.values(s.manifest).reduce((sum, cat) => sum + cat.total, 0);
+        if (shipState.type === 'passenger_provisioning') {
+            const total = Object.values(shipState.manifest).reduce((sum, cat) => sum + cat.total, 0);
+            const grocery = shipState.groceryProvisioned;
+            const healthcare = shipState.healthcareProvisioned;
+            const education = shipState.educationProvisioned;
+            const groceryEff = grocery.goal > 0 ? Math.min(grocery.currently / grocery.goal, 1) : 1;
+            const healthcareEff = healthcare.goal > 0 ? Math.min(healthcare.currently / healthcare.goal, 1) : 1;
+            const educationEff = education.goal > 0 ? Math.min(education.currently / education.goal, 1) : 1;
+            const minEff = Math.min(groceryEff, healthcareEff, educationEff);
             return (
                 <>
-                    <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
-                        <span>
-                            Provisioning <span className='tabular-nums text-foreground'>{total.toLocaleString()}</span>{' '}
-                            passengers
-                        </span>
-                        <ArrowRight className='h-3 w-3' />
-                        <span>{planetName(planetSummaries, s.toPlanetId)}</span>
-                        <Button
-                            size='sm'
-                            variant='ghost'
-                            className='h-6 px-2 text-xs ml-auto'
-                            onClick={() => setManifestOpen(true)}
-                        >
-                            View Manifest
-                        </Button>
+                    <div className='space-y-1.5'>
+                        <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
+                            <span>
+                                Provisioning{' '}
+                                <span className='tabular-nums text-foreground'>{total.toLocaleString()}</span>{' '}
+                                passengers
+                            </span>
+                            <ArrowRight className='h-3 w-3' />
+                            <span>{planetName(planetSummaries, shipState.to)}</span>
+                            <Button
+                                size='sm'
+                                variant='ghost'
+                                className='h-6 px-2 text-xs ml-auto'
+                                onClick={() => setManifestOpen(true)}
+                            >
+                                View Manifest
+                            </Button>
+                        </div>
+                        <div className='flex gap-2 flex-wrap'>
+                            <ProductQuantity
+                                resource={{ name: 'Grocery Service' }}
+                                quantity={grocery.currently}
+                                efficiency={groceryEff}
+                                isLimiting={groceryEff === minEff}
+                                planetId={null}
+                                agentId={null}
+                                quantityLabel={`${formatNumbers(grocery.currently)} (${formatNumbers(grocery.goal)})`}
+                            />
+                            <ProductQuantity
+                                resource={{ name: 'Healthcare Service' }}
+                                quantity={healthcare.currently}
+                                efficiency={healthcareEff}
+                                isLimiting={healthcareEff === minEff}
+                                planetId={null}
+                                agentId={null}
+                                quantityLabel={`${formatNumbers(healthcare.currently)} (${formatNumbers(healthcare.goal)})`}
+                            />
+                            <ProductQuantity
+                                resource={{ name: 'Education Service' }}
+                                quantity={education.currently}
+                                efficiency={educationEff}
+                                isLimiting={educationEff === minEff}
+                                planetId={null}
+                                agentId={null}
+                                quantityLabel={`${formatNumbers(education.currently)} (${formatNumbers(education.goal)})`}
+                            />
+                        </div>
                     </div>
                     <PassengerManifestDialog
                         open={manifestOpen}
                         onOpenChange={setManifestOpen}
-                        manifest={s.manifest}
-                        toPlanetName={planetName(planetSummaries, s.toPlanetId)}
-                        phase={s.type}
+                        manifest={shipState.manifest}
+                        toPlanetName={planetName(planetSummaries, shipState.to)}
+                        phase={shipState.type}
                     />
                 </>
             );
         }
 
-        if (s.type === 'passenger_transporting') {
-            const total = Object.values(s.manifest).reduce((sum, cat) => sum + cat.total, 0);
-            const eta = s.arrivalTick - tick;
+        if (shipState.type === 'passenger_transporting') {
+            const total = Object.values(shipState.manifest).reduce((sum, cat) => sum + cat.total, 0);
+            const eta = shipState.arrivalTick - tick;
             return (
                 <>
                     <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
@@ -268,7 +310,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                             <span className='tabular-nums text-foreground'>{total.toLocaleString()}</span> passengers
                         </span>
                         <ArrowRight className='h-3 w-3' />
-                        <span>{planetName(planetSummaries, s.to)}</span>
+                        <span>{planetName(planetSummaries, shipState.to)}</span>
                         <span className='text-muted-foreground/70'>
                             ETA{' '}
                             <span className='tabular-nums text-foreground'>
@@ -287,16 +329,16 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                     <PassengerManifestDialog
                         open={manifestOpen}
                         onOpenChange={setManifestOpen}
-                        manifest={s.manifest}
-                        toPlanetName={planetName(planetSummaries, s.to)}
-                        phase={s.type}
+                        manifest={shipState.manifest}
+                        toPlanetName={planetName(planetSummaries, shipState.to)}
+                        phase={shipState.type}
                     />
                 </>
             );
         }
 
-        if (s.type === 'passenger_unloading') {
-            const total = Object.values(s.manifest).reduce((sum, cat) => sum + cat.total, 0);
+        if (shipState.type === 'passenger_unloading') {
+            const total = Object.values(shipState.manifest).reduce((sum, cat) => sum + cat.total, 0);
             return (
                 <>
                     <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
@@ -316,9 +358,9 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                     <PassengerManifestDialog
                         open={manifestOpen}
                         onOpenChange={setManifestOpen}
-                        manifest={s.manifest}
-                        toPlanetName={planetName(planetSummaries, s.planetId)}
-                        phase={s.type}
+                        manifest={shipState.manifest}
+                        toPlanetName={planetName(planetSummaries, shipState.planetId)}
+                        phase={shipState.type}
                     />
                 </>
             );

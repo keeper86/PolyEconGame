@@ -7,7 +7,7 @@ import {
     plasticResourceType,
     steelResourceType,
 } from '../planet/resources';
-import type { PassengerManifest } from '../population/manifest';
+import type { PassengerManifest } from './manifest';
 import type { EducationLevelType } from '../population/population';
 import type { TransitionResult } from './shipHandlers';
 import { applyMaintenance, constructionHandlers, passengerHandlers, transportHandlers } from './shipHandlers';
@@ -155,6 +155,7 @@ export type ConstructionShipStatusTransporting = BaseShipStatusTransporting & {
 export type BaseShipStatusUnloading = {
     planetId: string;
     contractId?: string;
+    posterAgentId?: string;
 };
 
 export type PassengerShipStatusUnloading = BaseShipStatusUnloading & {
@@ -197,6 +198,8 @@ export type PassengerShipStatus =
     | PassengerShipStatusUnloading;
 
 export type PassengerShipStatusType = PassengerShipStatus['type'];
+
+export type ShipState = TransportShipStatus | ConstructionShipStatus | PassengerShipStatus;
 
 export type BaseShip = {
     name: string;

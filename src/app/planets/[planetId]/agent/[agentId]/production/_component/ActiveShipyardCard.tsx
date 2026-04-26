@@ -18,7 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import type { ShipConstructionFacility } from '../../../../../../../simulation/planet/facility';
 import { FacilityCardShell } from './FacilityCardShell';
-import { ProductQuantity } from './ProductQuantity';
+import { ProductQuantity } from '../../../../../../../components/client/ProductQuantity';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
 import { WorkerBars } from './WorkerBars';
 

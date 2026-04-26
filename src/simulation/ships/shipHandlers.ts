@@ -36,8 +36,9 @@ import {
     boardPassengersFromWorkforce,
     calculateProvisions,
     refundBoardedPassengers,
+    unloadPassengersToWorkforce,
     unloadPassengersToPlanet,
-} from '../population/manifest';
+} from './manifest';
 import type {
     ConstructionContract,
     ConstructionShip,
@@ -311,13 +312,19 @@ function handleTransporting(ship: TransportShip, ctx: GameState): TransitionResu
     }
     return {
         action: 'transition',
-        newState: { type: 'unloading', planetId: s.to, cargo } satisfies TransportShipStatusUnloading,
+        newState: {
+            type: 'unloading',
+            planetId: s.to,
+            cargo,
+            posterAgentId: s.posterAgentId,
+        } satisfies TransportShipStatusUnloading,
     };
 }
 
 function handleTransportUnloading(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as TransportShipStatusUnloading;
-    const assets = agent.assets[s.planetId];
+    const receivingAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+    const assets = receivingAgent.assets[s.planetId];
     if (!assets) {
         return STAY;
     }
@@ -438,38 +445,39 @@ function handleReconstruction(ship: ConstructionShip, ctx: GameState, agent: Age
 // Passenger ship handlers
 // ---------------------------------------------------------------------------
 
-function handlePassengerBoarding(ship: PassengerShip, ctx: GameState, agent: Agent): TransitionResult {
+function handlePassengerBoarding(ship: PassengerShip, gameState: GameState, agent: Agent): TransitionResult {
     const shipState = ship.state as PassengerShipStatusLoading;
 
     // Dispatch timeout — de-board any passengers already on the manifest back
     // to the source planet, then go idle.
-    if (shipState.deadlineTick !== undefined && ctx.tick > shipState.deadlineTick) {
-        const sourcePlanet = ctx.planets.get(shipState.planetId);
+    if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
+        const sourcePlanet = gameState.planets.get(shipState.planetId);
         if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
             unloadPassengersToPlanet(sourcePlanet, shipState.manifest);
         }
         return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }
 
-    const sourcePlanet = ctx.planets.get(shipState.planetId);
+    const sourcePlanet = gameState.planets.get(shipState.planetId);
     if (!sourcePlanet) {
+        console.warn(`Source planet '${shipState.planetId}' not found for passenger boarding`);
         return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }
 
     const needed = shipState.passengerGoal - shipState.currentPassengers;
-    const boarded = boardPassengersFromWorkforce(agent, sourcePlanet, shipState.planetId, shipState.manifest, needed);
+    const boardingAgent = shipState.posterAgentId ? (gameState.agents.get(shipState.posterAgentId) ?? agent) : agent;
+    const boarded = boardPassengersFromWorkforce(
+        boardingAgent,
+        sourcePlanet,
+        shipState.planetId,
+        shipState.manifest,
+        needed,
+    );
     shipState.currentPassengers += boarded;
 
     const goalReached = shipState.currentPassengers >= shipState.passengerGoal;
-    const noMoreAvailable = boarded === 0 && shipState.currentPassengers > 0;
-    // No workers available at all — abort immediately
-    const noWorkersAtAll = boarded === 0 && shipState.currentPassengers === 0;
 
-    if (noWorkersAtAll) {
-        return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
-    }
-
-    if (!goalReached && !noMoreAvailable) {
+    if (!goalReached) {
         return STAY;
     }
 
@@ -482,7 +490,7 @@ function handlePassengerBoarding(ship: PassengerShip, ctx: GameState, agent: Age
             planetId: shipState.planetId,
             to: shipState.to,
             manifest: shipState.manifest,
-            deadlineTick: ctx.tick + MAX_DISPATCH_TIMEOUT_TICKS,
+            deadlineTick: gameState.tick + MAX_DISPATCH_TIMEOUT_TICKS,
             ...provisionsTracker,
         } satisfies PassengerShipStatusProvisioning,
     };
@@ -498,13 +506,17 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
     if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
         const sourcePlanet = gameState.planets.get(shipState.planetId);
         if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
-            refundBoardedPassengers(agent, sourcePlanet, shipState.planetId, shipState.manifest);
+            const refundAgent = shipState.posterAgentId
+                ? (gameState.agents.get(shipState.posterAgentId) ?? agent)
+                : agent;
+            refundBoardedPassengers(refundAgent, sourcePlanet, shipState.planetId, shipState.manifest);
         }
         return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }
 
     const storage = gameState.agents.get(agent.id)?.assets[shipState.planetId]?.storageFacility;
     if (!storage) {
+        console.warn(`No storage facility found on planet '${shipState.planetId}' for passenger provisioning`);
         return STAY;
     }
 
@@ -534,7 +546,6 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
     } // Wait for production to catch up
 
     const flightTicks = travelTime(ship);
-    const travelYears = flightTicks / TICKS_PER_YEAR;
     return {
         action: 'transition',
         newState: {
@@ -542,12 +553,13 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
             from: shipState.planetId,
             to: shipState.to,
             arrivalTick: gameState.tick + flightTicks,
-            manifest: advanceManifestAge(shipState.manifest, travelYears),
+            manifest: advanceManifestAge(shipState.manifest, gameState.tick, flightTicks),
+            posterAgentId: shipState.posterAgentId,
         },
     };
 }
 
-function handlePassengerTransporting(ship: PassengerShip, ctx: GameState): TransitionResult {
+function handlePassengerTransporting(ship: PassengerShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state;
     if (s.type !== 'passenger_transporting') {
         return STAY;
@@ -562,11 +574,12 @@ function handlePassengerTransporting(ship: PassengerShip, ctx: GameState): Trans
     }
 
     // Unload immediately on arrival — no separate unloading tick needed
-    unloadPassengersToPlanet(destPlanet, s.manifest);
+    const unloadAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+    unloadPassengersToWorkforce(unloadAgent, destPlanet, s.to, s.manifest);
     return { action: 'transition', newState: { type: 'idle', planetId: s.to } };
 }
 
-function handlePassengerUnloading(ship: PassengerShip, ctx: GameState, _agent: Agent): TransitionResult {
+function handlePassengerUnloading(ship: PassengerShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state;
     if (s.type !== 'passenger_unloading') {
         return STAY;
@@ -577,7 +590,8 @@ function handlePassengerUnloading(ship: PassengerShip, ctx: GameState, _agent: A
         return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
     }
 
-    unloadPassengersToPlanet(destPlanet, s.manifest);
+    const unloadAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
+    unloadPassengersToWorkforce(unloadAgent, destPlanet, s.planetId, s.manifest);
     return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
 }
 

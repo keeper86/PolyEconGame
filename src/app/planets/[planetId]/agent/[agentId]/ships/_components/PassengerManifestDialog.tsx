@@ -1,8 +1,8 @@
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import type { PassengerManifest } from '@/simulation/population/manifest';
-import { parseManifestKey } from '@/simulation/population/manifest';
+import type { PassengerManifest } from '@/simulation/ships/manifest';
+import { parseManifestKey } from '@/simulation/ships/manifest';
 
 type Props = {
     open: boolean;
