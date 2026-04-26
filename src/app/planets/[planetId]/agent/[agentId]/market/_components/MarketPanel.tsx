@@ -19,9 +19,9 @@ import {
     resourceNameToSlug,
 } from './marketHelpers';
 import ResourceAccordionItem from './ResourceAccordionItem';
-import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from '../../../_component/columnConfig';
+import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
-import { useVisibleColumns } from '../../../_component/useVisibleColumns';
+import { useVisibleColumns } from './useVisibleColumns';
 
 // Fixed pixel overhead for non-column content in each row:
 // card p-3 (24) + trigger px-1 (8) + icon (32) + gap-2 (8) + label (LABEL_COLUMN_WIDTH) + gap-2 (8) + chevron w-4 (16) = 96 + LABEL_COLUMN_WIDTH

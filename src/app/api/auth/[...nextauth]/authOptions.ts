@@ -1,6 +1,6 @@
 import KeycloakProvider from 'next-auth/providers/keycloak';
-import { db } from '../../../../server/db';
-import { logger } from '../../../../server/logger';
+import { db } from '@/server/db';
+import { logger } from '@/server/logger';
 import type { AuthOptions } from 'next-auth';
 
 export const authOptions: AuthOptions = {

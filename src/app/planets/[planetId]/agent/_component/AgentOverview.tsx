@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Page } from '../../../../../components/client/Page';
-import type { LastProductionTickResults, ProductionFacility } from '../../../../../simulation/planet/facility';
+import { Page } from '@/components/client/Page';
+import type { LastProductionTickResults, ProductionFacility } from '@/simulation/planet/facility';
 import WorkforceDemographyPanel from './WorkforceDemographyPanel';
-import type { Agent } from '../../../../../simulation/planet/planet';
+import type { Agent } from '@/simulation/planet/planet';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
 import { formatNumbers } from '@/lib/utils';

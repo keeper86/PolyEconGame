@@ -107,7 +107,7 @@ export type ResourceTriggerProps = {
     offer?: MarketOfferEntry;
     overviewRow?: MarketOverviewRow;
     storageQuantity?: number;
-    visibleColumns: import('../../../_component/columnConfig').ColumnConfig[];
+    visibleColumns: import('./columnConfig').ColumnConfig[];
 };
 
 export type ResourceAccordionItemProps = {
@@ -118,7 +118,7 @@ export type ResourceAccordionItemProps = {
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
     _isOpen: boolean;
     overviewRow?: MarketOverviewRow;
-    visibleColumns: import('../../../_component/columnConfig').ColumnConfig[];
+    visibleColumns: import('./columnConfig').ColumnConfig[];
 };
 
 export type BuySectionProps = {

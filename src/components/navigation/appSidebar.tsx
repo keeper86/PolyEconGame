@@ -18,7 +18,7 @@ import { APP_ROUTES } from '@/lib/appRoutes';
 import Image from 'next/image';
 import Link from 'next/link';
 
-import logo from '../../../public/logo.png';
+import logo from '@/../public/logo.png';
 import { Separator } from '../ui/separator';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

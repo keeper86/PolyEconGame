@@ -11,7 +11,7 @@ import { FacilityCardShell } from './FacilityCardShell';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ProductionFacility } from '../../../../../../../simulation/planet/facility';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 import { FacilityProductionIORow } from './FacilityProductionIORow';
 import { ScaleSelector } from './ScaleSelector';
 import { WorkerBars } from './WorkerBars';

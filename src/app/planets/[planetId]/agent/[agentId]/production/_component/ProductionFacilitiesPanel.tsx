@@ -8,7 +8,7 @@ import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/sim
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ProductionFacility, ShipConstructionFacility } from '../../../../../../../simulation/planet/facility';
+import type { ProductionFacility, ShipConstructionFacility } from '@/simulation/planet/facility';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
 import { ActiveShipyardCard } from './ActiveShipyardCard';
 import { LevelBuildSection } from './LevelBuildSection';

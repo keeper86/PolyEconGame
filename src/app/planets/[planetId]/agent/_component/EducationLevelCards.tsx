@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Badge } from '../../../../../components/ui/badge';
-import { Tooltip, TooltipTrigger, TooltipContent } from '../../../../../components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { eduLabel, EDU_COLORS, sumByEdu } from './workforce-theme';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
