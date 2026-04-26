@@ -206,7 +206,7 @@ describe('handleDispatchPassengerShip validation', () => {
         expect(msgs[0]).toMatchObject({ type: 'passengerShipDispatchFailed' });
     });
 
-    it('fails when passenger count is 0', () => {
+    it('allows dispatch when passenger count is 0', () => {
         const agent = makeAgent('a1', 'p1');
         const ship = makePassengerShip('S1', 'p1');
         agent.ships.push(ship);
@@ -216,7 +216,12 @@ describe('handleDispatchPassengerShip validation', () => {
             { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1', passengerCount: 0 },
             post,
         );
-        expect(messages[0]).toMatchObject({ type: 'passengerShipDispatchFailed' });
+        expect(messages[0]).toMatchObject({ type: 'passengerShipDispatched', shipName: 'S1' });
+        expect(ship.state.type).toBe('passenger_boarding');
+        if (ship.state.type === 'passenger_boarding') {
+            expect(ship.state.passengerGoal).toBe(0);
+            expect(ship.state.currentPassengers).toBe(0);
+        }
     });
 
     it('succeeds and sets ship to passenger_boarding', () => {
@@ -354,6 +359,37 @@ describe('shipTick passenger boarding', () => {
         expect(ship.state.type).toBe('passenger_provisioning');
         // Workers have left the planet (in manifest)
         expect(planet.population.summedPopulation.employed.none.novice.total).toBe(0);
+    });
+
+    it('zero-passenger dispatch progresses without storage', () => {
+        const { messages, post } = makeMessages();
+        const agent = makeAgent('a1', 'p1');
+        const planet = makePlanet({ id: 'p1' });
+        const planet2 = makePlanet({ id: 'p2' });
+
+        const ship = makePassengerShip('S1', 'p1');
+        agent.ships.push(ship);
+        const state = makeGameState([planet, planet2], [agent]);
+
+        const assetsByPlanet = agent.assets as Record<string, (typeof agent.assets)[string] | undefined>;
+        assetsByPlanet.p1 = undefined;
+
+        dispatch(
+            state,
+            { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1', passengerCount: 0 },
+            post,
+        );
+        expect(messages[0]).toMatchObject({ type: 'passengerShipDispatched', shipName: 'S1' });
+
+        shipTick(state); // boarding -> passenger_provisioning
+        expect(ship.state.type).toBe('passenger_provisioning');
+
+        shipTick(state); // provisioning -> passenger_transporting without storage
+        expect(ship.state.type).toBe('passenger_transporting');
+        if (ship.state.type === 'passenger_transporting') {
+            expect(ship.state.manifest).toEqual({});
+            expect(ship.state.to).toBe('p2');
+        }
     });
 
     it('refunds workers when provisioning deadline expires with insufficient provisions', () => {

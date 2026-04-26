@@ -561,6 +561,7 @@ function handlePassengerBoarding(ship: PassengerShip, gameState: GameState, agen
             planetId: shipState.planetId,
             to: shipState.to,
             manifest: shipState.manifest,
+            passengerCount: shipState.currentPassengers,
             deadlineTick: gameState.tick + MAX_DISPATCH_TIMEOUT_TICKS,
             posterAgentId: shipState.posterAgentId,
             ...provisionsTracker,
@@ -572,6 +573,21 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
     const shipState = ship.state;
     if (shipState.type !== 'passenger_provisioning') {
         return STAY;
+    }
+
+    if (shipState.passengerCount === 0) {
+        const flightTicks = travelTime(ship);
+        return {
+            action: 'transition',
+            newState: {
+                type: 'passenger_transporting',
+                from: shipState.planetId,
+                to: shipState.to,
+                arrivalTick: gameState.tick + flightTicks,
+                manifest: advanceManifestAge(shipState.manifest, gameState.tick, flightTicks),
+                posterAgentId: shipState.posterAgentId,
+            },
+        };
     }
 
     // Provisioning timeout — refund passengers and go idle.
@@ -608,12 +624,12 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
         shipState.educationProvisioned.goal - shipState.educationProvisioned.currently,
     );
 
-    const provisionsOk =
+    const provisionsLoaded =
         shipState.groceryProvisioned.currently >= shipState.groceryProvisioned.goal &&
         shipState.healthcareProvisioned.currently >= shipState.healthcareProvisioned.goal &&
         shipState.educationProvisioned.currently >= shipState.educationProvisioned.goal;
 
-    if (!provisionsOk) {
+    if (!provisionsLoaded) {
         return STAY;
     } // Wait for production to catch up
 

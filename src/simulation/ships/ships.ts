@@ -126,6 +126,7 @@ export type Provision = {
 export type PassengerShipStatusProvisioning = BaseShipStatusLoading &
     Provision & {
         type: 'passenger_provisioning';
+        passengerCount: number;
         manifest: PassengerManifest;
     };
 

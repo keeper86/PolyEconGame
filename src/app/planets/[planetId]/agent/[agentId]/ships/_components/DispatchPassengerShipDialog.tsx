@@ -83,12 +83,11 @@ export function DispatchPassengerShipDialog({ agentId, planetId, shipName, passe
                         <Label>Passengers to Board</Label>
                         <Input
                             type='number'
-                            min={1}
+                            min={0}
                             max={passengerCapacity}
                             value={passengerCount}
                             onChange={(e) => setPassengerCount(e.target.value)}
-                            placeholder={`1 – ${passengerCapacity.toLocaleString()}`}
-                            required
+                            placeholder={`0 – ${passengerCapacity.toLocaleString()}`}
                         />
                         <p className='text-xs text-muted-foreground'>
                             Max capacity: {passengerCapacity.toLocaleString()}
@@ -98,12 +97,7 @@ export function DispatchPassengerShipDialog({ agentId, planetId, shipName, passe
                         <p className='text-sm text-destructive'>{(mutation.error as unknown as Error).message}</p>
                     )}
                     <DialogFooter>
-                        <Button
-                            type='submit'
-                            disabled={
-                                !toPlanetId || !passengerCount || Number(passengerCount) < 1 || mutation.isPending
-                            }
-                        >
+                        <Button type='submit' disabled={!toPlanetId || mutation.isPending}>
                             {mutation.isPending ? 'Dispatching…' : 'Dispatch'}
                         </Button>
                     </DialogFooter>

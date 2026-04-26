@@ -166,7 +166,7 @@ export const dispatchPassengerShip = () =>
                 fromPlanetId: z.string().min(1),
                 toPlanetId: z.string().min(1),
                 shipName: z.string().min(1),
-                passengerCount: z.number().int().positive(),
+                passengerCount: z.number().int().min(0),
             }),
         )
         .mutation(async ({ input, ctx }) => {
