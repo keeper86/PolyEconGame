@@ -93,7 +93,7 @@ describe('forexTick', () => {
             automated: false,
         };
         // Give pA a reference price for the currency so clearing works
-        (pA.marketPrices as Record<string, number>)[curB] = 1.0;
+        pA.marketPrices[curB] = 1.0;
 
         const aAForeignBefore = aA.assets.pB!.deposits;
         const aBForeignBefore = aB.assets.pB?.deposits ?? 0;
@@ -129,7 +129,7 @@ describe('forexTick', () => {
             offerRetainment: 0,
             automated: false,
         };
-        (pA.marketPrices as Record<string, number>)[curB] = 1.0;
+        pA.marketPrices[curB] = 1.0;
 
         forexTick(gs);
 
@@ -154,7 +154,7 @@ describe('forexTick', () => {
             bidStorageTarget: 200,
             automated: false,
         };
-        (pA.marketPrices as Record<string, number>)[curB] = 1.0;
+        pA.marketPrices[curB] = 1.0;
 
         forexTick(gs);
 
@@ -189,7 +189,7 @@ describe('forexTick', () => {
             bidStorageTarget: 300,
             automated: false,
         };
-        (pA.marketPrices as Record<string, number>)[curB] = 1.0;
+        pA.marketPrices[curB] = 1.0;
 
         if (!aB.assets.pB.market) {
             aB.assets.pB.market = { sell: {}, buy: {} };
@@ -209,7 +209,7 @@ describe('forexTick', () => {
             bidStorageTarget: 300,
             automated: false,
         };
-        (pB.marketPrices as Record<string, number>)[curA] = 1.0;
+        pB.marketPrices[curA] = 1.0;
 
         forexTick(gs);
 

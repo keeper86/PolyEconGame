@@ -361,7 +361,7 @@ function automaticForexPricing(agent: Agent, assets: AgentPlanetAssets, planet: 
         }
         const curName = getCurrencyResourceName(foreignPlanetId);
         const curResource = getCurrencyResource(foreignPlanetId);
-        const lastRate = (planet.marketPrices as Record<string, number>)[curName] ?? DEFAULT_EXCHANGE_RATE;
+        const lastRate = planet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
         const bufferTarget = computeForexBufferTarget(agent, foreignPlanetId);
         const holds = agent.assets[foreignPlanetId]?.depositHold ?? 0;
         const surplus = balance - holds - bufferTarget;
@@ -396,7 +396,7 @@ function automaticForexPricing(agent: Agent, assets: AgentPlanetAssets, planet: 
         }
         const curName = getCurrencyResourceName(foreignPlanetId);
         const curResource = getCurrencyResource(foreignPlanetId);
-        const lastRate = (planet.marketPrices as Record<string, number>)[curName] ?? DEFAULT_EXCHANGE_RATE;
+        const lastRate = planet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
         const current = agent.assets[foreignPlanetId]?.deposits ?? 0;
         const shortfall = Math.max(0, bufferTarget - current);
         const urgency = bufferTarget > 0 ? Math.min(1, shortfall / bufferTarget) : 0;

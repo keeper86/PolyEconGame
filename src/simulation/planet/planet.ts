@@ -11,7 +11,6 @@ import type {
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
-import type { ResourceName } from './resourceCatalog';
 
 export interface Bank {
     loans: number;
@@ -119,9 +118,7 @@ export type Planet = {
     /**
      * TODO: move this to own type in market.
      */
-    marketPrices: {
-        [resourceName in ResourceName]: number;
-    };
+    marketPrices: Record<string, number>;
 
     lastMarketResult: {
         [resourceName: string]: MarketResult;

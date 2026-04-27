@@ -7,9 +7,35 @@ import { getCurrencyResourceName, DEFAULT_EXCHANGE_RATE } from './currencyResour
 export function forexTick(gameState: GameState): void {
     const planets = Array.from(gameState.planets.values());
 
+    // Build a reverse map: currency resource name → issuing planet id.
+    const curToIssuer = new Map<string, string>();
+    for (const planet of planets) {
+        curToIssuer.set(getCurrencyResourceName(planet.id), planet.id);
+    }
+
+    // Pre-scan agents to find planet pairs that actually have live forex orders,
+    // avoiding the full O(n²) work for pairs with no activity.
+    const activePairs = new Set<string>();
+    for (const agent of gameState.agents.values()) {
+        for (const [tradingPlanetId, assets] of Object.entries(agent.assets)) {
+            if (!assets.market) {
+                continue;
+            }
+            for (const curName of [...Object.keys(assets.market.sell), ...Object.keys(assets.market.buy)]) {
+                const issuingPlanetId = curToIssuer.get(curName);
+                if (issuingPlanetId && issuingPlanetId !== tradingPlanetId) {
+                    activePairs.add(`${tradingPlanetId}:${issuingPlanetId}`);
+                }
+            }
+        }
+    }
+
     for (const tradingPlanet of planets) {
         for (const issuingPlanet of planets) {
             if (issuingPlanet.id === tradingPlanet.id) {
+                continue;
+            }
+            if (!activePairs.has(`${tradingPlanet.id}:${issuingPlanet.id}`)) {
                 continue;
             }
             clearForexPair(gameState, tradingPlanet.id, issuingPlanet.id);
@@ -26,7 +52,7 @@ function clearForexPair(gameState: GameState, tradingPlanetId: string, issuingPl
     const askOrders = collectForexAsks(gameState.agents, tradingPlanet, issuingPlanetId);
     const agentBids = collectForexBids(gameState.agents, tradingPlanet, issuingPlanetId);
 
-    const referencePrice = (tradingPlanet.marketPrices as Record<string, number>)[curName] ?? DEFAULT_EXCHANGE_RATE;
+    const referencePrice = tradingPlanet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
 
     if (askOrders.length === 0 && agentBids.length === 0) {
         tradingPlanet.lastMarketResult[curName] = {
@@ -80,7 +106,7 @@ function clearForexPair(gameState: GameState, tradingPlanetId: string, issuingPl
     const { clearingPrice, totalVolume } = computeMarketSummary(agentTrades, referencePrice);
 
     if (totalVolume > 0) {
-        (tradingPlanet.marketPrices as Record<string, number>)[curName] = clearingPrice;
+        tradingPlanet.marketPrices[curName] = clearingPrice;
     }
 
     const unsoldSupply = Math.max(0, totalSupply - totalVolume);
