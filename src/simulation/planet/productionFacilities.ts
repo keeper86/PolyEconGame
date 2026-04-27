@@ -951,7 +951,7 @@ const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
     const primaryOutput = instance.produces[0]?.resource.level;
 
     const primaryOutputLevel: ResourceProcessLevel =
-        !primaryOutput || primaryOutput === 'source' ? 'raw' : primaryOutput;
+        !primaryOutput || primaryOutput === 'source' || primaryOutput === 'currency' ? 'raw' : primaryOutput;
     return { factory, primaryOutputLevel };
 };
 

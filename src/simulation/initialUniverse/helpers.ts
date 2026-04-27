@@ -163,6 +163,8 @@ export function makeAgent(opts: {
         foundedTick: 0,
         starterLoanTaken: false,
         assets: { [opts.planetId]: assets },
+        foreignDeposits: {},
+        foreignDepositHolds: {},
     };
 }
 

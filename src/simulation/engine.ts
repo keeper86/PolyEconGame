@@ -4,6 +4,7 @@ import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { marketTick } from './market/market';
+import { forexTick } from './market/forexTick';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
@@ -22,7 +23,6 @@ import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 export { seedRng };
 
 export function advanceTick(gameState: GameState) {
-    shipTick(gameState);
     gameState.planets.forEach((planet) => {
         const planetMap = new Map([[planet.id, planet]]);
 
@@ -103,4 +103,8 @@ export function advanceTick(gameState: GameState) {
             }
         }
     });
+
+    // inter-planet effects and markets
+    forexTick(gameState);
+    shipTick(gameState);
 }

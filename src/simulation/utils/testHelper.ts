@@ -254,6 +254,7 @@ export function makeBank(overrides?: Partial<Bank>): Bank {
         equity: 0,
         loanRate: 0,
         depositRate: 0,
+        foreignReserves: {},
         ...overrides,
     };
 }
@@ -503,6 +504,8 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
         assets: {
             [planetId]: makeAgentPlanetAssets(planetId),
         },
+        foreignDeposits: {},
+        foreignDepositHolds: {},
         ...overrides,
     };
 }
@@ -780,4 +783,25 @@ export function assertPerCellWorkforcePopulationConsistency(
             }
         }
     }
+}
+
+// ============================================================================
+// Forex test helpers
+// ============================================================================
+
+/**
+ * Credit an agent with foreign-currency deposits on the issuing planet's bank.
+ *
+ * This is a test-only bootstrap utility: it adjusts both the agent's
+ * `foreignDeposits` balance and the issuing planet's `bank.deposits` total
+ * so that the monetary conservation invariant is maintained.
+ *
+ * Usage:
+ *   creditForeignDeposit(agent, issuingPlanet, 500);
+ *   // agent now holds 500 units of issuingPlanet's currency
+ */
+export function creditForeignDeposit(agent: Agent, issuingPlanet: Planet, amount: number): void {
+    agent.foreignDeposits[issuingPlanet.id] = (agent.foreignDeposits[issuingPlanet.id] ?? 0) + amount;
+    issuingPlanet.bank.deposits += amount;
+    issuingPlanet.bank.loans += amount; // keep balance sheet balanced (money creation)
 }
