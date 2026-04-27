@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ComposedChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 export type PopulationBidEntry = {
     priceMin: number;
@@ -39,19 +39,19 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payl
             <p>
                 Price:{' '}
                 <span className='font-mono'>
-                    {formatNumbers(d.priceMin)} – {formatNumbers(d.priceMax)}
+                    {formatNumberWithUnit(d.priceMin, 'currency')} – {formatNumberWithUnit(d.priceMax, 'currency')}
                 </span>{' '}
                 ¤/t
             </p>
             <p>
-                Demanded: <span className='font-mono'>{formatNumbers(d.demandedQuantity)}</span> t
+                Demanded: <span className='font-mono'>{formatNumberWithUnit(d.demandedQuantity, 'tonnes')}</span>
             </p>
             <p>
-                Bought: <span className='font-mono'>{formatNumbers(d.lastBought)}</span> t (
-                {formatNumbers(d.fillRatio * 100)}%)
+                Bought: <span className='font-mono'>{formatNumberWithUnit(d.lastBought, 'tonnes')}</span> (
+                {formatNumberWithUnit(d.fillRatio * 100, 'percent')})
             </p>
             <p>
-                Spent: <span className='font-mono'>{formatNumbers(d.lastSpent)}</span>
+                Spent: <span className='font-mono'>{formatNumberWithUnit(d.lastSpent, 'currency')}</span>
             </p>
         </div>
     );
@@ -83,7 +83,7 @@ export default function PopulationDemandChart({ bids }: Props) {
         .map((b) => ({
             ...b,
             // recharts needs a string key for categorical X axis; use formatted price mid
-            name: formatNumbers(b.priceMid),
+            name: formatNumberWithUnit(b.priceMid, 'currency'),
             displayQuantity: b.demandedQuantity,
         }));
 
@@ -107,7 +107,7 @@ export default function PopulationDemandChart({ bids }: Props) {
                         ticks={logTicks}
                         allowDataOverflow
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => formatNumbers(v as number)}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
                         label={{
                             value: 'Bid Price (¤/t)',
                             position: 'insideBottom',
@@ -119,7 +119,7 @@ export default function PopulationDemandChart({ bids }: Props) {
                         tick={{ fontSize: 10 }}
                         scale='linear'
                         label={{ value: 'Quantity (t)', angle: -90, position: 'insideLeft', fontSize: 10 }}
-                        tickFormatter={(v) => formatNumbers(v as number)}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'tonnes')}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey='displayQuantity' name='Demanded' barSize={14}>

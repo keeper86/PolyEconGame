@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FacilityCardShell } from './FacilityCardShell';
@@ -35,7 +35,7 @@ function MiniCard({ entry, onChoose }: { entry: FacilityCatalogEntry; onChoose: 
                         {totalWorkers > 0 && (
                             <span className='flex items-center gap-1'>
                                 <Users className='h-3 w-3' />
-                                {formatNumbers(totalWorkers)} / scale
+                                {formatNumberWithUnit(totalWorkers, 'persons')} / scale
                             </span>
                         )}
                         {facility.powerConsumptionPerTick !== 0 && (
@@ -116,7 +116,7 @@ function BuildCard({
                         {totalWorkers > 0 && (
                             <span className='flex items-center gap-1'>
                                 <Users className='h-3 w-3' />
-                                {formatNumbers(totalWorkers)} / scale
+                                {formatNumberWithUnit(totalWorkers, 'persons')} / scale
                             </span>
                         )}
                         {facility.powerConsumptionPerTick !== 0 && (
@@ -142,14 +142,16 @@ function BuildCard({
                 <ScaleSelector value={targetScale} min={1} onChange={setTargetScale} />
                 <p className='text-xs text-muted-foreground'>
                     Construction cost:{' '}
-                    <span className='tabular-nums font-medium text-foreground'>{formatNumbers(buildCost)}</span>{' '}
+                    <span className='tabular-nums font-medium text-foreground'>
+                        {formatNumberWithUnit(buildCost, 'units')}
+                    </span>{' '}
                     construction services
                     {estimatedCredits !== null && (
                         <>
                             {' '}
                             <span className='text-muted-foreground'>≈</span>{' '}
                             <span className='tabular-nums font-medium text-foreground'>
-                                {formatNumbers(estimatedCredits)}
+                                {formatNumberWithUnit(estimatedCredits, 'currency', planetId)}
                             </span>{' '}
                             credits
                         </>

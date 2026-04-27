@@ -2,7 +2,7 @@
 
 import { useAgentId } from '@/hooks/useAgentId';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Building2, Globe, Package, Ship, Wallet } from 'lucide-react';
 import { useParams } from 'next/navigation';
@@ -67,7 +67,11 @@ export default function AgentPublicProfilePage() {
 
             {isOwner && (
                 <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>
-                    <StatCard label='Balance' value={formatNumbers(overview.balance)} icon={Wallet} />
+                    <StatCard
+                        label='Balance'
+                        value={formatNumberWithUnit(overview.balance, 'currency', overview.associatedPlanetId)}
+                        icon={Wallet}
+                    />
                     <StatCard label='Ships' value={String(overview.shipCount)} icon={Ship} />
                     <StatCard label='Active Planets' value={String(overview.planets.length)} icon={Globe} />
                 </div>

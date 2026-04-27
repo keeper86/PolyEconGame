@@ -56,7 +56,7 @@ export default function FinancialPage() {
             ) : !isLoading && assets ? (
                 <Card>
                     <CardContent className='px-3 py-3 space-y-3'>
-                        <BankPanel bank={economy.bank} />
+                        <BankPanel bank={economy.bank} planetId={planetId} />
 
                         <Separator />
                         <p className='text-sm font-semibold flex items-center gap-2'>
@@ -67,6 +67,7 @@ export default function FinancialPage() {
                             deposits={assets.deposits ?? 0}
                             loans={assets.loans ?? 0}
                             loanConditions={loanConditions}
+                            planetId={planetId}
                         />
                         <Collapsible>
                             <CollapsibleTrigger className='flex items-center gap-1 text-xs font-semibold text-muted-foreground w-full group'>

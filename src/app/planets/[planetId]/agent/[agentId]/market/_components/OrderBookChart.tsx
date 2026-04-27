@@ -28,7 +28,7 @@ import {
     Cell,
     Legend,
 } from 'recharts';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 export type OfferEntry = {
     agentId: string;
@@ -110,17 +110,18 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
         <div className='bg-background border rounded px-2 py-1.5 text-xs shadow-md space-y-0.5'>
             <p className='font-semibold'>{d.name}</p>
             <p>
-                Price: <span className='font-mono'>{formatNumbers(d.price)}</span>
+                Price: <span className='font-mono'>{formatNumberWithUnit(d.price, 'currency')}</span>
             </p>
             <p>
-                Offered: <span className='font-mono'>{formatNumbers(d.quantity)}</span> t
+                Offered: <span className='font-mono'>{formatNumberWithUnit(d.quantity, 'tonnes')}</span>
             </p>
             <p>
-                Sold: <span className='font-mono'>{formatNumbers(d.lastSold)}</span> t (
-                {formatNumbers(d.sellThrough * 100)}%)
+                Sold: <span className='font-mono'>{formatNumberWithUnit(d.lastSold, 'tonnes')}</span> (
+                {formatNumberWithUnit(d.sellThrough * 100, 'percent')})
             </p>
             <p className='text-muted-foreground'>
-                Cumulative: {formatNumbers(d.cumulativeStart)}–{formatNumbers(d.cumulativeEnd)} t
+                Cumulative: {formatNumberWithUnit(d.cumulativeStart, 'tonnes')}–
+                {formatNumberWithUnit(d.cumulativeEnd, 'tonnes')}
             </p>
         </div>
     );
@@ -183,7 +184,7 @@ export default function OrderBookChart({ offers, totalDemand, clearingPrice }: P
                         type='number'
                         domain={[Math.max(0, minP - yPad), maxP + yPad]}
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => (typeof v === 'number' ? formatNumbers(v) : String(v))}
+                        tickFormatter={(v) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency') : String(v))}
                         label={{ value: 'Price (¤/t)', angle: -90, position: 'insideLeft', fontSize: 10 }}
                     />
                     <Tooltip content={<CustomTooltip />} />
@@ -211,7 +212,7 @@ export default function OrderBookChart({ offers, totalDemand, clearingPrice }: P
                         strokeDasharray='5 3'
                         strokeWidth={1.5}
                         label={{
-                            value: `Cleared @ ${formatNumbers(clearingPrice)}`,
+                            value: `Cleared @ ${formatNumberWithUnit(clearingPrice, 'currency')}`,
                             position: 'right',
                             fontSize: 9,
                             fill: '#f59e0b',
@@ -237,7 +238,9 @@ export default function OrderBookChart({ offers, totalDemand, clearingPrice }: P
                     <span className='inline-block w-5 border-t-2 border-dashed border-amber-500' />
                     Clearing price
                 </span>
-                {totalDemand > 0 && <span className='text-violet-400'>Demand: {formatNumbers(totalDemand)} t</span>}
+                {totalDemand > 0 && (
+                    <span className='text-violet-400'>Demand: {formatNumberWithUnit(totalDemand, 'tonnes')}</span>
+                )}
             </div>
         </div>
     );

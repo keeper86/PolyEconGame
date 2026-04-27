@@ -6,7 +6,7 @@ import { StorageOverview } from '@/app/planets/[planetId]/agent/_component/Stora
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import Link from 'next/link';
 import { route } from 'nextjs-routes';
 
@@ -40,11 +40,15 @@ export default function AgentPlanetOverviewPage() {
                         <QuickStatCard label='Facilities' value={String(assets.productionFacilities?.length ?? 0)} />
                         <QuickStatCard
                             label='Workers'
-                            value={formatNumbers(
+                            value={formatNumberWithUnit(
                                 Object.values(assets.allocatedWorkers ?? {}).reduce((s, v) => s + v, 0),
+                                'persons',
                             )}
                         />
-                        <QuickStatCard label='Deposits' value={formatNumbers(assets.deposits ?? 0)} />
+                        <QuickStatCard
+                            label='Deposits'
+                            value={formatNumberWithUnit(assets.deposits ?? 0, 'currency', planetId)}
+                        />
                     </div>
 
                     <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { PopulationTransferMatrix } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
@@ -148,13 +148,19 @@ export default function TransferChart({ title, matrix, viewMode }: Props): React
                 {hasData ? (
                     <>
                         <span>
-                            Received: <span className='text-blue-500 font-medium'>{formatNumbers(totalReceived)}</span>
+                            Received:{' '}
+                            <span className='text-blue-500 font-medium'>
+                                {formatNumberWithUnit(totalReceived, 'persons')}
+                            </span>
                         </span>
                         <span>
-                            Given: <span className='text-green-600 font-medium'>{formatNumbers(totalGiven)}</span>
+                            Given:{' '}
+                            <span className='text-green-600 font-medium'>
+                                {formatNumberWithUnit(totalGiven, 'persons')}
+                            </span>
                         </span>
                         <span className='text-muted-foreground/60'>
-                            (Δ = {formatNumbers(totalReceived - totalGiven)})
+                            (Δ = {formatNumberWithUnit(totalReceived - totalGiven, 'persons')})
                         </span>
                     </>
                 ) : (
@@ -167,7 +173,7 @@ export default function TransferChart({ title, matrix, viewMode }: Props): React
                     <YAxis
                         width={40}
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => formatNumbers(v as number)}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
                         domain={yDomain}
                     />
                     <Tooltip
@@ -191,13 +197,13 @@ export default function TransferChart({ title, matrix, viewMode }: Props): React
                                         return (
                                             <div key={entry.dataKey as string} style={{ color: entry.color }}>
                                                 {entry.name}: {val > 0 ? '+' : ''}
-                                                {formatNumbers(val)}
+                                                {formatNumberWithUnit(val, 'persons')}
                                             </div>
                                         );
                                     })}
                                     <div className='mt-1 pt-1 border-t text-muted-foreground'>
                                         Total: {ageTotal > 0 ? '+' : ''}
-                                        {formatNumbers(ageTotal)}
+                                        {formatNumberWithUnit(ageTotal, 'persons')}
                                     </div>
                                 </div>
                             );

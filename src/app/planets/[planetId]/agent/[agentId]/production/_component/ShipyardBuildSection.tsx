@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -101,8 +101,10 @@ export function ShipyardBuildSection({
             </div>
 
             <div className='text-xs text-muted-foreground'>
-                Construction cost: {formatNumbers(buildCost)} cs
-                {estimatedCredits ? <span> ≈ {formatNumbers(estimatedCredits)} ₵</span> : null}
+                Construction cost: {formatNumberWithUnit(buildCost, 'units')} cs
+                {estimatedCredits ? (
+                    <span> ≈ {formatNumberWithUnit(estimatedCredits, 'currency', planetId)} ₵</span>
+                ) : null}
             </div>
 
             {buildMutation.error && <p className='text-destructive text-xs'>{buildMutation.error.message}</p>}

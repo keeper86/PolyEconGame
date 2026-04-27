@@ -1,10 +1,10 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
-import { cn, formatNumbers, formatNumberWithUnit } from '@/lib/utils';
+import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
-import { classifyMarket } from './marketHelpers';
+import { classifyMarket, getResourceByName } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
 import { getColumnClasses } from './columnConfig';
 
@@ -25,21 +25,23 @@ export default function ResourceTrigger({
 
     // Helper to get value for a column
     const getColumnValue = (columnId: string) => {
+        const resource = getResourceByName(name);
+        const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
         switch (columnId) {
             case 'currentStorage':
-                return storageQuantity !== undefined ? formatNumbers(storageQuantity) : null;
+                return storageQuantity !== undefined ? formatNumberWithUnit(storageQuantity, qtyUnit) : null;
             case 'clearingPrice':
                 return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : null;
             case 'totalProduction':
-                return overviewRow ? formatNumbers(overviewRow.totalProduction) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalProduction, qtyUnit) : null;
             case 'totalConsumption':
-                return overviewRow ? formatNumbers(overviewRow.totalConsumption) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalConsumption, qtyUnit) : null;
             case 'totalSupply':
-                return overviewRow ? formatNumbers(overviewRow.totalSupply) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSupply, qtyUnit) : null;
             case 'totalDemand':
-                return overviewRow ? formatNumbers(overviewRow.totalDemand) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalDemand, qtyUnit) : null;
             case 'totalSold':
-                return overviewRow ? formatNumbers(overviewRow.totalSold) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSold, qtyUnit) : null;
             case 'marketFill':
                 return statusConfig ? (
                     <Badge variant='outline' className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}>

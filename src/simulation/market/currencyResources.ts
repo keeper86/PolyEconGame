@@ -1,17 +1,83 @@
-/**
- * simulation/market/currencyResources.ts
- *
- * Helpers for treating each planet's currency as a tradable resource on
- * other planets' forex markets.
- *
- * Currency resources are dynamic (not in the static ALL_RESOURCES catalog).
- * They have zero volume and mass, are perfectly durable, and carry no storage
- * cost.  Ownership is backed 1-to-1 by the agent's foreignDeposits on the
- * issuing planet.
- */
-
 import { PRICE_FLOOR } from '../constants';
 import type { Resource } from '../planet/claims';
+
+const currencyResourceDefault = {
+    form: 'currency' as const,
+    level: 'currency' as const,
+    volumePerQuantity: Number.MAX_SAFE_INTEGER,
+    massPerQuantity: Number.MAX_SAFE_INTEGER,
+};
+
+export type CurrencyResource = {
+    symbol: string;
+    resource: Resource;
+};
+
+const currencyEarth: Resource = {
+    ...currencyResourceDefault,
+    name: 'Eartho',
+};
+
+const currencyGune: Resource = {
+    ...currencyResourceDefault,
+    name: 'Wüsten-Dollar',
+};
+
+const currencyIcedonia: Resource = {
+    ...currencyResourceDefault,
+    name: 'Liquido',
+};
+
+const currencyParadies: Resource = {
+    ...currencyResourceDefault,
+    name: 'Paradies-Pesete',
+};
+
+const currencySuerte: Resource = {
+    ...currencyResourceDefault,
+    name: 'Scheine',
+};
+
+const currencyPandara: Resource = {
+    ...currencyResourceDefault,
+    name: 'Naaavi',
+};
+
+const currencyAlphaCentauri: Resource = {
+    ...currencyResourceDefault,
+    name: 'Alphas',
+};
+
+export const currencyMapping: Record<string, CurrencyResource> = {
+    'earth': {
+        symbol: '€',
+        resource: currencyEarth,
+    },
+    'gune': {
+        symbol: '₩',
+        resource: currencyGune,
+    },
+    'icedonia': {
+        symbol: '₤',
+        resource: currencyIcedonia,
+    },
+    'paradies': {
+        symbol: '₽',
+        resource: currencyParadies,
+    },
+    'suerte': {
+        symbol: '$',
+        resource: currencySuerte,
+    },
+    'pandara': {
+        symbol: '₦',
+        resource: currencyPandara,
+    },
+    'alpha-centauri': {
+        symbol: '₳',
+        resource: currencyAlphaCentauri,
+    },
+};
 
 export const CURRENCY_RESOURCE_PREFIX = 'CUR_';
 

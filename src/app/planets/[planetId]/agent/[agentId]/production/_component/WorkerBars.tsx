@@ -4,7 +4,7 @@ import React from 'react';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevels } from '@/simulation/population/education';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { EDU_COLORS } from '@/app/planets/[planetId]/agent/_component/workforce-theme';
 
 export const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
@@ -67,7 +67,9 @@ export function WorkerBars({
                                 />
                                 <span className='relative z-10 flex items-center justify-between w-full px-2 py-0.5 text-xs text-outline-strong'>
                                     <span>{educationLevels[edu].name}</span>
-                                    <span className='tabular-nums'>{formatNumbers(Math.round(eff * required))}</span>
+                                    <span className='tabular-nums'>
+                                        {formatNumberWithUnit(Math.round(eff * required), 'persons')}
+                                    </span>
                                 </span>
                             </div>
                         </TooltipTrigger>

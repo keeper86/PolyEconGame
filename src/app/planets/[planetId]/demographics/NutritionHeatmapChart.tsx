@@ -7,7 +7,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { SERVICE_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
@@ -157,7 +157,7 @@ function makeTooltip(
         return (
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[210px]'>
                 <div className='font-medium mb-1'>
-                    Age {label} · {formatNumbers(totalPop)}
+                    Age {label} · {formatNumberWithUnit(totalPop, 'persons')}
                 </div>
                 {groupKeys.map((gk) => {
                     const pop = row[`${gk}_total`] ?? 0;
@@ -173,7 +173,7 @@ function makeTooltip(
                                     className='inline-block w-2 h-2 rounded-sm flex-shrink-0'
                                     style={{ background: groupColors[gk] }}
                                 />
-                                {groupLabels[gk]} · {formatNumbers(pop)}
+                                {groupLabels[gk]} · {formatNumberWithUnit(pop, 'persons')}
                             </div>
                             <div className='pl-3 text-muted-foreground'>
                                 starvation {formatPct(avgStarvation)} · buffer {formatPct(avgBuffer)}
@@ -186,7 +186,7 @@ function makeTooltip(
                                     }
                                     return (
                                         <span key={b.key} style={{ color: b.color }}>
-                                            {b.label.split(' ')[0]} {formatNumbers(cnt)}
+                                            {b.label.split(' ')[0]} {formatNumberWithUnit(cnt, 'persons')}
                                         </span>
                                     );
                                 })}
@@ -346,7 +346,9 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                 style={{ borderLeftColor: starvingColor, borderLeftWidth: 3 }}
             >
                 <div className='text-muted-foreground text-[9px] leading-tight truncate'>Starving</div>
-                <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(totalStarving)}</div>
+                <div className='font-semibold text-[11px] leading-tight'>
+                    {formatNumberWithUnit(totalStarving, 'persons')}
+                </div>
                 <div className='text-[9px] text-muted-foreground leading-tight'>{formatPct(starvingPct)}</div>
             </div>
 
@@ -373,7 +375,9 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
             <Card className='flex-1 overflow-hidden' style={{ borderLeftColor: starvingColor, borderLeftWidth: 3 }}>
                 <CardContent className='px-3 py-2.5 space-y-0.5'>
                     <p className='text-[11px] text-muted-foreground font-medium'>Starving</p>
-                    <p className='text-lg font-semibold leading-tight'>{formatNumbers(totalStarving)}</p>
+                    <p className='text-lg font-semibold leading-tight'>
+                        {formatNumberWithUnit(totalStarving, 'persons')}
+                    </p>
                     <p className='text-xs text-muted-foreground'>{formatPct(starvingPct)}</p>
                 </CardContent>
             </Card>
@@ -410,7 +414,12 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                     <ResponsiveContainer width='100%' minHeight={200} minWidth={290}>
                         <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
                             <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
+                            <YAxis
+                                width={40}
+                                tick={{ fontSize: 10 }}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                                domain={yDomain}
+                            />
                             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                             {isVerySmall ? null : <Tooltip content={tooltip as any} />}
 

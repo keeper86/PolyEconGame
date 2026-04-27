@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -247,7 +247,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumbers(v)}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -275,7 +275,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
                                     </div>
                                     {filtered.map((p) => (
                                         <div key={p.name} style={{ color: '#e2e8f0' }}>
-                                            Population: {formatNumbers(p.value as number)}
+                                            Population: {formatNumberWithUnit(p.value as number, 'persons')}
                                         </div>
                                     ))}
                                 </div>
@@ -368,11 +368,11 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumbers(v)}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
                     />
                     <Tooltip
                         labelFormatter={(v) => `Year ${Math.floor(v as number)}`}
-                        formatter={(v) => [formatNumbers(v as number), 'Avg population']}
+                        formatter={(v) => [formatNumberWithUnit(v as number, 'persons'), 'Avg population']}
                     />
                     <Area
                         type='monotone'
@@ -434,11 +434,11 @@ function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumbers(v)}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
                     />
                     <Tooltip
                         labelFormatter={(v) => `Y${Math.round(v as number)}`}
-                        formatter={(v) => [formatNumbers(v as number), 'Avg population']}
+                        formatter={(v) => [formatNumberWithUnit(v as number, 'persons'), 'Avg population']}
                     />
                     <Area
                         type='monotone'

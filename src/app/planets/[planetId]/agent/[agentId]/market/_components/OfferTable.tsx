@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { cn, formatNumbers, formatNumberWithUnit, getCurrencySymbol } from '@/lib/utils';
+import { cn, formatNumberWithUnit, getCurrencySymbol } from '@/lib/utils';
 
 export type OfferRow = {
     agentId: string;
@@ -99,19 +99,21 @@ function OfferTableComponent({ offers, clearingPrice, planetId }: Props): React.
                                     )}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums font-mono'>
-                                    {formatNumbers(row.offerPrice)}
+                                    {formatNumberWithUnit(row.offerPrice, 'currency', planetId)}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums'>
-                                    {formatNumbers(row.lastPlacedQuantity)}
+                                    {formatNumberWithUnit(row.lastPlacedQuantity, 'tonnes')}
                                 </td>
-                                <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.lastSold)}</td>
+                                <td className='py-1 pr-2 text-right tabular-nums'>
+                                    {formatNumberWithUnit(row.lastSold, 'tonnes')}
+                                </td>
                                 <td
                                     className={cn(
                                         'py-1 pr-2 text-right tabular-nums',
                                         sellThroughClass(row.sellThrough),
                                     )}
                                 >
-                                    {formatNumbers(row.sellThrough * 100)}%
+                                    {formatNumberWithUnit(row.sellThrough * 100, 'percent')}
                                 </td>
                                 <td className='py-1 text-right tabular-nums'>
                                     {formatNumberWithUnit(row.lastRevenue, 'currency', planetId)}

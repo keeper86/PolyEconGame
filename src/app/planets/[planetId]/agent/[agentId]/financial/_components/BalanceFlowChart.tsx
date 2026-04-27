@@ -2,7 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import React, { useMemo } from 'react';
 import {
     Area,
@@ -189,7 +189,7 @@ export function BalanceFlowChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumbers(v as number)}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
                             />
                             <YAxis
                                 yAxisId='right'
@@ -200,7 +200,7 @@ export function BalanceFlowChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumbers(v as number)}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
                             />
                             <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                             <ReferenceLine

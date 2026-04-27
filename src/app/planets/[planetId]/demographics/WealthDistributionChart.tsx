@@ -6,7 +6,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { Card, CardContent } from '@/components/ui/card';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '@/app/planets/_components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import type { AggRow, GroupMode } from './demographicsTypes';
@@ -51,7 +51,7 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {formatNumbers(mean)} · {formatNumbers(pop)}
+                                {formatNumberWithUnit(mean, 'currency')} · {formatNumberWithUnit(pop, 'persons')}
                             </span>
                         </div>
                     );
@@ -175,7 +175,7 @@ export default function WealthDistributionChart({ rows, groupMode }: Props): Rea
                         <YAxis
                             width={48}
                             tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => formatNumbers(v)}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
                             domain={yDomain}
                         />
                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

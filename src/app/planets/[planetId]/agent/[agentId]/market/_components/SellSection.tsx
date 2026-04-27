@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { PRICE_FLOOR } from '@/simulation/constants';
-import { formatNumbers, formatNumberWithUnit } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { SellSectionProps } from './marketTypes';
-import { productionPerTick, sellFulfillmentClass, priceArrow } from './marketHelpers';
+import { productionPerTick, sellFulfillmentClass, priceArrow, getResourceByName } from './marketHelpers';
 
 export default function SellSection({
     resourceName,
@@ -132,7 +132,11 @@ export default function SellSection({
                             <span>
                                 Max capacity production{' '}
                                 <span className='font-semibold text-foreground'>
-                                    {formatNumbers(producedPerTick)}/tick
+                                    {formatNumberWithUnit(
+                                        producedPerTick,
+                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                    )}
+                                    /tick
                                 </span>
                             </span>
                         </div>
@@ -210,7 +214,7 @@ export default function SellSection({
                                 >
                                     {effectiveSellQty === 0
                                         ? 'Nothing to sell — order inactive'
-                                        : `Sell ${formatNumbers(effectiveSellQty)} / tick`}
+                                        : `Sell ${formatNumberWithUnit(effectiveSellQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
                                 </div>
                             )}
                             {retainmentPresets && !local.offerAutomated && (
@@ -241,7 +245,15 @@ export default function SellSection({
 
                     {(offer?.lastSold !== undefined || offer?.lastRevenue !== undefined) && (
                         <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                            {offer.lastSold !== undefined && <span>Last sold: {formatNumbers(offer.lastSold)}</span>}
+                            {offer.lastSold !== undefined && (
+                                <span>
+                                    Last sold:{' '}
+                                    {formatNumberWithUnit(
+                                        offer.lastSold,
+                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                    )}
+                                </span>
+                            )}
                             {offer.lastRevenue !== undefined && (
                                 <span>Revenue: {formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)}</span>
                             )}

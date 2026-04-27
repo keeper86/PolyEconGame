@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { AgentClaimEntry, ClaimResourceSummary } from '@/server/controller/planet';
 import { MONTHS_PER_YEAR, TICKS_PER_MONTH } from '@/simulation/constants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -97,13 +97,15 @@ export function ActiveClaimCard({
             <ClaimCardHeader resourceName={claim.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
-                    Available: {formatNumbers(summary.availableCapacity)} of {formatNumbers(summary.totalCapacity)}
+                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units')} of{' '}
+                    {formatNumberWithUnit(summary.totalCapacity, 'units')}
                 </p>
                 <div className='space-y-1'>
                     <div className='flex justify-between text-xs'>
                         <span className='text-muted-foreground'>Stock</span>
                         <span className='font-medium'>
-                            {formatNumbers(claim.quantity)} / {formatNumbers(claim.maximumCapacity)} ({fillPct}%)
+                            {formatNumberWithUnit(claim.quantity, 'units')} /{' '}
+                            {formatNumberWithUnit(claim.maximumCapacity, 'units')} ({fillPct}%)
                         </span>
                     </div>
                     <div className='h-1.5 w-full rounded-full bg-secondary'>
@@ -118,7 +120,7 @@ export function ActiveClaimCard({
                 <div className='grid grid-cols-2 gap-2 text-xs'>
                     <div className='space-y-0.5'>
                         <p className='text-muted-foreground'>Extraction / tick</p>
-                        <p className='font-medium'>{formatNumbers(claim.extractionRatePerTick)}</p>
+                        <p className='font-medium'>{formatNumberWithUnit(claim.extractionRatePerTick, 'units')}</p>
                     </div>
                     <div className='space-y-0.5'>
                         <p className='text-muted-foreground'>Depletion</p>
@@ -133,12 +135,14 @@ export function ActiveClaimCard({
                         <>
                             <div className='space-y-0.5'>
                                 <p className='text-muted-foreground'>Cost / tick</p>
-                                <p className='font-medium'>{formatNumbers(claim.costPerTick)}</p>
+                                <p className='font-medium'>
+                                    {formatNumberWithUnit(claim.costPerTick, 'currency', planetId)}
+                                </p>
                             </div>
                             <div className='space-y-0.5'>
                                 <p className='text-muted-foreground'>Regen / tick</p>
                                 <p className='font-medium text-green-600 dark:text-green-400'>
-                                    +{formatNumbers(claim.regenerationRate)}
+                                    +{formatNumberWithUnit(claim.regenerationRate, 'units')}
                                 </p>
                             </div>
                         </>
@@ -149,6 +153,7 @@ export function ActiveClaimCard({
                     <div className='space-y-3 border-t pt-3 mt-auto'>
                         <ClaimSizeForm
                             summary={summary}
+                            planetId={planetId}
                             financials={financials}
                             tierIndex={expandTierIndex}
                             onTierChange={setExpandTierIndex}

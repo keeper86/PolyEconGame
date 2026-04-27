@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { eduLabel, sumByEdu, pct, EDU_COLORS } from './workforce-theme';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Headcount table — one row per education level
@@ -65,14 +65,16 @@ export function HeadcountTable({
                                         {eduLabel(edu)}
                                     </Badge>
                                 </td>
-                                <td className='py-1.5 px-2 text-right tabular-nums'>{formatNumbers(target)}</td>
+                                <td className='py-1.5 px-2 text-right tabular-nums'>
+                                    {formatNumberWithUnit(target, 'persons')}
+                                </td>
                                 <td className='py-1.5 px-2 text-right tabular-nums font-medium'>
-                                    {formatNumbers(active)}
+                                    {formatNumberWithUnit(active, 'persons')}
                                 </td>
                                 <td className='py-1.5 px-2 text-right tabular-nums text-orange-500'>
                                     {totalDep > 0 ? (
                                         <>
-                                            {formatNumbers(totalDep)}
+                                            {formatNumberWithUnit(totalDep, 'persons')}
                                             <span className='text-violet-500 ml-0.5 text-[10px]'>
                                                 ({pct(retiring, totalDep)}%)
                                             </span>
@@ -85,7 +87,7 @@ export function HeadcountTable({
                                     <td
                                         className={`py-1.5 px-2 text-right tabular-nums ${unused > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
                                     >
-                                        {unused > 0 ? formatNumbers(unused) : '0'}
+                                        {unused > 0 ? formatNumberWithUnit(unused, 'persons') : '0'}
                                     </td>
                                 )}
                                 <td className='py-1.5 px-2 text-right tabular-nums'>
@@ -110,7 +112,7 @@ export function HeadcountTable({
                                     }`}
                                 >
                                     {delta > 0 ? '+' : ''}
-                                    {formatNumbers(delta)}
+                                    {formatNumberWithUnit(delta, 'persons')}
                                 </td>
                             </tr>
                         );
@@ -119,9 +121,11 @@ export function HeadcountTable({
                     <tr className='font-medium bg-muted/20'>
                         <td className='py-1.5 px-2'>Total</td>
                         <td className='py-1.5 px-2 text-right tabular-nums'>
-                            {formatNumbers(sumByEdu(allocatedWorkers))}
+                            {formatNumberWithUnit(sumByEdu(allocatedWorkers), 'persons')}
                         </td>
-                        <td className='py-1.5 px-2 text-right tabular-nums'>{formatNumbers(sumByEdu(activeByEdu))}</td>
+                        <td className='py-1.5 px-2 text-right tabular-nums'>
+                            {formatNumberWithUnit(sumByEdu(activeByEdu), 'persons')}
+                        </td>
                         <td className='py-1.5 px-2 text-right tabular-nums text-orange-500'>
                             {(() => {
                                 const total = sumByEdu(departingByEdu) + sumByEdu(retiringByEdu);
@@ -130,7 +134,7 @@ export function HeadcountTable({
                                 }
                                 return (
                                     <>
-                                        {formatNumbers(total)}
+                                        {formatNumberWithUnit(total, 'persons')}
                                         <span className='text-violet-500 ml-0.5 text-[10px]'>
                                             ({pct(sumByEdu(retiringByEdu), total)}%)
                                         </span>
@@ -140,7 +144,7 @@ export function HeadcountTable({
                         </td>
                         {hasUnused && (
                             <td className='py-1.5 px-2 text-right tabular-nums text-amber-500'>
-                                {unusedWorkers ? formatNumbers(sumByEdu(unusedWorkers)) : '0'}
+                                {unusedWorkers ? formatNumberWithUnit(sumByEdu(unusedWorkers), 'persons') : '0'}
                             </td>
                         )}
                         <td className='py-1.5 px-2 text-right tabular-nums' colSpan={2} />
@@ -152,7 +156,7 @@ export function HeadcountTable({
                             }`}
                         >
                             {sumByEdu(activeByEdu) - sumByEdu(allocatedWorkers) > 0 ? '+' : ''}
-                            {formatNumbers(sumByEdu(activeByEdu) - sumByEdu(allocatedWorkers))}
+                            {formatNumberWithUnit(sumByEdu(activeByEdu) - sumByEdu(allocatedWorkers), 'persons')}
                         </td>
                     </tr>
                 </tbody>

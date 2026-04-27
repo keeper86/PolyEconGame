@@ -2,7 +2,7 @@
 
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { AC_ID } from '@/simulation/utils/initialWorld';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
@@ -46,7 +46,7 @@ export default function PlanetDetailLayout({ children }: { children: ReactNode }
             <span className='flex justify-between mb-2'>
                 <h1 className='text-3xl font-bold'>{planetName}</h1>
                 {populationTotal !== undefined && (
-                    <span className='text-sm text-muted-foreground self-end'>{`Total population: ${formatNumbers(populationTotal)}`}</span>
+                    <span className='text-sm text-muted-foreground self-end'>{`Total population: ${formatNumberWithUnit(populationTotal, 'persons')}`}</span>
                 )}
             </span>
             {children}

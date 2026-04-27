@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { formatNumbers, formatNumberWithUnit } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
-import { consumptionPerTick, buyFulfillmentClass } from './marketHelpers';
+import { consumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
 
 export default function BuySection({
     resourceName,
@@ -121,7 +121,11 @@ export default function BuySection({
                             <span>
                                 Max capacity consumption{' '}
                                 <span className='font-semibold text-foreground'>
-                                    {formatNumbers(consumedPerTick)}/tick
+                                    {formatNumberWithUnit(
+                                        consumedPerTick,
+                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                    )}
+                                    /tick
                                 </span>
                             </span>
                         </div>
@@ -146,7 +150,10 @@ export default function BuySection({
                             />
                             {overviewRow && !local.bidAutomated && (
                                 <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                                    <span>Current price: {formatNumbers(overviewRow.clearingPrice)}</span>
+                                    <span>
+                                        Current price:{' '}
+                                        {formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId)}
+                                    </span>
                                     <Button
                                         variant='outline'
                                         size='sm'
@@ -191,13 +198,21 @@ export default function BuySection({
                                 >
                                     {effectiveBuyQty === 0
                                         ? 'Target met — order inactive'
-                                        : `Buy ${formatNumbers(effectiveBuyQty)} / tick`}
+                                        : `Buy ${formatNumberWithUnit(effectiveBuyQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
                                 </div>
                             )}
                             {isFacilityInput && (
                                 <div className='space-y-1 text-[11px] text-muted-foreground'>
                                     <div>
-                                        {formatNumbers(consumedPerTick)}/tick · Stock: {formatNumbers(inventoryQty)}
+                                        {formatNumberWithUnit(
+                                            consumedPerTick,
+                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                        )}
+                                        /tick · Stock:{' '}
+                                        {formatNumberWithUnit(
+                                            inventoryQty,
+                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                        )}
                                         {inventoryInBuyTicks !== null && (
                                             <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
                                         )}
@@ -226,7 +241,15 @@ export default function BuySection({
                                         />
                                         {suggestedStorageTarget !== null && (
                                             <>
-                                                <span>→ {formatNumbers(suggestedStorageTarget)}</span>
+                                                <span>
+                                                    →{' '}
+                                                    {formatNumberWithUnit(
+                                                        suggestedStorageTarget,
+                                                        resourceFormToUnit(
+                                                            getResourceByName(resourceName)?.form ?? 'pieces',
+                                                        ),
+                                                    )}
+                                                </span>
                                                 <Button
                                                     variant='outline'
                                                     className='h-6 text-[11px] px-1.5'
@@ -249,7 +272,15 @@ export default function BuySection({
 
                     {(bid?.lastBought !== undefined || bid?.lastSpent !== undefined) && (
                         <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                            {bid.lastBought !== undefined && <span>Last bought: {formatNumbers(bid.lastBought)}</span>}
+                            {bid.lastBought !== undefined && (
+                                <span>
+                                    Last bought:{' '}
+                                    {formatNumberWithUnit(
+                                        bid.lastBought,
+                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                    )}
+                                </span>
+                            )}
                             {bid.lastSpent !== undefined && (
                                 <span>Spent: {formatNumberWithUnit(bid.lastSpent, 'currency', planetId)}</span>
                             )}

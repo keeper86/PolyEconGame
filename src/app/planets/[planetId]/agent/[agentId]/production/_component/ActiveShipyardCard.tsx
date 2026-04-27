@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { useAgentId } from '@/hooks/useAgentId';
 import { usePlanetId } from '@/hooks/usePlanetId';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
 import type { BaseShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
@@ -272,8 +272,10 @@ export function ActiveShipyardCard({
                             onValueChange={([v]) => setTargetScale(v)}
                         />
                         <div className='text-muted-foreground'>
-                            Construction cost: {formatNumbers(expandCost)} cs
-                            {estimatedCredits ? <span> ≈ {formatNumbers(estimatedCredits)} ₵</span> : null}
+                            Construction cost: {formatNumberWithUnit(expandCost, 'units')} cs
+                            {estimatedCredits ? (
+                                <span> ≈ {formatNumberWithUnit(estimatedCredits, 'currency', planetId)} ₵</span>
+                            ) : null}
                         </div>
                         <div className='flex gap-2'>
                             <Button
@@ -327,7 +329,10 @@ export function ActiveShipyardCard({
                         <div className='flex justify-between text-xs'>
                             <span className='text-muted-foreground'>Resulting scale</span>
                             <span className='font-medium tabular-nums'>
-                                {formatNumbers(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1))}
+                                {formatNumberWithUnit(
+                                    facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1),
+                                    'units',
+                                )}
                             </span>
                         </div>
                         <div className='flex gap-2'>

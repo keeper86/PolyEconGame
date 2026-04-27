@@ -1,7 +1,7 @@
 'use client';
 
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -69,7 +69,11 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
                     <div className='flex items-center justify-between gap-2 mt-1'>
                         <span className='text-xs text-muted-foreground'>
                             Cost:{' '}
-                            {formatNumbers(type === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST)}{' '}
+                            {formatNumberWithUnit(
+                                type === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST,
+                                'currency',
+                                planetId,
+                            )}{' '}
                             {type === 'commercial' && '(initial loan)'}
                         </span>
                         <Button

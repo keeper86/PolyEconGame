@@ -1,6 +1,6 @@
 'use client';
 
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Coins, TrendingDown, TrendingUp } from 'lucide-react';
 import React from 'react';
 
@@ -12,6 +12,7 @@ type Props = {
         blendedMonthlyExpenses: number;
         monthlyNetCashFlow: number;
     };
+    planetId: string;
 };
 
 function Stat({
@@ -38,7 +39,12 @@ function Stat({
     );
 }
 
-export default function AgentFinancialOverview({ deposits, loans, loanConditions }: Props): React.ReactElement {
+export default function AgentFinancialOverview({
+    deposits,
+    loans,
+    loanConditions,
+    planetId,
+}: Props): React.ReactElement {
     const netPosition = deposits - loans;
 
     return (
@@ -47,13 +53,13 @@ export default function AgentFinancialOverview({ deposits, loans, loanConditions
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Firm deposits'
-                        value={formatNumbers(deposits)}
+                        value={formatNumberWithUnit(deposits, 'currency', planetId)}
                         icon={<Coins className='h-3 w-3' />}
                         valueClassName={deposits < 0 ? 'text-red-500' : deposits === 0 ? 'text-muted-foreground' : ''}
                     />
                     <Stat
                         label='Outstanding loans'
-                        value={formatNumbers(loans)}
+                        value={formatNumberWithUnit(loans, 'currency', planetId)}
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={
                             loans === 0 ? 'text-muted-foreground' : loans > deposits ? 'text-red-500' : 'text-amber-500'
@@ -61,7 +67,7 @@ export default function AgentFinancialOverview({ deposits, loans, loanConditions
                     />
                     <Stat
                         label='Net position (deposits − loans)'
-                        value={formatNumbers(netPosition)}
+                        value={formatNumberWithUnit(netPosition, 'currency', planetId)}
                         icon={
                             netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />
                         }
@@ -77,11 +83,11 @@ export default function AgentFinancialOverview({ deposits, loans, loanConditions
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
                     <Stat
                         label='Monthly revenue (projected)'
-                        value={formatNumbers(loanConditions.blendedMonthlyRevenue)}
+                        value={formatNumberWithUnit(loanConditions.blendedMonthlyRevenue, 'currency', planetId)}
                     />
                     <Stat
                         label='Monthly expenses (projected)'
-                        value={formatNumbers(loanConditions.blendedMonthlyExpenses)}
+                        value={formatNumberWithUnit(loanConditions.blendedMonthlyExpenses, 'currency', planetId)}
                         valueClassName={
                             loanConditions.blendedMonthlyExpenses === 0
                                 ? 'text-muted-foreground'
@@ -92,7 +98,7 @@ export default function AgentFinancialOverview({ deposits, loans, loanConditions
                     />
                     <Stat
                         label='Net monthly cash flow (projected)'
-                        value={formatNumbers(loanConditions.monthlyNetCashFlow)}
+                        value={formatNumberWithUnit(loanConditions.monthlyNetCashFlow, 'currency', planetId)}
                         valueClassName={
                             loanConditions.monthlyNetCashFlow === 0
                                 ? 'text-muted-foreground'

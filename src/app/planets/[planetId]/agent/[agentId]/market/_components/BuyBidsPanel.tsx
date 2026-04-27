@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 
 export type BuyBidEntry = {
@@ -208,9 +208,10 @@ export default function BuyBidsPanel({
                             <Alert variant='destructive'>
                                 <AlertCircle className='h-4 w-4' />
                                 <AlertDescription className='text-xs'>
-                                    Current deposits ({formatNumbers(deposits)}) are below the total bid cost (
-                                    {formatNumbers(totalBidCost)}). Bids that cannot be fully funded will not clear. Top
-                                    up your deposits or reduce bid quantities.
+                                    Current deposits ({formatNumberWithUnit(deposits, 'currency', planetId)}) are below
+                                    the total bid cost ({formatNumberWithUnit(totalBidCost, 'currency', planetId)}).
+                                    Bids that cannot be fully funded will not clear. Top up your deposits or reduce bid
+                                    quantities.
                                 </AlertDescription>
                             </Alert>
                         )}
@@ -250,10 +251,16 @@ export default function BuyBidsPanel({
                                                 </div>
                                                 <div className='flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums'>
                                                     {snap?.lastBought !== undefined && (
-                                                        <span>Bought last tick: {formatNumbers(snap.lastBought)}</span>
+                                                        <span>
+                                                            Bought last tick:{' '}
+                                                            {formatNumberWithUnit(snap.lastBought, 'tonnes')}
+                                                        </span>
                                                     )}
                                                     {snap?.lastSpent !== undefined && (
-                                                        <span>Spent: {formatNumbers(snap.lastSpent)}</span>
+                                                        <span>
+                                                            Spent:{' '}
+                                                            {formatNumberWithUnit(snap.lastSpent, 'currency', planetId)}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>

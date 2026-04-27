@@ -4,7 +4,7 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -230,7 +230,7 @@ function MonthlyMetricChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumbers(v as number)}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units')}
                             />
                             <Tooltip
                                 content={({ active, payload, label }) => {
@@ -259,12 +259,13 @@ function MonthlyMetricChart({
                                             </div>
                                             {hasCurrentVal && (
                                                 <div style={{ color: '#e2e8f0' }}>
-                                                    {config.title}: {formatNumbers(current.value as number)}
+                                                    {config.title}:{' '}
+                                                    {formatNumberWithUnit(current.value as number, 'units')}
                                                 </div>
                                             )}
                                             {hasGhostVal && (
                                                 <div style={{ color: '#64748b' }}>
-                                                    Last year: {formatNumbers(ghost.value as number)}
+                                                    Last year: {formatNumberWithUnit(ghost.value as number, 'units')}
                                                 </div>
                                             )}
                                         </div>
@@ -359,11 +360,11 @@ function NonMonthlyMetricChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumbers(v as number)}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units')}
                             />
                             <Tooltip
                                 labelFormatter={(v) => tooltipLabel(v as number)}
-                                formatter={(v) => [formatNumbers(v as number), config.title]}
+                                formatter={(v) => [formatNumberWithUnit(v as number, 'units'), config.title]}
                             />
                             <Area
                                 type='monotone'

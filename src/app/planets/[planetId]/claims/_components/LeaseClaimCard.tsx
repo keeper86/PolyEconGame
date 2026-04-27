@@ -3,7 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
@@ -47,11 +47,13 @@ export function LeaseClaimCard({
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
-                    Available: {formatNumbers(summary.availableCapacity)} of {formatNumbers(summary.totalCapacity)}
+                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units')} of{' '}
+                    {formatNumberWithUnit(summary.totalCapacity, 'units')}
                 </p>
                 <div className='space-y-3'>
                     <ClaimSizeForm
                         summary={summary}
+                        planetId={planetId}
                         financials={financials}
                         tierIndex={tierIndex}
                         onTierChange={setTierIndex}

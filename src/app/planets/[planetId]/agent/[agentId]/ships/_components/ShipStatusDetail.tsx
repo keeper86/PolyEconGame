@@ -9,7 +9,7 @@ import { ArrowRight } from 'lucide-react';
 import type { TransportShip, ConstructionShip, PassengerShip } from '@/simulation/ships/ships';
 import { PassengerManifestDialog } from './PassengerManifestDialog';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 type PlanetSummary = { planetId: string; name: string };
 
@@ -267,7 +267,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                                 isLimiting={groceryEff === minEff}
                                 planetId={null}
                                 agentId={null}
-                                quantityLabel={`${formatNumbers(grocery.currently)} (${formatNumbers(grocery.goal)})`}
+                                quantityLabel={`${formatNumberWithUnit(grocery.currently, 'units')} (${formatNumberWithUnit(grocery.goal, 'units')})`}
                             />
                             <ProductQuantity
                                 resource={{ name: 'Healthcare Service' }}
@@ -276,7 +276,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                                 isLimiting={healthcareEff === minEff}
                                 planetId={null}
                                 agentId={null}
-                                quantityLabel={`${formatNumbers(healthcare.currently)} (${formatNumbers(healthcare.goal)})`}
+                                quantityLabel={`${formatNumberWithUnit(healthcare.currently, 'units')} (${formatNumberWithUnit(healthcare.goal, 'units')})`}
                             />
                             <ProductQuantity
                                 resource={{ name: 'Education Service' }}
@@ -285,7 +285,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                                 isLimiting={educationEff === minEff}
                                 planetId={null}
                                 agentId={null}
-                                quantityLabel={`${formatNumbers(education.currently)} (${formatNumbers(education.goal)})`}
+                                quantityLabel={`${formatNumberWithUnit(education.currently, 'units')} (${formatNumberWithUnit(education.goal, 'units')})`}
                             />
                         </div>
                     </div>

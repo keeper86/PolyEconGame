@@ -6,7 +6,7 @@ import type { WorkforceSummary } from './workforce-summary';
 import { CHART_COLORS, EDU_COLORS, eduLabel } from './workforce-theme';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { educationLevelKeys } from '@/simulation/population/education';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Colours for the departure-reason breakdown
@@ -93,16 +93,17 @@ export function AgeDistributionChart({
                                             <div className='font-medium mb-1'>Age {label}</div>
                                             {payload.map((entry) => (
                                                 <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {formatNumbers(entry.value as number)}
+                                                    {entry.name}:{' '}
+                                                    {formatNumberWithUnit(entry.value as number, 'persons')}
                                                 </div>
                                             ))}
                                             {totalLeaving > 0 && (
                                                 <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                                                    Total leaving: {formatNumbers(totalLeaving)}
+                                                    Total leaving: {formatNumberWithUnit(totalLeaving, 'persons')}
                                                 </div>
                                             )}
                                             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                                                Total: {formatNumbers(total)}
+                                                Total: {formatNumberWithUnit(total, 'persons')}
                                             </div>
                                         </div>
                                     );
@@ -137,11 +138,12 @@ export function AgeDistributionChart({
                                             <div className='font-medium mb-1'>Age {label}</div>
                                             {payload.map((entry) => (
                                                 <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                    {entry.name}: {formatNumbers(entry.value as number)}
+                                                    {entry.name}:{' '}
+                                                    {formatNumberWithUnit(entry.value as number, 'persons')}
                                                 </div>
                                             ))}
                                             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                                                Total: {formatNumbers(total)}
+                                                Total: {formatNumberWithUnit(total, 'persons')}
                                             </div>
                                         </div>
                                     );
