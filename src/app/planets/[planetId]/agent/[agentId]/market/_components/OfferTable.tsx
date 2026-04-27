@@ -42,7 +42,7 @@ function sellThroughClass(st: number): string {
 
 function OfferTableComponent({ offers, clearingPrice }: Props): React.ReactElement {
     if (offers.length === 0) {
-        return <p className='text-xs text-muted-foreground py-2'>No food sellers this tick.</p>;
+        return <p className='text-xs text-muted-foreground py-2'>No sellers this tick.</p>;
     }
 
     // The marginal agent is the one whose offer price is closest to the

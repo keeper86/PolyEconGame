@@ -48,3 +48,55 @@ export const formatNumbers = (n: number | null | undefined): string => {
             .replace(/\.$/u, '') + currentSuffix
     );
 };
+
+export type CurrencyInfo = {
+    symbol: string;
+    name: string;
+};
+const currencyMapping: Record<string, CurrencyInfo> = {
+    earth: {
+        symbol: '€',
+        name: 'Eartho',
+    },
+    gune: {
+        symbol: '₩',
+        name: 'Wüsten-Dollar',
+    },
+    icedonia: {
+        symbol: '₤',
+        name: 'Liquido',
+    },
+    paradies: {
+        symbol: '₽',
+        name: 'Paradies-Pesete',
+    },
+    suerte: {
+        symbol: '$',
+        name: 'Scheine',
+    },
+    pandara: {
+        symbol: '₦',
+        name: "Na'avi",
+    },
+    centauri: {
+        symbol: '₳',
+        name: 'Alphas',
+    },
+};
+export type Units = 'currency' | 'tonnes' | 'units';
+export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, planetId?: string): string => {
+    const formattedNumber = formatNumbers(n);
+    if (formattedNumber === '—') {
+        return formattedNumber;
+    }
+    if (unit === 'currency' && planetId) {
+        const currencySymbol = currencyMapping[planetId];
+        if (currencySymbol) {
+            return `${formattedNumber} ${currencySymbol}`;
+        }
+    }
+    if (unit === 'tonnes') {
+        return `${formattedNumber} t`;
+    }
+    return `${formattedNumber} ${unit}`;
+};

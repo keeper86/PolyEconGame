@@ -129,11 +129,14 @@ export function collectForexBids(
         const scaledQty = p.quantity * depositScaleFactor;
         const holdAmount = scaledQty * p.bidPrice;
 
-        // Check individual budget
         const availableDeposits = Math.max(0, localAssets.deposits - localAssets.depositHold);
-        if (holdAmount > availableDeposits) {
-            // Skip this bidder entirely — can't afford even the scaled amount
-            const bid = localAssets.market!.buy[curName]!;
+        const bid = localAssets.market!.buy[curName]!;
+
+        // If the globally-scaled hold still exceeds this bidder's individual budget, cap it.
+        const actualHold = Math.min(holdAmount, availableDeposits);
+        const actualQty = p.bidPrice > 0 ? actualHold / p.bidPrice : 0;
+
+        if (actualQty <= 0) {
             bid.lastBought = 0;
             bid.lastSpent = 0;
             bid.lastEffectiveQty = 0;
@@ -142,23 +145,20 @@ export function collectForexBids(
         }
 
         // Deduct deposit hold
-        localAssets.deposits -= holdAmount;
-        localAssets.depositHold += holdAmount;
+        localAssets.deposits -= actualHold;
+        localAssets.depositHold += actualHold;
 
-        const bid = localAssets.market!.buy[curName]!;
-        bid.lastEffectiveQty = scaledQty;
-        if (depositScaleFactor < 1) {
-            bid.depositScaleWarning = 'scaled';
-        }
+        bid.lastEffectiveQty = actualQty;
+        bid.depositScaleWarning = actualHold < holdAmount || depositScaleFactor < 1 ? 'scaled' : undefined;
 
         orders.push({
             agent: p.agent,
             resource: curResource,
             bidPrice: p.bidPrice,
-            quantity: scaledQty,
+            quantity: actualQty,
             filled: 0,
             cost: 0,
-            remainingDeposits: availableDeposits - holdAmount,
+            remainingDeposits: availableDeposits - actualHold,
         });
     }
 

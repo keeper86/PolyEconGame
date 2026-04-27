@@ -472,12 +472,16 @@ function buildAgentBids(agents: Agent[], planetId: string, resourceName: string)
         }
 
         const bidPrice = bid.lastBidPrice ?? bid.bidPrice ?? 0;
+        // Use lastEffectiveQty when available; otherwise fall back to (bidStorageTarget - currentInventory)
+        // so newly placed bids show up before the first tick processes them.
         const effectiveQty = bid.lastEffectiveQty ?? 0;
         const lastBought = bid.lastBought ?? 0;
         const lastSpent = bid.lastSpent ?? 0;
         const fillRatio = effectiveQty > 0 ? Math.min(1, lastBought / effectiveQty) : 0;
 
-        if (effectiveQty <= 0 && lastBought <= 0) {
+        // Show any bid that has an active price set, even if not yet processed.
+        const isActiveBid = bidPrice > 0;
+        if (!isActiveBid && effectiveQty <= 0 && lastBought <= 0) {
             continue;
         }
 

@@ -2,6 +2,7 @@ import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 import { PRICE_FLOOR } from '../constants';
 import { ALL_RESOURCES } from '../planet/resourceCatalog';
+import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '../market/currencyResources';
 
 /**
  * Handle 'setSellOffers' action
@@ -42,6 +43,9 @@ export function handleSetSellOffers(
             }
             if (!resource) {
                 resource = assets.storageFacility.currentInStorage[resourceName]?.resource ?? null;
+            }
+            if (!resource && resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
             }
             if (!resource) {
                 continue;
@@ -169,6 +173,9 @@ export function handleSetBuyBids(
             if (!resource) {
                 // Fall back to the global resource catalog for free-trading bids
                 resource = ALL_RESOURCES.find((r) => r.name === resourceName) ?? null;
+            }
+            if (!resource && resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
             }
             if (!resource) {
                 continue;

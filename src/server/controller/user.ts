@@ -658,9 +658,16 @@ export const setBuyBids = () => {
                 let resource = ALL_RESOURCES.find((r) => r.name === resourceName);
                 if (!resource) {
                     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                        const issuingPlanetId = resourceName.slice(CURRENCY_RESOURCE_PREFIX.length);
+                        if (!bidAgent.assets[issuingPlanetId]) {
+                            throw new TRPCError({
+                                code: 'BAD_REQUEST',
+                                message: `No account on the issuing planet. Visit that planet first to open an account.`,
+                            });
+                        }
                         // Currency resources have volumePerQuantity: 0 so storage capacity is Infinity;
                         // the deposit affordability check in validateBuyBid correctly uses local deposits.
-                        resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
+                        resource = getCurrencyResource(issuingPlanetId);
                     } else {
                         throw new TRPCError({
                             code: 'BAD_REQUEST',
