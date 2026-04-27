@@ -103,6 +103,8 @@ export const MARKET_STATUS_CONFIG: Record<MarketStatus, { label: string; classNa
 
 export type ResourceTriggerProps = {
     name: string;
+    /** Human-readable display name (e.g. "Gaia Credits" for CUR_planet-1). Falls back to `name`. */
+    displayName?: string;
     bid?: MarketBidEntry;
     offer?: MarketOfferEntry;
     overviewRow?: MarketOverviewRow;
@@ -119,6 +121,8 @@ export type ResourceAccordionItemProps = {
     _isOpen: boolean;
     overviewRow?: MarketOverviewRow;
     visibleColumns: import('./columnConfig').ColumnConfig[];
+    /** Map of planetId → planetName, used to derive display names for currency resources. */
+    planetNames?: Map<string, string>;
 };
 
 export type BuySectionProps = {

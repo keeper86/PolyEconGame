@@ -1,4 +1,9 @@
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
+import {
+    CURRENCY_RESOURCE_PREFIX,
+    getCurrencyResource,
+    isCurrencyResource,
+} from '@/simulation/market/currencyResources';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import {
@@ -487,16 +492,23 @@ export const setSellOffers = () => {
 
             // Validate each offer using the shared validation module
             for (const [resourceName, offer] of Object.entries(input.offers)) {
-                const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+                let resource = ALL_RESOURCES.find((r) => r.name === resourceName);
                 if (!resource) {
-                    throw new TRPCError({
-                        code: 'BAD_REQUEST',
-                        message: `Unknown resource: ${resourceName}`,
-                    });
+                    if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                        resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
+                    } else {
+                        throw new TRPCError({
+                            code: 'BAD_REQUEST',
+                            message: `Unknown resource: ${resourceName}`,
+                        });
+                    }
                 }
 
-                // Use queryStorageFacility to get non-escrowed stock
-                const inventoryQty = queryStorageFacility(sellAssets.storageFacility, resourceName);
+                // For currency resources, sell quantity comes from foreign deposits, not storage.
+                // validateSellOffer ignores the inventory argument, so pass 0 for currencies.
+                const inventoryQty = isCurrencyResource(resource)
+                    ? 0
+                    : queryStorageFacility(sellAssets.storageFacility, resourceName);
 
                 // Validate price (quantity is computed dynamically from retainment)
                 const validation = validateSellOffer(offer.offerPrice, inventoryQty);
@@ -643,12 +655,18 @@ export const setBuyBids = () => {
 
             // Validate each bid using the shared validation module
             for (const [resourceName, bid] of Object.entries(input.bids)) {
-                const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+                let resource = ALL_RESOURCES.find((r) => r.name === resourceName);
                 if (!resource) {
-                    throw new TRPCError({
-                        code: 'BAD_REQUEST',
-                        message: `Unknown resource: ${resourceName}`,
-                    });
+                    if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                        // Currency resources have volumePerQuantity: 0 so storage capacity is Infinity;
+                        // the deposit affordability check in validateBuyBid correctly uses local deposits.
+                        resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
+                    } else {
+                        throw new TRPCError({
+                            code: 'BAD_REQUEST',
+                            message: `Unknown resource: ${resourceName}`,
+                        });
+                    }
                 }
 
                 const validation = validateBuyBid(bid, resource, bidAssets);

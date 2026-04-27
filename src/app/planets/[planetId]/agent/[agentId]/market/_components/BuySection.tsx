@@ -30,7 +30,10 @@ export default function BuySection({
     const consumedPerTick = consumptionPerTick(assets.productionFacilities, resourceName);
     const deposits = assets.deposits;
 
-    const isFacilityInput = consumedPerTick > 0;
+    // Currency resources (CUR_<planetId>) are denominated in foreign deposits, not local storage.
+    const isCurrency = resourceName.startsWith('CUR_');
+
+    const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
@@ -163,7 +166,7 @@ export default function BuySection({
                         {/* Storage-target box + buffer calculator */}
                         <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                             <Label htmlFor={`bid-target-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                                Storage target
+                                {isCurrency ? 'Deposit target' : 'Storage target'}
                             </Label>
                             <Input
                                 id={`bid-target-${resourceName}`}

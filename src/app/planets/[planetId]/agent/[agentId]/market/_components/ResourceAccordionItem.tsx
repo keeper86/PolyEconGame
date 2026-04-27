@@ -32,6 +32,7 @@ export default function ResourceAccordionItem({
     _isOpen: isOpen,
     overviewRow,
     visibleColumns,
+    planetNames,
 }: ResourceAccordionItemProps): React.ReactElement {
     const bid = assets.market?.buy[resourceName];
     const offer = assets.market?.sell[resourceName];
@@ -97,6 +98,15 @@ export default function ResourceAccordionItem({
     const sellErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const resource = getResourceByName(resourceName);
+
+    // Derive a human-readable display name for currency resources (e.g. "Gaia Credits" for CUR_planet-1).
+    const issuingPlanetId = resourceName.startsWith('CUR_') ? resourceName.slice(4) : null;
+    const displayName =
+        issuingPlanetId && planetNames
+            ? planetNames.get(issuingPlanetId)
+                ? `${planetNames.get(issuingPlanetId)} Credits`
+                : undefined
+            : undefined;
 
     // Clear timeouts on unmount
     useEffect(() => {
@@ -436,6 +446,7 @@ export default function ResourceAccordionItem({
             <AccordionTrigger className='hover:no-underline px-1'>
                 <ResourceTrigger
                     name={resourceName}
+                    displayName={displayName}
                     bid={bid}
                     offer={offer}
                     overviewRow={overviewRow}

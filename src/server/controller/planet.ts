@@ -8,6 +8,7 @@
  */
 
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import { SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
@@ -892,6 +893,31 @@ export const getPlanetMarketOverview = () =>
                     fillRatio,
                 };
             }).filter((row) => row.totalSupply > 0 || row.totalDemand > 0 || row.totalProduction > 0);
+
+            // Append active forex (currency) rows from live market data.
+            // These are keyed under CUR_<planetId> in marketResults and never appear in ALL_RESOURCES.
+            for (const [resourceName, result] of Object.entries(marketResults)) {
+                if (!resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                    continue;
+                }
+                const totalSupply = result.totalSupply ?? 0;
+                const totalDemand = result.totalDemand ?? 0;
+                if (totalSupply <= 0 && totalDemand <= 0) {
+                    continue;
+                }
+                const totalSold = result.totalVolume ?? 0;
+                rows.push({
+                    resourceName,
+                    level: 'currency',
+                    clearingPrice: result.clearingPrice ?? planet.marketPrices[resourceName] ?? 0,
+                    totalProduction: 0,
+                    totalConsumption: 0,
+                    totalSupply,
+                    totalDemand,
+                    totalSold,
+                    fillRatio: totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1,
+                });
+            }
 
             return { tick, rows };
         });

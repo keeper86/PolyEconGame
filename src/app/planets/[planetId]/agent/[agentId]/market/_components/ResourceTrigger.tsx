@@ -10,6 +10,7 @@ import { getColumnClasses } from './columnConfig';
 
 export default function ResourceTrigger({
     name,
+    displayName,
     bid,
     offer,
     overviewRow,
@@ -100,7 +101,7 @@ export default function ResourceTrigger({
 
             {/* Name + market link + order indicators */}
             <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>
-                <span className='text-sm font-medium truncate'>{name}</span>
+                <span className='text-sm font-medium truncate'>{displayName ?? name}</span>
                 {(hasActiveBid ||
                     hasActiveOffer ||
                     bid?.automated ||
@@ -132,6 +133,14 @@ export default function ResourceTrigger({
                                 className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
                             >
                                 {bid.storageScaleWarning === 'scaled' ? 'storage' : 'no space'}
+                            </Badge>
+                        )}
+                        {bid?.depositScaleWarning && (
+                            <Badge
+                                variant='outline'
+                                className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
+                            >
+                                {bid.depositScaleWarning === 'scaled' ? 'deposit' : 'no funds'}
                             </Badge>
                         )}
                     </div>

@@ -1,4 +1,5 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
 import type {
     ManagementFacility,
     ProductionFacility,
@@ -76,8 +77,11 @@ export function productionPerTick(facilities: ProductionFacility[], resourceName
     }, 0);
 }
 
-/** Get resource object by name */
+/** Get resource object by name — also handles dynamic currency resources (CUR_<planetId>). */
 export function getResourceByName(resourceName: string) {
+    if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+        return getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
+    }
     return ALL_RESOURCES.find((r) => r.name === resourceName);
 }
 
@@ -86,8 +90,13 @@ export function resourceNameToSlug(resourceName: string): string {
     return resourceName.toLowerCase().replace(/\s+/g, '-');
 }
 
-/** Convert URL slug back to resource name by looking up ALL_RESOURCES */
+/** Convert URL slug back to resource name by looking up ALL_RESOURCES or reversing the CUR_ prefix. */
 export function slugToResourceName(slug: string): string | undefined {
+    // CUR_<planetId> slugifies to cur_<planetId> (lowercase, no spaces to replace).
+    // Planet IDs are always lowercase so the round-trip is exact.
+    if (slug.startsWith(CURRENCY_RESOURCE_PREFIX.toLowerCase())) {
+        return CURRENCY_RESOURCE_PREFIX + slug.slice(CURRENCY_RESOURCE_PREFIX.length);
+    }
     return ALL_RESOURCES.find((r) => resourceNameToSlug(r.name) === slug)?.name;
 }
 
@@ -127,9 +136,11 @@ export function buildResourceList(
     managementFacilities: ManagementFacility[] = [],
     shipConstructionFacilities: ShipConstructionFacility[] = [],
     forceInclude: string[] = [],
+    availableCurrencies: { name: string }[] = [],
 ): { name: string }[] {
     if (showAll) {
-        return ALL_RESOURCES.filter((r) => r.form !== 'landBoundResource').map((r) => ({ name: r.name }));
+        const base = ALL_RESOURCES.filter((r) => r.form !== 'landBoundResource').map((r) => ({ name: r.name }));
+        return [...base, ...availableCurrencies];
     }
 
     const seen = new Set<string>();
