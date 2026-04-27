@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { PRICE_FLOOR } from '@/simulation/constants';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumbers, formatNumberWithUnit } from '@/lib/utils';
 import type { SellSectionProps } from './marketTypes';
 import { productionPerTick, sellFulfillmentClass, priceArrow } from './marketHelpers';
 
@@ -25,6 +25,7 @@ export default function SellSection({
     sellSaving,
     sellSuccessMsg,
     sellErrorMsg,
+    planetId,
 }: SellSectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
@@ -242,7 +243,7 @@ export default function SellSection({
                         <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
                             {offer.lastSold !== undefined && <span>Last sold: {formatNumbers(offer.lastSold)}</span>}
                             {offer.lastRevenue !== undefined && (
-                                <span>Revenue: {formatNumbers(offer.lastRevenue)}</span>
+                                <span>Revenue: {formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)}</span>
                             )}
                             {offer.priceDirection !== undefined &&
                                 (() => {

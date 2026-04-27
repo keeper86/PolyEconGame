@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
-import { cn, formatNumbers } from '@/lib/utils';
+import { cn, formatNumbers, formatNumberWithUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
 import { classifyMarket } from './marketHelpers';
@@ -16,6 +16,7 @@ export default function ResourceTrigger({
     overviewRow,
     storageQuantity,
     visibleColumns,
+    planetId,
 }: ResourceTriggerProps): React.ReactElement {
     const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
     const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
@@ -28,7 +29,7 @@ export default function ResourceTrigger({
             case 'currentStorage':
                 return storageQuantity !== undefined ? formatNumbers(storageQuantity) : null;
             case 'clearingPrice':
-                return overviewRow ? formatNumbers(overviewRow.clearingPrice) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : null;
             case 'totalProduction':
                 return overviewRow ? formatNumbers(overviewRow.totalProduction) : null;
             case 'totalConsumption':
@@ -97,7 +98,7 @@ export default function ResourceTrigger({
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0 overflow-hidden'>
             {/* Icon */}
-            <ProductIcon productName={name} />
+            <ProductIcon productName={name} label={displayName ?? name} />
 
             {/* Name + market link + order indicators */}
             <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>

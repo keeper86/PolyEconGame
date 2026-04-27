@@ -168,13 +168,13 @@ export const assetManifest = {
     passenger_ship_2: '/images/ships/passenger_ship_2.webp',
     passenger_ship_3: '/images/ships/passenger_ship_3.webp',
     passenger_ship_4: '/images/ships/passenger_ship_4.webp',
-    currency_earth: '/images/planets/earth_currency.webp',
-    currency_gune: '/images/planets/gune_currency.webp',
-    currency_icedonia: '/images/planets/icedonia_currency.webp',
-    currency_paradies: '/images/planets/paradies_currency.webp',
-    currency_suerte: '/images/planets/suerte_currency.webp',
-    currency_pandara: '/images/planets/pandara_currency.webp',
-    currency_centauri: '/images/planets/centauri_currency.webp',
+    cur_earth: '/images/planets/currency_earth.webp',
+    cur_gune: '/images/planets/currency_gune.webp',
+    cur_icedonia: '/images/planets/currency_icedonia.webp',
+    cur_paradies: '/images/planets/currency_paradies.webp',
+    cur_suerte: '/images/planets/currency_suerte.webp',
+    cur_pandara: '/images/planets/currency_pandara.webp',
+    cur_alpha_centauri: '/images/planets/currency_centauri.webp',
 } as const;
 
 export type AssetKey = keyof typeof assetManifest;

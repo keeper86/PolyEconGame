@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumbers, formatNumberWithUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
 import { consumptionPerTick, buyFulfillmentClass } from './marketHelpers';
 
@@ -25,6 +25,7 @@ export default function BuySection({
     buySaving,
     buySuccessMsg,
     buyErrorMsg,
+    planetId,
 }: BuySectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const consumedPerTick = consumptionPerTick(assets.productionFacilities, resourceName);
@@ -249,7 +250,9 @@ export default function BuySection({
                     {(bid?.lastBought !== undefined || bid?.lastSpent !== undefined) && (
                         <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
                             {bid.lastBought !== undefined && <span>Last bought: {formatNumbers(bid.lastBought)}</span>}
-                            {bid.lastSpent !== undefined && <span>Spent: {formatNumbers(bid.lastSpent)}</span>}
+                            {bid.lastSpent !== undefined && (
+                                <span>Spent: {formatNumberWithUnit(bid.lastSpent, 'currency', planetId)}</span>
+                            )}
                         </div>
                     )}
 
@@ -257,8 +260,8 @@ export default function BuySection({
                         <Alert variant='destructive' className='py-2'>
                             <AlertCircle className='h-3.5 w-3.5' />
                             <AlertDescription className='text-xs'>
-                                Bid cost ({formatNumbers(totalBidCost)}) exceeds available deposits (
-                                {formatNumbers(deposits)}).
+                                Bid cost ({formatNumberWithUnit(totalBidCost, 'currency', planetId)}) exceeds available
+                                deposits ({formatNumberWithUnit(deposits, 'currency', planetId)}).
                             </AlertDescription>
                         </Alert>
                     )}

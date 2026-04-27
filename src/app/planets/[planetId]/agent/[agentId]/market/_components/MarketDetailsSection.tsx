@@ -43,7 +43,7 @@ export default function MarketDetailsSection({
                 {' · '}unfilled {formatNumbers(market.unfilledDemand)}
             </span>
 
-            <OfferTable offers={market.offers} clearingPrice={market.clearingPrice} />
+            <OfferTable offers={market.offers} clearingPrice={market.clearingPrice} planetId={planetId} />
 
             <span className='text-xs font-medium text-muted-foreground'>
                 <h4 className='text-sm font-semibold mb-1'>Agent demand</h4>

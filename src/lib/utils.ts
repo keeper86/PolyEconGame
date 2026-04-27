@@ -54,45 +54,50 @@ export type CurrencyInfo = {
     name: string;
 };
 const currencyMapping: Record<string, CurrencyInfo> = {
-    earth: {
+    'earth': {
         symbol: '€',
         name: 'Eartho',
     },
-    gune: {
+    'gune': {
         symbol: '₩',
         name: 'Wüsten-Dollar',
     },
-    icedonia: {
+    'icedonia': {
         symbol: '₤',
         name: 'Liquido',
     },
-    paradies: {
+    'paradies': {
         symbol: '₽',
         name: 'Paradies-Pesete',
     },
-    suerte: {
+    'suerte': {
         symbol: '$',
         name: 'Scheine',
     },
-    pandara: {
+    'pandara': {
         symbol: '₦',
         name: "Na'avi",
     },
-    centauri: {
+    'alpha-centauri': {
         symbol: '₳',
         name: 'Alphas',
     },
 };
 export type Units = 'currency' | 'tonnes' | 'units';
+
+export function getCurrencySymbol(planetId: string): string {
+    return currencyMapping[planetId]?.symbol ?? '¤';
+}
+
 export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, planetId?: string): string => {
     const formattedNumber = formatNumbers(n);
     if (formattedNumber === '—') {
         return formattedNumber;
     }
     if (unit === 'currency' && planetId) {
-        const currencySymbol = currencyMapping[planetId];
-        if (currencySymbol) {
-            return `${formattedNumber} ${currencySymbol}`;
+        const info = currencyMapping[planetId];
+        if (info) {
+            return `${formattedNumber} ${info.symbol}`;
         }
     }
     if (unit === 'tonnes') {

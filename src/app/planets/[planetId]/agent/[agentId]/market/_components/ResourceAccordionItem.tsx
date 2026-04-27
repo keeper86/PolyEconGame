@@ -14,7 +14,7 @@ import type { ResourceAccordionItemProps } from './marketTypes';
 import { TTL_FEEDBACK, MARKET_STATUS_CONFIG } from './marketTypes';
 import { getResourceByName } from './marketHelpers';
 import { classifyMarket } from './marketHelpers';
-import { cn, formatNumbers } from '@/lib/utils';
+import { cn, formatNumbers, formatNumberWithUnit } from '@/lib/utils';
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
 import ResourceTrigger from './ResourceTrigger';
 import BuySection from './BuySection';
@@ -60,7 +60,7 @@ export default function ResourceAccordionItem({
             case 'currentStorage':
                 return formatNumbers(inventoryQty);
             case 'clearingPrice':
-                return overviewRow ? formatNumbers(overviewRow.clearingPrice) : '—';
+                return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : '—';
             case 'totalProduction':
                 return overviewRow ? formatNumbers(overviewRow.totalProduction) : '—';
             case 'totalConsumption':
@@ -452,6 +452,7 @@ export default function ResourceAccordionItem({
                     overviewRow={overviewRow}
                     storageQuantity={inventoryQty}
                     visibleColumns={visibleColumns}
+                    planetId={planetId}
                 />
             </AccordionTrigger>
             <AccordionContent>
@@ -514,6 +515,7 @@ export default function ResourceAccordionItem({
                             buySaving={buySaving}
                             buySuccessMsg={buySuccessMsg}
                             buyErrorMsg={buyErrorMsg}
+                            planetId={planetId}
                         />
 
                         <SellSection
@@ -530,6 +532,7 @@ export default function ResourceAccordionItem({
                             sellSaving={sellSaving}
                             sellSuccessMsg={sellSuccessMsg}
                             sellErrorMsg={sellErrorMsg}
+                            planetId={planetId}
                         />
                     </Accordion>
 

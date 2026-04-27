@@ -103,13 +103,13 @@ export const MARKET_STATUS_CONFIG: Record<MarketStatus, { label: string; classNa
 
 export type ResourceTriggerProps = {
     name: string;
-    /** Human-readable display name (e.g. "Gaia Credits" for CUR_planet-1). Falls back to `name`. */
     displayName?: string;
     bid?: MarketBidEntry;
     offer?: MarketOfferEntry;
     overviewRow?: MarketOverviewRow;
     storageQuantity?: number;
     visibleColumns: import('./columnConfig').ColumnConfig[];
+    planetId: string;
 };
 
 export type ResourceAccordionItemProps = {
@@ -139,6 +139,8 @@ export type BuySectionProps = {
     buySaving: boolean;
     buySuccessMsg: string | null;
     buyErrorMsg: string | null;
+    /** Planet ID of the market — used for currency symbol formatting. */
+    planetId: string;
 };
 
 export type SellSectionProps = {
@@ -155,4 +157,6 @@ export type SellSectionProps = {
     sellSaving: boolean;
     sellSuccessMsg: string | null;
     sellErrorMsg: string | null;
+    /** Planet ID of the market — used for currency symbol formatting. */
+    planetId: string;
 };
