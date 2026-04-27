@@ -20,8 +20,6 @@ export interface Bank {
     equity: number;
     loanRate: number;
     depositRate: number;
-    /** Central bank's holdings of foreign currencies, keyed by issuing planet id. */
-    foreignReserves: { [planetId: string]: number };
 }
 
 export type PlanetaryId = {
@@ -308,13 +306,6 @@ export type Agent = {
     assets: {
         [planetId in string]: AgentPlanetAssets;
     };
-    /** Deposits held at other planets' banks (foreign currency holdings), keyed by issuing planet id. */
-    foreignDeposits: { [planetId: string]: number };
-    /**
-     * Subset of foreignDeposits currently escrowed as collateral for active forex sell orders.
-     * Keyed by issuing planet id.  Must be ≤ foreignDeposits[planetId] at all times.
-     */
-    foreignDepositHolds: { [planetId: string]: number };
 };
 
 export interface GameState {

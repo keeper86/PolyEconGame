@@ -1,17 +1,3 @@
-/**
- * src/simulation/market/forexTick.test.ts
- *
- * Unit tests for the forex clearing tick.
- *
- * Two-planet scenario:
- *   - Planet A  (id='pA')  exports food
- *   - Planet B  (id='pB')  exports machinery
- *
- * A-based agent (agentA) earns PlanetA currency but needs PlanetB currency to
- * buy machinery (it has operations on both planets). B-based agent (agentB) is
- * the mirror image.
- */
-
 import { beforeEach, describe, expect, it } from 'vitest';
 import { forexTick } from './forexTick';
 import { getCurrencyResourceName } from './currencyResources';
@@ -68,13 +54,13 @@ describe('forexTick', () => {
     });
 
     it('does nothing when no agents have forex orders posted', () => {
-        const aDeposits = aA.foreignDeposits.pB ?? 0;
-        const bDeposits = aB.foreignDeposits.pA ?? 0;
+        const aDeposits = aA.assets.pB?.deposits ?? 0;
+        const bDeposits = aB.assets.pA?.deposits ?? 0;
 
         forexTick(gs);
 
-        expect(aA.foreignDeposits.pB ?? 0).toBe(aDeposits);
-        expect(aB.foreignDeposits.pA ?? 0).toBe(bDeposits);
+        expect(aA.assets.pB?.deposits ?? 0).toBe(aDeposits);
+        expect(aB.assets.pA?.deposits ?? 0).toBe(bDeposits);
     });
 
     it('transfers foreign deposits correctly when a trade executes', () => {
@@ -96,7 +82,7 @@ describe('forexTick', () => {
         // agentB bids to buy CUR_pB on Planet A's forex market using pA deposits
         aB.assets.pA.deposits = 500;
         pA.bank.deposits += 500;
-        pA.bank.loans += 500; // keep balance sheet balanced
+        pA.bank.loans += 500;
         if (!aB.assets.pA.market) {
             aB.assets.pA.market = { sell: {}, buy: {} };
         }
@@ -109,13 +95,13 @@ describe('forexTick', () => {
         // Give pA a reference price for the currency so clearing works
         (pA.marketPrices as Record<string, number>)[curB] = 1.0;
 
-        const aAForeignBefore = aA.foreignDeposits.pB;
-        const aBForeignBefore = aB.foreignDeposits.pB ?? 0;
+        const aAForeignBefore = aA.assets.pB!.deposits;
+        const aBForeignBefore = aB.assets.pB?.deposits ?? 0;
 
         forexTick(gs);
 
-        const traded = (aA.foreignDeposits.pB ?? 0) - aAForeignBefore; // should be negative (sold)
-        const received = (aB.foreignDeposits.pB ?? 0) - aBForeignBefore; // should be positive (bought)
+        const traded = (aA.assets.pB?.deposits ?? 0) - aAForeignBefore;
+        const received = (aB.assets.pB?.deposits ?? 0) - aBForeignBefore;
 
         // Conservation: what agentA lost = what agentB gained
         expect(traded + received).toBeCloseTo(0, 8);
@@ -128,12 +114,7 @@ describe('forexTick', () => {
 
         // PlanetB bank deposits unchanged: net zero transfer
 
-        // Actually creditForeignDeposit added 1000 to pB.bank.deposits; after trade
-        // agentA's foreign deposit decreased but the bank total is unchanged because
-        // agentB's foreign deposit increased by the same amount.
-        // So net change to pB.bank.deposits from the forex trade itself = 0.
-        // (The credit we added via creditForeignDeposit is still there.)
-        expect(pB.bank.deposits).toBe(1000); // unchanged by the trade itself
+        expect(pB.bank.deposits).toBe(1000);
     });
 
     it('issues no-trade result when only asks exist (no bids)', () => {
@@ -156,15 +137,14 @@ describe('forexTick', () => {
         expect(result).toBeDefined();
         expect(result.totalVolume).toBe(0);
         expect(result.unsoldSupply).toBeGreaterThan(0);
-        // Escrow released: hold should be 0 after tick
-        expect(aA.foreignDepositHolds.pB ?? 0).toBe(0);
+        expect(aA.assets.pB?.depositHold ?? 0).toBe(0);
     });
 
     it('releases deposit holds fully after a no-trade tick (only bids)', () => {
         const curB = getCurrencyResourceName('pB');
         aB.assets.pA.deposits = 300;
         pA.bank.deposits += 300;
-        pA.bank.loans += 300; // keep balance sheet balanced
+        pA.bank.loans += 300;
         if (!aB.assets.pA.market) {
             aB.assets.pA.market = { sell: {}, buy: {} };
         }
@@ -202,7 +182,7 @@ describe('forexTick', () => {
         };
         aA.assets.pA.deposits = 600;
         pA.bank.deposits += 600;
-        pA.bank.loans += 600; // keep balance sheet balanced
+        pA.bank.loans += 600;
         aA.assets.pA.market.buy[curA] = {
             resource: { name: curA, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
             bidPrice: 1.05,
@@ -222,7 +202,7 @@ describe('forexTick', () => {
         };
         aB.assets.pB.deposits = 600;
         pB.bank.deposits += 600;
-        pB.bank.loans += 600; // keep balance sheet balanced
+        pB.bank.loans += 600;
         aB.assets.pB.market.buy[curB] = {
             resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
             bidPrice: 1.05,

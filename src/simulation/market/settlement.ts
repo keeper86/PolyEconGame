@@ -150,27 +150,6 @@ export function computeMarketSummary(
     return { clearingPrice, totalVolume, totalRevenue };
 }
 
-// ---------------------------------------------------------------------------
-// Forex settlement
-// ---------------------------------------------------------------------------
-
-/**
- * Settle a cleared forex order book for one currency pair.
- *
- * Payment leg (trading planet):
- *   - Seller receives local-currency revenue  →  sellerLocalAssets.deposits += revenue
- *   - Buyer's deposit hold is consumed / unused portion refunded
- *
- * Currency leg (issuing planet):
- *   - Seller's foreign deposit is debited by the units sold
- *   - Buyer's foreign deposit is credited by the units received
- *   - issuingPlanet.bank.deposits is unchanged (net-zero peer transfer)
- *
- * Escrow release:
- *   - seller's foreignDepositHolds[issuingPlanetId] decremented by the full
- *     order quantity (both filled and unfilled portions were escrowed at
- *     collection time).
- */
 export function settleForexTrades(
     askOrders: AskOrder[],
     agentBids: AgentBidOrder[],
@@ -193,8 +172,7 @@ export function settleForexTrades(
             localAssets.deposits += ask.revenue;
             localAssets.monthAcc.revenue += ask.revenue;
 
-            // Debit the sold foreign-currency units from issuing planet deposit
-            ask.agent.foreignDeposits[issuingPlanetId] = (ask.agent.foreignDeposits[issuingPlanetId] ?? 0) - filled;
+            ask.agent.assets[issuingPlanetId]!.deposits -= filled;
 
             const offer = localAssets.market?.sell[curName];
             if (offer) {
@@ -203,16 +181,13 @@ export function settleForexTrades(
             }
         }
 
-        // Release escrow (filled + unfilled were both locked during collection)
-        const escrowed = ask.agent.foreignDepositHolds[issuingPlanetId] ?? 0;
-        ask.agent.foreignDepositHolds[issuingPlanetId] = Math.max(0, escrowed - ask.quantity);
+        const issuingAssets = ask.agent.assets[issuingPlanetId]!;
+        issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity);
 
         if (process.env.SIM_DEBUG === '1' && unfilled > 0) {
-            // Sanity: unfilled portion of the escrow is now free again
-            const remaining = ask.agent.foreignDepositHolds[issuingPlanetId] ?? 0;
-            if (remaining < 0) {
+            if (issuingAssets.depositHold < 0) {
                 throw new Error(
-                    `Forex escrow underflow for agent=${ask.agent.id} issuingPlanet=${issuingPlanetId}: hold=${remaining}`,
+                    `Forex escrow underflow for agent=${ask.agent.id} issuingPlanet=${issuingPlanetId}: hold=${issuingAssets.depositHold}`,
                 );
             }
         }
@@ -242,8 +217,7 @@ export function settleForexTrades(
         localAssets.depositHold -= holdConsumed;
         localAssets.monthAcc.purchases += holdConsumed;
 
-        // Credit issuing-planet deposit
-        bid.agent.foreignDeposits[issuingPlanetId] = (bid.agent.foreignDeposits[issuingPlanetId] ?? 0) + bid.filled;
+        bid.agent.assets[issuingPlanetId]!.deposits += bid.filled;
 
         const buyState = localAssets.market?.buy[curName];
         if (buyState) {

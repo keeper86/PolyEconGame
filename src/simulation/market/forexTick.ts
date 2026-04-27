@@ -1,27 +1,3 @@
-/**
- * simulation/market/forexTick.ts
- *
- * Runs the foreign-exchange markets for one simulation tick.
- *
- * Executed ONCE per tick, AFTER all planet-local marketTick() calls have
- * completed.  Because it runs after local markets, agents' latest goods-price
- * signals are already reflected in planet.marketPrices when forex prices are
- * updated.
- *
- * For every ordered pair (tradingPlanet, issuingPlanet) where
- * tradingPlanet ≠ issuingPlanet, the following steps are performed:
- *
- *   1. Reset per-tick forex counters.
- *   2. Collect ask orders (agents selling issuingPlanet's currency).
- *   3. Collect bid orders (agents buying issuingPlanet's currency).
- *   4. Skip if neither side has any orders.
- *   5. Run the unified order-book matching algorithm (same as physical goods).
- *   6. Settle trades: cross-planet deposit transfers + local deposit holds.
- *   7. Update tradingPlanet.marketPrices[CUR_issuingPlanetId] from the
- *      volume-weighted clearing price.
- *   8. Write tradingPlanet.lastMarketResult[CUR_issuingPlanetId].
- */
-
 import type { GameState } from '../planet/planet';
 import { clearUnifiedBids } from './orderBook';
 import { collectForexAsks, collectForexBids, resetForexSellCounters } from './forexOrderCollection';
@@ -45,7 +21,6 @@ function clearForexPair(gameState: GameState, tradingPlanetId: string, issuingPl
     const tradingPlanet = gameState.planets.get(tradingPlanetId)!;
     const curName = getCurrencyResourceName(issuingPlanetId);
 
-    // Reset per-tick counters before collecting orders
     resetForexSellCounters(tradingPlanet, issuingPlanetId, gameState.agents);
 
     const askOrders = collectForexAsks(gameState.agents, tradingPlanet, issuingPlanetId);
@@ -54,7 +29,6 @@ function clearForexPair(gameState: GameState, tradingPlanetId: string, issuingPl
     const referencePrice = (tradingPlanet.marketPrices as Record<string, number>)[curName] ?? DEFAULT_EXCHANGE_RATE;
 
     if (askOrders.length === 0 && agentBids.length === 0) {
-        // No participants — write a zero-volume result and move on
         tradingPlanet.lastMarketResult[curName] = {
             resourceName: curName,
             clearingPrice: referencePrice,
@@ -71,10 +45,11 @@ function clearForexPair(gameState: GameState, tradingPlanetId: string, issuingPl
     const totalDemand = agentBids.reduce((s, b) => s + b.quantity, 0);
 
     if (askOrders.length === 0 || agentBids.length === 0) {
-        // One side empty — release escrow and deposit holds; no trades
         for (const ask of askOrders) {
-            const held = ask.agent.foreignDepositHolds[issuingPlanetId] ?? 0;
-            ask.agent.foreignDepositHolds[issuingPlanetId] = Math.max(0, held - ask.quantity);
+            const issuingAssets = ask.agent.assets[issuingPlanetId];
+            if (issuingAssets) {
+                issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity);
+            }
         }
         for (const bid of agentBids) {
             const localAssets = bid.agent.assets[tradingPlanetId];
@@ -98,7 +73,6 @@ function clearForexPair(gameState: GameState, tradingPlanetId: string, issuingPl
 
     askOrders.sort((a, b) => a.askPrice - b.askPrice);
 
-    // No household bids for currencies — only agent bids
     const { agentTrades } = clearUnifiedBids([], agentBids, askOrders);
 
     settleForexTrades(askOrders, agentBids, tradingPlanet, issuingPlanetId);

@@ -134,17 +134,10 @@ export function checkMonetaryConservation(
     for (const [planetId, planet] of planets) {
         const bank = planet.bank;
 
-        // Sum firm deposits across all agents on this planet (Kahan summation).
-        // This includes:
-        //   - agents with local operations (agent.assets[planetId].deposits)
-        //   - agents holding this planet's currency as a foreign deposit
-        //     (agent.foreignDeposits[planetId])
         let firmDeposits = 0;
         let c = 0;
         for (const agent of agents.values()) {
-            const localDeposit = agent.assets[planetId]?.deposits ?? 0;
-            const foreignDeposit = agent.foreignDeposits?.[planetId] ?? 0;
-            const total = localDeposit + foreignDeposit;
+            const total = agent.assets[planetId]?.deposits ?? 0;
             if (total !== 0) {
                 const d = total - c;
                 const t = firmDeposits + d;

@@ -1,40 +1,9 @@
-/**
- * simulation/market/forexOrderCollection.ts
- *
- * Collects ask and bid orders for a single currency pair on a trading planet's
- * forex market.
- *
- * Design notes:
- * - Sellers offer units of the ISSUING planet's currency (backed by their
- *   foreignDeposits on that planet).  Escrow is tracked via foreignDepositHolds
- *   on the Agent (not the local storageFacility).
- * - Buyers want to acquire units of the issuing planet's currency. The cost is
- *   paid in the TRADING planet's local currency (held via normal depositHold on
- *   the trading-planet assets).
- * - Both sides' quantities are in "units of issuing-planet currency".
- */
-
 import { PRICE_CEIL } from '../constants';
 import { hasActiveLicense } from '../planet/planet';
 import type { Agent, Planet } from '../planet/planet';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { getCurrencyResource, getCurrencyResourceName, FOREX_PRICE_FLOOR } from './currencyResources';
 
-// ---------------------------------------------------------------------------
-// Ask (sell) orders — agent offers units of CUR_issuingPlanet
-// ---------------------------------------------------------------------------
-
-/**
- * Collect all forex ask orders for `issuingPlanet`'s currency being sold
- * on `tradingPlanet`'s market.
- *
- * For each agent that has a surplus of the issuing planet's currency and
- * has posted a sell offer on the trading planet:
- *   - Available = foreignDeposits[issuingPlanetId] − foreignDepositHolds[issuingPlanetId]
- *                 − (offerRetainment ?? 0)
- *   - Escrow the offered quantity in foreignDepositHolds (prevents double-counting
- *     across simultaneous forex markets in the same tick).
- */
 export function collectForexAsks(
     agents: Map<string, Agent>,
     tradingPlanet: Planet,
@@ -58,8 +27,9 @@ export function collectForexAsks(
             continue;
         }
 
-        const balance = agent.foreignDeposits[issuingPlanetId] ?? 0;
-        const alreadyHeld = agent.foreignDepositHolds[issuingPlanetId] ?? 0;
+        const issuingAssets = agent.assets[issuingPlanetId];
+        const balance = issuingAssets?.deposits ?? 0;
+        const alreadyHeld = issuingAssets?.depositHold ?? 0;
         const retainment = offer.offerRetainment ?? 0;
         const available = balance - alreadyHeld - retainment;
 
@@ -73,8 +43,7 @@ export function collectForexAsks(
         const askPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, offer.offerPrice));
         const quantity = available;
 
-        // Escrow: prevent the agent from selling the same deposit twice within one tick
-        agent.foreignDepositHolds[issuingPlanetId] = alreadyHeld + quantity;
+        issuingAssets!.depositHold = alreadyHeld + quantity;
 
         offer.lastPlacedQty = quantity;
         offer.lastOfferPrice = askPrice;
@@ -92,20 +61,6 @@ export function collectForexAsks(
     return orders;
 }
 
-// ---------------------------------------------------------------------------
-// Bid (buy) orders — agent wants to acquire units of CUR_issuingPlanet
-// ---------------------------------------------------------------------------
-
-/**
- * Collect all forex bid orders for `issuingPlanet`'s currency being bought
- * on `tradingPlanet`'s market.
- *
- * For each agent that wants more of the issuing planet's currency:
- *   - quantity = (bidStorageTarget − foreignDeposits[issuingPlanetId]), capped at 0
- *   - Payment is in the trading planet's local currency (deducted from localAssets.deposits
- *     as a depositHold).
- *   - Agents without a trading-planet commercial license are skipped.
- */
 export function collectForexBids(
     agents: Map<string, Agent>,
     tradingPlanet: Planet,
@@ -134,13 +89,17 @@ export function collectForexBids(
             continue;
         }
 
+        if (!agent.assets[issuingPlanetId]) {
+            continue;
+        }
+
         const bid = localAssets.market?.buy[curName];
         if (!bid?.bidPrice || bid.bidPrice <= 0) {
             continue;
         }
 
         const storageTarget = bid.bidStorageTarget ?? 0;
-        const current = agent.foreignDeposits[issuingPlanetId] ?? 0;
+        const current = agent.assets[issuingPlanetId].deposits;
         const quantity = Math.max(0, storageTarget - current);
         if (quantity <= 0) {
             bid.lastBought = 0;
@@ -206,10 +165,6 @@ export function collectForexBids(
     return orders;
 }
 
-/**
- * Reset per-tick sell counters for forex ask orders on a trading planet.
- * Called before order collection so stale values from the prior tick don't linger.
- */
 export function resetForexSellCounters(
     tradingPlanet: Planet,
     issuingPlanetId: string,
