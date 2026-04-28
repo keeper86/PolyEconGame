@@ -578,6 +578,7 @@ export function makeGameState(
         planets: new Map(planets.map((p) => [p.id, p])),
         agents: new Map(agents.map((a) => [a.id, a])),
         shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+        forexMarketMakers: new Map(),
     };
 }
 

@@ -5,6 +5,8 @@ import { automaticPricing } from './market/automaticPricing';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { marketTick } from './market/market';
 import { forexTick } from './market/forexTick';
+import { forexMarketMakerPricing } from './market/forexMarketMakerPricing';
+import { forexMMRepaymentTick } from './market/forexMarketMakerTick';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
@@ -28,6 +30,7 @@ export function advanceTick(gameState: GameState) {
 
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
+            resetAgentMetrics(gameState.forexMarketMakers, planet);
         }
 
         environmentTick(planet);
@@ -105,6 +108,8 @@ export function advanceTick(gameState: GameState) {
     });
 
     // inter-planet effects and markets
+    forexMarketMakerPricing(gameState);
     forexTick(gameState);
+    forexMMRepaymentTick(gameState);
     shipTick(gameState);
 }

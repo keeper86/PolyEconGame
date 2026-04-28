@@ -279,3 +279,45 @@ export const CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1: Record<string, number> = {
     'Arable Land': 50, // agriculturalFacility
     'Water Source': 800, // waterExtractionFacility
 };
+
+// ---------------------------------------------------------------------------
+// Forex market-maker constants
+// ---------------------------------------------------------------------------
+
+/** Number of automated market-maker agents created per planet at simulation start. */
+export const FOREX_MM_COUNT = 3;
+
+/**
+ * Seeding loan amount per market-maker per foreign planet (denominated in the
+ * foreign planet's currency).  Each MM receives this much of every other
+ * planet's currency as initial inventory, funded by a loan from that planet's
+ * central bank.
+ */
+export const FOREX_MM_SEED_LOAN = 100_000;
+
+/**
+ * Working-capital loan amount per market-maker from their home planet's bank
+ * (denominated in home currency).  Used to fund bid orders.
+ */
+export const FOREX_MM_WORKING_CAPITAL = 100_000;
+
+/**
+ * Inventory reference level used by the pricing algorithm.
+ * Ratio = currentDeposit / TARGET drives the spread skew.
+ */
+export const FOREX_MM_TARGET_DEPOSIT = FOREX_MM_SEED_LOAN;
+
+/** Half-spread around mid-price (e.g. 0.03 = ask at mid×1.03, bid at mid×0.97). */
+export const FOREX_MM_BASE_SPREAD = 0.03;
+
+/**
+ * Maximum additional skew applied to ask/bid when inventory is at 0 % or
+ * 200 % of target.  Must be < FOREX_MM_BASE_SPREAD to guarantee ask > bid.
+ */
+export const FOREX_MM_MAX_SKEW = 0.02;
+
+/**
+ * Fraction of FOREX_MM_TARGET_DEPOSIT retained before repaying seeding loans.
+ * MMs keep at least this buffer before any excess is used for loan repayment.
+ */
+export const FOREX_MM_RETAIN_RATIO = 0.5;

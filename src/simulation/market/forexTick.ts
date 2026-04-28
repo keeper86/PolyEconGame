@@ -1,4 +1,4 @@
-import type { GameState } from '../planet/planet';
+import type { GameState, Agent } from '../planet/planet';
 import { clearUnifiedBids } from './orderBook';
 import { collectForexAsks, collectForexBids, resetForexSellCounters } from './forexOrderCollection';
 import { computeMarketSummary, settleForexTrades } from './settlement';
@@ -13,11 +13,14 @@ export function forexTick(gameState: GameState): void {
         curToIssuer.set(getCurrencyResourceName(planet.id), planet.id);
     }
 
-    // Pre-scan agents to find planet pairs that actually have live forex orders,
+    // All forex participants: regular agents + market-makers
+    const allParticipants = [...gameState.agents.values(), ...gameState.forexMarketMakers.values()];
+
+    // Pre-scan participants to find planet pairs that actually have live forex orders,
     // avoiding the full O(n²) work for pairs with no activity.
     const activePairs = new Set<string>();
-    for (const agent of gameState.agents.values()) {
-        for (const [tradingPlanetId, assets] of Object.entries(agent.assets)) {
+    for (const participant of allParticipants) {
+        for (const [tradingPlanetId, assets] of Object.entries(participant.assets)) {
             if (!assets.market) {
                 continue;
             }
@@ -38,19 +41,24 @@ export function forexTick(gameState: GameState): void {
             if (!activePairs.has(`${tradingPlanet.id}:${issuingPlanet.id}`)) {
                 continue;
             }
-            clearForexPair(gameState, tradingPlanet.id, issuingPlanet.id);
+            clearForexPair(gameState, allParticipants, tradingPlanet.id, issuingPlanet.id);
         }
     }
 }
 
-function clearForexPair(gameState: GameState, tradingPlanetId: string, issuingPlanetId: string): void {
+function clearForexPair(
+    gameState: GameState,
+    allParticipants: Agent[],
+    tradingPlanetId: string,
+    issuingPlanetId: string,
+): void {
     const tradingPlanet = gameState.planets.get(tradingPlanetId)!;
     const curName = getCurrencyResourceName(issuingPlanetId);
 
-    resetForexSellCounters(tradingPlanet, issuingPlanetId, gameState.agents);
+    resetForexSellCounters(tradingPlanet, issuingPlanetId, allParticipants);
 
-    const askOrders = collectForexAsks(gameState.agents, tradingPlanet, issuingPlanetId);
-    const agentBids = collectForexBids(gameState.agents, tradingPlanet, issuingPlanetId);
+    const askOrders = collectForexAsks(allParticipants, tradingPlanet, issuingPlanetId);
+    const agentBids = collectForexBids(allParticipants, tradingPlanet, issuingPlanetId);
 
     const referencePrice = tradingPlanet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
 

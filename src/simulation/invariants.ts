@@ -128,6 +128,7 @@ export function checkMonetaryConservation(
     agents: Map<string, Agent>,
     planets: Map<string, Planet>,
     tolerance = 0.01,
+    forexMarketMakers?: Map<string, Agent>,
 ): string[] {
     const discrepancies: string[] = [];
 
@@ -143,6 +144,17 @@ export function checkMonetaryConservation(
                 const t = firmDeposits + d;
                 c = t - firmDeposits - d;
                 firmDeposits = t;
+            }
+        }
+        if (forexMarketMakers) {
+            for (const mm of forexMarketMakers.values()) {
+                const total = mm.assets[planetId]?.deposits ?? 0;
+                if (total !== 0) {
+                    const d = total - c;
+                    const t = firmDeposits + d;
+                    c = t - firmDeposits - d;
+                    firmDeposits = t;
+                }
             }
         }
 

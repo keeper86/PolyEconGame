@@ -5,7 +5,7 @@ import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { getCurrencyResource, getCurrencyResourceName, FOREX_PRICE_FLOOR } from './currencyResources';
 
 export function collectForexAsks(
-    agents: Map<string, Agent>,
+    participants: Iterable<Agent>,
     tradingPlanet: Planet,
     issuingPlanetId: string,
 ): AskOrder[] {
@@ -13,8 +13,8 @@ export function collectForexAsks(
     const curName = getCurrencyResourceName(issuingPlanetId);
     const curResource = getCurrencyResource(issuingPlanetId);
 
-    for (const agent of agents.values()) {
-        const localAssets = agent.assets[tradingPlanet.id];
+    for (const participant of participants) {
+        const localAssets = participant.assets[tradingPlanet.id];
         if (!localAssets) {
             continue;
         }
@@ -27,7 +27,7 @@ export function collectForexAsks(
             continue;
         }
 
-        const issuingAssets = agent.assets[issuingPlanetId];
+        const issuingAssets = participant.assets[issuingPlanetId];
         const balance = issuingAssets?.deposits ?? 0;
         const alreadyHeld = issuingAssets?.depositHold ?? 0;
         const retainment = offer.offerRetainment ?? 0;
@@ -49,7 +49,7 @@ export function collectForexAsks(
         offer.lastOfferPrice = askPrice;
 
         orders.push({
-            agent,
+            agent: participant,
             resource: curResource,
             askPrice,
             quantity,
@@ -62,7 +62,7 @@ export function collectForexAsks(
 }
 
 export function collectForexBids(
-    agents: Map<string, Agent>,
+    participants: Iterable<Agent>,
     tradingPlanet: Planet,
     issuingPlanetId: string,
 ): AgentBidOrder[] {
@@ -72,7 +72,7 @@ export function collectForexBids(
 
     // First pass: gather valid bids and total deposit demand
     type PendingBid = {
-        agent: Agent;
+        participant: Agent;
         quantity: number;
         bidPrice: number;
         maxCost: number;
@@ -80,8 +80,8 @@ export function collectForexBids(
     const pending: PendingBid[] = [];
     let totalMaxCost = 0;
 
-    for (const agent of agents.values()) {
-        const localAssets = agent.assets[tradingPlanet.id];
+    for (const participant of participants) {
+        const localAssets = participant.assets[tradingPlanet.id];
         if (!localAssets) {
             continue;
         }
@@ -89,7 +89,7 @@ export function collectForexBids(
             continue;
         }
 
-        if (!agent.assets[issuingPlanetId]) {
+        if (!participant.assets[issuingPlanetId]) {
             continue;
         }
 
@@ -99,7 +99,7 @@ export function collectForexBids(
         }
 
         const storageTarget = bid.bidStorageTarget ?? 0;
-        const current = agent.assets[issuingPlanetId].deposits;
+        const current = participant.assets[issuingPlanetId].deposits;
         const quantity = Math.max(0, storageTarget - current);
         if (quantity <= 0) {
             bid.lastBought = 0;
@@ -111,13 +111,13 @@ export function collectForexBids(
         const askPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, bid.bidPrice));
         const maxCost = quantity * askPrice;
 
-        pending.push({ agent, quantity, bidPrice: askPrice, maxCost });
+        pending.push({ participant, quantity, bidPrice: askPrice, maxCost });
         totalMaxCost += maxCost;
     }
 
     // Second pass: apply deposit scaling if total cost exceeds all buyers' budgets
     const availableDepositsTotal = pending.reduce((sum, p) => {
-        const localAssets = p.agent.assets[tradingPlanet.id]!;
+        const localAssets = p.participant.assets[tradingPlanet.id]!;
         return sum + Math.max(0, localAssets.deposits - localAssets.depositHold);
     }, 0);
 
@@ -125,7 +125,7 @@ export function collectForexBids(
         totalMaxCost > 0 && totalMaxCost > availableDepositsTotal ? (availableDepositsTotal / totalMaxCost) * 0.99 : 1;
 
     for (const p of pending) {
-        const localAssets = p.agent.assets[tradingPlanet.id]!;
+        const localAssets = p.participant.assets[tradingPlanet.id]!;
         const scaledQty = p.quantity * depositScaleFactor;
         const holdAmount = scaledQty * p.bidPrice;
 
@@ -152,7 +152,7 @@ export function collectForexBids(
         bid.depositScaleWarning = actualHold < holdAmount || depositScaleFactor < 1 ? 'scaled' : undefined;
 
         orders.push({
-            agent: p.agent,
+            agent: p.participant,
             resource: curResource,
             bidPrice: p.bidPrice,
             quantity: actualQty,
@@ -168,16 +168,16 @@ export function collectForexBids(
 export function resetForexSellCounters(
     tradingPlanet: Planet,
     issuingPlanetId: string,
-    agents: Map<string, Agent>,
+    participants: Iterable<Agent>,
 ): void {
     const curName = getCurrencyResourceName(issuingPlanetId);
-    for (const agent of agents.values()) {
-        const offer = agent.assets[tradingPlanet.id]?.market?.sell[curName];
+    for (const participant of participants) {
+        const offer = participant.assets[tradingPlanet.id]?.market?.sell[curName];
         if (offer) {
             offer.lastSold = 0;
             offer.lastRevenue = 0;
         }
-        const bid = agent.assets[tradingPlanet.id]?.market?.buy[curName];
+        const bid = participant.assets[tradingPlanet.id]?.market?.buy[curName];
         if (bid) {
             bid.lastBought = 0;
             bid.lastSpent = 0;

@@ -56,12 +56,11 @@ export function resourceFormToUnit(form: ResourceType): Exclude<Units, 'currency
     switch (form) {
         case 'solid':
         case 'frozenGoods':
+        case 'pieces':
+        case 'gas':
             return 'tonnes';
         case 'liquid':
             return 'litres';
-        case 'gas':
-            return 'm3';
-        case 'pieces':
         case 'landBoundResource':
         case 'services':
         default:
@@ -81,17 +80,17 @@ export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, 
     if (unit === 'currency' && planetId) {
         const info = currencyMapping[planetId];
         if (info) {
-            return `${formattedNumber} ${info.symbol}`;
+            return `${formattedNumber}${info.symbol}`;
         }
     }
     if (unit === 'tonnes') {
-        return `${formattedNumber} t`;
+        return `${formattedNumber}t`;
     }
     if (unit === 'litres') {
-        return `${formattedNumber} ℓ`;
+        return `${formattedNumber}ℓ`;
     }
     if (unit === 'm3') {
-        return `${formattedNumber} m³`;
+        return `${formattedNumber}m³`;
     }
     if (unit === 'percent') {
         return `${formattedNumber}%`;

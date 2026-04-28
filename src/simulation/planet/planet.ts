@@ -310,6 +310,8 @@ export interface GameState {
     planets: Map<string, Planet>;
     agents: Map<string, Agent>;
     shipCapitalMarket: ShipCapitalMarket;
+    /** Automated market-maker agents stored separately so they bypass the normal financial tick. */
+    forexMarketMakers: Map<string, Agent>;
 }
 
 export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): void {

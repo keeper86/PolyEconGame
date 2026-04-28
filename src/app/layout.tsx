@@ -53,7 +53,7 @@ export default async function RootLayout({
                                         <div className='flex items-center gap-2 '>
                                             <SidebarTrigger className='-ml-1' />
                                         </div>
-                                        <div className='flex items-center gap-2'>
+                                        <div className='flex items-center gap-3'>
                                             <span className='text-sm text-muted-foreground flex items-center gap-1'>
                                                 <TickDisplay />
                                             </span>

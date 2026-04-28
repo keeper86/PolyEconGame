@@ -33,6 +33,7 @@ interface WireGameState {
     planets: Planet[];
     agents: Agent[];
     shipCapitalMarket?: ShipCapitalMarket;
+    forexMarketMakers?: Agent[];
 }
 
 function gameStateToWire(gs: GameState): WireGameState {
@@ -41,6 +42,7 @@ function gameStateToWire(gs: GameState): WireGameState {
         planets: [...gs.planets.values()],
         agents: [...gs.agents.values()],
         shipCapitalMarket: gs.shipCapitalMarket,
+        forexMarketMakers: [...gs.forexMarketMakers.values()],
     };
 }
 
@@ -68,11 +70,16 @@ function wireToGameState(wire: WireGameState): GameState {
         }
         agents.set(a.id, a);
     }
+    const forexMarketMakers = new Map<string, Agent>();
+    for (const mm of wire.forexMarketMakers ?? []) {
+        forexMarketMakers.set(mm.id, mm);
+    }
     return {
         tick: wire.tick,
         planets,
         agents,
         shipCapitalMarket: wire.shipCapitalMarket ?? { tradeHistory: [], emaPrice: {} },
+        forexMarketMakers,
     };
 }
 
