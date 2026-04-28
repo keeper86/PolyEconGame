@@ -73,7 +73,10 @@ export function handleAcquireLicense(
             });
             return;
         }
+        console.log('before:', assets.deposits);
+
         assets.deposits -= cost;
+        console.log('after:', assets.deposits);
         // No change to planet.bank.deposits: money moves from this agent to the government,
         // keeping aggregate bank deposits (Σ agent deposits) constant.
     }

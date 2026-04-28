@@ -72,6 +72,7 @@ export type Props = {
     agentId: string;
     planetId: string;
     assets: AgentPlanetAssets;
+    allPlanetDeposits?: Record<string, number>;
 };
 
 /* ------------------------------------------------------------------ */
@@ -123,6 +124,8 @@ export type ResourceAccordionItemProps = {
     visibleColumns: import('./columnConfig').ColumnConfig[];
     /** Map of planetId → planetName, used to derive display names for currency resources. */
     planetNames?: Map<string, string>;
+    /** Deposits held on each planet; used to show the correct balance for forex resources. */
+    allPlanetDeposits?: Record<string, number>;
 };
 
 export type BuySectionProps = {

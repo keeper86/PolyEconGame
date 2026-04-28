@@ -7,6 +7,7 @@ import type { ResourceTriggerProps } from './marketTypes';
 import { classifyMarket, getResourceByName } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
 import { getColumnClasses } from './columnConfig';
+import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 
 export default function ResourceTrigger({
     name,
@@ -33,8 +34,14 @@ export default function ResourceTrigger({
             case 'clearingPrice':
                 return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : null;
             case 'totalProduction':
+                if (name.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                    return null;
+                }
                 return overviewRow ? formatNumberWithUnit(overviewRow.totalProduction, qtyUnit) : null;
             case 'totalConsumption':
+                if (name.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                    return null;
+                }
                 return overviewRow ? formatNumberWithUnit(overviewRow.totalConsumption, qtyUnit) : null;
             case 'totalSupply':
                 return overviewRow ? formatNumberWithUnit(overviewRow.totalSupply, qtyUnit) : null;

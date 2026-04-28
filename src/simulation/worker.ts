@@ -606,7 +606,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         .filter((ar) => ar.data.associatedPlanetId === msg.planetId)
                         .map((ar) => ar.data)
                         .toArray();
-                    data = { agents };
+                    const forexMMs = [...snap.forexMarketMakers.values()].filter(
+                        (mm) => mm.associatedPlanetId === msg.planetId,
+                    );
+                    data = { agents: [...agents, ...forexMMs] };
                     break;
                 }
                 case 'getLoanConditions': {

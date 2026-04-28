@@ -52,7 +52,12 @@ const MARKET_LEVEL_LABELS: Record<string, string> = {
     currency: 'Currency',
 };
 
-export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
+export default function MarketPanel({
+    agentId,
+    planetId: _planetId,
+    assets,
+    allPlanetDeposits,
+}: Props): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
     const [showAll, setShowAll] = useState(false);
@@ -343,6 +348,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                             overviewRow={overviewRows[name]}
                                             visibleColumns={visibleColumns}
                                             planetNames={planetNames}
+                                            allPlanetDeposits={allPlanetDeposits}
                                         />
                                     ))}
                                 </Accordion>

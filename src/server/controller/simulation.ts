@@ -338,6 +338,11 @@ export const getAgentPlanetDetail = () =>
                 return { tick, detail: null };
             }
 
+            const allPlanetDeposits: Record<string, number> = {};
+            for (const [pid, pa] of Object.entries(agent.assets ?? {})) {
+                allPlanetDeposits[pid] = pa.deposits ?? 0;
+            }
+
             return {
                 tick,
                 detail: {
@@ -346,6 +351,7 @@ export const getAgentPlanetDetail = () =>
                     planetId: input.planetId,
                     automateWorkerAllocation: agent.automateWorkerAllocation ?? false,
                     assets,
+                    allPlanetDeposits,
                 },
             };
         });

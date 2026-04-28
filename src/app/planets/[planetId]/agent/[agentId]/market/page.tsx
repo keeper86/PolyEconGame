@@ -18,7 +18,12 @@ export default function MarketPage() {
             {hasNoAssets ? (
                 <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
-                <MarketPanel agentId={agentId} planetId={planetId} assets={assets} />
+                <MarketPanel
+                    agentId={agentId}
+                    planetId={planetId}
+                    assets={assets}
+                    allPlanetDeposits={detail?.allPlanetDeposits}
+                />
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>
             )}
