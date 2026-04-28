@@ -158,7 +158,12 @@ export function collectForexBids(
             quantity: actualQty,
             filled: 0,
             cost: 0,
-            remainingDeposits: availableDeposits - actualHold,
+            // actualHold is the pre-committed deposit budget for this bid.
+            // Unlike physical-goods orders (where deposits are debited at settlement),
+            // forex bids pre-debit deposits at collection time, so remainingDeposits
+            // must equal actualHold — not (availableDeposits - actualHold) — to give
+            // the matching engine the correct spending capacity.
+            remainingDeposits: actualHold,
         });
     }
 

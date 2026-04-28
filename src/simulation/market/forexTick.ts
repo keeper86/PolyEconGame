@@ -1,4 +1,4 @@
-import type { GameState, Agent } from '../planet/planet';
+import type { GameState, Agent, Planet } from '../planet/planet';
 import { clearUnifiedBids } from './orderBook';
 import { collectForexAsks, collectForexBids, resetForexSellCounters } from './forexOrderCollection';
 import { computeMarketSummary, settleForexTrades } from './settlement';
@@ -138,7 +138,7 @@ function clearForexPair(
  * physical-goods markets in market.ts / updateAvgMarketResult.
  */
 function updateAvgForexResult(
-    tradingPlanet: GameState['planets'] extends Map<string, infer P> ? P : never,
+    tradingPlanet: Planet,
     curName: string,
 ): void {
     const latest = tradingPlanet.lastMarketResult[curName];

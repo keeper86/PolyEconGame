@@ -216,6 +216,50 @@ describe('forexTick', () => {
         const issues = checkMonetaryConservation(gs.agents, gs.planets);
         expect(issues).toEqual([]);
     });
+
+    it('fills bids correctly when buyer commits all available deposits', () => {
+        // Bootstrap: agentA holds 500 units of pB currency
+        creditForeignDeposit(aA, pB, 500);
+
+        const curB = getCurrencyResourceName('pB');
+
+        // agentA posts a sell offer for CUR_pB on pA's forex market
+        if (!aA.assets.pA.market) {
+            aA.assets.pA.market = { sell: {}, buy: {} };
+        }
+        aA.assets.pA.market.sell[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            offerPrice: 1.0,
+            offerRetainment: 0,
+            automated: false,
+        };
+
+        // agentB bids with ALL its available pA deposits (edge-case: exhausts the budget)
+        const fullBudget = 200;
+        aB.assets.pA.deposits = fullBudget;
+        pA.bank.deposits += fullBudget;
+        pA.bank.loans += fullBudget;
+        if (!aB.assets.pA.market) {
+            aB.assets.pA.market = { sell: {}, buy: {} };
+        }
+        aB.assets.pA.market.buy[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            bidPrice: 1.0,
+            // target equals full budget at bid price: buyer commits all deposits
+            bidStorageTarget: fullBudget,
+            automated: false,
+        };
+        pA.marketPrices[curB] = 1.0;
+
+        forexTick(gs);
+
+        // agentB should have received pB currency (trade was filled)
+        expect(aB.assets.pB?.deposits ?? 0).toBeGreaterThan(0);
+
+        // monetary conservation must hold
+        const issues = checkMonetaryConservation(gs.agents, gs.planets);
+        expect(issues).toEqual([]);
+    });
 });
 
 describe('forexTick — heterogeneous pricing seeds', () => {
