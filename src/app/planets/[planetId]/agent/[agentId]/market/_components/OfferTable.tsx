@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { cn, formatNumbers } from '@/lib/utils';
+import { cn, formatNumberWithUnit, getCurrencySymbol } from '@/lib/utils';
 
 export type OfferRow = {
     agentId: string;
@@ -28,6 +28,8 @@ type Props = {
     offers: OfferRow[];
     /** VWAP clearing price — used to identify the marginal seller. */
     clearingPrice: number;
+    /** Planet ID — used for currency symbol in column headers and revenue formatting. */
+    planetId?: string;
 };
 
 function sellThroughClass(st: number): string {
@@ -40,10 +42,12 @@ function sellThroughClass(st: number): string {
     return 'text-muted-foreground';
 }
 
-function OfferTableComponent({ offers, clearingPrice }: Props): React.ReactElement {
+function OfferTableComponent({ offers, clearingPrice, planetId }: Props): React.ReactElement {
     if (offers.length === 0) {
-        return <p className='text-xs text-muted-foreground py-2'>No food sellers this tick.</p>;
+        return <p className='text-xs text-muted-foreground py-2'>No sellers this tick.</p>;
     }
+
+    const currencySymbol = getCurrencySymbol(planetId ?? '');
 
     // The marginal agent is the one whose offer price is closest to the
     // clearing price from below (last infra-marginal or first supra-marginal).
@@ -67,7 +71,7 @@ function OfferTableComponent({ offers, clearingPrice }: Props): React.ReactEleme
                     <tr className='border-b text-muted-foreground'>
                         <th className='text-left py-1 pr-2 font-medium'>#</th>
                         <th className='text-left py-1 pr-2 font-medium'>Agent</th>
-                        <th className='text-right py-1 pr-2 font-medium'>Price (¤/t)</th>
+                        <th className='text-right py-1 pr-2 font-medium'>Price ({currencySymbol}/t)</th>
                         <th className='text-right py-1 pr-2 font-medium'>Offered (t)</th>
                         <th className='text-right py-1 pr-2 font-medium'>Sold (t)</th>
                         <th className='text-right py-1 pr-2 font-medium'>Fill %</th>
@@ -95,21 +99,25 @@ function OfferTableComponent({ offers, clearingPrice }: Props): React.ReactEleme
                                     )}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums font-mono'>
-                                    {formatNumbers(row.offerPrice)}
+                                    {formatNumberWithUnit(row.offerPrice, 'currency', planetId)}
                                 </td>
                                 <td className='py-1 pr-2 text-right tabular-nums'>
-                                    {formatNumbers(row.lastPlacedQuantity)}
+                                    {formatNumberWithUnit(row.lastPlacedQuantity, 'tonnes')}
                                 </td>
-                                <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.lastSold)}</td>
+                                <td className='py-1 pr-2 text-right tabular-nums'>
+                                    {formatNumberWithUnit(row.lastSold, 'tonnes')}
+                                </td>
                                 <td
                                     className={cn(
                                         'py-1 pr-2 text-right tabular-nums',
                                         sellThroughClass(row.sellThrough),
                                     )}
                                 >
-                                    {formatNumbers(row.sellThrough * 100)}%
+                                    {formatNumberWithUnit(row.sellThrough * 100, 'percent')}
                                 </td>
-                                <td className='py-1 text-right tabular-nums'>{formatNumbers(row.lastRevenue)}</td>
+                                <td className='py-1 text-right tabular-nums'>
+                                    {formatNumberWithUnit(row.lastRevenue, 'currency', planetId)}
+                                </td>
                             </tr>
                         );
                     })}

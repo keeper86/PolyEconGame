@@ -83,6 +83,8 @@ interface GameStateRecordShape {
     planets: Map<string, PlanetRecord>;
     agents: Map<string, AgentRecord>;
     shipCapitalMarket: ShipCapitalMarket;
+    /** Stored as a plain Map — market-makers are not frequent enough to need structural sharing. */
+    forexMarketMakers: globalThis.Map<string, Agent>;
 }
 
 const GAME_STATE_RECORD_DEFAULTS: GameStateRecordShape = {
@@ -90,6 +92,7 @@ const GAME_STATE_RECORD_DEFAULTS: GameStateRecordShape = {
     planets: Map<string, PlanetRecord>(),
     agents: Map<string, AgentRecord>(),
     shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+    forexMarketMakers: new globalThis.Map<string, Agent>(),
 };
 
 export class GameStateRecord extends Record(GAME_STATE_RECORD_DEFAULTS) {}
@@ -118,7 +121,13 @@ export function toImmutableGameState(state: GameState): GameStateRecord {
         [...state.agents.entries()].map(([id, a]) => [id, new AgentRecord({ id: a.id, name: a.name, data: a })]),
     );
 
-    return new GameStateRecord({ tick: state.tick, planets, agents, shipCapitalMarket: state.shipCapitalMarket });
+    return new GameStateRecord({
+        tick: state.tick,
+        planets,
+        agents,
+        shipCapitalMarket: state.shipCapitalMarket,
+        forexMarketMakers: state.forexMarketMakers,
+    });
 }
 
 /**
@@ -143,5 +152,6 @@ export function fromImmutableGameState(record: GameStateRecord): GameState {
         planets,
         agents,
         shipCapitalMarket: record.shipCapitalMarket,
+        forexMarketMakers: record.forexMarketMakers,
     };
 }

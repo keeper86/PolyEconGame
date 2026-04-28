@@ -14,7 +14,7 @@ import type { ResourceAccordionItemProps } from './marketTypes';
 import { TTL_FEEDBACK, MARKET_STATUS_CONFIG } from './marketTypes';
 import { getResourceByName } from './marketHelpers';
 import { classifyMarket } from './marketHelpers';
-import { cn, formatNumbers } from '@/lib/utils';
+import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
 import ResourceTrigger from './ResourceTrigger';
 import BuySection from './BuySection';
@@ -22,6 +22,7 @@ import SellSection from './SellSection';
 import MarketDetailsSection from './MarketDetailsSection';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
 import { resourceNameToSlug } from './marketHelpers';
+import { currencyMapping } from '@/simulation/market/currencyResources';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -32,6 +33,7 @@ export default function ResourceAccordionItem({
     _isOpen: isOpen,
     overviewRow,
     visibleColumns,
+    planetNames,
 }: ResourceAccordionItemProps): React.ReactElement {
     const bid = assets.market?.buy[resourceName];
     const offer = assets.market?.sell[resourceName];
@@ -56,20 +58,47 @@ export default function ResourceAccordionItem({
         const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
         const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
         switch (columnId) {
-            case 'currentStorage':
-                return formatNumbers(inventoryQty);
+            case 'currentStorage': {
+                const resource = getResourceByName(resourceName);
+                return formatNumberWithUnit(inventoryQty, resource ? resourceFormToUnit(resource.form) : 'units');
+            }
             case 'clearingPrice':
-                return overviewRow ? formatNumbers(overviewRow.clearingPrice) : '—';
-            case 'totalProduction':
-                return overviewRow ? formatNumbers(overviewRow.totalProduction) : '—';
-            case 'totalConsumption':
-                return overviewRow ? formatNumbers(overviewRow.totalConsumption) : '—';
-            case 'totalSupply':
-                return overviewRow ? formatNumbers(overviewRow.totalSupply) : '—';
-            case 'totalDemand':
-                return overviewRow ? formatNumbers(overviewRow.totalDemand) : '—';
-            case 'totalSold':
-                return overviewRow ? formatNumbers(overviewRow.totalSold) : '—';
+                return formatNumberWithUnit(overviewRow?.clearingPrice, 'currency', planetId);
+            case 'totalProduction': {
+                const resource = getResourceByName(resourceName);
+                return formatNumberWithUnit(
+                    overviewRow?.totalProduction,
+                    resource ? resourceFormToUnit(resource.form) : 'units',
+                );
+            }
+            case 'totalConsumption': {
+                const resource = getResourceByName(resourceName);
+                return formatNumberWithUnit(
+                    overviewRow?.totalConsumption,
+                    resource ? resourceFormToUnit(resource.form) : 'units',
+                );
+            }
+            case 'totalSupply': {
+                const resource = getResourceByName(resourceName);
+                return formatNumberWithUnit(
+                    overviewRow?.totalSupply,
+                    resource ? resourceFormToUnit(resource.form) : 'units',
+                );
+            }
+            case 'totalDemand': {
+                const resource = getResourceByName(resourceName);
+                return formatNumberWithUnit(
+                    overviewRow?.totalDemand,
+                    resource ? resourceFormToUnit(resource.form) : 'units',
+                );
+            }
+            case 'totalSold': {
+                const resource = getResourceByName(resourceName);
+                return formatNumberWithUnit(
+                    overviewRow?.totalSold,
+                    resource ? resourceFormToUnit(resource.form) : 'units',
+                );
+            }
             case 'marketFill':
                 return statusConfig ? (
                     <Badge variant='outline' className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}>
@@ -97,6 +126,12 @@ export default function ResourceAccordionItem({
     const sellErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const resource = getResourceByName(resourceName);
+
+    // Derive a human-readable display name for currency resources (e.g. "Gaia Credits" for CUR_planet-1).
+    const issuingPlanetId = resourceName.startsWith('CUR_') ? resourceName.slice(4) : null;
+    const displayName = issuingPlanetId
+        ? currencyMapping[issuingPlanetId]?.resource.name + ' (' + planetNames?.get(issuingPlanetId) + ')'
+        : undefined;
 
     // Clear timeouts on unmount
     useEffect(() => {
@@ -436,11 +471,13 @@ export default function ResourceAccordionItem({
             <AccordionTrigger className='hover:no-underline px-1'>
                 <ResourceTrigger
                     name={resourceName}
+                    displayName={displayName}
                     bid={bid}
                     offer={offer}
                     overviewRow={overviewRow}
                     storageQuantity={inventoryQty}
                     visibleColumns={visibleColumns}
+                    planetId={planetId}
                 />
             </AccordionTrigger>
             <AccordionContent>
@@ -503,6 +540,7 @@ export default function ResourceAccordionItem({
                             buySaving={buySaving}
                             buySuccessMsg={buySuccessMsg}
                             buyErrorMsg={buyErrorMsg}
+                            planetId={planetId}
                         />
 
                         <SellSection
@@ -519,6 +557,7 @@ export default function ResourceAccordionItem({
                             sellSaving={sellSaving}
                             sellSuccessMsg={sellSuccessMsg}
                             sellErrorMsg={sellErrorMsg}
+                            planetId={planetId}
                         />
                     </Accordion>
 

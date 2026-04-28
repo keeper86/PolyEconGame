@@ -1,3 +1,5 @@
+import { currencyMapping } from '@/simulation/market/currencyResources';
+import type { ResourceType } from '@/simulation/planet/claims';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -6,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const EPSILON = 1e-4;
-export const formatNumbers = (n: number | null | undefined): string => {
+const formatNumbers = (n: number | null | undefined): string => {
     if (n == null || !isFinite(n)) {
         return '—';
     }
@@ -14,7 +16,7 @@ export const formatNumbers = (n: number | null | undefined): string => {
         if (n === 0) {
             return '0';
         }
-        return '<0.0001';
+        return '<' + EPSILON;
     }
 
     let currentNumber = n;
@@ -36,8 +38,6 @@ export const formatNumbers = (n: number | null | undefined): string => {
         }
     }
 
-    // how to map this number to
-    // x.xx or xx.x
     const leadingWithZero = Math.trunc(currentNumber) === 0;
     const formatted = currentNumber.toPrecision(leadingWithZero ? 2 : 3);
     // Strip trailing zeros: "1.230" → "1.23", "1.00" → "1", "110." → "110"
@@ -47,4 +47,57 @@ export const formatNumbers = (n: number | null | undefined): string => {
             .replace(/\.0+$/u, '')
             .replace(/\.$/u, '') + currentSuffix
     );
+};
+
+export type Units = 'currency' | 'tonnes' | 'litres' | 'units' | 'persons' | 'percent' | 'm3' | 'days';
+
+/** Maps a resource form to its appropriate display unit. */
+export function resourceFormToUnit(form: ResourceType): Exclude<Units, 'currency'> {
+    switch (form) {
+        case 'solid':
+        case 'frozenGoods':
+        case 'pieces':
+        case 'gas':
+            return 'tonnes';
+        case 'liquid':
+            return 'litres';
+        case 'landBoundResource':
+        case 'services':
+        default:
+            return 'units';
+    }
+}
+
+export function getCurrencySymbol(planetId: string): string {
+    return currencyMapping[planetId]?.symbol ?? '¤';
+}
+
+export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, planetId?: string): string => {
+    const formattedNumber = formatNumbers(n);
+    if (formattedNumber === '—') {
+        return formattedNumber;
+    }
+    if (unit === 'currency' && planetId) {
+        const info = currencyMapping[planetId];
+        if (info) {
+            return `${formattedNumber}${info.symbol}`;
+        }
+    }
+    if (unit === 'tonnes') {
+        return `${formattedNumber}t`;
+    }
+    if (unit === 'litres') {
+        return `${formattedNumber}ℓ`;
+    }
+    if (unit === 'm3') {
+        return `${formattedNumber}m³`;
+    }
+    if (unit === 'percent') {
+        return `${formattedNumber}%`;
+    }
+    if (unit === 'days') {
+        return `${formattedNumber} days`;
+    }
+    // 'units' and 'persons' — no suffix
+    return formattedNumber;
 };

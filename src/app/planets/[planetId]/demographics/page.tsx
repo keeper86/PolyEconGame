@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { Skill } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { educationLevelKeys } from '@/simulation/population/education';
@@ -158,7 +158,9 @@ export default function PlanetDemographicsPage() {
                     style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
                 >
                     <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
-                    <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(groupPop[i])}</div>
+                    <div className='font-semibold text-[11px] leading-tight'>
+                        {formatNumberWithUnit(groupPop[i], 'persons')}
+                    </div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
                         {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
                     </div>
@@ -175,7 +177,9 @@ export default function PlanetDemographicsPage() {
                 >
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
                         <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
-                        <p className='text-lg font-semibold leading-tight'>{formatNumbers(groupPop[i])}</p>
+                        <p className='text-lg font-semibold leading-tight'>
+                            {formatNumberWithUnit(groupPop[i], 'persons')}
+                        </p>
                         <p className='text-xs text-muted-foreground'>
                             {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
                         </p>
@@ -198,7 +202,9 @@ export default function PlanetDemographicsPage() {
                     style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
                 >
                     <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
-                    <div className='font-semibold text-[11px] leading-tight'>{formatNumbers(wealthMean[i])}</div>
+                    <div className='font-semibold text-[11px] leading-tight'>
+                        {formatNumberWithUnit(wealthMean[i], 'currency', planetId)}
+                    </div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
                         {wealthShare[i].toFixed(1)}% of wealth
                     </div>
@@ -215,7 +221,9 @@ export default function PlanetDemographicsPage() {
                 >
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
                         <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
-                        <p className='text-lg font-semibold leading-tight'>{formatNumbers(wealthMean[i])}</p>
+                        <p className='text-lg font-semibold leading-tight'>
+                            {formatNumberWithUnit(wealthMean[i], 'currency', planetId)}
+                        </p>
                         <p className='text-xs text-muted-foreground'>Ø wealth / person</p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
                             Wealth share{' '}
@@ -256,7 +264,7 @@ export default function PlanetDemographicsPage() {
                 <h4 className='text-sm font-semibold' id='wealth'>
                     Wealth distribution
                 </h4>
-                <span className='text-xs text-muted-foreground'>{`Total (per capita): ${formatNumbers(totalWealth)} (${formatNumbers(totalWealth / populationTotal)})`}</span>
+                <span className='text-xs text-muted-foreground'>{`Total (per capita): ${formatNumberWithUnit(totalWealth, 'currency', planetId)} (${formatNumberWithUnit(totalWealth / populationTotal, 'currency', planetId)})`}</span>
             </span>
             {wealthCards}
             <WealthDistributionChart rows={rows} groupMode={group} />

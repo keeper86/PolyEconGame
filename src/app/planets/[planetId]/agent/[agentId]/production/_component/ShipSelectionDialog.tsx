@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { shiptypes, constructionShipType } from '@/simulation/ships/ships';
 import type { TransportShipType, ConstructionShipType, PassengerShipType } from '@/simulation/ships/ships';
 import React, { useState } from 'react';
@@ -136,12 +136,12 @@ export function ShipSelectionDialog({
                                                 {shipType.type === 'transport' ? (
                                                     <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                                                         <Package className='h-2.5 w-2.5' />
-                                                        {formatNumbers(shipType.cargoSpecification.volume / 1000)}k m³
+                                                        {formatNumberWithUnit(shipType.cargoSpecification.volume, 'm3')}
                                                     </Badge>
                                                 ) : (
                                                     <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                                                         <Users className='h-2.5 w-2.5' />
-                                                        {formatNumbers(shipType.passengerCapacity / 1000)}k pax
+                                                        {formatNumberWithUnit(shipType.passengerCapacity, 'persons')}
                                                     </Badge>
                                                 )}
                                                 <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>

@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { AlertTriangle, InfoIcon, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
 import { SY_TIERS, calcClaimQuantity, calcClaimCost } from './claimCalculations';
 
 interface ClaimSizeFormProps {
+    planetId: string;
     summary: ClaimResourceSummary;
     financials: { deposits: number; monthlyNetCashFlow: number } | undefined;
     tierIndex: number;
@@ -25,6 +26,7 @@ interface ClaimSizeFormProps {
 
 export function ClaimSizeForm({
     summary,
+    planetId,
     financials,
     tierIndex,
     onTierChange,
@@ -97,7 +99,7 @@ export function ClaimSizeForm({
                                 className='absolute'
                                 style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
                             >
-                                {formatNumbers(t)}
+                                {formatNumberWithUnit(t, 'units')}
                             </span>
                         );
                     })}
@@ -107,7 +109,7 @@ export function ClaimSizeForm({
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Quantity</span>
                     <span className={`font-medium ${exceedsCapacity ? 'text-destructive' : ''}`}>
-                        {formatNumbers(quantity)} units
+                        {formatNumberWithUnit(quantity, 'units')}
                         {exceedsCapacity && ' — exceeds available'}
                     </span>
                 </div>
@@ -118,13 +120,13 @@ export function ClaimSizeForm({
                             <span
                                 className={`font-medium ${cannotAfford ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}`}
                             >
-                                {formatNumbers(upfrontCost)}
+                                {formatNumberWithUnit(upfrontCost, 'currency', planetId)}
                             </span>
                         </div>
                         <div className='flex justify-between'>
                             <span className='text-muted-foreground'>Your deposits</span>
                             <span className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}>
-                                {formatNumbers(deposits)}
+                                {formatNumberWithUnit(deposits, 'currency', planetId)}
                             </span>
                         </div>
                     </>
@@ -133,13 +135,15 @@ export function ClaimSizeForm({
                     <span className='text-muted-foreground'>
                         {summary.renewable ? 'Cost / tick (ongoing)' : 'Cost (flat)'}
                     </span>
-                    <span className='font-medium text-amber-600 dark:text-amber-400'>{formatNumbers(cost)}</span>
+                    <span className='font-medium text-amber-600 dark:text-amber-400'>
+                        {formatNumberWithUnit(cost, 'currency', planetId)}
+                    </span>
                 </div>
                 {!summary.renewable ? (
                     <div className='flex justify-between'>
                         <span className='text-muted-foreground'>Your deposits</span>
                         <span className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}>
-                            {formatNumbers(deposits)}
+                            {formatNumberWithUnit(deposits, 'currency', planetId)}
                         </span>
                     </div>
                 ) : (
@@ -149,7 +153,7 @@ export function ClaimSizeForm({
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <span className='font-medium text-amber-600 dark:text-amber-400'>
-                                        {formatNumbers(perTickCashFlow)}
+                                        {formatNumberWithUnit(perTickCashFlow, 'currency', planetId)}
                                     </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -160,7 +164,9 @@ export function ClaimSizeForm({
                                 </TooltipContent>
                             </Tooltip>
                         ) : (
-                            <span className='font-medium'>{formatNumbers(perTickCashFlow)}</span>
+                            <span className='font-medium'>
+                                {formatNumberWithUnit(perTickCashFlow, 'currency', planetId)}
+                            </span>
                         )}
                     </div>
                 )}

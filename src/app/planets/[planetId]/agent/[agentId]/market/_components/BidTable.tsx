@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { cn, formatNumbers } from '@/lib/utils';
+import { cn, formatNumberWithUnit } from '@/lib/utils';
 
 export type BidRow = {
     agentId: string;
@@ -52,14 +52,20 @@ export default function BidTable({ bids }: Props): React.ReactElement {
                             <td className='py-1 pr-2 text-muted-foreground tabular-nums'>{i + 1}</td>
                             <td className='py-1 pr-2 font-medium truncate max-w-[120px]'>{row.agentName}</td>
                             <td className='py-1 pr-2 text-right tabular-nums font-mono'>
-                                {formatNumbers(row.bidPrice)}
+                                {formatNumberWithUnit(row.bidPrice, 'currency')}
                             </td>
-                            <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.demandedQuantity)}</td>
-                            <td className='py-1 pr-2 text-right tabular-nums'>{formatNumbers(row.lastBought)}</td>
+                            <td className='py-1 pr-2 text-right tabular-nums'>
+                                {formatNumberWithUnit(row.demandedQuantity, 'tonnes')}
+                            </td>
+                            <td className='py-1 pr-2 text-right tabular-nums'>
+                                {formatNumberWithUnit(row.lastBought, 'tonnes')}
+                            </td>
                             <td className={cn('py-1 pr-2 text-right tabular-nums', fillRatioClass(row.fillRatio))}>
                                 {(row.fillRatio * 100).toFixed(0)}%
                             </td>
-                            <td className='py-1 text-right tabular-nums font-mono'>{formatNumbers(row.lastSpent)}</td>
+                            <td className='py-1 text-right tabular-nums font-mono'>
+                                {formatNumberWithUnit(row.lastSpent, 'currency')}
+                            </td>
                         </tr>
                     ))}
                 </tbody>

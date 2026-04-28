@@ -103,11 +103,13 @@ export const MARKET_STATUS_CONFIG: Record<MarketStatus, { label: string; classNa
 
 export type ResourceTriggerProps = {
     name: string;
+    displayName?: string;
     bid?: MarketBidEntry;
     offer?: MarketOfferEntry;
     overviewRow?: MarketOverviewRow;
     storageQuantity?: number;
     visibleColumns: import('./columnConfig').ColumnConfig[];
+    planetId: string;
 };
 
 export type ResourceAccordionItemProps = {
@@ -119,6 +121,8 @@ export type ResourceAccordionItemProps = {
     _isOpen: boolean;
     overviewRow?: MarketOverviewRow;
     visibleColumns: import('./columnConfig').ColumnConfig[];
+    /** Map of planetId → planetName, used to derive display names for currency resources. */
+    planetNames?: Map<string, string>;
 };
 
 export type BuySectionProps = {
@@ -135,6 +139,8 @@ export type BuySectionProps = {
     buySaving: boolean;
     buySuccessMsg: string | null;
     buyErrorMsg: string | null;
+    /** Planet ID of the market — used for currency symbol formatting. */
+    planetId: string;
 };
 
 export type SellSectionProps = {
@@ -151,4 +157,6 @@ export type SellSectionProps = {
     sellSaving: boolean;
     sellSuccessMsg: string | null;
     sellErrorMsg: string | null;
+    /** Planet ID of the market — used for currency symbol formatting. */
+    planetId: string;
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { TooltipProps } from 'recharts';
 
 type Props = TooltipProps<number, string> & {
@@ -31,7 +31,9 @@ export function FinancialTooltip({ active, payload, label, labelFormatter }: Pro
             {visible.map((entry) => (
                 <p key={entry.dataKey} style={{ color: '#e2e8f0', margin: '1px 0' }}>
                     <span style={{ color: entry.color }}>{entry.name}</span>:{' '}
-                    {entry.value !== null && entry.value !== undefined ? formatNumbers(entry.value) : ''}
+                    {entry.value !== null && entry.value !== undefined
+                        ? formatNumberWithUnit(entry.value, 'currency')
+                        : ''}
                 </p>
             ))}
         </div>

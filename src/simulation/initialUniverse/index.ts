@@ -3,6 +3,7 @@ import { AC_ID, buildAlphaCentauri } from './alphaCentauri';
 import { EARTH_ID } from './earth';
 import { buildProceduralWorld, PROC_PLANET_ID } from './proceduralWorld';
 import { buildSmallPlanets } from './smallPlanets';
+import { seedForexMarketMakers } from '../market/forexMarketMaker';
 
 export {
     createPopulation,
@@ -26,7 +27,7 @@ export function createInitialGameState(): GameState {
 
     const allAgents = [...earthAgents, ...acAgents, ...smallPlanets.flatMap((p) => p.agents)];
 
-    return {
+    const gameState: GameState = {
         tick: 0,
         planets: new Map([
             [earth.id, earth],
@@ -35,5 +36,10 @@ export function createInitialGameState(): GameState {
         ]),
         agents: new Map(allAgents.map((a) => [a.id, a])),
         shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+        forexMarketMakers: new Map(),
     };
+
+    seedForexMarketMakers(gameState);
+
+    return gameState;
 }

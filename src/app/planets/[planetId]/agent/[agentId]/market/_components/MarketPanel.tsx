@@ -21,6 +21,7 @@ import {
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
+import { getCurrencyResourceName, CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { useVisibleColumns } from './useVisibleColumns';
 
 // Fixed pixel overhead for non-column content in each row:
@@ -31,8 +32,10 @@ const COLUMN_AREA_OVERHEAD = 96 + LABEL_COLUMN_WIDTH;
 function groupResourcesByLevel(resources: { name: string }[]): Map<string, { name: string }[]> {
     const groups = new Map<string, { name: string }[]>();
     for (const resource of resources) {
-        const resourceObj = getResourceByName(resource.name);
-        const level = resourceObj?.level ?? 'raw'; // Default to 'raw' if level not found
+        // Currency resources are dynamic (not in ALL_RESOURCES) — always slot them into 'currency'.
+        const level = resource.name.startsWith(CURRENCY_RESOURCE_PREFIX)
+            ? 'currency'
+            : (getResourceByName(resource.name)?.level ?? 'raw');
         const existing = groups.get(level) ?? [];
         existing.push(resource);
         groups.set(level, existing);
@@ -41,7 +44,13 @@ function groupResourcesByLevel(resources: { name: string }[]): Map<string, { nam
 }
 
 // Level order for display
-const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services'] as const;
+const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services', 'currency'] as const;
+
+// Display labels — extends RESOURCE_LEVEL_LABELS with the dynamic 'currency' level.
+const MARKET_LEVEL_LABELS: Record<string, string> = {
+    ...RESOURCE_LEVEL_LABELS,
+    currency: 'Currency',
+};
 
 export default function MarketPanel({ agentId, planetId: _planetId, assets }: Props): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);
@@ -122,6 +131,23 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
     const { data: overviewData } = useSimulationQuery(
         trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId: _planetId, average: false }),
     );
+
+    // ── Planet summaries for currency display names and showAll currencies ──
+    const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const planetNames = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const p of planetSummariesData?.planets ?? []) {
+            map.set(p.planetId, p.name);
+        }
+        return map;
+    }, [planetSummariesData]);
+    const availableCurrencies = useMemo(
+        () =>
+            (planetSummariesData?.planets ?? [])
+                .filter((p) => p.planetId !== _planetId)
+                .map((p) => ({ name: getCurrencyResourceName(p.planetId) })),
+        [planetSummariesData, _planetId],
+    );
     const overviewRows: Record<string, MarketOverviewRow> = useMemo(() => {
         const map: Record<string, MarketOverviewRow> = {};
         for (const row of overviewData?.rows ?? []) {
@@ -146,9 +172,18 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                 managementFacilities,
                 shipConstructionFacilities,
                 hashResource ? [hashResource] : [],
+                availableCurrencies,
             ),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [showAll, buyBidKeys, sellOfferKeys, productionFacilities.length, managementFacilities.length, hashResource],
+        [
+            showAll,
+            buyBidKeys,
+            sellOfferKeys,
+            productionFacilities.length,
+            managementFacilities.length,
+            hashResource,
+            availableCurrencies,
+        ],
     );
 
     // Group resources by level
@@ -157,7 +192,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
         // Filter to only include levels that have resources and sort by LEVEL_ORDER
         return LEVEL_ORDER.filter((level) => groups.has(level)).map((level) => ({
             level,
-            label: RESOURCE_LEVEL_LABELS[level as keyof typeof RESOURCE_LEVEL_LABELS] ?? level,
+            label: MARKET_LEVEL_LABELS[level] ?? level,
             resources: groups.get(level)!,
         }));
     }, [resources]);
@@ -307,6 +342,7 @@ export default function MarketPanel({ agentId, planetId: _planetId, assets }: Pr
                                             _isOpen={openItem === name}
                                             overviewRow={overviewRows[name]}
                                             visibleColumns={visibleColumns}
+                                            planetNames={planetNames}
                                         />
                                     ))}
                                 </Accordion>

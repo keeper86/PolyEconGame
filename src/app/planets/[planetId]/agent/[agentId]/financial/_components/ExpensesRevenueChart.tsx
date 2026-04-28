@@ -2,7 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { FinancialTooltip } from './FinancialTooltip';
@@ -230,7 +230,7 @@ export function ExpensesRevenueChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumbers(v as number)}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
                             />
                             <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                             <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />

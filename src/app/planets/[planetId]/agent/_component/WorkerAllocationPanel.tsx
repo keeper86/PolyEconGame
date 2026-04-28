@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { EducationLevelType } from '@/simulation/population/education';
 
 /* ------------------------------------------------------------------ */
@@ -159,7 +159,9 @@ export default function WorkerAllocationPanel({
                     <div className='flex items-center justify-between gap-2'>
                         <span className='text-xs text-muted-foreground tabular-nums'>
                             Total target:{' '}
-                            <span className='font-medium text-foreground'>{formatNumbers(totalTarget)}</span>
+                            <span className='font-medium text-foreground'>
+                                {formatNumberWithUnit(totalTarget, 'persons')}
+                            </span>
                         </span>
                         <Button
                             size='sm'

@@ -3,7 +3,7 @@
 import { PlanetIcon } from '@/components/client/PlanetIcon';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { PlanetSummary } from '@/server/controller/simulation';
 import { ChevronRight, Landmark, Users, Wheat } from 'lucide-react';
 import Link from 'next/link';
@@ -43,7 +43,9 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                                 <Users className='h-3 w-3' />
                                 Population
                             </div>
-                            <div className='text-sm font-semibold tabular-nums'>{formatNumbers(populationTotal)}</div>
+                            <div className='text-sm font-semibold tabular-nums'>
+                                {formatNumberWithUnit(populationTotal, 'persons')}
+                            </div>
                         </div>
 
                         {/* Money supply */}
@@ -53,7 +55,9 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                                     <Landmark className='h-3 w-3' />
                                     Money supply
                                 </div>
-                                <div className='text-sm font-semibold tabular-nums'>{formatNumbers(bank.deposits)}</div>
+                                <div className='text-sm font-semibold tabular-nums'>
+                                    {formatNumberWithUnit(bank.deposits, 'currency', planetId)}
+                                </div>
                             </div>
                         )}
 
@@ -64,7 +68,9 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                                     <Wheat className='h-3 w-3' />
                                     Food price
                                 </div>
-                                <div className='text-sm font-semibold tabular-nums'>{formatNumbers(foodPrice)}</div>
+                                <div className='text-sm font-semibold tabular-nums'>
+                                    {formatNumberWithUnit(foodPrice, 'currency', planetId)}
+                                </div>
                             </div>
                         )}
                     </div>

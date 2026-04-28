@@ -578,6 +578,7 @@ export function makeGameState(
         planets: new Map(planets.map((p) => [p.id, p])),
         agents: new Map(agents.map((a) => [a.id, a])),
         shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+        forexMarketMakers: new Map(),
     };
 }
 
@@ -780,4 +781,14 @@ export function assertPerCellWorkforcePopulationConsistency(
             }
         }
     }
+}
+
+// ============================================================================
+// Forex test helpers
+// ============================================================================
+
+export function creditForeignDeposit(agent: Agent, issuingPlanet: Planet, amount: number): void {
+    agent.assets[issuingPlanet.id]!.deposits += amount;
+    issuingPlanet.bank.deposits += amount;
+    issuingPlanet.bank.loans += amount;
 }

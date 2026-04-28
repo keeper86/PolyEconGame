@@ -3,6 +3,7 @@ import type { Planet } from '../planet/planet';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
 import { SERVICE_DEFINITION_BY_RESOURCE_NAME } from './populationDemand';
+import { getCurrencyResourceName } from './currencyResources';
 
 export function settleHouseholds(
     planet: Planet,
@@ -147,4 +148,81 @@ export function computeMarketSummary(
     const totalRevenue = trades.reduce((s, t) => s + t.price * t.quantity, 0);
     const clearingPrice = totalVolume > 0 ? totalRevenue / totalVolume : referencePrice;
     return { clearingPrice, totalVolume, totalRevenue };
+}
+
+export function settleForexTrades(
+    askOrders: AskOrder[],
+    agentBids: AgentBidOrder[],
+    tradingPlanet: Planet,
+    issuingPlanetId: string,
+): void {
+    const curName = getCurrencyResourceName(issuingPlanetId);
+
+    // --- Seller settlement ---
+    for (const ask of askOrders) {
+        const localAssets = ask.agent.assets[tradingPlanet.id];
+        if (!localAssets) {
+            continue;
+        }
+        const filled = ask.filled;
+        const unfilled = ask.quantity - filled;
+
+        // Credit local-currency revenue
+        if (filled > 0) {
+            localAssets.deposits += ask.revenue;
+            localAssets.monthAcc.revenue += ask.revenue;
+
+            ask.agent.assets[issuingPlanetId]!.deposits -= filled;
+
+            const offer = localAssets.market?.sell[curName];
+            if (offer) {
+                offer.lastSold = (offer.lastSold ?? 0) + filled;
+                offer.lastRevenue = (offer.lastRevenue ?? 0) + ask.revenue;
+            }
+        }
+
+        const issuingAssets = ask.agent.assets[issuingPlanetId]!;
+        issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity);
+
+        if (process.env.SIM_DEBUG === '1' && unfilled > 0) {
+            if (issuingAssets.depositHold < 0) {
+                throw new Error(
+                    `Forex escrow underflow for agent=${ask.agent.id} issuingPlanet=${issuingPlanetId}: hold=${issuingAssets.depositHold}`,
+                );
+            }
+        }
+    }
+
+    // --- Buyer settlement ---
+    for (const bid of agentBids) {
+        const localAssets = bid.agent.assets[tradingPlanet.id];
+        if (!localAssets) {
+            continue;
+        }
+
+        const holdConsumed = bid.cost;
+        const holdUnused = bid.quantity * bid.bidPrice - holdConsumed;
+
+        // Return unused portion of the hold
+        if (holdUnused > 0) {
+            localAssets.depositHold -= holdUnused;
+            localAssets.deposits += holdUnused;
+        }
+
+        if (bid.filled <= 0) {
+            continue;
+        }
+
+        // Consume the hold for the filled amount
+        localAssets.depositHold -= holdConsumed;
+        localAssets.monthAcc.purchases += holdConsumed;
+
+        bid.agent.assets[issuingPlanetId]!.deposits += bid.filled;
+
+        const buyState = localAssets.market?.buy[curName];
+        if (buyState) {
+            buyState.lastBought = (buyState.lastBought ?? 0) + bid.filled;
+            buyState.lastSpent = (buyState.lastSpent ?? 0) + holdConsumed;
+        }
+    }
 }

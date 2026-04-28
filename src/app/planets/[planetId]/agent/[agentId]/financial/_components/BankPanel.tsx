@@ -1,6 +1,6 @@
 'use client';
 
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
 import { Landmark, Percent, Scale, TrendingDown, Users, Wallet } from 'lucide-react';
 import React from 'react';
@@ -32,9 +32,10 @@ function Stat({
 
 type Props = {
     bank: Bank;
+    planetId: string;
 };
 
-export default function BankPanel({ bank }: Props): React.ReactElement | null {
+export default function BankPanel({ bank, planetId }: Props): React.ReactElement | null {
     const equityColor = bank.equity < 0 ? 'text-red-500' : bank.equity > 0 ? 'text-green-600' : '';
 
     return (
@@ -48,26 +49,26 @@ export default function BankPanel({ bank }: Props): React.ReactElement | null {
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Outstanding loans'
-                        value={formatNumbers(bank.loans)}
+                        value={formatNumberWithUnit(bank.loans, 'currency', planetId)}
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
                     />
                     <Stat
                         label='Firm deposits'
-                        value={formatNumbers(bank.deposits - bank.householdDeposits)}
+                        value={formatNumberWithUnit(bank.deposits - bank.householdDeposits, 'currency', planetId)}
                         icon={<Wallet className='h-3 w-3' />}
                     />
 
                     <Stat
                         label='Household deposits'
-                        value={formatNumbers(bank.householdDeposits)}
+                        value={formatNumberWithUnit(bank.householdDeposits, 'currency', planetId)}
                         icon={<Users className='h-3 w-3' />}
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Bank equity'
-                        value={formatNumbers(bank.equity)}
+                        value={formatNumberWithUnit(bank.equity, 'currency', planetId)}
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />

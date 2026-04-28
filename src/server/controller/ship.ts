@@ -166,7 +166,7 @@ export const dispatchPassengerShip = () =>
                 fromPlanetId: z.string().min(1),
                 toPlanetId: z.string().min(1),
                 shipName: z.string().min(1),
-                passengerCount: z.number().int().positive(),
+                passengerCount: z.number().int().min(0),
             }),
         )
         .mutation(async ({ input, ctx }) => {
@@ -228,7 +228,13 @@ export const getShipMarketHints = () =>
             workerQueries.getShipCapitalMarket(),
         ]);
         const agentMap = new Map((agents ?? []).map((a) => [a.id, a]));
-        const mockState = { tick: 0, planets: new Map(), agents: agentMap, shipCapitalMarket };
+        const mockState = {
+            tick: 0,
+            planets: new Map(),
+            agents: agentMap,
+            shipCapitalMarket,
+            forexMarketMakers: new Map(),
+        };
         const compatibleTrades = findCompatibleTrades(mockState);
         return { compatibleTrades: compatibleTrades.slice(0, 50) };
     });

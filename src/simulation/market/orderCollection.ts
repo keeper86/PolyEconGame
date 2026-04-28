@@ -5,6 +5,7 @@ import { lockIntoEscrow, queryStorageFacility } from '../planet/facility';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';
 import { EPSILON } from '../constants';
+import { isCurrencyResource } from './currencyResources';
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
     const books = new Map<string, AskOrder[]>();
@@ -19,6 +20,11 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
+            // Currency resources are handled by forexTick, not the local market
+            if (isCurrencyResource(offer.resource)) {
+                continue;
+            }
+
             const free = queryStorageFacility(assets.storageFacility, resourceName);
 
             // Use the new validation function
@@ -81,6 +87,10 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         let totalRequiredMass = 0;
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
+            // Currency resources are handled by forexTick, not the local market
+            if (isCurrencyResource(bid.resource)) {
+                continue;
+            }
             const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
 
             // Use the new validation function

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { ShipConstructionFacility } from '@/simulation/planet/facility';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { HardHat } from 'lucide-react';
@@ -71,13 +71,13 @@ export function UnderConstructionShipyardCard({
                 <div className='rounded bg-muted px-2 py-1'>
                     <div className='text-muted-foreground'>Last tick</div>
                     <div className='tabular-nums font-medium'>
-                        {formatNumbers(cs.lastTickInvestedConstructionServices)} cs
+                        {formatNumberWithUnit(cs.lastTickInvestedConstructionServices, 'units')} cs
                     </div>
                 </div>
                 <div className='rounded bg-muted px-2 py-1'>
                     <div className='text-muted-foreground'>Max / tick</div>
                     <div className='tabular-nums font-medium'>
-                        {formatNumbers(cs.maximumConstructionServiceConsumption)} cs
+                        {formatNumberWithUnit(cs.maximumConstructionServiceConsumption, 'units')} cs
                     </div>
                 </div>
                 <div className='rounded bg-muted px-2 py-1'>
@@ -86,8 +86,8 @@ export function UnderConstructionShipyardCard({
                 </div>
             </div>
             <p className='text-xs text-muted-foreground'>
-                Remaining: <span className='tabular-nums'>{formatNumbers(remaining)}</span> /{' '}
-                {formatNumbers(cs.totalConstructionServiceRequired)} construction
+                Remaining: <span className='tabular-nums'>{formatNumberWithUnit(remaining, 'units')}</span> /{'  '}
+                {formatNumberWithUnit(cs.totalConstructionServiceRequired, 'units')} construction
             </p>
             <Button size='sm' variant='outline' asChild>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

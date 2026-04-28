@@ -1,5 +1,5 @@
 import { ProductIcon } from '@/components/client/ProductIcon';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 import { resourceNameToSlug } from '../../app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 import Link from 'next/link';
@@ -59,7 +59,11 @@ export function ProductQuantity({
             )}
             <span className='relative z-10 inline-flex flex-col items-center gap-1.5 text-xs text-outline-strong'>
                 <ProductIcon productName={resource.name} />
-                {isUnknown ? <span className='text-muted-foreground'>{quantityLabel}</span> : formatNumbers(quantity)}
+                {isUnknown ? (
+                    <span className='text-muted-foreground'>{quantityLabel}</span>
+                ) : (
+                    formatNumberWithUnit(quantity, 'units')
+                )}
             </span>
         </Link>
     );

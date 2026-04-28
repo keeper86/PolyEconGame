@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, BadgeDollarSign, CheckCircle2 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -35,7 +35,7 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
         trpc.requestLoan.mutationOptions({
             onSuccess: (result) => {
                 setSuccessMsg(
-                    `Loan of ${formatNumbers(result.grantedAmount)} approved! Funds will appear after the next tick.`,
+                    `Loan of ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId)} approved! Funds will appear after the next tick.`,
                 );
                 setErrorMsg(null);
                 // Invalidate the loan-conditions query so the panel refreshes
@@ -93,7 +93,7 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
                             <span className='text-sm font-semibold leading-none'>
                                 {requestLoanMutation.isPending
                                     ? 'Processing…'
-                                    : `Take initial loan ${formatNumbers(conditions.maxLoanAmount)}`}
+                                    : `Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'currency', planetId)}`}
                             </span>
                         </Button>
                     ) : (
@@ -127,7 +127,7 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
                                             <BadgeDollarSign className='h-4 w-4' />
                                             <span className='text-xs font-semibold leading-none'>{label}</span>
                                             <span className='text-[10px] leading-none opacity-75'>
-                                                {formatNumbers(amount)}
+                                                {formatNumberWithUnit(amount, 'currency', planetId)}
                                             </span>
                                         </Button>
                                     );

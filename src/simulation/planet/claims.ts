@@ -4,13 +4,13 @@ export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'service
 
 export type Resource = {
     name: string;
-    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'frozenGoods' | 'landBoundResource' | 'services';
-    level: ResourceProcessLevel | 'source'; // raw, refined, manufactured, consumerGood
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'frozenGoods' | 'landBoundResource' | 'services' | 'currency';
+    level: ResourceProcessLevel | 'source' | 'currency'; // raw, refined, manufactured, consumerGood, or currency
     volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
     massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
 };
 export type ResourceType = Resource['form'];
-export type TransportableResourceType = Exclude<ResourceType, 'services' | 'landBoundResource'>;
+export type TransportableResourceType = Exclude<ResourceType, 'services' | 'landBoundResource' | 'currency'>;
 export type ResourceQuantity = {
     resource: Resource;
     quantity: number; // in tons or pieces, depending on the phase

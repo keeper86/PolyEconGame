@@ -11,12 +11,19 @@ import {
     PRICE_CEIL,
     PRICE_FLOOR,
     SERVICE_DEPRECIATION_RATE_PER_TICK,
+    TICKS_PER_MONTH,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
+import {
+    DEFAULT_EXCHANGE_RATE,
+    FOREX_PRICE_FLOOR,
+    getCurrencyResource,
+    getCurrencyResourceName,
+} from './currencyResources';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -250,6 +257,159 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);
         }
+    }
+
+    // --- Forex pricing: buy/sell orders for foreign currencies ---
+    if (agent.automated) {
+        automaticForexPricing(agent, assets, planet);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Forex pricing helpers
+// ---------------------------------------------------------------------------
+
+/** How many ticks of foreign-planet operating costs an agent wants to hold as foreign-currency buffer. */
+const FOREX_BUFFER_TICKS = 30;
+/** Maximum urgency premium on bid price (fraction). */
+const FOREX_URGENCY_MAX = 0.3;
+/** Maximum random noise range on forex prices (fraction, applied symmetrically). */
+const FOREX_NOISE_RANGE = 0.05;
+
+/**
+ * Returns a deterministic seed in [0, 1) derived from the agent’s id.
+ * Used to add reproducible per-agent heterogeneity to forex pricing without
+ * storing extra state.
+ */
+export function getAgentDeterministicSeed(agent: Agent): number {
+    // FNV-1a 32-bit hash
+    let h = 0x811c9dc5;
+    for (let i = 0; i < agent.id.length; i++) {
+        h ^= agent.id.charCodeAt(i);
+        h = (Math.imul(h, 0x01000193) | 0) >>> 0;
+    }
+    return h / 0xffffffff;
+}
+
+/**
+ * Estimate how many units of `foreignPlanetId`’s currency the agent needs
+ * as a working-capital buffer, based on last month’s wages + purchases there.
+ */
+function computeForexBufferTarget(agent: Agent, foreignPlanetId: string): number {
+    const fa = agent.assets[foreignPlanetId];
+    if (!fa) {
+        return 0;
+    }
+    const perTick = (fa.lastMonthAcc.wages + fa.lastMonthAcc.purchases) / TICKS_PER_MONTH;
+    return perTick * FOREX_BUFFER_TICKS;
+}
+
+/** Adjust the ask price for a forex sell order using tâtonnement + noise. */
+function adjustForexAskPrice(offer: AgentMarketOfferState, lastExchangeRate: number, seed: number): void {
+    if (offer.offerPrice === undefined) {
+        offer.offerPrice = Math.max(FOREX_PRICE_FLOOR, lastExchangeRate);
+        return;
+    }
+    const sold = offer.lastSold ?? 0;
+    const placed = offer.lastPlacedQty ?? 0;
+    const st = placed > 0 ? sold / placed : 1;
+    const base = sellThroughFactor(st) * offer.offerPrice;
+    // Per-agent noise centred slightly above zero so prices don’t collapse
+    const noise = (seed - 0.4) * FOREX_NOISE_RANGE;
+    offer.offerPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, base * (1 + noise)));
+}
+
+/** Adjust the bid price for a forex buy order using fill-rate + urgency. */
+function adjustForexBidPrice(bid: AgentMarketBidState, lastExchangeRate: number, urgency: number, seed: number): void {
+    if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
+        bid.bidPrice = Math.max(FOREX_PRICE_FLOOR, lastExchangeRate);
+        return;
+    }
+    const bought = bid.lastBought ?? 0;
+    const demanded = bid.lastEffectiveQty ?? 1;
+    const fillRate = demanded > 0 ? bought / demanded : 1;
+    const baseFactor = fillRateFactor(fillRate);
+    const urgencyPremium = urgency * FOREX_URGENCY_MAX;
+    // Slight upward noise bias so bids don’t stall at min price when idle
+    const noise = (seed - 0.3) * FOREX_NOISE_RANGE;
+    const newPrice = bid.bidPrice * baseFactor * (1 + urgencyPremium + noise);
+    bid.bidPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, newPrice));
+}
+
+/**
+ * Initialise and update forex market entries for all foreign currencies
+ * the automated agent needs to sell (surplus) or buy (shortfall).
+ *
+ * Currency entries sit in the same `assets.market.sell / buy` maps as
+ * physical goods, but are handled exclusively by `forexTick` — the local
+ * `marketTick` skips resources with `form === 'currency'`.
+ */
+function automaticForexPricing(agent: Agent, assets: AgentPlanetAssets, planet: Planet): void {
+    if (!assets.market) {
+        return;
+    }
+    const seed = getAgentDeterministicSeed(agent);
+
+    // SELL orders — offer surplus foreign-currency holdings
+    for (const [foreignPlanetId, foreignAssets] of Object.entries(agent.assets)) {
+        if (foreignPlanetId === planet.id) {
+            continue;
+        }
+        const balance = foreignAssets.deposits;
+        if (!(balance > 0)) {
+            continue;
+        }
+        const curName = getCurrencyResourceName(foreignPlanetId);
+        const curResource = getCurrencyResource(foreignPlanetId);
+        const lastRate = planet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
+        const bufferTarget = computeForexBufferTarget(agent, foreignPlanetId);
+        const holds = agent.assets[foreignPlanetId]?.depositHold ?? 0;
+        const surplus = balance - holds - bufferTarget;
+
+        if (!assets.market.sell[curName]) {
+            assets.market.sell[curName] = { resource: curResource, automated: true };
+        }
+        const offer = assets.market.sell[curName];
+        offer.resource = curResource;
+
+        if (surplus > 0) {
+            // Retain the buffer; offer only the surplus
+            offer.offerRetainment = balance - surplus;
+            adjustForexAskPrice(offer, lastRate, seed);
+        } else {
+            // Nothing to sell; keep entry but lock full balance as retainment
+            offer.offerRetainment = balance;
+            if (offer.offerPrice === undefined) {
+                offer.offerPrice = Math.max(FOREX_PRICE_FLOOR, lastRate);
+            }
+        }
+    }
+
+    // BUY orders — bid for currencies needed on foreign planets the agent operates on
+    for (const foreignPlanetId of Object.keys(agent.assets)) {
+        if (foreignPlanetId === planet.id) {
+            continue;
+        }
+        const bufferTarget = computeForexBufferTarget(agent, foreignPlanetId);
+        if (bufferTarget <= 0) {
+            continue;
+        }
+        const curName = getCurrencyResourceName(foreignPlanetId);
+        const curResource = getCurrencyResource(foreignPlanetId);
+        const lastRate = planet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
+        const current = agent.assets[foreignPlanetId]?.deposits ?? 0;
+        const shortfall = Math.max(0, bufferTarget - current);
+        const urgency = bufferTarget > 0 ? Math.min(1, shortfall / bufferTarget) : 0;
+
+        if (!assets.market.buy[curName]) {
+            assets.market.buy[curName] = { resource: curResource, automated: true };
+        }
+        const bid = assets.market.buy[curName];
+        bid.resource = curResource;
+        // bidStorageTarget here means “desired foreign deposit amount” (in foreign-currency units),
+        // read by forexOrderCollection to determine how much to bid.
+        bid.bidStorageTarget = bufferTarget;
+        adjustForexBidPrice(bid, lastRate, urgency, seed);
     }
 }
 

@@ -8,7 +8,7 @@ import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/_component/
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { AgentMetricChart } from '@/components/client/AgentMetricChart';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { EducationLevelType } from '@/simulation/population/education';
@@ -32,7 +32,9 @@ export default function WorkforcePage() {
                                 return (
                                     <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
                                         <span className='text-muted-foreground capitalize'>{edu}</span>
-                                        <span className='tabular-nums font-medium'>{formatNumbers(wage)}</span>
+                                        <span className='tabular-nums font-medium'>
+                                            {formatNumberWithUnit(wage, 'currency', planetId)}
+                                        </span>
                                     </div>
                                 );
                             })}

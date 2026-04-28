@@ -2,7 +2,16 @@ import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
-export function ProductIcon({ productName, size = 42 }: { productName: string; size?: number }) {
+export function ProductIcon({
+    productName,
+    size = 42,
+    label,
+}: {
+    productName: string;
+    size?: number;
+    /** Optional display label for the tooltip. Defaults to `productName`. */
+    label?: string;
+}) {
     const src = getAssetPath(productName);
 
     return (
@@ -12,10 +21,10 @@ export function ProductIcon({ productName, size = 42 }: { productName: string; s
                     className='rounded overflow-hidden shrink-0 inline-block relative'
                     style={{ width: size, height: size }}
                 >
-                    <Image src={src} alt={productName} fill sizes={`${size}px`} className='object-contain' />
+                    <Image src={src} alt={label ?? productName} fill sizes={`${size}px`} className='object-contain' />
                 </span>
             </TooltipTrigger>
-            <TooltipContent>{productName}</TooltipContent>
+            <TooltipContent>{label ?? productName}</TooltipContent>
         </Tooltip>
     );
 }

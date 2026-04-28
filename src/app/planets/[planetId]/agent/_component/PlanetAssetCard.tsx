@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Building2, ChevronRight, Globe, Lock, Package, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -176,7 +176,7 @@ export default function PlanetAssetCard({
                             }
                             value={
                                 <span>
-                                    {formatNumbers(p.totalWorkers)}
+                                    {formatNumberWithUnit(p.totalWorkers, 'persons')}
                                     {p.unusedWorkerFraction > 0.01 && (
                                         <span className='text-[10px] text-amber-500 ml-1'>
                                             {pct(p.unusedWorkerFraction)} idle
@@ -192,7 +192,7 @@ export default function PlanetAssetCard({
                                 <Package className='h-3 w-3 text-muted-foreground mt-0.5 shrink-0' />
                                 {p.topResources.map((r) => (
                                     <Badge key={r.name} variant='secondary' className='text-[10px] px-1 py-0'>
-                                        {r.name}: {formatNumbers(r.quantity)}
+                                        {r.name}: {formatNumberWithUnit(r.quantity, 'units')}
                                     </Badge>
                                 ))}
                             </div>

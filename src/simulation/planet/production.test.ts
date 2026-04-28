@@ -68,6 +68,7 @@ describe('productionTick (basic)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
 
         productionTick(gameState.agents, planet, gameState.tick);
@@ -116,6 +117,7 @@ describe('productionTick (basic)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
 
         productionTick(gameState.agents, planet, gameState.tick);
@@ -164,6 +166,7 @@ describe('productionTick (basic)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -231,6 +234,7 @@ describe('productionTick (basic)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -278,6 +282,7 @@ describe('productionTick (basic)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -327,6 +332,7 @@ describe('productionTick — shared stored-resource allocation', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -376,6 +382,7 @@ describe('productionTick — shared stored-resource allocation', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -455,6 +462,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
             planets: new Map([['p', planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -493,6 +501,7 @@ describe('productionTick — pieces vs continuous resource handling', () => {
             planets: new Map([['p', planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -537,6 +546,7 @@ describe('constructionTick', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         constructionTick(gs.agents, planet);
 
@@ -572,6 +582,7 @@ describe('constructionTick', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         constructionTick(gs.agents, planet);
 
@@ -601,6 +612,7 @@ describe('constructionTick', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         constructionTick(gs.agents, planet);
 
@@ -635,6 +647,7 @@ describe('constructionTick', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         constructionTick(gs.agents, planet);
 
@@ -671,6 +684,7 @@ describe('productionTick — storage facility', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -708,6 +722,7 @@ describe('productionTick — storage facility', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -757,6 +772,7 @@ describe('productionTick — management facility', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -792,6 +808,7 @@ describe('productionTick — management facility', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -831,6 +848,7 @@ describe('productionTick — management facility', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -887,6 +905,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -916,6 +935,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -958,6 +978,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -999,6 +1020,7 @@ describe('productionTick — ship maintenance facility', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 
@@ -1032,6 +1054,7 @@ describe('productionTick — ship maintenance facility', () => {
             planets: new Map([[planet.id, planet]]),
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: new Map(),
         };
         productionTick(gs.agents, planet, gs.tick);
 

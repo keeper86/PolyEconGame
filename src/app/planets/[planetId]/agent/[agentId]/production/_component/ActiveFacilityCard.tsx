@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { FacilityCardShell } from './FacilityCardShell';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -136,7 +136,7 @@ export function ActiveFacilityCard({
                         <p className='text-xs text-muted-foreground'>
                             Construction cost:{' '}
                             <span className='tabular-nums font-medium text-foreground'>
-                                {formatNumbers(expandCost)}
+                                {formatNumberWithUnit(expandCost, 'units')}
                             </span>{' '}
                             construction services
                             {estimatedCredits !== null && (
@@ -144,7 +144,7 @@ export function ActiveFacilityCard({
                                     {' '}
                                     <span className='text-muted-foreground'>≈</span>{' '}
                                     <span className='tabular-nums font-medium text-foreground'>
-                                        {formatNumbers(estimatedCredits)}
+                                        {formatNumberWithUnit(estimatedCredits, 'currency', planetId)}
                                     </span>{' '}
                                     credits
                                 </>
@@ -230,7 +230,10 @@ export function ActiveFacilityCard({
                         <div className='flex justify-between text-xs'>
                             <span className='text-muted-foreground'>Resulting scale</span>
                             <span className='font-medium tabular-nums'>
-                                {formatNumbers(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1))}
+                                {formatNumberWithUnit(
+                                    facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1),
+                                    'units',
+                                )}
                             </span>
                         </div>
                         <div className='flex gap-2'>

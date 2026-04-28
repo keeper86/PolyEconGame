@@ -3,7 +3,7 @@
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo, useState } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
@@ -83,7 +83,7 @@ function usesLogScale(points: ChartPoint[]): boolean {
 
 const tooltipFormatter = (value: number, name: string): [string, string] => {
     const labels: Record<string, string> = { avgPrice: 'Avg price', minPrice: 'Min price', maxPrice: 'Max price' };
-    return [formatNumbers(value), labels[name] ?? name];
+    return [formatNumberWithUnit(value, 'currency'), labels[name] ?? name];
 };
 
 // ─── SimplePriceAreaChart ─────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ function SimplePriceAreaChart({
                     axisLine={false}
                     tickLine={false}
                     width={52}
-                    tickFormatter={(v) => (typeof v === 'number' ? formatNumbers(v) : String(v))}
+                    tickFormatter={(v) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency') : String(v))}
                 />
                 <Tooltip
                     content={({ active, payload, label }) => {

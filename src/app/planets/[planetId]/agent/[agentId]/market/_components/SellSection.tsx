@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { PRICE_FLOOR } from '@/simulation/constants';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { SellSectionProps } from './marketTypes';
-import { productionPerTick, sellFulfillmentClass, priceArrow } from './marketHelpers';
+import { productionPerTick, sellFulfillmentClass, priceArrow, getResourceByName } from './marketHelpers';
 
 export default function SellSection({
     resourceName,
@@ -25,11 +25,15 @@ export default function SellSection({
     sellSaving,
     sellSuccessMsg,
     sellErrorMsg,
+    planetId,
 }: SellSectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
 
-    const isFacilityOutput = producedPerTick > 0;
+    // Currency resources (CUR_<planetId>) are denominated in foreign deposits, not local storage.
+    const isCurrency = resourceName.startsWith('CUR_');
+
+    const isFacilityOutput = !isCurrency && producedPerTick > 0;
 
     // Effective quantities derived from retainment / storage-target settings
     const effectiveSellQty =
@@ -48,7 +52,12 @@ export default function SellSection({
               : null;
 
     const canSell =
-        inventoryQty > 0 || isFacilityOutput || offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
+        // Currencies hold deposits on the issuing planet — always show the section as sellable.
+        isCurrency ||
+        inventoryQty > 0 ||
+        isFacilityOutput ||
+        offer?.offerPrice !== undefined ||
+        offer?.offerRetainment !== undefined;
 
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
@@ -123,7 +132,11 @@ export default function SellSection({
                             <span>
                                 Max capacity production{' '}
                                 <span className='font-semibold text-foreground'>
-                                    {formatNumbers(producedPerTick)}/tick
+                                    {formatNumberWithUnit(
+                                        producedPerTick,
+                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                    )}
+                                    /tick
                                 </span>
                             </span>
                         </div>
@@ -194,14 +207,14 @@ export default function SellSection({
                                 onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
                                 className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
                             />
-                            {/* Effective sell qty with fulfillment colour */}
-                            {offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
+                            {/* Effective sell qty with fulfillment colour — hidden for currencies (balance is in foreign deposits) */}
+                            {!isCurrency && offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
                                 <div
                                     className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
                                 >
                                     {effectiveSellQty === 0
                                         ? 'Nothing to sell — order inactive'
-                                        : `Sell ${formatNumbers(effectiveSellQty)} / tick`}
+                                        : `Sell ${formatNumberWithUnit(effectiveSellQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
                                 </div>
                             )}
                             {retainmentPresets && !local.offerAutomated && (
@@ -232,9 +245,17 @@ export default function SellSection({
 
                     {(offer?.lastSold !== undefined || offer?.lastRevenue !== undefined) && (
                         <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                            {offer.lastSold !== undefined && <span>Last sold: {formatNumbers(offer.lastSold)}</span>}
+                            {offer.lastSold !== undefined && (
+                                <span>
+                                    Last sold:{' '}
+                                    {formatNumberWithUnit(
+                                        offer.lastSold,
+                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                    )}
+                                </span>
+                            )}
                             {offer.lastRevenue !== undefined && (
-                                <span>Revenue: {formatNumbers(offer.lastRevenue)}</span>
+                                <span>Revenue: {formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)}</span>
                             )}
                             {offer.priceDirection !== undefined &&
                                 (() => {

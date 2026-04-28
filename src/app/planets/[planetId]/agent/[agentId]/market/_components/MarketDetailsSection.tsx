@@ -2,7 +2,8 @@
 
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { getResourceByName } from './marketHelpers';
 import React from 'react';
 import BidTable from './BidTable';
 import OfferTable from './OfferTable';
@@ -32,23 +33,26 @@ export default function MarketDetailsSection({
         return <div className='text-sm text-muted-foreground'>No market data found for this planet.</div>;
     }
 
+    const resource = getResourceByName(resourceName);
+    const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
+
     return (
         <div className='space-y-4'>
             <span className='text-xs font-medium text-muted-foreground'>
                 <h4 className='text-sm font-semibold mb-1'>Agent supply</h4>
                 {market.offers.length} active seller{market.offers.length !== 1 ? 's' : ''}
-                {' · '}supply {formatNumbers(market.totalSupply)}
-                {' · '}sold {formatNumbers(market.totalSold)}
-                {' · '}demand {formatNumbers(market.totalDemand)}
-                {' · '}unfilled {formatNumbers(market.unfilledDemand)}
+                {' · '}supply {formatNumberWithUnit(market.totalSupply, qtyUnit)}
+                {' · '}sold {formatNumberWithUnit(market.totalSold, qtyUnit)}
+                {' · '}demand {formatNumberWithUnit(market.totalDemand, qtyUnit)}
+                {' · '}unfilled {formatNumberWithUnit(market.unfilledDemand, qtyUnit)}
             </span>
 
-            <OfferTable offers={market.offers} clearingPrice={market.clearingPrice} />
+            <OfferTable offers={market.offers} clearingPrice={market.clearingPrice} planetId={planetId} />
 
             <span className='text-xs font-medium text-muted-foreground'>
                 <h4 className='text-sm font-semibold mb-1'>Agent demand</h4>
                 {market.bids.length} active buyer{market.bids.length !== 1 ? 's' : ''}
-                {' · '}agent demand {formatNumbers(market.agentDemand)}
+                {' · '}agent demand {formatNumberWithUnit(market.agentDemand, qtyUnit)}
             </span>
 
             <BidTable bids={market.bids} />
@@ -57,7 +61,7 @@ export default function MarketDetailsSection({
                 <>
                     <span className='text-xs font-medium text-muted-foreground'>
                         <h4 className='text-sm font-semibold mb-1'>Population demand</h4>
-                        population demand {formatNumbers(market.populationDemand)}
+                        population demand {formatNumberWithUnit(market.populationDemand, qtyUnit)}
                     </span>
 
                     <PopulationDemandChart bids={market.populationBids || []} />

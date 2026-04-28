@@ -8,6 +8,7 @@
  */
 
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import { SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
@@ -471,12 +472,16 @@ function buildAgentBids(agents: Agent[], planetId: string, resourceName: string)
         }
 
         const bidPrice = bid.lastBidPrice ?? bid.bidPrice ?? 0;
+        // Use lastEffectiveQty when available; otherwise fall back to (bidStorageTarget - currentInventory)
+        // so newly placed bids show up before the first tick processes them.
         const effectiveQty = bid.lastEffectiveQty ?? 0;
         const lastBought = bid.lastBought ?? 0;
         const lastSpent = bid.lastSpent ?? 0;
         const fillRatio = effectiveQty > 0 ? Math.min(1, lastBought / effectiveQty) : 0;
 
-        if (effectiveQty <= 0 && lastBought <= 0) {
+        // Show any bid that has an active price set, even if not yet processed.
+        const isActiveBid = bidPrice > 0;
+        if (!isActiveBid && effectiveQty <= 0 && lastBought <= 0) {
             continue;
         }
 
@@ -892,6 +897,31 @@ export const getPlanetMarketOverview = () =>
                     fillRatio,
                 };
             }).filter((row) => row.totalSupply > 0 || row.totalDemand > 0 || row.totalProduction > 0);
+
+            // Append active forex (currency) rows from live market data.
+            // These are keyed under CUR_<planetId> in marketResults and never appear in ALL_RESOURCES.
+            for (const [resourceName, result] of Object.entries(marketResults)) {
+                if (!resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+                    continue;
+                }
+                const totalSupply = result.totalSupply ?? 0;
+                const totalDemand = result.totalDemand ?? 0;
+                if (totalSupply <= 0 && totalDemand <= 0) {
+                    continue;
+                }
+                const totalSold = result.totalVolume ?? 0;
+                rows.push({
+                    resourceName,
+                    level: 'currency',
+                    clearingPrice: result.clearingPrice ?? planet.marketPrices[resourceName] ?? 0,
+                    totalProduction: 0,
+                    totalConsumption: 0,
+                    totalSupply,
+                    totalDemand,
+                    totalSold,
+                    fillRatio: totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1,
+                });
+            }
 
             return { tick, rows };
         });

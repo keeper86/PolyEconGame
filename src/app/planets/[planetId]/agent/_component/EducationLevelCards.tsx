@@ -6,7 +6,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { eduLabel, EDU_COLORS, sumByEdu } from './workforce-theme';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -18,9 +18,9 @@ function formatNumbersNextTotal(next: number, total: number): string {
         return '—';
     }
     if (next > 0) {
-        return `${formatNumbers(next)}  (${formatNumbers(total)})`;
+        return `${formatNumberWithUnit(next, 'persons')}  (${formatNumberWithUnit(total, 'persons')})`;
     }
-    return `—  (${formatNumbers(total)})`;
+    return `—  (${formatNumberWithUnit(total, 'persons')})`;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,19 +138,19 @@ function EducationCard({
                 label='Target'
                 value={
                     <>
-                        {formatNumbers(target)}
+                        {formatNumberWithUnit(target, 'persons')}
                         {overqualified && overqualified > 0 ? (
                             <Tooltip>
                                 <TooltipTrigger>
                                     <span className='text-amber-600 ml-1 tabular-nums'>
-                                        ({formatNumbers(overqualified)})
+                                        ({formatNumberWithUnit(overqualified, 'persons')})
                                     </span>
                                 </TooltipTrigger>
                                 <TooltipContent sideOffset={6}>
                                     <div className='max-w-xs'>
                                         <div className='font-medium'>Overqualified workers</div>
                                         <div className='text-xs text-muted-foreground mt-1'>
-                                            Facilities filled {formatNumbers(overqualified)} slot
+                                            Facilities filled {formatNumberWithUnit(overqualified, 'persons')} slot
                                             {overqualified !== 1 ? 's' : ''} with higher-educated workers because
                                             lower-education workers were not available.
                                         </div>
@@ -172,17 +172,22 @@ function EducationCard({
                     </>
                 }
             />
-            <Stat label='Current total' value={formatNumbers(totalWorkforce)} valueClassName='text-foreground' bold />
+            <Stat
+                label='Current total'
+                value={formatNumberWithUnit(totalWorkforce, 'persons')}
+                valueClassName='text-foreground'
+                bold
+            />
             <Stat
                 label={`${unused < 0 ? 'Worker shortage' : 'Unused Worker '}`}
-                value={`${formatNumbers(Math.abs(unused))}`}
+                value={`${formatNumberWithUnit(Math.abs(unused), 'persons')}`}
                 valueClassName={unused > 0 ? 'text-green-600' : unused < 0 ? 'text-red-500' : 'text-muted-foreground'}
             />
 
             <Rule />
 
             {/* ── Breakdown: Active + On notice = Total ── */}
-            <Stat label='Active' value={formatNumbers(active)} />
+            <Stat label='Active' value={formatNumberWithUnit(active, 'persons')} />
 
             {/* Deaths this month (and last month) */}
             {typeof deaths === 'number' && (
@@ -190,8 +195,8 @@ function EducationCard({
                     label='Deaths'
                     value={
                         typeof deathsPrev === 'number'
-                            ? `${formatNumbers(deaths)} (${formatNumbers(deathsPrev)})`
-                            : formatNumbers(deaths)
+                            ? `${formatNumberWithUnit(deaths, 'persons')} (${formatNumberWithUnit(deathsPrev, 'persons')})`
+                            : formatNumberWithUnit(deaths, 'persons')
                     }
                     valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
                 />
@@ -203,8 +208,8 @@ function EducationCard({
                     label='Disabilities'
                     value={
                         typeof disabilitiesPrev === 'number'
-                            ? `${formatNumbers(disabilities)} (${formatNumbers(disabilitiesPrev)})`
-                            : formatNumbers(disabilities)
+                            ? `${formatNumberWithUnit(disabilities, 'persons')} (${formatNumberWithUnit(disabilitiesPrev, 'persons')})`
+                            : formatNumberWithUnit(disabilities, 'persons')
                     }
                     valueClassName={disabilities > 0 ? 'text-orange-700' : 'text-muted-foreground'}
                 />
@@ -216,8 +221,8 @@ function EducationCard({
                     label='Retirements'
                     value={
                         typeof retirementsPrev === 'number'
-                            ? `${formatNumbers(retirements)} (${formatNumbers(retirementsPrev)})`
-                            : formatNumbers(retirements)
+                            ? `${formatNumberWithUnit(retirements, 'persons')} (${formatNumberWithUnit(retirementsPrev, 'persons')})`
+                            : formatNumberWithUnit(retirements, 'persons')
                     }
                     valueClassName={retirements > 0 ? 'text-blue-700' : 'text-muted-foreground'}
                 />

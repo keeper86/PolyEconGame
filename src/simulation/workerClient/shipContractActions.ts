@@ -979,12 +979,23 @@ export function handleDispatchPassengerShip(
         return;
     }
 
-    const capacity = ship.type.passengerCapacity;
-    const goal = Math.min(Math.floor(passengerCount), capacity);
-    if (goal <= 0) {
-        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Passenger count must be > 0' });
+    if (!Number.isFinite(passengerCount)) {
+        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Passenger count must be finite' });
         return;
     }
+
+    const requestedPassengers = Math.floor(passengerCount);
+    if (requestedPassengers < 0) {
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: 'Passenger count must be >= 0',
+        });
+        return;
+    }
+
+    const capacity = ship.type.passengerCapacity;
+    const goal = Math.min(requestedPassengers, capacity);
 
     ship.state = {
         type: 'passenger_boarding',

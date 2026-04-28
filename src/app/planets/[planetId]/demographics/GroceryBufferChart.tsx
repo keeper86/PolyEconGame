@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import { formatNumbers } from '@/lib/utils';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { GROCERY_BUFFER_TARGET_TICKS } from '@/simulation/constants';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
@@ -83,8 +83,9 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {(ratio * 100).toFixed(0)}% · {formatNumbers(ratio * GROCERY_BUFFER_TARGET_TICKS)} days
-                                · {formatNumbers(pop)}
+                                {(ratio * 100).toFixed(0)}% ·{' '}
+                                {formatNumberWithUnit(ratio * GROCERY_BUFFER_TARGET_TICKS, 'days')}·{' '}
+                                {formatNumberWithUnit(pop, 'persons')}
                             </span>
                         </div>
                     );
@@ -226,7 +227,12 @@ export default function FoodBufferChart({ rows, groupMode }: Props): React.React
                     <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
                         <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
                             <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
-                            <YAxis width={40} tick={{ fontSize: 10 }} tickFormatter={formatNumbers} domain={yDomain} />
+                            <YAxis
+                                width={40}
+                                tick={{ fontSize: 10 }}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                                domain={yDomain}
+                            />
                             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                             {isVerySmall ? null : <Tooltip content={tooltip as any} />}
                             {keys.map((key) => (

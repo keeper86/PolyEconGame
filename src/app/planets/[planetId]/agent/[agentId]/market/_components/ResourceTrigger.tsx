@@ -1,20 +1,22 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
-import { cn, formatNumbers } from '@/lib/utils';
+import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
-import { classifyMarket } from './marketHelpers';
+import { classifyMarket, getResourceByName } from './marketHelpers';
 import { MARKET_STATUS_CONFIG } from './marketTypes';
 import { getColumnClasses } from './columnConfig';
 
 export default function ResourceTrigger({
     name,
+    displayName,
     bid,
     offer,
     overviewRow,
     storageQuantity,
     visibleColumns,
+    planetId,
 }: ResourceTriggerProps): React.ReactElement {
     const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
     const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
@@ -23,21 +25,23 @@ export default function ResourceTrigger({
 
     // Helper to get value for a column
     const getColumnValue = (columnId: string) => {
+        const resource = getResourceByName(name);
+        const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
         switch (columnId) {
             case 'currentStorage':
-                return storageQuantity !== undefined ? formatNumbers(storageQuantity) : null;
+                return storageQuantity !== undefined ? formatNumberWithUnit(storageQuantity, qtyUnit) : null;
             case 'clearingPrice':
-                return overviewRow ? formatNumbers(overviewRow.clearingPrice) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : null;
             case 'totalProduction':
-                return overviewRow ? formatNumbers(overviewRow.totalProduction) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalProduction, qtyUnit) : null;
             case 'totalConsumption':
-                return overviewRow ? formatNumbers(overviewRow.totalConsumption) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalConsumption, qtyUnit) : null;
             case 'totalSupply':
-                return overviewRow ? formatNumbers(overviewRow.totalSupply) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSupply, qtyUnit) : null;
             case 'totalDemand':
-                return overviewRow ? formatNumbers(overviewRow.totalDemand) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalDemand, qtyUnit) : null;
             case 'totalSold':
-                return overviewRow ? formatNumbers(overviewRow.totalSold) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSold, qtyUnit) : null;
             case 'marketFill':
                 return statusConfig ? (
                     <Badge variant='outline' className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}>
@@ -96,11 +100,11 @@ export default function ResourceTrigger({
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0 overflow-hidden'>
             {/* Icon */}
-            <ProductIcon productName={name} />
+            <ProductIcon productName={name} label={displayName ?? name} />
 
             {/* Name + market link + order indicators */}
             <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>
-                <span className='text-sm font-medium truncate'>{name}</span>
+                <span className='text-sm font-medium truncate'>{displayName ?? name}</span>
                 {(hasActiveBid ||
                     hasActiveOffer ||
                     bid?.automated ||
@@ -132,6 +136,14 @@ export default function ResourceTrigger({
                                 className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
                             >
                                 {bid.storageScaleWarning === 'scaled' ? 'storage' : 'no space'}
+                            </Badge>
+                        )}
+                        {bid?.depositScaleWarning && (
+                            <Badge
+                                variant='outline'
+                                className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
+                            >
+                                {bid.depositScaleWarning === 'scaled' ? 'deposit' : 'no funds'}
                             </Badge>
                         )}
                     </div>
