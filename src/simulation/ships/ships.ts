@@ -331,7 +331,7 @@ export const constructionShipType: ConstructionShipType = {
 
 const smallBulkCarrier: TransportShipType = {
     type: 'transport',
-    name: 'Small Bulk Carrier',
+    name: 'Bulk Carrier 1',
     scale: 'small',
     speed: 6,
     cargoSpecification: { type: 'solid', volume: 200000, mass: 150000 },
@@ -342,7 +342,7 @@ const smallBulkCarrier: TransportShipType = {
 
 const smallTanker: TransportShipType = {
     type: 'transport',
-    name: 'Small Tanker',
+    name: 'Tanker 1',
     scale: 'small',
     speed: 5,
     cargoSpecification: { type: 'liquid', volume: 150000, mass: 120000 },
@@ -353,7 +353,7 @@ const smallTanker: TransportShipType = {
 
 const smallGasCarrier: TransportShipType = {
     type: 'transport',
-    name: 'Small Gas Carrier',
+    name: 'Gas Carrier 1',
     scale: 'small',
     speed: 6,
     cargoSpecification: { type: 'gas', volume: 150000, mass: 120000 },
@@ -364,7 +364,7 @@ const smallGasCarrier: TransportShipType = {
 
 const smallFreighter: TransportShipType = {
     type: 'transport',
-    name: 'Small Freighter',
+    name: 'Freighter 1',
     scale: 'small',
     speed: 8,
     cargoSpecification: { type: 'pieces', volume: 100000, mass: 80000 },
@@ -375,7 +375,7 @@ const smallFreighter: TransportShipType = {
 
 const smallReefer: TransportShipType = {
     type: 'transport',
-    name: 'Small Reefer',
+    name: 'Reefer 1',
     scale: 'small',
     speed: 7,
     cargoSpecification: { type: 'frozenGoods', volume: 80000, mass: 60000 },
