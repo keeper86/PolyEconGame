@@ -16,6 +16,7 @@
 
 import type { Planet, Agent } from './planet/planet';
 import type { LoanConditions } from './financial/loanConditions';
+import type { Loan } from './financial/loanTypes';
 import type { ShipCapitalMarket } from './ships/ships';
 
 // ---------------------------------------------------------------------------
@@ -47,7 +48,7 @@ export interface WorkerQueryResult {
     getAgent: { agent: Agent | null };
     getAllAgents: { tick: number; agents: Agent[] };
     getAgentsByPlanet: { agents: Agent[] };
-    getLoanConditions: { conditions: LoanConditions | null };
+    getLoanConditions: { conditions: LoanConditions | null; activeLoans: Loan[] };
     getShipCapitalMarket: { shipCapitalMarket: ShipCapitalMarket };
 }
 

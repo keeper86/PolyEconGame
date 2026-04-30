@@ -1,4 +1,5 @@
 import { TICKS_PER_MONTH } from '../constants';
+import type { Loan } from '../financial/loanTypes';
 import type { EducationLevelType, Population } from '../population/population';
 import type {
     ConstructionContract,
@@ -247,7 +248,7 @@ export type AgentPlanetAssets = {
 
     depositHold: number;
 
-    loans: number;
+    activeLoans: Loan[];
 
     market?: AgentMarketOffers;
 

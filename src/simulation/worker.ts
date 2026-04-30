@@ -2,6 +2,7 @@ import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
 import knexConfig from '../../knexfile.js';
 import { advanceTick, seedRng } from './engine';
 import { computeLoanConditions } from './financial/loanConditions';
+import { totalOutstandingLoans } from './financial/loanTypes';
 import {
     getLatestGameSnapshot,
     insertAgentMonthlyHistory,
@@ -174,6 +175,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         handleAgentAction(state, action, safePostMessage);
                         break;
                     case 'requestLoan':
+                    case 'repayLoan':
                         handleFinancialAction(state, action, safePostMessage);
                         break;
                     case 'setSellOffers':
@@ -314,7 +316,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return [];
             }
             return Object.entries(agent.assets).map(([planetId, assets]) => {
-                const netBalance = assets.deposits - assets.loans;
+                const netBalance = assets.deposits - totalOutstandingLoans(assets.activeLoans);
                 const monthlyNetIncome = assets.monthAcc.revenue;
 
                 const totalWorkers = Math.round(assets.monthAcc.totalWorkersTicks / TICKS_PER_MONTH);
@@ -616,9 +618,13 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     const agentRecord = snap.agents.get(msg.agentId);
                     const planetRecord = snap.planets.get(msg.planetId);
                     if (!agentRecord || !planetRecord) {
-                        data = { conditions: null };
+                        data = { conditions: null, activeLoans: [] };
                     } else {
-                        data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data, snap.tick) };
+                        const agentData = agentRecord.data;
+                        data = {
+                            conditions: computeLoanConditions(agentData, planetRecord.data, snap.tick),
+                            activeLoans: agentData.assets[msg.planetId]?.activeLoans ?? [],
+                        };
                     }
                     break;
                 }
@@ -752,6 +758,23 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             pendingActions.push({ type: 'requestLoan', requestId, agentId, planetId, amount });
             // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'repayLoan') {
+            const { requestId, agentId, planetId, loanId, fraction } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'repayDenied', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'repayDenied', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            pendingActions.push({ type: 'repayLoan', requestId, agentId, planetId, loanId, fraction });
             if (!processingTick) {
                 drainActionQueue();
             }

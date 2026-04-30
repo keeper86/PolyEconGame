@@ -1,5 +1,6 @@
 import { STARTER_LOAN_AMOUNT, LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
+import { totalOutstandingLoans } from './loanTypes';
 
 export type LoanConditions = {
     maxLoanAmount: number;
@@ -26,7 +27,7 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
 
     const annualInterestRate = bank.loanRate * 360;
 
-    const existingLoans = assets?.loans ?? 0;
+    const existingLoans = totalOutstandingLoans(assets?.activeLoans ?? []);
 
     const progress = (((tick - 1) % TICKS_PER_MONTH) + 1) / TICKS_PER_MONTH;
 

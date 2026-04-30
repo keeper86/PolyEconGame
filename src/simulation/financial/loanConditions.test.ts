@@ -4,6 +4,7 @@ import { LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT, TIC
 import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { computeLoanConditions } from './loanConditions';
+import { makeLoan } from './loanTypes';
 
 function makeEstablishedAgent(
     planet: Planet,
@@ -17,7 +18,9 @@ function makeEstablishedAgent(
 ): Agent {
     const a = makeAgent('a1', planet.id, 'Player', { automated: false, starterLoanTaken: true });
     const assets = a.assets[planet.id]!;
-    assets.loans = overrides?.existingLoans ?? 0;
+    if (overrides?.existingLoans && overrides.existingLoans > 0) {
+        assets.activeLoans = [makeLoan('discretionary', overrides.existingLoans, 0.05, 0, 360, true)];
+    }
     assets.lastMonthAcc = {
         productionValue: 0,
         consumptionValue: 0,
@@ -227,7 +230,7 @@ describe('computeLoanConditions', () => {
         expect(result.annualInterestRate).toBeCloseTo(0.36);
     });
 
-    it('reports existingLoans from assets.loans', () => {
+    it('reports existingLoans from activeLoans', () => {
         const planet = makePlanet();
         const agent = makeEstablishedAgent(planet, { existingLoans: 12345, lastMonthRevenue: 1 });
         const result = computeLoanConditions(agent, planet, TICKS_PER_MONTH);

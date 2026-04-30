@@ -9,6 +9,7 @@
 import type { Planet, Agent } from './planet/planet';
 import { OCCUPATIONS, SKILL } from './population/population';
 import { educationLevelKeys } from './population/education';
+import { totalOutstandingLoans } from './financial/loanTypes';
 
 // ---------------------------------------------------------------------------
 // Serialisation helpers
@@ -181,7 +182,7 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
         name: a?.name ?? agentId ?? '',
         associatedPlanetId: a?.associatedPlanetId ?? '',
         balance: a?.assets
-            ? Object.values(a.assets).reduce((sum, pa) => sum + (pa?.deposits ?? 0) - (pa?.loans ?? 0), 0)
+            ? Object.values(a.assets).reduce((sum, pa) => sum + (pa?.deposits ?? 0) - totalOutstandingLoans(pa?.activeLoans ?? []), 0)
             : 0,
         facilityCount,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,

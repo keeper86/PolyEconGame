@@ -3,6 +3,7 @@ import { sendCommandSpec } from './transport';
 import {
     createAgentSpec,
     requestLoanSpec,
+    repayLoanSpec,
     setAutomationSpec,
     setWorkerAllocationTargetsSpec,
     setSellOffersSpec,
@@ -60,6 +61,21 @@ export function workerRequestLoan(opts: {
     return sendCommandSpec(
         { type: 'requestLoan', requestId: randomUUID(), agentId, planetId, amount },
         requestLoanSpec,
+        timeoutMs,
+    );
+}
+
+export function workerRepayLoan(opts: {
+    agentId: string;
+    planetId: string;
+    loanId: string;
+    fraction: 0.25 | 0.5 | 1;
+    timeoutMs?: number;
+}): Promise<number> {
+    const { agentId, planetId, loanId, fraction, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'repayLoan', requestId: randomUUID(), agentId, planetId, loanId, fraction },
+        repayLoanSpec,
         timeoutMs,
     );
 }

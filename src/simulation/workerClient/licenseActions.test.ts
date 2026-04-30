@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
 import { checkMonetaryConservation } from '../invariants';
+import { totalOutstandingLoans } from '../financial/loanTypes';
 import { makeWorld } from '../utils/testHelper';
 import type { OutboundMessage } from './messages';
 import { handleAcquireLicense } from './licenseActions';
@@ -49,7 +50,7 @@ describe('handleAcquireLicense — new planet (no prior assets)', () => {
         expect(assets.licenses.workforce).toBeUndefined();
 
         // initial loan created
-        expect(assets.loans).toBe(COMMERCIAL_LICENSE_COST);
+        expect(totalOutstandingLoans(assets.activeLoans)).toBe(COMMERCIAL_LICENSE_COST);
         expect(assets.deposits).toBe(0);
         expect(planet.bank.loans).toBe(bankLoansBefore + COMMERCIAL_LICENSE_COST);
         expect(planet.bank.deposits).toBe(bankDepositsBefore + COMMERCIAL_LICENSE_COST);

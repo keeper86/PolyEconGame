@@ -15,6 +15,7 @@ import { EuroIcon } from 'lucide-react';
 import { ChevronDown } from 'lucide-react';
 import BankPanel from './_components/BankPanel';
 import { LicensePanel } from '../../_component/LicensePanel';
+import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
 
 export default function FinancialPage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
@@ -65,7 +66,7 @@ export default function FinancialPage() {
                         </p>
                         <AgentFinancialOverview
                             deposits={assets.deposits ?? 0}
-                            loans={assets.loans ?? 0}
+                            loans={totalOutstandingLoans(assets.activeLoans ?? [])}
                             loanConditions={loanConditions}
                             planetId={planetId}
                         />
@@ -80,7 +81,7 @@ export default function FinancialPage() {
                         </Collapsible>
                         <Separator />
 
-                        <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} />
+                        <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} deposits={assets.deposits ?? 0} />
 
                         <Separator />
 

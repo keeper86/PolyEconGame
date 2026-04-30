@@ -5,6 +5,7 @@ import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelp
 
 import { automaticLoanRepayment, preProductionFinancialTick } from './financialTick';
 import { hireFromPopulation } from '../workforce/workforce';
+import { makeLoan, totalOutstandingLoans } from './loanTypes';
 
 describe('per-agent loan bookkeeping', () => {
     let agent: Agent;
@@ -31,7 +32,7 @@ describe('per-agent loan bookkeeping', () => {
 
         preProductionFinancialTick(agentMap(agent), planet);
 
-        const agentLoan = agent.assets[planet.id]!.loans ?? 0;
+        const agentLoan = totalOutstandingLoans(agent.assets[planet.id]!.activeLoans);
         expect(agentLoan).toBeCloseTo(count, 6);
         expect(planet.bank!.loans).toBeCloseTo(count, 6);
     });
@@ -39,15 +40,16 @@ describe('per-agent loan bookkeeping', () => {
     it('agent repays only their own loan', () => {
         // Set up an outstanding loan owned by the agent and matching deposits
         planet.bank!.loans = 50;
-        planet.bank!.deposits = 50;
-        agent.assets[planet.id]!.deposits = 50;
-        agent.assets[planet.id]!.loans = 50;
+        planet.bank!.deposits = 10_050;
+        agent.assets[planet.id]!.deposits = 10_050;
+        agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 50, 0, 1, 361, true)];
+        agent.assets[planet.id]!.lastMonthAcc.wages = 1;
 
         // postProduction should trigger repayment even when cNom == 0
         automaticLoanRepayment(agentMap(agent), planet);
 
-        expect(agent.assets[planet.id]?.loans).toBe(0);
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
         expect(planet.bank!.loans).toBe(0);
-        expect(agent.assets[planet.id]?.deposits ?? 0).toBe(0);
+        expect(agent.assets[planet.id]?.deposits ?? 0).toBe(10_000);
     });
 });

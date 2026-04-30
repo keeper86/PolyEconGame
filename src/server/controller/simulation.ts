@@ -17,6 +17,7 @@ import {
     getAgentFinancialHistoryAggregated as dbGetAgentFinancialHistory,
 } from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
+import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
     computeAgentConsumption,
     computeAgentProduction,
@@ -29,6 +30,17 @@ import {
 import { workerQueries } from '../../simulation/workerClient/queries';
 import { db } from '../db';
 import { protectedProcedure } from '../trpcRoot';
+
+const loanSchema = z.object({
+    id: z.string(),
+    type: z.enum(['starter', 'discretionary', 'wageCoverage', 'bufferCoverage', 'claimCoverage', 'shipPenaltyCoverage', 'licenseBootstrap', 'forexWorkingCapital']),
+    principal: z.number(),
+    remainingPrincipal: z.number(),
+    annualInterestRate: z.number(),
+    takenAtTick: z.number(),
+    maturityTick: z.number(),
+    earlyRepaymentAllowed: z.boolean(),
+});
 
 const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
@@ -117,7 +129,7 @@ export const getLatestAgents = () =>
                 agents: agents.map((a) => ({
                     agentId: a.id,
                     balance: a.assets
-                        ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+                        ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []), 0)
                         : 0,
                     storage: computeAgentStorage(a),
                     production: computeAgentProduction(a),
@@ -202,7 +214,7 @@ export const getAgentDetail = () =>
                     agentId: agent.id,
                     name: agent.name,
                     balance: agent.assets
-                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []), 0)
                         : 0,
                     storage: computeAgentStorage(agent),
                     production: computeAgentProduction(agent),
@@ -268,7 +280,7 @@ export const getAgentOverview = () =>
                     name: agent.name,
                     associatedPlanetId: agent.associatedPlanetId ?? '',
                     balance: agent.assets
-                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - (pa.loans ?? 0), 0)
+                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []), 0)
                         : 0,
                     shipCount: agent.ships?.length ?? 0,
                     planets,
@@ -570,8 +582,8 @@ export const getAgentFinancials = () =>
 export const getLoanConditions = () =>
     protectedProcedure
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
-        .output(z.object({ conditions: loanConditionsSchema.nullable() }))
+        .output(z.object({ conditions: loanConditionsSchema.nullable(), activeLoans: z.array(loanSchema) }))
         .query(async ({ input }) => {
-            const { conditions } = await workerQueries.getLoanConditions(input.agentId, input.planetId);
-            return { conditions: conditions ?? null };
+            const { conditions, activeLoans } = await workerQueries.getLoanConditions(input.agentId, input.planetId);
+            return { conditions: conditions ?? null, activeLoans: activeLoans ?? [] };
         });

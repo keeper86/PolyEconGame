@@ -93,7 +93,6 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             }
             const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
 
-            // Use the new validation function
             const validatedBid = validateAndPrepareBuyBid(bid, assets, currentInventory);
 
             if (!validatedBid) {
