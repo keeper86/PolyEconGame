@@ -1,5 +1,6 @@
 import {
     type LucideIcon,
+    Building2,
     EuroIcon,
     FileText,
     FlaskConical,

@@ -13,6 +13,7 @@ declare module "nextjs-routes" {
   export type Route =
     | StaticRoute<"/">
     | StaticRoute<"/account">
+    | StaticRoute<"/agents">
     | DynamicRoute<"/agents/[agentId]", { "agentId": string }>
     | DynamicRoute<"/api/auth/[...nextauth]", { "nextauth": string[] }>
     | StaticRoute<"/api/ping">
@@ -21,6 +22,7 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/api/trpc/[trpc]", { "trpc": string }>
     | StaticRoute<"/imprint">
     | StaticRoute<"/planets">
+    | DynamicRoute<"/planets/[planetId]/agents", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/financial", { "planetId": string; "agentId": string }>
