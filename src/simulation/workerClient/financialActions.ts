@@ -23,7 +23,7 @@ export function handleRequestLoan(
         });
         return;
     }
-    const conditions = computeLoanConditions(agent, planet, state.tick);
+    const conditions = computeLoanConditions(agent, planet);
     if (amount <= 0 || amount > conditions.maxLoanAmount * 1.1) {
         safePostMessage({
             type: 'loanDenied',
@@ -80,7 +80,11 @@ export function handleRepayLoan(
     }
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'repayDenied', requestId, reason: `Agent has no asset record for planet '${planetId}'` });
+        safePostMessage({
+            type: 'repayDenied',
+            requestId,
+            reason: `Agent has no asset record for planet '${planetId}'`,
+        });
         return;
     }
     const loan = assets.activeLoans.find((l) => l.id === loanId);

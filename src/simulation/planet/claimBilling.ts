@@ -48,7 +48,14 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                 planet.bank.deposits += shortfall;
                 assets.deposits += shortfall;
                 assets.activeLoans.push(
-                    makeLoan('claimCoverage', shortfall, planet.bank.loanRate * TICKS_PER_YEAR, tick, tick + TICKS_PER_YEAR, true),
+                    makeLoan(
+                        'claimCoverage',
+                        shortfall,
+                        planet.bank.loanRate * TICKS_PER_YEAR,
+                        tick,
+                        tick + TICKS_PER_YEAR,
+                        true,
+                    ),
                 );
             }
 

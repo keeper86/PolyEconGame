@@ -99,14 +99,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             bank.deposits += shortfall;
             assets.deposits += shortfall;
             assets.activeLoans.push(
-                makeLoan(
-                    'wageCoverage',
-                    shortfall,
-                    bank.loanRate * TICKS_PER_YEAR,
-                    tick,
-                    tick + TICKS_PER_YEAR,
-                    true,
-                ),
+                makeLoan('wageCoverage', shortfall, bank.loanRate * TICKS_PER_YEAR, tick, tick + TICKS_PER_YEAR, true),
             );
         }
 
@@ -204,9 +197,7 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
             (assets.lastMonthAcc.purchases ?? 0) +
             (assets.lastMonthAcc.claimPayments ?? 0);
         const thisMonthExpenses =
-            (assets.monthAcc.wages ?? 0) +
-            (assets.monthAcc.purchases ?? 0) +
-            (assets.monthAcc.claimPayments ?? 0);
+            (assets.monthAcc.wages ?? 0) + (assets.monthAcc.purchases ?? 0) + (assets.monthAcc.claimPayments ?? 0);
         const blendedMonthlyExpenses =
             progress <= 0 || thisMonthExpenses === 0
                 ? lastMonthExpenses

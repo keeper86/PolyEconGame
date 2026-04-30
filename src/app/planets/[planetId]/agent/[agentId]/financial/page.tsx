@@ -81,7 +81,11 @@ export default function FinancialPage() {
                         </Collapsible>
                         <Separator />
 
-                        <LoanPanel agentId={agentId} planetId={detail?.planetId ?? ''} deposits={assets.deposits ?? 0} />
+                        <LoanPanel
+                            agentId={agentId}
+                            planetId={detail?.planetId ?? ''}
+                            deposits={assets.deposits ?? 0}
+                        />
 
                         <Separator />
 

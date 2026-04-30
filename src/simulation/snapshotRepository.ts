@@ -182,7 +182,10 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
         name: a?.name ?? agentId ?? '',
         associatedPlanetId: a?.associatedPlanetId ?? '',
         balance: a?.assets
-            ? Object.values(a.assets).reduce((sum, pa) => sum + (pa?.deposits ?? 0) - totalOutstandingLoans(pa?.activeLoans ?? []), 0)
+            ? Object.values(a.assets).reduce(
+                  (sum, pa) => sum + (pa?.deposits ?? 0) - totalOutstandingLoans(pa?.activeLoans ?? []),
+                  0,
+              )
             : 0,
         facilityCount,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,

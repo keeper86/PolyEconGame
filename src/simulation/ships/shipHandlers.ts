@@ -416,7 +416,14 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
                                 bank.deposits += shortfall;
                                 carrierAssets.deposits += shortfall;
                                 carrierAssets.activeLoans.push(
-                                    makeLoan('shipPenaltyCoverage', shortfall, bank.loanRate * TICKS_PER_YEAR, ctx.tick, ctx.tick + TICKS_PER_YEAR, true),
+                                    makeLoan(
+                                        'shipPenaltyCoverage',
+                                        shortfall,
+                                        bank.loanRate * TICKS_PER_YEAR,
+                                        ctx.tick,
+                                        ctx.tick + TICKS_PER_YEAR,
+                                        true,
+                                    ),
                                 );
                             }
                             carrierAssets.deposits -= penalty;

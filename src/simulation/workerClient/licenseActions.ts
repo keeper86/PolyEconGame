@@ -62,7 +62,14 @@ export function handleAcquireLicense(
         // Bootstrap: initial loan funds the license fee
         assets.deposits = 0;
         assets.activeLoans.push(
-            makeLoan('licenseBootstrap', cost, planet.bank.loanRate * TICKS_PER_YEAR, state.tick, state.tick + TICKS_PER_YEAR, false),
+            makeLoan(
+                'licenseBootstrap',
+                cost,
+                planet.bank.loanRate * TICKS_PER_YEAR,
+                state.tick,
+                state.tick + TICKS_PER_YEAR,
+                false,
+            ),
         );
         planet.bank.loans += cost;
         planet.bank.deposits += cost; // new money enters the economy

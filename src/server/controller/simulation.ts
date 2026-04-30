@@ -33,7 +33,16 @@ import { protectedProcedure } from '../trpcRoot';
 
 const loanSchema = z.object({
     id: z.string(),
-    type: z.enum(['starter', 'discretionary', 'wageCoverage', 'bufferCoverage', 'claimCoverage', 'shipPenaltyCoverage', 'licenseBootstrap', 'forexWorkingCapital']),
+    type: z.enum([
+        'starter',
+        'discretionary',
+        'wageCoverage',
+        'bufferCoverage',
+        'claimCoverage',
+        'shipPenaltyCoverage',
+        'licenseBootstrap',
+        'forexWorkingCapital',
+    ]),
     principal: z.number(),
     remainingPrincipal: z.number(),
     annualInterestRate: z.number(),
@@ -129,7 +138,10 @@ export const getLatestAgents = () =>
                 agents: agents.map((a) => ({
                     agentId: a.id,
                     balance: a.assets
-                        ? Object.values(a.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []), 0)
+                        ? Object.values(a.assets).reduce(
+                              (sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []),
+                              0,
+                          )
                         : 0,
                     storage: computeAgentStorage(a),
                     production: computeAgentProduction(a),
@@ -214,7 +226,10 @@ export const getAgentDetail = () =>
                     agentId: agent.id,
                     name: agent.name,
                     balance: agent.assets
-                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []), 0)
+                        ? Object.values(agent.assets).reduce(
+                              (sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []),
+                              0,
+                          )
                         : 0,
                     storage: computeAgentStorage(agent),
                     production: computeAgentProduction(agent),
@@ -280,7 +295,10 @@ export const getAgentOverview = () =>
                     name: agent.name,
                     associatedPlanetId: agent.associatedPlanetId ?? '',
                     balance: agent.assets
-                        ? Object.values(agent.assets).reduce((sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []), 0)
+                        ? Object.values(agent.assets).reduce(
+                              (sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []),
+                              0,
+                          )
                         : 0,
                     shipCount: agent.ships?.length ?? 0,
                     planets,

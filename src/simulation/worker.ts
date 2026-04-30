@@ -622,7 +622,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     } else {
                         const agentData = agentRecord.data;
                         data = {
-                            conditions: computeLoanConditions(agentData, planetRecord.data, snap.tick),
+                            conditions: computeLoanConditions(agentData, planetRecord.data),
                             activeLoans: agentData.assets[msg.planetId]?.activeLoans ?? [],
                         };
                     }

@@ -1,4 +1,4 @@
-import { STARTER_LOAN_AMOUNT, LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, TICKS_PER_MONTH } from '../constants';
+import { LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { totalOutstandingLoans } from './loanTypes';
 
@@ -6,22 +6,14 @@ export type LoanConditions = {
     maxLoanAmount: number;
     annualInterestRate: number;
     existingLoans: number;
-    blendedMonthlyExpenses: number;
-    blendedMonthlyRevenue: number;
+    lastMonthlyExpenses: number;
+    lastMonthlyRevenue: number;
     monthlyNetCashFlow: number;
     storageCollateral: number;
     isNewAgent: boolean;
 };
 
-function blendMonthly(lastMonth: number, currentMonth: number, progress: number): number {
-    if (progress <= 0 || currentMonth === 0) {
-        return lastMonth;
-    }
-    const extrapolated = currentMonth / progress;
-    return lastMonth * (1 - progress) + extrapolated * progress;
-}
-
-export function computeLoanConditions(agent: Agent, planet: Planet, tick: number): LoanConditions {
+export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditions {
     const assets = agent.assets[planet.id];
     const bank = planet.bank;
 
@@ -29,22 +21,13 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
 
     const existingLoans = totalOutstandingLoans(assets?.activeLoans ?? []);
 
-    const progress = (((tick - 1) % TICKS_PER_MONTH) + 1) / TICKS_PER_MONTH;
-
-    const blendedMonthlyRevenue = blendMonthly(
-        assets?.lastMonthAcc.revenue ?? 0,
-        assets?.monthAcc.revenue ?? 0,
-        progress,
-    );
-    const blendedMonthlyExpenses = blendMonthly(
+    const lastMonthlyRevenue = assets?.lastMonthAcc.revenue ?? 0;
+    const lastMonthlyExpenses =
         (assets?.lastMonthAcc.wages ?? 0) +
-            (assets?.lastMonthAcc.purchases ?? 0) +
-            (assets?.lastMonthAcc.claimPayments ?? 0),
-        (assets?.monthAcc.wages ?? 0) + (assets?.monthAcc.purchases ?? 0) + (assets?.monthAcc.claimPayments ?? 0),
-        progress,
-    );
+        (assets?.lastMonthAcc.purchases ?? 0) +
+        (assets?.lastMonthAcc.claimPayments ?? 0);
 
-    const monthlyNetCashFlow = blendedMonthlyRevenue - blendedMonthlyExpenses;
+    const monthlyNetCashFlow = lastMonthlyRevenue - lastMonthlyExpenses;
 
     const isNewAgent = !agent.starterLoanTaken;
 
@@ -75,8 +58,8 @@ export function computeLoanConditions(agent: Agent, planet: Planet, tick: number
         maxLoanAmount: Math.floor(maxLoanAmount),
         annualInterestRate,
         existingLoans,
-        blendedMonthlyExpenses,
-        blendedMonthlyRevenue,
+        lastMonthlyExpenses: lastMonthlyExpenses,
+        lastMonthlyRevenue: lastMonthlyRevenue,
         monthlyNetCashFlow,
         storageCollateral,
         isNewAgent,
