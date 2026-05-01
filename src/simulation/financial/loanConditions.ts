@@ -1,17 +1,7 @@
 import { LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { totalOutstandingLoans } from './loanTypes';
-
-export type LoanConditions = {
-    maxLoanAmount: number;
-    annualInterestRate: number;
-    existingLoans: number;
-    lastMonthlyExpenses: number;
-    lastMonthlyRevenue: number;
-    monthlyNetCashFlow: number;
-    storageCollateral: number;
-    isNewAgent: boolean;
-};
+import type { LoanConditions } from '../../server/controller/simulation';
 
 export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditions {
     const assets = agent.assets[planet.id];

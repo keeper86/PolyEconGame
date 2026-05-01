@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 /**
  * Describes the originating context of a loan.
  *
@@ -69,7 +67,7 @@ export function makeLoan(
     earlyRepaymentAllowed: boolean,
 ): Loan {
     return {
-        id: randomUUID(),
+        id: crypto.randomUUID(),
         type,
         principal,
         remainingPrincipal: principal,

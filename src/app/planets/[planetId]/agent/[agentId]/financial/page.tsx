@@ -30,8 +30,8 @@ export default function FinancialPage() {
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
     );
     const loanConditions = loanConditionsData?.conditions ?? {
-        blendedMonthlyRevenue: 0,
-        blendedMonthlyExpenses: 0,
+        lastMonthlyRevenue: 0,
+        lastMonthlyExpenses: 0,
         monthlyNetCashFlow: 0,
     };
 

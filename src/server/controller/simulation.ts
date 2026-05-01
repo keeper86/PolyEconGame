@@ -55,12 +55,14 @@ const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
     annualInterestRate: z.number(),
     existingLoans: z.number(),
-    blendedMonthlyExpenses: z.number(),
-    blendedMonthlyRevenue: z.number(),
+    lastMonthlyExpenses: z.number(),
+    lastMonthlyRevenue: z.number(),
     monthlyNetCashFlow: z.number(),
     storageCollateral: z.number(),
     isNewAgent: z.boolean(),
 });
+
+export type LoanConditions = z.infer<typeof loanConditionsSchema>;
 
 export const getCurrentTick = () =>
     protectedProcedure

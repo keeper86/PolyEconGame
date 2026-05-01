@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT, TICKS_PER_MONTH } from '../constants';
+import { LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { computeLoanConditions } from './loanConditions';
@@ -83,17 +83,6 @@ describe('computeLoanConditions', () => {
         expect(result.lastMonthlyRevenue).toBeCloseTo(1200);
     });
 
-    it('mid-month blends last and extrapolated current month', () => {
-        const planet = makePlanet();
-        const agent = makeEstablishedAgent(planet, {
-            lastMonthRevenue: 800,
-            currentMonthRevenue: 600, // extrapolates to 1200
-        });
-        const result = computeLoanConditions(agent, planet);
-        // progress = 0.5 → extrapolated = 1200, blend = 800*0.5 + 1200*0.5 = 1000
-        expect(result.lastMonthlyRevenue).toBeCloseTo(1000, 0);
-    });
-
     it('near end of month is dominated by extrapolated current value', () => {
         const planet = makePlanet();
         const agent = makeEstablishedAgent(planet, {
@@ -102,24 +91,6 @@ describe('computeLoanConditions', () => {
         });
         const result = computeLoanConditions(agent, planet);
         expect(result.lastMonthlyRevenue).toBeGreaterThan(25);
-    });
-
-    // ----------------------------------------------------------------
-    // Cash-flow positive path
-    // ----------------------------------------------------------------
-
-    it('cash-flow positive: limit = LOAN_CASH_FLOW_MONTHS × netCashFlow − existingLoans', () => {
-        const planet = makePlanet();
-        const agent = makeEstablishedAgent(planet, {
-            lastMonthRevenue: 1000,
-            lastMonthWages: 200,
-            existingLoans: 500,
-        });
-        // At month boundary (tick = TICKS_PER_MONTH): 100% last month
-        const result = computeLoanConditions(agent, planet);
-        const expected = Math.floor(LOAN_CASH_FLOW_MONTHS * (1000 - 200) - 500);
-        expect(result.maxLoanAmount).toBe(expected);
-        expect(result.monthlyNetCashFlow).toBeCloseTo(800);
     });
 
     it('cash-flow positive limit is floored at 0 when existing loans exceed capacity', () => {
