@@ -1,4 +1,4 @@
-import { FOREX_MM_COUNT, FOREX_MM_SEED_LOAN, FOREX_MM_WORKING_CAPITAL } from '../constants';
+import { FOREX_MM_COUNT, FOREX_MM_SEED_LOAN, FOREX_MM_WORKING_CAPITAL, TICKS_PER_YEAR } from '../constants';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import { makeLoan } from '../financial/loanTypes';
 import type { Agent, GameState } from '../planet/planet';
@@ -48,7 +48,14 @@ export function seedForexMarketMakers(gameState: GameState): void {
             homeAssets.market = { sell: {}, buy: {} };
             homeAssets.deposits += FOREX_MM_WORKING_CAPITAL;
             homeAssets.activeLoans.push(
-                makeLoan('forexWorkingCapital', FOREX_MM_WORKING_CAPITAL, homePlanet.bank.loanRate, 0, 0, false),
+                makeLoan(
+                    'forexWorkingCapital',
+                    FOREX_MM_WORKING_CAPITAL,
+                    homePlanet.bank.loanRate * TICKS_PER_YEAR,
+                    0,
+                    0,
+                    false,
+                ),
             );
             homePlanet.bank.loans += FOREX_MM_WORKING_CAPITAL;
             homePlanet.bank.deposits += FOREX_MM_WORKING_CAPITAL;
@@ -69,7 +76,14 @@ export function seedForexMarketMakers(gameState: GameState): void {
                 foreignAssets.market = { sell: {}, buy: {} };
                 foreignAssets.deposits += FOREX_MM_SEED_LOAN;
                 foreignAssets.activeLoans.push(
-                    makeLoan('forexWorkingCapital', FOREX_MM_SEED_LOAN, foreignPlanet.bank.loanRate, 0, 0, false),
+                    makeLoan(
+                        'forexWorkingCapital',
+                        FOREX_MM_SEED_LOAN,
+                        foreignPlanet.bank.loanRate * TICKS_PER_YEAR,
+                        0,
+                        0,
+                        false,
+                    ),
                 );
                 foreignPlanet.bank.loans += FOREX_MM_SEED_LOAN;
                 foreignPlanet.bank.deposits += FOREX_MM_SEED_LOAN;

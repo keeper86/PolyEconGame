@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT, TICKS_PER_MONTH } from '../constants';
+import { LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { computeLoanConditions } from './loanConditions';
@@ -81,16 +81,6 @@ describe('computeLoanConditions', () => {
         // tick = TICKS_PER_MONTH → progress = 0
         const result = computeLoanConditions(agent, planet);
         expect(result.lastMonthlyRevenue).toBeCloseTo(1200);
-    });
-
-    it('near end of month is dominated by extrapolated current value', () => {
-        const planet = makePlanet();
-        const agent = makeEstablishedAgent(planet, {
-            lastMonthRevenue: 0,
-            currentMonthRevenue: TICKS_PER_MONTH - 1, // extrapolates to ~30
-        });
-        const result = computeLoanConditions(agent, planet);
-        expect(result.lastMonthlyRevenue).toBeGreaterThan(25);
     });
 
     it('cash-flow positive limit is floored at 0 when existing loans exceed capacity', () => {

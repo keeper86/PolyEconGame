@@ -774,6 +774,14 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({ type: 'repayDenied', requestId, reason: `Planet '${planetId}' not found` });
                 return;
             }
+            if (typeof loanId !== 'string' || loanId.trim() === '') {
+                safePostMessage({ type: 'repayDenied', requestId, reason: 'loanId must be a non-empty string' });
+                return;
+            }
+            if (typeof fraction !== 'number' || fraction <= 0 || fraction > 1) {
+                safePostMessage({ type: 'repayDenied', requestId, reason: 'fraction must be a number in (0, 1]' });
+                return;
+            }
             pendingActions.push({ type: 'repayLoan', requestId, agentId, planetId, loanId, fraction });
             if (!processingTick) {
                 drainActionQueue();

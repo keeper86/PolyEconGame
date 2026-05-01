@@ -82,11 +82,11 @@ export default function AgentFinancialOverview({
                 </div>
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
                     <Stat
-                        label='Monthly revenue (projected)'
+                        label='Monthly revenue (last month)'
                         value={formatNumberWithUnit(loanConditions.lastMonthlyRevenue, 'currency', planetId)}
                     />
                     <Stat
-                        label='Monthly expenses (projected)'
+                        label='Monthly expenses (last month)'
                         value={formatNumberWithUnit(loanConditions.lastMonthlyExpenses, 'currency', planetId)}
                         valueClassName={
                             loanConditions.lastMonthlyExpenses === 0
@@ -97,7 +97,7 @@ export default function AgentFinancialOverview({
                         }
                     />
                     <Stat
-                        label='Net monthly cash flow (projected)'
+                        label='Net monthly cash flow (last month)'
                         value={formatNumberWithUnit(loanConditions.monthlyNetCashFlow, 'currency', planetId)}
                         valueClassName={
                             loanConditions.monthlyNetCashFlow === 0

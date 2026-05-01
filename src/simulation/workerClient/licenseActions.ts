@@ -73,6 +73,7 @@ export function handleAcquireLicense(
         );
         planet.bank.loans += cost;
         planet.bank.deposits += cost; // new money enters the economy
+        planet.bank.equity = planet.bank.deposits - planet.bank.loans;
     } else {
         // Agent already has assets on this planet — deduct from deposits
         if (assets.deposits < cost) {
@@ -83,10 +84,7 @@ export function handleAcquireLicense(
             });
             return;
         }
-        console.log('before:', assets.deposits);
-
         assets.deposits -= cost;
-        console.log('after:', assets.deposits);
         // No change to planet.bank.deposits: money moves from this agent to the government,
         // keeping aggregate bank deposits (Σ agent deposits) constant.
     }

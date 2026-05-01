@@ -27,10 +27,11 @@ export function forexMMRepaymentTick(gameState: GameState): void {
             if (repayment <= 0) {
                 continue;
             }
-            assets.deposits -= repayment;
             const actualRepayment = repayLoansOldestFirst(assets.activeLoans, repayment);
+            assets.deposits -= actualRepayment;
             planet.bank.loans -= actualRepayment;
             planet.bank.deposits -= actualRepayment;
+            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
         }
     }
 }
