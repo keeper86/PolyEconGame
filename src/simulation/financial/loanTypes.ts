@@ -1,3 +1,11 @@
+import { nextRandom } from '../utils/stochasticRound';
+
+/** Generate a deterministic loan ID from the seeded PRNG. */
+function nextLoanId(): string {
+    const hex = (n: number) => ((n * 0x100000000) >>> 0).toString(16).padStart(8, '0');
+    return `${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}`;
+}
+
 /**
  * Describes the originating context of a loan.
  *
@@ -67,7 +75,7 @@ export function makeLoan(
     earlyRepaymentAllowed: boolean,
 ): Loan {
     return {
-        id: crypto.randomUUID(),
+        id: nextLoanId(),
         type,
         principal,
         remainingPrincipal: principal,
