@@ -109,7 +109,7 @@ export function makeAgentPlanetAssets(
         shipListings: [],
         deposits: 0,
         depositHold: 0,
-        loans: 0,
+        activeLoans: [],
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),

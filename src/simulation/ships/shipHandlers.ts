@@ -16,6 +16,7 @@ import {
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     TICKS_PER_YEAR,
 } from '../constants';
+import { makeLoan } from '../financial/loanTypes';
 import type { Facility, ProductionFacility } from '../planet/facility';
 import {
     MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
@@ -414,7 +415,16 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
                                 bank.loans += shortfall;
                                 bank.deposits += shortfall;
                                 carrierAssets.deposits += shortfall;
-                                carrierAssets.loans += shortfall;
+                                carrierAssets.activeLoans.push(
+                                    makeLoan(
+                                        'shipPenaltyCoverage',
+                                        shortfall,
+                                        bank.loanRate * TICKS_PER_YEAR,
+                                        ctx.tick,
+                                        ctx.tick + TICKS_PER_YEAR,
+                                        true,
+                                    ),
+                                );
                             }
                             carrierAssets.deposits -= penalty;
                         }

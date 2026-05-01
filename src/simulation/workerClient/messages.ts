@@ -6,6 +6,14 @@ export type InboundMessage =
     | { type: 'createAgent'; requestId: string; agentId: string; agentName: string; planetId: string }
     | { type: 'requestLoan'; requestId: string; agentId: string; planetId: string; amount: number }
     | {
+          type: 'repayLoan';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          loanId: string;
+          fraction: 0.25 | 0.5 | 1;
+      }
+    | {
           type: 'setAutomation';
           requestId: string;
           agentId: string;
@@ -264,6 +272,8 @@ export type OutboundMessage =
     | { type: 'agentCreationFailed'; requestId: string; reason: string }
     | { type: 'loanGranted'; requestId: string; agentId: string; amount: number }
     | { type: 'loanDenied'; requestId: string; reason: string }
+    | { type: 'loanRepaid'; requestId: string; agentId: string; loanId: string; amount: number }
+    | { type: 'repayDenied'; requestId: string; reason: string }
     | { type: 'automationSet'; requestId: string; agentId: string }
     | { type: 'automationFailed'; requestId: string; reason: string }
     | { type: 'workerAllocationSet'; requestId: string; agentId: string }
@@ -353,6 +363,14 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           amount: number;
+      }
+    | {
+          type: 'repayLoan';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          loanId: string;
+          fraction: 0.25 | 0.5 | 1;
       }
     | {
           type: 'setAutomation';

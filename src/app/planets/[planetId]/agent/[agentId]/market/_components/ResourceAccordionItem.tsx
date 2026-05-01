@@ -22,7 +22,7 @@ import SellSection from './SellSection';
 import MarketDetailsSection from './MarketDetailsSection';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
 import { resourceNameToSlug } from './marketHelpers';
-import { currencyMapping } from '@/simulation/market/currencyResources';
+import { currencyMapping, CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -34,10 +34,13 @@ export default function ResourceAccordionItem({
     overviewRow,
     visibleColumns,
     planetNames,
+    allPlanetDeposits,
 }: ResourceAccordionItemProps): React.ReactElement {
     const bid = assets.market?.buy[resourceName];
     const offer = assets.market?.sell[resourceName];
-    const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
+        ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
+        : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     // useParams returns route params; cast to access the dynamic segment

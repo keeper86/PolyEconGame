@@ -1,12 +1,14 @@
 'use client';
 
+import { mapTickToDate } from '@/components/client/TickDisplay';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
+import type { Loan } from '@/simulation/financial/loanTypes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, BadgeDollarSign, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, BadgeDollarSign, CheckCircle2, Landmark } from 'lucide-react';
 import React, { useState } from 'react';
 
 /* ------------------------------------------------------------------ */
@@ -16,9 +18,102 @@ import React, { useState } from 'react';
 type Props = {
     agentId: string;
     planetId: string;
+    deposits: number;
 };
 
-export default function LoanPanel({ agentId, planetId }: Props): React.ReactElement {
+const LOAN_TYPE_LABELS: Record<Loan['type'], string> = {
+    starter: 'Starter',
+    discretionary: 'Discretionary',
+    wageCoverage: 'Wage coverage',
+    bufferCoverage: 'Buffer coverage',
+    claimCoverage: 'Claim coverage',
+    shipPenaltyCoverage: 'Ship penalty',
+    licenseBootstrap: 'License bootstrap',
+    forexWorkingCapital: 'Forex working capital',
+};
+
+function LoanRow({
+    loan,
+    deposits,
+    agentId,
+    planetId,
+    onRepaid,
+    onError,
+}: {
+    loan: Loan;
+    deposits: number;
+    agentId: string;
+    planetId: string;
+    onRepaid: (amount: number) => void;
+    onError: (msg: string) => void;
+}) {
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    const repayMutation = useMutation(
+        trpc.repayLoan.mutationOptions({
+            onSuccess: (result) => {
+                onRepaid(result.repaidAmount);
+                void queryClient.invalidateQueries({
+                    queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
+                });
+            },
+            onError: (err) => {
+                onError(err instanceof Error ? err.message : 'Repayment failed');
+            },
+        }),
+    );
+
+    const pct = loan.annualInterestRate * 100;
+
+    return (
+        <div className='border rounded-md p-2.5 space-y-2 text-xs'>
+            <div className='flex items-center justify-between gap-2'>
+                <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
+                <span className='text-muted-foreground tabular-nums'>
+                    {formatNumberWithUnit(loan.remainingPrincipal, 'currency', planetId)}
+                    {loan.remainingPrincipal !== loan.principal && (
+                        <span className='opacity-60'>
+                            {' / '}
+                            {formatNumberWithUnit(loan.principal, 'currency', planetId)}
+                        </span>
+                    )}
+                </span>
+            </div>
+            <div className='flex gap-3 text-muted-foreground'>
+                <span>APR {pct.toFixed(1)} %</span>
+                {loan.maturityTick > 0 && <span>Matures tick {mapTickToDate(loan.maturityTick)}</span>}
+                {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
+            </div>
+            {loan.earlyRepaymentAllowed && (
+                <div className='flex gap-1.5'>
+                    {([0.25, 0.5, 1] as const).map((fraction) => {
+                        const amount = Math.floor(loan.remainingPrincipal * fraction);
+                        const canAfford = deposits >= amount;
+                        const label = fraction === 1 ? '100 %' : fraction === 0.5 ? '50 %' : '25 %';
+                        return (
+                            <Button
+                                key={fraction}
+                                size='sm'
+                                variant={fraction === 1 ? 'default' : 'outline'}
+                                className={`flex-1 h-8 text-[11px] ${fraction === 1 ? 'bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-700 dark:hover:bg-amber-600' : 'border-amber-600 text-amber-700 dark:text-amber-400 dark:border-amber-500'}`}
+                                disabled={repayMutation.isPending || !canAfford || amount === 0}
+                                onClick={() => repayMutation.mutate({ agentId, planetId, loanId: loan.id, fraction })}
+                            >
+                                <span>{label}</span>
+                                <span className='opacity-75 ml-1'>
+                                    {formatNumberWithUnit(amount, 'currency', planetId)}
+                                </span>
+                            </Button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -30,6 +125,7 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
     );
 
     const conditions = conditionsData?.conditions ?? null;
+    const activeLoans = conditionsData?.activeLoans ?? [];
 
     const requestLoanMutation = useMutation(
         trpc.requestLoan.mutationOptions({
@@ -147,6 +243,35 @@ export default function LoanPanel({ agentId, planetId }: Props): React.ReactElem
                 <p className='text-xs text-muted-foreground'>
                     The funds will be credited to your account after the current tick completes.
                 </p>
+            )}
+
+            {/* Outstanding loans list */}
+            {activeLoans.length > 0 && (
+                <div className='space-y-2'>
+                    <p className='text-xs text-muted-foreground font-medium flex items-center gap-1'>
+                        <Landmark className='h-3.5 w-3.5' />
+                        Outstanding loans
+                    </p>
+                    {activeLoans.map((loan) => (
+                        <LoanRow
+                            key={loan.id}
+                            loan={loan}
+                            deposits={deposits}
+                            agentId={agentId}
+                            planetId={planetId}
+                            onRepaid={(amount) => {
+                                setSuccessMsg(
+                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
+                                );
+                                setErrorMsg(null);
+                            }}
+                            onError={(msg) => {
+                                setErrorMsg(msg);
+                                setSuccessMsg(null);
+                            }}
+                        />
+                    ))}
+                </div>
             )}
         </div>
     );

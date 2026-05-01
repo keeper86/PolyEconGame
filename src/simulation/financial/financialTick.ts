@@ -1,10 +1,11 @@
-import { INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD, TICKS_PER_MONTH } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD, TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
 import { creditWageIncome } from './wealthOps';
+import { makeLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 
 /**
  * Default wage per education level per tick (currency units per worker).
@@ -55,7 +56,7 @@ function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): num
 // A) Pre-production financial tick
 // ---------------------------------------------------------------------------
 
-export function preProductionFinancialTick(agents: Map<string, Agent>, planet: Planet): void {
+export function preProductionFinancialTick(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
 
@@ -97,7 +98,9 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             bank.loans += shortfall;
             bank.deposits += shortfall;
             assets.deposits += shortfall;
-            assets.loans += shortfall;
+            assets.activeLoans.push(
+                makeLoan('wageCoverage', shortfall, bank.loanRate * TICKS_PER_YEAR, tick, tick + TICKS_PER_YEAR, true),
+            );
         }
 
         assets.deposits -= wageBill;
@@ -109,7 +112,16 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
                 bank.loans += shortfall;
                 bank.deposits += shortfall;
                 assets.deposits += shortfall;
-                assets.loans += shortfall;
+                assets.activeLoans.push(
+                    makeLoan(
+                        'bufferCoverage',
+                        shortfall,
+                        bank.loanRate * TICKS_PER_YEAR,
+                        tick,
+                        tick + TICKS_PER_YEAR,
+                        true,
+                    ),
+                );
             }
         }
 
@@ -165,29 +177,49 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
             return;
         }
         const deposits = assets.deposits;
-        const agentLoan = assets.loans;
-        if (deposits <= 0 || bank.loans <= 0 || agentLoan <= 0) {
+        const agentLoanTotal = totalOutstandingLoans(assets.activeLoans);
+        if (deposits <= 0 || bank.loans <= 0 || agentLoanTotal <= 0) {
             return;
         }
 
-        if (bank.loans < agentLoan) {
+        if (bank.loans < agentLoanTotal - 1e-6) {
             throw new Error(
-                `Bank loan balance (${bank.loans}) is less than agent ${agent.id} loan principal (${agentLoan}). ` +
+                `Bank loan balance (${bank.loans}) is less than agent ${agent.id} loan principal (${agentLoanTotal}). ` +
                     `This should never happen and indicates a bug in the financial tick logic.`,
             );
         }
 
-        const tickInMonth = ((tick - 1) % TICKS_PER_MONTH) + 1;
-        const perTickWage = assets.monthAcc.wages / tickInMonth;
-        const bufferCost = estimateInputBufferCost(assets, planet);
-        const retainedThreshold = RETAINED_EARNINGS_THRESHOLD * (perTickWage + bufferCost);
+        // Liquidity buffer: keep 12 months of blended total expenses before repaying.
+        // If no history is available yet (expenses === 0) skip repayment entirely.
+        const progress = (((tick - 1) % TICKS_PER_MONTH) + 1) / TICKS_PER_MONTH;
+        const lastMonthExpenses =
+            (assets.lastMonthAcc.wages ?? 0) +
+            (assets.lastMonthAcc.purchases ?? 0) +
+            (assets.lastMonthAcc.claimPayments ?? 0);
+        const thisMonthExpenses =
+            (assets.monthAcc.wages ?? 0) + (assets.monthAcc.purchases ?? 0) + (assets.monthAcc.claimPayments ?? 0);
+        const blendedMonthlyExpenses =
+            progress <= 0 || thisMonthExpenses === 0
+                ? lastMonthExpenses
+                : lastMonthExpenses * (1 - progress) + (thisMonthExpenses / progress) * progress;
+
+        if (blendedMonthlyExpenses <= 0) {
+            // No cost history — hold off on repayment
+            return;
+        }
+        const retainedThreshold = RETAINED_EARNINGS_THRESHOLD * 12 * blendedMonthlyExpenses;
         const excessDeposits = deposits - retainedThreshold;
 
-        const repayment = excessDeposits <= 0 ? excessDeposits : Math.min(agentLoan, excessDeposits);
-        assets.deposits -= repayment;
-        assets.loans -= repayment;
-        bank.loans -= repayment;
-        bank.deposits -= repayment;
+        if (excessDeposits <= 0) {
+            return;
+        }
+
+        const maxRepayment = Math.min(agentLoanTotal, excessDeposits);
+        const actualRepayment = repayLoansOldestFirst(assets.activeLoans, maxRepayment);
+
+        assets.deposits -= actualRepayment;
+        bank.loans -= actualRepayment;
+        bank.deposits -= actualRepayment;
     });
     bank.equity = bank.deposits - bank.loans;
 }

@@ -44,6 +44,19 @@ export const requestLoanSpec: CommandSpec<
     extract: (msg) => msg.amount,
 };
 
+type RepayLoanSuccess = Extract<OutboundMessage, { type: 'loanRepaid' }>;
+type RepayLoanFailure = Extract<OutboundMessage, { type: 'repayDenied' }>;
+export const repayLoanSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'repayLoan' }>,
+    RepayLoanSuccess,
+    RepayLoanFailure,
+    number
+> = {
+    successType: 'loanRepaid',
+    failureType: 'repayDenied',
+    extract: (msg) => msg.amount,
+};
+
 type SetAutomationSuccess = Extract<OutboundMessage, { type: 'automationSet' }>;
 type SetAutomationFailure = Extract<OutboundMessage, { type: 'automationFailed' }>;
 export const setAutomationSpec: CommandSpec<

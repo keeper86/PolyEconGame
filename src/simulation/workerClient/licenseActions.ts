@@ -1,5 +1,6 @@
-import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
+import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST, TICKS_PER_YEAR } from '../constants';
 import { makeAgentPlanetAssets } from '../utils/testHelper';
+import { makeLoan } from '../financial/loanTypes';
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 
@@ -60,9 +61,19 @@ export function handleAcquireLicense(
     if (isNewPlanet) {
         // Bootstrap: initial loan funds the license fee
         assets.deposits = 0;
-        assets.loans = cost;
+        assets.activeLoans.push(
+            makeLoan(
+                'licenseBootstrap',
+                cost,
+                planet.bank.loanRate * TICKS_PER_YEAR,
+                state.tick,
+                state.tick + TICKS_PER_YEAR,
+                false,
+            ),
+        );
         planet.bank.loans += cost;
         planet.bank.deposits += cost; // new money enters the economy
+        planet.bank.equity = planet.bank.deposits - planet.bank.loans;
     } else {
         // Agent already has assets on this planet — deduct from deposits
         if (assets.deposits < cost) {

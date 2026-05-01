@@ -9,12 +9,14 @@ import { Spinner } from '@/components/ui/spinner';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Gamepad2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { PlanetIcon } from '../client/PlanetIcon';
 
 export function JoinGameDialog() {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
@@ -36,10 +38,13 @@ export function JoinGameDialog() {
 
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
                 // Invalidate the current user query so nav re-reads updated agentId
                 void queryClient.invalidateQueries({ queryKey: trpc.getUser.queryKey() });
                 setOpen(false);
+                router.push(
+                    `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(data.agentId)}/financial` as unknown as '/',
+                );
             },
             onError: (err: unknown) => {
                 setError(err instanceof Error ? err.message : 'Failed to create agent');

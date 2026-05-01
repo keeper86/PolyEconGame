@@ -8,8 +8,8 @@ type Props = {
     deposits: number;
     loans: number;
     loanConditions: {
-        blendedMonthlyRevenue: number;
-        blendedMonthlyExpenses: number;
+        lastMonthlyRevenue: number;
+        lastMonthlyExpenses: number;
         monthlyNetCashFlow: number;
     };
     planetId: string;
@@ -82,22 +82,22 @@ export default function AgentFinancialOverview({
                 </div>
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
                     <Stat
-                        label='Monthly revenue (projected)'
-                        value={formatNumberWithUnit(loanConditions.blendedMonthlyRevenue, 'currency', planetId)}
+                        label='Monthly revenue (last month)'
+                        value={formatNumberWithUnit(loanConditions.lastMonthlyRevenue, 'currency', planetId)}
                     />
                     <Stat
-                        label='Monthly expenses (projected)'
-                        value={formatNumberWithUnit(loanConditions.blendedMonthlyExpenses, 'currency', planetId)}
+                        label='Monthly expenses (last month)'
+                        value={formatNumberWithUnit(loanConditions.lastMonthlyExpenses, 'currency', planetId)}
                         valueClassName={
-                            loanConditions.blendedMonthlyExpenses === 0
+                            loanConditions.lastMonthlyExpenses === 0
                                 ? 'text-muted-foreground'
-                                : loanConditions.blendedMonthlyExpenses > loanConditions.blendedMonthlyRevenue
+                                : loanConditions.lastMonthlyExpenses > loanConditions.lastMonthlyRevenue
                                   ? 'text-red-500'
                                   : 'text-amber-500'
                         }
                     />
                     <Stat
-                        label='Net monthly cash flow (projected)'
+                        label='Net monthly cash flow (last month)'
                         value={formatNumberWithUnit(loanConditions.monthlyNetCashFlow, 'currency', planetId)}
                         valueClassName={
                             loanConditions.monthlyNetCashFlow === 0

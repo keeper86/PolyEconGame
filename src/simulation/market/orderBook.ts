@@ -29,29 +29,6 @@ function shuffledIndices(n: number): number[] {
     return idx;
 }
 
-/**
- * Distribute `supply` among `participants` (each entry is their remaining demand).
- *
- * Phase 1 — equal-share rounds: repeatedly give every unsatisfied participant
- * an equal slice of the remaining supply, capped at their demand.  Participants
- * whose demand is smaller than their equal slice absorb only what they need;
- * their surplus feeds the next round.  Continues until supply is exhausted or
- * all demands are met, or until the per-participant share would be < 1 unit
- * (the integer-remainder boundary).
- *
- * Phase 2 — random remainder: when remaining supply is less than the number of
- * still-hungry participants (i.e. each equal share < 1), assign one unit at a
- * time in a random order.  This avoids starvation: a participant wanting 1 unit
- * competes on equal terms with one wanting 1 000 000.
- *
- * Properties:
- * - No participant starves because another has a larger demand.
- * - Order-independent within a price tier.
- * - Monotone: a new large order never reduces what small participants receive.
- *
- * Set `minUnit = QUANTITY_EPSILON` so Phase 2 is never entered and Phase 1
- * runs to full convergence.
- */
 function equalShareAllocate(participants: number[], supply: number, minUnit: number): number[] {
     const allocations = participants.map(() => 0);
     const remaining = [...participants];

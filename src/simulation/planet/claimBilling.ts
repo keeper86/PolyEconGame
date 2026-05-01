@@ -1,6 +1,7 @@
 import type { Agent, Planet } from './planet';
 import { collapseUntenantedClaims } from './claims';
-import { TICKS_PER_MONTH } from '../constants';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
+import { makeLoan } from '../financial/loanTypes';
 
 const PAUSED_DAYS_TERMINATION_THRESHOLD = 31;
 
@@ -46,7 +47,16 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                 planet.bank.loans += shortfall;
                 planet.bank.deposits += shortfall;
                 assets.deposits += shortfall;
-                assets.loans += shortfall;
+                assets.activeLoans.push(
+                    makeLoan(
+                        'claimCoverage',
+                        shortfall,
+                        planet.bank.loanRate * TICKS_PER_YEAR,
+                        tick,
+                        tick + TICKS_PER_YEAR,
+                        true,
+                    ),
+                );
             }
 
             if (assets.deposits >= entry.costPerTick) {

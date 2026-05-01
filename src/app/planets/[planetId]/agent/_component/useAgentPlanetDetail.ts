@@ -12,6 +12,7 @@ export type AgentPlanetDetail = {
     planetId: string;
     automateWorkerAllocation: boolean;
     assets: AgentPlanetAssets;
+    allPlanetDeposits: Record<string, number>;
 };
 
 export type UseAgentPlanetDetailResult = {

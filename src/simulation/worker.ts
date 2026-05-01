@@ -2,6 +2,7 @@ import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
 import knexConfig from '../../knexfile.js';
 import { advanceTick, seedRng } from './engine';
 import { computeLoanConditions } from './financial/loanConditions';
+import { totalOutstandingLoans } from './financial/loanTypes';
 import {
     getLatestGameSnapshot,
     insertAgentMonthlyHistory,
@@ -174,6 +175,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         handleAgentAction(state, action, safePostMessage);
                         break;
                     case 'requestLoan':
+                    case 'repayLoan':
                         handleFinancialAction(state, action, safePostMessage);
                         break;
                     case 'setSellOffers':
@@ -314,7 +316,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return [];
             }
             return Object.entries(agent.assets).map(([planetId, assets]) => {
-                const netBalance = assets.deposits - assets.loans;
+                const netBalance = assets.deposits - totalOutstandingLoans(assets.activeLoans);
                 const monthlyNetIncome = assets.monthAcc.revenue;
 
                 const totalWorkers = Math.round(assets.monthAcc.totalWorkersTicks / TICKS_PER_MONTH);
@@ -606,16 +608,23 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         .filter((ar) => ar.data.associatedPlanetId === msg.planetId)
                         .map((ar) => ar.data)
                         .toArray();
-                    data = { agents };
+                    const forexMMs = [...snap.forexMarketMakers.values()].filter(
+                        (mm) => mm.associatedPlanetId === msg.planetId,
+                    );
+                    data = { agents: [...agents, ...forexMMs] };
                     break;
                 }
                 case 'getLoanConditions': {
                     const agentRecord = snap.agents.get(msg.agentId);
                     const planetRecord = snap.planets.get(msg.planetId);
                     if (!agentRecord || !planetRecord) {
-                        data = { conditions: null };
+                        data = { conditions: null, activeLoans: [] };
                     } else {
-                        data = { conditions: computeLoanConditions(agentRecord.data, planetRecord.data, snap.tick) };
+                        const agentData = agentRecord.data;
+                        data = {
+                            conditions: computeLoanConditions(agentData, planetRecord.data),
+                            activeLoans: agentData.assets[msg.planetId]?.activeLoans ?? [],
+                        };
                     }
                     break;
                 }
@@ -749,6 +758,31 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             pendingActions.push({ type: 'requestLoan', requestId, agentId, planetId, amount });
             // Eager draining if not currently processing a tick
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'repayLoan') {
+            const { requestId, agentId, planetId, loanId, fraction } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'repayDenied', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({ type: 'repayDenied', requestId, reason: `Planet '${planetId}' not found` });
+                return;
+            }
+            if (typeof loanId !== 'string' || loanId.trim() === '') {
+                safePostMessage({ type: 'repayDenied', requestId, reason: 'loanId must be a non-empty string' });
+                return;
+            }
+            if (typeof fraction !== 'number' || fraction <= 0 || fraction > 1) {
+                safePostMessage({ type: 'repayDenied', requestId, reason: 'fraction must be a number in (0, 1]' });
+                return;
+            }
+            pendingActions.push({ type: 'repayLoan', requestId, agentId, planetId, loanId, fraction });
             if (!processingTick) {
                 drainActionQueue();
             }

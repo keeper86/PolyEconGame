@@ -137,10 +137,7 @@ function clearForexPair(
  * Update the monthly EMA for forex results, mirroring the logic used for
  * physical-goods markets in market.ts / updateAvgMarketResult.
  */
-function updateAvgForexResult(
-    tradingPlanet: Planet,
-    curName: string,
-): void {
+function updateAvgForexResult(tradingPlanet: Planet, curName: string): void {
     const latest = tradingPlanet.lastMarketResult[curName];
     if (!latest) {
         return;

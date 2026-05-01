@@ -16,6 +16,7 @@ import {
     workerSetFacilityScale,
     workerQuitClaim,
     workerRequestLoan,
+    workerRepayLoan,
     workerSetAutomation,
     workerSetBuyBids,
     workerSetSellOffers,
@@ -339,6 +340,51 @@ export const requestLoan = () => {
             logger.info({ component: 'request-loan' }, `Loan of ${grantedAmount} granted to agent ${input.agentId}`);
 
             return { grantedAmount };
+        });
+};
+
+/**
+ * Repay a specific loan (partially or fully) for the requesting agent.
+ *
+ * The fraction parameter controls what share of remainingPrincipal is repaid.
+ * The operation is only possible for loans with earlyRepaymentAllowed=true and
+ * when the agent has sufficient deposits to cover the chosen amount.
+ */
+export const repayLoan = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                loanId: z.string().min(1),
+                fraction: z.union([z.literal(0.25), z.literal(0.5), z.literal(1)]),
+            }),
+        )
+        .output(z.object({ repaidAmount: z.number() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'repay-loan' },
+                `User ${userId} repaying loan '${input.loanId}' at fraction ${input.fraction} for agent ${input.agentId}`,
+            );
+
+            const repaidAmount = await workerRepayLoan({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                loanId: input.loanId,
+                fraction: input.fraction,
+            });
+
+            return { repaidAmount };
         });
 };
 

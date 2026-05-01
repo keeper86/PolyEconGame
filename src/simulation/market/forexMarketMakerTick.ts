@@ -1,4 +1,5 @@
 import { FOREX_MM_RETAIN_RATIO, FOREX_MM_TARGET_DEPOSIT } from '../constants';
+import { repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import type { GameState } from '../planet/planet';
 
 /**
@@ -12,7 +13,8 @@ import type { GameState } from '../planet/planet';
 export function forexMMRepaymentTick(gameState: GameState): void {
     for (const mm of gameState.forexMarketMakers.values()) {
         for (const [planetId, assets] of Object.entries(mm.assets)) {
-            if (assets.loans <= 0) {
+            const agentLoanTotal = totalOutstandingLoans(assets.activeLoans);
+            if (agentLoanTotal <= 0) {
                 continue;
             }
             const planet = gameState.planets.get(planetId);
@@ -21,14 +23,15 @@ export function forexMMRepaymentTick(gameState: GameState): void {
             }
             const retainThreshold = FOREX_MM_TARGET_DEPOSIT * FOREX_MM_RETAIN_RATIO;
             const excess = Math.max(0, assets.deposits - retainThreshold);
-            const repayment = Math.min(assets.loans, excess);
+            const repayment = Math.min(agentLoanTotal, excess);
             if (repayment <= 0) {
                 continue;
             }
-            assets.deposits -= repayment;
-            assets.loans -= repayment;
-            planet.bank.loans -= repayment;
-            planet.bank.deposits -= repayment;
+            const actualRepayment = repayLoansOldestFirst(assets.activeLoans, repayment);
+            assets.deposits -= actualRepayment;
+            planet.bank.loans -= actualRepayment;
+            planet.bank.deposits -= actualRepayment;
+            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
         }
     }
 }

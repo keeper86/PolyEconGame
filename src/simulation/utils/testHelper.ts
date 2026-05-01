@@ -26,6 +26,7 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
+import { makeLoan } from '../financial/loanTypes';
 import type {
     ManagementFacility,
     ProductionFacility,
@@ -457,7 +458,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         shipListings: [],
         deposits: 0,
         depositHold: 0,
-        loans: 0,
+        activeLoans: [],
         storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
         allocatedWorkers: makeAllocatedWorkers(),
         workforceDemography: makeWorkforceDemography(),
@@ -791,4 +792,7 @@ export function creditForeignDeposit(agent: Agent, issuingPlanet: Planet, amount
     agent.assets[issuingPlanet.id]!.deposits += amount;
     issuingPlanet.bank.deposits += amount;
     issuingPlanet.bank.loans += amount;
+    agent.assets[issuingPlanet.id]!.activeLoans.push(
+        makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRate, 0, 0, false),
+    );
 }

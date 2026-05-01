@@ -106,7 +106,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
         const s = cs.state;
 
         if (s.type === 'pre-fabrication') {
-            const pct = s.progress * 100;
+            const pct = s.progress;
             return (
                 <div className='space-y-1.5'>
                     <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
@@ -125,7 +125,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                         <div>
                             <div className='flex justify-between text-xs text-muted-foreground mb-1'>
                                 <span>Prefabrication</span>
-                                <span className='tabular-nums font-medium text-foreground'>{pct.toFixed(1)}%</span>
+                                <span className='tabular-nums font-medium text-foreground'>{pct.toFixed(0)}%</span>
                             </div>
                             <Progress
                                 value={pct}

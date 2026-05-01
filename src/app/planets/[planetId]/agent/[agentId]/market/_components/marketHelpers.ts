@@ -175,15 +175,13 @@ export function buildResourceList(
         }
     }
 
-    for (const f of shipConstructionFacilities) {
-        if (f.produces !== null) {
-            transportShipBuildResources.forEach((name) => {
-                const type = getResourceByName(name);
-                if (type && type.form !== 'landBoundResource') {
-                    add(type.name);
-                }
-            });
-        }
+    if (shipConstructionFacilities.length > 0) {
+        transportShipBuildResources.forEach((name) => {
+            const type = getResourceByName(name);
+            if (type && type.form !== 'landBoundResource') {
+                add(type.name);
+            }
+        });
     }
 
     // Existing bids / offers

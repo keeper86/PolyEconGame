@@ -58,7 +58,7 @@ export function advanceTick(gameState: GameState) {
             }
         }
         claimBillingTick(gameState.agents, planet, gameState.tick);
-        preProductionFinancialTick(gameState.agents, planet);
+        preProductionFinancialTick(gameState.agents, planet, gameState.tick);
 
         // updateAgentProductionScale(gameState.agents, planet);
 
