@@ -1,21 +1,5 @@
-/**
- * simulation/queries.ts
- *
- * Shared type definitions for the typed query protocol between the main
- * thread and the simulation worker.
- *
- * The main thread sends a `WorkerQueryMessage` (query + requestId) to the
- * worker via postMessage.  The worker reads the requested data from the
- * current immutable snapshot and responds with a `WorkerResponseMessage`.
- *
- * Adding a new query type:
- *   1. Add a new member to `WorkerQuery` and `WorkerQueryResult`.
- *   2. Implement the handler in worker.ts `handleQuery()`.
- *   3. Add a typed client method in `workerClient/queries.ts`.
- */
-
 import type { Planet, Agent } from './planet/planet';
-import type { LoanConditions } from './financial/loanConditions';
+import type { LoanConditions } from '../server/controller/simulation';
 import type { Loan } from './financial/loanTypes';
 import type { ShipCapitalMarket } from './ships/ships';
 
