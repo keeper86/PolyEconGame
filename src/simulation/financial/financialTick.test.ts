@@ -335,7 +335,7 @@ describe('enforceLoanMaturities', () => {
         expect(planet.bank!.deposits).toBe(900);
     });
 
-    it('rolls over matured loan when deposits are insufficient', () => {
+    it('rolls over matured loan when deposits are insufficient (with 5% fee)', () => {
         agent.assets[planet.id]!.activeLoans = [
             makeLoan('wageCoverage', 100, 0.05, 1, 50, true), // matures at tick 50
         ];
@@ -346,17 +346,47 @@ describe('enforceLoanMaturities', () => {
         maturesLoans(agentMap(agent), planet, 100); // tick 100 >= 50
 
         // canRepay = min(100, 30) = 30, shortfall = 70
-        // deposits: 30 - 30 = 0, then +70 from rollover = 70
-        expect(agent.assets[planet.id]!.deposits).toBe(70);
-        // Total outstanding: 70 (the rollover loan)
-        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(70);
-        // Bank: loans = 100 - 30 (repaid) + 70 (new rollover) = 140
-        // deposits = 30 - 30 (repaid) + 70 (new rollover) = 70
-        expect(planet.bank!.loans).toBe(140);
-        expect(planet.bank!.deposits).toBe(70);
+        // fee = round(70 * 0.05) = 4, rolloverPrincipal = 74
+        // Step 1: repay 30 from deposits → deposits = 0, loans = 70, deposits = 0
+        // Step 2: grantLoan(74) → deposits = 74, loans = 144, deposits = 74
+        // Step 3: repay shortfall 70 → deposits = 4, loans = 74, deposits = 4
+        // Net: deposits = 4 (the fee amount), loans = 74 (rollover loan)
+        expect(agent.assets[planet.id]!.deposits).toBe(4);
+        // Total outstanding: 74 (the rollover loan)
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(74);
+        // Bank: loans = 100 - 30 (repaid) + 74 (new rollover) - 70 (shortfall repaid) = 74
+        // deposits = 30 - 30 (repaid) + 74 (new rollover) - 70 (shortfall repaid) = 4
+        expect(planet.bank!.loans).toBe(74);
+        expect(planet.bank!.deposits).toBe(4);
     });
 
+    it('preserves monetary conservation invariant after rollover with shortfall', () => {
+        // Regression test: the old code dropped matured loans from activeLoans
+        // without repaying their principal, leaving bank.loans inflated and
+        // violating householdDeposits + firmDeposits - loans === 0.
+        // Set up a consistent initial state:
+        //   bank.loans = 100 (the matured loan)
+        //   bank.deposits = 30 (firm deposits) + 70 (household deposits) = 100
+        //   → householdDeposits + firmDeposits - loans = 70 + 30 - 100 = 0 ✓
+        agent.assets[planet.id]!.activeLoans = [
+            makeLoan('wageCoverage', 100, 0.05, 1, 50, true), // matures at tick 50
+        ];
+        agent.assets[planet.id]!.deposits = 30;
+        planet.bank!.loans = 100;
+        planet.bank!.deposits = 100;
+        planet.bank!.householdDeposits = 70;
+
+        maturesLoans(agentMap(agent), planet, 100);
+
+        // Monetary conservation: householdDeposits + firmDeposits - loans === 0
+        const firmDeposits = agent.assets[planet.id]!.deposits;
+        const residual = planet.bank!.householdDeposits + firmDeposits - planet.bank!.loans;
+        expect(Math.abs(residual)).toBeLessThan(1e-6);
+    });
+
+
     it('handles multiple matured loans at once', () => {
+
         agent.assets[planet.id]!.activeLoans = [
             makeLoan('wageCoverage', 50, 0.05, 1, 50, true), // matures at tick 50
             makeLoan('bufferCoverage', 30, 0.05, 10, 60, true), // matures at tick 60

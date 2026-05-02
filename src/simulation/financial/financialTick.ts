@@ -145,6 +145,9 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
     bank.equity = bank.deposits - bank.loans;
 }
 
+/** Fee rate applied when a matured loan is rolled over (e.g. 0.05 = 5%). */
+export const ROLLOVER_FEE_RATE = 0.05;
+
 export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     const bank = planet.bank;
 
@@ -177,18 +180,40 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
         const canRepay = Math.min(totalDue, assets.deposits);
         const shortfall = totalDue - canRepay;
 
-        // Repay what we can
+        // Repay what we can from existing deposits
         if (canRepay > 0) {
             assets.deposits -= canRepay;
             bank.loans -= canRepay;
             bank.deposits -= canRepay;
         }
 
-        // If there's a shortfall, create a rollover loan
+        // If there's a shortfall, create a rollover loan (with fee) and use it
+        // to fully repay the remaining matured principal.
         if (shortfall > 0) {
-            grantLoan(assets, bank, shortfall, 'discretionary', tick);
-            // The rollover loan was pushed onto assets.activeLoans by grantLoan,
-            // but we need to keep it in remainingLoans instead. Move it over.
+            const fee = Math.round(shortfall * ROLLOVER_FEE_RATE);
+            const rolloverPrincipal = shortfall + fee;
+
+            // Issue a new rollover loan — this creates money (deposits↑, loans↑)
+            grantLoan(assets, bank, rolloverPrincipal, 'discretionary', tick);
+
+            // Immediately use the new deposits to repay the shortfall portion
+            // of the matured loans.  This destroys money (deposits↓, loans↓).
+            assets.deposits -= shortfall;
+            bank.loans -= shortfall;
+            bank.deposits -= shortfall;
+
+            // The fee stays in the agent's deposits (it was created as part of
+            // the rollover loan but not spent on repayment).  It represents the
+            // bank's fee income and increases bank equity.
+            // Net effect on bank balance sheet:
+            //   loans:  +rolloverPrincipal - shortfall = +fee
+            //   deposits: +rolloverPrincipal - shortfall = +fee
+            //   equity: unchanged (deposits - loans = 0 before and after)
+            // The fee remains as agent deposits (liability) matched by the
+            // rollover loan (asset), so equity is unaffected.
+
+            // Move the rollover loan from activeLoans (where grantLoan pushed it)
+            // into remainingLoans.
             const rolloverLoan = assets.activeLoans.pop()!;
             remainingLoans.push(rolloverLoan);
         }
