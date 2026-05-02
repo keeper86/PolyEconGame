@@ -104,7 +104,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         if (agent.automated) {
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
-                const shortfall = bufferCost - assets.deposits;
+                const shortfall = TICKS_PER_MONTH * bufferCost - assets.deposits;
                 grantLoan(assets, bank, shortfall, 'bufferCoverage', tick);
             }
         }

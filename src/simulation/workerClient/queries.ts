@@ -19,13 +19,13 @@ export const workerQueries = {
     /** Get all agents. */
     getAllAgents: () => sendQuery({ type: 'getAllAgents' }),
 
-    /** Get all agents associated with a planet. */
-    getAgentsByPlanet: (planetId: string) => sendQuery({ type: 'getAgentsByPlanet', planetId }),
-
     /** Get credit conditions the bank would offer an agent on a planet. */
+
     getLoanConditions: (agentId: string, planetId: string) =>
         sendQuery({ type: 'getLoanConditions', agentId, planetId }),
 
     /** Get the ship capital market state (trade history + EMA prices). */
     getShipCapitalMarket: () => sendQuery({ type: 'getShipCapitalMarket' }),
+
+    getPlanetWithAgents: (planetId: string) => sendQuery({ type: 'getPlanetWithAgents', planetId }),
 };
