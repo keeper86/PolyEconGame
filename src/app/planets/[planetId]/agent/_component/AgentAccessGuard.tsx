@@ -1,19 +1,15 @@
 'use client';
 
 import { ShieldAlert } from 'lucide-react';
-import Link from 'next/link';
-import { route } from 'nextjs-routes';
 import type { ReactNode } from 'react';
 
 type Props = {
-    agentId: string;
-    agentName: string;
     isLoading: boolean;
     isOwnAgent: boolean;
     children: ReactNode;
 };
 
-export function AgentAccessGuard({ agentId, agentName, isLoading, isOwnAgent, children }: Props) {
+export function AgentAccessGuard({ isLoading, isOwnAgent, children }: Props) {
     if (isLoading) {
         return null;
     }
@@ -27,12 +23,6 @@ export function AgentAccessGuard({ agentId, agentName, isLoading, isOwnAgent, ch
                     You do not have clearance to view the internal operations of this company. Only the company&apos;s
                     owner can access these facilities.
                 </p>
-                <Link
-                    href={route({ pathname: '/agents/[agentId]', query: { agentId } })}
-                    className='text-sm underline underline-offset-4 text-muted-foreground hover:text-foreground transition-colors'
-                >
-                    View {agentName}&apos;s public profile
-                </Link>
             </div>
         );
     }

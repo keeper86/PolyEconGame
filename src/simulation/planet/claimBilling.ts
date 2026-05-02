@@ -42,7 +42,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
             }
 
             if (assets.deposits < entry.costPerTick && agent.automated) {
-                const shortfall = entry.costPerTick - assets.deposits;
+                const shortfall = entry.costPerTick * TICKS_PER_MONTH - assets.deposits;
                 // Record aggregate bank loan and per-agent loan principal
                 planet.bank.loans += shortfall;
                 planet.bank.deposits += shortfall;

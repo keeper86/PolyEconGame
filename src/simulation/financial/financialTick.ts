@@ -94,7 +94,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         // 2. Working-capital loan if needed (MONEY CREATION)
         //    bank.loans↑  bank.deposits↑  agent.deposits↑
         if (assets.deposits < wageBill) {
-            const shortfall = wageBill - assets.deposits;
+            const shortfall = TICKS_PER_MONTH * wageBill - assets.deposits; // loan to cover wage bill for 1 year
             bank.loans += shortfall;
             bank.deposits += shortfall;
             assets.deposits += shortfall;
@@ -161,7 +161,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
     bank.equity = bank.deposits - bank.loans;
 }
 
-export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
+export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
 
     if (bank.loans <= 0) {
@@ -191,23 +191,12 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
 
         // Liquidity buffer: keep 12 months of blended total expenses before repaying.
         // If no history is available yet (expenses === 0) skip repayment entirely.
-        const progress = (((tick - 1) % TICKS_PER_MONTH) + 1) / TICKS_PER_MONTH;
         const lastMonthExpenses =
             (assets.lastMonthAcc.wages ?? 0) +
             (assets.lastMonthAcc.purchases ?? 0) +
             (assets.lastMonthAcc.claimPayments ?? 0);
-        const thisMonthExpenses =
-            (assets.monthAcc.wages ?? 0) + (assets.monthAcc.purchases ?? 0) + (assets.monthAcc.claimPayments ?? 0);
-        const blendedMonthlyExpenses =
-            progress <= 0 || thisMonthExpenses === 0
-                ? lastMonthExpenses
-                : lastMonthExpenses * (1 - progress) + (thisMonthExpenses / progress) * progress;
 
-        if (blendedMonthlyExpenses <= 0) {
-            // No cost history — hold off on repayment
-            return;
-        }
-        const retainedThreshold = RETAINED_EARNINGS_THRESHOLD * 12 * blendedMonthlyExpenses;
+        const retainedThreshold = 12 * lastMonthExpenses;
         const excessDeposits = deposits - retainedThreshold;
 
         if (excessDeposits <= 0) {

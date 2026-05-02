@@ -7,15 +7,10 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { AgentMetricChart } from '@/components/client/AgentMetricChart';
 
 export default function ProductionPage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
-        <AgentAccessGuard
-            agentId={agentId}
-            agentName={detail?.agentName ?? 'Agent'}
-            isLoading={myAgentId.isLoading}
-            isOwnAgent={isOwnAgent}
-        >
+        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
             {hasNoAssets ? (
                 <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (

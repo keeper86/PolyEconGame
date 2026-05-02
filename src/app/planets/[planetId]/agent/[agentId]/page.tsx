@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { formatNumberWithUnit } from '@/lib/utils';
 import Link from 'next/link';
-import { route } from 'nextjs-routes';
 
 function QuickStatCard({ label, value }: { label: string; value: string }) {
     return (
@@ -20,18 +19,13 @@ function QuickStatCard({ label, value }: { label: string; value: string }) {
 }
 
 export default function AgentPlanetOverviewPage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     const subPageHref = (segment: string) =>
         `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as unknown as '/';
 
     return (
-        <AgentAccessGuard
-            agentId={agentId}
-            agentName={detail?.agentName ?? 'Agent'}
-            isLoading={myAgentId.isLoading}
-            isOwnAgent={isOwnAgent}
-        >
+        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
             {hasNoAssets ? (
                 <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
@@ -68,15 +62,6 @@ export default function AgentPlanetOverviewPage() {
                     </div>
 
                     {assets.storageFacility && <StorageOverview storage={assets.storageFacility} />}
-
-                    <div className='pt-2'>
-                        <Link
-                            href={route({ pathname: '/agents/[agentId]', query: { agentId } })}
-                            className='text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors'
-                        >
-                            Public company profile
-                        </Link>
-                    </div>
                 </div>
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>

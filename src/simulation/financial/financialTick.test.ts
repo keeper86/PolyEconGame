@@ -11,8 +11,9 @@ import { DEFAULT_WAGE_PER_EDU, automaticLoanRepayment, preProductionFinancialTic
 
 import { SKILL } from '../population/population';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
-import { totalOutstandingLoans, makeLoan } from './loanTypes';
+import { makeLoan, totalOutstandingLoans } from './loanTypes';
 
+import { TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType } from '../population/population';
 import { hireFromPopulation } from '../workforce/workforce';
 
@@ -57,14 +58,12 @@ describe('preProductionFinancialTick', () => {
     it('creates a working-capital loan when firm has no deposits', () => {
         const hired = hireWorkers(planet, agent, 'none', 100);
 
-        agent.assets[planet.id]!.deposits = 1;
-
         preProductionFinancialTick(agentMap(agent), planet);
 
         // Wage bill = hired * 1.0; loan = hired; after paying wages deposits = 0
-        expect(planet.bank!.loans).toBe(hired - 1);
-        expect(agent.assets[planet.id]?.deposits ?? 0).toBe(0);
-        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(hired - 1);
+        expect(planet.bank!.loans).toBe(hired * TICKS_PER_MONTH);
+        expect(agent.assets[planet.id]?.deposits ?? 0).toBe(hired * (TICKS_PER_MONTH - 1)); // loan - wage bill
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(hired * TICKS_PER_MONTH);
     });
 
     it('does not create a loan when firm already has enough deposits', () => {
@@ -222,8 +221,8 @@ describe('money conservation', () => {
         preProductionFinancialTick(agentMap(agent), planet);
 
         // Loan created = hired (wage bill with no prior deposits)
-        expect(planet.bank!.loans).toBe(hired);
-        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(hired);
+        expect(planet.bank!.loans).toBe(hired * TICKS_PER_MONTH);
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(hired * TICKS_PER_MONTH);
     });
 
     it('full cycle: wages paid and loan repayment only triggers with excess deposits above 1-year threshold', () => {
@@ -236,11 +235,11 @@ describe('money conservation', () => {
         // Step A: pre-production (creates loan, pays wages)
         preProductionFinancialTick(agentMap(agent), planet, 1);
         const loansAfterA = planet.bank!.loans;
-        expect(loansAfterA).toBe(hired);
+        expect(loansAfterA).toBe(hired * TICKS_PER_MONTH);
 
         // Step B: auto-repayment — agent has 0 deposits after paying wages,
         // far below the 1-year-expenses threshold, so no repayment happens.
-        automaticLoanRepayment(agentMap(agent), planet, 1);
+        automaticLoanRepayment(agentMap(agent), planet);
         const loansAfterB = planet.bank!.loans;
 
         // No repayment: agent can't afford it
@@ -267,7 +266,7 @@ describe('money conservation', () => {
         agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', loanPrincipal, 0.05, 1, 361, true)];
         agent.assets[planet.id]!.deposits = 1_000_000; // large surplus
 
-        automaticLoanRepayment(agentMap(agent), planet, 1);
+        automaticLoanRepayment(agentMap(agent), planet);
 
         // Loan should have been fully repaid
         expect(planet.bank!.loans).toBe(0);

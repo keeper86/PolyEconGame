@@ -10,14 +10,14 @@
 
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
+import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
+    getAgentFinancialHistoryAggregated as dbGetAgentFinancialHistory,
+    getAgentHistoryAggregated as dbGetAgentHistory,
     getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
-    getAgentHistoryAggregated as dbGetAgentHistory,
-    getAgentFinancialHistoryAggregated as dbGetAgentFinancialHistory,
 } from '../../simulation/gameSnapshotRepository';
 import type { Agent } from '../../simulation/planet/planet';
-import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
     computeAgentConsumption,
     computeAgentProduction,
@@ -343,6 +343,15 @@ export const getPlanetDetail = () =>
             };
         });
 
+const agentPlanetDetail = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    planetId: z.string(),
+    automateWorkerAllocation: z.boolean(),
+    assets: z.any(),
+    allPlanetDeposits: z.record(z.string(), z.number()),
+});
+export type AgentPlanetDetail = z.infer<typeof agentPlanetDetail>;
 /**
  * Full per-planet assets for one agent on one planet.
  * Used on the /agents/[agentId]/[planetId] detail page.
@@ -353,7 +362,7 @@ export const getAgentPlanetDetail = () =>
         .output(
             z.object({
                 tick: z.number(),
-                detail: z.any(),
+                detail: agentPlanetDetail.nullable(),
             }),
         )
         .query(async ({ input }) => {

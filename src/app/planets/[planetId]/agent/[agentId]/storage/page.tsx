@@ -6,15 +6,10 @@ import { StorageOverview } from '@/app/planets/[planetId]/agent/_component/Stora
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 
 export default function StoragePage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
-        <AgentAccessGuard
-            agentId={agentId}
-            agentName={detail?.agentName ?? 'Agent'}
-            isLoading={myAgentId.isLoading}
-            isOwnAgent={isOwnAgent}
-        >
+        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
             {hasNoAssets ? (
                 <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets?.storageFacility ? (

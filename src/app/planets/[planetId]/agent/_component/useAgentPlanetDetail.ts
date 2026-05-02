@@ -3,17 +3,9 @@
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import type { AgentPlanetDetail } from '@/server/controller/simulation';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { useParams } from 'next/navigation';
-
-export type AgentPlanetDetail = {
-    agentId: string;
-    agentName: string;
-    planetId: string;
-    automateWorkerAllocation: boolean;
-    assets: AgentPlanetAssets;
-    allPlanetDeposits: Record<string, number>;
-};
 
 export type UseAgentPlanetDetailResult = {
     agentId: string;

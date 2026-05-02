@@ -1,15 +1,11 @@
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
-import type {
-    ManagementFacility,
-    ProductionFacility,
-    ShipConstructionFacility,
-    StorageFacility,
-} from '@/simulation/planet/facility';
 import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -128,16 +124,21 @@ export function classifyMarket(row: MarketOverviewRow): MarketStatus {
 
 /** Build the deduplicated list of resources to show. */
 export function buildResourceList(
-    facilities: ProductionFacility[],
-    buyBids: Record<string, MarketBidEntry>,
-    sellOffers: Record<string, MarketOfferEntry>,
-    storageFacility: StorageFacility,
+    assets: AgentPlanetAssets,
     showAll: boolean,
-    managementFacilities: ManagementFacility[] = [],
-    shipConstructionFacilities: ShipConstructionFacility[] = [],
     forceInclude: string[] = [],
     availableCurrencies: { name: string }[] = [],
 ): { name: string }[] {
+    const {
+        productionFacilities: facilities,
+        managementFacilities,
+        shipConstructionFacilities,
+        storageFacility,
+        market,
+    } = assets;
+    const buyBids = market?.buy ?? {};
+    const sellOffers = market?.sell ?? {};
+
     if (showAll) {
         const base = ALL_RESOURCES.filter((r) => r.form !== 'landBoundResource').map((r) => ({ name: r.name }));
         return [...base, ...availableCurrencies];
@@ -152,6 +153,8 @@ export function buildResourceList(
             result.push({ name });
         }
     };
+
+    add(constructionServiceResourceType.name);
 
     // Facility inputs and outputs
     for (const f of facilities) {
@@ -196,11 +199,6 @@ export function buildResourceList(
         if ((entry?.quantity ?? 0) > 0) {
             add(name);
         }
-    }
-
-    const allFacilities = [...facilities, ...managementFacilities, storageFacility, ...shipConstructionFacilities];
-    if (allFacilities.some((f) => f.construction !== null)) {
-        add(constructionServiceResourceType.name);
     }
 
     // Force-include specific resources (e.g. from URL hash) regardless of filters
