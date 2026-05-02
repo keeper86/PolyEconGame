@@ -9,21 +9,24 @@ import type { AgentListSummary } from '@/simulation/snapshotRepository';
 import Link from 'next/link';
 import { useState } from 'react';
 
-type SortKey = 'balance' | 'totalWorkers' | 'facilityCount' | 'shipCount';
+/** Agent row returned by the server — extends AgentListSummary with a normalised balance. */
+type AgentRow = AgentListSummary & { normalizedBalance: number };
+
+type SortKey = 'normalizedBalance' | 'totalWorkers' | 'facilityCount' | 'shipCount';
 type SortDir = 'asc' | 'desc';
 
-function sortAgents(agents: AgentListSummary[], key: SortKey, dir: SortDir): AgentListSummary[] {
+function sortAgents(agents: AgentRow[], key: SortKey, dir: SortDir): AgentRow[] {
     return [...agents].sort((a, b) => {
         const diff = a[key] - b[key];
         return dir === 'asc' ? diff : -diff;
     });
 }
 
-export default function AgentLeaderboard() {
+export default function AgentLeaderboard({ planetId }: { planetId?: string }) {
     const trpc = useTRPC();
-    const { isLoading, data } = useSimulationQuery(trpc.simulation.getAgentListSummaries.queryOptions());
+    const { isLoading, data } = useSimulationQuery(trpc.simulation.getAgentListSummaries.queryOptions({ planetId }));
 
-    const [sortKey, setSortKey] = useState<SortKey>('balance');
+    const [sortKey, setSortKey] = useState<SortKey>('normalizedBalance');
     const [sortDir, setSortDir] = useState<SortDir>('desc');
 
     const handleSort = (key: SortKey) => {
@@ -35,7 +38,7 @@ export default function AgentLeaderboard() {
         }
     };
 
-    const agents = data?.agents ?? [];
+    const agents: AgentRow[] = data?.agents ?? [];
     const sorted = sortAgents(agents, sortKey, sortDir);
 
     const col = (key: SortKey) => ({
@@ -61,7 +64,7 @@ export default function AgentLeaderboard() {
                     <TableHead>Company</TableHead>
                     <TableHead>Home Planet</TableHead>
                     <TableHead>
-                        <DataTableColumnHeader title='Net Balance' {...col('balance')} />
+                        <DataTableColumnHeader title='Net Balance' {...col('normalizedBalance')} />
                     </TableHead>
                     <TableHead>
                         <DataTableColumnHeader title='Workers' {...col('totalWorkers')} />
@@ -88,7 +91,7 @@ export default function AgentLeaderboard() {
                         </TableCell>
                         <TableCell className='text-muted-foreground'>{agent.associatedPlanetId}</TableCell>
                         <TableCell className='tabular-nums'>
-                            {formatNumberWithUnit(agent.balance, 'currency', agent.associatedPlanetId)}
+                            {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId)}
                         </TableCell>
                         <TableCell className='tabular-nums'>
                             {formatNumberWithUnit(agent.totalWorkers, 'persons')}

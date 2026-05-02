@@ -8,6 +8,7 @@
  * require data spanning many ticks.
  */
 
+import { getCurrencyResourceName, DEFAULT_EXCHANGE_RATE } from '@/simulation/market/currencyResources';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
@@ -156,10 +157,12 @@ export const getLatestAgents = () =>
 /**
  * Lightweight summaries for the agent list page.
  * Returns only the data needed for AgentSummaryCard — no full Agent blob.
+ * When `planetId` is provided, each agent's balance is normalised into the
+ * local currency of that planet using the forex mean (EMA) exchange rate.
  */
 export const getAgentListSummaries = () =>
     protectedProcedure
-        .input(z.void())
+        .input(z.object({ planetId: z.string().optional() }))
         .output(
             z.object({
                 tick: z.number(),
@@ -169,6 +172,8 @@ export const getAgentListSummaries = () =>
                         name: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
+                        /** Balance normalised into the requested planet's local currency. */
+                        normalizedBalance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),
                         totalWorkers: z.number(),
@@ -179,11 +184,34 @@ export const getAgentListSummaries = () =>
                 ),
             }),
         )
-        .query(async () => {
+        .query(async ({ input }) => {
             const { tick, agents } = await workerQueries.getAllAgents();
+
+            // If a planetId is given, fetch the planet's avgMarketResult to
+            // build a forex rate lookup: currency resource name → clearing price.
+            let forexRates: Record<string, number> | undefined;
+            if (input.planetId) {
+                const { planet } = await workerQueries.getPlanet(input.planetId);
+                if (planet) {
+                    forexRates = {};
+                    for (const [curName, result] of Object.entries(planet.avgMarketResult)) {
+                        forexRates[curName] = result.clearingPrice;
+                    }
+                }
+            }
+
             return {
                 tick,
-                agents: agents.map((a: Agent) => summariseAgentBlob(a.id, a)),
+                agents: agents.map((a: Agent) => {
+                    const summary = summariseAgentBlob(a.id, a);
+                    let normalizedBalance = summary.balance;
+                    if (forexRates && summary.associatedPlanetId !== input.planetId) {
+                        const curName = getCurrencyResourceName(summary.associatedPlanetId);
+                        const rate = forexRates[curName] ?? DEFAULT_EXCHANGE_RATE;
+                        normalizedBalance = summary.balance * rate;
+                    }
+                    return { ...summary, normalizedBalance };
+                }),
             };
         });
 
