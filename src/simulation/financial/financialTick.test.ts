@@ -384,9 +384,7 @@ describe('enforceLoanMaturities', () => {
         expect(Math.abs(residual)).toBeLessThan(1e-6);
     });
 
-
     it('handles multiple matured loans at once', () => {
-
         agent.assets[planet.id]!.activeLoans = [
             makeLoan('wageCoverage', 50, 0.05, 1, 50, true), // matures at tick 50
             makeLoan('bufferCoverage', 30, 0.05, 10, 60, true), // matures at tick 60

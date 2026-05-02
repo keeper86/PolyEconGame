@@ -793,7 +793,5 @@ export function creditForeignDeposit(agent: Agent, issuingPlanet: Planet, amount
     assets.deposits += amount;
     issuingPlanet.bank.deposits += amount;
     issuingPlanet.bank.loans += amount;
-    assets.activeLoans.push(
-        makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRate, 0, 0, false),
-    );
+    assets.activeLoans.push(makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRate, 0, 0, false));
 }

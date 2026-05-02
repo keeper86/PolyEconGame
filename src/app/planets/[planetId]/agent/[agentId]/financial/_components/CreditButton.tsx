@@ -45,9 +45,7 @@ export default function CreditButton({
                 onClick={onClick}
             >
                 <BadgeDollarSign className='h-5 w-5' />
-                <span className='text-sm font-semibold leading-none'>
-                    {isPending ? 'Processing…' : label}
-                </span>
+                <span className='text-sm font-semibold leading-none'>{isPending ? 'Processing…' : label}</span>
             </Button>
         );
     }

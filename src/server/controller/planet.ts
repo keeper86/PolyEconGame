@@ -560,7 +560,6 @@ export const getPlanetMarket = () =>
         .query(async ({ input }) => {
             const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
 
-
             if (!planet) {
                 return { tick, market: null };
             }
@@ -750,7 +749,6 @@ export const getAgentClaims = () =>
         .query(async ({ input }) => {
             const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
 
-
             if (!planet) {
                 return { tick, claims: [] };
             }
@@ -857,7 +855,6 @@ export const getPlanetMarketOverview = () =>
         )
         .query(async ({ input }) => {
             const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
-
 
             if (!planet) {
                 return { tick, rows: [] };

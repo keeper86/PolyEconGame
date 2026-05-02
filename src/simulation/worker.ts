@@ -603,7 +603,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getLoanConditions': {
-
                     const agentRecord = snap.agents.get(msg.agentId);
                     const planetRecord = snap.planets.get(msg.planetId);
                     if (!agentRecord || !planetRecord) {
@@ -635,7 +634,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 default: {
-
                     const _exhaustive: never = msg;
                     throw new Error(`Unknown query type: ${(_exhaustive as { type: string }).type}`);
                 }
