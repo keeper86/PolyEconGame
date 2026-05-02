@@ -1,4 +1,5 @@
 import type { Planet, Agent } from './planet/planet';
+
 import type { LoanConditions } from '../server/controller/simulation';
 import type { Loan } from './financial/loanTypes';
 import type { ShipCapitalMarket } from './ships/ships';
@@ -14,9 +15,9 @@ export type WorkerQuery =
     | { type: 'getAllPlanets' }
     | { type: 'getAgent'; agentId: string }
     | { type: 'getAllAgents' }
-    | { type: 'getAgentsByPlanet'; planetId: string }
     | { type: 'getLoanConditions'; agentId: string; planetId: string }
-    | { type: 'getShipCapitalMarket' };
+    | { type: 'getShipCapitalMarket' }
+    | { type: 'getPlanetWithAgents'; planetId: string };
 
 // ---------------------------------------------------------------------------
 // Result shapes (worker → main), keyed by query type
@@ -31,9 +32,9 @@ export interface WorkerQueryResult {
     getAllPlanets: { tick: number; planets: Planet[] };
     getAgent: { agent: Agent | null };
     getAllAgents: { tick: number; agents: Agent[] };
-    getAgentsByPlanet: { agents: Agent[] };
     getLoanConditions: { conditions: LoanConditions | null; activeLoans: Loan[] };
     getShipCapitalMarket: { shipCapitalMarket: ShipCapitalMarket };
+    getPlanetWithAgents: { tick: number; planet: Planet | null; agents: Agent[] };
 }
 
 // ---------------------------------------------------------------------------

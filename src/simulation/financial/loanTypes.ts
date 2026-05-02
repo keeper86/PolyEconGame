@@ -1,4 +1,9 @@
+import { TICKS_PER_YEAR } from '../constants';
+import type { Bank } from '../planet/planet';
+import type { AgentPlanetAssets } from '../planet/planet';
 import { nextRandom } from '../utils/stochasticRound';
+
+const LOAN_LIMIT = 1000;
 
 /** Generate a deterministic loan ID from the seeded PRNG. */
 function nextLoanId(): string {
@@ -6,17 +11,6 @@ function nextLoanId(): string {
     return `${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}`;
 }
 
-/**
- * Describes the originating context of a loan.
- *
- * - starter / discretionary : explicitly requested by a player / controller via the UI
- * - wageCoverage             : automatic emergency loan issued to cover a wage-bill shortfall
- * - bufferCoverage           : automatic emergency loan issued to cover an input-buffer shortfall
- * - claimCoverage            : automatic emergency loan issued to cover a resource-claim billing shortfall
- * - shipPenaltyCoverage      : automatic emergency loan issued to cover a contract-penalty shortfall
- * - licenseBootstrap         : loan issued automatically when a new agent obtains its first planet license
- * - forexWorkingCapital      : working-capital loan issued to a forex market-maker agent
- */
 export type LoanType =
     | 'starter'
     | 'discretionary'
@@ -28,44 +22,39 @@ export type LoanType =
     | 'forexWorkingCapital';
 
 export type Loan = {
-    /** Unique stable identifier used for targeted repayment via the UI. */
     id: string;
     type: LoanType;
-    /** Original principal at the time of origination. */
     principal: number;
-    /** Amount still outstanding (decremented when repayment is made). */
     remainingPrincipal: number;
-    /** Annual interest rate, snapshotted at origination (0–1 scale, e.g. 0.05 = 5 %). */
     annualInterestRate: number;
-    /** Simulation tick at which the loan was taken. */
     takenAtTick: number;
-    /** Simulation tick at which the loan matures; 0 if no fixed maturity. */
     maturityTick: number;
-    /**
-     * Whether the borrower is allowed to repay this loan ahead of maturity via
-     * the UI. Set to false for internally-managed system loans.
-     */
     earlyRepaymentAllowed: boolean;
 };
 
-/**
- * Sum of all outstanding principal across a list of loans.
- * Equivalent to the legacy scalar `assets.loans`.
- */
-export function totalOutstandingLoans(loans: Loan[]): number {
-    return loans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
-}
+const LOAN_TERM_TICKS: Record<LoanType, number> = {
+    starter: TICKS_PER_YEAR * 10,
+    discretionary: TICKS_PER_YEAR,
+    wageCoverage: TICKS_PER_YEAR,
+    bufferCoverage: TICKS_PER_YEAR,
+    claimCoverage: TICKS_PER_YEAR,
+    shipPenaltyCoverage: TICKS_PER_YEAR,
+    licenseBootstrap: TICKS_PER_YEAR,
+    forexWorkingCapital: TICKS_PER_YEAR * 1000, // effectively no maturity
+};
 
-/**
- * Convenience factory used by loan-creation sites to avoid boilerplate.
- *
- * @param type                   Loan type / originating context.
- * @param principal              Loan amount.
- * @param annualInterestRate     Annual interest rate at origination.
- * @param takenAtTick            Current simulation tick.
- * @param maturityTick           Tick at which the loan matures.
- * @param earlyRepaymentAllowed  Whether early UI repayment is permitted.
- */
+/** Whether early (UI-initiated) repayment is allowed for this loan type. */
+const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
+    starter: true,
+    discretionary: true,
+    wageCoverage: false,
+    bufferCoverage: false,
+    claimCoverage: false,
+    shipPenaltyCoverage: false,
+    licenseBootstrap: false,
+    forexWorkingCapital: false,
+};
+
 export function makeLoan(
     type: LoanType,
     principal: number,
@@ -86,14 +75,37 @@ export function makeLoan(
     };
 }
 
-/**
- * Repay a given amount from `activeLoans` in order from oldest to newest
- * (FIFO).  Loans are removed from the array once fully repaid.
- *
- * @param activeLoans  The agent's live loan list (mutated in-place).
- * @param maxRepayment Maximum currency units available for repayment.
- * @returns The total amount actually repaid (≤ maxRepayment).
- */
+export function grantLoan(
+    assets: AgentPlanetAssets,
+    bank: Bank,
+    amount: number,
+    purpose: LoanType,
+    tick: number,
+): Loan {
+    if (assets.activeLoans.length >= LOAN_LIMIT) {
+        throw new Error(
+            `Loan limit exceeded: cannot have more than ${LOAN_LIMIT} active loans
+                (currently has ${assets.activeLoans.length}): ${assets.activeLoans.map((l) => l.type).join(', ')}`,
+        );
+    }
+    const maturityTick = LOAN_TERM_TICKS[purpose] > 0 ? tick + LOAN_TERM_TICKS[purpose] : 0;
+    const earlyRepaymentAllowed = LOAN_EARLY_REPAYMENT[purpose];
+
+    const loan = makeLoan(purpose, amount, bank.loanRate * TICKS_PER_YEAR, tick, maturityTick, earlyRepaymentAllowed);
+
+    assets.deposits += amount;
+    assets.activeLoans.push(loan);
+    bank.loans += amount;
+    bank.deposits += amount;
+    bank.equity = bank.deposits - bank.loans;
+
+    return loan;
+}
+
+export function totalOutstandingLoans(loans: Loan[]): number {
+    return loans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
+}
+
 export function repayLoansOldestFirst(activeLoans: Loan[], maxRepayment: number): number {
     let remaining = maxRepayment;
     let totalRepaid = 0;

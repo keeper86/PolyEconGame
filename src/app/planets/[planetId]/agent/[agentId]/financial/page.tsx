@@ -1,21 +1,19 @@
 'use client';
 
-import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import AgentFinancialOverview from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/AgentFinancialOverview';
 import AgentFinancialCharts from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/AgentFinancialCharts';
+import AgentFinancialOverview from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/AgentFinancialOverview';
 import LoanPanel from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/LoanPanel';
+import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Card, CardContent } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { EuroIcon } from 'lucide-react';
-import { ChevronDown } from 'lucide-react';
-import BankPanel from './_components/BankPanel';
-import { LicensePanel } from '../../_component/LicensePanel';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
+import { EuroIcon } from 'lucide-react';
+import { LicensePanel } from '../../_component/LicensePanel';
+import BankPanel from './_components/BankPanel';
 
 export default function FinancialPage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
@@ -46,57 +44,41 @@ export default function FinancialPage() {
     }
 
     return (
-        <AgentAccessGuard
-            agentId={agentId}
-            agentName={detail?.agentName ?? 'Agent'}
-            isLoading={myAgentId.isLoading}
-            isOwnAgent={isOwnAgent}
-        >
+        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
             {hasNoAssets ? (
                 <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
-                <Card>
-                    <CardContent className='px-3 py-3 space-y-3'>
-                        <BankPanel bank={economy.bank} planetId={planetId} />
+                <>
+                    <Card>
+                        <CardContent className='px-3 py-3 space-y-3'>
+                            <BankPanel bank={economy.bank} planetId={planetId} />
 
-                        <Separator />
-                        <p className='text-sm font-semibold flex items-center gap-2'>
-                            <EuroIcon className='h-4 w-4 text-muted-foreground' />
-                            Financial Position
-                        </p>
-                        <AgentFinancialOverview
-                            deposits={assets.deposits ?? 0}
-                            loans={totalOutstandingLoans(assets.activeLoans ?? [])}
-                            loanConditions={loanConditions}
-                            planetId={planetId}
-                        />
-                        <Collapsible>
-                            <CollapsibleTrigger className='flex items-center gap-1 text-xs font-semibold text-muted-foreground w-full group'>
-                                <ChevronDown className='h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180' />
-                                Historical Trends
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className='pt-3'>
-                                <AgentFinancialCharts agentId={agentId} planetId={planetId} />
-                            </CollapsibleContent>
-                        </Collapsible>
-                        <Separator />
-
-                        <LoanPanel
-                            agentId={agentId}
-                            planetId={detail?.planetId ?? ''}
-                            deposits={assets.deposits ?? 0}
-                        />
-
-                        <Separator />
-
-                        <LicensePanel
-                            agentId={agentId}
-                            planetId={detail?.planetId ?? ''}
-                            isOwnAgent={isOwnAgent}
-                            licenses={assets.licenses}
-                        />
-                    </CardContent>
-                </Card>
+                            <LoanPanel
+                                agentId={agentId}
+                                planetId={detail?.planetId ?? ''}
+                                deposits={assets.deposits ?? 0}
+                            />
+                            <Separator />
+                            <p className='text-sm font-semibold flex items-center gap-2'>
+                                <EuroIcon className='h-4 w-4 text-muted-foreground' />
+                                Financial Position
+                            </p>
+                            <AgentFinancialOverview
+                                deposits={assets.deposits ?? 0}
+                                loans={totalOutstandingLoans(assets.activeLoans ?? [])}
+                                loanConditions={loanConditions}
+                                planetId={planetId}
+                            />
+                            <AgentFinancialCharts agentId={agentId} planetId={planetId} />
+                        </CardContent>
+                    </Card>
+                    <LicensePanel
+                        agentId={agentId}
+                        planetId={detail?.planetId ?? ''}
+                        isOwnAgent={isOwnAgent}
+                        licenses={assets.licenses}
+                    />
+                </>
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>
             )}

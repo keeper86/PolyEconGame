@@ -40,7 +40,7 @@ function conditionColor(status: number) {
 }
 
 export default function AgentShipsPage() {
-    const { agentId, planetId, detail, isLoading, isOwnAgent, myAgentId, tick } = useAgentPlanetDetail();
+    const { agentId, planetId, isLoading, isOwnAgent, myAgentId, tick } = useAgentPlanetDetail();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -83,12 +83,7 @@ export default function AgentShipsPage() {
     );
 
     return (
-        <AgentAccessGuard
-            agentId={agentId}
-            agentName={detail?.agentName ?? 'Agent'}
-            isLoading={myAgentId.isLoading}
-            isOwnAgent={isOwnAgent}
-        >
+        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
             <div className='space-y-4'>
                 <div className='flex items-center justify-between'>
                     <h3 className='text-sm font-medium text-muted-foreground'>

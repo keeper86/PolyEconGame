@@ -789,10 +789,9 @@ export function assertPerCellWorkforcePopulationConsistency(
 // ============================================================================
 
 export function creditForeignDeposit(agent: Agent, issuingPlanet: Planet, amount: number): void {
-    agent.assets[issuingPlanet.id]!.deposits += amount;
+    const assets = agent.assets[issuingPlanet.id]!;
+    assets.deposits += amount;
     issuingPlanet.bank.deposits += amount;
     issuingPlanet.bank.loans += amount;
-    agent.assets[issuingPlanet.id]!.activeLoans.push(
-        makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRate, 0, 0, false),
-    );
+    assets.activeLoans.push(makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRate, 0, 0, false));
 }

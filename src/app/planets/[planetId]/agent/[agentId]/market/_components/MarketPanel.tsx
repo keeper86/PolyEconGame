@@ -52,12 +52,7 @@ const MARKET_LEVEL_LABELS: Record<string, string> = {
     currency: 'Currency',
 };
 
-export default function MarketPanel({
-    agentId,
-    planetId: _planetId,
-    assets,
-    allPlanetDeposits,
-}: Props): React.ReactElement {
+export default function MarketPanel({ agentId, planetId, assets, allPlanetDeposits }: Props): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
     const [showAll, setShowAll] = useState(false);
@@ -130,11 +125,9 @@ export default function MarketPanel({
 
     const trpc = useTRPC();
 
-    const { productionFacilities, managementFacilities, storageFacility, shipConstructionFacilities, market } = assets;
-
     // ── Hoisted market overview query ──────────────────────────────────
     const { data: overviewData } = useSimulationQuery(
-        trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId: _planetId, average: false }),
+        trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId: planetId, average: false }),
     );
 
     // ── Planet summaries for currency display names and showAll currencies ──
@@ -149,9 +142,9 @@ export default function MarketPanel({
     const availableCurrencies = useMemo(
         () =>
             (planetSummariesData?.planets ?? [])
-                .filter((p) => p.planetId !== _planetId)
+                .filter((p) => p.planetId !== planetId)
                 .map((p) => ({ name: getCurrencyResourceName(p.planetId) })),
-        [planetSummariesData, _planetId],
+        [planetSummariesData, planetId],
     );
     const overviewRows: Record<string, MarketOverviewRow> = useMemo(() => {
         const map: Record<string, MarketOverviewRow> = {};
@@ -161,34 +154,13 @@ export default function MarketPanel({
         return map;
     }, [overviewData]);
 
+    const market = assets.market;
     const buyBids = market?.buy ?? {};
     const sellOffers = market?.sell ?? {};
 
-    const buyBidKeys = Object.keys(buyBids).join(',');
-    const sellOfferKeys = Object.keys(sellOffers).join(',');
     const resources = useMemo(
-        () =>
-            buildResourceList(
-                productionFacilities,
-                buyBids,
-                sellOffers,
-                storageFacility,
-                showAll,
-                managementFacilities,
-                shipConstructionFacilities,
-                hashResource ? [hashResource] : [],
-                availableCurrencies,
-            ),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [
-            showAll,
-            buyBidKeys,
-            sellOfferKeys,
-            productionFacilities.length,
-            managementFacilities.length,
-            hashResource,
-            availableCurrencies,
-        ],
+        () => buildResourceList(assets, showAll, hashResource ? [hashResource] : [], availableCurrencies),
+        [showAll, assets, hashResource, availableCurrencies],
     );
 
     // Group resources by level

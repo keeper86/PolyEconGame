@@ -602,18 +602,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     data = { tick: snap.tick, agents };
                     break;
                 }
-                case 'getAgentsByPlanet': {
-                    const agents = snap.agents
-                        .valueSeq()
-                        .filter((ar) => ar.data.associatedPlanetId === msg.planetId)
-                        .map((ar) => ar.data)
-                        .toArray();
-                    const forexMMs = [...snap.forexMarketMakers.values()].filter(
-                        (mm) => mm.associatedPlanetId === msg.planetId,
-                    );
-                    data = { agents: [...agents, ...forexMMs] };
-                    break;
-                }
                 case 'getLoanConditions': {
                     const agentRecord = snap.agents.get(msg.agentId);
                     const planetRecord = snap.planets.get(msg.planetId);
@@ -630,6 +618,19 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 }
                 case 'getShipCapitalMarket': {
                     data = { shipCapitalMarket: snap.shipCapitalMarket };
+                    break;
+                }
+                case 'getPlanetWithAgents': {
+                    const pr = snap.planets.get(msg.planetId);
+                    const agents = snap.agents
+                        .valueSeq()
+                        .filter((ar) => ar.data.associatedPlanetId === msg.planetId)
+                        .map((ar) => ar.data)
+                        .toArray();
+                    const forexMMs = [...snap.forexMarketMakers.values()].filter(
+                        (mm) => mm.associatedPlanetId === msg.planetId,
+                    );
+                    data = { tick: snap.tick, planet: pr ? pr.data : null, agents: [...agents, ...forexMMs] };
                     break;
                 }
                 default: {

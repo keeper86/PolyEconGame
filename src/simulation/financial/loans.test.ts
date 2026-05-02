@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
 
-import { automaticLoanRepayment, preProductionFinancialTick } from './financialTick';
+import { TICKS_PER_MONTH } from '../constants';
 import { hireFromPopulation } from '../workforce/workforce';
+import { automaticLoanRepayment, preProductionFinancialTick } from './financialTick';
 import { makeLoan, totalOutstandingLoans } from './loanTypes';
 
 describe('per-agent loan bookkeeping', () => {
@@ -33,8 +34,8 @@ describe('per-agent loan bookkeeping', () => {
         preProductionFinancialTick(agentMap(agent), planet);
 
         const agentLoan = totalOutstandingLoans(agent.assets[planet.id]!.activeLoans);
-        expect(agentLoan).toBeCloseTo(count, 6);
-        expect(planet.bank!.loans).toBeCloseTo(count, 6);
+        expect(agentLoan).toBeCloseTo(count * TICKS_PER_MONTH, 6);
+        expect(planet.bank!.loans).toBeCloseTo(count * TICKS_PER_MONTH, 6);
     });
 
     it('agent repays only their own loan', () => {

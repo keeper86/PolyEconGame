@@ -1,11 +1,12 @@
-import { INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD, TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_MONTH } from '../constants';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
+import type { Loan } from './loanTypes';
+import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
-import { makeLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 
 /**
  * Default wage per education level per tick (currency units per worker).
@@ -94,13 +95,8 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         // 2. Working-capital loan if needed (MONEY CREATION)
         //    bank.loans↑  bank.deposits↑  agent.deposits↑
         if (assets.deposits < wageBill) {
-            const shortfall = wageBill - assets.deposits;
-            bank.loans += shortfall;
-            bank.deposits += shortfall;
-            assets.deposits += shortfall;
-            assets.activeLoans.push(
-                makeLoan('wageCoverage', shortfall, bank.loanRate * TICKS_PER_YEAR, tick, tick + TICKS_PER_YEAR, true),
-            );
+            const shortfall = TICKS_PER_MONTH * wageBill - assets.deposits; // loan to cover wage bill for 1 year
+            grantLoan(assets, bank, shortfall, 'wageCoverage', tick);
         }
 
         assets.deposits -= wageBill;
@@ -108,20 +104,8 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         if (agent.automated) {
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
-                const shortfall = bufferCost - assets.deposits;
-                bank.loans += shortfall;
-                bank.deposits += shortfall;
-                assets.deposits += shortfall;
-                assets.activeLoans.push(
-                    makeLoan(
-                        'bufferCoverage',
-                        shortfall,
-                        bank.loanRate * TICKS_PER_YEAR,
-                        tick,
-                        tick + TICKS_PER_YEAR,
-                        true,
-                    ),
-                );
+                const shortfall = TICKS_PER_MONTH * bufferCost - assets.deposits;
+                grantLoan(assets, bank, shortfall, 'bufferCoverage', tick);
             }
         }
 
@@ -161,7 +145,87 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
     bank.equity = bank.deposits - bank.loans;
 }
 
-export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
+/** Fee rate applied when a matured loan is rolled over (e.g. 0.05 = 5%). */
+export const ROLLOVER_FEE_RATE = 0.05;
+
+export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+    const bank = planet.bank;
+
+    agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            return;
+        }
+
+        const maturedLoans: Loan[] = [];
+        const remainingLoans: Loan[] = [];
+
+        // Partition loans into matured (maturityTick > 0 && tick >= maturityTick) and not-yet-matured
+        for (const loan of assets.activeLoans) {
+            if (loan.maturityTick > 0 && tick >= loan.maturityTick) {
+                maturedLoans.push(loan);
+            } else {
+                remainingLoans.push(loan);
+            }
+        }
+
+        if (maturedLoans.length === 0) {
+            return;
+        }
+
+        // Calculate total amount due from matured loans
+        const totalDue = maturedLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
+
+        // Try to repay from deposits
+        const canRepay = Math.min(totalDue, assets.deposits);
+        const shortfall = totalDue - canRepay;
+
+        // Repay what we can from existing deposits
+        if (canRepay > 0) {
+            assets.deposits -= canRepay;
+            bank.loans -= canRepay;
+            bank.deposits -= canRepay;
+        }
+
+        // If there's a shortfall, create a rollover loan (with fee) and use it
+        // to fully repay the remaining matured principal.
+        if (shortfall > 0) {
+            const fee = Math.round(shortfall * ROLLOVER_FEE_RATE);
+            const rolloverPrincipal = shortfall + fee;
+
+            // Issue a new rollover loan — this creates money (deposits↑, loans↑)
+            grantLoan(assets, bank, rolloverPrincipal, 'discretionary', tick);
+
+            // Immediately use the new deposits to repay the shortfall portion
+            // of the matured loans.  This destroys money (deposits↓, loans↓).
+            assets.deposits -= shortfall;
+            bank.loans -= shortfall;
+            bank.deposits -= shortfall;
+
+            // The fee stays in the agent's deposits (it was created as part of
+            // the rollover loan but not spent on repayment).  It represents the
+            // bank's fee income and increases bank equity.
+            // Net effect on bank balance sheet:
+            //   loans:  +rolloverPrincipal - shortfall = +fee
+            //   deposits: +rolloverPrincipal - shortfall = +fee
+            //   equity: unchanged (deposits - loans = 0 before and after)
+            // The fee remains as agent deposits (liability) matched by the
+            // rollover loan (asset), so equity is unaffected.
+
+            // Move the rollover loan from activeLoans (where grantLoan pushed it)
+            // into remainingLoans.
+            const rolloverLoan = assets.activeLoans.pop()!;
+            remainingLoans.push(rolloverLoan);
+        }
+
+        // Replace active loans with the remaining (non-matured + rollover) ones
+        assets.activeLoans = remainingLoans;
+    });
+
+    bank.equity = bank.deposits - bank.loans;
+}
+
+export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
 
     if (bank.loans <= 0) {
@@ -191,23 +255,12 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
 
         // Liquidity buffer: keep 12 months of blended total expenses before repaying.
         // If no history is available yet (expenses === 0) skip repayment entirely.
-        const progress = (((tick - 1) % TICKS_PER_MONTH) + 1) / TICKS_PER_MONTH;
         const lastMonthExpenses =
             (assets.lastMonthAcc.wages ?? 0) +
             (assets.lastMonthAcc.purchases ?? 0) +
             (assets.lastMonthAcc.claimPayments ?? 0);
-        const thisMonthExpenses =
-            (assets.monthAcc.wages ?? 0) + (assets.monthAcc.purchases ?? 0) + (assets.monthAcc.claimPayments ?? 0);
-        const blendedMonthlyExpenses =
-            progress <= 0 || thisMonthExpenses === 0
-                ? lastMonthExpenses
-                : lastMonthExpenses * (1 - progress) + (thisMonthExpenses / progress) * progress;
 
-        if (blendedMonthlyExpenses <= 0) {
-            // No cost history — hold off on repayment
-            return;
-        }
-        const retainedThreshold = RETAINED_EARNINGS_THRESHOLD * 12 * blendedMonthlyExpenses;
+        const retainedThreshold = 12 * lastMonthExpenses;
         const excessDeposits = deposits - retainedThreshold;
 
         if (excessDeposits <= 0) {

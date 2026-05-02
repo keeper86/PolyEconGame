@@ -558,11 +558,7 @@ export const getPlanetMarket = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { planet }, { agents }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getPlanet(input.planetId),
-                workerQueries.getAgentsByPlanet(input.planetId),
-            ]);
+            const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
 
             if (!planet) {
                 return { tick, market: null };
@@ -751,11 +747,7 @@ export const getAgentClaims = () =>
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
         .output(z.object({ tick: z.number(), claims: z.array(agentClaimEntrySchema) }))
         .query(async ({ input }) => {
-            const [{ tick }, { planet }, { agents }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getPlanet(input.planetId),
-                workerQueries.getAgentsByPlanet(input.planetId),
-            ]);
+            const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
 
             if (!planet) {
                 return { tick, claims: [] };
@@ -862,11 +854,7 @@ export const getPlanetMarketOverview = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { planet }, { agents }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getPlanet(input.planetId),
-                workerQueries.getAgentsByPlanet(input.planetId),
-            ]);
+            const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
 
             if (!planet) {
                 return { tick, rows: [] };

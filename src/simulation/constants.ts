@@ -299,7 +299,7 @@ export const FOREX_MM_SEED_LOAN = 100_000;
  * Working-capital loan amount per market-maker from their home planet's bank
  * (denominated in home currency).  Used to fund bid orders.
  */
-export const FOREX_MM_WORKING_CAPITAL = 100_000;
+export const FOREX_MM_WORKING_CAPITAL = 1_000_000;
 
 /**
  * Inventory reference level used by the pricing algorithm.

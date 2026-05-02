@@ -1,5 +1,5 @@
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
-import { automaticLoanRepayment, preProductionFinancialTick } from './financial/financialTick';
+import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
@@ -56,8 +56,10 @@ export function advanceTick(gameState: GameState) {
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
             }
+            automaticLoanRepayment(gameState.agents, planet);
         }
         claimBillingTick(gameState.agents, planet, gameState.tick);
+        maturesLoans(gameState.agents, planet, gameState.tick);
         preProductionFinancialTick(gameState.agents, planet, gameState.tick);
 
         // updateAgentProductionScale(gameState.agents, planet);
@@ -73,8 +75,6 @@ export function advanceTick(gameState: GameState) {
         constructionTick(gameState.agents, planet);
 
         productionTick(gameState.agents, planet, gameState.tick);
-
-        automaticLoanRepayment(gameState.agents, planet, gameState.tick);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);

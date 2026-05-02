@@ -7,8 +7,8 @@ import {
     plasticResourceType,
     steelResourceType,
 } from '../planet/resources';
-import type { PassengerManifest } from './manifest';
 import type { EducationLevelType } from '../population/population';
+import type { PassengerManifest } from './manifest';
 import type { TransitionResult } from './shipHandlers';
 import { applyMaintenance, constructionHandlers, passengerHandlers, transportHandlers } from './shipHandlers';
 

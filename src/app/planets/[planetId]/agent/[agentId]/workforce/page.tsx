@@ -42,12 +42,7 @@ export default function WorkforcePage() {
                     </div>
                 </CardContent>
             </Card>
-            <AgentAccessGuard
-                agentId={agentId}
-                agentName={detail?.agentName ?? 'Agent'}
-                isLoading={myAgentId.isLoading}
-                isOwnAgent={isOwnAgent}
-            >
+            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
                 {hasNoAssets ? (
                     <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
                 ) : !isLoading && assets ? (

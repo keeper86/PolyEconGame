@@ -7,12 +7,12 @@ import {
     Home,
     Network,
     Package,
-    Ship,
     ShoppingCartIcon,
     User,
     Users,
     Warehouse,
 } from 'lucide-react';
+import { GoRocket } from 'react-icons/go';
 
 import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
@@ -173,7 +173,7 @@ export function getBreadcrumbData(pathname: string): Array<{ path: string; label
 export type AgentSubPage = {
     segment: string;
     label: string;
-    icon: LucideIcon;
+    icon: LucideIcon | typeof GoRocket;
 };
 
 export const AGENT_SUB_PAGES: AgentSubPage[] = [
@@ -182,5 +182,5 @@ export const AGENT_SUB_PAGES: AgentSubPage[] = [
     { segment: 'production', label: 'Production', icon: Package },
     { segment: 'storage', label: 'Storage', icon: Warehouse },
     { segment: 'market', label: 'Market', icon: ShoppingCartIcon },
-    { segment: 'ships', label: 'Ships', icon: Ship },
+    { segment: 'ships', label: 'Ships', icon: GoRocket },
 ];

@@ -13,8 +13,6 @@ declare module "nextjs-routes" {
   export type Route =
     | StaticRoute<"/">
     | StaticRoute<"/account">
-    | StaticRoute<"/agents">
-    | DynamicRoute<"/agents/[agentId]", { "agentId": string }>
     | DynamicRoute<"/api/auth/[...nextauth]", { "nextauth": string[] }>
     | StaticRoute<"/api/ping">
     | DynamicRoute<"/api/public/[...trpc]", { "trpc": string[] }>
@@ -24,7 +22,6 @@ declare module "nextjs-routes" {
     | StaticRoute<"/planets">
     | DynamicRoute<"/planets/[planetId]", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]", { "planetId": string; "agentId": string }>
-    | DynamicRoute<"/planets/[planetId]/agent/[agentId]/agents", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/financial", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/market", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/production", { "planetId": string; "agentId": string }>
@@ -32,6 +29,7 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/storage", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/workforce", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/claims", { "planetId": string }>
+    | DynamicRoute<"/planets/[planetId]/companies", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/ships", { "planetId": string }>
     | StaticRoute<"/pong">
