@@ -1,23 +1,8 @@
-import { FOREX_MM_COUNT, FOREX_MM_SEED_LOAN, FOREX_MM_WORKING_CAPITAL, TICKS_PER_YEAR } from '../constants';
+import { FOREX_MM_COUNT, FOREX_MM_SEED_LOAN, FOREX_MM_WORKING_CAPITAL } from '../constants';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
-import { makeLoan } from '../financial/loanTypes';
+import { grantLoan } from '../financial/loanTypes';
 import type { Agent, GameState } from '../planet/planet';
 
-/**
- * Create FOREX_MM_COUNT market-maker agents per planet and seed them with
- * loan-funded deposits on every planet.  The agents are stored in
- * `gameState.forexMarketMakers` (not `gameState.agents`) so they bypass
- * the normal financial/production tick.
- *
- * For each home planet H and MM index i:
- *   - MM receives a working-capital loan from H (FOREX_MM_WORKING_CAPITAL H-credits).
- *   - For every foreign planet F, MM receives a seeding loan from F
- *     (FOREX_MM_SEED_LOAN F-credits) so it starts with F-currency inventory.
- *
- * Both sides of each loan are recorded symmetrically on the central-bank
- * balance sheet (bank.loans += amount, bank.deposits += amount) to preserve
- * the monetary-conservation invariant.
- */
 export function seedForexMarketMakers(gameState: GameState): void {
     const planets = Array.from(gameState.planets.values());
 
@@ -46,19 +31,7 @@ export function seedForexMarketMakers(gameState: GameState): void {
             const homeAssets = makeAgentPlanetAssets(homePlanet.id, [], homeStorage);
             homeAssets.licenses = { commercial: { acquiredTick: 0, frozen: false } };
             homeAssets.market = { sell: {}, buy: {} };
-            homeAssets.deposits += FOREX_MM_WORKING_CAPITAL;
-            homeAssets.activeLoans.push(
-                makeLoan(
-                    'forexWorkingCapital',
-                    FOREX_MM_WORKING_CAPITAL,
-                    homePlanet.bank.loanRate * TICKS_PER_YEAR,
-                    0,
-                    0,
-                    false,
-                ),
-            );
-            homePlanet.bank.loans += FOREX_MM_WORKING_CAPITAL;
-            homePlanet.bank.deposits += FOREX_MM_WORKING_CAPITAL;
+            grantLoan(homeAssets, homePlanet.bank, FOREX_MM_WORKING_CAPITAL, 'forexWorkingCapital', 0);
             mm.assets[homePlanet.id] = homeAssets;
 
             // --- Foreign planets: seeding loans ---
@@ -74,19 +47,7 @@ export function seedForexMarketMakers(gameState: GameState): void {
                 const foreignAssets = makeAgentPlanetAssets(foreignPlanet.id, [], foreignStorage);
                 foreignAssets.licenses = { commercial: { acquiredTick: 0, frozen: false } };
                 foreignAssets.market = { sell: {}, buy: {} };
-                foreignAssets.deposits += FOREX_MM_SEED_LOAN;
-                foreignAssets.activeLoans.push(
-                    makeLoan(
-                        'forexWorkingCapital',
-                        FOREX_MM_SEED_LOAN,
-                        foreignPlanet.bank.loanRate * TICKS_PER_YEAR,
-                        0,
-                        0,
-                        false,
-                    ),
-                );
-                foreignPlanet.bank.loans += FOREX_MM_SEED_LOAN;
-                foreignPlanet.bank.deposits += FOREX_MM_SEED_LOAN;
+                grantLoan(foreignAssets, foreignPlanet.bank, FOREX_MM_SEED_LOAN, 'forexWorkingCapital', 0);
                 mm.assets[foreignPlanet.id] = foreignAssets;
             }
 

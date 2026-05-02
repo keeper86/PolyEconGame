@@ -1,8 +1,7 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 import { computeLoanConditions } from '../financial/loanConditions';
-import { makeLoan } from '../financial/loanTypes';
-import { TICKS_PER_YEAR } from '../constants';
+import { grantLoan } from '../financial/loanTypes';
 
 /**
  * Handle 'requestLoan' action
@@ -42,19 +41,7 @@ export function handleRequestLoan(
         });
         return;
     }
-    assets.deposits += amount;
-    assets.activeLoans.push(
-        makeLoan(
-            conditions.isNewAgent ? 'starter' : 'discretionary',
-            amount,
-            conditions.annualInterestRate,
-            state.tick,
-            state.tick + TICKS_PER_YEAR,
-            true,
-        ),
-    );
-    planet.bank.loans += amount;
-    planet.bank.deposits += amount;
+    grantLoan(assets, planet.bank, amount, conditions.isNewAgent ? 'starter' : 'discretionary', state.tick);
     planet.bank.equity = planet.bank.deposits - planet.bank.loans;
     if (conditions.isNewAgent) {
         agent.starterLoanTaken = true;

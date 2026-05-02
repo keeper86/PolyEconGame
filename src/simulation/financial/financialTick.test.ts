@@ -7,7 +7,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, Planet } from '../planet/planet';
-import { DEFAULT_WAGE_PER_EDU, automaticLoanRepayment, preProductionFinancialTick } from './financialTick';
+import {
+    DEFAULT_WAGE_PER_EDU,
+    automaticLoanRepayment,
+    maturesLoans,
+    preProductionFinancialTick,
+} from './financialTick';
 
 import { SKILL } from '../population/population';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
@@ -233,16 +238,26 @@ describe('money conservation', () => {
         const hired = hireWorkers(planet, agent, 'none', 100);
 
         // Step A: pre-production (creates loan, pays wages)
+        // grantLoan adds the loan amount to deposits, then wages are deducted.
         preProductionFinancialTick(agentMap(agent), planet, 1);
         const loansAfterA = planet.bank!.loans;
         expect(loansAfterA).toBe(hired * TICKS_PER_MONTH);
 
-        // Step B: auto-repayment — agent has 0 deposits after paying wages,
-        // far below the 1-year-expenses threshold, so no repayment happens.
+        // After paying wages, the agent still has (loan - wageBill) in deposits.
+        const depositsAfterA = agent.assets[planet.id]!.deposits;
+        expect(depositsAfterA).toBe(loansAfterA - hired); // loan amount minus one tick of wages
+
+        // Set up lastMonthAcc so the 1-year threshold is meaningful.
+        // Monthly wage expense = hired * 1.0 * TICKS_PER_MONTH = 3000.
+        // 1-year threshold = 12 * 3000 = 36000.
+        // Deposits = 2900, which is well below 36000, so no repayment.
+        agent.assets[planet.id]!.lastMonthAcc.wages = hired * TICKS_PER_MONTH;
+
+        // Step B: auto-repayment — deposits are below the 1-year threshold
         automaticLoanRepayment(agentMap(agent), planet);
         const loansAfterB = planet.bank!.loans;
 
-        // No repayment: agent can't afford it
+        // No repayment: agent can't afford it (deposits < 1-year expenses)
         expect(loansAfterB).toBe(loansAfterA);
         expect(agent.assets[planet.id]?.deposits ?? 0).toBeGreaterThanOrEqual(0);
     });
@@ -271,5 +286,107 @@ describe('money conservation', () => {
         // Loan should have been fully repaid
         expect(planet.bank!.loans).toBe(0);
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Loan maturity enforcement
+// ---------------------------------------------------------------------------
+
+describe('enforceLoanMaturities', () => {
+    let agent: Agent;
+    let planet: Planet;
+
+    beforeEach(() => {
+        agent = makeAgent();
+        const result = makePlanetWithPopulation({ none: 1000 });
+        planet = result.planet;
+        planet.bank!.loanRate = 0.05 / 360;
+    });
+
+    it('does nothing when there are no matured loans', () => {
+        agent.assets[planet.id]!.activeLoans = [
+            makeLoan('wageCoverage', 100, 0.05, 1, 361, true), // matures at tick 361
+        ];
+        agent.assets[planet.id]!.deposits = 1000;
+        planet.bank!.loans = 100;
+        planet.bank!.deposits = 1000;
+
+        maturesLoans(agentMap(agent), planet, 100); // tick 100 < 361
+
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(100);
+        expect(planet.bank!.loans).toBe(100);
+    });
+
+    it('repays matured loan from deposits when sufficient funds are available', () => {
+        agent.assets[planet.id]!.activeLoans = [
+            makeLoan('wageCoverage', 100, 0.05, 1, 50, true), // matures at tick 50
+        ];
+        agent.assets[planet.id]!.deposits = 1000;
+        planet.bank!.loans = 100;
+        planet.bank!.deposits = 1000;
+
+        maturesLoans(agentMap(agent), planet, 100); // tick 100 >= 50
+
+        // Loan should be fully repaid
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
+        expect(agent.assets[planet.id]!.deposits).toBe(900); // 1000 - 100
+        expect(planet.bank!.loans).toBe(0);
+        expect(planet.bank!.deposits).toBe(900);
+    });
+
+    it('rolls over matured loan when deposits are insufficient', () => {
+        agent.assets[planet.id]!.activeLoans = [
+            makeLoan('wageCoverage', 100, 0.05, 1, 50, true), // matures at tick 50
+        ];
+        agent.assets[planet.id]!.deposits = 30; // not enough to repay 100
+        planet.bank!.loans = 100;
+        planet.bank!.deposits = 30;
+
+        maturesLoans(agentMap(agent), planet, 100); // tick 100 >= 50
+
+        // canRepay = min(100, 30) = 30, shortfall = 70
+        // deposits: 30 - 30 = 0, then +70 from rollover = 70
+        expect(agent.assets[planet.id]!.deposits).toBe(70);
+        // Total outstanding: 70 (the rollover loan)
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(70);
+        // Bank: loans = 100 - 30 (repaid) + 70 (new rollover) = 140
+        // deposits = 30 - 30 (repaid) + 70 (new rollover) = 70
+        expect(planet.bank!.loans).toBe(140);
+        expect(planet.bank!.deposits).toBe(70);
+    });
+
+    it('handles multiple matured loans at once', () => {
+        agent.assets[planet.id]!.activeLoans = [
+            makeLoan('wageCoverage', 50, 0.05, 1, 50, true), // matures at tick 50
+            makeLoan('bufferCoverage', 30, 0.05, 10, 60, true), // matures at tick 60
+            makeLoan('claimCoverage', 20, 0.05, 20, 200, true), // matures at tick 200
+        ];
+        agent.assets[planet.id]!.deposits = 100;
+        planet.bank!.loans = 100;
+        planet.bank!.deposits = 100;
+
+        maturesLoans(agentMap(agent), planet, 100); // tick 100 >= 50, 60, but < 200
+
+        // Two loans matured: 50 + 30 = 80 due, deposits = 100, can repay all
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(20); // only the unmatured one remains
+        expect(agent.assets[planet.id]!.deposits).toBe(20); // 100 - 80
+        expect(planet.bank!.loans).toBe(20);
+        expect(planet.bank!.deposits).toBe(20);
+    });
+
+    it('ignores loans with maturityTick = 0 (no fixed maturity)', () => {
+        agent.assets[planet.id]!.activeLoans = [
+            makeLoan('wageCoverage', 100, 0.05, 1, 0, true), // maturityTick = 0 → no fixed maturity
+        ];
+        agent.assets[planet.id]!.deposits = 1000;
+        planet.bank!.loans = 100;
+        planet.bank!.deposits = 1000;
+
+        maturesLoans(agentMap(agent), planet, 1000);
+
+        // Loan should remain untouched
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(100);
+        expect(planet.bank!.loans).toBe(100);
     });
 });

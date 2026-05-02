@@ -1,5 +1,5 @@
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
-import { automaticLoanRepayment, preProductionFinancialTick } from './financial/financialTick';
+import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
@@ -59,6 +59,7 @@ export function advanceTick(gameState: GameState) {
             automaticLoanRepayment(gameState.agents, planet);
         }
         claimBillingTick(gameState.agents, planet, gameState.tick);
+        maturesLoans(gameState.agents, planet, gameState.tick);
         preProductionFinancialTick(gameState.agents, planet, gameState.tick);
 
         // updateAgentProductionScale(gameState.agents, planet);

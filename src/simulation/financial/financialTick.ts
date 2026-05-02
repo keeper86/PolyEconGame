@@ -1,11 +1,12 @@
-import { INPUT_BUFFER_TARGET_TICKS, RETAINED_EARNINGS_THRESHOLD, TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_MONTH } from '../constants';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
+import type { Loan } from './loanTypes';
+import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
-import { makeLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 
 /**
  * Default wage per education level per tick (currency units per worker).
@@ -95,12 +96,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         //    bank.loans↑  bank.deposits↑  agent.deposits↑
         if (assets.deposits < wageBill) {
             const shortfall = TICKS_PER_MONTH * wageBill - assets.deposits; // loan to cover wage bill for 1 year
-            bank.loans += shortfall;
-            bank.deposits += shortfall;
-            assets.deposits += shortfall;
-            assets.activeLoans.push(
-                makeLoan('wageCoverage', shortfall, bank.loanRate * TICKS_PER_YEAR, tick, tick + TICKS_PER_YEAR, true),
-            );
+            grantLoan(assets, bank, shortfall, 'wageCoverage', tick);
         }
 
         assets.deposits -= wageBill;
@@ -109,19 +105,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
                 const shortfall = bufferCost - assets.deposits;
-                bank.loans += shortfall;
-                bank.deposits += shortfall;
-                assets.deposits += shortfall;
-                assets.activeLoans.push(
-                    makeLoan(
-                        'bufferCoverage',
-                        shortfall,
-                        bank.loanRate * TICKS_PER_YEAR,
-                        tick,
-                        tick + TICKS_PER_YEAR,
-                        true,
-                    ),
-                );
+                grantLoan(assets, bank, shortfall, 'bufferCoverage', tick);
             }
         }
 
@@ -156,6 +140,61 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
                 }
             }
         }
+    });
+
+    bank.equity = bank.deposits - bank.loans;
+}
+
+export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+    const bank = planet.bank;
+
+    agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            return;
+        }
+
+        const maturedLoans: Loan[] = [];
+        const remainingLoans: Loan[] = [];
+
+        // Partition loans into matured (maturityTick > 0 && tick >= maturityTick) and not-yet-matured
+        for (const loan of assets.activeLoans) {
+            if (loan.maturityTick > 0 && tick >= loan.maturityTick) {
+                maturedLoans.push(loan);
+            } else {
+                remainingLoans.push(loan);
+            }
+        }
+
+        if (maturedLoans.length === 0) {
+            return;
+        }
+
+        // Calculate total amount due from matured loans
+        const totalDue = maturedLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
+
+        // Try to repay from deposits
+        const canRepay = Math.min(totalDue, assets.deposits);
+        const shortfall = totalDue - canRepay;
+
+        // Repay what we can
+        if (canRepay > 0) {
+            assets.deposits -= canRepay;
+            bank.loans -= canRepay;
+            bank.deposits -= canRepay;
+        }
+
+        // If there's a shortfall, create a rollover loan
+        if (shortfall > 0) {
+            grantLoan(assets, bank, shortfall, 'discretionary', tick);
+            // The rollover loan was pushed onto assets.activeLoans by grantLoan,
+            // but we need to keep it in remainingLoans instead. Move it over.
+            const rolloverLoan = assets.activeLoans.pop()!;
+            remainingLoans.push(rolloverLoan);
+        }
+
+        // Replace active loans with the remaining (non-matured + rollover) ones
+        assets.activeLoans = remainingLoans;
     });
 
     bank.equity = bank.deposits - bank.loans;

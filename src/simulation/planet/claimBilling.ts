@@ -1,7 +1,7 @@
 import type { Agent, Planet } from './planet';
 import { collapseUntenantedClaims } from './claims';
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
-import { makeLoan } from '../financial/loanTypes';
+import { TICKS_PER_MONTH } from '../constants';
+import { grantLoan } from '../financial/loanTypes';
 
 const PAUSED_DAYS_TERMINATION_THRESHOLD = 31;
 
@@ -43,20 +43,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
 
             if (assets.deposits < entry.costPerTick && agent.automated) {
                 const shortfall = entry.costPerTick * TICKS_PER_MONTH - assets.deposits;
-                // Record aggregate bank loan and per-agent loan principal
-                planet.bank.loans += shortfall;
-                planet.bank.deposits += shortfall;
-                assets.deposits += shortfall;
-                assets.activeLoans.push(
-                    makeLoan(
-                        'claimCoverage',
-                        shortfall,
-                        planet.bank.loanRate * TICKS_PER_YEAR,
-                        tick,
-                        tick + TICKS_PER_YEAR,
-                        true,
-                    ),
-                );
+                grantLoan(assets, planet.bank, shortfall, 'claimCoverage', tick);
             }
 
             if (assets.deposits >= entry.costPerTick) {
