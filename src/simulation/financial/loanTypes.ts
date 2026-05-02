@@ -3,6 +3,8 @@ import type { Bank } from '../planet/planet';
 import type { AgentPlanetAssets } from '../planet/planet';
 import { nextRandom } from '../utils/stochasticRound';
 
+const LOAN_LIMIT = 100;
+
 /** Generate a deterministic loan ID from the seeded PRNG. */
 function nextLoanId(): string {
     const hex = (n: number) => ((n * 0x100000000) >>> 0).toString(16).padStart(8, '0');
@@ -80,6 +82,9 @@ export function grantLoan(
     purpose: LoanType,
     tick: number,
 ): Loan {
+    if (assets.activeLoans.length >= LOAN_LIMIT) {
+        throw new Error('Loan limit exceeded: cannot have more than 100 active loans');
+    }
     const maturityTick = LOAN_TERM_TICKS[purpose] > 0 ? tick + LOAN_TERM_TICKS[purpose] : 0;
     const earlyRepaymentAllowed = LOAN_EARLY_REPAYMENT[purpose];
 
