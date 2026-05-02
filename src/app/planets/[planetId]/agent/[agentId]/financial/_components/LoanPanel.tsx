@@ -1,15 +1,16 @@
 'use client';
 
 import { mapTickToDate } from '@/components/client/TickDisplay';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Loan } from '@/simulation/financial/loanTypes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, BadgeDollarSign, CheckCircle2, Landmark } from 'lucide-react';
-import React, { useState } from 'react';
+import { Landmark } from 'lucide-react';
+import React from 'react';
+import { toast } from 'sonner';
+import CreditButton from './CreditButton';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -117,9 +118,6 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
     const { data: conditionsData, isLoading } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
     );
@@ -130,18 +128,16 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
     const requestLoanMutation = useMutation(
         trpc.requestLoan.mutationOptions({
             onSuccess: (result) => {
-                setSuccessMsg(
-                    `Loan of ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId)} approved! Funds will appear after the next tick.`,
+                toast.success(
+                    `Loan request successful: ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId)} will be credited after this tick.`,
                 );
-                setErrorMsg(null);
                 // Invalidate the loan-conditions query so the panel refreshes
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
             },
             onError: (err) => {
-                setErrorMsg(err instanceof Error ? err.message : 'Loan request failed');
-                setSuccessMsg(null);
+                toast.error(err instanceof Error ? err.message : 'Loan request failed');
             },
         }),
     );
@@ -157,41 +153,18 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                 </p>
             )}
 
-            {/* Feedback messages */}
-            {successMsg && (
-                <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
-                    <CheckCircle2 className='h-4 w-4 text-green-600' />
-                    <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
-                        {successMsg}
-                    </AlertDescription>
-                </Alert>
-            )}
-            {errorMsg && (
-                <Alert variant='destructive'>
-                    <AlertCircle className='h-4 w-4' />
-                    <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
-                </Alert>
-            )}
-
             {conditions && (conditions.maxLoanAmount > 0 || !conditions.isNewAgent) && (
                 <div className='space-y-2'>
                     {conditions.isNewAgent ? (
-                        <Button
-                            className='w-full h-14 flex flex-col gap-0.5 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600'
-                            disabled={requestLoanMutation.isPending}
+                        <CreditButton
+                            variant='large'
+                            label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'currency', planetId)}`}
+                            isPending={requestLoanMutation.isPending}
+                            disabled={conditions.maxLoanAmount === 0}
                             onClick={() => {
-                                setErrorMsg(null);
-                                setSuccessMsg(null);
                                 requestLoanMutation.mutate({ agentId, planetId, amount: conditions.maxLoanAmount });
                             }}
-                        >
-                            <BadgeDollarSign className='h-5 w-5' />
-                            <span className='text-sm font-semibold leading-none'>
-                                {requestLoanMutation.isPending
-                                    ? 'Processing…'
-                                    : `Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'currency', planetId)}`}
-                            </span>
-                        </Button>
+                        />
                     ) : (
                         <>
                             <p className='text-xs text-muted-foreground font-medium'>Request a loan</p>
@@ -206,26 +179,17 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                     const amount = Math.floor(conditions.maxLoanAmount * fraction);
                                     const isFull = fraction === 1;
                                     return (
-                                        <Button
+                                        <CreditButton
                                             key={label}
-                                            className={`flex-1 h-14 flex flex-col gap-0.5 ${
-                                                isFull
-                                                    ? 'bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600'
-                                                    : 'border border-green-600 text-green-700 bg-transparent hover:bg-green-50 dark:text-green-400 dark:border-green-500 dark:hover:bg-green-950'
-                                            }`}
-                                            disabled={requestLoanMutation.isPending || conditions.maxLoanAmount === 0}
+                                            label={label}
+                                            amount={formatNumberWithUnit(amount, 'currency', planetId)}
+                                            isFull={isFull}
+                                            isPending={requestLoanMutation.isPending}
+                                            disabled={conditions.maxLoanAmount === 0}
                                             onClick={() => {
-                                                setErrorMsg(null);
-                                                setSuccessMsg(null);
                                                 requestLoanMutation.mutate({ agentId, planetId, amount });
                                             }}
-                                        >
-                                            <BadgeDollarSign className='h-4 w-4' />
-                                            <span className='text-xs font-semibold leading-none'>{label}</span>
-                                            <span className='text-[10px] leading-none opacity-75'>
-                                                {formatNumberWithUnit(amount, 'currency', planetId)}
-                                            </span>
-                                        </Button>
+                                        />
                                     );
                                 })}
                             </div>
@@ -260,14 +224,12 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                             agentId={agentId}
                             planetId={planetId}
                             onRepaid={(amount) => {
-                                setSuccessMsg(
+                                toast.success(
                                     `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
                                 );
-                                setErrorMsg(null);
                             }}
                             onError={(msg) => {
-                                setErrorMsg(msg);
-                                setSuccessMsg(null);
+                                toast.error(msg);
                             }}
                         />
                     ))}

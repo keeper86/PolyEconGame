@@ -50,48 +50,37 @@ export default function FinancialPage() {
             {hasNoAssets ? (
                 <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
-                <Card>
-                    <CardContent className='px-3 py-3 space-y-3'>
-                        <BankPanel bank={economy.bank} planetId={planetId} />
+                <>
+                    <Card>
+                        <CardContent className='px-3 py-3 space-y-3'>
+                            <BankPanel bank={economy.bank} planetId={planetId} />
 
-                        <Separator />
-                        <p className='text-sm font-semibold flex items-center gap-2'>
-                            <EuroIcon className='h-4 w-4 text-muted-foreground' />
-                            Financial Position
-                        </p>
-                        <AgentFinancialOverview
-                            deposits={assets.deposits ?? 0}
-                            loans={totalOutstandingLoans(assets.activeLoans ?? [])}
-                            loanConditions={loanConditions}
-                            planetId={planetId}
-                        />
-                        <Collapsible>
-                            <CollapsibleTrigger className='flex items-center gap-1 text-xs font-semibold text-muted-foreground w-full group'>
-                                <ChevronDown className='h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180' />
-                                Historical Trends
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className='pt-3'>
-                                <AgentFinancialCharts agentId={agentId} planetId={planetId} />
-                            </CollapsibleContent>
-                        </Collapsible>
-                        <Separator />
-
-                        <LoanPanel
-                            agentId={agentId}
-                            planetId={detail?.planetId ?? ''}
-                            deposits={assets.deposits ?? 0}
-                        />
-
-                        <Separator />
-
-                        <LicensePanel
-                            agentId={agentId}
-                            planetId={detail?.planetId ?? ''}
-                            isOwnAgent={isOwnAgent}
-                            licenses={assets.licenses}
-                        />
-                    </CardContent>
-                </Card>
+                            <LoanPanel
+                                agentId={agentId}
+                                planetId={detail?.planetId ?? ''}
+                                deposits={assets.deposits ?? 0}
+                            />
+                            <Separator />
+                            <p className='text-sm font-semibold flex items-center gap-2'>
+                                <EuroIcon className='h-4 w-4 text-muted-foreground' />
+                                Financial Position
+                            </p>
+                            <AgentFinancialOverview
+                                deposits={assets.deposits ?? 0}
+                                loans={totalOutstandingLoans(assets.activeLoans ?? [])}
+                                loanConditions={loanConditions}
+                                planetId={planetId}
+                            />
+                            <AgentFinancialCharts agentId={agentId} planetId={planetId} />
+                        </CardContent>
+                    </Card>
+                    <LicensePanel
+                        agentId={agentId}
+                        planetId={detail?.planetId ?? ''}
+                        isOwnAgent={isOwnAgent}
+                        licenses={assets.licenses}
+                    />
+                </>
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>
             )}

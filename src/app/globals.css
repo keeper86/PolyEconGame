@@ -160,3 +160,7 @@ html {
         0 0 4px black,
         0 0 6px black;
 }
+
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] [data-icon] {
+    color: #22c55e;
+}

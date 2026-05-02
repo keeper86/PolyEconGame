@@ -84,8 +84,8 @@ export function grantLoan(
 ): Loan {
     if (assets.activeLoans.length >= LOAN_LIMIT) {
         throw new Error(
-            'Loan limit exceeded: cannot have more than 100 active loans' +
-                `(currently has ${assets.activeLoans.length}): ${assets.activeLoans.map((l) => l.type).join(', ')}`,
+            `Loan limit exceeded: cannot have more than ${LOAN_LIMIT} active loans
+                (currently has ${assets.activeLoans.length}): ${assets.activeLoans.map((l) => l.type).join(', ')}`,
         );
     }
     const maturityTick = LOAN_TERM_TICKS[purpose] > 0 ? tick + LOAN_TERM_TICKS[purpose] : 0;
