@@ -63,6 +63,10 @@ export function settleAgentSellers(planet: Planet, askOrders: AskOrder[]): void 
             transferFromEscrow(assets.storageFacility, ask.resource.name, filled);
             assets.deposits += revenue;
             assets.monthAcc.revenue += revenue;
+            assets.monthAcc.soldResources[ask.resource.name] = {
+                quantity: (assets.monthAcc.soldResources[ask.resource.name]?.quantity ?? 0) + filled,
+                value: (assets.monthAcc.soldResources[ask.resource.name]?.value ?? 0) + revenue,
+            };
 
             const offer = assets.market.sell[ask.resource.name];
             if (offer) {
@@ -108,6 +112,10 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
         const costRefunded = bid.cost - costForStored;
 
         assets.monthAcc.purchases += costForStored;
+        assets.monthAcc.boughtResources[bid.resource.name] = {
+            quantity: (assets.monthAcc.boughtResources[bid.resource.name]?.quantity ?? 0) + actuallyStored,
+            value: (assets.monthAcc.boughtResources[bid.resource.name]?.value ?? 0) + costForStored,
+        };
 
         if (costRefunded > 0) {
             if (process.env.SIM_DEBUG === '1') {

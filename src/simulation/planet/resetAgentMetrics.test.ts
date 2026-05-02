@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { makeAgent, makePlanet } from '../utils/testHelper';
 import type { Agent, Planet } from './planet';
-import { resetAgentMetrics } from './planet';
+import { resetAgentMetrics, createEmptyAccumulator } from './planet';
 
 function nonAutomatedAgent(planetId = 'p'): Agent {
     return makeAgent('a1', planetId, 'Player', { automated: false, automateWorkerAllocation: false });
@@ -27,6 +27,7 @@ describe('resetAgentMetrics', () => {
 
     it('snapshots monthAcc into lastMonthAcc at month boundary (tick % TICKS_PER_MONTH === 1)', () => {
         agent.assets[planet.id]!.monthAcc = {
+            ...createEmptyAccumulator(),
             depositsAtMonthStart: 0,
             productionValue: 400,
             consumptionValue: 100,
@@ -34,7 +35,6 @@ describe('resetAgentMetrics', () => {
             revenue: 600,
             purchases: 50,
             claimPayments: 30,
-            totalWorkersTicks: 0,
         };
 
         resetAgentMetrics(agents, planet);
@@ -51,6 +51,7 @@ describe('resetAgentMetrics', () => {
     it('resets monthAcc to zero at month boundary, snapshotting depositsAtMonthStart', () => {
         agent.assets[planet.id]!.deposits = 1000;
         agent.assets[planet.id]!.monthAcc = {
+            ...createEmptyAccumulator(),
             depositsAtMonthStart: 0,
             productionValue: 999,
             consumptionValue: 500,
@@ -58,7 +59,6 @@ describe('resetAgentMetrics', () => {
             revenue: 999,
             purchases: 999,
             claimPayments: 999,
-            totalWorkersTicks: 0,
         };
 
         resetAgentMetrics(agents, planet);

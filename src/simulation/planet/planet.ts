@@ -147,28 +147,18 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
 });
 
 export type AgentMarketOfferState = {
-    /** The resource being offered. */
     resource: Resource;
-
     offerPrice?: number;
-
     offerRetainment?: number;
-    /** Units actually sold during the last market clearing tick. */
     lastSold?: number;
-    /** Revenue earned during the last market clearing tick (currency units). */
     lastRevenue?: number;
-    /** Quantity actually placed into the order book last tick (capped by free stock). */
     lastPlacedQty?: number;
-    /** Offer price that was actually submitted to the order book last tick. */
     lastOfferPrice?: number;
-    /** Tâtonnement price-direction hint (−1 / 0 / +1). */
     priceDirection?: number;
-    /** When true, the automatic pricing engine manages this offer each tick. */
     automated?: boolean;
 };
 
 export type AgentMarketBidState = {
-    /** The resource being sought. */
     resource: Resource;
     bidPrice?: number;
     bidStorageTarget?: number;
@@ -185,10 +175,6 @@ export type AgentMarketBidState = {
     automated?: boolean;
 };
 
-/**
- * All market offers posted by one agent on one planet.
- * Keyed by resource name so offer lookup is O(1).
- */
 export type AgentMarketOffers = {
     sell: {
         [resourceName: string]: AgentMarketOfferState;
@@ -199,21 +185,13 @@ export type AgentMarketOffers = {
 };
 
 export type MarketResult = {
-    /** The resource this result refers to. */
     resourceName: string;
-    /** Volume-weighted average price of all executed trades (currency/unit). */
     clearingPrice: number;
-    /** Total units traded this tick. */
     totalVolume: number;
-    /** Total household effective demand entering the order book (units). */
     totalDemand: number;
-    /** Total supply offered by all agents this tick (units). */
     totalSupply: number;
-    /** Demand that could not be filled (units). */
     unfilledDemand: number;
-    /** Supply that was not sold (units). */
     unsoldSupply: number;
-    /** Binned population demand (so we can display it in the UI) */
     populationBids?: {
         priceMin: number;
         priceMax: number;
@@ -229,6 +207,25 @@ export type LicenseType = 'commercial' | 'workforce';
 export type PlanetLicense = {
     acquiredTick: number;
     frozen: boolean;
+};
+
+type ResourceAccumulator = {
+    quantity: number;
+    value: number;
+};
+export type MonthAccumulator = {
+    productionValue: number;
+    consumptionValue: number;
+    wages: number;
+    revenue: number;
+    purchases: number;
+    claimPayments: number;
+    totalWorkersTicks: number;
+    producedResources: Record<string, ResourceAccumulator>;
+    consumedResources: Record<string, ResourceAccumulator>;
+    boughtResources: Record<string, ResourceAccumulator>;
+    soldResources: Record<string, ResourceAccumulator>;
+    depreciatedServices: Record<string, ResourceAccumulator>;
 };
 
 export type AgentPlanetAssets = {
@@ -259,24 +256,9 @@ export type AgentPlanetAssets = {
 
     monthAcc: {
         depositsAtMonthStart: number;
-        productionValue: number;
-        consumptionValue: number;
-        wages: number;
-        revenue: number;
-        purchases: number;
-        claimPayments: number;
-        totalWorkersTicks: number;
-    };
+    } & MonthAccumulator;
 
-    lastMonthAcc: {
-        productionValue: number;
-        consumptionValue: number;
-        wages: number;
-        revenue: number;
-        purchases: number;
-        claimPayments: number;
-        totalWorkersTicks: number;
-    };
+    lastMonthAcc: MonthAccumulator;
 
     licenses: {
         commercial?: PlanetLicense;
@@ -315,6 +297,23 @@ export interface GameState {
     forexMarketMakers: Map<string, Agent>;
 }
 
+export function createEmptyAccumulator(): MonthAccumulator {
+    return {
+        productionValue: 0,
+        consumptionValue: 0,
+        wages: 0,
+        revenue: 0,
+        purchases: 0,
+        claimPayments: 0,
+        totalWorkersTicks: 0,
+        producedResources: {},
+        consumedResources: {},
+        boughtResources: {},
+        soldResources: {},
+        depreciatedServices: {},
+    };
+}
+
 export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
@@ -329,16 +328,15 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             purchases: assets.monthAcc.purchases,
             claimPayments: assets.monthAcc.claimPayments,
             totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
+            producedResources: { ...assets.monthAcc.producedResources },
+            consumedResources: { ...assets.monthAcc.consumedResources },
+            boughtResources: { ...assets.monthAcc.boughtResources },
+            soldResources: { ...assets.monthAcc.soldResources },
+            depreciatedServices: { ...assets.monthAcc.depreciatedServices },
         };
         assets.monthAcc = {
             depositsAtMonthStart: assets.deposits,
-            productionValue: 0,
-            consumptionValue: 0,
-            wages: 0,
-            revenue: 0,
-            purchases: 0,
-            claimPayments: 0,
-            totalWorkersTicks: 0,
+            ...createEmptyAccumulator(),
         };
     }
 }

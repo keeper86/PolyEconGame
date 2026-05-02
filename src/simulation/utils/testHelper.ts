@@ -1,23 +1,8 @@
-/**
- * simulation/utils/testHelper.ts
- *
- * Centralized test fixture factories for the simulation module.
- *
- * Provides simple functions to create correctly-shaped game objects
- * (PopulationCategory, WorkforceCategory, Cohort, Planet, Agent, GameState, etc.)
- * conforming to the current data model.
- *
- * Design:
- * - Small functions for leaf objects, composed by larger functions.
- * - No builder pattern — just create the object and mutate as needed in tests.
- * - Every function returns a complete, valid, zero/default object.
- * - Optional `Partial` overrides are applied via spread where useful.
- */
-
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createEmptyDemographicEventCounters,
+    createEmptyAccumulator,
     type Agent,
     type AgentPlanetAssets,
     type Bank,
@@ -466,23 +451,9 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         disabilities: createEmptyDemographicEventCounters(),
         monthAcc: {
             depositsAtMonthStart: 0,
-            productionValue: 0,
-            consumptionValue: 0,
-            wages: 0,
-            revenue: 0,
-            purchases: 0,
-            claimPayments: 0,
-            totalWorkersTicks: 0,
+            ...createEmptyAccumulator(),
         },
-        lastMonthAcc: {
-            productionValue: 0,
-            consumptionValue: 0,
-            wages: 0,
-            revenue: 0,
-            purchases: 0,
-            claimPayments: 0,
-            totalWorkersTicks: 0,
-        },
+        lastMonthAcc: createEmptyAccumulator(),
         licenses: {
             commercial: { acquiredTick: 0, frozen: false },
             workforce: { acquiredTick: 0, frozen: false },

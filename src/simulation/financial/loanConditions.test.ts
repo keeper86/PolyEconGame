@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT } from '../constants';
-import type { Agent, Planet } from '../planet/planet';
+import { createEmptyAccumulator, type Agent, type Planet } from '../planet/planet';
 import { makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { computeLoanConditions } from './loanConditions';
 import { makeLoan } from './loanTypes';
@@ -22,23 +22,15 @@ function makeEstablishedAgent(
         assets.activeLoans = [makeLoan('discretionary', overrides.existingLoans, 0.05, 0, 360, true)];
     }
     assets.lastMonthAcc = {
-        productionValue: 0,
-        consumptionValue: 0,
+        ...createEmptyAccumulator(),
         wages: overrides?.lastMonthWages ?? 0,
         revenue: overrides?.lastMonthRevenue ?? 0,
-        purchases: 0,
-        claimPayments: 0,
-        totalWorkersTicks: 0,
     };
     assets.monthAcc = {
+        ...createEmptyAccumulator(),
         depositsAtMonthStart: 0,
-        productionValue: 0,
-        consumptionValue: 0,
         wages: overrides?.currentMonthWages ?? 0,
         revenue: overrides?.currentMonthRevenue ?? 0,
-        purchases: 0,
-        claimPayments: 0,
-        totalWorkersTicks: 0,
     };
     return a;
 }
