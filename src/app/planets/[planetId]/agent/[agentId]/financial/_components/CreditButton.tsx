@@ -1,7 +1,8 @@
 'use client';
 
-import { BadgeDollarSign } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ProductIcon } from '@/components/client/ProductIcon';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -22,7 +23,20 @@ type CreditButtonProps = {
     onClick: () => void;
     /** Visual size variant */
     variant?: 'default' | 'large';
+    /** Planet id used to pick the correct currency image */
+    planetId: string;
 };
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+/** Maps a planet id to the asset key for its currency image. */
+function currencyAssetKey(planetId: string): string {
+    // The manifest keys are: cur_earth, cur_gune, cur_icedonia, cur_paradies, cur_suerte, cur_pandara, cur_alpha_centauri
+    const normalized = planetId.toLowerCase().replace(/-/g, '_');
+    return `cur_${normalized}`;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -36,7 +50,10 @@ export default function CreditButton({
     isPending = false,
     onClick,
     variant = 'default',
+    planetId,
 }: CreditButtonProps): React.ReactElement {
+    const currencyKey = currencyAssetKey(planetId);
+
     if (variant === 'large') {
         return (
             <Button
@@ -44,25 +61,37 @@ export default function CreditButton({
                 disabled={disabled || isPending}
                 onClick={onClick}
             >
-                <BadgeDollarSign className='h-5 w-5' />
-                <span className='text-sm font-semibold leading-none'>{isPending ? 'Processing…' : label}</span>
+                <ProductIcon productName={currencyKey} size={20} />
+                <span className='text-sm font-semibold leading-none'>{isPending ? '…' : label}</span>
             </Button>
         );
     }
 
+    /* Fill fraction: 1 = full, 0.5 = half, 0.25 = quarter */
+    const fillFraction = isFull ? 1 : label === '50 %' ? 0.5 : 0.25;
+
     return (
         <Button
-            className={`flex-1 h-14 flex flex-col gap-0.5 ${
-                isFull
-                    ? 'bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600'
-                    : 'border border-green-600 text-green-700 bg-transparent hover:bg-green-50 dark:text-green-400 dark:border-green-500 dark:hover:bg-green-950'
-            }`}
+            className={cn(
+                'flex-1 h-14 flex flex-col gap-0.5 relative overflow-hidden  text-outline-strong',
+                'border border-green-600 bg-transparent hover:bg-green-50 dark:border-green-500 dark:hover:bg-green-600',
+            )}
             disabled={disabled || isPending}
             onClick={onClick}
         >
-            <BadgeDollarSign className='h-4 w-4' />
-            <span className='text-xs font-semibold leading-none'>{isPending ? 'Processing…' : label}</span>
-            {amount && <span className='text-[10px] leading-none opacity-75'>{amount}</span>}
+            {/* Fill bar */}
+            {fillFraction > 0 && (
+                <span
+                    className='absolute bottom-0 left-0 right-0 bg-green-600/20 dark:bg-green-500/20 pointer-events-none'
+                    style={{ height: `${fillFraction * 100}%` }}
+                />
+            )}
+
+            {/* Content */}
+            <span className='relative z-10 flex flex-row items-center'>
+                {amount && !isPending && <span className='text-[16px] leading-none'>{amount}</span>}
+                <ProductIcon productName={currencyKey} size={16} />
+            </span>
         </Button>
     );
 }

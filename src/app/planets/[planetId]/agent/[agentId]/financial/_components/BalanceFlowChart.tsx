@@ -147,127 +147,125 @@ export function BalanceFlowChart({
     }, [granularity, chartData]);
 
     return (
-        <Card>
-            <CardContent className='px-3 pt-3 pb-2'>
-                <p className='text-xs font-semibold text-muted-foreground mb-2'>Net Balance &amp; Cash Flow</p>
-                <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer width='100%' height='100%'>
-                        <AreaChart data={chartData} margin={{ top: 0, right: -20, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id='gradBalance2' x1='0' x2='0' y1='0' y2='1'>
-                                    <stop offset='5%' stopColor='#4f46e5' stopOpacity={0.45} />
-                                    <stop offset='95%' stopColor='#4f46e5' stopOpacity={0.08} />
-                                </linearGradient>
-                                <linearGradient id='gradIncome2' x1='0' x2='0' y1='0' y2='1'>
-                                    <stop offset='5%' stopColor='#06b6d4' stopOpacity={0.45} />
-                                    <stop offset='95%' stopColor='#06b6d4' stopOpacity={0.08} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid
-                                vertical={xAxisProps.gridVertical}
-                                horizontal={false}
-                                verticalValues={xAxisProps.gridValues}
-                                stroke='#334155'
-                                strokeOpacity={xAxisProps.gridVertical ? 0.7 : 1}
-                            />
-                            <XAxis
-                                dataKey={xAxisProps.dataKey}
-                                type={xAxisProps.type}
-                                domain={xAxisProps.domain}
-                                ticks={xAxisProps.ticks}
-                                tickFormatter={xAxisProps.tickFormatter}
-                                tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                axisLine={{ stroke: '#334155' }}
-                                tickLine={false}
-                                minTickGap={xAxisProps.ticks ? 0 : 36}
-                            />
-                            <YAxis
-                                yAxisId='left'
-                                type='number'
-                                domain={domainBalance}
-                                tick={{ fontSize: 10, fill: '#4f46e5' }}
-                                axisLine={false}
-                                tickLine={false}
-                                width={56}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
-                            />
-                            <YAxis
-                                yAxisId='right'
-                                orientation='right'
-                                type='number'
-                                domain={domainIncome}
-                                tick={{ fontSize: 10, fill: '#06b6d4' }}
-                                axisLine={false}
-                                tickLine={false}
-                                width={56}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
-                            />
-                            <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
-                            <ReferenceLine
-                                yAxisId='left'
-                                y={0}
-                                stroke='#94a3b8'
-                                strokeOpacity={0.5}
-                                strokeDasharray='3 3'
-                            />
-                            <ReferenceLine yAxisId='right' y={0} stroke='#94a3b8' strokeOpacity={0} />
-                            <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
-                            <Area
-                                yAxisId='left'
-                                type='monotone'
-                                dataKey='netBalance'
-                                stroke='#4f46e5'
-                                strokeWidth={2}
-                                fill='url(#gradBalance2)'
-                                dot={false}
-                                activeDot={{ r: 3, fill: '#4f46e5', stroke: '#1e293b', strokeWidth: 2 }}
-                                connectNulls={false}
-                            />
-                            <Area
-                                yAxisId='right'
-                                type='monotone'
-                                dataKey='netIncome'
-                                stroke='#06b6d4'
-                                strokeWidth={2}
-                                fill='url(#gradIncome2)'
-                                dot={false}
-                                activeDot={{ r: 3, fill: '#06b6d4', stroke: '#1e293b', strokeWidth: 2 }}
-                                connectNulls={false}
-                            />
-                            <Area
-                                yAxisId='left'
-                                type='monotone'
-                                dataKey='ghostNetBalance'
-                                stroke='#4f46e5'
-                                strokeWidth={1}
-                                strokeOpacity={0.5}
-                                strokeDasharray='4 2'
-                                fill='none'
-                                dot={false}
-                                activeDot={false}
-                                legendType='none'
-                                isAnimationActive={false}
-                                connectNulls={false}
-                            />
-                            <Area
-                                yAxisId='right'
-                                type='monotone'
-                                dataKey='ghostNetIncome'
-                                stroke='#06b6d4'
-                                strokeWidth={1}
-                                strokeOpacity={0.5}
-                                strokeDasharray='4 2'
-                                fill='none'
-                                dot={false}
-                                activeDot={false}
-                                legendType='none'
-                                isAnimationActive={false}
-                                connectNulls={false}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </CardContent>
-        </Card>
+        <span className='flex flex-col items-start gap-1'>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>Net Balance &amp; Cash Flow</p>
+            <div style={{ width: '100%', height: 200 }}>
+                <ResponsiveContainer width='100%' height='100%'>
+                    <AreaChart data={chartData} margin={{ top: 0, right: -20, left: 0, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id='gradBalance2' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#4f46e5' stopOpacity={0.45} />
+                                <stop offset='95%' stopColor='#4f46e5' stopOpacity={0.08} />
+                            </linearGradient>
+                            <linearGradient id='gradIncome2' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#06b6d4' stopOpacity={0.45} />
+                                <stop offset='95%' stopColor='#06b6d4' stopOpacity={0.08} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                            vertical={xAxisProps.gridVertical}
+                            horizontal={false}
+                            verticalValues={xAxisProps.gridValues}
+                            stroke='#334155'
+                            strokeOpacity={xAxisProps.gridVertical ? 0.7 : 1}
+                        />
+                        <XAxis
+                            dataKey={xAxisProps.dataKey}
+                            type={xAxisProps.type}
+                            domain={xAxisProps.domain}
+                            ticks={xAxisProps.ticks}
+                            tickFormatter={xAxisProps.tickFormatter}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={{ stroke: '#334155' }}
+                            tickLine={false}
+                            minTickGap={xAxisProps.ticks ? 0 : 36}
+                        />
+                        <YAxis
+                            yAxisId='left'
+                            type='number'
+                            domain={domainBalance}
+                            tick={{ fontSize: 10, fill: '#4f46e5' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={56}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                        />
+                        <YAxis
+                            yAxisId='right'
+                            orientation='right'
+                            type='number'
+                            domain={domainIncome}
+                            tick={{ fontSize: 10, fill: '#06b6d4' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={56}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                        />
+                        <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
+                        <ReferenceLine
+                            yAxisId='left'
+                            y={0}
+                            stroke='#94a3b8'
+                            strokeOpacity={0.5}
+                            strokeDasharray='3 3'
+                        />
+                        <ReferenceLine yAxisId='right' y={0} stroke='#94a3b8' strokeOpacity={0} />
+                        <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
+                        <Area
+                            yAxisId='left'
+                            type='monotone'
+                            dataKey='netBalance'
+                            stroke='#4f46e5'
+                            strokeWidth={2}
+                            fill='url(#gradBalance2)'
+                            dot={false}
+                            activeDot={{ r: 3, fill: '#4f46e5', stroke: '#1e293b', strokeWidth: 2 }}
+                            connectNulls={false}
+                        />
+                        <Area
+                            yAxisId='right'
+                            type='monotone'
+                            dataKey='netIncome'
+                            stroke='#06b6d4'
+                            strokeWidth={2}
+                            fill='url(#gradIncome2)'
+                            dot={false}
+                            activeDot={{ r: 3, fill: '#06b6d4', stroke: '#1e293b', strokeWidth: 2 }}
+                            connectNulls={false}
+                        />
+                        <Area
+                            yAxisId='left'
+                            type='monotone'
+                            dataKey='ghostNetBalance'
+                            stroke='#4f46e5'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={false}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            yAxisId='right'
+                            type='monotone'
+                            dataKey='ghostNetIncome'
+                            stroke='#06b6d4'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={false}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+        </span>
     );
 }

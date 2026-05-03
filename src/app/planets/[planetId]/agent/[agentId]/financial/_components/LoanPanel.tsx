@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import type { Loan } from '@/simulation/financial/loanTypes';
+import { LOAN_TERM_TICKS, type Loan } from '@/simulation/financial/loanTypes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Landmark } from 'lucide-react';
+import { HandCoins, Landmark } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 import CreditButton from './CreditButton';
@@ -88,7 +88,7 @@ function LoanRow({
             </div>
             {loan.earlyRepaymentAllowed && (
                 <div className='flex gap-1.5'>
-                    {([0.25, 0.5, 1] as const).map((fraction) => {
+                    {([0.25, 0.5, 1] as const).map((fraction: number) => {
                         const amount = Math.floor(loan.remainingPrincipal * fraction);
                         const canAfford = deposits >= amount;
                         const label = fraction === 1 ? '100 %' : fraction === 0.5 ? '50 %' : '25 %';
@@ -121,6 +121,9 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
     const { data: conditionsData, isLoading } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
     );
+
+    const { data: currentTickData } = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions());
+    const currentTick = currentTickData?.tick ?? 0;
 
     const conditions = conditionsData?.conditions ?? null;
     const activeLoans = conditionsData?.activeLoans ?? [];
@@ -155,19 +158,31 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
 
             {conditions && (conditions.maxLoanAmount > 0 || !conditions.isNewAgent) && (
                 <div className='space-y-2'>
+                    <p className='text-sm font-semibold flex items-center gap-2'>
+                        <HandCoins className='h-4 w-4 text-muted-foreground' />
+                        Request a loan
+                    </p>
                     {conditions.isNewAgent ? (
-                        <CreditButton
-                            variant='large'
-                            label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'currency', planetId)}`}
-                            isPending={requestLoanMutation.isPending}
-                            disabled={conditions.maxLoanAmount === 0}
-                            onClick={() => {
-                                requestLoanMutation.mutate({ agentId, planetId, amount: conditions.maxLoanAmount });
-                            }}
-                        />
+                        <>
+                            <span className='text-xs text-muted-foreground'>
+                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.starter)}
+                            </span>
+                            <CreditButton
+                                variant='large'
+                                planetId={planetId}
+                                label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'units', planetId)}`}
+                                isPending={requestLoanMutation.isPending}
+                                disabled={conditions.maxLoanAmount === 0}
+                                onClick={() => {
+                                    requestLoanMutation.mutate({ agentId, planetId, amount: conditions.maxLoanAmount });
+                                }}
+                            />
+                        </>
                     ) : (
                         <>
-                            <p className='text-xs text-muted-foreground font-medium'>Request a loan</p>
+                            <p className='text-xs text-muted-foreground '>
+                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.discretionary)}
+                            </p>
                             <div className='flex justify-between gap-2'>
                                 {(
                                     [
@@ -182,10 +197,11 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                         <CreditButton
                                             key={label}
                                             label={label}
-                                            amount={formatNumberWithUnit(amount, 'currency', planetId)}
+                                            amount={formatNumberWithUnit(amount, 'units', planetId)}
                                             isFull={isFull}
                                             isPending={requestLoanMutation.isPending}
                                             disabled={conditions.maxLoanAmount === 0}
+                                            planetId={planetId}
                                             onClick={() => {
                                                 requestLoanMutation.mutate({ agentId, planetId, amount });
                                             }}

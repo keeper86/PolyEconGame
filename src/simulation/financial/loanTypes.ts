@@ -32,7 +32,7 @@ export type Loan = {
     earlyRepaymentAllowed: boolean;
 };
 
-const LOAN_TERM_TICKS: Record<LoanType, number> = {
+export const LOAN_TERM_TICKS: Record<LoanType, number> = {
     starter: TICKS_PER_YEAR * 10,
     discretionary: TICKS_PER_YEAR,
     wageCoverage: TICKS_PER_YEAR,
@@ -41,7 +41,7 @@ const LOAN_TERM_TICKS: Record<LoanType, number> = {
     shipPenaltyCoverage: TICKS_PER_YEAR,
     licenseBootstrap: TICKS_PER_YEAR,
     forexWorkingCapital: TICKS_PER_YEAR * 1000, // effectively no maturity
-};
+} as const;
 
 /** Whether early (UI-initiated) repayment is allowed for this loan type. */
 const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
