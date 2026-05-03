@@ -1,9 +1,8 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
-import { Card, CardContent } from '@/components/ui/card';
 import { formatNumberWithUnit } from '@/lib/utils';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
     Area,
     AreaChart,
@@ -17,14 +16,14 @@ import {
 } from 'recharts';
 import { FinancialTooltip } from './FinancialTooltip';
 import {
+    MONTHLY_GRID_VALUES,
+    MONTHLY_X_TICKS,
+    MONTH_NAMES,
     alignedYDomains,
     bucketDecadeLabel,
     type FinancialChartPoint,
     type FinancialPoint,
     type Granularity,
-    MONTHLY_GRID_VALUES,
-    MONTHLY_X_TICKS,
-    MONTH_NAMES,
 } from './financialChartLogic';
 
 export function BalanceFlowChart({
