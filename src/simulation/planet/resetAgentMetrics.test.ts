@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { makeAgent, makePlanet } from '../utils/testHelper';
 import type { Agent, Planet } from './planet';
-import { resetAgentMetrics } from './planet';
+import { resetAgentMetrics, createEmptyAccumulator } from './planet';
 
 function nonAutomatedAgent(planetId = 'p'): Agent {
     return makeAgent('a1', planetId, 'Player', { automated: false, automateWorkerAllocation: false });
@@ -27,6 +27,7 @@ describe('resetAgentMetrics', () => {
 
     it('snapshots monthAcc into lastMonthAcc at month boundary (tick % TICKS_PER_MONTH === 1)', () => {
         agent.assets[planet.id]!.monthAcc = {
+            ...createEmptyAccumulator(),
             depositsAtMonthStart: 0,
             productionValue: 400,
             consumptionValue: 100,
@@ -34,7 +35,11 @@ describe('resetAgentMetrics', () => {
             revenue: 600,
             purchases: 50,
             claimPayments: 30,
-            totalWorkersTicks: 0,
+            producedResources: { iron: { quantity: 10, value: 500 } },
+            consumedResources: { coal: { quantity: 5, value: 100 } },
+            boughtResources: { machinery: { quantity: 1, value: 2000 } },
+            soldResources: { steel: { quantity: 8, value: 1600 } },
+            depreciatedServices: { maintenance: { quantity: 1, value: 300 } },
         };
 
         resetAgentMetrics(agents, planet);
@@ -46,11 +51,18 @@ describe('resetAgentMetrics', () => {
         expect(last.revenue).toBeCloseTo(600);
         expect(last.purchases).toBeCloseTo(50);
         expect(last.claimPayments).toBeCloseTo(30);
+        // Per-resource maps are snapshotted correctly
+        expect(last.producedResources).toEqual({ iron: { quantity: 10, value: 500 } });
+        expect(last.consumedResources).toEqual({ coal: { quantity: 5, value: 100 } });
+        expect(last.boughtResources).toEqual({ machinery: { quantity: 1, value: 2000 } });
+        expect(last.soldResources).toEqual({ steel: { quantity: 8, value: 1600 } });
+        expect(last.depreciatedServices).toEqual({ maintenance: { quantity: 1, value: 300 } });
     });
 
     it('resets monthAcc to zero at month boundary, snapshotting depositsAtMonthStart', () => {
         agent.assets[planet.id]!.deposits = 1000;
         agent.assets[planet.id]!.monthAcc = {
+            ...createEmptyAccumulator(),
             depositsAtMonthStart: 0,
             productionValue: 999,
             consumptionValue: 500,
@@ -58,7 +70,6 @@ describe('resetAgentMetrics', () => {
             revenue: 999,
             purchases: 999,
             claimPayments: 999,
-            totalWorkersTicks: 0,
         };
 
         resetAgentMetrics(agents, planet);

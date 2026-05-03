@@ -15,7 +15,7 @@ import type {
     StorageFacility,
 } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
-import type { Agent, Planet } from './planet';
+import type { Agent, Planet, MonthAccumulator } from './planet';
 import { hasActiveLicense } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
@@ -50,13 +50,16 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
 
     ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
         if (storage.currentInStorage[serviceName]) {
-            const factorToDepreciate =
-                storage.currentInStorage[serviceName].quantity < 0.01 ? 1 : SERVICE_DEPRECIATION_RATE_PER_TICK;
-            removeFromStorageFacility(
-                storage,
-                serviceName,
-                factorToDepreciate * storage.currentInStorage[serviceName].quantity,
-            );
+            const quantity = storage.currentInStorage[serviceName].quantity;
+            const factorToDepreciate = quantity < 0.01 ? 1 : SERVICE_DEPRECIATION_RATE_PER_TICK;
+            removeFromStorageFacility(storage, serviceName, factorToDepreciate * quantity);
+            assets.monthAcc.depreciatedServices[serviceName] = {
+                quantity:
+                    (assets.monthAcc.depreciatedServices[serviceName]?.quantity ?? 0) + factorToDepreciate * quantity,
+                value:
+                    (assets.monthAcc.depreciatedServices[serviceName]?.value ?? 0) +
+                    factorToDepreciate * quantity * (planet.marketPrices[serviceName] ?? 0),
+            };
         }
     });
 };
@@ -270,7 +273,7 @@ type IntermediateResults = {
     overallEfficiency: number;
     workerResults: WaterFillFacilityResult;
     resourceEfficiencyMap: Record<string, number>;
-    monthAcc: { productionValue: number; consumptionValue: number };
+    monthAcc: MonthAccumulator;
     planet: Planet;
     agent: Agent;
 };
@@ -363,7 +366,12 @@ function processShipConstructionFacility(params: ShipConstructionParameters, tic
         }
     }
     for (const [name, qty] of Object.entries(actualConsumed)) {
-        monthAcc.consumptionValue += qty * (planet.marketPrices[name] ?? 0);
+        const value = qty * (planet.marketPrices[name] ?? 0);
+        monthAcc.consumptionValue += value;
+        monthAcc.consumedResources[name] = {
+            quantity: (monthAcc.consumedResources[name]?.quantity ?? 0) + qty,
+            value: (monthAcc.consumedResources[name]?.value ?? 0) + value,
+        };
     }
     facility.lastTickResults = {
         overallEfficiency,

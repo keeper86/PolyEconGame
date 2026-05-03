@@ -1,7 +1,12 @@
 import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/claims';
-import { createEmptyDemographicEventCounters, type Agent, type AgentPlanetAssets } from '../planet/planet';
+import {
+    createEmptyAccumulator,
+    createEmptyDemographicEventCounters,
+    type Agent,
+    type AgentPlanetAssets,
+} from '../planet/planet';
 import { type ResourceClaim, type ResourceQuantity } from '../planet/claims';
 import type { ProductionFacility, StorageFacility } from '../planet/facility';
 import {
@@ -116,23 +121,9 @@ export function makeAgentPlanetAssets(
         disabilities: createEmptyDemographicEventCounters(),
         monthAcc: {
             depositsAtMonthStart: 0,
-            productionValue: 0,
-            consumptionValue: 0,
-            wages: 0,
-            revenue: 0,
-            purchases: 0,
-            claimPayments: 0,
-            totalWorkersTicks: 0,
+            ...createEmptyAccumulator(),
         },
-        lastMonthAcc: {
-            productionValue: 0,
-            consumptionValue: 0,
-            wages: 0,
-            revenue: 0,
-            purchases: 0,
-            claimPayments: 0,
-            totalWorkersTicks: 0,
-        },
+        lastMonthAcc: createEmptyAccumulator(),
         licenses: {},
     };
 }

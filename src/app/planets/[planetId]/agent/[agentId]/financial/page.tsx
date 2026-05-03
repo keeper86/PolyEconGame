@@ -11,12 +11,14 @@ import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
-import { EuroIcon } from 'lucide-react';
+import { EuroIcon, Search } from 'lucide-react';
 import { LicensePanel } from '../../_component/LicensePanel';
 import BankPanel from './_components/BankPanel';
+import ProductResolutionPanel from './_components/ProductResolutionPanel';
 
 export default function FinancialPage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId, tick } =
+        useAgentPlanetDetail();
 
     const trpc = useTRPC();
 
@@ -53,12 +55,16 @@ export default function FinancialPage() {
                         <CardContent className='px-3 py-3 space-y-3'>
                             <BankPanel bank={economy.bank} planetId={planetId} />
 
+                            <Separator />
                             <LoanPanel
                                 agentId={agentId}
                                 planetId={detail?.planetId ?? ''}
                                 deposits={assets.deposits ?? 0}
                             />
-                            <Separator />
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className='px-3 py-3 space-y-3'>
                             <p className='text-sm font-semibold flex items-center gap-2'>
                                 <EuroIcon className='h-4 w-4 text-muted-foreground' />
                                 Financial Position
@@ -69,7 +75,19 @@ export default function FinancialPage() {
                                 loanConditions={loanConditions}
                                 planetId={planetId}
                             />
+                            <Separator />
+                            <p className='text-sm font-semibold flex items-center gap-2'>
+                                <Search className='h-4 w-4 text-muted-foreground' />
+                                Details
+                            </p>
                             <AgentFinancialCharts agentId={agentId} planetId={planetId} />
+                            <ProductResolutionPanel
+                                monthAcc={assets.monthAcc}
+                                lastMonthAcc={assets.lastMonthAcc}
+                                tick={tick}
+                                planetId={planetId}
+                                agentId={agentId}
+                            />
                         </CardContent>
                     </Card>
                     <LicensePanel

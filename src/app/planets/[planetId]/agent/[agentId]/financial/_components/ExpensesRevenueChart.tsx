@@ -1,7 +1,6 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
-import { Card, CardContent } from '@/components/ui/card';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -178,162 +177,160 @@ export function ExpensesRevenueChart({
     }, [granularity, chartData]);
 
     return (
-        <Card>
-            <CardContent className='px-3 pt-3 pb-2'>
-                <p className='text-xs font-semibold text-muted-foreground mb-2'>Expenses &amp; Revenue</p>
-                <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer width='100%' height='100%'>
-                        <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id='gradRevenue' x1='0' x2='0' y1='0' y2='1'>
-                                    <stop offset='5%' stopColor='#10b981' stopOpacity={0.45} />
-                                    <stop offset='95%' stopColor='#10b981' stopOpacity={0.08} />
-                                </linearGradient>
-                                <linearGradient id='gradWages' x1='0' x2='0' y1='0' y2='1'>
-                                    <stop offset='5%' stopColor='#ef4444' stopOpacity={0.5} />
-                                    <stop offset='95%' stopColor='#ef4444' stopOpacity={0.1} />
-                                </linearGradient>
-                                <linearGradient id='gradPurchases' x1='0' x2='0' y1='0' y2='1'>
-                                    <stop offset='5%' stopColor='#f59e0b' stopOpacity={0.5} />
-                                    <stop offset='95%' stopColor='#f59e0b' stopOpacity={0.1} />
-                                </linearGradient>
-                                <linearGradient id='gradClaims' x1='0' x2='0' y1='0' y2='1'>
-                                    <stop offset='5%' stopColor='#8b5cf6' stopOpacity={0.5} />
-                                    <stop offset='95%' stopColor='#8b5cf6' stopOpacity={0.1} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid
-                                vertical={xAxisProps.gridVertical}
-                                horizontal={false}
-                                verticalValues={xAxisProps.gridValues}
-                                stroke='#334155'
-                                strokeOpacity={xAxisProps.gridVertical ? 0.7 : 1}
-                            />
-                            <XAxis
-                                dataKey={xAxisProps.dataKey}
-                                type={xAxisProps.type}
-                                domain={xAxisProps.domain}
-                                ticks={xAxisProps.ticks}
-                                tickFormatter={xAxisProps.tickFormatter}
-                                tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                axisLine={{ stroke: '#334155' }}
-                                tickLine={false}
-                                minTickGap={xAxisProps.ticks ? 0 : 36}
-                            />
-                            <YAxis
-                                type='number'
-                                scale={scale}
-                                domain={domain}
-                                allowDataOverflow
-                                ticks={yTicks}
-                                tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                axisLine={false}
-                                tickLine={false}
-                                width={56}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
-                            />
-                            <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
-                            <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
-                            <Area
-                                type='monotone'
-                                dataKey='wages'
-                                stroke='#ef4444'
-                                strokeWidth={1.5}
-                                fill='url(#gradWages)'
-                                dot={false}
-                                activeDot={{ r: 3 }}
-                                connectNulls={false}
-                            />
-                            <Area
-                                type='monotone'
-                                dataKey='purchases'
-                                stroke='#f59e0b'
-                                strokeWidth={1.5}
-                                fill='url(#gradPurchases)'
-                                dot={false}
-                                activeDot={{ r: 3 }}
-                                connectNulls={false}
-                            />
-                            <Area
-                                type='monotone'
-                                dataKey='claimPayments'
-                                stroke='#8b5cf6'
-                                strokeWidth={1.5}
-                                fill='url(#gradClaims)'
-                                dot={false}
-                                activeDot={{ r: 3 }}
-                                connectNulls={false}
-                            />
-                            <Area
-                                type='monotone'
-                                dataKey='revenue'
-                                stroke='#10b981'
-                                strokeWidth={2}
-                                fill='url(#gradRevenue)'
-                                dot={false}
-                                activeDot={{ r: 3, fill: '#10b981', stroke: '#1e293b', strokeWidth: 2 }}
-                                connectNulls={false}
-                            />
-                            <Area
-                                type='monotone'
-                                dataKey='ghostWages'
-                                stroke='#ef4444'
-                                strokeWidth={1}
-                                strokeOpacity={0.5}
-                                strokeDasharray='4 2'
-                                fill='none'
-                                dot={false}
-                                activeDot={false}
-                                legendType='none'
-                                isAnimationActive={false}
-                                connectNulls={false}
-                            />
-                            <Area
-                                type='monotone'
-                                dataKey='ghostPurchases'
-                                stroke='#f59e0b'
-                                strokeWidth={1}
-                                strokeOpacity={0.5}
-                                strokeDasharray='4 2'
-                                fill='none'
-                                dot={false}
-                                activeDot={false}
-                                legendType='none'
-                                isAnimationActive={false}
-                                connectNulls={false}
-                            />
-                            <Area
-                                type='monotone'
-                                dataKey='ghostClaimPayments'
-                                stroke='#8b5cf6'
-                                strokeWidth={1}
-                                strokeOpacity={0.5}
-                                strokeDasharray='4 2'
-                                fill='none'
-                                dot={false}
-                                activeDot={false}
-                                legendType='none'
-                                isAnimationActive={false}
-                                connectNulls={false}
-                            />
-                            <Area
-                                type='monotone'
-                                dataKey='ghostRevenue'
-                                stroke='#10b981'
-                                strokeWidth={1.5}
-                                strokeOpacity={0.5}
-                                strokeDasharray='4 2'
-                                fill='none'
-                                dot={false}
-                                activeDot={false}
-                                legendType='none'
-                                isAnimationActive={false}
-                                connectNulls={false}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </CardContent>
-        </Card>
+        <div className='flex flex-col items-start gap-1'>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>Expenses & Revenue</p>
+            <div style={{ width: '100%', height: 200 }}>
+                <ResponsiveContainer width='100%' height='100%'>
+                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id='gradRevenue' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#10b981' stopOpacity={0.45} />
+                                <stop offset='95%' stopColor='#10b981' stopOpacity={0.08} />
+                            </linearGradient>
+                            <linearGradient id='gradWages' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#ef4444' stopOpacity={0.5} />
+                                <stop offset='95%' stopColor='#ef4444' stopOpacity={0.1} />
+                            </linearGradient>
+                            <linearGradient id='gradPurchases' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#f59e0b' stopOpacity={0.5} />
+                                <stop offset='95%' stopColor='#f59e0b' stopOpacity={0.1} />
+                            </linearGradient>
+                            <linearGradient id='gradClaims' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#8b5cf6' stopOpacity={0.5} />
+                                <stop offset='95%' stopColor='#8b5cf6' stopOpacity={0.1} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                            vertical={xAxisProps.gridVertical}
+                            horizontal={false}
+                            verticalValues={xAxisProps.gridValues}
+                            stroke='#334155'
+                            strokeOpacity={xAxisProps.gridVertical ? 0.7 : 1}
+                        />
+                        <XAxis
+                            dataKey={xAxisProps.dataKey}
+                            type={xAxisProps.type}
+                            domain={xAxisProps.domain}
+                            ticks={xAxisProps.ticks}
+                            tickFormatter={xAxisProps.tickFormatter}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={{ stroke: '#334155' }}
+                            tickLine={false}
+                            minTickGap={xAxisProps.ticks ? 0 : 36}
+                        />
+                        <YAxis
+                            type='number'
+                            scale={scale}
+                            domain={domain}
+                            allowDataOverflow
+                            ticks={yTicks}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={56}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                        />
+                        <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
+                        <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
+                        <Area
+                            type='monotone'
+                            dataKey='wages'
+                            stroke='#ef4444'
+                            strokeWidth={1.5}
+                            fill='url(#gradWages)'
+                            dot={false}
+                            activeDot={{ r: 3 }}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='purchases'
+                            stroke='#f59e0b'
+                            strokeWidth={1.5}
+                            fill='url(#gradPurchases)'
+                            dot={false}
+                            activeDot={{ r: 3 }}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='claimPayments'
+                            stroke='#8b5cf6'
+                            strokeWidth={1.5}
+                            fill='url(#gradClaims)'
+                            dot={false}
+                            activeDot={{ r: 3 }}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='revenue'
+                            stroke='#10b981'
+                            strokeWidth={2}
+                            fill='url(#gradRevenue)'
+                            dot={false}
+                            activeDot={{ r: 3, fill: '#10b981', stroke: '#1e293b', strokeWidth: 2 }}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='ghostWages'
+                            stroke='#ef4444'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={false}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='ghostPurchases'
+                            stroke='#f59e0b'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={false}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='ghostClaimPayments'
+                            stroke='#8b5cf6'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={false}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='ghostRevenue'
+                            stroke='#10b981'
+                            strokeWidth={1.5}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={false}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
     );
 }
