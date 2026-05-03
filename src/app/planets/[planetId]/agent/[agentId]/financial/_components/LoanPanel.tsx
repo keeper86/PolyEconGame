@@ -68,7 +68,7 @@ function LoanRow({
     const pct = loan.annualInterestRate * 100;
 
     return (
-        <span className='text-xs'>
+        <div className='text-xs'>
             <div className='flex items-center justify-between gap-2'>
                 <span className='flex items-center gap-4'>
                     <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
@@ -96,7 +96,7 @@ function LoanRow({
                         return (
                             <CreditButton
                                 key={fraction}
-                                variant='default_loan'
+                                variant='payback'
                                 label={label}
                                 amount={formatNumberWithUnit(amount, 'units', planetId)}
                                 isFull={fraction === 1}
@@ -108,7 +108,7 @@ function LoanRow({
                     })}
                 </div>
             )}
-        </span>
+        </div>
     );
 }
 
@@ -232,23 +232,27 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                         <Landmark className='h-4 w-4 text-muted-foreground' />
                         Outstanding loans
                     </p>
-                    {activeLoans.map((loan) => (
-                        <LoanRow
-                            key={loan.id}
-                            loan={loan}
-                            deposits={deposits}
-                            agentId={agentId}
-                            planetId={planetId}
-                            onRepaid={(amount) => {
-                                toast.success(
-                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
-                                );
-                            }}
-                            onError={(msg) => {
-                                toast.error(msg);
-                            }}
-                        />
-                    ))}
+                    <span className='text-xs text-muted-foreground'>Pay back early:</span>
+                    {activeLoans.map(
+                        (loan) =>
+                            loan.earlyRepaymentAllowed && (
+                                <LoanRow
+                                    key={loan.id}
+                                    loan={loan}
+                                    deposits={deposits}
+                                    agentId={agentId}
+                                    planetId={planetId}
+                                    onRepaid={(amount) => {
+                                        toast.success(
+                                            `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
+                                        );
+                                    }}
+                                    onError={(msg) => {
+                                        toast.error(msg);
+                                    }}
+                                />
+                            ),
+                    )}
                 </div>
             )}
         </div>

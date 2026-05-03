@@ -177,8 +177,8 @@ export function ExpensesRevenueChart({
     }, [granularity, chartData]);
 
     return (
-        <span className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Expenses &amp; Revenue</p>
+        <div className='flex flex-col items-start gap-1'>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>Expenses & Revenue</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -331,6 +331,6 @@ export function ExpensesRevenueChart({
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-        </span>
+        </div>
     );
 }

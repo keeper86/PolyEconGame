@@ -35,6 +35,11 @@ describe('resetAgentMetrics', () => {
             revenue: 600,
             purchases: 50,
             claimPayments: 30,
+            producedResources: { iron: { quantity: 10, value: 500 } },
+            consumedResources: { coal: { quantity: 5, value: 100 } },
+            boughtResources: { machinery: { quantity: 1, value: 2000 } },
+            soldResources: { steel: { quantity: 8, value: 1600 } },
+            depreciatedServices: { maintenance: { quantity: 1, value: 300 } },
         };
 
         resetAgentMetrics(agents, planet);
@@ -46,6 +51,12 @@ describe('resetAgentMetrics', () => {
         expect(last.revenue).toBeCloseTo(600);
         expect(last.purchases).toBeCloseTo(50);
         expect(last.claimPayments).toBeCloseTo(30);
+        // Per-resource maps are snapshotted correctly
+        expect(last.producedResources).toEqual({ iron: { quantity: 10, value: 500 } });
+        expect(last.consumedResources).toEqual({ coal: { quantity: 5, value: 100 } });
+        expect(last.boughtResources).toEqual({ machinery: { quantity: 1, value: 2000 } });
+        expect(last.soldResources).toEqual({ steel: { quantity: 8, value: 1600 } });
+        expect(last.depreciatedServices).toEqual({ maintenance: { quantity: 1, value: 300 } });
     });
 
     it('resets monthAcc to zero at month boundary, snapshotting depositsAtMonthStart', () => {

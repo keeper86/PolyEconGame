@@ -146,8 +146,8 @@ export function BalanceFlowChart({
     }, [granularity, chartData]);
 
     return (
-        <span className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Net Balance &amp; Cash Flow</p>
+        <div className='flex flex-col items-start gap-1'>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>Net Balance & Cash Flow</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: -20, left: 0, bottom: 0 }}>
@@ -265,6 +265,6 @@ export function BalanceFlowChart({
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-        </span>
+        </div>
     );
 }
