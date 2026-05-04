@@ -53,7 +53,9 @@ export function SimulationTerminalLog({ events, onCollapse, className }: Simulat
     // Track whether the user has manually scrolled up
     const handleScroll = useCallback(() => {
         const container = containerRef.current;
-        if (!container) {return;}
+        if (!container) {
+            return;
+        }
 
         const { scrollTop, scrollHeight, clientHeight } = container;
         userScrolledUpRef.current = scrollHeight - scrollTop - clientHeight > 50;
