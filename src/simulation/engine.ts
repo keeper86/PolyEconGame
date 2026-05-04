@@ -111,7 +111,7 @@ export function advanceTick(gameState: GameState) {
 
     pushTickerEvent(gameState, {
         category: 'priceSpike',
-        message: 'Price spike check completed',
+        message: 'Price spike check completed ' + `(tick ${gameState.tick})`,
         planetId: 'earth',
         tick: gameState.tick,
     });
