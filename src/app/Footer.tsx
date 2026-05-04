@@ -27,7 +27,7 @@ export default function Footer() {
             return;
         }
 
-        setEvents((prev) => [...prev, ...newEvents]);
+        setEvents((prev) => [...prev, ...newEvents].slice(-200));
         const maxId = Math.max(...newEvents.map((e) => e.id ?? 0));
         lastIdRef.current = maxId;
     }, [data]);

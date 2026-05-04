@@ -1,4 +1,3 @@
-import type { PendingTickerEvent } from './planet';
 import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -16,8 +15,8 @@ import type {
     StorageFacility,
 } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
-import type { Agent, Planet, MonthAccumulator } from './planet';
-import { hasActiveLicense } from './planet';
+import type { Agent, GameState, MonthAccumulator, Planet } from './planet';
+import { hasActiveLicense, pushTickerEvent } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
@@ -98,13 +97,8 @@ export function consumeConstructionForFacility(facility: Facility, storage: Stor
     return toConsume;
 }
 
-export function constructionTick(
-    agents: Map<string, Agent>,
-    planet: Planet,
-    tick: number,
-    tickerEvents: PendingTickerEvent[],
-): void {
-    agents.forEach((agent) => {
+export function constructionTick(gameState: GameState, planet: Planet): void {
+    gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
             return;
@@ -122,13 +116,13 @@ export function constructionTick(
             const wasUnderConstruction = facility.construction !== null;
             consumeConstructionForFacility(facility, assets.storageFacility);
             if (wasUnderConstruction && facility.construction === null) {
-                tickerEvents.push({
+                pushTickerEvent(gameState, {
                     category: 'facilityCompleted',
                     planetId: planet.id,
                     agentId: agent.id,
                     agentName: agent.name,
                     message: `${agent.name} completed ${facility.name} on ${planet.name}`,
-                    tick,
+                    tick: gameState.tick,
                 });
             }
         }
@@ -356,11 +350,7 @@ function processManagementFacility(params: ManagementParameters): void {
     };
 }
 
-function processShipConstructionFacility(
-    params: ShipConstructionParameters,
-    tick: number,
-    tickerEvents: PendingTickerEvent[],
-): void {
+function processShipConstructionFacility(params: ShipConstructionParameters, gameState: GameState): void {
     const { facility, storage, overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, agent } =
         params;
     const actualConsumed: Record<string, number> = {};
@@ -375,15 +365,15 @@ function processShipConstructionFacility(
             }
             facility.progress += part * overallEfficiency;
             if (facility.progress >= 1) {
-                const newShip = createShip(facility.produces, tick, facility.shipName, planet);
+                const newShip = createShip(facility.produces, gameState.tick, facility.shipName, planet);
                 agent.ships.push(newShip);
-                tickerEvents.push({
+                pushTickerEvent(gameState, {
                     category: 'shipCompleted',
                     planetId: planet.id,
                     agentId: agent.id,
                     agentName: agent.name,
                     message: `${agent.name} completed ${newShip.name} (${newShip.type.type}) on ${planet.name}`,
-                    tick,
+                    tick: gameState.tick,
                 });
                 facility.progress = 0;
                 facility.produces = null;
@@ -427,13 +417,8 @@ function processStorageFacility(params: StorageParameters): void {
 
 // ---- main tick ----
 
-export function productionTick(
-    agents: Map<string, Agent>,
-    planet: Planet,
-    tick: number,
-    tickerEvents: PendingTickerEvent[],
-): void {
-    agents.forEach((agent) => {
+export function productionTick(gameState: GameState, planet: Planet): void {
+    gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
             return;
@@ -553,7 +538,7 @@ export function productionTick(
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'ship_construction') {
-                processShipConstructionFacility({ ...productionParameterBase, facility }, tick, tickerEvents);
+                processShipConstructionFacility({ ...productionParameterBase, facility }, gameState);
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
             }

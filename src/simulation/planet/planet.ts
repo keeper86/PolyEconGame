@@ -289,21 +289,18 @@ export type Agent = {
     };
 };
 
-/** Event being built during a tick — `id` is assigned by the engine after the tick completes. */
-export type PendingTickerEvent = Omit<TickerEvent, 'id'> & { id?: number };
-
 export interface GameState {
     tick: number;
     planets: Map<string, Planet>;
     agents: Map<string, Agent>;
     shipCapitalMarket: ShipCapitalMarket;
-    /** Automated market-maker agents stored separately so they bypass the normal financial tick. */
     forexMarketMakers: Map<string, Agent>;
-    /** Rolling buffer of noteworthy simulation events for the ticker display.
-     *  `id` is assigned by the engine after each tick; push sites omit it. */
-    tickerEvents: PendingTickerEvent[];
-    /** Monotonically increasing counter for assigning unique IDs to ticker events. */
+    tickerEvents: TickerEvent[];
     nextEventId: number;
+}
+
+export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id'>): void {
+    gameState.tickerEvents.push({ ...event, id: gameState.nextEventId++ } as TickerEvent);
 }
 
 export function createEmptyAccumulator(): MonthAccumulator {

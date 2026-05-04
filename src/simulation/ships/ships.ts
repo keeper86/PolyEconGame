@@ -1,4 +1,4 @@
-import type { PendingTickerEvent } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import type { Facility } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
@@ -246,7 +246,7 @@ export type PassengerShip = BaseShip & {
 
 export type Ship = TransportShip | ConstructionShip | PassengerShip;
 
-export const shipTick = (gameState: GameState, tickerEvents: PendingTickerEvent[]): void => {
+export const shipTick = (gameState: GameState): void => {
     for (const agent of gameState.agents.values()) {
         for (const ship of agent.ships) {
             if (ship.state.type === 'derelict' || ship.state.type === 'lost') {
@@ -302,7 +302,7 @@ export const shipTick = (gameState: GameState, tickerEvents: PendingTickerEvent[
                             'planetId' in ship.state ? (ship.state as { planetId: string }).planetId : '';
                         const toPlanet = gameState.planets.get(toPlanetId);
                         const fromPlanet = gameState.planets.get(preState.from);
-                        tickerEvents.push({
+                        pushTickerEvent(gameState, {
                             category: 'shipArrived',
                             planetId: toPlanetId,
                             agentId: agent.id,

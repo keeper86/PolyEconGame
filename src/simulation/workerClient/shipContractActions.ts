@@ -2,6 +2,7 @@ import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { Facility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import type { ConstructionContract, ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
 import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
@@ -883,7 +884,7 @@ export function handleDispatchShip(
         // Emit ticker event
         const fromPlanet = state.planets.get(fromPlanetId);
         const toPlanet = state.planets.get(toPlanetId);
-        state.tickerEvents.push({
+        pushTickerEvent(state, {
             category: 'shipDispatched',
             planetId: fromPlanetId,
             agentId,
@@ -931,7 +932,7 @@ export function handleDispatchShip(
     // Emit ticker event
     const fromPlanet = state.planets.get(fromPlanetId);
     const toPlanet = state.planets.get(toPlanetId);
-    state.tickerEvents.push({
+    pushTickerEvent(state, {
         category: 'shipDispatched',
         planetId: fromPlanetId,
         agentId,
@@ -1036,7 +1037,7 @@ export function handleDispatchPassengerShip(
     // Emit ticker event
     const fromPlanet = state.planets.get(fromPlanetId);
     const toPlanet = state.planets.get(toPlanetId);
-    state.tickerEvents.push({
+    pushTickerEvent(state, {
         category: 'shipDispatched',
         planetId: fromPlanetId,
         agentId,
@@ -1134,7 +1135,7 @@ export function handleDispatchConstructionShip(
     // Emit ticker event
     const fromPlanet = state.planets.get(fromPlanetId);
     const toPlanet = state.planets.get(toPlanetId);
-    state.tickerEvents.push({
+    pushTickerEvent(state, {
         category: 'shipDispatched',
         planetId: fromPlanetId,
         agentId,

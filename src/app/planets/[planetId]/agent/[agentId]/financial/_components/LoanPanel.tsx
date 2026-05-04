@@ -101,7 +101,9 @@ function LoanRow({
                                 label={label}
                                 amount={formatNumberWithUnit(amount, 'units', planetId)}
                                 isFull={fraction === 1}
-                                disabled={repayMutation.isPending || !canAfford || amount === 0}
+                                disabled={
+                                    repayMutation.isPending || !canAfford || amount === 0 || !loan.earlyRepaymentAllowed
+                                }
                                 planetId={planetId}
                                 onClick={() => repayMutation.mutate({ agentId, planetId, loanId: loan.id, fraction })}
                             />
@@ -258,26 +260,23 @@ function OutstandingLoansSection({
             <CollapsibleContent>
                 <p className='text-xs text-muted-foreground'>Pay back early:</p>
                 <div className='space-y-2 pt-1'>
-                    {activeLoans.map(
-                        (loan) =>
-                            loan.earlyRepaymentAllowed && (
-                                <LoanRow
-                                    key={loan.id}
-                                    loan={loan}
-                                    deposits={deposits}
-                                    agentId={agentId}
-                                    planetId={planetId}
-                                    onRepaid={(amount) => {
-                                        toast.success(
-                                            `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
-                                        );
-                                    }}
-                                    onError={(msg) => {
-                                        toast.error(msg);
-                                    }}
-                                />
-                            ),
-                    )}
+                    {activeLoans.map((loan) => (
+                        <LoanRow
+                            key={loan.id}
+                            loan={loan}
+                            deposits={deposits}
+                            agentId={agentId}
+                            planetId={planetId}
+                            onRepaid={(amount) => {
+                                toast.success(
+                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
+                                );
+                            }}
+                            onError={(msg) => {
+                                toast.error(msg);
+                            }}
+                        />
+                    ))}
                 </div>
             </CollapsibleContent>
         </Collapsible>

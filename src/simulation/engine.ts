@@ -74,9 +74,9 @@ export function advanceTick(gameState: GameState) {
 
         accumulatePlanetPrices(planet, gameState.tick);
 
-        constructionTick(gameState.agents, planet, gameState.tick, gameState.tickerEvents);
+        constructionTick(gameState, planet);
 
-        productionTick(gameState.agents, planet, gameState.tick, gameState.tickerEvents);
+        productionTick(gameState, planet);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);
@@ -113,14 +113,7 @@ export function advanceTick(gameState: GameState) {
     forexTick(gameState);
     forexMMRepaymentTick(gameState);
 
-    shipTick(gameState, gameState.tickerEvents);
-
-    // Assign IDs to any events added this tick
-    for (const event of gameState.tickerEvents) {
-        if (event.id === undefined) {
-            event.id = gameState.nextEventId++;
-        }
-    }
+    shipTick(gameState);
 
     if (gameState.tickerEvents.length > MAX_TICKER_EVENTS) {
         gameState.tickerEvents = gameState.tickerEvents.slice(-MAX_TICKER_EVENTS);

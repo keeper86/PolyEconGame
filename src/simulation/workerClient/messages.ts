@@ -1,4 +1,4 @@
-import type { PendingTickerEvent } from '../planet/planet';
+import type { TickerEvent } from 'src/server/controller/simulation';
 import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 
 export type InboundMessage =
@@ -268,7 +268,7 @@ export type InboundMessage =
 
 export type OutboundMessage =
     | { type: 'pong'; tick: number }
-    | { type: 'tick'; tick: number; elapsedMs: number; tickerEvents?: PendingTickerEvent[] }
+    | { type: 'tick'; tick: number; elapsedMs: number; tickerEvents?: TickerEvent[] }
     | { type: 'agentCreated'; requestId: string; agentId: string }
     | { type: 'agentCreationFailed'; requestId: string; reason: string }
     | { type: 'loanGranted'; requestId: string; agentId: string; amount: number }

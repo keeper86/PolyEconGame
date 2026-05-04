@@ -635,7 +635,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 }
                 case 'getTickerEvents': {
                     data = {
-                        tickerEvents: state.tickerEvents as import('src/server/controller/simulation').TickerEvent[],
+                        tickerEvents: state.tickerEvents,
                     };
                     break;
                 }

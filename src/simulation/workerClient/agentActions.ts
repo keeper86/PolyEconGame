@@ -1,4 +1,5 @@
 import type { Agent, GameState } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import { makeAgent } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from './messages';
 
@@ -30,7 +31,7 @@ export function handleCreateAgent(
 
     // Emit ticker event
     const planet = state.planets.get(planetId);
-    state.tickerEvents.push({
+    pushTickerEvent(state, {
         category: 'agentCreated',
         planetId,
         agentId,

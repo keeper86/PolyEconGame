@@ -110,10 +110,7 @@ export function SimulationEventTicker({ events, className }: SimulationEventTick
             onMouseLeave={() => {
                 isPausedRef.current = false;
             }}
-            role='button'
-            tabIndex={0}
-            aria-label='Simulation event ticker. Click to expand for full log.'
-            aria-expanded={false}
+            aria-label='Simulation event ticker'
         >
             {/* Gradient fade on edges */}
             <div className='pointer-events-none absolute inset-y-0 left-0 w-64 bg-gradient-to-r from-background to-transparent z-10' />

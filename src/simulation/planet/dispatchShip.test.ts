@@ -1,20 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { handleDispatchShip } from '../workerClient/shipContractActions';
 import type { PendingAction, OutboundMessage } from '../workerClient/messages';
-import type { GameState } from './planet';
-import { makeAgent, makeAgentPlanetAssets, makeStorageFacility } from '../utils/testHelper';
+import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { steelResourceType } from './resources';
 import { shiptypes } from '../ships/ships';
 import type { TransportShip } from '../ships/ships';
 import { putIntoStorageFacility } from './facility';
-
-function makeGameState(agents: ReturnType<typeof makeAgent>[], planetIds: string[]): GameState {
-    const planets = new Map(
-        planetIds.map((id) => [id, { id } as GameState['planets'] extends Map<string, infer V> ? V : never]),
-    );
-    const agentsMap = new Map(agents.map((a) => [a.id, a]));
-    return { tick: 0, planets, agents: agentsMap, tickerEvents: [] } as unknown as GameState;
-}
+import type { GameState } from './planet';
 
 function makeTransportShip(name: string, planetId: string): TransportShip {
     return {
@@ -59,21 +51,21 @@ describe('handleDispatchShip', () => {
     }
 
     it('fails when agent not found', () => {
-        const state = makeGameState([], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], []);
         dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Agent not found' });
     });
 
     it('fails when destination planet not found', () => {
         const agent = makeAgent('a1', 'p1');
-        const state = makeGameState([agent], ['p1']);
+        const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
     it('fails when ship not found', () => {
         const agent = makeAgent('a1', 'p1');
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'Ghost' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: expect.stringContaining('Ghost') });
     });
@@ -83,7 +75,7 @@ describe('handleDispatchShip', () => {
         const ship = makeTransportShip('S1', 'p1');
         ship.state = { type: 'transporting', from: 'p1', to: 'p2', cargo: null, arrivalTick: 100 };
         agent.ships.push(ship);
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Ship is not idle' });
     });
@@ -92,7 +84,7 @@ describe('handleDispatchShip', () => {
         const agent = makeAgent('a1', 'p1');
         const ship = makeTransportShip('S1', 'p2');
         agent.ships.push(ship);
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
@@ -101,7 +93,7 @@ describe('handleDispatchShip', () => {
         const agent = makeAgent('a1', 'p1');
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1', cargoGoal: null });
         expect(messages[0]).toMatchObject({ type: 'shipDispatched', agentId: 'a1', shipName: 'S1' });
         expect(ship.state.type).toBe('transporting');
@@ -116,7 +108,7 @@ describe('handleDispatchShip', () => {
         const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, {
             agentId: 'a1',
             fromPlanetId: 'p1',
@@ -131,7 +123,7 @@ describe('handleDispatchShip', () => {
         const agent = makeAgent('a1', 'p1');
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, {
             agentId: 'a1',
             fromPlanetId: 'p1',
@@ -149,7 +141,7 @@ describe('handleDispatchShip', () => {
         const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, {
             agentId: 'a1',
             fromPlanetId: 'p1',
@@ -170,7 +162,7 @@ describe('handleDispatchShip', () => {
         const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
-        const state = makeGameState([agent], ['p1', 'p2']);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, {
             agentId: 'a1',
             fromPlanetId: 'p1',

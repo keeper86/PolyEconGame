@@ -2,6 +2,7 @@ import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
 import { makeAgentPlanetAssets } from '../utils/testHelper';
 import { grantLoan } from '../financial/loanTypes';
 import type { GameState } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleAcquireLicense(
@@ -94,7 +95,7 @@ export function handleAcquireLicense(
     }
 
     // Emit ticker event
-    state.tickerEvents.push({
+    pushTickerEvent(state, {
         category: 'licenseAcquired',
         planetId,
         agentId,
