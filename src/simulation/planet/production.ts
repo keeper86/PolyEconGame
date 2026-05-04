@@ -1,3 +1,4 @@
+import type { PendingTickerEvent } from './planet';
 import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -97,7 +98,12 @@ export function consumeConstructionForFacility(facility: Facility, storage: Stor
     return toConsume;
 }
 
-export function constructionTick(agents: Map<string, Agent>, planet: Planet): void {
+export function constructionTick(
+    agents: Map<string, Agent>,
+    planet: Planet,
+    tick: number,
+    tickerEvents: PendingTickerEvent[],
+): void {
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
@@ -113,7 +119,18 @@ export function constructionTick(agents: Map<string, Agent>, planet: Planet): vo
         ];
 
         for (const facility of allFacilities) {
+            const wasUnderConstruction = facility.construction !== null;
             consumeConstructionForFacility(facility, assets.storageFacility);
+            if (wasUnderConstruction && facility.construction === null) {
+                tickerEvents.push({
+                    category: 'facilityCompleted',
+                    planetId: planet.id,
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    message: `${agent.name} completed ${facility.name} on ${planet.name}`,
+                    tick,
+                });
+            }
         }
     });
 }
@@ -339,7 +356,11 @@ function processManagementFacility(params: ManagementParameters): void {
     };
 }
 
-function processShipConstructionFacility(params: ShipConstructionParameters, tick: number): void {
+function processShipConstructionFacility(
+    params: ShipConstructionParameters,
+    tick: number,
+    tickerEvents: PendingTickerEvent[],
+): void {
     const { facility, storage, overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, agent } =
         params;
     const actualConsumed: Record<string, number> = {};
@@ -354,7 +375,16 @@ function processShipConstructionFacility(params: ShipConstructionParameters, tic
             }
             facility.progress += part * overallEfficiency;
             if (facility.progress >= 1) {
-                agent.ships.push(createShip(facility.produces, tick, facility.shipName, planet));
+                const newShip = createShip(facility.produces, tick, facility.shipName, planet);
+                agent.ships.push(newShip);
+                tickerEvents.push({
+                    category: 'shipCompleted',
+                    planetId: planet.id,
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    message: `${agent.name} completed ${newShip.name} (${newShip.type.type}) on ${planet.name}`,
+                    tick,
+                });
                 facility.progress = 0;
                 facility.produces = null;
                 facility.shipName = '';
@@ -397,7 +427,12 @@ function processStorageFacility(params: StorageParameters): void {
 
 // ---- main tick ----
 
-export function productionTick(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+export function productionTick(
+    agents: Map<string, Agent>,
+    planet: Planet,
+    tick: number,
+    tickerEvents: PendingTickerEvent[],
+): void {
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
@@ -518,7 +553,7 @@ export function productionTick(agents: Map<string, Agent>, planet: Planet, tick:
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'ship_construction') {
-                processShipConstructionFacility({ ...productionParameterBase, facility }, tick);
+                processShipConstructionFacility({ ...productionParameterBase, facility }, tick, tickerEvents);
             } else {
                 processStorageFacility({ ...productionParameterBase, facility });
             }

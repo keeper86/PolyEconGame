@@ -368,7 +368,7 @@ describe('transport ship: loading → transporting', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         agent.ships.push(ship);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('transporting');
         expect(storage.currentInStorage.Steel?.quantity).toBeCloseTo(200, 1);
@@ -389,7 +389,7 @@ describe('transport ship: loading → transporting', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         agent.ships.push(ship);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('loading');
     });
@@ -409,7 +409,7 @@ describe('transport ship: loading → transporting', () => {
         };
         agent.ships.push(ship);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('idle');
         expect(ship.state.planetId).toBe('p1');
@@ -430,7 +430,7 @@ describe('transport ship: loading → transporting', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         agent.ships.push(ship);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('transporting');
     });
@@ -451,7 +451,7 @@ describe('transport ship: transporting → unloading', () => {
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 100);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('transporting');
     });
@@ -470,7 +470,7 @@ describe('transport ship: transporting → unloading', () => {
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 100);
 
-        shipTick(state);
+        shipTick(state, []);
 
         const shipState = ship.state as unknown as TransportShipStatusUnloading;
         expect(shipState.type).toBe('unloading');
@@ -491,7 +491,7 @@ describe('transport ship: transporting → unloading', () => {
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
 
-        shipTick(state);
+        shipTick(state, []);
 
         const shipState = ship.state as unknown as ShipStatusIdle;
         expect(shipState.type).toBe('idle');
@@ -513,7 +513,7 @@ describe('transport ship: unloading → idle', () => {
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('idle');
         const shipState = ship.state as unknown as ShipStatusIdle;
@@ -541,7 +541,7 @@ describe('transport ship: unloading → idle', () => {
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('unloading');
     });
@@ -744,7 +744,7 @@ describe('construction ship: pre-fabrication → transporting', () => {
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        shipTick(state);
+        shipTick(state, []);
 
         const shipState = ship.state as unknown as ConstructionShipStatusTransporting;
         expect(shipState.type).toBe('construction_transporting');
@@ -767,7 +767,7 @@ describe('construction ship: pre-fabrication → transporting', () => {
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 100);
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('idle');
     });
@@ -787,7 +787,7 @@ describe('construction ship: construction_transporting → reconstruction', () =
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('construction_transporting');
     });
@@ -806,7 +806,7 @@ describe('construction ship: construction_transporting → reconstruction', () =
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
-        shipTick(state);
+        shipTick(state, []);
 
         const shipState = ship.state as unknown as ShipStatusIdle;
         expect(shipState.type).toBe('idle');
@@ -856,7 +856,7 @@ describe('construction ship: reconstruction places facility', () => {
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        shipTick(state);
+        shipTick(state, []);
 
         const shipState = ship.state as unknown as ShipStatusIdle;
         expect(shipState.type).toBe('idle');
@@ -878,7 +878,7 @@ describe('construction ship: reconstruction places facility', () => {
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('reconstruction');
     });
@@ -949,7 +949,7 @@ describe('derelict ship skipping', () => {
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('derelict');
     });
@@ -967,7 +967,7 @@ describe('lost ship is left alone', () => {
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        expect(() => shipTick(state)).not.toThrow();
+        expect(() => shipTick(state, [])).not.toThrow();
         expect(ship.state.type).toBe('lost');
     });
 });
@@ -1079,7 +1079,7 @@ describe('transport ship loading: cross-agent storage via posterAgentId', () => 
         carrier.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [poster, carrier]);
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('transporting');
         // Carrier's storage untouched; poster's storage decreased
@@ -1134,7 +1134,7 @@ describe('construction ship: pre-fabrication with buildingTarget.construction ==
         agent.ships.push(ship);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        shipTick(state);
+        shipTick(state, []);
 
         const shipState = ship.state as unknown as ConstructionShipStatusTransporting;
         expect(shipState.type).toBe('construction_transporting');

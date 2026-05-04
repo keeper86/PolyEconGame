@@ -27,6 +27,18 @@ export function handleCreateAgent(
     }
 
     state.agents.set(agentId, newAgent);
+
+    // Emit ticker event
+    const planet = state.planets.get(planetId);
+    state.tickerEvents.push({
+        category: 'agentCreated',
+        planetId,
+        agentId,
+        agentName,
+        message: `${agentName} founded on ${planet?.name ?? planetId}`,
+        tick: state.tick,
+    });
+
     console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
     safePostMessage({ type: 'agentCreated', requestId, agentId });
 }

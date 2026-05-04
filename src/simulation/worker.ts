@@ -542,7 +542,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
             }
 
-            pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs };
+            pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs, tickerEvents: state.tickerEvents };
             tryFlushMessages(Date.now());
 
             scheduleTick();
@@ -631,6 +631,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         (mm) => mm.associatedPlanetId === msg.planetId,
                     );
                     data = { tick: snap.tick, planet: pr ? pr.data : null, agents: [...agents, ...forexMMs] };
+                    break;
+                }
+                case 'getTickerEvents': {
+                    data = {
+                        tickerEvents: state.tickerEvents as import('src/server/controller/simulation').TickerEvent[],
+                    };
                     break;
                 }
                 default: {

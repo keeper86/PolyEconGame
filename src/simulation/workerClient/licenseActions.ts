@@ -93,6 +93,16 @@ export function handleAcquireLicense(
         );
     }
 
+    // Emit ticker event
+    state.tickerEvents.push({
+        category: 'licenseAcquired',
+        planetId,
+        agentId,
+        agentName: agent.name,
+        message: `${agent.name} acquired ${licenseType} license on ${planet.name}`,
+        tick: state.tick,
+    });
+
     console.log(
         `[worker] Agent '${agentId}' acquired '${licenseType}' license on planet '${planetId}' (cost: ${cost})`,
     );

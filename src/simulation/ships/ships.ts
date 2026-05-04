@@ -1,3 +1,4 @@
+import type { PendingTickerEvent } from '../planet/planet';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import type { Facility } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
@@ -245,7 +246,7 @@ export type PassengerShip = BaseShip & {
 
 export type Ship = TransportShip | ConstructionShip | PassengerShip;
 
-export const shipTick = (gameState: GameState): void => {
+export const shipTick = (gameState: GameState, tickerEvents: PendingTickerEvent[]): void => {
     for (const agent of gameState.agents.values()) {
         for (const ship of agent.ships) {
             if (ship.state.type === 'derelict' || ship.state.type === 'lost') {
@@ -255,6 +256,13 @@ export const shipTick = (gameState: GameState): void => {
             if (applyMaintenance(ship, agent, gameState)) {
                 continue;
             }
+
+            const preState =
+                ship.state.type === 'transporting' ||
+                ship.state.type === 'construction_transporting' ||
+                ship.state.type === 'passenger_transporting'
+                    ? { from: (ship.state as { from: string }).from }
+                    : null;
 
             let result: TransitionResult;
             if (ship.type.type === 'transport') {
@@ -280,6 +288,30 @@ export const shipTick = (gameState: GameState): void => {
             if (result.action === 'transition') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ship.state = result.newState as any;
+
+                // Emit arrival event when a ship transitions from a transporting state to an arrival state
+                if (preState) {
+                    const newStateType = ship.state.type;
+                    if (
+                        newStateType === 'unloading' ||
+                        newStateType === 'reconstruction' ||
+                        newStateType === 'passenger_unloading' ||
+                        newStateType === 'idle'
+                    ) {
+                        const toPlanetId =
+                            'planetId' in ship.state ? (ship.state as { planetId: string }).planetId : '';
+                        const toPlanet = gameState.planets.get(toPlanetId);
+                        const fromPlanet = gameState.planets.get(preState.from);
+                        tickerEvents.push({
+                            category: 'shipArrived',
+                            planetId: toPlanetId,
+                            agentId: agent.id,
+                            agentName: agent.name,
+                            message: `${agent.name}'s ${ship.name} arrived at ${toPlanet?.name ?? toPlanetId} from ${fromPlanet?.name ?? preState.from}`,
+                            tick: gameState.tick,
+                        });
+                    }
+                }
             }
         }
     }

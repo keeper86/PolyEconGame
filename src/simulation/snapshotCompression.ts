@@ -80,6 +80,8 @@ function wireToGameState(wire: WireGameState): GameState {
         agents,
         shipCapitalMarket: wire.shipCapitalMarket ?? { tradeHistory: [], emaPrice: {} },
         forexMarketMakers,
+        tickerEvents: [],
+        nextEventId: 1,
     };
 }
 

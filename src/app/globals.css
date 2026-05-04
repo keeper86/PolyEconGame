@@ -164,3 +164,14 @@ html {
 [data-sonner-toaster] [data-sonner-toast][data-type='success'] [data-icon] {
     color: #22c55e;
 }
+
+@keyframes ticker-scroll {
+    from { transform: translateX(100vw); }
+    to { transform: translateX(-100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ticker-scroll {
+        animation: none !important;
+    }
+}

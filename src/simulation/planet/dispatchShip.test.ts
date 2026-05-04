@@ -13,7 +13,7 @@ function makeGameState(agents: ReturnType<typeof makeAgent>[], planetIds: string
         planetIds.map((id) => [id, { id } as GameState['planets'] extends Map<string, infer V> ? V : never]),
     );
     const agentsMap = new Map(agents.map((a) => [a.id, a]));
-    return { tick: 0, planets, agents: agentsMap } as unknown as GameState;
+    return { tick: 0, planets, agents: agentsMap, tickerEvents: [] } as unknown as GameState;
 }
 
 function makeTransportShip(name: string, planetId: string): TransportShip {

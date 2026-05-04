@@ -1,3 +1,4 @@
+import type { TickerEvent } from 'src/server/controller/simulation';
 import { TICKS_PER_MONTH } from '../constants';
 import type { Loan } from '../financial/loanTypes';
 import type { EducationLevelType, Population } from '../population/population';
@@ -288,6 +289,9 @@ export type Agent = {
     };
 };
 
+/** Event being built during a tick — `id` is assigned by the engine after the tick completes. */
+export type PendingTickerEvent = Omit<TickerEvent, 'id'> & { id?: number };
+
 export interface GameState {
     tick: number;
     planets: Map<string, Planet>;
@@ -295,6 +299,11 @@ export interface GameState {
     shipCapitalMarket: ShipCapitalMarket;
     /** Automated market-maker agents stored separately so they bypass the normal financial tick. */
     forexMarketMakers: Map<string, Agent>;
+    /** Rolling buffer of noteworthy simulation events for the ticker display.
+     *  `id` is assigned by the engine after each tick; push sites omit it. */
+    tickerEvents: PendingTickerEvent[];
+    /** Monotonically increasing counter for assigning unique IDs to ticker events. */
+    nextEventId: number;
 }
 
 export function createEmptyAccumulator(): MonthAccumulator {

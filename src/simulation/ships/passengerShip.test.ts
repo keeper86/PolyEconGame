@@ -288,9 +288,9 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // boarding → passenger_provisioning
+        shipTick(state, []); // boarding → passenger_provisioning
         expect(ship.state.type).toBe('passenger_provisioning');
-        shipTick(state); // provisioning → passenger_transporting
+        shipTick(state, []); // provisioning → passenger_transporting
 
         expect(ship.state.type).toBe('passenger_transporting');
 
@@ -327,7 +327,7 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(planet.population.summedPopulation.employed.none.novice.total).toBe(0);
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(0);
@@ -353,7 +353,7 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state);
+        shipTick(state, []);
 
         // Boarding succeeded; now waiting for provisions
         expect(ship.state.type).toBe('passenger_provisioning');
@@ -381,10 +381,10 @@ describe('shipTick passenger boarding', () => {
         );
         expect(messages[0]).toMatchObject({ type: 'passengerShipDispatched', shipName: 'S1' });
 
-        shipTick(state); // boarding -> passenger_provisioning
+        shipTick(state, []); // boarding -> passenger_provisioning
         expect(ship.state.type).toBe('passenger_provisioning');
 
-        shipTick(state); // provisioning -> passenger_transporting without storage
+        shipTick(state, []); // provisioning -> passenger_transporting without storage
         expect(ship.state.type).toBe('passenger_transporting');
         if (ship.state.type === 'passenger_transporting') {
             expect(ship.state.manifest).toEqual({});
@@ -412,7 +412,7 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // tick 0: boarding → passenger_provisioning with deadline
+        shipTick(state, []); // tick 0: boarding → passenger_provisioning with deadline
         expect(ship.state.type).toBe('passenger_provisioning');
 
         // Advance past the deadline (no provisions provided)
@@ -421,7 +421,7 @@ describe('shipTick passenger boarding', () => {
             ship.state = { ...ship.state, deadlineTick: 0 };
         }
         state.tick = 1; // past deadline
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('idle');
         // Workers refunded back to planet
@@ -448,7 +448,7 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state);
+        shipTick(state, []);
 
         // No workers available — ship waits in boarding state until deadline
         expect(ship.state.type).toBe('passenger_boarding');
@@ -478,8 +478,8 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // boarding → passenger_provisioning
-        shipTick(state); // provisioning → passenger_transporting
+        shipTick(state, []); // boarding → passenger_provisioning
+        shipTick(state, []); // provisioning → passenger_transporting
 
         // After boarding + provisioning the manifest is already age-advanced
         expect(ship.state.type).toBe('passenger_transporting');
@@ -530,8 +530,8 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // boarding → passenger_provisioning
-        shipTick(state); // provisioning → passenger_transporting
+        shipTick(state, []); // boarding → passenger_provisioning
+        shipTick(state, []); // provisioning → passenger_transporting
 
         expect(ship.state.type).toBe('passenger_transporting');
         const storage = agent.assets.p1!.storageFacility;
@@ -563,7 +563,7 @@ describe('shipTick passenger transporting / arrival', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent], 50);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('passenger_transporting');
         expect(planet2.population.summedPopulation.employed.none.novice.total).toBe(0);
@@ -591,7 +591,7 @@ describe('shipTick passenger transporting / arrival', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent], 100);
 
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('idle');
         const shipState = ship.state as unknown as ShipStatusIdle;
@@ -633,7 +633,7 @@ describe('shipTick passenger transporting / arrival', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent], 10);
 
-        shipTick(state);
+        shipTick(state, []);
 
         const cell = planet2.population.demography[30].employed.none.novice;
         expect(cell.services.grocery.buffer).toBe(GROCERY_BUFFER_TARGET_TICKS);
@@ -657,7 +657,7 @@ describe('shipTick passenger transporting / arrival', () => {
         // No p2 in gameState — unrecoverable
         const state = makeGameState([planet], [agent], 10);
 
-        expect(() => shipTick(state)).toThrow(/Destination planet 'p2' is missing at passenger arrival/);
+        expect(() => shipTick(state, [])).toThrow(/Destination planet 'p2' is missing at passenger arrival/);
     });
 });
 
@@ -1009,7 +1009,7 @@ describe('shipTick passenger_boarding deadline — refunds agent workforce', () 
         ship.state = { ...ship.state, currentPassengers: 200 };
 
         const state = makeGameState([planet, planet2], [agent], 1);
-        shipTick(state);
+        shipTick(state, []);
 
         // Ship goes idle
         expect(ship.state.type).toBe('idle');
@@ -1044,7 +1044,7 @@ describe('shipTick passenger_boarding deadline — refunds agent workforce', () 
         ship.state = { ...ship.state, currentPassengers: 100 };
 
         const state = makeGameState([planet, planet2], [agent], 1);
-        shipTick(state);
+        shipTick(state, []);
 
         expect(ship.state.type).toBe('idle');
         expect(agent.assets.p1!.workforceDemography[25].none.novice.active).toBe(100);

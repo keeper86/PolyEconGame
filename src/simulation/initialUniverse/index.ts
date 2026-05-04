@@ -37,6 +37,8 @@ export function createInitialGameState(): GameState {
         agents: new Map(allAgents.map((a) => [a.id, a])),
         shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
         forexMarketMakers: new Map(),
+        tickerEvents: [],
+        nextEventId: 1,
     };
 
     seedForexMarketMakers(gameState);

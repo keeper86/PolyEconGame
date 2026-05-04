@@ -551,6 +551,8 @@ export function makeGameState(
         agents: new Map(agents.map((a) => [a.id, a])),
         shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
         forexMarketMakers: new Map(),
+        tickerEvents: [],
+        nextEventId: 1,
     };
 }
 

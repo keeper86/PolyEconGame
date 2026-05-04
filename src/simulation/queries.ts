@@ -1,12 +1,8 @@
 import type { Planet, Agent } from './planet/planet';
 
-import type { LoanConditions } from '../server/controller/simulation';
+import type { LoanConditions, TickerEvent } from '../server/controller/simulation';
 import type { Loan } from './financial/loanTypes';
 import type { ShipCapitalMarket } from './ships/ships';
-
-// ---------------------------------------------------------------------------
-// Query shapes (main → worker)
-// ---------------------------------------------------------------------------
 
 export type WorkerQuery =
     | { type: 'getCurrentTick' }
@@ -17,14 +13,9 @@ export type WorkerQuery =
     | { type: 'getAllAgents' }
     | { type: 'getLoanConditions'; agentId: string; planetId: string }
     | { type: 'getShipCapitalMarket' }
-    | { type: 'getPlanetWithAgents'; planetId: string };
+    | { type: 'getPlanetWithAgents'; planetId: string }
+    | { type: 'getTickerEvents' };
 
-// ---------------------------------------------------------------------------
-// Result shapes (worker → main), keyed by query type
-// ---------------------------------------------------------------------------
-
-/** Maps each query `type` to its result payload (excluding requestId / error
- *  envelope — those are added by WorkerResponseMessage). */
 export interface WorkerQueryResult {
     getCurrentTick: { tick: number };
     getFullState: { tick: number; planets: Planet[]; agents: Agent[] };
@@ -35,13 +26,9 @@ export interface WorkerQueryResult {
     getLoanConditions: { conditions: LoanConditions | null; activeLoans: Loan[] };
     getShipCapitalMarket: { shipCapitalMarket: ShipCapitalMarket };
     getPlanetWithAgents: { tick: number; planet: Planet | null; agents: Agent[] };
+    getTickerEvents: { tickerEvents: TickerEvent[] };
 }
 
-// ---------------------------------------------------------------------------
-// Wire messages
-// ---------------------------------------------------------------------------
-
-/** Inbound query message sent from main thread to worker. */
 export type WorkerQueryMessage = WorkerQuery & { requestId: string };
 
 /** Successful response sent from worker to main thread. */

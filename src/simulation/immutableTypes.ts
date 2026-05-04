@@ -153,5 +153,7 @@ export function fromImmutableGameState(record: GameStateRecord): GameState {
         agents,
         shipCapitalMarket: record.shipCapitalMarket,
         forexMarketMakers: record.forexMarketMakers,
+        tickerEvents: [],
+        nextEventId: 1,
     };
 }
