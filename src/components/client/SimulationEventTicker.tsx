@@ -10,9 +10,7 @@ interface SimulationEventTicker2Props {
 }
 
 const MAX_LOCAL_EVENTS = 60;
-const VISIBLE_ROWS = 3;
-const ROW_HEIGHT = 32; // px
-const ADVANCE_INTERVAL_MS = 1800;
+const AUTO_ADVANCE_MS = 3000;
 
 function categoryColor(category: string): string {
     switch (category) {
@@ -40,91 +38,104 @@ function categoryColor(category: string): string {
 
 export function SimulationEventTicker({ events, className }: SimulationEventTicker2Props) {
     const [localEvents, setLocalEvents] = useState<TickerEvent[]>([]);
-    const [index, setIndex] = useState(0);
-
+    const [currentIndex, setCurrentIndex] = useState(0);
     const seenIdsRef = useRef(new Set<number>());
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const isPausedRef = useRef(false);
 
-    // Incremental ingestion (same logic as before)
+    // Deduplicate and cap incoming events
     useEffect(() => {
         if (events.length === 0) {
             return;
         }
-
         const newEvents = events.filter((e) => e.id !== undefined && !seenIdsRef.current.has(e.id!));
-
         if (newEvents.length === 0) {
             return;
         }
-
         newEvents.forEach((e) => seenIdsRef.current.add(e.id!));
-
         setLocalEvents((prev) => [...prev, ...newEvents].slice(-MAX_LOCAL_EVENTS));
     }, [events]);
 
-    // Auto-advance
+    const totalEvents = localEvents.length;
+
+    // Clamp currentIndex when events list shrinks
     useEffect(() => {
-        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (prefersReducedMotion) {
+        if (totalEvents > 0 && currentIndex >= totalEvents) {
+            setCurrentIndex(0);
+        }
+    }, [totalEvents, currentIndex]);
+
+    // Auto‑advance timer
+    useEffect(() => {
+        if (totalEvents === 0 || isPausedRef.current) {
             return;
         }
 
-        const interval = setInterval(() => {
-            if (isPausedRef.current) {
-                return;
+        const advance = () => setCurrentIndex((prev) => (prev + 1) % totalEvents);
+        intervalRef.current = setInterval(advance, AUTO_ADVANCE_MS);
+
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
             }
+        };
+    }, [totalEvents]);
 
-            setIndex((prev) => {
-                if (localEvents.length <= VISIBLE_ROWS) {
-                    return 0;
-                }
-                return (prev + 1) % localEvents.length;
-            });
-        }, ADVANCE_INTERVAL_MS);
+    const pause = () => {
+        isPausedRef.current = true;
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+        }
+    };
 
-        return () => clearInterval(interval);
-    }, [localEvents.length]);
+    const resume = () => {
+        isPausedRef.current = false;
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+        }
+        if (totalEvents > 0) {
+            intervalRef.current = setInterval(
+                () => setCurrentIndex((prev) => (prev + 1) % totalEvents),
+                AUTO_ADVANCE_MS,
+            );
+        }
+    };
 
-    // Compute visible slice (wrap-around)
-    const visibleEvents = [];
-    for (let i = 0; i < Math.min(VISIBLE_ROWS, localEvents.length); i++) {
-        visibleEvents.push(localEvents[(index + i) % localEvents.length]);
+    // No events state
+    if (totalEvents === 0) {
+        return (
+            <div
+                className={cn(
+                    'relative h-12 rounded-md border bg-muted/50 flex items-center justify-center',
+                    className,
+                )}
+            >
+                <span className='text-xs text-muted-foreground'>No events yet</span>
+            </div>
+        );
     }
+
+    const currentEvent = localEvents[currentIndex];
 
     return (
         <div
-            className={cn(
-                'relative overflow-hidden rounded-md border bg-muted/50',
-                'hover:bg-muted/80 transition-colors',
-                className,
-            )}
-            style={{ height: VISIBLE_ROWS * ROW_HEIGHT }}
-            onMouseEnter={() => (isPausedRef.current = true)}
-            onMouseLeave={() => (isPausedRef.current = false)}
+            className={cn('relative h-12 overflow-hidden rounded-md border bg-muted/50', className)}
+            onMouseEnter={pause}
+            onMouseLeave={resume}
             aria-label='Simulation event ticker'
         >
-            {/* Fade edges */}
-            <div className='pointer-events-none absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-background to-transparent z-10' />
-            <div className='pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent z-10' />
-
-            <div
-                className='flex flex-col transition-transform duration-500 ease-out'
-                style={{
-                    transform: `translateY(0px)`,
-                }}
-            >
-                {visibleEvents.map((event) => (
-                    <div key={event.id} className='flex items-center gap-2 px-2 text-xs' style={{ height: ROW_HEIGHT }}>
-                        <span
-                            className={cn(
-                                'inline-block w-1.5 h-1.5 rounded-full shrink-0',
-                                categoryColor(event.category),
-                            )}
-                        />
-                        <span className='text-muted-foreground font-mono'>T{event.tick}</span>
-                        <span className='text-foreground/90 truncate'>{event.message}</span>
-                    </div>
-                ))}
+            {/* Single event with a subtle fade transition */}
+            <div className='flex items-center justify-center h-full'>
+                <div key={currentEvent.id} className='inline-flex items-center gap-1.5 text-xs animate-fade-in'>
+                    <span
+                        className={cn(
+                            'inline-block w-1.5 h-1.5 rounded-full shrink-0',
+                            categoryColor(currentEvent.category),
+                        )}
+                    />
+                    <span className='text-muted-foreground font-mono'>T{currentEvent.tick}</span>
+                    <span className='text-foreground/90'>{currentEvent.message}</span>
+                </div>
             </div>
         </div>
     );
