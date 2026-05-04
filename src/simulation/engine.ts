@@ -10,7 +10,7 @@ import { marketTick } from './market/market';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
-import { accumulatePlanetPrices, resetAgentMetrics } from './planet/planet';
+import { accumulatePlanetPrices, pushTickerEvent, resetAgentMetrics } from './planet/planet';
 import { constructionTick, productionTick } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { shipTick } from './ships/ships';
@@ -107,6 +107,13 @@ export function advanceTick(gameState: GameState) {
                 );
             }
         }
+    });
+
+    pushTickerEvent(gameState, {
+        category: 'priceSpike',
+        message: 'Price spike check completed',
+        planetId: 'earth',
+        tick: gameState.tick,
     });
 
     forexMarketMakerPricing(gameState);

@@ -4,13 +4,15 @@ import { cn } from '@/lib/utils';
 import type { TickerEvent } from '@/server/controller/simulation';
 import { useEffect, useRef, useState } from 'react';
 
-interface SimulationEventTickerProps {
+interface SimulationEventTicker2Props {
     events: TickerEvent[];
     className?: string;
 }
 
-const SCROLL_SPEED_PX_PER_S = 80;
 const MAX_LOCAL_EVENTS = 60;
+const VISIBLE_ROWS = 3;
+const ROW_HEIGHT = 32; // px
+const ADVANCE_INTERVAL_MS = 1800;
 
 function categoryColor(category: string): string {
     switch (category) {
@@ -36,93 +38,83 @@ function categoryColor(category: string): string {
     }
 }
 
-export function SimulationEventTicker({ events, className }: SimulationEventTickerProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const scrollXRef = useRef<number | null>(null);
-    const isPausedRef = useRef(false);
-    const seenIdsRef = useRef(new Set<number>());
-    const lastTimeRef = useRef<number | null>(null);
-
+export function SimulationEventTicker({ events, className }: SimulationEventTicker2Props) {
     const [localEvents, setLocalEvents] = useState<TickerEvent[]>([]);
+    const [index, setIndex] = useState(0);
 
-    // Append genuinely new events without resetting the scroll animation
+    const seenIdsRef = useRef(new Set<number>());
+    const isPausedRef = useRef(false);
+
+    // Incremental ingestion (same logic as before)
     useEffect(() => {
         if (events.length === 0) {
             return;
         }
+
         const newEvents = events.filter((e) => e.id !== undefined && !seenIdsRef.current.has(e.id!));
+
         if (newEvents.length === 0) {
             return;
         }
+
         newEvents.forEach((e) => seenIdsRef.current.add(e.id!));
+
         setLocalEvents((prev) => [...prev, ...newEvents].slice(-MAX_LOCAL_EVENTS));
     }, [events]);
 
-    // RAF-based scrolling — runs once on mount, never restarts
+    // Auto-advance
     useEffect(() => {
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (prefersReducedMotion) {
             return;
         }
 
-        let rafId: number;
-
-        function tick(timestamp: number) {
-            const container = containerRef.current;
-            const content = contentRef.current;
-            if (!container || !content) {
-                rafId = requestAnimationFrame(tick);
+        const interval = setInterval(() => {
+            if (isPausedRef.current) {
                 return;
             }
 
-            // Initialise starting position to right edge of the container
-            if (scrollXRef.current === null) {
-                scrollXRef.current = container.clientWidth;
-            }
+            setIndex((prev) => {
+                if (localEvents.length <= VISIBLE_ROWS) {
+                    return 0;
+                }
+                return (prev + 1) % localEvents.length;
+            });
+        }, ADVANCE_INTERVAL_MS);
 
-            if (!isPausedRef.current) {
-                const dt = lastTimeRef.current !== null ? (timestamp - lastTimeRef.current) / 1000 : 0;
-                scrollXRef.current -= SCROLL_SPEED_PX_PER_S * dt;
+        return () => clearInterval(interval);
+    }, [localEvents.length]);
 
-                content.style.transform = `translateX(${scrollXRef.current}px)`;
-            }
-
-            lastTimeRef.current = timestamp;
-            rafId = requestAnimationFrame(tick);
-        }
-
-        rafId = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(rafId);
-    }, []);
+    // Compute visible slice (wrap-around)
+    const visibleEvents = [];
+    for (let i = 0; i < Math.min(VISIBLE_ROWS, localEvents.length); i++) {
+        visibleEvents.push(localEvents[(index + i) % localEvents.length]);
+    }
 
     return (
         <div
-            ref={containerRef}
             className={cn(
-                'relative h-12 overflow-hidden rounded-md border bg-muted/50',
+                'relative overflow-hidden rounded-md border bg-muted/50',
                 'hover:bg-muted/80 transition-colors',
                 className,
             )}
-            onMouseEnter={() => {
-                isPausedRef.current = true;
-            }}
-            onMouseLeave={() => {
-                isPausedRef.current = false;
-            }}
+            style={{ height: VISIBLE_ROWS * ROW_HEIGHT }}
+            onMouseEnter={() => (isPausedRef.current = true)}
+            onMouseLeave={() => (isPausedRef.current = false)}
             aria-label='Simulation event ticker'
         >
-            {/* Gradient fade on edges */}
-            <div className='pointer-events-none absolute inset-y-0 left-0 w-64 bg-gradient-to-r from-background to-transparent z-10' />
-            <div className='pointer-events-none absolute inset-y-0 right-0 w-64 bg-gradient-to-l from-background to-transparent z-10' />
+            {/* Fade edges */}
+            <div className='pointer-events-none absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-background to-transparent z-10' />
+            <div className='pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent z-10' />
 
             <div
-                ref={contentRef}
-                className='flex items-center h-full gap-4 whitespace-nowrap px-2'
-                style={{ willChange: 'transform' }}
+                className='flex flex-col transition-transform duration-500 ease-out'
+                style={{
+                    transform: `translateY(0px)`,
+                }}
             >
-                {localEvents.map((event) => (
-                    <span key={event.id} className='inline-flex items-center gap-1.5 text-xs shrink-0'>
+                {visibleEvents.map((event) => (
+                    <div key={event.id} className='flex items-center gap-2 px-2 text-xs' style={{ height: ROW_HEIGHT }}>
                         <span
                             className={cn(
                                 'inline-block w-1.5 h-1.5 rounded-full shrink-0',
@@ -130,8 +122,8 @@ export function SimulationEventTicker({ events, className }: SimulationEventTick
                             )}
                         />
                         <span className='text-muted-foreground font-mono'>T{event.tick}</span>
-                        <span className='text-foreground/90'>{event.message}</span>
-                    </span>
+                        <span className='text-foreground/90 truncate'>{event.message}</span>
+                    </div>
                 ))}
             </div>
         </div>
