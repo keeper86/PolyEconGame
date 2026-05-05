@@ -300,7 +300,8 @@ export interface GameState {
 }
 
 export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id'>): void {
-    gameState.tickerEvents.push({ ...event, id: gameState.nextEventId++ } as TickerEvent);
+    const tickerEvent: TickerEvent = { ...event, id: gameState.nextEventId++ };
+    gameState.tickerEvents.push(tickerEvent);
 }
 
 export function createEmptyAccumulator(): MonthAccumulator {

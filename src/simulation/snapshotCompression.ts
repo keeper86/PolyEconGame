@@ -34,6 +34,7 @@ interface WireGameState {
     agents: Agent[];
     shipCapitalMarket?: ShipCapitalMarket;
     forexMarketMakers?: Agent[];
+    nextEventId: number;
 }
 
 function gameStateToWire(gs: GameState): WireGameState {
@@ -43,6 +44,7 @@ function gameStateToWire(gs: GameState): WireGameState {
         agents: [...gs.agents.values()],
         shipCapitalMarket: gs.shipCapitalMarket,
         forexMarketMakers: [...gs.forexMarketMakers.values()],
+        nextEventId: gs.nextEventId,
     };
 }
 
@@ -81,7 +83,7 @@ function wireToGameState(wire: WireGameState): GameState {
         shipCapitalMarket: wire.shipCapitalMarket ?? { tradeHistory: [], emaPrice: {} },
         forexMarketMakers,
         tickerEvents: [],
-        nextEventId: 1,
+        nextEventId: wire.nextEventId ?? 1,
     };
 }
 
