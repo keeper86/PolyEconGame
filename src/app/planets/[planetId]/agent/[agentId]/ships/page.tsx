@@ -50,8 +50,8 @@ export default function AgentShipsPage() {
     const sellMutation = useMutation(
         trpc.postShipListing.mutationOptions({
             onSuccess: (_data, variables) => {
-                setSellMode((prev) => ({ ...prev, [variables.shipName]: false }));
-                setSellPrice((prev) => ({ ...prev, [variables.shipName]: '' }));
+                setSellMode((prev) => ({ ...prev, [variables.shipId]: false }));
+                setSellPrice((prev) => ({ ...prev, [variables.shipId]: '' }));
                 void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
                 void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
             },
@@ -106,7 +106,7 @@ export default function AgentShipsPage() {
                     {shipsHere.map((ship) => {
                         const isIdle = ship.state.type === 'idle';
                         return (
-                            <Card key={ship.name}>
+                            <Card key={ship.id}>
                                 <CardContent className='px-4 py-4'>
                                     <div className='flex items-start justify-between gap-4'>
                                         <div className='flex items-start gap-3'>
@@ -148,7 +148,7 @@ export default function AgentShipsPage() {
                                             {ship.state.type === 'listed' &&
                                                 (() => {
                                                     const listing = (listingsData?.listings ?? []).find(
-                                                        (l) => l.shipName === ship.name && l._agentId === agentId,
+                                                        (l) => l.shipId === ship.id && l._agentId === agentId,
                                                     );
                                                     return listing ? (
                                                         <Button
@@ -167,12 +167,13 @@ export default function AgentShipsPage() {
                                                         </Button>
                                                     ) : null;
                                                 })()}
-                                            {isIdle && !sellMode[ship.name] && (
+                                            {isIdle && !sellMode[ship.id] && (
                                                 <>
                                                     {ship.type.type === 'transport' && (
                                                         <DispatchShipDialog
                                                             agentId={agentId}
                                                             planetId={planetId}
+                                                            shipId={ship.id}
                                                             shipName={ship.name}
                                                             shipCargoType={ship.type.cargoSpecification.type}
                                                         >
@@ -185,6 +186,7 @@ export default function AgentShipsPage() {
                                                         <DispatchConstructionShipDialog
                                                             agentId={agentId}
                                                             planetId={planetId}
+                                                            shipId={ship.id}
                                                             shipName={ship.name}
                                                         >
                                                             <Button size='sm' variant='outline'>
@@ -196,6 +198,7 @@ export default function AgentShipsPage() {
                                                         <DispatchPassengerShipDialog
                                                             agentId={agentId}
                                                             planetId={planetId}
+                                                            shipId={ship.id}
                                                             shipName={ship.name}
                                                             passengerCapacity={ship.type.passengerCapacity}
                                                         >
@@ -208,37 +211,37 @@ export default function AgentShipsPage() {
                                                         size='sm'
                                                         variant='outline'
                                                         onClick={() =>
-                                                            setSellMode((prev) => ({ ...prev, [ship.name]: true }))
+                                                            setSellMode((prev) => ({ ...prev, [ship.id]: true }))
                                                         }
                                                     >
                                                         Sell
                                                     </Button>
                                                 </>
                                             )}
-                                            {isIdle && sellMode[ship.name] && (
+                                            {isIdle && sellMode[ship.id] && (
                                                 <>
                                                     <Input
                                                         type='number'
                                                         min={1}
                                                         className='w-28 h-8 text-sm'
                                                         placeholder='Ask price'
-                                                        value={sellPrice[ship.name] ?? ''}
+                                                        value={sellPrice[ship.id] ?? ''}
                                                         onChange={(e) =>
                                                             setSellPrice((prev) => ({
                                                                 ...prev,
-                                                                [ship.name]: e.target.value,
+                                                                [ship.id]: e.target.value,
                                                             }))
                                                         }
                                                     />
                                                     <Button
                                                         size='sm'
-                                                        disabled={!sellPrice[ship.name] || sellMutation.isPending}
+                                                        disabled={!sellPrice[ship.id] || sellMutation.isPending}
                                                         onClick={() =>
                                                             sellMutation.mutate({
                                                                 agentId,
                                                                 planetId,
-                                                                shipName: ship.name,
-                                                                askPrice: Number(sellPrice[ship.name]),
+                                                                shipId: ship.id,
+                                                                askPrice: Number(sellPrice[ship.id]),
                                                             })
                                                         }
                                                     >
@@ -250,7 +253,7 @@ export default function AgentShipsPage() {
                                                         onClick={() =>
                                                             setSellMode((prev) => ({
                                                                 ...prev,
-                                                                [ship.name]: false,
+                                                                [ship.id]: false,
                                                             }))
                                                         }
                                                     >

@@ -14,6 +14,8 @@ const BASE_SPEED_PX_PER_SEC = 80;
 const MIN_SPEED_PX_PER_SEC = 30;
 const MAX_SPEED_PX_PER_SEC = 500;
 
+type DisplayedEvent = { id: number; event: TickerEvent; duration: number };
+
 /* ---------- helpers ---------- */
 function textColor(category: string): string {
     switch (category) {
@@ -66,18 +68,19 @@ export default function Footer() {
         eventsRef.current = events;
     }, [events]);
 
-    const [displayedEvents, setDisplayedEvents] = useState<{ id: number; event: TickerEvent }[]>([]);
+    const [displayedEvents, setDisplayedEvents] = useState<DisplayedEvent[]>([]);
+    const [isPaused, setIsPaused] = useState(false);
+    const isPausedRef = useRef(false);
 
-    const positionsMapRef = useRef<Map<number, { x: number; width: number; element: HTMLDivElement | null }>>(
-        new Map(),
-    );
     const lastDisplayedIdRef = useRef<number | undefined>(undefined);
     const containerWidthRef = useRef<number>(0);
     const speedRef = useRef<number>(BASE_SPEED_PX_PER_SEC);
-    const isPausedRef = useRef(false);
-    const animFrameRef = useRef<number>(0);
-    const lastTimestampRef = useRef<number>(0);
-    const spawnLockRef = useRef(false);
+
+    // Steric state: time-based, accounts for paused duration since last spawn
+    const lastSpawnTimeRef = useRef<number>(-Infinity);
+    const lastSpawnWidthRef = useRef<number>(0);
+    const pauseStartRef = useRef<number>(0);
+    const totalPausedDurationRef = useRef<number>(0); // ms paused since last spawn
 
     useLayoutEffect(() => {
         const el = containerRef.current;
@@ -89,7 +92,7 @@ export default function Footer() {
             containerWidthRef.current = el.clientWidth;
         };
 
-        updateWidth(); // initial measurement (synchronous)
+        updateWidth();
         const observer = new ResizeObserver(updateWidth);
         observer.observe(el);
         return () => observer.disconnect();
@@ -126,9 +129,22 @@ export default function Footer() {
 
     /* ---- spawn a new event if space allows ---- */
     const trySpawn = useCallback(() => {
-        if (spawnLockRef.current) {
+        if (isPausedRef.current) {
             return;
         }
+
+        const all = eventsRef.current;
+        const pending =
+            lastDisplayedIdRef.current === undefined
+                ? all.length
+                : all.filter((e) => e.id > lastDisplayedIdRef.current!).length;
+
+        if (pending === 0) {
+            return;
+        }
+
+        speedRef.current = computeSpeed(pending);
+
         const nextEvent = findNextEvent();
         if (!nextEvent) {
             return;
@@ -138,98 +154,46 @@ export default function Footer() {
         const fullText = `${dateStr} ${nextEvent.message}`;
         const width = measureTextWidth(fullText);
         const containerWidth = containerWidthRef.current;
-        const gap = GAP_PX;
+        const speed = speedRef.current;
 
-        const positions = positionsMapRef.current;
-        let canSpawn = true;
-
-        // steric interaction: enough room at the right edge for the new event?
-        if (positions.size > 0) {
-            const rightMost = Math.max(...Array.from(positions.values(), (p) => p.x));
-            const rightMostWidth = Array.from(positions.values()).find((p) => p.x === rightMost)?.width ?? 0;
-            if (rightMost + rightMostWidth + gap > containerWidth) {
-                canSpawn = false;
-            }
-        }
-
-        if (canSpawn) {
-            const id = nextEvent.id;
-            const startX = containerWidth; // just outside the right edge
-            positions.set(id, { x: startX, width, element: null });
-            lastDisplayedIdRef.current = id;
-            spawnLockRef.current = true; // released when element mounts
-            setDisplayedEvents((prev) => [...prev, { id, event: nextEvent }]);
-        }
-    }, [findNextEvent, measureTextWidth]);
-
-    /* ---- registerElement – set initial transform and unlock spawning ---- */
-    const registerElement = useCallback((id: number, el: HTMLDivElement | null) => {
-        if (!el) {
-            return;
-        }
-        const pos = positionsMapRef.current.get(id);
-        if (!pos) {
-            return;
-        }
-        pos.element = el;
-        el.style.transform = `translateX(${pos.x}px)`;
-        spawnLockRef.current = false;
-    }, []);
-
-    /* ---- animation loop ---- */
-    const animationLoop = useCallback(() => {
-        animFrameRef.current = requestAnimationFrame(animationLoop);
-
-        if (isPausedRef.current) {
-            lastTimestampRef.current = 0; // reset delta
-            return;
-        }
-
+        // Steric check: approximate right-edge of last-spawned element using elapsed time
+        // minus any time spent paused since that spawn.
         const now = performance.now();
-        if (lastTimestampRef.current === 0) {
-            lastTimestampRef.current = now;
+        const effectiveElapsed = now - lastSpawnTimeRef.current - totalPausedDurationRef.current;
+        const distanceTraveled = (effectiveElapsed * speed) / 1000;
+        if (distanceTraveled < lastSpawnWidthRef.current + GAP_PX) {
             return;
         }
-        const deltaMs = now - lastTimestampRef.current;
-        lastTimestampRef.current = now;
 
-        const pending =
-            lastDisplayedIdRef.current === undefined
-                ? eventsRef.current.length
-                : eventsRef.current.filter((e) => e.id > lastDisplayedIdRef.current!).length;
-        speedRef.current = computeSpeed(pending);
+        const duration = (containerWidth + width) / speed;
 
-        const pxPerMs = speedRef.current / 1000;
-        const toRemove: number[] = [];
+        lastSpawnTimeRef.current = now;
+        lastSpawnWidthRef.current = width;
+        totalPausedDurationRef.current = 0; // reset: track pauses from this spawn onward
+        lastDisplayedIdRef.current = nextEvent.id;
 
-        positionsMapRef.current.forEach((pos, id) => {
-            pos.x -= pxPerMs * deltaMs;
-            if (pos.element) {
-                pos.element.style.transform = `translateX(${pos.x}px)`;
-            }
-            if (pos.x + pos.width < 0) {
-                toRemove.push(id);
-            }
-        });
-
-        if (toRemove.length > 0) {
-            setDisplayedEvents((prev) => prev.filter((e) => !toRemove.includes(e.id)));
-            toRemove.forEach((id) => positionsMapRef.current.delete(id));
-        }
-
-        trySpawn();
-    }, [computeSpeed, trySpawn]);
+        setDisplayedEvents((prev) => [...prev, { id: nextEvent.id, event: nextEvent, duration }]);
+    }, [computeSpeed, findNextEvent, measureTextWidth]);
 
     useEffect(() => {
-        animFrameRef.current = requestAnimationFrame(animationLoop);
-        return () => cancelAnimationFrame(animFrameRef.current);
-    }, [animationLoop]);
+        const intervalId = setInterval(trySpawn, 50);
+        return () => clearInterval(intervalId);
+    }, [trySpawn]);
 
     const pause = useCallback(() => {
+        if (!isPausedRef.current) {
+            pauseStartRef.current = performance.now();
+        }
         isPausedRef.current = true;
+        setIsPaused(true);
     }, []);
+
     const resume = useCallback(() => {
+        if (isPausedRef.current) {
+            totalPausedDurationRef.current += performance.now() - pauseStartRef.current;
+        }
         isPausedRef.current = false;
+        setIsPaused(false);
     }, []);
 
     return (
@@ -237,6 +201,7 @@ export default function Footer() {
             <div
                 ref={containerRef}
                 className='relative h-full overflow-hidden bg-muted/50'
+                style={{ '--ticker-play-state': isPaused ? 'paused' : 'running' } as React.CSSProperties}
                 onMouseEnter={pause}
                 onMouseLeave={resume}
                 aria-label='Simulation event ticker'
@@ -248,14 +213,17 @@ export default function Footer() {
                 <div className='pointer-events-none absolute inset-y-0 left-0 w-64 bg-gradient-to-r from-background to-transparent z-10' />
                 <div className='pointer-events-none absolute inset-y-0 right-0 w-64 bg-gradient-to-l from-background to-transparent z-10' />
 
-                {displayedEvents.map(({ id, event }) => (
+                {displayedEvents.map(({ id, event, duration }) => (
                     <div
                         key={id}
-                        ref={(el) => registerElement(id, el)}
-                        className='absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
-                        style={{
-                            transform: `translateX(${positionsMapRef.current.get(id)?.x ?? containerWidthRef.current}px)`,
-                        }}
+                        className='ticker-item absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
+                        style={
+                            {
+                                '--ticker-start': `${containerWidthRef.current}px`,
+                                animationDuration: `${duration}s`,
+                            } as React.CSSProperties
+                        }
+                        onAnimationEnd={() => setDisplayedEvents((prev) => prev.filter((e) => e.id !== id))}
                     >
                         <span className='inline-flex items-center gap-1.5 text-md select-none'>
                             <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>

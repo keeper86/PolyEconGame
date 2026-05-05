@@ -128,7 +128,7 @@ export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState)
     if (ship.state.type === 'listed') {
         const listingAssets = agent.assets[planetId];
         if (listingAssets) {
-            listingAssets.shipListings = listingAssets.shipListings.filter((l) => l.shipName !== ship.name);
+            listingAssets.shipListings = listingAssets.shipListings.filter((l) => l.shipId !== ship.id);
         }
     }
     ship.state = { type: 'derelict', planetId } satisfies ShipStatusDerelict;
@@ -136,7 +136,7 @@ export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState)
 }
 
 export function settleTransportContract(
-    shipName: string,
+    shipId: string,
     carrierAgentId: string,
     arrivedPlanetId: string,
     gameState: GameState,
@@ -149,14 +149,14 @@ export function settleTransportContract(
                 (c) =>
                     c.status === 'accepted' &&
                     c.acceptedByAgentId === carrierAgentId &&
-                    c.shipName === shipName &&
+                    c.shipId === shipId &&
                     c.toPlanetId === arrivedPlanetId,
             );
             if (contract) {
                 const index = posterAssets.transportContracts.indexOf(contract);
                 if (index === -1) {
                     console.warn(
-                        `Contract not found in poster's assets for delivered cargo on ship ${shipName} owned by agent ${carrierAgentId}`,
+                        `Contract not found in poster's assets for delivered cargo on ship ${shipId} owned by agent ${carrierAgentId}`,
                     );
                     break outer;
                 }
@@ -369,7 +369,7 @@ function handleTransportUnloading(ship: TransportShip, ctx: GameState, agent: Ag
 
     const arrivedPlanetId = s.planetId;
     // Settle any matching transport contract
-    settleTransportContract(ship.name, agent.id, arrivedPlanetId, ctx);
+    settleTransportContract(ship.id, agent.id, arrivedPlanetId, ctx);
     return { action: 'transition', newState: { type: 'idle', planetId: arrivedPlanetId } };
 }
 

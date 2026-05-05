@@ -114,6 +114,7 @@ describe('findCompatibleTrades', () => {
         seller.assets.p1!.shipListings.push({
             id: 'l1',
             sellerAgentId: 'seller',
+            shipId: 'S1',
             shipName: 'S1',
             shipTypeName: 'Bulk Carrier 1',
             askPrice: 1000,
@@ -137,6 +138,7 @@ describe('findCompatibleTrades', () => {
         seller.assets.p1!.shipListings.push({
             id: 'l1',
             sellerAgentId: 'seller',
+            shipId: 'S1',
             shipName: 'S1',
             shipTypeName: 'Small Bulk Carrier',
             askPrice: 5000,
@@ -161,6 +163,7 @@ describe('findCompatibleTrades', () => {
             id: 'l1',
             sellerAgentId: 'seller',
             shipName: 'S1',
+            shipId: 'S1',
             shipTypeName: 'Small Bulk Carrier',
             askPrice: 1000,
             planetId: 'p1',
@@ -171,7 +174,7 @@ describe('findCompatibleTrades', () => {
             id: 'o1',
             buyerAgentId: 'buyer',
             shipType: 'bulkCarrier1',
-            shipName: 'S1',
+            shipId: 'S1',
             price: 2000,
             sellerAgentId: 'seller',
             status: 'accepted', // not open
@@ -188,6 +191,7 @@ describe('findCompatibleTrades', () => {
         seller.assets.p1!.shipListings.push({
             id: 'l1',
             sellerAgentId: 'seller',
+            shipId: ship.id,
             shipName: 'S1',
             shipTypeName: 'Bulk Carrier 1',
             askPrice: 1000,
@@ -219,6 +223,7 @@ describe('findCompatibleTrades', () => {
             {
                 id: 'l1',
                 sellerAgentId: 'seller',
+                shipId: s1.id,
                 shipName: 'S1',
                 shipTypeName: 'Bulk Carrier 1',
                 askPrice: 1000,
@@ -228,6 +233,7 @@ describe('findCompatibleTrades', () => {
             {
                 id: 'l2',
                 sellerAgentId: 'seller',
+                shipId: s2.id,
                 shipName: 'S2',
                 shipTypeName: 'Bulk Carrier 1',
                 askPrice: 1000,

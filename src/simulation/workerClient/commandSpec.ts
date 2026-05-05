@@ -357,7 +357,7 @@ export const dispatchShipSpec: CommandSpec<
 > = {
     successType: 'shipDispatched',
     failureType: 'shipDispatchFailed',
-    extract: (msg) => msg.shipName,
+    extract: (msg) => msg.shipId,
 };
 
 type DispatchConstructionShipSuccess = Extract<OutboundMessage, { type: 'constructionShipDispatched' }>;
@@ -370,7 +370,7 @@ export const dispatchConstructionShipSpec: CommandSpec<
 > = {
     successType: 'constructionShipDispatched',
     failureType: 'constructionShipDispatchFailed',
-    extract: (msg) => msg.shipName,
+    extract: (msg) => msg.shipId,
 };
 
 type DispatchPassengerShipSuccess = Extract<OutboundMessage, { type: 'passengerShipDispatched' }>;
@@ -383,7 +383,7 @@ export const dispatchPassengerShipSpec: CommandSpec<
 > = {
     successType: 'passengerShipDispatched',
     failureType: 'passengerShipDispatchFailed',
-    extract: (msg) => msg.shipName,
+    extract: (msg) => msg.shipId,
 };
 
 // --- Ship construction facility specs ---

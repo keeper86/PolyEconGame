@@ -15,6 +15,13 @@ export default function ProductionPage() {
                 <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
             ) : !isLoading && assets ? (
                 <>
+                    <ProductionFacilitiesPanel
+                        facilities={assets.productionFacilities}
+                        shipConstructionFacilities={assets.shipConstructionFacilities}
+                        shipMaintenanceFacilities={assets.shipMaintenanceFacilities}
+                        agentId={agentId}
+                        planetId={planetId}
+                    />
                     <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
                         <AgentMetricChart
                             agentId={agentId}
@@ -29,13 +36,6 @@ export default function ProductionPage() {
                             metric='productionValue'
                         />
                     </div>
-                    <ProductionFacilitiesPanel
-                        facilities={assets.productionFacilities}
-                        shipConstructionFacilities={assets.shipConstructionFacilities}
-                        shipMaintenanceFacilities={assets.shipMaintenanceFacilities}
-                        agentId={agentId}
-                        planetId={planetId}
-                    />
                 </>
             ) : (
                 <div className='text-sm text-muted-foreground'>Loading…</div>

@@ -176,3 +176,16 @@ html {
 [data-sonner-toaster] [data-sonner-toast][data-type='success'] [data-icon] {
     color: #22c55e;
 }
+
+/* ---------- event ticker ---------- */
+@keyframes ticker-scroll {
+    from { transform: translateX(var(--ticker-start, 0px)); }
+    to   { transform: translateX(-100%); }
+}
+
+.ticker-item {
+    animation-name: ticker-scroll;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+    animation-play-state: var(--ticker-play-state, running);
+}

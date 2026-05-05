@@ -30,7 +30,7 @@ type Props = {
 export function AcceptTransportContractDialog({ agentId, planetId, contract, eligibleShips, open, onClose }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
-    const [shipName, setShipName] = useState('');
+    const [shipId, setShipId] = useState('');
 
     const mutation = useMutation(
         trpc.acceptTransportContract.mutationOptions({
@@ -42,7 +42,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
                     queryKey: trpc.listAgentShips.queryKey({ agentId }),
                 });
                 onClose();
-                setShipName('');
+                setShipId('');
             },
         }),
     );
@@ -56,7 +56,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
             planetId,
             posterAgentId: contract._agentId,
             contractId: contract.id,
-            shipName,
+            shipId,
         });
     };
 
@@ -81,13 +81,13 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
                     </div>
                     <div className='space-y-1.5'>
                         <Label>Ship to assign</Label>
-                        <Select value={shipName} onValueChange={setShipName} required>
+                        <Select value={shipId} onValueChange={setShipId} required>
                             <SelectTrigger>
                                 <SelectValue placeholder='Select ship…' />
                             </SelectTrigger>
                             <SelectContent>
                                 {eligibleShips.map((s) => (
-                                    <SelectItem key={s.name} value={s.name}>
+                                    <SelectItem key={s.id} value={s.id}>
                                         {s.name} ({s.type.name})
                                     </SelectItem>
                                 ))}
@@ -96,7 +96,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
                     </div>
                     {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
                     <DialogFooter>
-                        <Button type='submit' disabled={mutation.isPending || !shipName}>
+                        <Button type='submit' disabled={mutation.isPending || !shipId}>
                             {mutation.isPending ? 'Accepting…' : 'Accept Contract'}
                         </Button>
                     </DialogFooter>

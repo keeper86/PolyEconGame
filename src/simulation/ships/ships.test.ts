@@ -1,19 +1,3 @@
-/**
- * Comprehensive tests for the ship simulation module.
- *
- * Covers:
- *  - applyMaintenance helper (degradation, repair, derelict transition)
- *  - travelTime helper
- *  - settleTransportContract helper
- *  - settleConstructionContract helper
- *  - Transport ship handlers (loading, transporting, unloading)
- *  - Transport ship loading deadline timeout
- *  - Construction ship handlers (pre-fabrication, transit, reconstruction)
- *  - handleDispatchShip (validation + success paths)
- *  - handleDispatchConstructionShip (validation + success paths)
- *  - handleAcceptTransportContract
- */
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
 import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS, putIntoStorageFacility } from '../planet/facility';
@@ -176,6 +160,7 @@ describe('applyMaintenance', () => {
         agent.assets.p1!.shipListings.push({
             id: 'l1',
             sellerAgentId: 'a1',
+            shipId: ship.id,
             shipName: 'S1',
             shipTypeName: 'Bulk Carrier 1',
             askPrice: 1000,
@@ -216,7 +201,7 @@ describe('settleTransportContract', () => {
             expiresAtTick: 999,
             status: 'accepted',
             acceptedByAgentId: 'carrier',
-            shipName: 'S1',
+            shipId: 'S1',
             fulfillmentDueAtTick: 999,
         });
         carrier.assets.p2 = makeAgentPlanetAssets('p2');
@@ -264,7 +249,7 @@ describe('settleTransportContract', () => {
             expiresAtTick: 999,
             status: 'accepted' as const,
             acceptedByAgentId: 'carrier',
-            shipName: 'S_DUP',
+            shipId: 'S_DUP',
             fulfillmentDueAtTick: 999,
         };
         poster1.assets.p1!.depositHold = 100;
@@ -305,7 +290,7 @@ describe('settleConstructionContract', () => {
             expiresAtTick: 9999,
             status: 'accepted',
             acceptedByAgentId: 'carrier',
-            shipName: 'C1',
+            shipId: 'C1',
             fulfillmentDueAtTick: 9999,
         });
 
@@ -564,7 +549,7 @@ describe('handleDispatchShip validation', () => {
         overrides: Partial<Extract<PendingAction, { type: 'dispatchShip' }>> &
             Pick<
                 Extract<PendingAction, { type: 'dispatchShip' }>,
-                'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipName'
+                'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipId'
             >,
     ) {
         handleDispatchShip(state, { type: 'dispatchShip', requestId: 'r1', cargoGoal: null, ...overrides }, post);
@@ -572,21 +557,21 @@ describe('handleDispatchShip validation', () => {
 
     it('fails when agent not found', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], []);
-        dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Agent not found' });
     });
 
     it('fails when destination planet not found', () => {
         const agent = makeAgent('a1', 'p1');
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
     it('fails when ship not found', () => {
         const agent = makeAgent('a1', 'p1');
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'Ghost' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ghost-id' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
@@ -596,7 +581,7 @@ describe('handleDispatchShip validation', () => {
         ship.state = { type: 'transporting', from: 'p1', to: 'p2', cargo: null, arrivalTick: 999 };
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Ship is not idle' });
     });
 
@@ -605,7 +590,7 @@ describe('handleDispatchShip validation', () => {
         const ship = makeConstructionShip('C1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'C1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
@@ -614,7 +599,7 @@ describe('handleDispatchShip validation', () => {
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1', cargoGoal: null });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id, cargoGoal: null });
         expect(messages[0]).toMatchObject({ type: 'shipDispatched' });
         // ferry goes straight to transporting, no deadlineTick
         expect(ship.state.type).toBe('transporting');
@@ -632,7 +617,7 @@ describe('handleDispatchShip validation', () => {
             agentId: 'a1',
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
-            shipName: 'S1',
+            shipId: ship.id,
             cargoGoal: { resourceName: 'Steel', quantity: 200 },
         });
 
@@ -652,7 +637,7 @@ describe('handleDispatchShip validation', () => {
             agentId: 'a1',
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
-            shipName: 'S1',
+            shipId: ship.id,
             cargoGoal: { resourceName: 'Steel', quantity: 200 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
@@ -676,7 +661,7 @@ describe('handleDispatchConstructionShip validation', () => {
         overrides: Partial<Extract<PendingAction, { type: 'dispatchConstructionShip' }>> &
             Pick<
                 Extract<PendingAction, { type: 'dispatchConstructionShip' }>,
-                'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipName'
+                'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipId'
             >,
     ) {
         handleDispatchConstructionShip(
@@ -688,14 +673,14 @@ describe('handleDispatchConstructionShip validation', () => {
 
     it('fails when agent not found', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], []);
-        dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'C1' });
+        dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
         expect(messages[0]).toMatchObject({ type: 'constructionShipDispatchFailed' });
     });
 
     it('fails when ship not found', () => {
         const agent = makeAgent('a1', 'p1');
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'Ghost' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ghost-id' });
         expect(messages[0]).toMatchObject({ type: 'constructionShipDispatchFailed' });
     });
 
@@ -704,7 +689,7 @@ describe('handleDispatchConstructionShip validation', () => {
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
         expect(messages[0]).toMatchObject({ type: 'constructionShipDispatchFailed' });
     });
 
@@ -714,7 +699,7 @@ describe('handleDispatchConstructionShip validation', () => {
         ship.state = { type: 'pre-fabrication', planetId: 'p1', to: 'p2', buildingTarget: null, progress: 0 };
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'C1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
         expect(messages[0]).toMatchObject({ type: 'constructionShipDispatchFailed', reason: 'Ship is not idle' });
     });
 
@@ -723,7 +708,7 @@ describe('handleDispatchConstructionShip validation', () => {
         const ship = makeConstructionShip('C1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 20);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'C1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
         expect(messages[0]).toMatchObject({ type: 'constructionShipDispatched' });
         expect(ship.state.type).toBe('pre-fabrication');
         if (ship.state.type === 'pre-fabrication') {
@@ -924,7 +909,7 @@ describe('handleAcceptTransportContract deadlineTick', () => {
                 posterAgentId: 'poster',
                 planetId: 'p1',
                 contractId: 'tc1',
-                shipName: 'S1',
+                shipId: ship.id,
             },
             post,
         );
@@ -1170,7 +1155,7 @@ describe('settleConstructionContract — facility placed on third agent', () => 
             expiresAtTick: 9999,
             status: 'accepted',
             acceptedByAgentId: 'carrier',
-            shipName: 'C1',
+            shipId: 'C1',
             fulfillmentDueAtTick: 9999,
         });
 

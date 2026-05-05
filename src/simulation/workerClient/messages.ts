@@ -112,7 +112,7 @@ export type InboundMessage =
           planetId: string; // planet where contract was posted
           posterAgentId: string;
           contractId: string;
-          shipName: string;
+          shipId: string;
       }
     | {
           type: 'cancelTransportContract';
@@ -127,7 +127,7 @@ export type InboundMessage =
           agentId: string;
           fromPlanetId: string;
           toPlanetId: string;
-          shipName: string;
+          shipId: string;
           cargoGoal: { resourceName: string; quantity: number } | null;
       }
     | {
@@ -136,7 +136,7 @@ export type InboundMessage =
           agentId: string;
           fromPlanetId: string;
           toPlanetId: string;
-          shipName: string;
+          shipId: string;
           passengerCount: number;
       }
     | {
@@ -157,7 +157,7 @@ export type InboundMessage =
           planetId: string; // planet where contract was posted
           posterAgentId: string;
           contractId: string;
-          shipName: string; // idle construction ship to assign
+          shipId: string; // idle construction ship to assign
       }
     | {
           type: 'cancelConstructionContract';
@@ -172,7 +172,7 @@ export type InboundMessage =
           agentId: string;
           fromPlanetId: string;
           toPlanetId: string;
-          shipName: string;
+          shipId: string;
           facilityName?: string;
       }
     | {
@@ -190,7 +190,7 @@ export type InboundMessage =
           planetId: string; // planet where offer was posted
           posterAgentId: string;
           offerId: string;
-          shipName: string; // idle ship to transfer
+          shipId: string; // idle ship to transfer
       }
     | {
           type: 'buildShipConstructionFacility';
@@ -238,7 +238,7 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          shipName: string;
+          shipId: string;
           askPrice: number;
       }
     | {
@@ -305,11 +305,11 @@ export type OutboundMessage =
     | { type: 'transportContractAcceptFailed'; requestId: string; reason: string }
     | { type: 'transportContractCancelled'; requestId: string; agentId: string; contractId: string }
     | { type: 'transportContractCancelFailed'; requestId: string; reason: string }
-    | { type: 'shipDispatched'; requestId: string; agentId: string; shipName: string }
+    | { type: 'shipDispatched'; requestId: string; agentId: string; shipId: string }
     | { type: 'shipDispatchFailed'; requestId: string; reason: string }
-    | { type: 'passengerShipDispatched'; requestId: string; agentId: string; shipName: string }
+    | { type: 'passengerShipDispatched'; requestId: string; agentId: string; shipId: string }
     | { type: 'passengerShipDispatchFailed'; requestId: string; reason: string }
-    | { type: 'constructionShipDispatched'; requestId: string; agentId: string; shipName: string }
+    | { type: 'constructionShipDispatched'; requestId: string; agentId: string; shipId: string }
     | { type: 'constructionShipDispatchFailed'; requestId: string; reason: string }
     | { type: 'constructionContractPosted'; requestId: string; agentId: string; contractId: string }
     | { type: 'constructionContractPostFailed'; requestId: string; reason: string }
@@ -471,7 +471,7 @@ export type PendingAction =
           planetId: string;
           posterAgentId: string;
           contractId: string;
-          shipName: string;
+          shipId: string;
       }
     | {
           type: 'cancelTransportContract';
@@ -486,7 +486,7 @@ export type PendingAction =
           agentId: string;
           fromPlanetId: string;
           toPlanetId: string;
-          shipName: string;
+          shipId: string;
           cargoGoal: { resourceName: string; quantity: number } | null;
       }
     | {
@@ -495,7 +495,7 @@ export type PendingAction =
           agentId: string;
           fromPlanetId: string;
           toPlanetId: string;
-          shipName: string;
+          shipId: string;
           passengerCount: number;
       }
     | {
@@ -516,7 +516,7 @@ export type PendingAction =
           planetId: string;
           posterAgentId: string;
           contractId: string;
-          shipName: string;
+          shipId: string;
       }
     | {
           type: 'cancelConstructionContract';
@@ -531,7 +531,7 @@ export type PendingAction =
           agentId: string;
           fromPlanetId: string;
           toPlanetId: string;
-          shipName: string;
+          shipId: string;
           facilityName?: string;
       }
     | {
@@ -549,7 +549,7 @@ export type PendingAction =
           planetId: string;
           posterAgentId: string;
           offerId: string;
-          shipName: string;
+          shipId: string;
       }
     | {
           type: 'buildShipConstructionFacility';
@@ -597,7 +597,7 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          shipName: string;
+          shipId: string;
           askPrice: number;
       }
     | {

@@ -16,11 +16,12 @@ import { PlanetIcon } from '@/components/client/PlanetIcon';
 type Props = {
     agentId: string;
     planetId: string;
+    shipId: string;
     shipName: string;
     children: React.ReactNode;
 };
 
-export function DispatchConstructionShipDialog({ agentId, planetId, shipName, children }: Props) {
+export function DispatchConstructionShipDialog({ agentId, planetId, shipId, shipName, children }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
@@ -51,7 +52,7 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipName, ch
             agentId,
             fromPlanetId: planetId,
             toPlanetId,
-            shipName,
+            shipId,
             facilityName,
         });
     };

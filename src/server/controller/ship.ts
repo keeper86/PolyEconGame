@@ -90,7 +90,7 @@ export const acceptTransportContract = () =>
                 planetId: z.string().min(1),
                 posterAgentId: z.string().min(1),
                 contractId: z.string().min(1),
-                shipName: z.string().min(1),
+                shipId: z.string().min(1),
             }),
         )
         .mutation(async ({ input, ctx }) => {
@@ -123,7 +123,7 @@ export const dispatchShip = () =>
                 agentId: z.string().min(1),
                 fromPlanetId: z.string().min(1),
                 toPlanetId: z.string().min(1),
-                shipName: z.string().min(1),
+                shipId: z.string().min(1),
                 cargoGoal: z
                     .object({
                         resourceName: z.string().min(1),
@@ -135,8 +135,8 @@ export const dispatchShip = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const shipName = await workerDispatchShip(input);
-            return { shipName };
+            const shipId = await workerDispatchShip(input);
+            return { shipId };
         });
 
 export const dispatchConstructionShip = () =>
@@ -146,15 +146,15 @@ export const dispatchConstructionShip = () =>
                 agentId: z.string().min(1),
                 fromPlanetId: z.string().min(1),
                 toPlanetId: z.string().min(1),
-                shipName: z.string().min(1),
+                shipId: z.string().min(1),
                 facilityName: z.string().min(1).optional(),
             }),
         )
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const shipName = await workerDispatchConstructionShip(input);
-            return { shipName };
+            const shipId = await workerDispatchConstructionShip(input);
+            return { shipId };
         });
 
 export const dispatchPassengerShip = () =>
@@ -164,15 +164,15 @@ export const dispatchPassengerShip = () =>
                 agentId: z.string().min(1),
                 fromPlanetId: z.string().min(1),
                 toPlanetId: z.string().min(1),
-                shipName: z.string().min(1),
+                shipId: z.string().min(1),
                 passengerCount: z.number().int().min(0),
             }),
         )
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const shipName = await workerDispatchPassengerShip(input);
-            return { shipName };
+            const shipId = await workerDispatchPassengerShip(input);
+            return { shipId };
         });
 
 export const postShipBuyingOffer = () =>
@@ -200,7 +200,7 @@ export const acceptShipBuyingOffer = () =>
                 planetId: z.string().min(1),
                 posterAgentId: z.string().min(1),
                 offerId: z.string().min(1),
-                shipName: z.string().min(1),
+                shipId: z.string().min(1),
             }),
         )
         .mutation(async ({ input, ctx }) => {
@@ -235,7 +235,7 @@ export const postShipListing = () =>
             z.object({
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
-                shipName: z.string().min(1),
+                shipId: z.string().min(1),
                 askPrice: z.number().positive(),
             }),
         )

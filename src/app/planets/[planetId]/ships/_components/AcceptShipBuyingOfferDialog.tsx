@@ -29,7 +29,7 @@ type Props = {
 export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatchingShips, open, onClose }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
-    const [shipName, setShipName] = useState('');
+    const [shipId, setShipId] = useState('');
 
     const mutation = useMutation(
         trpc.acceptShipBuyingOffer.mutationOptions({
@@ -41,7 +41,7 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
                     queryKey: trpc.listAgentShips.queryKey({ agentId }),
                 });
                 onClose();
-                setShipName('');
+                setShipId('');
             },
         }),
     );
@@ -53,7 +53,7 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
             planetId,
             posterAgentId: offer._agentId,
             offerId: offer.id,
-            shipName,
+            shipId,
         });
     };
 
@@ -74,13 +74,13 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
                     </div>
                     <div className='space-y-1.5'>
                         <Label>Select ship to sell</Label>
-                        <Select value={shipName} onValueChange={setShipName} required>
+                        <Select value={shipId} onValueChange={setShipId} required>
                             <SelectTrigger>
                                 <SelectValue placeholder='Select idle matching ship…' />
                             </SelectTrigger>
                             <SelectContent>
                                 {idleMatchingShips.map((s) => (
-                                    <SelectItem key={s.name} value={s.name}>
+                                    <SelectItem key={s.id} value={s.id}>
                                         {s.name}
                                     </SelectItem>
                                 ))}
@@ -89,7 +89,7 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
                     </div>
                     {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
                     <DialogFooter>
-                        <Button type='submit' disabled={mutation.isPending || !shipName}>
+                        <Button type='submit' disabled={mutation.isPending || !shipId}>
                             {mutation.isPending ? 'Selling…' : 'Sell Ship'}
                         </Button>
                     </DialogFooter>

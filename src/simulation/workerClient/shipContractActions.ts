@@ -99,7 +99,7 @@ export function handleAcceptTransportContract(
     action: Extract<PendingAction, { type: 'acceptTransportContract' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = action;
+    const { requestId, agentId, planetId, posterAgentId, contractId, shipId } = action;
 
     const carrierAgent = state.agents.get(agentId);
     if (!carrierAgent) {
@@ -137,9 +137,9 @@ export function handleAcceptTransportContract(
     }
 
     // Validate the ship is idle and currently on fromPlanetId
-    const ship = carrierAgent.ships.find((s) => s.name === shipName);
+    const ship = carrierAgent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: `Ship '${shipName}' not found` });
+        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: `Ship '${shipId}' not found` });
         return;
     }
     if (ship.type.type !== 'transport') {
@@ -170,7 +170,7 @@ export function handleAcceptTransportContract(
         ...contract,
         status: 'accepted',
         acceptedByAgentId: agentId,
-        shipName,
+        shipId,
         fulfillmentDueAtTick,
     };
 
@@ -321,7 +321,7 @@ export function handleAcceptConstructionContract(
     action: Extract<PendingAction, { type: 'acceptConstructionContract' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = action;
+    const { requestId, agentId, planetId, posterAgentId, contractId, shipId } = action;
 
     const carrierAgent = state.agents.get(agentId);
     if (!carrierAgent) {
@@ -354,12 +354,12 @@ export function handleAcceptConstructionContract(
         return;
     }
 
-    const ship = carrierAgent.ships.find((s) => s.name === shipName && s.type.type === 'construction');
+    const ship = carrierAgent.ships.find((s) => s.id === shipId && s.type.type === 'construction');
     if (!ship) {
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: `Construction ship '${shipName}' not found`,
+            reason: `Construction ship '${shipId}' not found`,
         });
         return;
     }
@@ -406,7 +406,7 @@ export function handleAcceptConstructionContract(
         ...contract,
         status: 'accepted',
         acceptedByAgentId: agentId,
-        shipName,
+        shipId,
         fulfillmentDueAtTick,
     };
 
@@ -520,7 +520,7 @@ export function handleAcceptShipBuyingOffer(
     action: Extract<PendingAction, { type: 'acceptShipBuyingOffer' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, planetId, posterAgentId, offerId, shipName } = action;
+    const { requestId, agentId, planetId, posterAgentId, offerId, shipId } = action;
 
     const sellerAgent = state.agents.get(agentId);
     if (!sellerAgent) {
@@ -553,9 +553,9 @@ export function handleAcceptShipBuyingOffer(
     }
 
     // Validate the ship is idle
-    const shipIndex = sellerAgent.ships.findIndex((s) => s.name === shipName);
+    const shipIndex = sellerAgent.ships.findIndex((s) => s.id === shipId);
     if (shipIndex === -1) {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: `Ship '${shipName}' not found` });
+        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: `Ship '${shipId}' not found` });
         return;
     }
     const ship = sellerAgent.ships[shipIndex];
@@ -635,7 +635,7 @@ export function handlePostShipListing(
     action: Extract<PendingAction, { type: 'postShipListing' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, planetId, shipName, askPrice } = action;
+    const { requestId, agentId, planetId, shipId, askPrice } = action;
 
     const agent = state.agents.get(agentId);
     if (!agent) {
@@ -649,9 +649,9 @@ export function handlePostShipListing(
         return;
     }
 
-    const ship = agent.ships.find((s) => s.name === shipName);
+    const ship = agent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Ship '${shipName}' not found` });
+        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Ship '${shipId}' not found` });
         return;
     }
     if (ship.state.type === 'derelict') {
@@ -670,7 +670,7 @@ export function handlePostShipListing(
         });
         return;
     }
-    if (assets.shipListings.some((l) => l.shipName === shipName)) {
+    if (assets.shipListings.some((l) => l.shipId === shipId)) {
         safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Ship is already listed for sale' });
         return;
     }
@@ -681,7 +681,8 @@ export function handlePostShipListing(
     const listing: ShipListing = {
         id: listingId,
         sellerAgentId: agentId,
-        shipName,
+        shipId,
+        shipName: ship.name,
         shipTypeName: ship.type.name,
         askPrice,
         planetId,
@@ -724,7 +725,7 @@ export function handleCancelShipListing(
     }
 
     // Restore ship state to idle
-    const ship = agent.ships.find((s) => s.name === listing.shipName);
+    const ship = agent.ships.find((s) => s.id === listing.shipId);
     if (ship && ship.state.type === 'listed') {
         ship.state = { type: 'idle', planetId };
     }
@@ -783,7 +784,7 @@ export function handleAcceptShipListing(
         return;
     }
 
-    const shipIndex = sellerAgent.ships.findIndex((s) => s.name === listing!.shipName);
+    const shipIndex = sellerAgent.ships.findIndex((s) => s.id === listing!.shipId);
     if (shipIndex === -1) {
         safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Ship no longer exists' });
         return;
@@ -832,7 +833,7 @@ export function handleDispatchShip(
     action: Extract<PendingAction, { type: 'dispatchShip' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, fromPlanetId, toPlanetId, shipName, cargoGoal } = action;
+    const { requestId, agentId, fromPlanetId, toPlanetId, shipId, cargoGoal } = action;
 
     const agent = state.agents.get(agentId);
     if (!agent) {
@@ -849,9 +850,9 @@ export function handleDispatchShip(
         return;
     }
 
-    const ship = agent.ships.find((s) => s.name === shipName);
+    const ship = agent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Ship '${shipName}' not found` });
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Ship '${shipId}' not found` });
         return;
     }
     if (ship.state.type !== 'idle') {
@@ -889,11 +890,11 @@ export function handleDispatchShip(
             planetId: fromPlanetId,
             agentId,
             agentName: agent.name,
-            message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
             tick: state.tick,
         });
 
-        safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
+        safePostMessage({ type: 'shipDispatched', requestId, agentId, shipId: ship.id });
         return;
     }
 
@@ -937,11 +938,11 @@ export function handleDispatchShip(
         planetId: fromPlanetId,
         agentId,
         agentName: agent.name,
-        message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
+        message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
         tick: state.tick,
     });
 
-    safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
+    safePostMessage({ type: 'shipDispatched', requestId, agentId, shipId: ship.id });
 }
 
 export function handleDispatchPassengerShip(
@@ -949,7 +950,7 @@ export function handleDispatchPassengerShip(
     action: Extract<PendingAction, { type: 'dispatchPassengerShip' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, fromPlanetId, toPlanetId, shipName, passengerCount } = action;
+    const { requestId, agentId, fromPlanetId, toPlanetId, shipId, passengerCount } = action;
 
     const agent = state.agents.get(agentId);
     if (!agent) {
@@ -975,12 +976,12 @@ export function handleDispatchPassengerShip(
         return;
     }
 
-    const ship = agent.ships.find((s) => s.name === shipName);
+    const ship = agent.ships.find((s) => s.id === shipId);
     if (!ship) {
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: `Ship '${shipName}' not found`,
+            reason: `Ship '${shipId}' not found`,
         });
         return;
     }
@@ -1042,11 +1043,11 @@ export function handleDispatchPassengerShip(
         planetId: fromPlanetId,
         agentId,
         agentName: agent.name,
-        message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (passenger)`,
+        message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (passenger)`,
         tick: state.tick,
     });
 
-    safePostMessage({ type: 'passengerShipDispatched', requestId, agentId, shipName });
+    safePostMessage({ type: 'passengerShipDispatched', requestId, agentId, shipId: ship.id });
 }
 
 export function handleDispatchConstructionShip(
@@ -1054,7 +1055,7 @@ export function handleDispatchConstructionShip(
     action: Extract<PendingAction, { type: 'dispatchConstructionShip' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, fromPlanetId, toPlanetId, shipName, facilityName } = action;
+    const { requestId, agentId, fromPlanetId, toPlanetId, shipId, facilityName } = action;
 
     const agent = state.agents.get(agentId);
     if (!agent) {
@@ -1071,9 +1072,9 @@ export function handleDispatchConstructionShip(
         return;
     }
 
-    const ship = agent.ships.find((s) => s.name === shipName);
+    const ship = agent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: `Ship '${shipName}' not found` });
+        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: `Ship '${shipId}' not found` });
         return;
     }
     if (ship.state.type !== 'idle') {
@@ -1140,9 +1141,9 @@ export function handleDispatchConstructionShip(
         planetId: fromPlanetId,
         agentId,
         agentName: agent.name,
-        message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (construction)`,
+        message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (construction)`,
         tick: state.tick,
     });
 
-    safePostMessage({ type: 'constructionShipDispatched', requestId, agentId, shipName });
+    safePostMessage({ type: 'constructionShipDispatched', requestId, agentId, shipId: ship.id });
 }
