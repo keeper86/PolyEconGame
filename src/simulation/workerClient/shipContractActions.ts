@@ -2,6 +2,7 @@ import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { Facility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import type { ConstructionContract, ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
 import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
@@ -879,6 +880,19 @@ export function handleDispatchShip(
             cargo: null,
             arrivalTick: state.tick + Math.ceil(1000 / ship.type.speed),
         };
+
+        // Emit ticker event
+        const fromPlanet = state.planets.get(fromPlanetId);
+        const toPlanet = state.planets.get(toPlanetId);
+        pushTickerEvent(state, {
+            category: 'shipDispatched',
+            planetId: fromPlanetId,
+            agentId,
+            agentName: agent.name,
+            message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
+            tick: state.tick,
+        });
+
         safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
         return;
     }
@@ -914,6 +928,18 @@ export function handleDispatchShip(
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
         // No contractId or posterAgentId — cargo is loaded from own storage
     };
+
+    // Emit ticker event
+    const fromPlanet = state.planets.get(fromPlanetId);
+    const toPlanet = state.planets.get(toPlanetId);
+    pushTickerEvent(state, {
+        category: 'shipDispatched',
+        planetId: fromPlanetId,
+        agentId,
+        agentName: agent.name,
+        message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
+        tick: state.tick,
+    });
 
     safePostMessage({ type: 'shipDispatched', requestId, agentId, shipName });
 }
@@ -1008,6 +1034,18 @@ export function handleDispatchPassengerShip(
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
 
+    // Emit ticker event
+    const fromPlanet = state.planets.get(fromPlanetId);
+    const toPlanet = state.planets.get(toPlanetId);
+    pushTickerEvent(state, {
+        category: 'shipDispatched',
+        planetId: fromPlanetId,
+        agentId,
+        agentName: agent.name,
+        message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (passenger)`,
+        tick: state.tick,
+    });
+
     safePostMessage({ type: 'passengerShipDispatched', requestId, agentId, shipName });
 }
 
@@ -1093,6 +1131,18 @@ export function handleDispatchConstructionShip(
         progress: 0,
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
+
+    // Emit ticker event
+    const fromPlanet = state.planets.get(fromPlanetId);
+    const toPlanet = state.planets.get(toPlanetId);
+    pushTickerEvent(state, {
+        category: 'shipDispatched',
+        planetId: fromPlanetId,
+        agentId,
+        agentName: agent.name,
+        message: `${agent.name}'s ${shipName} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (construction)`,
+        tick: state.tick,
+    });
 
     safePostMessage({ type: 'constructionShipDispatched', requestId, agentId, shipName });
 }

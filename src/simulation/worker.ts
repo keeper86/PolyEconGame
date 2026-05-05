@@ -633,6 +633,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     data = { tick: snap.tick, planet: pr ? pr.data : null, agents: [...agents, ...forexMMs] };
                     break;
                 }
+                case 'getTickerEvents': {
+                    data = {
+                        tickerEvents: state.tickerEvents,
+                    };
+                    break;
+                }
                 default: {
                     const _exhaustive: never = msg;
                     throw new Error(`Unknown query type: ${(_exhaustive as { type: string }).type}`);

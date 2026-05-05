@@ -28,4 +28,7 @@ export const workerQueries = {
     getShipCapitalMarket: () => sendQuery({ type: 'getShipCapitalMarket' }),
 
     getPlanetWithAgents: (planetId: string) => sendQuery({ type: 'getPlanetWithAgents', planetId }),
+
+    /** Get the rolling buffer of ticker events. */
+    getTickerEvents: () => sendQuery({ type: 'getTickerEvents' }),
 };

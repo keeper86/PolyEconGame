@@ -2,11 +2,11 @@ import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants
 import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
-import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
-import { marketTick } from './market/market';
-import { forexTick } from './market/forexTick';
 import { forexMarketMakerPricing } from './market/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './market/forexMarketMakerTick';
+import { forexTick } from './market/forexTick';
+import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
+import { marketTick } from './market/market';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
@@ -23,6 +23,8 @@ import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 
 export { seedRng };
+
+const MAX_TICKER_EVENTS = 200;
 
 export function advanceTick(gameState: GameState) {
     gameState.planets.forEach((planet) => {
@@ -72,9 +74,9 @@ export function advanceTick(gameState: GameState) {
 
         accumulatePlanetPrices(planet, gameState.tick);
 
-        constructionTick(gameState.agents, planet);
+        constructionTick(gameState, planet);
 
-        productionTick(gameState.agents, planet, gameState.tick);
+        productionTick(gameState, planet);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);
@@ -107,9 +109,13 @@ export function advanceTick(gameState: GameState) {
         }
     });
 
-    // inter-planet effects and markets
     forexMarketMakerPricing(gameState);
     forexTick(gameState);
     forexMMRepaymentTick(gameState);
+
     shipTick(gameState);
+
+    if (gameState.tickerEvents.length > MAX_TICKER_EVENTS) {
+        gameState.tickerEvents = gameState.tickerEvents.slice(-MAX_TICKER_EVENTS);
+    }
 }

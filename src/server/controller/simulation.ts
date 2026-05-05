@@ -644,3 +644,38 @@ export const getLoanConditions = () =>
             const { conditions, activeLoans } = await workerQueries.getLoanConditions(input.agentId, input.planetId);
             return { conditions: conditions ?? null, activeLoans: activeLoans ?? [] };
         });
+
+const tickerEventSchema = z.object({
+    id: z.number(),
+    category: z.enum([
+        'agentCreated',
+        'shipDispatched',
+        'shipArrived',
+        'shipCompleted',
+        'facilityCompleted',
+        'licenseAcquired',
+        'agentBankrupt',
+        'contractAccepted',
+        'loanRollover',
+        'priceSpike',
+        'populationMilestone',
+    ]),
+    planetId: z.string(),
+    agentId: z.string().optional(),
+    agentName: z.string().optional(),
+    message: z.string(),
+    tick: z.number(),
+});
+
+export type TickerEvent = z.infer<typeof tickerEventSchema>;
+
+export const getTickerEvents = () =>
+    protectedProcedure
+        .input(z.object({ lastSeenId: z.number().optional() }).default({}))
+        .output(z.object({ tickerEvents: z.array(tickerEventSchema) }))
+        .query(async ({ input }) => {
+            const { tickerEvents } = await workerQueries.getTickerEvents();
+            const filtered =
+                input.lastSeenId !== undefined ? tickerEvents.filter((e) => e.id > input.lastSeenId!) : tickerEvents;
+            return { tickerEvents: filtered };
+        });

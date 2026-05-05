@@ -1,15 +1,14 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { findCompatibleTrades } from '../../simulation/ships/shipMarket';
 import {
     workerAcceptShipBuyingOffer,
     workerAcceptShipListing,
     workerAcceptTransportContract,
     workerCancelShipListing,
     workerCancelTransportContract,
-    workerDispatchShip,
     workerDispatchConstructionShip,
     workerDispatchPassengerShip,
+    workerDispatchShip,
     workerPostShipBuyingOffer,
     workerPostShipListing,
     workerPostTransportContract,
@@ -219,24 +218,6 @@ export const listShipListings = () =>
             return (assets?.shipListings ?? []).map((l) => ({ ...l, _agentId: agent.id }));
         });
         return { listings };
-    });
-
-export const getShipMarketHints = () =>
-    protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input: _input }) => {
-        const [{ agents }, { shipCapitalMarket }] = await Promise.all([
-            workerQueries.getAllAgents(),
-            workerQueries.getShipCapitalMarket(),
-        ]);
-        const agentMap = new Map((agents ?? []).map((a) => [a.id, a]));
-        const mockState = {
-            tick: 0,
-            planets: new Map(),
-            agents: agentMap,
-            shipCapitalMarket,
-            forexMarketMakers: new Map(),
-        };
-        const compatibleTrades = findCompatibleTrades(mockState);
-        return { compatibleTrades: compatibleTrades.slice(0, 50) };
     });
 
 export const getShipMarketHistory = () =>

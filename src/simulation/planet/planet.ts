@@ -1,3 +1,4 @@
+import type { TickerEvent } from 'src/server/controller/simulation';
 import { TICKS_PER_MONTH } from '../constants';
 import type { Loan } from '../financial/loanTypes';
 import type { EducationLevelType, Population } from '../population/population';
@@ -293,8 +294,14 @@ export interface GameState {
     planets: Map<string, Planet>;
     agents: Map<string, Agent>;
     shipCapitalMarket: ShipCapitalMarket;
-    /** Automated market-maker agents stored separately so they bypass the normal financial tick. */
     forexMarketMakers: Map<string, Agent>;
+    tickerEvents: TickerEvent[];
+    nextEventId: number;
+}
+
+export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id'>): void {
+    const tickerEvent: TickerEvent = { ...event, id: gameState.nextEventId++ };
+    gameState.tickerEvents.push(tickerEvent);
 }
 
 export function createEmptyAccumulator(): MonthAccumulator {

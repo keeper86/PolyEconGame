@@ -55,20 +55,21 @@ export default function CreditButton({
     const currencyKey = currencyAssetKey(planetId);
 
     const isGreen = variant === 'loan' || variant === 'starter';
-    const size = variant === 'starter' ? 16 : 12;
+    const size = variant === 'starter' ? 14 : 14;
 
     /* Fill fraction: 1 = full, 0.5 = half, 0.25 = quarter */
     const fillFraction = isFull ? 1 : label === '50 %' ? 0.5 : 0.25;
 
     return (
         <Button
+            variant='outline'
             className={cn(
-                'w-full flex flex-col gap-0.5 relative overflow-hidden text-outline-strong',
+                'w-full flex flex-col gap-0.5 relative overflow-hidden text-outline-strong border',
                 isGreen
                     ? 'border-green-600 bg-transparent hover:bg-green-50 dark:border-green-500 dark:hover:bg-green-600'
                     : 'border-amber-600 bg-transparent hover:bg-amber-50 dark:border-amber-500 dark:hover:bg-amber-600',
             )}
-            style={{ height: size * 5 }}
+            style={{ height: variant === 'starter' ? size * 3 : size * 3 }}
             disabled={disabled || isPending}
             onClick={onClick}
         >

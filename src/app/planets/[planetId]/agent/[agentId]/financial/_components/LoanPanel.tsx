@@ -6,10 +6,11 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { LOAN_TERM_TICKS, type Loan } from '@/simulation/financial/loanTypes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { HandCoins, Landmark } from 'lucide-react';
+import { ChevronDown, HandCoins, Landmark } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 import CreditButton from './CreditButton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 
 /* ------------------------------------------------------------------ */
@@ -100,7 +101,9 @@ function LoanRow({
                                 label={label}
                                 amount={formatNumberWithUnit(amount, 'units', planetId)}
                                 isFull={fraction === 1}
-                                disabled={repayMutation.isPending || !canAfford || amount === 0}
+                                disabled={
+                                    repayMutation.isPending || !canAfford || amount === 0 || !loan.earlyRepaymentAllowed
+                                }
                                 planetId={planetId}
                                 onClick={() => repayMutation.mutate({ agentId, planetId, loanId: loan.id, fraction })}
                             />
@@ -162,9 +165,9 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                     </p>
                     {conditions.isNewAgent ? (
                         <>
-                            <span className='text-xs text-muted-foreground'>
+                            <p className='text-xs text-muted-foreground'>
                                 Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.starter)}
-                            </span>
+                            </p>
                             <CreditButton
                                 variant='starter'
                                 planetId={planetId}
@@ -225,36 +228,57 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
             )}
 
             <Separator />
-            {/* Outstanding loans list */}
-            {activeLoans.length > 0 && (
-                <div className='space-y-2'>
-                    <p className='text-sm font-semibold flex items-center gap-2'>
-                        <Landmark className='h-4 w-4 text-muted-foreground' />
-                        Outstanding loans
-                    </p>
-                    <span className='text-xs text-muted-foreground'>Pay back early:</span>
-                    {activeLoans.map(
-                        (loan) =>
-                            loan.earlyRepaymentAllowed && (
-                                <LoanRow
-                                    key={loan.id}
-                                    loan={loan}
-                                    deposits={deposits}
-                                    agentId={agentId}
-                                    planetId={planetId}
-                                    onRepaid={(amount) => {
-                                        toast.success(
-                                            `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
-                                        );
-                                    }}
-                                    onError={(msg) => {
-                                        toast.error(msg);
-                                    }}
-                                />
-                            ),
-                    )}
-                </div>
-            )}
+
+            <OutstandingLoansSection
+                activeLoans={activeLoans}
+                deposits={deposits}
+                agentId={agentId}
+                planetId={planetId}
+            />
         </div>
+    );
+}
+
+function OutstandingLoansSection({
+    activeLoans,
+    deposits,
+    agentId,
+    planetId,
+}: {
+    activeLoans: Loan[];
+    deposits: number;
+    agentId: string;
+    planetId: string;
+}) {
+    return (
+        <Collapsible defaultOpen={false} className='space-y-2'>
+            <CollapsibleTrigger className='text-sm font-semibold flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity [&[data-state=closed]>svg:last-child]:rotate-0 [&[data-state=open]>svg:last-child]:rotate-180'>
+                <Landmark className='h-4 w-4 text-muted-foreground' />
+                Outstanding loans ({activeLoans.length})
+                <ChevronDown className='h-4 w-4 text-muted-foreground transition-transform duration-200' />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                <p className='text-xs text-muted-foreground'>Pay back early:</p>
+                <div className='space-y-2 pt-1'>
+                    {activeLoans.map((loan) => (
+                        <LoanRow
+                            key={loan.id}
+                            loan={loan}
+                            deposits={deposits}
+                            agentId={agentId}
+                            planetId={planetId}
+                            onRepaid={(amount) => {
+                                toast.success(
+                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
+                                );
+                            }}
+                            onError={(msg) => {
+                                toast.error(msg);
+                            }}
+                        />
+                    ))}
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
     );
 }

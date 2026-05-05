@@ -2,6 +2,7 @@ import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
 import { makeAgentPlanetAssets } from '../utils/testHelper';
 import { grantLoan } from '../financial/loanTypes';
 import type { GameState } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleAcquireLicense(
@@ -92,6 +93,16 @@ export function handleAcquireLicense(
             `Government agent '${planet.governmentId}' has no assets on its own planet '${planetId}' to receive license fee`,
         );
     }
+
+    // Emit ticker event
+    pushTickerEvent(state, {
+        category: 'licenseAcquired',
+        planetId,
+        agentId,
+        agentName: agent.name,
+        message: `${agent.name} acquired ${licenseType} license on ${planet.name}`,
+        tick: state.tick,
+    });
 
     console.log(
         `[worker] Agent '${agentId}' acquired '${licenseType}' license on planet '${planetId}' (cost: ${cost})`,

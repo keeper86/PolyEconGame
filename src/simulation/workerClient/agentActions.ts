@@ -1,4 +1,5 @@
 import type { Agent, GameState } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import { makeAgent } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from './messages';
 
@@ -27,6 +28,18 @@ export function handleCreateAgent(
     }
 
     state.agents.set(agentId, newAgent);
+
+    // Emit ticker event
+    const planet = state.planets.get(planetId);
+    pushTickerEvent(state, {
+        category: 'agentCreated',
+        planetId,
+        agentId,
+        agentName,
+        message: `${agentName} founded on ${planet?.name ?? planetId}`,
+        tick: state.tick,
+    });
+
     console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
     safePostMessage({ type: 'agentCreated', requestId, agentId });
 }

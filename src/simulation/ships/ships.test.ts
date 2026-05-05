@@ -1214,3 +1214,127 @@ describe('settleConstructionContract — facility placed on third agent', () => 
         expect(commissioner.assets.p2!.productionFacilities[0]!.planetId).toBe('p2');
     });
 });
+
+// ---------------------------------------------------------------------------
+// shipArrived ticker events
+// ---------------------------------------------------------------------------
+
+describe('shipArrived ticker events', () => {
+    it('emits shipArrived event when transport ship transitions transporting → unloading', () => {
+        const agent = makeAgent('a1', 'p1');
+        const ship = makeTransportShip('Freighter', 'p1');
+        ship.state = {
+            type: 'transporting',
+            from: 'p1',
+            to: 'p2',
+            cargo: { resource: steelResourceType, quantity: 100 },
+            arrivalTick: 10,
+        };
+        agent.ships.push(ship);
+
+        const state = makeGameState(
+            [makePlanet({ id: 'p1', name: 'Origin' }), makePlanet({ id: 'p2', name: 'Destination' })],
+            [agent],
+            10,
+        );
+
+        shipTick(state);
+
+        expect(state.tickerEvents).toHaveLength(1);
+        const ev = state.tickerEvents[0]!;
+        expect(ev.category).toBe('shipArrived');
+        expect(ev.planetId).toBe('p2');
+        expect(ev.agentId).toBe('a1');
+        expect(ev.tick).toBe(10);
+        expect(ev.message).toContain('Destination');
+        expect(ev.message).toContain('Origin');
+        expect(ev.id).toBeTypeOf('number');
+    });
+
+    it('emits shipArrived event when transport ship ferry arrives idle at destination', () => {
+        const agent = makeAgent('a1', 'p1');
+        const ship = makeTransportShip('Ferry', 'p1');
+        ship.state = {
+            type: 'transporting',
+            from: 'p1',
+            to: 'p2',
+            cargo: null,
+            arrivalTick: 5,
+        };
+        agent.ships.push(ship);
+
+        const state = makeGameState(
+            [makePlanet({ id: 'p1', name: 'From' }), makePlanet({ id: 'p2', name: 'To' })],
+            [agent],
+            5,
+        );
+
+        shipTick(state);
+
+        expect(state.tickerEvents).toHaveLength(1);
+        expect(state.tickerEvents[0]!.category).toBe('shipArrived');
+        expect(state.tickerEvents[0]!.message).toContain('Ferry');
+    });
+
+    it('emits shipArrived event when construction ship transitions to reconstruction', () => {
+        const agent = makeAgent('a1', 'p1');
+        const ship = makeConstructionShip('Builder', 'p1');
+        ship.state = {
+            type: 'construction_transporting',
+            from: 'p1',
+            to: 'p2',
+            buildingTarget: null,
+            arrivalTick: 20,
+        };
+        agent.ships.push(ship);
+
+        const state = makeGameState(
+            [makePlanet({ id: 'p1', name: 'Base' }), makePlanet({ id: 'p2', name: 'Site' })],
+            [agent],
+            20,
+        );
+
+        shipTick(state);
+
+        // Construction ship with no buildingTarget goes idle, not reconstruction
+        expect(state.tickerEvents).toHaveLength(1);
+        expect(state.tickerEvents[0]!.category).toBe('shipArrived');
+    });
+
+    it('does not emit shipArrived when ship stays in transporting (not yet arrived)', () => {
+        const agent = makeAgent('a1', 'p1');
+        const ship = makeTransportShip('S1', 'p1');
+        ship.state = {
+            type: 'transporting',
+            from: 'p1',
+            to: 'p2',
+            cargo: null,
+            arrivalTick: 500,
+        };
+        agent.ships.push(ship);
+
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
+
+        shipTick(state);
+
+        expect(state.tickerEvents).toHaveLength(0);
+    });
+
+    it('assigns a unique incrementing id to each event', () => {
+        const agent = makeAgent('a1', 'p1');
+
+        const ship1 = makeTransportShip('S1', 'p1');
+        ship1.state = { type: 'transporting', from: 'p1', to: 'p2', cargo: null, arrivalTick: 10 };
+        const ship2 = makeTransportShip('S2', 'p1');
+        ship2.state = { type: 'transporting', from: 'p1', to: 'p2', cargo: null, arrivalTick: 10 };
+        agent.ships.push(ship1, ship2);
+
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
+
+        shipTick(state);
+
+        expect(state.tickerEvents).toHaveLength(2);
+        expect(state.tickerEvents[0]!.id).toBe(1);
+        expect(state.tickerEvents[1]!.id).toBe(2);
+    });
+});
