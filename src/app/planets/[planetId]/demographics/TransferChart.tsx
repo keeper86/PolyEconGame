@@ -7,12 +7,10 @@ import type { PopulationTransferMatrix } from '@/simulation/population/populatio
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Bar, BarChart, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import ChartCard from '../../_components/ChartCard';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 
 type Props = {
-    title: string;
     matrix: PopulationTransferMatrix | undefined;
     viewMode: GroupMode;
 };
@@ -39,7 +37,7 @@ function mergePairs(rows: Record<string, number>[], keys: string[]): Record<stri
     return result;
 }
 
-export default function TransferChart({ title, matrix, viewMode }: Props): React.ReactElement {
+export default function TransferChart({ matrix, viewMode }: Props): React.ReactElement {
     const isSmallScreen = useIsSmallScreen();
 
     const lastOccData = useRef<Record<string, number>[]>([]);
@@ -140,8 +138,7 @@ export default function TransferChart({ title, matrix, viewMode }: Props): React
     const hasData = totalReceived > 0 || totalGiven > 0;
 
     return (
-        <ChartCard title={title}>
-            {/* Summary stats */}
+        <>
             <div
                 className={`flex flex-wrap gap-3 text-[10px] mb-2 ${hasData ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}
             >
@@ -232,6 +229,6 @@ export default function TransferChart({ title, matrix, viewMode }: Props): React
                           ))}
                 </BarChart>
             </ResponsiveContainer>
-        </ChartCard>
+        </>
     );
 }

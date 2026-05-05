@@ -244,29 +244,27 @@ export default function Footer() {
                 {/* hidden measurement span – same styling as ticker items */}
                 <span ref={measureRef} className='invisible absolute whitespace-nowrap text-md' aria-hidden='true' />
 
-                {events.length === 0 ? (
-                    <div className='h-full flex items-center justify-center'>
-                        <span className='text-xs text-muted-foreground'>No events yet</span>
-                    </div>
-                ) : (
-                    displayedEvents.map(({ id, event }) => (
-                        <div
-                            key={id}
-                            ref={(el) => registerElement(id, el)}
-                            className='absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
-                            style={{
-                                transform: `translateX(${positionsMapRef.current.get(id)?.x ?? containerWidthRef.current}px)`,
-                            }}
-                        >
-                            <span className='inline-flex items-center gap-1.5 text-md select-none'>
-                                <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
-                                    {mapTickToDate(event.tick)}
-                                </span>
-                                <span className='text-foreground/90'>{event.message}</span>
+                {/* Gradient fade on edges */}
+                <div className='pointer-events-none absolute inset-y-0 left-0 w-64 bg-gradient-to-r from-background to-transparent z-10' />
+                <div className='pointer-events-none absolute inset-y-0 right-0 w-64 bg-gradient-to-l from-background to-transparent z-10' />
+
+                {displayedEvents.map(({ id, event }) => (
+                    <div
+                        key={id}
+                        ref={(el) => registerElement(id, el)}
+                        className='absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
+                        style={{
+                            transform: `translateX(${positionsMapRef.current.get(id)?.x ?? containerWidthRef.current}px)`,
+                        }}
+                    >
+                        <span className='inline-flex items-center gap-1.5 text-md select-none'>
+                            <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
+                                {mapTickToDate(event.tick)}
                             </span>
-                        </div>
-                    ))
-                )}
+                            <span className='text-foreground/90'>{event.message}</span>
+                        </span>
+                    </div>
+                ))}
             </div>
         </footer>
     );
