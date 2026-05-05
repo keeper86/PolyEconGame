@@ -12,34 +12,32 @@ const MAX_LOCAL_EVENTS = 60;
 const GAP_PX = 24; // minimum horizontal gap between events (steric interaction)
 const BASE_SPEED_PX_PER_SEC = 80;
 const MIN_SPEED_PX_PER_SEC = 30;
-const MAX_SPEED_PX_PER_SEC = 300;
+const MAX_SPEED_PX_PER_SEC = 500;
 
 /* ---------- helpers ---------- */
-function categoryColor(category: string): string {
+function textColor(category: string): string {
     switch (category) {
         case 'agentCreated':
         case 'facilityCompleted':
         case 'shipCompleted':
         case 'licenseAcquired':
-            return 'green-500';
+            return 'text-green-500';
         case 'shipDispatched':
         case 'shipArrived':
-            return 'blue-500';
+            return 'text-blue-500';
         case 'agentBankrupt':
         case 'loanRollover':
-            return 'red-500';
+            return 'text-red-500';
         case 'contractAccepted':
-            return 'yellow-500';
+            return 'text-yellow-500';
         case 'priceSpike':
-            return 'orange-500';
+            return 'text-orange-500';
         case 'populationMilestone':
-            return 'purple-500';
+            return 'text-purple-500';
         default:
-            return 'gray-500';
+            return 'text-gray-500';
     }
 }
-
-const textColor = (category: string): string => `text-${categoryColor(category)}`;
 
 export default function Footer() {
     const trpc = useTRPC();
@@ -81,7 +79,6 @@ export default function Footer() {
     const lastTimestampRef = useRef<number>(0);
     const spawnLockRef = useRef(false);
 
-    /* ---- Container width – useLayoutEffect to have it before first paint ---- */
     useLayoutEffect(() => {
         const el = containerRef.current;
         if (!el) {
@@ -98,7 +95,6 @@ export default function Footer() {
         return () => observer.disconnect();
     }, []);
 
-    /* ---- measure text width via hidden span ---- */
     const measureTextWidth = useCallback((text: string) => {
         const span = measureRef.current;
         if (!span) {
@@ -108,7 +104,6 @@ export default function Footer() {
         return span.offsetWidth;
     }, []);
 
-    /* ---- next unsent event ---- */
     const findNextEvent = useCallback((): TickerEvent | undefined => {
         const all = eventsRef.current;
         if (all.length === 0) {

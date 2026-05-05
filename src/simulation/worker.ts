@@ -542,7 +542,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
             }
 
-            pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs, tickerEvents: state.tickerEvents };
+            pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs };
             tryFlushMessages(Date.now());
 
             scheduleTick();
