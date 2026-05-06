@@ -53,7 +53,7 @@ describe('handleDispatchShip', () => {
 
     it('fails when agent not found', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], []);
-dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
+        dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Agent not found' });
     });
 

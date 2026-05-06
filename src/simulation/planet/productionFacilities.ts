@@ -1,3 +1,5 @@
+import type { ResourceProcessLevel } from './claims';
+import type { ProductionFacility } from './facility';
 import {
     arableLandResourceType,
     clayDepositResourceType,
@@ -12,7 +14,6 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from './landBoundResources';
-import type { ResourceProcessLevel } from './claims';
 import {
     agriculturalProductResourceType,
     beverageResourceType,
@@ -58,12 +59,8 @@ import {
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
-    maintenanceServiceResourceType,
     retailServiceResourceType,
 } from './services';
-import type { ProductionFacility } from './facility';
-import { defaultBuildingCost } from '../ships/ships';
-import { MAINTENANCE_COST_MULTIPLIER } from './production';
 
 export const zeroLastTicksProductionResults = {
     overallEfficiency: 0,

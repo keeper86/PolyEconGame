@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { pushTickerEvent } from '../planet/planet';
 import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import type { Facility } from '../planet/facility';
@@ -489,7 +488,7 @@ export const createShip = (
 ): Ship => {
     if (shipTemplate.type === 'construction') {
         return {
-            id: randomUUID(),
+            id: crypto.randomUUID(),
             name,
             type: shipTemplate,
             state: {
@@ -504,7 +503,7 @@ export const createShip = (
     }
     if (shipTemplate.type === 'passenger') {
         return {
-            id: randomUUID(),
+            id: crypto.randomUUID(),
             name,
             builtAtTick,
             type: shipTemplate,
@@ -518,7 +517,7 @@ export const createShip = (
         } satisfies PassengerShip;
     }
     return {
-        id: randomUUID(),
+        id: crypto.randomUUID(),
         name,
         builtAtTick,
         type: shipTemplate,

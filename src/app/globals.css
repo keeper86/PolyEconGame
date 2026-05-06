@@ -51,13 +51,21 @@ html {
 }
 
 @keyframes accordion-down {
-    from { height: 0; }
-    to { height: var(--radix-accordion-content-height); }
+    from {
+        height: 0;
+    }
+    to {
+        height: var(--radix-accordion-content-height);
+    }
 }
 
 @keyframes accordion-up {
-    from { height: var(--radix-accordion-content-height); }
-    to { height: 0; }
+    from {
+        height: var(--radix-accordion-content-height);
+    }
+    to {
+        height: 0;
+    }
 }
 
 :root {
@@ -179,8 +187,12 @@ html {
 
 /* ---------- event ticker ---------- */
 @keyframes ticker-scroll {
-    from { transform: translateX(var(--ticker-start, 0px)); }
-    to   { transform: translateX(-100%); }
+    from {
+        transform: translateX(var(--ticker-start, 0px));
+    }
+    to {
+        transform: translateX(-100%);
+    }
 }
 
 .ticker-item {

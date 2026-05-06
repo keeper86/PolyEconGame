@@ -20,7 +20,14 @@ type Props = {
     children: React.ReactNode;
 };
 
-export function DispatchPassengerShipDialog({ agentId, planetId, shipId, shipName, passengerCapacity, children }: Props) {
+export function DispatchPassengerShipDialog({
+    agentId,
+    planetId,
+    shipId,
+    shipName,
+    passengerCapacity,
+    children,
+}: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
