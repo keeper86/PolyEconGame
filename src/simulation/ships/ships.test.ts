@@ -607,6 +607,7 @@ describe('handleDispatchShip validation', () => {
 
     it('succeeds with cargo goal and sets deadlineTick on loading state', () => {
         const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const storage = agent.assets.p1!.storageFacility;
@@ -705,6 +706,7 @@ describe('handleDispatchConstructionShip validation', () => {
 
     it('succeeds without facility name and sets deadlineTick', () => {
         const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
         const ship = makeConstructionShip('C1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 20);

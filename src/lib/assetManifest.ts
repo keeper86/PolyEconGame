@@ -176,6 +176,10 @@ export const assetManifest = {
     cur_suerte: '/images/planets/currency_suerte.webp',
     cur_pandara: '/images/planets/currency_pandara.webp',
     cur_alpha_centauri: '/images/planets/currency_centauri.webp',
+    form_gas: '/images/products/gas.webp',
+    form_liquid: '/images/products/liquid.webp',
+    form_solid: '/images/products/solid.webp',
+    form_pieces: '/images/products/pieces.webp',
 } as const;
 
 export type AssetKey = keyof typeof assetManifest;

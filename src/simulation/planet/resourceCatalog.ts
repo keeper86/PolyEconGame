@@ -95,7 +95,10 @@ export const ALL_RESOURCES: Resource[] = [
     maintenanceServiceResourceType,
 ] as const;
 
-export type ResourceName = (typeof ALL_RESOURCES)[number]['name'];
+export const getProductForm = (resourceName: string): string => {
+    const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+    return resource ? resource.form : 'unknown';
+};
 
 export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 

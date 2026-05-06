@@ -11,7 +11,7 @@ import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
 import { nullPopulationCategory } from '../population/population';
-import { makeAgent, makeGameState, makePlanet } from '../utils/testHelper';
+import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from '../workerClient/messages';
 import { handleDispatchPassengerShip } from '../workerClient/shipContractActions';
 import {
@@ -210,6 +210,7 @@ describe('handleDispatchPassengerShip validation', () => {
 
     it('allows dispatch when passenger count is 0', () => {
         const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
         const ship = makePassengerShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
@@ -228,6 +229,7 @@ describe('handleDispatchPassengerShip validation', () => {
 
     it('succeeds and sets ship to passenger_boarding', () => {
         const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
         const ship = makePassengerShip('S1', 'p1', 50_000);
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
@@ -247,6 +249,7 @@ describe('handleDispatchPassengerShip validation', () => {
 
     it('caps passengerGoal at ship capacity', () => {
         const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
         const ship = makePassengerShip('S1', 'p1', 50);
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
@@ -366,6 +369,7 @@ describe('shipTick passenger boarding', () => {
     it('zero-passenger dispatch progresses without storage', () => {
         const { messages, post } = makeMessages();
         const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
         const planet = makePlanet({ id: 'p1' });
         const planet2 = makePlanet({ id: 'p2' });
 

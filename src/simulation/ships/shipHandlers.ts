@@ -25,7 +25,7 @@ import {
     removeFromStorageFacility,
     transferFromEscrow,
 } from '../planet/facility';
-import type { Agent, GameState } from '../planet/planet';
+import { pushTickerEvent, type Agent, type GameState } from '../planet/planet';
 import { consumeConstructionForFacility } from '../planet/production';
 import {
     educationServiceResourceType,
@@ -632,6 +632,16 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
     } // Wait for production to catch up
 
     const flightTicks = travelTime(ship);
+
+    pushTickerEvent(gameState, {
+        category: 'shipDispatched',
+        planetId: shipState.planetId,
+        agentId: agent.id,
+        agentName: agent.name,
+        message: `${agent.name}'s ${ship.name} departed ${shipState.planetId} → ${shipState.to} (passenger)`,
+        tick: gameState.tick,
+    });
+
     return {
         action: 'transition',
         newState: {

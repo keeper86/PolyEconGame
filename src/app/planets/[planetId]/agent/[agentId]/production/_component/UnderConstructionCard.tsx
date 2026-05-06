@@ -1,18 +1,18 @@
 'use client';
 
-import React from 'react';
-import type { ProductionFacility } from '@/simulation/planet/facility';
-import { formatNumberWithUnit } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { HardHat } from 'lucide-react';
-import { FacilityCardShell } from './FacilityCardShell';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useParams } from 'next/navigation';
+import { Progress } from '@/components/ui/progress';
+import { formatNumberWithUnit } from '@/lib/utils';
+import type { Facility } from '@/simulation/planet/facility';
+import { HardHat } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import React from 'react';
+import { FacilityCardShell } from './FacilityCardShell';
 
-export function UnderConstructionCard({ facility }: { facility: ProductionFacility }): React.ReactElement {
+export function UnderConstructionCard({ facility }: { facility: Facility }): React.ReactElement {
     const cs = facility.construction!;
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const pct =
@@ -29,7 +29,17 @@ export function UnderConstructionCard({ facility }: { facility: ProductionFacili
         <FacilityCardShell
             className='sm:w-[500px]'
             contentClassName='space-y-2'
-            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} buildProgress={pct / 100} />}
+            icon={
+                facility.type === 'ship_construction' ? (
+                    <FacilityOrShipIcon
+                        facilityOrShipName={'Shipyard'}
+                        buildProgress={pct / 100}
+                        suffix={String(facility.scale)}
+                    />
+                ) : (
+                    <FacilityOrShipIcon facilityOrShipName={facility.name} buildProgress={pct / 100} />
+                )
+            }
             headerContent={
                 <>
                     <div className='flex items-center gap-2 flex-wrap'>

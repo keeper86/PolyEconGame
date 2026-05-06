@@ -90,7 +90,9 @@ export function consumeConstructionForFacility(facility: Facility, storage: Stor
     }
 
     if (cs.progress >= cs.totalConstructionServiceRequired) {
+        const estimateScale = Math.round((facility.scale / facility.maxScale) * 4) / 4; // arbitrary heuristic to determine scale of new facility based on old one
         facility.maxScale = cs.constructionTargetMaxScale;
+        facility.scale = estimateScale > 0 ? facility.maxScale * estimateScale : 1;
         facility.construction = null;
     }
 
@@ -128,7 +130,7 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
     });
 }
 
-export const MAINTENANCE_COST_MULTIPLIER = 0.01;
+export const MAINTENANCE_COST_MULTIPLIER = 0.1;
 
 // ---- resource consumption/production helpers ----
 

@@ -15,9 +15,8 @@ import { Zap, Package, Clock, Users } from 'lucide-react';
 const categoryLabels: Record<keyof typeof shiptypes, string> = {
     solid: 'Bulk Carriers',
     liquid: 'Tankers',
-    gas: 'Gas Carriers',
     pieces: 'Freighters',
-    frozenGoods: 'Reefer Ships',
+    gas: 'Gas Carriers',
     passenger: 'Passenger Ships',
 };
 

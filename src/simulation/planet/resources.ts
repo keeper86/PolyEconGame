@@ -42,7 +42,7 @@ export const crudeOilResourceType: Resource = {
 
 export const naturalGasResourceType: Resource = {
     name: 'Natural Gas',
-    form: 'gas',
+    form: 'liquid',
     level: 'raw',
     volumePerQuantity: 1.5, // m³ per ton at STP (very rough)
     massPerQuantity: 1,
@@ -186,7 +186,7 @@ export const pharmaceuticalResourceType: Resource = {
 
 export const processedFoodResourceType: Resource = {
     name: 'Processed Food',
-    form: 'frozenGoods',
+    form: 'pieces',
     level: 'manufactured',
     volumePerQuantity: 0.6,
     massPerQuantity: 1,
@@ -282,7 +282,7 @@ export const vehicleResourceType: Resource = {
 
 export const packagingResourceType: Resource = {
     name: 'Packaging Material',
-    form: 'solid',
+    form: 'pieces',
     level: 'manufactured',
     volumePerQuantity: 1,
     massPerQuantity: 1,

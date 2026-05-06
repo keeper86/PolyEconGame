@@ -10,6 +10,11 @@ import type { TransportShip, ConstructionShip, PassengerShip } from '@/simulatio
 import { PassengerManifestDialog } from './PassengerManifestDialog';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { formatNumberWithUnit } from '@/lib/utils';
+import {
+    educationServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+} from '@/simulation/planet/services';
 
 type PlanetSummary = { planetId: string; name: string };
 
@@ -17,13 +22,14 @@ type Props = {
     ship: TransportShip | ConstructionShip | PassengerShip;
     planetSummaries: PlanetSummary[];
     tick: number;
+    agentId: string;
 };
 
 function planetName(planetSummaries: PlanetSummary[], id: string): string {
     return planetSummaries.find((p) => p.planetId === id)?.name ?? id;
 }
 
-export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
+export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props) {
     const [manifestOpen, setManifestOpen] = useState(false);
     // Transport ship states
     if (ship.type.type === 'transport') {
@@ -33,16 +39,18 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
         if (s.type === 'loading') {
             return (
                 <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
-                    {s.cargoGoal ? (
+                    {s.cargoGoal && s.cargoGoal.quantity !== 0 ? (
                         <>
-                            <ProductIcon productName={s.cargoGoal.resource.name} size={18} />
+                            <ProductIcon productName={s.cargoGoal.resource.name} />
                             <span>
                                 Loading{' '}
                                 <span className='tabular-nums text-foreground'>
-                                    {s.currentCargo.quantity.toLocaleString()}
+                                    {formatNumberWithUnit(s.currentCargo.quantity, 'units')}
                                 </span>
                                 {' / '}
-                                <span className='tabular-nums'>{s.cargoGoal.quantity.toLocaleString()}</span>{' '}
+                                <span className='tabular-nums'>
+                                    {formatNumberWithUnit(s.cargoGoal.quantity, 'units')}
+                                </span>{' '}
                                 {s.cargoGoal.resource.name}
                             </span>
                         </>
@@ -261,32 +269,34 @@ export function ShipStatusDetail({ ship, planetSummaries, tick }: Props) {
                         </div>
                         <div className='flex gap-2 flex-wrap'>
                             <ProductQuantity
-                                resource={{ name: 'Grocery Service' }}
+                                resource={{ name: groceryServiceResourceType.name }}
                                 quantity={grocery.currently}
                                 efficiency={groceryEff}
                                 isLimiting={groceryEff === minEff}
-                                planetId={null}
-                                agentId={null}
+                                planetId={shipState.planetId}
+                                agentId={agentId}
                                 quantityLabel={`${formatNumberWithUnit(grocery.currently, 'units')} (${formatNumberWithUnit(grocery.goal, 'units')})`}
                             />
                             <ProductQuantity
-                                resource={{ name: 'Healthcare Service' }}
+                                resource={{ name: healthcareServiceResourceType.name }}
                                 quantity={healthcare.currently}
                                 efficiency={healthcareEff}
                                 isLimiting={healthcareEff === minEff}
-                                planetId={null}
-                                agentId={null}
+                                planetId={shipState.planetId}
+                                agentId={agentId}
                                 quantityLabel={`${formatNumberWithUnit(healthcare.currently, 'units')} (${formatNumberWithUnit(healthcare.goal, 'units')})`}
                             />
-                            <ProductQuantity
-                                resource={{ name: 'Education Service' }}
-                                quantity={education.currently}
-                                efficiency={educationEff}
-                                isLimiting={educationEff === minEff}
-                                planetId={null}
-                                agentId={null}
-                                quantityLabel={`${formatNumberWithUnit(education.currently, 'units')} (${formatNumberWithUnit(education.goal, 'units')})`}
-                            />
+                            {education.goal > 0 && (
+                                <ProductQuantity
+                                    resource={{ name: educationServiceResourceType.name }}
+                                    quantity={education.currently}
+                                    efficiency={educationEff}
+                                    isLimiting={educationEff === minEff}
+                                    planetId={shipState.planetId}
+                                    agentId={agentId}
+                                    quantityLabel={`${formatNumberWithUnit(education.currently, 'units')} (${formatNumberWithUnit(education.goal, 'units')})`}
+                                />
+                            )}
                         </div>
                     </div>
                     <PassengerManifestDialog

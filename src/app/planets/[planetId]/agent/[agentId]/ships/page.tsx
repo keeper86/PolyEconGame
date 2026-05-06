@@ -139,7 +139,8 @@ export default function AgentShipsPage() {
                                                         <ShipStatusDetail
                                                             ship={ship}
                                                             planetSummaries={planetSummaries}
-                                                            tick={tick ?? 0}
+                                                            tick={tick}
+                                                            agentId={agentId}
                                                         />
                                                     )}
                                             </div>

@@ -55,7 +55,6 @@ export type Units = 'currency' | 'tonnes' | 'litres' | 'units' | 'persons' | 'pe
 export function resourceFormToUnit(form: ResourceType): Exclude<Units, 'currency'> {
     switch (form) {
         case 'solid':
-        case 'frozenGoods':
         case 'pieces':
         case 'gas':
             return 'tonnes';
