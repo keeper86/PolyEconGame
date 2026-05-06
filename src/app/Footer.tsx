@@ -220,7 +220,7 @@ export default function Footer() {
                         style={
                             {
                                 '--ticker-start': `${containerWidthRef.current}px`,
-                                animationDuration: `${duration}s`,
+                                'animationDuration': `${duration}s`,
                             } as React.CSSProperties
                         }
                         onAnimationEnd={() => setDisplayedEvents((prev) => prev.filter((e) => e.id !== id))}

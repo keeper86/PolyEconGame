@@ -71,20 +71,12 @@ function LoanRow({
     return (
         <div className='text-xs'>
             <div className='flex items-center justify-between gap-2'>
-                <span className='flex items-center gap-4'>
+                <span className='flex items-center'>
                     <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
-
-                    {formatNumberWithUnit(loan.remainingPrincipal, 'currency', planetId)}
-                    {loan.remainingPrincipal !== loan.principal && (
-                        <span className='opacity-60'>
-                            {' / '}
-                            {formatNumberWithUnit(loan.principal, 'currency', planetId)}
-                        </span>
-                    )}
                 </span>
 
-                <span>Annual Loan Rate {pct.toFixed(1)} %</span>
-                {loan.maturityTick > 0 && <span>Matures tick {mapTickToDate(loan.maturityTick)}</span>}
+                <span>Loan Rate {pct.toFixed(1)} %</span>
+                {loan.maturityTick > 0 && <span>Matures: {mapTickToDate(loan.maturityTick)}</span>}
                 {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
             </div>
 
