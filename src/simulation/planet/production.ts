@@ -106,7 +106,6 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
 
         const allFacilities: Array<Facility> = [
             ...assets.productionFacilities,
-            ...assets.shipMaintenanceFacilities,
             assets.storageFacility,
             ...assets.managementFacilities,
             ...assets.shipConstructionFacilities,
@@ -444,7 +443,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         // All active (non-construction) facilities in one flat array.
         const activeFacilities: Array<Facility> = [
             ...assets.productionFacilities.filter((f) => !f.construction),
-            ...assets.shipMaintenanceFacilities.filter((f) => !f.construction),
             ...(assets.storageFacility.construction === null ? [assets.storageFacility] : []),
             ...assets.managementFacilities.filter((f) => !f.construction),
             ...assets.shipConstructionFacilities.filter((f) => !f.construction),

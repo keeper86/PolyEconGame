@@ -51,13 +51,11 @@ import {
     acquireLicense,
     buildFacility,
     buildShipConstructionFacility,
-    buildShipMaintenanceFacility,
     cancelBuyBid,
     cancelSellOffer,
     createAgent,
     expandFacility,
     expandShipConstructionFacility,
-    expandShipMaintenanceFacility,
     getUser,
     getUserIdFromSession,
     getUsers,
@@ -141,8 +139,6 @@ const protectedAppRouter = trpcRoot.router({
     buildShipConstructionFacility: buildShipConstructionFacility(),
     expandShipConstructionFacility: expandShipConstructionFacility(),
     setShipConstructionTarget: setShipConstructionTarget(),
-    buildShipMaintenanceFacility: buildShipMaintenanceFacility(),
-    expandShipMaintenanceFacility: expandShipMaintenanceFacility(),
     acquireLicense: acquireLicense(),
 });
 

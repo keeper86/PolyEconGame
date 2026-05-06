@@ -32,8 +32,6 @@ import {
     buildShipConstructionFacilitySpec,
     expandShipConstructionFacilitySpec,
     setShipConstructionTargetSpec,
-    buildShipMaintenanceFacilitySpec,
-    expandShipMaintenanceFacilitySpec,
     acquireLicenseSpec,
 } from './commandSpec';
 
@@ -466,36 +464,6 @@ export function workerSetShipConstructionTarget(opts: {
             shipName,
         },
         setShipConstructionTargetSpec,
-        timeoutMs,
-    );
-}
-
-export function workerBuildShipMaintenanceFacility(opts: {
-    agentId: string;
-    planetId: string;
-    facilityName: string;
-    targetScale: number;
-    timeoutMs?: number;
-}): Promise<string> {
-    const { agentId, planetId, facilityName, targetScale, timeoutMs } = opts;
-    return sendCommandSpec(
-        { type: 'buildShipMaintenanceFacility', requestId: randomUUID(), agentId, planetId, facilityName, targetScale },
-        buildShipMaintenanceFacilitySpec,
-        timeoutMs,
-    );
-}
-
-export function workerExpandShipMaintenanceFacility(opts: {
-    agentId: string;
-    planetId: string;
-    facilityId: string;
-    targetScale: number;
-    timeoutMs?: number;
-}): Promise<string> {
-    const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
-    return sendCommandSpec(
-        { type: 'expandShipMaintenanceFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
-        expandShipMaintenanceFacilitySpec,
         timeoutMs,
     );
 }

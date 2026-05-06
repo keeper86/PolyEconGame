@@ -194,8 +194,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'buildShipConstructionFacility':
                     case 'expandShipConstructionFacility':
                     case 'setShipConstructionTarget':
-                    case 'buildShipMaintenanceFacility':
-                    case 'expandShipMaintenanceFacility':
                         handleFacilityAction(state, action, safePostMessage);
                         break;
                     case 'postTransportContract':
@@ -1029,62 +1027,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 facilityId,
                 shipTypeName,
                 shipName,
-            });
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
-        if (msg.type === 'buildShipMaintenanceFacility') {
-            const { requestId, agentId, planetId, facilityName, targetScale } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceFacilityBuildFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({
-                    type: 'shipMaintenanceFacilityBuildFailed',
-                    requestId,
-                    reason: `Planet '${planetId}' not found`,
-                });
-                return;
-            }
-            pendingActions.push({
-                type: 'buildShipMaintenanceFacility',
-                requestId,
-                agentId,
-                planetId,
-                facilityName,
-                targetScale,
-            });
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
-        if (msg.type === 'expandShipMaintenanceFacility') {
-            const { requestId, agentId, planetId, facilityId, targetScale } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceFacilityExpandFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({
-                    type: 'shipMaintenanceFacilityExpandFailed',
-                    requestId,
-                    reason: `Planet '${planetId}' not found`,
-                });
-                return;
-            }
-            pendingActions.push({
-                type: 'expandShipMaintenanceFacility',
-                requestId,
-                agentId,
-                planetId,
-                facilityId,
-                targetScale,
             });
             if (!processingTick) {
                 drainActionQueue();

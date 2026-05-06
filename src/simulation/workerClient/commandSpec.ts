@@ -427,34 +427,6 @@ export const setShipConstructionTargetSpec: CommandSpec<
     extract: (msg) => msg.facilityId,
 };
 
-// --- Ship maintenance facility specs ---
-
-type BuildShipMaintenanceFacilitySuccess = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityBuilt' }>;
-type BuildShipMaintenanceFacilityFailure = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityBuildFailed' }>;
-export const buildShipMaintenanceFacilitySpec: CommandSpec<
-    Extract<InboundMessage, { type: 'buildShipMaintenanceFacility' }>,
-    BuildShipMaintenanceFacilitySuccess,
-    BuildShipMaintenanceFacilityFailure,
-    string
-> = {
-    successType: 'shipMaintenanceFacilityBuilt',
-    failureType: 'shipMaintenanceFacilityBuildFailed',
-    extract: (msg) => msg.facilityId,
-};
-
-type ExpandShipMaintenanceFacilitySuccess = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityExpanded' }>;
-type ExpandShipMaintenanceFacilityFailure = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityExpandFailed' }>;
-export const expandShipMaintenanceFacilitySpec: CommandSpec<
-    Extract<InboundMessage, { type: 'expandShipMaintenanceFacility' }>,
-    ExpandShipMaintenanceFacilitySuccess,
-    ExpandShipMaintenanceFacilityFailure,
-    string
-> = {
-    successType: 'shipMaintenanceFacilityExpanded',
-    failureType: 'shipMaintenanceFacilityExpandFailed',
-    extract: (msg) => msg.facilityId,
-};
-
 type AcquireLicenseSuccess = Extract<OutboundMessage, { type: 'licenseAcquired' }>;
 type AcquireLicenseFailure = Extract<OutboundMessage, { type: 'licenseAcquisitionFailed' }>;
 export const acquireLicenseSpec: CommandSpec<

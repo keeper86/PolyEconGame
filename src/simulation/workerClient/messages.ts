@@ -218,22 +218,6 @@ export type InboundMessage =
           shipName: string;
       }
     | {
-          type: 'buildShipMaintenanceFacility';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          facilityName: string;
-          targetScale: number;
-      }
-    | {
-          type: 'expandShipMaintenanceFacility';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          facilityId: string;
-          targetScale: number;
-      }
-    | {
           type: 'postShipListing';
           requestId: string;
           agentId: string;
@@ -333,10 +317,6 @@ export type OutboundMessage =
     | { type: 'shipConstructionFacilityExpandFailed'; requestId: string; reason: string }
     | { type: 'shipConstructionTargetSet'; requestId: string; agentId: string; facilityId: string }
     | { type: 'shipConstructionTargetSetFailed'; requestId: string; reason: string }
-    | { type: 'shipMaintenanceFacilityBuilt'; requestId: string; agentId: string; facilityId: string }
-    | { type: 'shipMaintenanceFacilityBuildFailed'; requestId: string; reason: string }
-    | { type: 'shipMaintenanceFacilityExpanded'; requestId: string; agentId: string; facilityId: string }
-    | { type: 'shipMaintenanceFacilityExpandFailed'; requestId: string; reason: string }
     | {
           type: 'licenseAcquired';
           requestId: string;
@@ -575,22 +555,6 @@ export type PendingAction =
           facilityId: string;
           shipTypeName: string | null;
           shipName: string;
-      }
-    | {
-          type: 'buildShipMaintenanceFacility';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          facilityName: string;
-          targetScale: number;
-      }
-    | {
-          type: 'expandShipMaintenanceFacility';
-          requestId: string;
-          agentId: string;
-          planetId: string;
-          facilityId: string;
-          targetScale: number;
       }
     | {
           type: 'postShipListing';

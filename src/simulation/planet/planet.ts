@@ -233,7 +233,6 @@ export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
     managementFacilities: ManagementFacility[];
     shipConstructionFacilities: ShipConstructionFacility[];
-    shipMaintenanceFacilities: ProductionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
 

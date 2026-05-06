@@ -76,7 +76,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
     for (const facility of [
         ...assets.productionFacilities,
-        ...assets.shipMaintenanceFacilities,
         ...assets.managementFacilities,
         ...assets.shipConstructionFacilities,
     ]) {
@@ -164,7 +163,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const facility of [
         ...assets.productionFacilities,
-        ...assets.shipMaintenanceFacilities,
         ...assets.managementFacilities,
         ...assets.shipConstructionFacilities,
     ]) {
