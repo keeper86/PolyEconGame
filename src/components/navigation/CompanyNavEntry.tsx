@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../ui/sidebar';
-import { JoinGameDialog } from './JoinGameDialog';
 
 export function CompanyNavEntry() {
     const { status } = useSession();
@@ -21,17 +20,7 @@ export function CompanyNavEntry() {
 
     const agentId = userQuery.data?.agentId;
 
-    if (status !== 'authenticated') {
-        return null;
-    }
-
-    if (!agentId) {
-        return (
-            <SidebarMenuItem>
-                <JoinGameDialog />
-            </SidebarMenuItem>
-        );
-    }
+    const loggedIn = status === 'authenticated';
 
     const handleClick = () => {
         if (isMobile) {
@@ -43,9 +32,10 @@ export function CompanyNavEntry() {
         <SidebarMenuItem>
             <SidebarMenu className='pl-2 pt-1'>
                 {AGENT_SUB_PAGES.map(({ segment, label, icon: Icon }) => {
-                    const href = activePlanetId
-                        ? (`/planets/${encodeURIComponent(activePlanetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as never)
-                        : null;
+                    const href =
+                        activePlanetId && agentId && loggedIn
+                            ? (`/planets/${encodeURIComponent(activePlanetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as never)
+                            : null;
                     const isActive = !!href && (pathname === href || pathname.startsWith(`${href}/`));
                     return (
                         <SidebarMenuItem key={segment}>

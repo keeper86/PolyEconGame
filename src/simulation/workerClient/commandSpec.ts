@@ -357,7 +357,7 @@ export const dispatchShipSpec: CommandSpec<
 > = {
     successType: 'shipDispatched',
     failureType: 'shipDispatchFailed',
-    extract: (msg) => msg.shipName,
+    extract: (msg) => msg.shipId,
 };
 
 type DispatchConstructionShipSuccess = Extract<OutboundMessage, { type: 'constructionShipDispatched' }>;
@@ -370,7 +370,7 @@ export const dispatchConstructionShipSpec: CommandSpec<
 > = {
     successType: 'constructionShipDispatched',
     failureType: 'constructionShipDispatchFailed',
-    extract: (msg) => msg.shipName,
+    extract: (msg) => msg.shipId,
 };
 
 type DispatchPassengerShipSuccess = Extract<OutboundMessage, { type: 'passengerShipDispatched' }>;
@@ -383,7 +383,7 @@ export const dispatchPassengerShipSpec: CommandSpec<
 > = {
     successType: 'passengerShipDispatched',
     failureType: 'passengerShipDispatchFailed',
-    extract: (msg) => msg.shipName,
+    extract: (msg) => msg.shipId,
 };
 
 // --- Ship construction facility specs ---
@@ -424,34 +424,6 @@ export const setShipConstructionTargetSpec: CommandSpec<
 > = {
     successType: 'shipConstructionTargetSet',
     failureType: 'shipConstructionTargetSetFailed',
-    extract: (msg) => msg.facilityId,
-};
-
-// --- Ship maintenance facility specs ---
-
-type BuildShipMaintenanceFacilitySuccess = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityBuilt' }>;
-type BuildShipMaintenanceFacilityFailure = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityBuildFailed' }>;
-export const buildShipMaintenanceFacilitySpec: CommandSpec<
-    Extract<InboundMessage, { type: 'buildShipMaintenanceFacility' }>,
-    BuildShipMaintenanceFacilitySuccess,
-    BuildShipMaintenanceFacilityFailure,
-    string
-> = {
-    successType: 'shipMaintenanceFacilityBuilt',
-    failureType: 'shipMaintenanceFacilityBuildFailed',
-    extract: (msg) => msg.facilityId,
-};
-
-type ExpandShipMaintenanceFacilitySuccess = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityExpanded' }>;
-type ExpandShipMaintenanceFacilityFailure = Extract<OutboundMessage, { type: 'shipMaintenanceFacilityExpandFailed' }>;
-export const expandShipMaintenanceFacilitySpec: CommandSpec<
-    Extract<InboundMessage, { type: 'expandShipMaintenanceFacility' }>,
-    ExpandShipMaintenanceFacilitySuccess,
-    ExpandShipMaintenanceFacilityFailure,
-    string
-> = {
-    successType: 'shipMaintenanceFacilityExpanded',
-    failureType: 'shipMaintenanceFacilityExpandFailed',
     extract: (msg) => msg.facilityId,
 };
 

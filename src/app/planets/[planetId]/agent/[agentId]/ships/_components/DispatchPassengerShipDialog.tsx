@@ -14,12 +14,20 @@ import { useMemo, useState } from 'react';
 type Props = {
     agentId: string;
     planetId: string;
+    shipId: string;
     shipName: string;
     passengerCapacity: number;
     children: React.ReactNode;
 };
 
-export function DispatchPassengerShipDialog({ agentId, planetId, shipName, passengerCapacity, children }: Props) {
+export function DispatchPassengerShipDialog({
+    agentId,
+    planetId,
+    shipId,
+    shipName,
+    passengerCapacity,
+    children,
+}: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
@@ -50,7 +58,7 @@ export function DispatchPassengerShipDialog({ agentId, planetId, shipName, passe
             agentId,
             fromPlanetId: planetId,
             toPlanetId,
-            shipName,
+            shipId,
             passengerCount: Number(passengerCount),
         });
     };

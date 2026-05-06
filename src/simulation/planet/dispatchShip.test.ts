@@ -10,6 +10,7 @@ import type { GameState } from './planet';
 
 function makeTransportShip(name: string, planetId: string): TransportShip {
     return {
+        id: 'ship-1',
         name,
         builtAtTick: 0,
         maintainanceStatus: 1,
@@ -35,7 +36,7 @@ describe('handleDispatchShip', () => {
         partial: Partial<Extract<PendingAction, { type: 'dispatchShip' }>> &
             Pick<
                 Extract<PendingAction, { type: 'dispatchShip' }>,
-                'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipName'
+                'agentId' | 'fromPlanetId' | 'toPlanetId' | 'shipId'
             >,
     ) {
         handleDispatchShip(
@@ -52,22 +53,22 @@ describe('handleDispatchShip', () => {
 
     it('fails when agent not found', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], []);
-        dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Agent not found' });
     });
 
     it('fails when destination planet not found', () => {
         const agent = makeAgent('a1', 'p1');
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
     it('fails when ship not found', () => {
         const agent = makeAgent('a1', 'p1');
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'Ghost' });
-        expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: expect.stringContaining('Ghost') });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ghost-id' });
+        expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
     it('fails when ship is not idle', () => {
@@ -76,7 +77,7 @@ describe('handleDispatchShip', () => {
         ship.state = { type: 'transporting', from: 'p1', to: 'p2', cargo: null, arrivalTick: 100 };
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Ship is not idle' });
     });
 
@@ -85,7 +86,7 @@ describe('handleDispatchShip', () => {
         const ship = makeTransportShip('S1', 'p2');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
@@ -94,8 +95,8 @@ describe('handleDispatchShip', () => {
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
-        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipName: 'S1', cargoGoal: null });
-        expect(messages[0]).toMatchObject({ type: 'shipDispatched', agentId: 'a1', shipName: 'S1' });
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id, cargoGoal: null });
+        expect(messages[0]).toMatchObject({ type: 'shipDispatched', agentId: 'a1', shipId: ship.id });
         expect(ship.state.type).toBe('transporting');
         if (ship.state.type === 'transporting') {
             expect(ship.state.to).toBe('p2');
@@ -113,7 +114,7 @@ describe('handleDispatchShip', () => {
             agentId: 'a1',
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
-            shipName: 'S1',
+            shipId: ship.id,
             cargoGoal: { resourceName: 'Steel', quantity: 100 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
@@ -128,7 +129,7 @@ describe('handleDispatchShip', () => {
             agentId: 'a1',
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
-            shipName: 'S1',
+            shipId: ship.id,
             cargoGoal: { resourceName: 'Steel', quantity: 100 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: expect.stringContaining('Steel') });
@@ -146,7 +147,7 @@ describe('handleDispatchShip', () => {
             agentId: 'a1',
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
-            shipName: 'S1',
+            shipId: ship.id,
             cargoGoal: { resourceName: 'Steel', quantity: 200 },
         });
         expect(messages[0]).toMatchObject({
@@ -167,10 +168,10 @@ describe('handleDispatchShip', () => {
             agentId: 'a1',
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
-            shipName: 'S1',
+            shipId: ship.id,
             cargoGoal: { resourceName: 'Steel', quantity: 300 },
         });
-        expect(messages[0]).toMatchObject({ type: 'shipDispatched', shipName: 'S1' });
+        expect(messages[0]).toMatchObject({ type: 'shipDispatched', shipId: ship.id });
         expect(ship.state.type).toBe('loading');
         if (ship.state.type === 'loading') {
             expect(ship.state.to).toBe('p2');

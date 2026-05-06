@@ -1,6 +1,6 @@
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
-import { facilityByName, maintenanceFacilityType } from '../planet/productionFacilities';
+import { facilityByName } from '../planet/productionFacilities';
 import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
 import { shipConstructionFacilityType } from '../planet/specialFacilities';
 import { shiptypes, constructionShipType } from '../ships/ships';
@@ -199,12 +199,6 @@ export function handleFacilityAction(
         case 'setShipConstructionTarget':
             handleSetShipConstructionTarget(state, action, safePostMessage);
             break;
-        case 'buildShipMaintenanceFacility':
-            handleBuildShipMaintenanceFacility(state, action, safePostMessage);
-            break;
-        case 'expandShipMaintenanceFacility':
-            handleExpandShipMaintenanceFacility(state, action, safePostMessage);
-            break;
         default:
             // This function only handles facility actions
             break;
@@ -393,118 +387,4 @@ export function handleSetShipConstructionTarget(
         );
     }
     safePostMessage({ type: 'shipConstructionTargetSet', requestId, agentId, facilityId });
-}
-
-/**
- * Handle 'buildShipMaintenanceFacility' action
- */
-export function handleBuildShipMaintenanceFacility(
-    state: GameState,
-    action: Extract<PendingAction, { type: 'buildShipMaintenanceFacility' }>,
-    safePostMessage: (msg: OutboundMessage) => void,
-): void {
-    const { requestId, agentId, planetId, facilityName, targetScale = 1 } = action;
-    const agent = state.agents.get(agentId);
-    if (!agent) {
-        safePostMessage({ type: 'shipMaintenanceFacilityBuildFailed', requestId, reason: 'Agent not found' });
-        return;
-    }
-    const assets = agent.assets[planetId];
-    if (!assets) {
-        safePostMessage({
-            type: 'shipMaintenanceFacilityBuildFailed',
-            requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
-        });
-        return;
-    }
-    const alreadyExists = assets.shipMaintenanceFacilities.some((f) => f.name === facilityName);
-    if (alreadyExists) {
-        safePostMessage({
-            type: 'shipMaintenanceFacilityBuildFailed',
-            requestId,
-            reason: `Ship maintenance facility '${facilityName}' already exists on planet '${planetId}'`,
-        });
-        return;
-    }
-    const facilityId = `${agentId}-ship-maintenance-${facilityName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const newFacility = maintenanceFacilityType(planetId, facilityId);
-    newFacility.name = facilityName;
-    const costs = calculateCostsForConstruction(getFacilityType(newFacility), 0, targetScale);
-    newFacility.construction = {
-        progress: 0,
-        constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
-        lastTickInvestedConstructionServices: 0,
-    };
-    newFacility.scale = targetScale;
-    newFacility.maxScale = 0;
-    assets.shipMaintenanceFacilities.push(newFacility);
-    console.log(
-        `[worker] Agent '${agentId}' built ship maintenance facility '${facilityName}' (scale ${targetScale}) on planet '${planetId}'`,
-    );
-    safePostMessage({ type: 'shipMaintenanceFacilityBuilt', requestId, agentId, facilityId });
-}
-
-/**
- * Handle 'expandShipMaintenanceFacility' action
- */
-export function handleExpandShipMaintenanceFacility(
-    state: GameState,
-    action: Extract<PendingAction, { type: 'expandShipMaintenanceFacility' }>,
-    safePostMessage: (msg: OutboundMessage) => void,
-): void {
-    const { requestId, agentId, planetId, facilityId, targetScale } = action;
-    const agent = state.agents.get(agentId);
-    if (!agent) {
-        safePostMessage({ type: 'shipMaintenanceFacilityExpandFailed', requestId, reason: 'Agent not found' });
-        return;
-    }
-    const assets = agent.assets[planetId];
-    if (!assets) {
-        safePostMessage({
-            type: 'shipMaintenanceFacilityExpandFailed',
-            requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
-        });
-        return;
-    }
-    const facility = assets.shipMaintenanceFacilities.find((f) => f.id === facilityId);
-    if (!facility) {
-        safePostMessage({
-            type: 'shipMaintenanceFacilityExpandFailed',
-            requestId,
-            reason: `Ship maintenance facility '${facilityId}' not found`,
-        });
-        return;
-    }
-    if (facility.construction !== null) {
-        safePostMessage({
-            type: 'shipMaintenanceFacilityExpandFailed',
-            requestId,
-            reason: 'Facility is already under construction',
-        });
-        return;
-    }
-    if (targetScale <= facility.maxScale) {
-        safePostMessage({
-            type: 'shipMaintenanceFacilityExpandFailed',
-            requestId,
-            reason: `Target scale ${targetScale} must be greater than current max scale ${facility.maxScale}`,
-        });
-        return;
-    }
-    const costs = calculateCostsForConstruction(getFacilityType(facility), facility.maxScale, targetScale);
-    facility.construction = {
-        progress: 0,
-        constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
-        lastTickInvestedConstructionServices: 0,
-    };
-    console.log(
-        `[worker] Agent '${agentId}' expanding ship maintenance facility '${facilityId}' to scale ${targetScale} on planet '${planetId}'`,
-    );
-    safePostMessage({ type: 'shipMaintenanceFacilityExpanded', requestId, agentId, facilityId });
 }

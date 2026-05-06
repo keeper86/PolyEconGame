@@ -194,8 +194,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'buildShipConstructionFacility':
                     case 'expandShipConstructionFacility':
                     case 'setShipConstructionTarget':
-                    case 'buildShipMaintenanceFacility':
-                    case 'expandShipMaintenanceFacility':
                         handleFacilityAction(state, action, safePostMessage);
                         break;
                     case 'postTransportContract':
@@ -1036,62 +1034,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
-        if (msg.type === 'buildShipMaintenanceFacility') {
-            const { requestId, agentId, planetId, facilityName, targetScale } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceFacilityBuildFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({
-                    type: 'shipMaintenanceFacilityBuildFailed',
-                    requestId,
-                    reason: `Planet '${planetId}' not found`,
-                });
-                return;
-            }
-            pendingActions.push({
-                type: 'buildShipMaintenanceFacility',
-                requestId,
-                agentId,
-                planetId,
-                facilityName,
-                targetScale,
-            });
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
-        if (msg.type === 'expandShipMaintenanceFacility') {
-            const { requestId, agentId, planetId, facilityId, targetScale } = msg;
-            if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipMaintenanceFacilityExpandFailed', requestId, reason: 'Agent not found' });
-                return;
-            }
-            if (!state.planets.has(planetId)) {
-                safePostMessage({
-                    type: 'shipMaintenanceFacilityExpandFailed',
-                    requestId,
-                    reason: `Planet '${planetId}' not found`,
-                });
-                return;
-            }
-            pendingActions.push({
-                type: 'expandShipMaintenanceFacility',
-                requestId,
-                agentId,
-                planetId,
-                facilityId,
-                targetScale,
-            });
-            if (!processingTick) {
-                drainActionQueue();
-            }
-            return;
-        }
-
         if (msg.type === 'buildFacility') {
             const { requestId, agentId, planetId, facilityKey, targetScale } = msg;
             if (!state.agents.has(agentId)) {
@@ -1191,7 +1133,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'acceptTransportContract') {
-            const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = msg;
+            const { requestId, agentId, planetId, posterAgentId, contractId, shipId } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -1211,7 +1153,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 planetId,
                 posterAgentId,
                 contractId,
-                shipName,
+                shipId,
             });
             if (!processingTick) {
                 drainActionQueue();
@@ -1241,7 +1183,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'dispatchShip') {
-            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, cargoGoal } = msg;
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipId, cargoGoal } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -1256,7 +1198,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 agentId,
                 fromPlanetId,
                 toPlanetId,
-                shipName,
+                shipId,
                 cargoGoal,
             });
             if (!processingTick) {
@@ -1266,7 +1208,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'dispatchConstructionShip') {
-            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, facilityName } = msg;
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipId, facilityName } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -1285,7 +1227,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 agentId,
                 fromPlanetId,
                 toPlanetId,
-                shipName,
+                shipId,
                 facilityName,
             });
             if (!processingTick) {
@@ -1295,7 +1237,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'dispatchPassengerShip') {
-            const { requestId, agentId, fromPlanetId, toPlanetId, shipName, passengerCount } = msg;
+            const { requestId, agentId, fromPlanetId, toPlanetId, shipId, passengerCount } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -1314,7 +1256,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 agentId,
                 fromPlanetId,
                 toPlanetId,
-                shipName,
+                shipId,
                 passengerCount,
             });
             if (!processingTick) {
@@ -1364,7 +1306,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'acceptConstructionContract') {
-            const { requestId, agentId, planetId, posterAgentId, contractId, shipName } = msg;
+            const { requestId, agentId, planetId, posterAgentId, contractId, shipId } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -1384,7 +1326,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 planetId,
                 posterAgentId,
                 contractId,
-                shipName,
+                shipId,
             });
             if (!processingTick) {
                 drainActionQueue();
@@ -1435,7 +1377,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'acceptShipBuyingOffer') {
-            const { requestId, agentId, planetId, posterAgentId, offerId, shipName } = msg;
+            const { requestId, agentId, planetId, posterAgentId, offerId, shipId } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -1455,7 +1397,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 planetId,
                 posterAgentId,
                 offerId,
-                shipName,
+                shipId,
             });
             if (!processingTick) {
                 drainActionQueue();
@@ -1464,7 +1406,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'postShipListing') {
-            const { requestId, agentId, planetId, shipName, askPrice } = msg;
+            const { requestId, agentId, planetId, shipId, askPrice } = msg;
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Agent not found' });
                 return;
@@ -1473,7 +1415,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Planet '${planetId}' not found` });
                 return;
             }
-            pendingActions.push({ type: 'postShipListing', requestId, agentId, planetId, shipName, askPrice });
+            pendingActions.push({ type: 'postShipListing', requestId, agentId, planetId, shipId, askPrice });
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1545,13 +1487,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     });
 
-    // -----------------------------------------------------------------
-    // Start the simulation loop and return a never-resolving promise
-    // so Piscina keeps this thread occupied.
-    // -----------------------------------------------------------------
-
-    // Catch stray EPIPE errors that can surface during shutdown when the
-    // communication channel between worker and main thread is torn down.
     process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EPIPE') {
             running = false;

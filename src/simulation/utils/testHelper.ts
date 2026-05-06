@@ -436,7 +436,6 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         productionFacilities: [],
         managementFacilities: [],
         shipConstructionFacilities: [],
-        shipMaintenanceFacilities: [],
         transportContracts: [],
         constructionContracts: [],
         shipBuyingOffers: [],

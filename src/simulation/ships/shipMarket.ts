@@ -115,7 +115,7 @@ export function findCompatibleTrades(gameState: GameState): CompatibleTrade[] {
     ) as Record<string, string>;
 
     for (const listing of allListings) {
-        const ship = findShip(gameState, listing.sellerAgentId, listing.shipName);
+        const ship = findShipById(gameState, listing.sellerAgentId, listing.shipId);
         const ev = ship ? effectiveShipValue(ship, gameState) : 0;
 
         for (const offer of allOffers) {
@@ -139,8 +139,8 @@ export function findCompatibleTrades(gameState: GameState): CompatibleTrade[] {
     return results;
 }
 
-function findShip(gameState: GameState, agentId: string, shipName: string): Ship | undefined {
-    return gameState.agents.get(agentId)?.ships.find((s) => s.name === shipName);
+function findShipById(gameState: GameState, agentId: string, shipId: string): Ship | undefined {
+    return gameState.agents.get(agentId)?.ships.find((s) => s.id === shipId);
 }
 
 /**

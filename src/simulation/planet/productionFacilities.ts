@@ -1,3 +1,5 @@
+import type { ResourceProcessLevel } from './claims';
+import type { ProductionFacility } from './facility';
 import {
     arableLandResourceType,
     clayDepositResourceType,
@@ -12,7 +14,6 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from './landBoundResources';
-import type { ResourceProcessLevel } from './claims';
 import {
     agriculturalProductResourceType,
     beverageResourceType,
@@ -58,12 +59,8 @@ import {
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
-    maintenanceServiceResourceType,
     retailServiceResourceType,
 } from './services';
-import type { ProductionFacility } from './facility';
-import { defaultBuildingCost } from '../ships/ships';
-import { MAINTENANCE_COST_MULTIPLIER } from './production';
 
 export const zeroLastTicksProductionResults = {
     overallEfficiency: 0,
@@ -910,32 +907,6 @@ export const educationCenter = (planetId: string, id: string): ProductionFacilit
     produces: [{ resource: educationServiceResourceType, quantity: 300 }],
 });
 
-export const maintenanceFacilityType = (planetId: string, id: string): ProductionFacility => {
-    return {
-        planetId,
-        id,
-        type: 'production',
-        name: 'Maintenance Facility',
-        maxScale: 1,
-        scale: 1,
-        construction: null,
-        powerConsumptionPerTick: 2,
-        workerRequirement: {
-            none: 10,
-            primary: 20,
-            secondary: 10,
-            tertiary: 5,
-        },
-        pollutionPerTick: { ...defaultPollutionPerTick },
-        needs: defaultBuildingCost.map((rq) => ({
-            resource: rq.resource,
-            quantity: rq.quantity * MAINTENANCE_COST_MULTIPLIER,
-        })),
-        produces: [{ resource: maintenanceServiceResourceType, quantity: 10 }],
-        lastTickResults: { ...zeroLastTicksProductionResults },
-    };
-};
-
 export type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
 
 export type FacilityCatalogEntry = {
@@ -999,7 +970,6 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(hospital),
     entry(educationCenter),
     entry(siliconWaferFactory),
-    entry(maintenanceFacilityType),
 ];
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;
 export type FacilityLevel = ResourceProcessLevel[] | 'refined' | 'manufactured' | 'services';

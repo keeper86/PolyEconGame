@@ -22,13 +22,11 @@ const PLACEHOLDER_ID = 'preview';
 export default function ProductionFacilitiesPanel({
     facilities,
     shipConstructionFacilities,
-    shipMaintenanceFacilities: _shipMaintenanceFacilities,
     agentId,
     planetId,
 }: {
     facilities: ProductionFacility[];
     shipConstructionFacilities: ShipConstructionFacility[];
-    shipMaintenanceFacilities: ProductionFacility[];
     agentId: string;
     planetId: string;
 }): React.ReactElement {

@@ -204,6 +204,7 @@ export type PassengerShipStatusType = PassengerShipStatus['type'];
 export type ShipState = TransportShipStatus | ConstructionShipStatus | PassengerShipStatus;
 
 export type BaseShip = {
+    id: string;
     name: string;
     builtAtTick: number;
     maintainanceStatus: number; // 0..1, degrades over time and with use, can be restored by consuming maintenance services up to maxMaintenance
@@ -235,7 +236,7 @@ export type ConstructionContractBase = {
 export type ConstructionContract = ConstructionContractBase &
     (
         | { status: 'open' }
-        | { status: 'accepted'; acceptedByAgentId: string; shipName: string; fulfillmentDueAtTick: number }
+        | { status: 'accepted'; acceptedByAgentId: string; shipId: string; fulfillmentDueAtTick: number }
         | { status: 'completed' }
     );
 
@@ -487,6 +488,7 @@ export const createShip = (
 ): Ship => {
     if (shipTemplate.type === 'construction') {
         return {
+            id: crypto.randomUUID(),
             name,
             type: shipTemplate,
             state: {
@@ -501,6 +503,7 @@ export const createShip = (
     }
     if (shipTemplate.type === 'passenger') {
         return {
+            id: crypto.randomUUID(),
             name,
             builtAtTick,
             type: shipTemplate,
@@ -514,6 +517,7 @@ export const createShip = (
         } satisfies PassengerShip;
     }
     return {
+        id: crypto.randomUUID(),
         name,
         builtAtTick,
         type: shipTemplate,
@@ -530,6 +534,7 @@ export const createShip = (
 export type ShipListing = {
     id: string;
     sellerAgentId: string;
+    shipId: string;
     shipName: string;
     shipTypeName: string;
     askPrice: number;
@@ -558,7 +563,7 @@ export type ShipBuyingOffer = {
     shipType: ShipTypeKey;
     buyerAgentId: string;
     price: number;
-} & ({ status: 'open' } | { status: 'accepted'; sellerAgentId: string; shipName: string });
+} & ({ status: 'open' } | { status: 'accepted'; sellerAgentId: string; shipId: string });
 
 export type TransportContractBase = {
     id: string;
@@ -574,5 +579,5 @@ export type TransportContractBase = {
 export type TransportContract = TransportContractBase &
     (
         | { status: 'open' }
-        | { status: 'accepted'; acceptedByAgentId: string; shipName: string; fulfillmentDueAtTick: number }
+        | { status: 'accepted'; acceptedByAgentId: string; shipId: string; fulfillmentDueAtTick: number }
     );

@@ -11,15 +11,16 @@ import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
 import GroceryBufferChart from './GroceryBufferChart';
-import IntergenerationalTransferChart from './IntergenerationalTransferChart';
 import NutritionHeatmapChart from './NutritionHeatmapChart';
 import PlanetDemography from './PlanetDemography';
 import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
 import WealthDistributionChart from './WealthDistributionChart';
+import TransferChart from './TransferChart';
 
 // ─── Skill selector constants ────────────────────────────────────────────────
 
@@ -258,23 +259,31 @@ export default function PlanetDemographicsPage() {
             {occupationCards}
             <PlanetDemography rows={rows} group={group} />
 
-            <div className='my-3 border-t' />
+            <Accordion type='single' collapsible className='mt-1'>
+                <AccordionItem value='wealth'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Wealth distribution</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <p className='text-xs text-muted-foreground font-normal mb-2'>
+                            {`Total (per capita): ${formatNumberWithUnit(totalWealth, 'currency', planetId)} (${formatNumberWithUnit(totalWealth / populationTotal, 'currency', planetId)})`}
+                        </p>
+                        {wealthCards}
+                        <WealthDistributionChart rows={rows} groupMode={group} />
+                        <TransferChart matrix={data.data.lastTransferMatrix} viewMode={group} />
+                    </AccordionContent>
+                </AccordionItem>
 
-            <span className='flex justify-between mb-2'>
-                <h4 className='text-sm font-semibold' id='wealth'>
-                    Wealth distribution
-                </h4>
-                <span className='text-xs text-muted-foreground'>{`Total (per capita): ${formatNumberWithUnit(totalWealth, 'currency', planetId)} (${formatNumberWithUnit(totalWealth / populationTotal, 'currency', planetId)})`}</span>
-            </span>
-            {wealthCards}
-            <WealthDistributionChart rows={rows} groupMode={group} />
-
-            <IntergenerationalTransferChart lastTransferMatrix={data.data.lastTransferMatrix} group={group} />
-
-            <div className='my-3 border-t' />
-
-            <NutritionHeatmapChart rows={rows} groupMode={group} />
-            <GroceryBufferChart rows={rows} groupMode={group} />
+                <AccordionItem value='nutrition'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Nutrition &amp; Food Buffers</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <NutritionHeatmapChart rows={rows} groupMode={group} />
+                        <GroceryBufferChart rows={rows} groupMode={group} />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
         </>
     );
 }
