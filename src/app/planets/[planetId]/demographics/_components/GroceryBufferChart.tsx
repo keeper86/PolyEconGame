@@ -8,7 +8,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, SERVICE_TARGET_PER_PERSON } from './demographicsTypes';
 

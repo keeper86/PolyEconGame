@@ -3,7 +3,12 @@
 import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '@/app/planets/_components/CohortFilter';
+import {
+    EDU_COLORS,
+    EDU_LABELS,
+    OCC_COLORS,
+    OCC_LABELS,
+} from '@/app/planets/[planetId]/demographics/_components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';

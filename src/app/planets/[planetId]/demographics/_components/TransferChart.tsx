@@ -7,7 +7,7 @@ import type { PopulationTransferMatrix } from '@/simulation/population/populatio
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Bar, BarChart, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 
 type Props = {

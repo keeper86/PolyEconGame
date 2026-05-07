@@ -4,24 +4,27 @@ import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/Agen
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import MarketPanel from './_components/MarketPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
+import { Page } from '@/components/client/Page';
 
 export default function MarketPage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
-        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
-            {hasNoAssets ? (
-                <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
-            ) : !isLoading && assets ? (
-                <MarketPanel
-                    agentId={agentId}
-                    planetId={planetId}
-                    assets={assets}
-                    allPlanetDeposits={detail?.allPlanetDeposits}
-                />
-            ) : (
-                <div className='text-sm text-muted-foreground'>Loading…</div>
-            )}
-        </AgentAccessGuard>
+        <Page title={`Market Overview`}>
+            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
+                {hasNoAssets ? (
+                    <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
+                ) : !isLoading && assets ? (
+                    <MarketPanel
+                        agentId={agentId}
+                        planetId={planetId}
+                        assets={assets}
+                        allPlanetDeposits={detail?.allPlanetDeposits}
+                    />
+                ) : (
+                    <div className='text-sm text-muted-foreground'>Loading…</div>
+                )}
+            </AgentAccessGuard>
+        </Page>
     );
 }

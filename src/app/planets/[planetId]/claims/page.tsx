@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation';
 import { ActiveClaimCard } from './_components/ActiveClaimCard';
 import { LeaseClaimCard } from './_components/LeaseClaimCard';
 import { ReadOnlyClaimCard } from './_components/ReadOnlyClaimCard';
+import { Page } from '@/components/client/Page';
 
 function ClaimsContent({ planetId }: { planetId: string }) {
     const trpc = useTRPC();
@@ -74,12 +75,8 @@ export default function PlanetClaimsPage() {
     const planetId = (params?.planetId as string) ?? '';
 
     return (
-        <div className='space-y-4'>
-            <div>
-                <h3 className='text-base font-semibold'>Land Claims</h3>
-                <p className='text-sm text-muted-foreground'>All land-bound resource plots on this planet.</p>
-            </div>
+        <Page title={`Land Claims`}>
             <ClaimsContent planetId={planetId} />
-        </div>
+        </Page>
     );
 }

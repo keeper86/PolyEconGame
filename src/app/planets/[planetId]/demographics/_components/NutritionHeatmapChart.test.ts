@@ -15,13 +15,13 @@
  * classifies each group by its population-weighted average starvation.
  */
 
-import type { AggRow } from '@/app/planets/[planetId]/demographics/demographicsTypes';
+import type { AggRow } from '@/app/planets/[planetId]/demographics/_components/demographicsTypes';
 import {
     GV_FOOD,
     GV_POP,
     GV_STARV,
     SERVICE_TARGET_PER_PERSON,
-} from '@/app/planets/[planetId]/demographics/demographicsTypes';
+} from '@/app/planets/[planetId]/demographics/_components/demographicsTypes';
 import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { describe, expect, it } from 'vitest';

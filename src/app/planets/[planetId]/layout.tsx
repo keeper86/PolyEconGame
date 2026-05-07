@@ -1,8 +1,5 @@
 'use client';
 
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useTRPC } from '@/lib/trpc';
-import { formatNumberWithUnit } from '@/lib/utils';
 import { AC_ID } from '@/simulation/utils/initialWorld';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
@@ -21,12 +18,7 @@ const PLANET_LARGE_IMAGES: Record<string, string> = {
 export default function PlanetDetailLayout({ children }: { children: ReactNode }) {
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
-    const trpc = useTRPC();
 
-    const { data } = useSimulationQuery(trpc.simulation.getPlanetOverview.queryOptions({ planetId }));
-
-    const planetName = data?.name ?? planetId;
-    const populationTotal = data?.populationTotal;
     const watermarkSrc = PLANET_LARGE_IMAGES[planetId];
 
     return (
@@ -43,12 +35,6 @@ export default function PlanetDetailLayout({ children }: { children: ReactNode }
                     priority
                 />
             )}
-            <span className='flex justify-between mb-2'>
-                <h1 className='text-3xl font-bold'>{planetName}</h1>
-                {populationTotal !== undefined && (
-                    <span className='text-sm text-muted-foreground self-end'>{`Total population: ${formatNumberWithUnit(populationTotal, 'persons')}`}</span>
-                )}
-            </span>
             {children}
         </div>
     );

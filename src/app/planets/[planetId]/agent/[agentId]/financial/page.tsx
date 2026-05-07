@@ -15,6 +15,7 @@ import { EuroIcon, Search } from 'lucide-react';
 import { LicensePanel } from '../../_component/LicensePanel';
 import BankPanel from './_components/BankPanel';
 import ProductResolutionPanel from './_components/ProductResolutionPanel';
+import { Page } from '@/components/client/Page';
 
 export default function FinancialPage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId, tick } =
@@ -46,60 +47,62 @@ export default function FinancialPage() {
     }
 
     return (
-        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
-            {hasNoAssets ? (
-                <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
-            ) : !isLoading && assets ? (
-                <>
-                    <Card>
-                        <CardContent className='px-3 py-3 space-y-3'>
-                            <BankPanel bank={economy.bank} planetId={planetId} />
+        <Page title={`Financial Overview`}>
+            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
+                {hasNoAssets ? (
+                    <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
+                ) : !isLoading && assets ? (
+                    <>
+                        <Card>
+                            <CardContent className='px-3 py-3 space-y-3'>
+                                <BankPanel bank={economy.bank} planetId={planetId} />
 
-                            <Separator />
-                            <LoanPanel
-                                agentId={agentId}
-                                planetId={detail?.planetId ?? ''}
-                                deposits={assets.deposits ?? 0}
-                            />
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className='px-3 py-3 space-y-3'>
-                            <p className='text-sm font-semibold flex items-center gap-2'>
-                                <EuroIcon className='h-4 w-4 text-muted-foreground' />
-                                Financial Position
-                            </p>
-                            <AgentFinancialOverview
-                                deposits={assets.deposits ?? 0}
-                                loans={totalOutstandingLoans(assets.activeLoans ?? [])}
-                                loanConditions={loanConditions}
-                                planetId={planetId}
-                            />
-                            <Separator />
-                            <p className='text-sm font-semibold flex items-center gap-2'>
-                                <Search className='h-4 w-4 text-muted-foreground' />
-                                Details
-                            </p>
-                            <AgentFinancialCharts agentId={agentId} planetId={planetId} />
-                            <ProductResolutionPanel
-                                monthAcc={assets.monthAcc}
-                                lastMonthAcc={assets.lastMonthAcc}
-                                tick={tick}
-                                planetId={planetId}
-                                agentId={agentId}
-                            />
-                        </CardContent>
-                    </Card>
-                    <LicensePanel
-                        agentId={agentId}
-                        planetId={detail?.planetId ?? ''}
-                        isOwnAgent={isOwnAgent}
-                        licenses={assets.licenses}
-                    />
-                </>
-            ) : (
-                <div className='text-sm text-muted-foreground'>Loading…</div>
-            )}
-        </AgentAccessGuard>
+                                <Separator />
+                                <LoanPanel
+                                    agentId={agentId}
+                                    planetId={detail?.planetId ?? ''}
+                                    deposits={assets.deposits ?? 0}
+                                />
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className='px-3 py-3 space-y-3'>
+                                <p className='text-sm font-semibold flex items-center gap-2'>
+                                    <EuroIcon className='h-4 w-4 text-muted-foreground' />
+                                    Financial Position
+                                </p>
+                                <AgentFinancialOverview
+                                    deposits={assets.deposits ?? 0}
+                                    loans={totalOutstandingLoans(assets.activeLoans ?? [])}
+                                    loanConditions={loanConditions}
+                                    planetId={planetId}
+                                />
+                                <Separator />
+                                <p className='text-sm font-semibold flex items-center gap-2'>
+                                    <Search className='h-4 w-4 text-muted-foreground' />
+                                    Details
+                                </p>
+                                <AgentFinancialCharts agentId={agentId} planetId={planetId} />
+                                <ProductResolutionPanel
+                                    monthAcc={assets.monthAcc}
+                                    lastMonthAcc={assets.lastMonthAcc}
+                                    tick={tick}
+                                    planetId={planetId}
+                                    agentId={agentId}
+                                />
+                            </CardContent>
+                        </Card>
+                        <LicensePanel
+                            agentId={agentId}
+                            planetId={detail?.planetId ?? ''}
+                            isOwnAgent={isOwnAgent}
+                            licenses={assets.licenses}
+                        />
+                    </>
+                ) : (
+                    <div className='text-sm text-muted-foreground'>Loading…</div>
+                )}
+            </AgentAccessGuard>
+        </Page>
     );
 }

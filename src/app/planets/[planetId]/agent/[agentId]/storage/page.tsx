@@ -4,19 +4,22 @@ import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/Agen
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { StorageOverview } from '@/app/planets/[planetId]/agent/_component/StorageOverview';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
+import { Page } from '@/components/client/Page';
 
 export default function StoragePage() {
     const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
-        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
-            {hasNoAssets ? (
-                <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
-            ) : !isLoading && assets?.storageFacility ? (
-                <StorageOverview storage={assets.storageFacility} />
-            ) : (
-                <div className='text-sm text-muted-foreground'>Loading…</div>
-            )}
-        </AgentAccessGuard>
+        <Page title={`Storage Overview`}>
+            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
+                {hasNoAssets ? (
+                    <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
+                ) : !isLoading && assets?.storageFacility ? (
+                    <StorageOverview storage={assets.storageFacility} />
+                ) : (
+                    <div className='text-sm text-muted-foreground'>Loading…</div>
+                )}
+            </AgentAccessGuard>
+        </Page>
     );
 }

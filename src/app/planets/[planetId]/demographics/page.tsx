@@ -12,15 +12,16 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
-import type { GroupMode } from './demographicsTypes';
-import { GV_POP, GV_WEALTH } from './demographicsTypes';
-import GroceryBufferChart from './GroceryBufferChart';
-import NutritionHeatmapChart from './NutritionHeatmapChart';
-import PlanetDemography from './PlanetDemography';
-import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
-import WealthDistributionChart from './WealthDistributionChart';
-import TransferChart from './TransferChart';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/CohortFilter';
+import type { GroupMode } from './_components/demographicsTypes';
+import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
+import GroceryBufferChart from './_components/GroceryBufferChart';
+import NutritionHeatmapChart from './_components/NutritionHeatmapChart';
+import PlanetDemography from './_components/PlanetDemography';
+import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
+import WealthDistributionChart from './_components/WealthDistributionChart';
+import TransferChart from './_components/TransferChart';
+import { Page } from '@/components/client/Page';
 
 // ─── Skill selector constants ────────────────────────────────────────────────
 
@@ -63,6 +64,10 @@ export default function PlanetDemographicsPage() {
             activeSkills: [...activeSkills],
         }),
     );
+
+    //const { data } = useSimulationQuery(trpc.simulation.getPlanetOverview.queryOptions({ planetId }));
+
+    const planetName = data?.data?.planetName ?? planetId;
 
     if (!data) {
         return <div className='text-sm text-muted-foreground'>Loading demographics…</div>;
@@ -237,7 +242,14 @@ export default function PlanetDemographicsPage() {
     );
 
     return (
-        <>
+        <Page
+            title={planetName}
+            headerComponent={
+                populationTotal !== undefined && (
+                    <span className='text-sm text-muted-foreground self-end'>{`Total population: ${formatNumberWithUnit(populationTotal, 'persons')}`}</span>
+                )
+            }
+        >
             <PlanetPopulationHistoryChart planetId={planetId} live={{ tick: data.tick, population: populationTotal }} />
 
             <div className='my-3 border-t' />
@@ -284,6 +296,6 @@ export default function PlanetDemographicsPage() {
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
-        </>
+        </Page>
     );
 }
