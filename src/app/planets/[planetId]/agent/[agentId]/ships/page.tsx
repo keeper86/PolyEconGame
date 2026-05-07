@@ -78,9 +78,22 @@ export default function AgentShipsPage() {
     const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
     const planetSummaries = planetSummariesData?.planets ?? [];
 
-    const shipsHere = (shipsData?.ships ?? []).filter(
-        (s) => 'planetId' in s.state && (s.state as { planetId: string }).planetId === planetId,
-    );
+    const shipsHere = (shipsData?.ships ?? [])
+        .filter(
+            (s) =>
+                ('planetId' in s.state && s.state.planetId === planetId) ||
+                ('to' in s.state && s.state.to === planetId) ||
+                ('from' in s.state && s.state.from === planetId),
+        )
+        .map((s) => {
+            if ('to' in s.state || 'from' in s.state) {
+                return {
+                    ...s,
+                    disabled: true,
+                };
+            }
+            return { ...s, disabled: false };
+        });
 
     return (
         <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
@@ -107,7 +120,9 @@ export default function AgentShipsPage() {
                         const isIdle = ship.state.type === 'idle';
                         return (
                             <Card key={ship.id}>
-                                <CardContent className='px-4 py-4'>
+                                <CardContent
+                                    className={`px-4 py-4 ${ship.disabled ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
                                     <div className='flex items-start justify-between gap-4'>
                                         <div className='flex items-start gap-3'>
                                             <FacilityOrShipIcon facilityOrShipName={ship.type.name} suffix='' />
