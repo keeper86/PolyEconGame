@@ -124,7 +124,7 @@ export default function AgentShipsPage() {
                                     className={`px-4 py-4 ${ship.disabled ? 'opacity-50 pointer-events-none' : ''}`}
                                 >
                                     <div className='flex items-start justify-between gap-4'>
-                                        <div className='flex items-start gap-3'>
+                                        <div className='flex items-start flex-wrap gap-3'>
                                             <FacilityOrShipIcon facilityOrShipName={ship.type.name} suffix='' />
                                             <div className='space-y-1'>
                                                 <div className='flex items-center gap-2'>
