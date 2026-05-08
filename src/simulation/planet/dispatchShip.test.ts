@@ -16,7 +16,7 @@ function makeTransportShip(name: string, planetId: string): TransportShip {
         maintainanceStatus: 1,
         maxMaintenance: 1,
         cumulativeRepairAcc: 0,
-        type: shiptypes.solid.bulkCarrier1,
+        type: shiptypes.solid.bulkCarrier4,
         state: { type: 'idle', planetId },
     };
 }
@@ -122,6 +122,7 @@ describe('handleDispatchShip', () => {
 
     it('fails when resource not in storage', () => {
         const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
@@ -139,7 +140,7 @@ describe('handleDispatchShip', () => {
         const storage = makeStorageFacility({ planetId: 'p1' });
         putIntoStorageFacility(storage, steelResourceType, 50);
         const assets = makeAgentPlanetAssets('p1', { storageFacility: storage });
-        const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets } });
+        const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets, p2: makeAgentPlanetAssets('p2') } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
@@ -160,7 +161,7 @@ describe('handleDispatchShip', () => {
         const storage = makeStorageFacility({ planetId: 'p1' });
         putIntoStorageFacility(storage, steelResourceType, 500);
         const assets = makeAgentPlanetAssets('p1', { storageFacility: storage });
-        const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets } });
+        const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets, p2: makeAgentPlanetAssets('p2') } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);

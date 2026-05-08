@@ -1033,16 +1033,6 @@ export const quitClaim = () => {
         });
 };
 
-/**
- * Acquire a commercial or workforce license for the user's agent on a planet.
- *
- * Commercial license: grants bank account + storage + market access.
- * Workforce license: grants the right to hire and run production.
- *
- * Home planet licenses are granted free on agent creation.
- * For any other planet the license fee is funded via an initial loan
- * that is created automatically when the agent first enters that planet.
- */
 export const acquireLicense = () => {
     return protectedProcedure
         .input(

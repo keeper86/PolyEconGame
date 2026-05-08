@@ -6,6 +6,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { TickerEvent } from '@/server/controller/simulation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 
 /* ---------- constants ---------- */
 const MAX_LOCAL_EVENTS = 60;
@@ -59,6 +60,8 @@ export default function Footer() {
         setEvents((prev) => [...prev, ...newEvents].slice(-MAX_LOCAL_EVENTS));
         setLastSeenId(Math.max(...newEvents.map((e) => e.id)));
     }, [data]);
+
+    const isSmallScreen = useIsSmallScreen();
 
     /* ---- DOM refs ---- */
     const containerRef = useRef<HTMLDivElement>(null);
@@ -210,8 +213,18 @@ export default function Footer() {
                 <span ref={measureRef} className='invisible absolute whitespace-nowrap text-md' aria-hidden='true' />
 
                 {/* Gradient fade on edges */}
-                <div className='pointer-events-none absolute inset-y-0 left-0 w-64 bg-gradient-to-r from-background to-transparent z-10' />
-                <div className='pointer-events-none absolute inset-y-0 right-0 w-64 bg-gradient-to-l from-background to-transparent z-10' />
+                <div
+                    className={cn(
+                        'pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-background to-transparent z-10',
+                        isSmallScreen ? 'w-32' : 'w-64',
+                    )}
+                />
+                <div
+                    className={cn(
+                        'pointer-events-none absolute inset-y-0 right-0 bg-gradient-to-l from-background to-transparent z-10',
+                        isSmallScreen ? 'w-32' : 'w-64',
+                    )}
+                />
 
                 {displayedEvents.map(({ id, event, duration }) => (
                     <div

@@ -15,8 +15,7 @@ export function StorageOverview({ storage }: { storage: StorageFacility }): Reac
     const capMass = storage.capacity.mass * storage.scale;
 
     return (
-        <div className='mt-4'>
-            <h3 className='text-sm font-medium mb-2'>Storage</h3>
+        <div className='mt-2'>
             <div className='text-xs text-muted-foreground mb-2'>
                 Volume: {formatNumberWithUnit(Math.round(usedVol), 'm3')} /{' '}
                 {formatNumberWithUnit(Math.round(capVol), 'm3')}

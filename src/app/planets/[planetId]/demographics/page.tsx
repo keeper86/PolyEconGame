@@ -12,15 +12,16 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from '../../_components/CohortFilter';
-import type { GroupMode } from './demographicsTypes';
-import { GV_POP, GV_WEALTH } from './demographicsTypes';
-import GroceryBufferChart from './GroceryBufferChart';
-import NutritionHeatmapChart from './NutritionHeatmapChart';
-import PlanetDemography from './PlanetDemography';
-import PlanetPopulationHistoryChart from './PlanetPopulationHistoryChart';
-import WealthDistributionChart from './WealthDistributionChart';
-import TransferChart from './TransferChart';
+import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/CohortFilter';
+import type { GroupMode } from './_components/demographicsTypes';
+import { GV_FOOD, GV_POP, GV_STARV, GV_WEALTH, SERVICE_TARGET_PER_PERSON } from './_components/demographicsTypes';
+import GroceryBufferChart from './_components/GroceryBufferChart';
+import NutritionHeatmapChart from './_components/NutritionHeatmapChart';
+import PlanetDemography from './_components/PlanetDemography';
+import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
+import WealthDistributionChart from './_components/WealthDistributionChart';
+import TransferChart from './_components/TransferChart';
+import { Page } from '@/components/client/Page';
 
 // ─── Skill selector constants ────────────────────────────────────────────────
 
@@ -64,6 +65,8 @@ export default function PlanetDemographicsPage() {
         }),
     );
 
+    const planetName = data?.data?.planetName ?? planetId;
+
     if (!data) {
         return <div className='text-sm text-muted-foreground'>Loading demographics…</div>;
     }
@@ -84,6 +87,8 @@ export default function PlanetDemographicsPage() {
     const groupPop = [0, 0, 0, 0];
     const groupAgeWeightedSum = [0, 0, 0, 0];
     const wealthWeightedSum = [0, 0, 0, 0];
+    const foodSum = [0, 0, 0, 0];
+    const starvSum = [0, 0, 0, 0];
     for (const row of rows) {
         for (let i = 0; i < 4; i++) {
             const gv = row.groupValues[i];
@@ -92,13 +97,177 @@ export default function PlanetDemographicsPage() {
             groupAgeWeightedSum[i] += row.age * gv[GV_POP];
 
             wealthWeightedSum[i] += gv[GV_WEALTH];
+            foodSum[i] += gv[GV_FOOD];
+            starvSum[i] += gv[GV_STARV];
         }
     }
+    const bufferRatio = groupPop.map((pop, i) => (pop > 0 ? foodSum[i] / pop / SERVICE_TARGET_PER_PERSON : 0));
+    const avgStarv = groupPop.map((pop, i) => (pop > 0 ? starvSum[i] / pop : 0));
     const populationTotal = groupPop.reduce((s, v) => s + v, 0);
     const groupMeanAge = groupPop.map((pop, i) => (pop > 0 ? groupAgeWeightedSum[i] / pop : 0));
     const totalWealth = wealthWeightedSum.reduce((s, v) => s + v, 0);
     const wealthMean = groupPop.map((pop, i) => (pop > 0 ? wealthWeightedSum[i] / pop : 0));
     const wealthShare = wealthWeightedSum.map((w) => (totalWealth > 0 ? (w / totalWealth) * 100 : 0));
+
+    // ── Grocery buffer cards ────────────────────────────────────────────────
+    const groceryCards = isSmallScreen ? (
+        <div className='flex gap-1 mb-2'>
+            {groupKeys.map((key, i) => {
+                const ratio = bufferRatio[i];
+                const pct = (ratio * 100).toFixed(1);
+                const valueColor =
+                    ratio >= 0.95
+                        ? 'text-green-600'
+                        : ratio >= 0.75
+                          ? 'text-green-500'
+                          : ratio >= 0.5
+                            ? 'text-yellow-500'
+                            : ratio >= 0.25
+                              ? 'text-orange-500'
+                              : ratio >= 0.1
+                                ? 'text-red-500'
+                                : 'text-red-700';
+                return (
+                    <div
+                        key={key}
+                        className='flex-1 px-1.5 py-1 border rounded text-xs'
+                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                    >
+                        <div className='text-muted-foreground text-[9px] leading-tight truncate'>
+                            {groupLabels[key]}
+                        </div>
+                        <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
+                            {pct}%
+                        </div>
+                        <div className='text-[9px] text-muted-foreground leading-tight'>of target</div>
+                    </div>
+                );
+            })}
+        </div>
+    ) : (
+        <div className='flex gap-2 mb-3'>
+            {groupKeys.map((key, i) => {
+                const ratio = bufferRatio[i];
+                const pct = (ratio * 100).toFixed(1);
+                const valueColor =
+                    ratio >= 0.95
+                        ? 'text-green-600'
+                        : ratio >= 0.75
+                          ? 'text-green-500'
+                          : ratio >= 0.5
+                            ? 'text-yellow-500'
+                            : ratio >= 0.25
+                              ? 'text-orange-500'
+                              : ratio >= 0.1
+                                ? 'text-red-500'
+                                : 'text-red-700';
+                const label =
+                    ratio >= 0.95
+                        ? 'fully stocked'
+                        : ratio >= 0.75
+                          ? 'well stocked'
+                          : ratio >= 0.5
+                            ? 'below target'
+                            : ratio >= 0.25
+                              ? 'low supply'
+                              : ratio >= 0.1
+                                ? 'very low'
+                                : 'critically empty';
+                return (
+                    <Card
+                        key={key}
+                        className='flex-1 overflow-hidden'
+                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                    >
+                        <CardContent className='px-3 py-2.5 space-y-0.5'>
+                            <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
+                            <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>{pct}%</p>
+                            <p className='text-xs text-muted-foreground'>{label}</p>
+                        </CardContent>
+                    </Card>
+                );
+            })}
+        </div>
+    );
+
+    // ── Starvation cards ─────────────────────────────────────────────────────
+    const starvationCards = isSmallScreen ? (
+        <div className='flex gap-1 mb-2'>
+            {groupKeys.map((key, i) => {
+                const s = avgStarv[i];
+                const pct = (s * 100).toFixed(1);
+                const valueColor = s < 0.05 ? 'text-green-600' : s < 0.25 ? 'text-amber-500' : 'text-red-500';
+                return (
+                    <div
+                        key={key}
+                        className='flex-1 px-1.5 py-1 border rounded text-xs'
+                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                    >
+                        <div className='text-muted-foreground text-[9px] leading-tight truncate'>
+                            {groupLabels[key]}
+                        </div>
+                        <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
+                            {pct}%
+                        </div>
+                        <div className='text-[9px] text-muted-foreground leading-tight'>starvation</div>
+                    </div>
+                );
+            })}
+        </div>
+    ) : (
+        <div className='flex gap-2 mb-3'>
+            {groupKeys.map((key, i) => {
+                const s = avgStarv[i];
+                const pct = (s * 100).toFixed(1);
+                const valueColor = s < 0.05 ? 'text-green-600' : s < 0.25 ? 'text-amber-500' : 'text-red-500';
+                const label =
+                    s < 0.05
+                        ? 'well-fed'
+                        : s < 0.25
+                          ? 'light starvation'
+                          : s < 0.5
+                            ? 'moderate starvation'
+                            : 'severe starvation';
+                return (
+                    <Card
+                        key={key}
+                        className='flex-1 overflow-hidden'
+                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                    >
+                        <CardContent className='px-3 py-2.5 space-y-0.5'>
+                            <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
+                            <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>{pct}%</p>
+                            <p className='text-xs text-muted-foreground'>{label}</p>
+                        </CardContent>
+                    </Card>
+                );
+            })}
+        </div>
+    );
+
+    // ── Wealth transfer totals — summed from lastTransferMatrix ─────────────
+    const transferMatrix = data.data.lastTransferMatrix ?? [];
+    const transferTotals = [0, 0, 0, 0];
+    if (group === 'occupation') {
+        for (const cohort of transferMatrix) {
+            for (let i = 0; i < OCCUPATIONS.length; i++) {
+                const occ = OCCUPATIONS[i];
+                for (const edu of educationLevelKeys) {
+                    transferTotals[i] += cohort?.[edu]?.[occ] ?? 0;
+                }
+            }
+        }
+    } else {
+        for (const cohort of transferMatrix) {
+            for (let i = 0; i < educationLevelKeys.length; i++) {
+                const edu = educationLevelKeys[i];
+                for (const occ of OCCUPATIONS) {
+                    transferTotals[i] += cohort?.[edu]?.[occ] ?? 0;
+                }
+            }
+        }
+    }
+    const totalAbsoluteTransfer = transferTotals.reduce((s, v) => s + Math.abs(v), 0);
 
     // ── Shared controls ──────────────────────────────────────────────────────
     const allSkillsSelected = SKILL.every((s) => activeSkills.has(s));
@@ -236,8 +405,81 @@ export default function PlanetDemographicsPage() {
         </div>
     );
 
+    // ── Transfer summary cards ─────────────────────────────────────────────
+    const transferCards = isSmallScreen ? (
+        <div className='flex gap-1 mb-2'>
+            {groupKeys.map((key, i) => {
+                const t = transferTotals[i];
+                const sign = t > 0 ? '+' : '';
+                const valueColor = t > 0 ? 'text-green-600' : t < 0 ? 'text-red-500' : 'text-muted-foreground';
+                return (
+                    <div
+                        key={key}
+                        className='flex-1 px-1.5 py-1 border rounded text-xs'
+                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                    >
+                        <div className='text-muted-foreground text-[9px] leading-tight truncate'>
+                            {groupLabels[key]}
+                        </div>
+                        <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
+                            {sign}
+                            {formatNumberWithUnit(t, 'currency', planetId)}
+                        </div>
+                        <div className='text-[9px] text-muted-foreground leading-tight'>
+                            {totalAbsoluteTransfer > 0
+                                ? ((Math.abs(t) / totalAbsoluteTransfer) * 100).toFixed(1)
+                                : '0.0'}
+                            % of movement
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    ) : (
+        <div className='flex gap-2 mb-3'>
+            {groupKeys.map((key, i) => {
+                const t = transferTotals[i];
+                const sign = t > 0 ? '+' : '';
+                const valueColor = t > 0 ? 'text-green-600' : t < 0 ? 'text-red-500' : 'text-muted-foreground';
+                const label = t > 0 ? 'net wealth gain' : t < 0 ? 'net wealth loss' : 'no net transfer';
+                return (
+                    <Card
+                        key={key}
+                        className='flex-1 overflow-hidden'
+                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
+                    >
+                        <CardContent className='px-3 py-2.5 space-y-0.5'>
+                            <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
+                            <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>
+                                {sign}
+                                {formatNumberWithUnit(t, 'currency', planetId)}
+                            </p>
+                            <p className='text-xs text-muted-foreground'>{label}</p>
+                            <p className='text-[11px] text-muted-foreground pt-1'>
+                                Share of movement{' '}
+                                <span className='font-medium text-foreground'>
+                                    {totalAbsoluteTransfer > 0
+                                        ? ((Math.abs(t) / totalAbsoluteTransfer) * 100).toFixed(1)
+                                        : '0.0'}
+                                    %
+                                </span>
+                            </p>
+                        </CardContent>
+                    </Card>
+                );
+            })}
+        </div>
+    );
+
     return (
-        <>
+        <Page
+            title={planetName}
+            headerComponent={
+                populationTotal !== undefined && (
+                    <span className='text-sm text-muted-foreground self-end'>{`Total population: ${formatNumberWithUnit(populationTotal, 'persons')}`}</span>
+                )
+            }
+        >
             <PlanetPopulationHistoryChart planetId={planetId} live={{ tick: data.tick, population: populationTotal }} />
 
             <div className='my-3 border-t' />
@@ -252,14 +494,17 @@ export default function PlanetDemographicsPage() {
 
             {/* ── Population ─────────────────────────────────────────── */}
 
-            <div className='my-3 border-t' />
-            <h4 className='text-sm font-semibold mb-2' id='population'>
-                Overview
-            </h4>
-            {occupationCards}
-            <PlanetDemography rows={rows} group={group} />
-
             <Accordion type='single' collapsible className='mt-1'>
+                <AccordionItem value='overview'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Overview</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        {occupationCards}
+                        <PlanetDemography rows={rows} group={group} />
+                    </AccordionContent>
+                </AccordionItem>
+
                 <AccordionItem value='wealth'>
                     <AccordionTrigger>
                         <span className='font-semibold'>Wealth distribution</span>
@@ -270,20 +515,25 @@ export default function PlanetDemographicsPage() {
                         </p>
                         {wealthCards}
                         <WealthDistributionChart rows={rows} groupMode={group} />
+                        <p className='py-4 text-sm font-medium'>Population Wealth Transfers</p>
+                        {transferCards}
                         <TransferChart matrix={data.data.lastTransferMatrix} viewMode={group} />
                     </AccordionContent>
                 </AccordionItem>
 
                 <AccordionItem value='nutrition'>
                     <AccordionTrigger>
-                        <span className='font-semibold'>Nutrition &amp; Food Buffers</span>
+                        <span className='font-semibold'>Grocery Buffers</span>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <NutritionHeatmapChart rows={rows} groupMode={group} />
+                        {groceryCards}
                         <GroceryBufferChart rows={rows} groupMode={group} />
+                        <p className='py-4 text-sm font-medium'>Starvation map</p>
+                        {starvationCards}
+                        <NutritionHeatmapChart rows={rows} groupMode={group} />
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
-        </>
+        </Page>
     );
 }

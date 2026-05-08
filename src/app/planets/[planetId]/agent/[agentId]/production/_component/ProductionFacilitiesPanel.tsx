@@ -4,29 +4,24 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
 import type { ResourceProcessLevel } from '@/simulation/planet/claims';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ProductionFacility, ShipConstructionFacility } from '@/simulation/planet/facility';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
-import { ActiveShipyardCard } from './ActiveShipyardCard';
-import { LevelBuildSection } from './LevelBuildSection';
-import { ShipyardBuildSection } from './ShipyardBuildSection';
+import { LevelBuildSection, type Mode as BuildMode } from './LevelBuildSection';
 import { UnderConstructionCard } from './UnderConstructionCard';
-import { UnderConstructionShipyardCard } from './UnderConstructionShipyardCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
 export default function ProductionFacilitiesPanel({
     facilities,
-    shipConstructionFacilities,
     agentId,
     planetId,
 }: {
     facilities: ProductionFacility[];
-    shipConstructionFacilities: ShipConstructionFacility[];
     agentId: string;
     planetId: string;
 }): React.ReactElement {
@@ -51,9 +46,6 @@ export default function ProductionFacilitiesPanel({
         return m;
     }, [facilities]);
 
-    const activeCount = facilities.filter((f) => f.construction === null).length;
-    const activeShipConstructionFacilities = shipConstructionFacilities.filter((f) => f.construction === null).length;
-
     const defaultTab = useMemo(() => {
         return (
             FACILITY_LEVELS.find((level) =>
@@ -64,14 +56,14 @@ export default function ProductionFacilitiesPanel({
         );
     }, [ownedByName]);
 
-    const [activeTab, setActiveTab] = useState<ResourceProcessLevel | 'ships'>(() => {
+    const [buildMode, setBuildMode] = useState<BuildMode>({ type: 'idle' });
+
+    const [activeTab, setActiveTab] = useState<ResourceProcessLevel>(() => {
         if (typeof window === 'undefined') {
             return defaultTab;
         }
         const hash = window.location.hash.slice(1);
-        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as
-            | ResourceProcessLevel
-            | 'ships';
+        return (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) ? hash : defaultTab) as ResourceProcessLevel;
     });
 
     useEffect(() => {
@@ -79,29 +71,19 @@ export default function ProductionFacilitiesPanel({
         if (!hash) {
             return;
         }
-        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel) || hash === 'ships') {
-            setActiveTab(hash as ResourceProcessLevel | 'ships');
+        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel)) {
+            setActiveTab(hash as ResourceProcessLevel);
         }
     }, []);
 
     const handleTabChange = (value: string) => {
-        setActiveTab(value as ResourceProcessLevel | 'ships');
+        setActiveTab(value as ResourceProcessLevel);
         window.history.replaceState(null, '', `#${value}`);
     };
 
     return (
         <div className='space-y-4'>
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-                <div className='flex items-center justify-between mb-1'>
-                    <h2 className='text-sm font-semibold'>
-                        Facilities
-                        {activeCount > 0 && (
-                            <Badge variant='secondary' className='ml-2 text-[10px] px-1.5 py-0'>
-                                {activeCount} active
-                            </Badge>
-                        )}
-                    </h2>
-                </div>
                 <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
                     {FACILITY_LEVELS.map((level) => {
                         const levelFacilities = facilitiesByLevel[level];
@@ -127,17 +109,6 @@ export default function ProductionFacilitiesPanel({
                             </TabsTrigger>
                         );
                     })}
-                    <TabsTrigger
-                        value='ships'
-                        className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                    >
-                        Ships
-                        {shipConstructionFacilities.length > 0 && (
-                            <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
-                                {activeShipConstructionFacilities}/{shipConstructionFacilities.length}
-                            </Badge>
-                        )}
-                    </TabsTrigger>
                 </TabsList>
                 {FACILITY_LEVELS.map((level) => {
                     const unbuildableEntries = facilitiesByLevel[level].filter(
@@ -173,39 +144,14 @@ export default function ProductionFacilitiesPanel({
                                         planetId={planetId}
                                         constructionServicePrice={constructionServicePrice}
                                         onBuilt={refresh}
+                                        mode={buildMode}
+                                        onModeChange={setBuildMode}
                                     />
                                 )}
                             </div>
                         </TabsContent>
                     );
                 })}
-                <TabsContent value='ships' className='mt-3'>
-                    <div className='flex flex-col gap-4'>
-                        <ShipyardBuildSection
-                            agentId={agentId}
-                            planetId={planetId}
-                            constructionServicePrice={constructionServicePrice}
-                            onBuilt={refresh}
-                        />
-                        <div className='flex flex-row gap-3 flex-wrap'>
-                            {shipConstructionFacilities.map((sy) => {
-                                if (sy.construction !== null) {
-                                    return <UnderConstructionShipyardCard key={sy.id} facility={sy} />;
-                                }
-                                return (
-                                    <ActiveShipyardCard
-                                        key={sy.id}
-                                        facility={sy}
-                                        agentId={agentId}
-                                        planetId={planetId}
-                                        constructionServicePrice={constructionServicePrice}
-                                        onExpanded={refresh}
-                                    />
-                                );
-                            })}
-                        </div>
-                    </div>
-                </TabsContent>
             </Tabs>
         </div>
     );

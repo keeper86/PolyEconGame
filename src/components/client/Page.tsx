@@ -10,8 +10,8 @@ type PageProps = {
 
 export const Page: FC<PageProps> = ({ title, headerComponent, children, className = '' }) => {
     return (
-        <div className='max-w-6xl mx-auto py-2 sm:px-4 sm:py-6 space-y-4 sm:space-y-6 relative'>
-            <div className={cn('flex items-center justify-between', className)}>
+        <div className='max-w-6xl mx-auto relative'>
+            <div className={cn('flex items-center justify-between pb-4', className)}>
                 <h1 className='text-3xl font-bold'>{title}</h1>
                 <div className='flex items-center space-x-2'>{headerComponent}</div>
             </div>

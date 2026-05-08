@@ -31,7 +31,6 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/planets/[planetId]/claims", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/companies", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
-    | DynamicRoute<"/planets/[planetId]/ships", { "planetId": string }>
     | StaticRoute<"/pong">
     | StaticRoute<"/simulation">
     | StaticRoute<"/supply-chain">;

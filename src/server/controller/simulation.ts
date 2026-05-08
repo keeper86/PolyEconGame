@@ -1,13 +1,3 @@
-/**
- * controller/simulation.ts
- *
- * Granular tRPC endpoints for querying the live simulation state from the
- * worker thread.  Current-state queries use the typed worker query protocol
- * (`workerQueries`).  Historical time-series queries (planet population
- * history, agent resource history) still read from PostgreSQL because they
- * require data spanning many ticks.
- */
-
 import { getCurrencyResourceName, DEFAULT_EXCHANGE_RATE } from '@/simulation/market/currencyResources';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';

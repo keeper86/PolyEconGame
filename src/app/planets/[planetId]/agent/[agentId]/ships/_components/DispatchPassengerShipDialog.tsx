@@ -80,8 +80,10 @@ export function DispatchPassengerShipDialog({
                             <SelectContent>
                                 {planets.map((p) => (
                                     <SelectItem key={p.planetId} value={p.planetId}>
-                                        <PlanetIcon planetId={p.planetId} />
-                                        {p.name}
+                                        <span className='flex items-center gap-2'>
+                                            <PlanetIcon planetId={p.planetId} />
+                                            {p.name}
+                                        </span>
                                     </SelectItem>
                                 ))}
                             </SelectContent>

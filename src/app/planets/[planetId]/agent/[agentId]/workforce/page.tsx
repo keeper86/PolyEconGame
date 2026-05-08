@@ -7,6 +7,7 @@ import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/_component/Wor
 import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/_component/WorkforceDemographyPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { AgentMetricChart } from '@/components/client/AgentMetricChart';
+import { Page } from '@/components/client/Page';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
@@ -18,7 +19,7 @@ export default function WorkforcePage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
-        <>
+        <Page title={`Workforce Management`}>
             <Card className='mt-4'>
                 <CardContent className='px-3 pb-3 space-y-3'>
                     <div>
@@ -87,6 +88,6 @@ export default function WorkforcePage() {
                     <div className='text-sm text-muted-foreground'>Loading…</div>
                 )}
             </AgentAccessGuard>
-        </>
+        </Page>
     );
 }

@@ -904,6 +904,12 @@ export function handleDispatchShip(
         return;
     }
 
+    const targetAssets = agent.assets[toPlanetId];
+    if (!targetAssets?.storageFacility) {
+        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'No storage facility on destination planet' });
+        return;
+    }
+
     const storageEntry = assets.storageFacility.currentInStorage[cargoGoal.resourceName];
     if (!storageEntry) {
         safePostMessage({
@@ -1011,6 +1017,16 @@ export function handleDispatchPassengerShip(
         return;
     }
 
+    const targetAssets = agent.assets[toPlanetId];
+    if (!targetAssets?.licenses?.commercial) {
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: 'No commercial license on destination planet',
+        });
+        return;
+    }
+
     const requestedPassengers = Math.floor(passengerCount);
     if (requestedPassengers < 0) {
         safePostMessage({
@@ -1034,18 +1050,6 @@ export function handleDispatchPassengerShip(
         manifest: {},
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
-
-    // Emit ticker event
-    const fromPlanet = state.planets.get(fromPlanetId);
-    const toPlanet = state.planets.get(toPlanetId);
-    pushTickerEvent(state, {
-        category: 'shipDispatched',
-        planetId: fromPlanetId,
-        agentId,
-        agentName: agent.name,
-        message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (passenger)`,
-        tick: state.tick,
-    });
 
     safePostMessage({ type: 'passengerShipDispatched', requestId, agentId, shipId: ship.id });
 }
@@ -1094,6 +1098,16 @@ export function handleDispatchConstructionShip(
             type: 'constructionShipDispatchFailed',
             requestId,
             reason: 'Only construction ships can be dispatched for construction',
+        });
+        return;
+    }
+
+    const targetAssets = agent.assets[toPlanetId];
+    if (!targetAssets?.licenses?.workforce) {
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: 'No workforce license on destination planet',
         });
         return;
     }

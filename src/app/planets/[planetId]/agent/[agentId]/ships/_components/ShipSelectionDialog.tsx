@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { getAssetPath } from '@/lib/assetManifest';
 import { formatNumberWithUnit } from '@/lib/utils';
+import Image from 'next/image';
 import { shiptypes, constructionShipType } from '@/simulation/ships/ships';
 import type { TransportShipType, ConstructionShipType, PassengerShipType } from '@/simulation/ships/ships';
 import React, { useState } from 'react';
@@ -15,9 +17,8 @@ import { Zap, Package, Clock, Users } from 'lucide-react';
 const categoryLabels: Record<keyof typeof shiptypes, string> = {
     solid: 'Bulk Carriers',
     liquid: 'Tankers',
-    gas: 'Gas Carriers',
     pieces: 'Freighters',
-    frozenGoods: 'Reefer Ships',
+    gas: 'Gas Carriers',
     passenger: 'Passenger Ships',
 };
 
@@ -125,8 +126,16 @@ export function ShipSelectionDialog({
                                             }`}
                                         >
                                             <FacilityOrShipIcon facilityOrShipName={shipType.name} size={80} />
-                                            <span className='text-xs font-medium text-center leading-tight'>
-                                                {shipType.name}
+                                            <span className='flex flex-row items-center gap-1 text-xs font-medium text-center leading-tight'>
+                                                {shipType.name}{' '}
+                                                {shipType.type === 'transport' ? (
+                                                    <Image
+                                                        src={getAssetPath(`form_${shipType.cargoSpecification.type}`)}
+                                                        alt={shipType.cargoSpecification.type}
+                                                        width={10}
+                                                        height={10}
+                                                    />
+                                                ) : null}
                                             </span>
                                             <div className='flex flex-wrap gap-1 justify-center'>
                                                 <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
@@ -134,10 +143,18 @@ export function ShipSelectionDialog({
                                                     {shipType.speed}
                                                 </Badge>
                                                 {shipType.type === 'transport' ? (
-                                                    <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
-                                                        <Package className='h-2.5 w-2.5' />
-                                                        {formatNumberWithUnit(shipType.cargoSpecification.volume, 'm3')}
-                                                    </Badge>
+                                                    <>
+                                                        <Badge
+                                                            variant='outline'
+                                                            className='text-[10px] px-1 py-0 gap-0.5'
+                                                        >
+                                                            <Package className='h-2.5 w-2.5' />
+                                                            {formatNumberWithUnit(
+                                                                shipType.cargoSpecification.volume,
+                                                                'm3',
+                                                            )}
+                                                        </Badge>
+                                                    </>
                                                 ) : (
                                                     <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                                                         <Users className='h-2.5 w-2.5' />

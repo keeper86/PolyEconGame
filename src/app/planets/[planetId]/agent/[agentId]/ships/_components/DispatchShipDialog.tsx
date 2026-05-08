@@ -11,6 +11,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PlanetIcon } from '@/components/client/PlanetIcon';
 
 type Props = {
     agentId: string;
@@ -78,7 +79,10 @@ export function DispatchShipDialog({ agentId, planetId, shipId, shipName, shipCa
                             <SelectContent>
                                 {planets.map((p) => (
                                     <SelectItem key={p.planetId} value={p.planetId}>
-                                        {p.name}
+                                        <span className='flex items-center gap-2'>
+                                            <PlanetIcon planetId={p.planetId} />
+                                            {p.name}
+                                        </span>
                                     </SelectItem>
                                 ))}
                             </SelectContent>

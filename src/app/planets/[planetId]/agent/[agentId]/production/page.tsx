@@ -2,43 +2,30 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
-import ProductionFacilitiesPanel from './_component/ProductionFacilitiesPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
-import { AgentMetricChart } from '@/components/client/AgentMetricChart';
+import ProductionFacilitiesPanel from './_component/ProductionFacilitiesPanel';
+import { Page } from '@/components/client/Page';
 
 export default function ProductionPage() {
     const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
     return (
-        <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
-            {hasNoAssets ? (
-                <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
-            ) : !isLoading && assets ? (
-                <>
-                    <ProductionFacilitiesPanel
-                        facilities={assets.productionFacilities}
-                        shipConstructionFacilities={assets.shipConstructionFacilities}
-                        agentId={agentId}
-                        planetId={planetId}
-                    />
-                    <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
-                        <AgentMetricChart
+        <Page title={`Production Management`}>
+            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
+                {hasNoAssets ? (
+                    <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
+                ) : !isLoading && assets ? (
+                    <>
+                        <ProductionFacilitiesPanel
+                            facilities={assets.productionFacilities}
                             agentId={agentId}
                             planetId={planetId}
-                            granularity='monthly'
-                            metric='consumptionValue'
                         />
-                        <AgentMetricChart
-                            agentId={agentId}
-                            planetId={planetId}
-                            granularity='monthly'
-                            metric='productionValue'
-                        />
-                    </div>
-                </>
-            ) : (
-                <div className='text-sm text-muted-foreground'>Loading…</div>
-            )}
-        </AgentAccessGuard>
+                    </>
+                ) : (
+                    <div className='text-sm text-muted-foreground'>Loading…</div>
+                )}
+            </AgentAccessGuard>
+        </Page>
     );
 }

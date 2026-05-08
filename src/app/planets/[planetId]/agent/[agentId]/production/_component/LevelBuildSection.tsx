@@ -18,50 +18,7 @@ import { PlusCircle, Zap, Users } from 'lucide-react';
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
-type Mode = { type: 'idle' } | { type: 'selecting' } | { type: 'ready'; entry: FacilityCatalogEntry };
-
-function MiniCard({ entry, onChoose }: { entry: FacilityCatalogEntry; onChoose: () => void }): React.ReactElement {
-    const facility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
-    const totalWorkers = Object.values(facility.workerRequirement).reduce((s, v) => s + (v ?? 0), 0);
-
-    return (
-        <FacilityCardShell
-            contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
-            headerContent={
-                <>
-                    <h3 className='font-semibold text-sm leading-tight'>{facility.name}</h3>
-                    <div className='flex items-center gap-3 mt-1 text-xs text-muted-foreground'>
-                        {totalWorkers > 0 && (
-                            <span className='flex items-center gap-1'>
-                                <Users className='h-3 w-3' />
-                                {formatNumberWithUnit(totalWorkers, 'persons')} / scale
-                            </span>
-                        )}
-                        {facility.powerConsumptionPerTick !== 0 && (
-                            <span className='flex items-center gap-1'>
-                                <Zap className='h-3 w-3' />
-                                {facility.powerConsumptionPerTick > 0
-                                    ? `${facility.powerConsumptionPerTick} MW`
-                                    : 'produces power'}
-                            </span>
-                        )}
-                    </div>
-                </>
-            }
-        >
-            <div className='flex-1'>
-                <FacilityIORow needs={facility.needs} produces={facility.produces} scale={1} />
-            </div>
-            <div className='mt-auto space-y-2'>
-                <Separator />
-                <Button size='sm' variant='outline' className='w-full text-xs' onClick={onChoose}>
-                    Choose
-                </Button>
-            </div>
-        </FacilityCardShell>
-    );
-}
+export type Mode = { type: 'idle' } | { type: 'selecting' };
 
 function BuildCard({
     entry,
@@ -190,21 +147,23 @@ export function LevelBuildSection({
     planetId,
     constructionServicePrice,
     onBuilt,
+    mode,
+    onModeChange,
 }: {
     entries: FacilityCatalogEntry[];
     agentId: string;
     planetId: string;
     constructionServicePrice: number | undefined;
     onBuilt: () => void;
+    mode: Mode;
+    onModeChange: (mode: Mode) => void;
 }): React.ReactElement {
-    const [mode, setMode] = useState<Mode>({ type: 'idle' });
-
     if (mode.type === 'idle') {
         return (
             <Card
                 className='min-w-[300px] flex items-center justify-center cursor-pointer border-dashed text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors'
                 style={{ minHeight: '160px' }}
-                onClick={() => setMode({ type: 'selecting' })}
+                onClick={() => onModeChange({ type: 'selecting' })}
             >
                 <CardContent className='flex flex-col items-center gap-2 p-6'>
                     <PlusCircle className='h-8 w-8' />
@@ -214,33 +173,25 @@ export function LevelBuildSection({
         );
     }
 
-    if (mode.type === 'selecting') {
-        return (
-            <>
-                {entries.map((entry) => {
-                    const name = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
-                    return <MiniCard key={name} entry={entry} onChoose={() => setMode({ type: 'ready', entry })} />;
-                })}
-                <div className='self-start mt-1'>
-                    <Button variant='ghost' size='sm' className='text-xs' onClick={() => setMode({ type: 'idle' })}>
-                        Cancel
-                    </Button>
-                </div>
-            </>
-        );
-    }
-
     return (
-        <BuildCard
-            entry={mode.entry}
-            agentId={agentId}
-            planetId={planetId}
-            constructionServicePrice={constructionServicePrice}
-            onBuilt={() => {
-                setMode({ type: 'idle' });
-                onBuilt();
-            }}
-            onCancel={() => setMode({ type: 'idle' })}
-        />
+        <>
+            {entries.map((entry) => {
+                const name = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
+                return (
+                    <BuildCard
+                        key={name}
+                        entry={entry}
+                        agentId={agentId}
+                        planetId={planetId}
+                        constructionServicePrice={constructionServicePrice}
+                        onBuilt={() => {
+                            onModeChange({ type: 'idle' });
+                            onBuilt();
+                        }}
+                        onCancel={() => onModeChange({ type: 'idle' })}
+                    />
+                );
+            })}
+        </>
     );
 }

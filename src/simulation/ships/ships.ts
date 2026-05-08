@@ -406,17 +406,6 @@ const smallFreighter: TransportShipType = {
     buildingTime: 60,
 };
 
-const smallReefer: TransportShipType = {
-    type: 'transport',
-    name: 'Reefer 1',
-    scale: 'small',
-    speed: 7,
-    cargoSpecification: { type: 'frozenGoods', volume: 80000, mass: 60000 },
-    requiredCrew: { ...defaultRequiredCrew },
-    buildingCost: [...defaultBuildingCost],
-    buildingTime: 60,
-};
-
 export const passengerLiner: PassengerShipType = {
     type: 'passenger',
     name: 'Passenger Liner',
@@ -462,13 +451,6 @@ export const shiptypes = {
         freighter2: scaleShipType('medium', 'Freighter 2', smallFreighter),
         freighter3: scaleShipType('large', 'Freighter 3', smallFreighter),
         freighter4: scaleShipType('super', 'Freighter 4', smallFreighter),
-    } as const,
-
-    frozenGoods: {
-        reefer1: smallReefer,
-        reefer2: scaleShipType('medium', 'Reefer 2', smallReefer),
-        reefer3: scaleShipType('large', 'Reefer 3', smallReefer),
-        reefer4: scaleShipType('super', 'Reefer 4', smallReefer),
     } as const,
 
     passenger: {
