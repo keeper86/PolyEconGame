@@ -90,9 +90,9 @@ export function consumeConstructionForFacility(facility: Facility, storage: Stor
     }
 
     if (cs.progress >= cs.totalConstructionServiceRequired) {
-        const estimateScale = Math.round((Math.max(1, facility.scale) / Math.max(1, facility.maxScale)) * 4) / 4; // arbitrary heuristic to determine scale of new facility based on old one
+        const scaleFraction = facility.maxScale > 0 ? Math.round((facility.scale / facility.maxScale) * 4) / 4 : 1;
         facility.maxScale = cs.constructionTargetMaxScale;
-        facility.scale = estimateScale > 0 ? facility.maxScale * estimateScale : 1;
+        facility.scale = facility.maxScale * scaleFraction;
         facility.construction = null;
     }
 

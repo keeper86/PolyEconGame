@@ -79,9 +79,6 @@ export default function ProductionFacilitiesPanel({
     const handleTabChange = (value: string) => {
         setActiveTab(value as ResourceProcessLevel);
         window.history.replaceState(null, '', `#${value}`);
-        // An entry chosen in one tab is level-specific; step back to selecting
-        // so the user sees the new tab's entries in browse mode.
-        setBuildMode((prev) => (prev.type === 'ready' ? { type: 'selecting' } : prev));
     };
 
     return (

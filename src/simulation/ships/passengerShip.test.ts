@@ -208,6 +208,34 @@ describe('handleDispatchPassengerShip validation', () => {
         expect(msgs[0]).toMatchObject({ type: 'passengerShipDispatchFailed' });
     });
 
+    it('fails when destination planet has no commercial license', () => {
+        const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
+        delete agent.assets.p2!.licenses.commercial;
+        const ship = makePassengerShip('S1', 'p1');
+        agent.ships.push(ship);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id }, post);
+        expect(messages[0]).toMatchObject({
+            type: 'passengerShipDispatchFailed',
+            reason: 'No commercial license on destination planet',
+        });
+    });
+
+    it('fails when destination planet has no commercial license', () => {
+        const agent = makeAgent('a1', 'p1');
+        agent.assets.p2 = makeAgentPlanetAssets('p2');
+        delete agent.assets.p2!.licenses.commercial;
+        const ship = makePassengerShip('S1', 'p1');
+        agent.ships.push(ship);
+        const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
+        dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id }, post);
+        expect(messages[0]).toMatchObject({
+            type: 'passengerShipDispatchFailed',
+            reason: 'No commercial license on destination planet',
+        });
+    });
+
     it('allows dispatch when passenger count is 0', () => {
         const agent = makeAgent('a1', 'p1');
         agent.assets.p2 = makeAgentPlanetAssets('p2');

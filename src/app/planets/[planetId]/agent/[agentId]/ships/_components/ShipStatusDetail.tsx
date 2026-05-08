@@ -168,7 +168,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
                     <span className='text-muted-foreground/70'>
                         ETA{' '}
                         <span className='tabular-nums text-foreground'>
-                            {eta > 0 ? `${eta} tick${eta === 1 ? '' : 's'}` : 'arriving'}
+                            {eta > 0 ? `${eta} day${eta === 1 ? '' : 's'}` : 'arriving'}
                         </span>
                     </span>
                 </div>
@@ -330,7 +330,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
                         <span className='text-muted-foreground/70'>
                             ETA{' '}
                             <span className='tabular-nums text-foreground'>
-                                {eta > 0 ? `${eta} tick${eta === 1 ? '' : 's'}` : 'arriving'}
+                                {eta > 0 ? `${eta} day${eta === 1 ? '' : 's'}` : 'arriving'}
                             </span>
                         </span>
                         <Button
