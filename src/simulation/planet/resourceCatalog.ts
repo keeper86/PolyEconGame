@@ -95,9 +95,12 @@ export const ALL_RESOURCES: Resource[] = [
     maintenanceServiceResourceType,
 ] as const;
 
-export const getProductForm = (resourceName: string): string => {
-    const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
-    return resource ? resource.form : 'unknown';
+export const RESOURCES_BY_NAME: ReadonlyMap<string, Resource> = new Map(
+    ALL_RESOURCES.map((resource) => [resource.name, resource] as const),
+);
+
+export const getProductForm = (resourceName: string): Resource['form'] | undefined => {
+    return RESOURCES_BY_NAME.get(resourceName)?.form;
 };
 
 export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];

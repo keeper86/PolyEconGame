@@ -9,7 +9,7 @@ import { ArrowRight } from 'lucide-react';
 import type { TransportShip, ConstructionShip, PassengerShip } from '@/simulation/ships/ships';
 import { PassengerManifestDialog } from './PassengerManifestDialog';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
-import { formatNumberWithUnit } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
     educationServiceResourceType,
     groceryServiceResourceType,
@@ -45,11 +45,17 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
                             <span>
                                 Loading{' '}
                                 <span className='tabular-nums text-foreground'>
-                                    {formatNumberWithUnit(s.currentCargo.quantity, 'units')}
+                                    {formatNumberWithUnit(
+                                        s.currentCargo.quantity,
+                                        resourceFormToUnit(s.cargoGoal.resource.form),
+                                    )}
                                 </span>
                                 {' / '}
                                 <span className='tabular-nums'>
-                                    {formatNumberWithUnit(s.cargoGoal.quantity, 'units')}
+                                    {formatNumberWithUnit(
+                                        s.cargoGoal.quantity,
+                                        resourceFormToUnit(s.cargoGoal.resource.form),
+                                    )}
                                 </span>{' '}
                                 {s.cargoGoal.resource.name}
                             </span>

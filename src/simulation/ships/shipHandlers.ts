@@ -575,6 +575,14 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
 
     if (shipState.passengerCount === 0) {
         const flightTicks = travelTime(ship);
+        pushTickerEvent(gameState, {
+            category: 'shipDispatched',
+            planetId: shipState.planetId,
+            agentId: agent.id,
+            agentName: agent.name,
+            message: `${agent.name}'s ${ship.name} departed ${shipState.planetId} → ${shipState.to} (passenger)`,
+            tick: gameState.tick,
+        });
         return {
             action: 'transition',
             newState: {

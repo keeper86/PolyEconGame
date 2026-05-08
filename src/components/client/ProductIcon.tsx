@@ -44,7 +44,8 @@ export function ProductIcon({
             </TooltipTrigger>
             <TooltipContent>
                 <span className='flex items-center gap-1'>
-                    {label ?? productName} {formIcon && <Image src={formIcon} alt={form} width={16} height={16} />}
+                    {label ?? productName}{' '}
+                    {formIcon && <Image src={formIcon} alt={form ?? ''} width={16} height={16} />}
                 </span>
             </TooltipContent>
         </Tooltip>
