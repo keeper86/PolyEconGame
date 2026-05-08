@@ -33,6 +33,8 @@ const loanSchema = z.object({
         'shipPenaltyCoverage',
         'licenseBootstrap',
         'forexWorkingCapital',
+        'shipbuilderBootstrap',
+        'arbitrageBootstrap',
     ]),
     principal: z.number(),
     remainingPrincipal: z.number(),

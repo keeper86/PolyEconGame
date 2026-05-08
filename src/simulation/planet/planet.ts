@@ -274,6 +274,18 @@ export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): 
     return license !== undefined && !license.frozen;
 }
 
+export type ArbitrageRoutePhase = 'buying' | 'loading' | 'in_transit' | 'unloading' | 'selling';
+
+export type PendingArbitrageRoute = {
+    shipId: string;
+    originPlanetId: string;
+    destPlanetId: string;
+    resourceName: string;
+    quantity: number;
+    bidPricePerUnit: number;
+    phase: ArbitrageRoutePhase;
+};
+
 export type Agent = {
     id: string;
     automated: boolean;
@@ -282,6 +294,8 @@ export type Agent = {
     foundedTick: number;
     starterLoanTaken: boolean;
     associatedPlanetId: string;
+    agentRole?: 'shipbuilder' | 'arbitrage_trader';
+    pendingArbitrageRoutes?: Map<string, PendingArbitrageRoute>;
     ships: Ship[];
     assets: {
         [planetId in string]: AgentPlanetAssets;
@@ -294,6 +308,10 @@ export interface GameState {
     agents: Map<string, Agent>;
     shipCapitalMarket: ShipCapitalMarket;
     forexMarketMakers: Map<string, Agent>;
+    /** Role-indexed view of shipbuilder agents (also present in agents). */
+    shipbuilderAgents: Map<string, Agent>;
+    /** Role-indexed view of arbitrage trader agents (also present in agents). */
+    arbitrageTraders: Map<string, Agent>;
     tickerEvents: TickerEvent[];
     nextEventId: number;
 }

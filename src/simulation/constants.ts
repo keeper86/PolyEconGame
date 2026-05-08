@@ -293,13 +293,13 @@ export const FOREX_MM_COUNT = 3;
  * planet's currency as initial inventory, funded by a loan from that planet's
  * central bank.
  */
-export const FOREX_MM_SEED_LOAN = 100_000;
+export const FOREX_MM_SEED_LOAN = 1_000_000;
 
 /**
  * Working-capital loan amount per market-maker from their home planet's bank
  * (denominated in home currency).  Used to fund bid orders.
  */
-export const FOREX_MM_WORKING_CAPITAL = 1_000_000;
+export const FOREX_MM_WORKING_CAPITAL = 10_000_000;
 
 /**
  * Inventory reference level used by the pricing algorithm.
@@ -321,3 +321,50 @@ export const FOREX_MM_MAX_SKEW = 0.02;
  * MMs keep at least this buffer before any excess is used for loan repayment.
  */
 export const FOREX_MM_RETAIN_RATIO = 0.5;
+
+// ---------------------------------------------------------------------------
+// Shipbuilder agent constants
+// ---------------------------------------------------------------------------
+
+/** Working-capital loan granted to each shipbuilder on their home planet. */
+export const SHIPBUILDER_WORKING_CAPITAL = 5_000_000;
+
+/** Loan per bootstrap ship type pre-built at seed time. */
+export const SHIPBUILDER_BOOTSTRAP_LOAN = 500_000;
+
+/** Markup over estimated production cost when listing a ship for sale. */
+export const SHIPBUILDER_LISTING_MARKUP = 0.2;
+
+/** Minimum ratio of highest bid to estimated production cost required to start an order-driven build. */
+export const SHIPBUILDER_PROFIT_THRESHOLD = 1.2;
+
+/** Minimum ratio of EMA price to estimated production cost for a speculative build. */
+export const SHIPBUILDER_SPECULATIVE_THRESHOLD = 1.25;
+
+/** When actively building, pre-purchase this many ticks worth of inputs. */
+export const SHIPBUILDER_INPUT_BUFFER_TICKS = 20;
+
+// ---------------------------------------------------------------------------
+// Arbitrage trader agent constants
+// ---------------------------------------------------------------------------
+
+/** Seed deposit granted to each arbitrage trader on every planet. */
+export const ARBITRAGE_SEED_DEPOSIT = 50_000;
+
+/** Bootstrap loan funding the first ship for each arbitrage trader. */
+export const ARBITRAGE_BOOTSTRAP_LOAN = 200_000;
+
+/** Minimum net return on capital (as fraction of buy price) required to activate a route. */
+export const ARBITRAGE_MIN_PROFIT_MARGIN = 0.05;
+
+/** Minimum total deposits on home planet before buying an additional ship. */
+export const ARBITRAGE_MIN_CAPITAL_RESERVE = 100_000;
+
+/** Ticks an idle ship must remain un-routed before the agent considers selling it (6 months). */
+export const ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD = 180;
+
+/** Estimated ship lifetime in ticks used for linear depreciation (10 years). */
+export const ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS = 3_600;
+
+/** Fixed overhead ticks added to each trip estimate to cover loading and unloading. */
+export const ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS = 60;

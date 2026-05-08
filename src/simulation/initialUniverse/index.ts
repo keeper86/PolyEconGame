@@ -3,7 +3,9 @@ import { AC_ID, buildAlphaCentauri } from './alphaCentauri';
 import { EARTH_ID } from './earth';
 import { buildProceduralWorld, PROC_PLANET_ID } from './proceduralWorld';
 import { buildSmallPlanets } from './smallPlanets';
-import { seedForexMarketMakers } from '../market/forexMarketMaker';
+import { seedForexMarketMakers } from '../agents/forexMarketMaker';
+import { seedShipbuilderAgents } from '../agents/shipbuilder';
+import { seedArbitrageTraderAgents } from '../agents/arbitrageTrader';
 
 export {
     createPopulation,
@@ -37,11 +39,15 @@ export function createInitialGameState(): GameState {
         agents: new Map(allAgents.map((a) => [a.id, a])),
         shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
         forexMarketMakers: new Map(),
+        shipbuilderAgents: new Map(),
+        arbitrageTraders: new Map(),
         tickerEvents: [],
         nextEventId: 1,
     };
 
     seedForexMarketMakers(gameState);
+    seedShipbuilderAgents(gameState);
+    seedArbitrageTraderAgents(gameState);
 
     return gameState;
 }

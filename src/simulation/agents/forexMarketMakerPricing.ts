@@ -5,7 +5,7 @@ import {
     FOREX_PRICE_FLOOR,
     getCurrencyResource,
     getCurrencyResourceName,
-} from './currencyResources';
+} from '../market/currencyResources';
 
 /**
  * Update ask and bid prices for every market-maker on every planet they trade on.

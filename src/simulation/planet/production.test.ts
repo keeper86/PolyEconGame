@@ -68,6 +68,8 @@ describe('productionTick (basic)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -119,6 +121,8 @@ describe('productionTick (basic)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -170,6 +174,8 @@ describe('productionTick (basic)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -240,6 +246,8 @@ describe('productionTick (basic)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -290,6 +298,8 @@ describe('productionTick (basic)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -342,6 +352,8 @@ describe('productionTick — shared stored-resource allocation', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -394,6 +406,8 @@ describe('productionTick — shared stored-resource allocation', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -438,6 +452,8 @@ describe('constructionTick', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -476,6 +492,8 @@ describe('constructionTick', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -508,6 +526,8 @@ describe('constructionTick', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -545,6 +565,8 @@ describe('constructionTick', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -586,6 +608,8 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -629,6 +653,8 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -678,6 +704,8 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -716,6 +744,8 @@ describe('productionTick — storage facility', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -756,6 +786,8 @@ describe('productionTick — storage facility', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -808,6 +840,8 @@ describe('productionTick — management facility', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -846,6 +880,8 @@ describe('productionTick — management facility', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -888,6 +924,8 @@ describe('productionTick — management facility', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -947,6 +985,8 @@ describe('productionTick — shipyard facility (building mode)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -979,6 +1019,8 @@ describe('productionTick — shipyard facility (building mode)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -1024,6 +1066,8 @@ describe('productionTick — shipyard facility (building mode)', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -1073,6 +1117,8 @@ describe('productionTick — shipCompleted ticker events', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };
@@ -1121,6 +1167,8 @@ describe('productionTick — shipCompleted ticker events', () => {
             agents: agentMap(agent, gov),
             shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
             forexMarketMakers: new Map(),
+            shipbuilderAgents: new Map(),
+            arbitrageTraders: new Map(),
             tickerEvents: [],
             nextEventId: 1,
         };

@@ -19,7 +19,9 @@ export type LoanType =
     | 'claimCoverage'
     | 'shipPenaltyCoverage'
     | 'licenseBootstrap'
-    | 'forexWorkingCapital';
+    | 'forexWorkingCapital'
+    | 'shipbuilderBootstrap'
+    | 'arbitrageBootstrap';
 
 export type Loan = {
     id: string;
@@ -41,6 +43,8 @@ export const LOAN_TERM_TICKS: Record<LoanType, number> = {
     shipPenaltyCoverage: TICKS_PER_YEAR,
     licenseBootstrap: TICKS_PER_YEAR,
     forexWorkingCapital: TICKS_PER_YEAR * 1000, // effectively no maturity
+    shipbuilderBootstrap: TICKS_PER_YEAR * 1000, // effectively no maturity
+    arbitrageBootstrap: TICKS_PER_YEAR * 1000, // effectively no maturity
 } as const;
 
 /** Whether early (UI-initiated) repayment is allowed for this loan type. */
@@ -53,6 +57,8 @@ const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
     shipPenaltyCoverage: false,
     licenseBootstrap: false,
     forexWorkingCapital: false,
+    shipbuilderBootstrap: false,
+    arbitrageBootstrap: false,
 };
 
 export function makeLoan(

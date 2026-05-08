@@ -1,5 +1,5 @@
 import { pushTickerEvent } from '../planet/planet';
-import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
+import type { Resource, ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import type { Facility } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
 import {
@@ -537,6 +537,22 @@ export type ShipCapitalMarket = {
     tradeHistory: ShipTradeRecord[];
     emaPrice: Record<string, number>;
 };
+
+/**
+ * Returns true if the given transport ship can carry the given resource.
+ * Solid/liquid/gas/pieces resources are matched against the ship's cargo spec type.
+ * Services, land-bound resources, and currencies cannot be transported.
+ */
+export function canCarryResource(ship: Ship, resource: Resource): boolean {
+    if (ship.type.type !== 'transport') {
+        return false;
+    }
+    const form = resource.form;
+    if (form === 'services' || form === 'landBoundResource' || form === 'currency') {
+        return false;
+    }
+    return ship.type.cargoSpecification.type === (form as TransportableResourceType);
+}
 
 export type ContractStatus = 'open' | 'accepted';
 
