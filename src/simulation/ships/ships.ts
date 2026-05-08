@@ -207,6 +207,7 @@ export type BaseShip = {
     id: string;
     name: string;
     builtAtTick: number;
+    idleAtTick?: number; // tick at which the ship last became idle; undefined for legacy deserialized ships
     maintainanceStatus: number; // 0..1, degrades over time and with use, can be restored by consuming maintenance services up to maxMaintenance
     maxMaintenance: number; // degrades after each full repair cycle, when it reaches 0 the ship becomes derelict
     cumulativeRepairAcc: number; // accumulates repair consumed; triggers maxMaintenance degradation when >= 1
@@ -481,6 +482,7 @@ export const createShip = (
             maxMaintenance: 1,
             cumulativeRepairAcc: 0,
             builtAtTick,
+            idleAtTick: builtAtTick,
         };
     }
     if (shipTemplate.type === 'passenger') {
@@ -488,6 +490,7 @@ export const createShip = (
             id: crypto.randomUUID(),
             name,
             builtAtTick,
+            idleAtTick: builtAtTick,
             type: shipTemplate,
             state: {
                 type: 'idle',
@@ -502,6 +505,7 @@ export const createShip = (
         id: crypto.randomUUID(),
         name,
         builtAtTick,
+        idleAtTick: builtAtTick,
         type: shipTemplate,
         state: {
             type: 'idle',

@@ -744,8 +744,9 @@ describe('arbitrageTraderTick – manageFleet: trim idle ships', () => {
         const currentTick = firstTickOfMonth(1);
         const { state, agent, ship } = makeTwoPlanetState({ tick: currentTick });
 
-        // Make ship old enough so the age check passes (reaches EMA check)
+        // Make ship old enough so the idle-duration check passes (reaches EMA check)
         ship.builtAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
+        ship.idleAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
         // EMA price = 0 → emaPrice (0) <= currentValue → skip listing
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = 0;
         agent.pendingArbitrageRoutes!.clear();
@@ -798,6 +799,7 @@ describe('arbitrageTraderTick – manageFleet: trim idle ships', () => {
 
         // Use age > threshold AND high EMA so that manageFleet creates a listing
         ship.builtAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
+        ship.idleAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = 10_000_000;
         agent.pendingArbitrageRoutes!.clear();
 

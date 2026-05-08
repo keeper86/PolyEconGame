@@ -212,11 +212,9 @@ export function executeShipPurchase(
         return false;
     }
     const [ship] = sellerAgent.ships.splice(shipIdx, 1);
-    // Reset ship to idle at buyer's planet
-    if ('planetId' in ship.state) {
-        (ship.state as { planetId: string }).planetId = buyerPlanetId;
-    }
-    ship.state = { type: 'idle', planetId: buyerPlanetId };
+    // Ship stays at the listing planet (not teleported to buyer's planet)
+    ship.state = { type: 'idle', planetId: listing.planetId };
+    ship.idleAtTick = gameState.tick;
     buyerAgent.ships.push(ship);
 
     // Transfer funds

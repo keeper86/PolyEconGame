@@ -290,9 +290,9 @@ describe('shipbuilderTick – decideBuild', () => {
         // Note: makePlanet merges overrides on top of initialMarketPrices, so we must
         // zero the prices after construction to truly remove them.
         const planet = makePlanet({ id: 'p1', name: 'TestPlanet' });
-        planet.marketPrices = {}; // clear all prices so estimateShipCost returns 0
         const builder = makeShipbuilder('p1');
         const state = makeGameState([planet], [builder], firstTickOfMonth(1));
+        planet.marketPrices = {}; // clear all prices so estimateShipCost returns 0
         state.shipbuilderAgents.set(builder.id, builder);
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = 999_999_999;
 

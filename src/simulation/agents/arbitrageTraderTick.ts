@@ -16,10 +16,6 @@ import { getCurrencyResourceName } from '../market/currencyResources';
 
 const EXPAND_FLEET_SHIP_TYPE = shiptypes.solid.bulkCarrier1;
 
-// ---------------------------------------------------------------------------
-// Phase tracking (runs every tick)
-// ---------------------------------------------------------------------------
-
 function advanceRoutePhases(agent: Agent, gameState: GameState): void {
     if (!agent.pendingArbitrageRoutes) {
         return;
@@ -28,8 +24,12 @@ function advanceRoutePhases(agent: Agent, gameState: GameState): void {
     for (const [shipId, route] of agent.pendingArbitrageRoutes) {
         const ship = agent.ships.find((s) => s.id === shipId) as TransportShip | undefined;
         if (!ship) {
-            // Ship no longer exists — clean up
+            // Ship no longer exists — clean up route and its buy bid
             agent.pendingArbitrageRoutes.delete(shipId);
+            const originMarketBuy = agent.assets[route.originPlanetId]?.market?.buy;
+            if (originMarketBuy) {
+                delete originMarketBuy[route.resourceName];
+            }
             continue;
         }
 
@@ -110,9 +110,12 @@ function advanceRoutePhases(agent: Agent, gameState: GameState): void {
                         resource,
                         offerPrice: sellPrice,
                         offerRetainment: 0,
+                        automated: true,
                     };
                 }
                 agent.pendingArbitrageRoutes.delete(shipId);
+                // Track when the ship became idle again
+                ship.idleAtTick = gameState.tick;
             }
             continue;
         }
@@ -132,7 +135,12 @@ type RouteCandidate = {
     netMargin: number;
 };
 
-function scanBestRoute(ship: TransportShip, agent: Agent, gameState: GameState): RouteCandidate | null {
+function scanBestRoute(
+    ship: TransportShip,
+    agent: Agent,
+    gameState: GameState,
+    shipPlanetId: string,
+): RouteCandidate | null {
     const planets = Array.from(gameState.planets.values());
     let best: RouteCandidate | null = null;
     let bestNet = ARBITRAGE_MIN_PROFIT_MARGIN;
@@ -155,7 +163,8 @@ function scanBestRoute(ship: TransportShip, agent: Agent, gameState: GameState):
             continue;
         }
 
-        for (const origin of planets) {
+        // Only consider routes that start from the ship's current planet
+        for (const origin of planets.filter((p) => p.id === shipPlanetId)) {
             const pBuy = origin.marketPrices[resource.name];
             if (!pBuy || pBuy <= 0) {
                 continue;
@@ -221,7 +230,8 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
             continue;
         }
 
-        const candidate = scanBestRoute(ship as TransportShip, agent, gameState);
+        const shipPlanetId = (ship.state as { planetId: string }).planetId;
+        const candidate = scanBestRoute(ship as TransportShip, agent, gameState, shipPlanetId);
         if (!candidate) {
             continue;
         }
@@ -289,7 +299,7 @@ function manageFleet(agent: Agent, gameState: GameState): void {
             continue;
         }
 
-        const idleSince = gameState.tick - ship.builtAtTick;
+        const idleSince = gameState.tick - (ship.idleAtTick ?? ship.builtAtTick);
         if (idleSince < ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD) {
             continue;
         }
@@ -321,6 +331,7 @@ function manageFleet(agent: Agent, gameState: GameState): void {
         };
         assets.shipListings.push(listing);
         updateShipEma(gameState.shipCapitalMarket, ship.type.name, listing.askPrice);
+        ship.state = { type: 'listed', planetId };
     }
 }
 
