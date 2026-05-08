@@ -214,10 +214,16 @@ export default function Footer() {
 
                 {/* Gradient fade on edges */}
                 <div
-                    className={`pointer-events-none absolute inset-y-0 left-0 w-${isSmallScreen ? '32' : '64'} bg-gradient-to-r from-background to-transparent z-10`}
+                    className={cn(
+                        'pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-background to-transparent z-10',
+                        isSmallScreen ? 'w-32' : 'w-64',
+                    )}
                 />
                 <div
-                    className={`pointer-events-none absolute inset-y-0 right-0 w-${isSmallScreen ? '32' : '64'} bg-gradient-to-l from-background to-transparent z-10`}
+                    className={cn(
+                        'pointer-events-none absolute inset-y-0 right-0 bg-gradient-to-l from-background to-transparent z-10',
+                        isSmallScreen ? 'w-32' : 'w-64',
+                    )}
                 />
 
                 {displayedEvents.map(({ id, event, duration }) => (

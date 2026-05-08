@@ -10,7 +10,7 @@ import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
-import { LevelBuildSection } from './LevelBuildSection';
+import { LevelBuildSection, type Mode as BuildMode } from './LevelBuildSection';
 import { UnderConstructionCard } from './UnderConstructionCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
@@ -56,6 +56,8 @@ export default function ProductionFacilitiesPanel({
         );
     }, [ownedByName]);
 
+    const [buildMode, setBuildMode] = useState<BuildMode>({ type: 'idle' });
+
     const [activeTab, setActiveTab] = useState<ResourceProcessLevel>(() => {
         if (typeof window === 'undefined') {
             return defaultTab;
@@ -77,6 +79,9 @@ export default function ProductionFacilitiesPanel({
     const handleTabChange = (value: string) => {
         setActiveTab(value as ResourceProcessLevel);
         window.history.replaceState(null, '', `#${value}`);
+        // An entry chosen in one tab is level-specific; step back to selecting
+        // so the user sees the new tab's entries in browse mode.
+        setBuildMode((prev) => (prev.type === 'ready' ? { type: 'selecting' } : prev));
     };
 
     return (
@@ -142,6 +147,8 @@ export default function ProductionFacilitiesPanel({
                                         planetId={planetId}
                                         constructionServicePrice={constructionServicePrice}
                                         onBuilt={refresh}
+                                        mode={buildMode}
+                                        onModeChange={setBuildMode}
                                     />
                                 )}
                             </div>
