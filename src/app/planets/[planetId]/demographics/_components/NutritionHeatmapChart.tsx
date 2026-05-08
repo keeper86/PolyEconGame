@@ -6,10 +6,11 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
+import type { ServiceName } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { GV_FOOD, GV_POP, GV_STARV, SERVICE_TARGET_PER_PERSON } from './demographicsTypes';
+import { GV_FOOD, GV_POP, GV_STARV, SERVICE_TARGET_MAP } from './demographicsTypes';
 
 // ─── Nutrition bands ──────────────────────────────────────────────────────────
 
@@ -220,6 +221,7 @@ export function BandLegend() {
 type Props = {
     rows: AggRow[];
     groupMode: GroupMode;
+    serviceKey?: ServiceName;
 };
 
 // ─── Empty placeholder ────────────────────────────────────────────────────────
@@ -237,12 +239,13 @@ function EmptyChart({ height = 200 }: { height?: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function NutritionHeatmapChart({ rows, groupMode }: Props): React.ReactElement {
+export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'grocery' }: Props): React.ReactElement {
     const isVerySmall = useIsSmallScreen();
 
     const groupKeys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const groupLabels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const groupColors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
+    const targetPerPerson = SERVICE_TARGET_MAP[serviceKey];
 
     const { data, yDomain } = useMemo(() => {
         const builtData: ChartRow[] = [];
@@ -255,12 +258,21 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
                 const gk = groupKeys[gi];
                 const gv = r.groupValues[gi];
                 const gPop = gv[GV_POP];
-                const totalFood = gv[GV_FOOD];
-                const weightedStarv = gv[GV_STARV];
+
+                let totalBuffer: number;
+                let weightedStarv: number;
+                if (serviceKey === 'grocery') {
+                    totalBuffer = gv[GV_FOOD];
+                    weightedStarv = gv[GV_STARV];
+                } else {
+                    const svcEntry = r.serviceBuffers[serviceKey as Exclude<ServiceName, 'grocery'>][gi];
+                    totalBuffer = svcEntry[0];
+                    weightedStarv = svcEntry[1];
+                }
 
                 const avgStarvation = gPop > 0 && weightedStarv > 0 ? weightedStarv / gPop : 0;
-                const avgStock = gPop > 0 ? totalFood / gPop : 0;
-                const avgBuffer = SERVICE_TARGET_PER_PERSON > 0 ? avgStock / SERVICE_TARGET_PER_PERSON : 0;
+                const avgStock = gPop > 0 ? totalBuffer / gPop : 0;
+                const avgBuffer = targetPerPerson > 0 ? avgStock / targetPerPerson : 0;
 
                 const bandIdx = classifyBand(avgStarvation);
                 for (let bi = 0; bi < BANDS.length; bi++) {
@@ -314,7 +326,7 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
             globalAvgBuffer: tp > 0 ? wBuffer / tp : 0,
             yDomain: [0, maxY > 0 ? maxY : 1] as [number, number],
         };
-    }, [rows, groupKeys, isVerySmall]);
+    }, [rows, groupKeys, serviceKey, targetPerPerson, isVerySmall]);
 
     const tooltip = useMemo(
         () => makeTooltip(groupKeys, groupLabels, groupColors),

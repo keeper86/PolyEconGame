@@ -14,7 +14,8 @@ import { z } from 'zod';
 import { SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
-import type { Skill } from '../../simulation/population/population';
+import { SERVICE_DEFINITIONS } from '../../simulation/market/populationDemand';
+import type { ServiceName, Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { computeGlobalStarvation, computePopulationTotal } from '../../simulation/snapshotRepository';
 import { workerQueries } from '../../simulation/workerClient/queries';
@@ -199,6 +200,9 @@ export const getPlanetEconomy = () =>
  *   avgWealth     = weightedWealth     / population
  *   avgBuffer     = totalFoodStock     / (population * FOOD_TARGET_PER_PERSON)
  */
+type SvcGroupPair = [number, number];
+type SvcBands4 = [SvcGroupPair, SvcGroupPair, SvcGroupPair, SvcGroupPair];
+
 type AggRow = {
     age: number;
     total: number;
@@ -217,7 +221,56 @@ type AggRow = {
         [number, number, number, number],
         [number, number, number, number],
     ];
+    /**
+     * Per-service buffer data for all non-grocery services.
+     * serviceBuffers[svc][gi] = [totalBufferUnits, weightedStarvation]
+     * where gi is the group index (0-3) for the active groupMode.
+     */
+    serviceBuffers: { [K in Exclude<ServiceName, 'grocery'>]: SvcBands4 };
 };
+
+const nonGroceryDefs = SERVICE_DEFINITIONS.filter((d) => d.serviceKey !== 'grocery');
+
+function emptyServiceBuffers(): AggRow['serviceBuffers'] {
+    return {
+        healthcare: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
+        logistics: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
+        retail: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
+        construction: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
+        administrative: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
+        education: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
+    };
+}
 
 function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', activeSkills: readonly Skill[]): AggRow[] {
     const skillSet = new Set(activeSkills);
@@ -269,6 +322,8 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
             [0, 0, 0, 0],
         ];
 
+        const svcBuffers = emptyServiceBuffers();
+
         for (let gi = 0; gi < 4; gi++) {
             let gPop = 0,
                 gFoodStock = 0,
@@ -296,6 +351,12 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                         gFoodStock += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
                         gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
+                        for (const def of nonGroceryDefs) {
+                            const svcKey = def.serviceKey as Exclude<ServiceName, 'grocery'>;
+                            const svc = cat.services[svcKey];
+                            svcBuffers[svcKey][gi][0] += svc.buffer * def.consumptionRatePerPersonPerTick * cat.total;
+                            svcBuffers[svcKey][gi][1] += cat.total * svc.starvationLevel;
+                        }
                     }
                 }
             }
@@ -303,7 +364,7 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
             groupValues[gi] = [gPop, gFoodStock, gWeightedStarvation, gWeightedWealth];
         }
 
-        rows.push({ age, total, occ, edu, groupValues });
+        rows.push({ age, total, occ, edu, groupValues, serviceBuffers: svcBuffers });
     }
 
     return rows;
@@ -315,6 +376,18 @@ const skillsSchema = z.array(skillLevelSchema).min(1);
 
 /** 4-tuple: [population, totalFoodStock, weightedStarvation, weightedWealth] */
 const groupValueTuple = z.tuple([z.number(), z.number(), z.number(), z.number()]);
+
+/** Per-service: 4 groups × [totalBufferUnits, weightedStarvation] */
+const svcGroupPair = z.tuple([z.number(), z.number()]);
+const svcBands4 = z.tuple([svcGroupPair, svcGroupPair, svcGroupPair, svcGroupPair]);
+const serviceBuffersSchema = z.object({
+    healthcare: svcBands4,
+    logistics: svcBands4,
+    retail: svcBands4,
+    construction: svcBands4,
+    administrative: svcBands4,
+    education: svcBands4,
+});
 
 export const getPlanetDemographicsFull = () =>
     protectedProcedure
@@ -351,6 +424,7 @@ export const getPlanetDemographicsFull = () =>
                                     groupValueTuple,
                                     groupValueTuple,
                                 ]),
+                                serviceBuffers: serviceBuffersSchema,
                             }),
                         ),
                         priceLevel: z.number(),
