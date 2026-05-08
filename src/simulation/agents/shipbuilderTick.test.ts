@@ -286,8 +286,11 @@ describe('shipbuilderTick – decideBuild', () => {
     });
 
     it('skips speculative build if market prices for inputs are missing', () => {
-        // Planet has no prices for build materials
-        const planet = makePlanet({ id: 'p1', name: 'TestPlanet', marketPrices: {} });
+        // Planet has no prices for build materials.
+        // Note: makePlanet merges overrides on top of initialMarketPrices, so we must
+        // zero the prices after construction to truly remove them.
+        const planet = makePlanet({ id: 'p1', name: 'TestPlanet' });
+        planet.marketPrices = {}; // clear all prices so estimateShipCost returns 0
         const builder = makeShipbuilder('p1');
         const state = makeGameState([planet], [builder], firstTickOfMonth(1));
         state.shipbuilderAgents.set(builder.id, builder);
