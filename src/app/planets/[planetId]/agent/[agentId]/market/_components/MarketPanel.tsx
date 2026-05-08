@@ -2,26 +2,24 @@
 
 import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { MarketOverviewRow } from '@/server/controller/planet';
-import type { Props } from './marketTypes';
-import {
-    buildResourceList,
-    buildInitialState,
-    getResourceByName,
-    slugToResourceName,
-    resourceNameToSlug,
-} from './marketHelpers';
-import ResourceAccordionItem from './ResourceAccordionItem';
-import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
+import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
-import { getCurrencyResourceName, CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
+import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
+import {
+    buildInitialState,
+    buildResourceList,
+    getResourceByName,
+    resourceNameToSlug,
+    slugToResourceName,
+} from './marketHelpers';
+import type { Props } from './marketTypes';
+import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
 
 // Fixed pixel overhead for non-column content in each row:
@@ -52,10 +50,15 @@ const MARKET_LEVEL_LABELS: Record<string, string> = {
     currency: 'Currency',
 };
 
-export default function MarketPanel({ agentId, planetId, assets, allPlanetDeposits }: Props): React.ReactElement {
+export default function MarketPanel({
+    agentId,
+    planetId,
+    assets,
+    allPlanetDeposits,
+    showAll,
+}: Props): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
-    const [showAll, setShowAll] = useState(false);
 
     // Read initial hash on mount (client-only)
     const [hashResource, setHashResource] = useState<string | undefined>(() => {
@@ -255,17 +258,6 @@ export default function MarketPanel({ agentId, planetId, assets, allPlanetDeposi
     return (
         <Card ref={cardRef}>
             <CardContent className='p-3 space-y-3'>
-                {/* Top bar */}
-                <div className='flex items-center justify-between gap-3'>
-                    <span className='text-sm font-semibold'>Market Orders</span>
-                    <div className='flex items-center gap-2'>
-                        <Label htmlFor='show-all-resources' className='text-xs text-muted-foreground cursor-pointer'>
-                            Show all resources
-                        </Label>
-                        <Switch id='show-all-resources' checked={showAll} onCheckedChange={setShowAll} />
-                    </div>
-                </div>
-
                 {resourceGroups.length === 0 ? (
                     <p className='text-sm text-muted-foreground'>
                         No resources to display. Build a facility or enable &quot;Show all resources&quot;.

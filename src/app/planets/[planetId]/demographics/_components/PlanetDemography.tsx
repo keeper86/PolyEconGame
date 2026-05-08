@@ -1,12 +1,11 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import React from 'react';
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
+import React from 'react';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 
@@ -81,46 +80,42 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
     const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
 
     return (
-        <Card>
-            <CardContent className='px-3 pt-3 pb-2'>
-                <ResponsiveContainer width='100%' height={180}>
-                    <BarChart data={finalChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                        <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                        <YAxis
-                            width={40}
-                            tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
-                        />
-                        <Tooltip
-                            content={({ active, payload, label }) => {
-                                if (!active || !payload || payload.length === 0) {
-                                    return null;
-                                }
-                                return (
-                                    <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[140px]'>
-                                        <div className='font-medium mb-1'>Age {label}</div>
-                                        {payload.map((entry) => (
-                                            <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                {entry.name}: {formatNumberWithUnit(entry.value as number, 'persons')}
-                                            </div>
-                                        ))}
+        <ResponsiveContainer width='100%' height={240}>
+            <BarChart data={finalChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <XAxis dataKey='age' tick={{ fontSize: 10 }} />
+                <YAxis
+                    width={40}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                />
+                <Tooltip
+                    content={({ active, payload, label }) => {
+                        if (!active || !payload || payload.length === 0) {
+                            return null;
+                        }
+                        return (
+                            <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[140px]'>
+                                <div className='font-medium mb-1'>Age {label}</div>
+                                {payload.map((entry) => (
+                                    <div key={entry.dataKey as string} style={{ color: entry.color }}>
+                                        {entry.name}: {formatNumberWithUnit(entry.value as number, 'persons')}
                                     </div>
-                                );
-                            }}
-                        />
-                        {keys.map((key) => (
-                            <Bar
-                                key={key}
-                                dataKey={key}
-                                stackId='a'
-                                fill={colors[key as keyof typeof colors]}
-                                name={labels[key as keyof typeof labels]}
-                                isAnimationActive={false}
-                            />
-                        ))}
-                    </BarChart>
-                </ResponsiveContainer>
-            </CardContent>
-        </Card>
+                                ))}
+                            </div>
+                        );
+                    }}
+                />
+                {keys.map((key) => (
+                    <Bar
+                        key={key}
+                        dataKey={key}
+                        stackId='a'
+                        fill={colors[key as keyof typeof colors]}
+                        name={labels[key as keyof typeof labels]}
+                        isAnimationActive={false}
+                    />
+                ))}
+            </BarChart>
+        </ResponsiveContainer>
     );
 }

@@ -57,7 +57,7 @@ export function handleBuildFacility(
         maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
         lastTickInvestedConstructionServices: 0,
     };
-    newFacility.scale = targetScale;
+    newFacility.scale = 0;
     newFacility.maxScale = 0;
     assets.productionFacilities.push(newFacility);
     console.log(`[worker] Agent '${agentId}' built '${facilityKey}' (scale ${targetScale}) on planet '${planetId}'`);

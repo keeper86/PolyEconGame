@@ -72,6 +72,7 @@ export type Props = {
     agentId: string;
     planetId: string;
     assets: AgentPlanetAssets;
+    showAll: boolean;
     allPlanetDeposits?: Record<string, number>;
 };
 

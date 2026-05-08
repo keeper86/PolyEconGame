@@ -6,7 +6,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import type { PopulationTransferMatrix } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Bar, BarChart, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 
@@ -44,15 +44,13 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
     const lastEduData = useRef<Record<string, number>[]>([]);
     const lastYDomain = useRef<[number, number]>([-1, 1]);
 
-    const { occData, eduData, totalReceived, totalGiven } = useMemo(() => {
+    const { occData, eduData } = useMemo(() => {
         if (!matrix || matrix.length === 0) {
-            return { occData: lastOccData.current, eduData: lastEduData.current, totalReceived: 0, totalGiven: 0 };
+            return { occData: lastOccData.current, eduData: lastEduData.current };
         }
 
         const occRows: Record<string, number>[] = [];
         const eduRows: Record<string, number>[] = [];
-        let received = 0;
-        let given = 0;
 
         for (let age = 0; age < matrix.length; age++) {
             const cohort = matrix[age];
@@ -82,15 +80,9 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
             }
             eduRow._total = eduAgeTotal;
             eduRows.push(eduRow);
-
-            if (ageTotal > 0) {
-                received += ageTotal;
-            } else {
-                given += -ageTotal;
-            }
         }
 
-        return { occData: occRows, eduData: eduRows, totalReceived: received, totalGiven: given };
+        return { occData: occRows, eduData: eduRows };
     }, [matrix]);
 
     useEffect(() => {
@@ -135,100 +127,70 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
         return domain;
     }, [chartData]);
 
-    const hasData = totalReceived > 0 || totalGiven > 0;
-
     return (
-        <>
-            <div
-                className={`flex flex-wrap gap-3 text-[10px] mb-2 ${hasData ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}
-            >
-                {hasData ? (
-                    <>
-                        <span>
-                            Received:{' '}
-                            <span className='text-blue-500 font-medium'>
-                                {formatNumberWithUnit(totalReceived, 'persons')}
-                            </span>
-                        </span>
-                        <span>
-                            Given:{' '}
-                            <span className='text-green-600 font-medium'>
-                                {formatNumberWithUnit(totalGiven, 'persons')}
-                            </span>
-                        </span>
-                        <span className='text-muted-foreground/60'>
-                            (Δ = {formatNumberWithUnit(totalReceived - totalGiven, 'persons')})
-                        </span>
-                    </>
-                ) : (
-                    <span>No active transfers this tick</span>
-                )}
-            </div>
-            <ResponsiveContainer width='100%' height={240}>
-                <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} stackOffset='sign'>
-                    <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                    <YAxis
-                        width={40}
-                        tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
-                        domain={yDomain}
-                    />
-                    <Tooltip
-                        content={({ active, payload, label }) => {
-                            if (!active || !payload || payload.length === 0) {
-                                return null;
-                            }
-                            const row = payload[0]?.payload as Record<string, number> | undefined;
-                            if (!row) {
-                                return null;
-                            }
-                            const ageTotal = Number(row._total ?? 0);
-                            return (
-                                <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[180px]'>
-                                    <div className='font-medium mb-1'>Age {label}</div>
-                                    {payload.map((entry) => {
-                                        const val = Number(entry.value ?? 0);
-                                        if (Math.abs(val) < 1e-6) {
-                                            return null;
-                                        }
-                                        return (
-                                            <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                {entry.name}: {val > 0 ? '+' : ''}
-                                                {formatNumberWithUnit(val, 'persons')}
-                                            </div>
-                                        );
-                                    })}
-                                    <div className='mt-1 pt-1 border-t text-muted-foreground'>
-                                        Total: {ageTotal > 0 ? '+' : ''}
-                                        {formatNumberWithUnit(ageTotal, 'persons')}
-                                    </div>
+        <ResponsiveContainer width='100%' height={240}>
+            <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} stackOffset='sign'>
+                <XAxis dataKey='age' tick={{ fontSize: 10 }} />
+                <YAxis
+                    width={40}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                    domain={yDomain}
+                />
+                <Tooltip
+                    content={({ active, payload, label }) => {
+                        if (!active || !payload || payload.length === 0) {
+                            return null;
+                        }
+                        const row = payload[0]?.payload as Record<string, number> | undefined;
+                        if (!row) {
+                            return null;
+                        }
+                        const ageTotal = Number(row._total ?? 0);
+                        return (
+                            <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[180px]'>
+                                <div className='font-medium mb-1'>Age {label}</div>
+                                {payload.map((entry) => {
+                                    const val = Number(entry.value ?? 0);
+                                    if (Math.abs(val) < 1e-6) {
+                                        return null;
+                                    }
+                                    return (
+                                        <div key={entry.dataKey as string} style={{ color: entry.color }}>
+                                            {entry.name}: {val > 0 ? '+' : ''}
+                                            {formatNumberWithUnit(val, 'persons')}
+                                        </div>
+                                    );
+                                })}
+                                <div className='mt-1 pt-1 border-t text-muted-foreground'>
+                                    Total: {ageTotal > 0 ? '+' : ''}
+                                    {formatNumberWithUnit(ageTotal, 'persons')}
                                 </div>
-                            );
-                        }}
-                    />
-                    <Legend verticalAlign='top' height={20} wrapperStyle={{ fontSize: 10 }} />
-                    <ReferenceLine y={0} stroke='#64748b' strokeWidth={1} />
-                    {viewMode === 'occupation'
-                        ? OCCUPATIONS.map((occ) => (
-                              <Bar
-                                  key={occ}
-                                  dataKey={OCC_LABELS[occ]}
-                                  stackId='a'
-                                  fill={OCC_COLORS[occ]}
-                                  isAnimationActive={false}
-                              />
-                          ))
-                        : educationLevelKeys.map((edu) => (
-                              <Bar
-                                  key={edu}
-                                  dataKey={EDU_LABELS[edu]}
-                                  stackId='a'
-                                  fill={EDU_COLORS[edu]}
-                                  isAnimationActive={false}
-                              />
-                          ))}
-                </BarChart>
-            </ResponsiveContainer>
-        </>
+                            </div>
+                        );
+                    }}
+                />
+                <ReferenceLine y={0} stroke='#64748b' strokeWidth={1} />
+                {viewMode === 'occupation'
+                    ? OCCUPATIONS.map((occ) => (
+                          <Bar
+                              key={occ}
+                              dataKey={OCC_LABELS[occ]}
+                              stackId='a'
+                              fill={OCC_COLORS[occ]}
+                              isAnimationActive={false}
+                          />
+                      ))
+                    : educationLevelKeys.map((edu) => (
+                          <Bar
+                              key={edu}
+                              dataKey={EDU_LABELS[edu]}
+                              stackId='a'
+                              fill={EDU_COLORS[edu]}
+                              isAnimationActive={false}
+                          />
+                      ))}
+            </BarChart>
+        </ResponsiveContainer>
     );
 }

@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import { useIsSmallScreen } from '@/hooks/useMobile';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
-import { useIsSmallScreen } from '@/hooks/useMobile';
-import { formatNumberWithUnit } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { SERVICE_TARGET_PER_PERSON, GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
+import { GV_FOOD, GV_POP, GV_STARV, SERVICE_TARGET_PER_PERSON } from './demographicsTypes';
 
 // ─── Nutrition bands ──────────────────────────────────────────────────────────
 
@@ -42,7 +41,7 @@ function classifyBand(starvationLevel: number): number {
     return 5;
 }
 
-const formatPct = (n: number): string => `${(n * 100).toFixed(1)}%`;
+const formatPct = (n: number): string => `${(n * 100).toFixed(0)}%`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -245,13 +244,7 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
     const groupLabels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const groupColors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
-    // ── Build chart data ──────────────────────────────────────────────────────
-    // For each age row we produce per group key:
-    //   ${gk}_${bandKey}    — band population
-    //   ${gk}_total         — total pop (used as dataKey for the Bar + tooltip)
-    //   ${gk}_avgStarvation — for tooltip
-    //   ${gk}_avgBuffer     — for tooltip
-    const { data, totalPop, totalStarving, globalAvgStarvation, globalAvgBuffer, yDomain } = useMemo(() => {
+    const { data, yDomain } = useMemo(() => {
         const builtData: ChartRow[] = [];
 
         for (const r of rows) {
@@ -332,114 +325,34 @@ export default function NutritionHeatmapChart({ rows, groupMode }: Props): React
         return <EmptyChart />;
     }
 
-    const starvingPct = totalPop > 0 ? totalStarving / totalPop : 0;
-
-    // Decide colors similar to the inline classes previously used
-    const starvingColor = starvingPct > 0.05 ? '#ef4444' : totalStarving > 0 ? '#f59e0b' : '#16a34a';
-    const avgStarvColor = globalAvgStarvation > 0.3 ? '#ef4444' : globalAvgStarvation > 0 ? '#f59e0b' : '#16a34a';
-    const avgBufferColor = globalAvgBuffer < 0.3 ? '#ef4444' : globalAvgBuffer < 0.7 ? '#f59e0b' : '#16a34a';
-
-    const summaryCards = isVerySmall ? (
-        <div className='flex gap-1 mb-2'>
-            <div
-                className='flex-1 px-1.5 py-1 border rounded text-xs'
-                style={{ borderLeftColor: starvingColor, borderLeftWidth: 3 }}
-            >
-                <div className='text-muted-foreground text-[9px] leading-tight truncate'>Starving</div>
-                <div className='font-semibold text-[11px] leading-tight'>
-                    {formatNumberWithUnit(totalStarving, 'persons')}
-                </div>
-                <div className='text-[9px] text-muted-foreground leading-tight'>{formatPct(starvingPct)}</div>
-            </div>
-
-            <div
-                className='flex-1 px-1.5 py-1 border rounded text-xs'
-                style={{ borderLeftColor: avgStarvColor, borderLeftWidth: 3 }}
-            >
-                <div className='text-muted-foreground text-[9px] leading-tight truncate'>Avg starvation</div>
-                <div className='font-semibold text-[11px] leading-tight'>{formatPct(globalAvgStarvation)}</div>
-                <div className='text-[9px] text-muted-foreground leading-tight'>Weighted</div>
-            </div>
-
-            <div
-                className='flex-1 px-1.5 py-1 border rounded text-xs'
-                style={{ borderLeftColor: avgBufferColor, borderLeftWidth: 3 }}
-            >
-                <div className='text-muted-foreground text-[9px] leading-tight truncate'>Avg buffer</div>
-                <div className='font-semibold text-[11px] leading-tight'>{formatPct(globalAvgBuffer)}</div>
-                <div className='text-[9px] text-muted-foreground leading-tight'>Target normalized</div>
-            </div>
-        </div>
-    ) : (
-        <div className='flex gap-2 mb-3'>
-            <Card className='flex-1 overflow-hidden' style={{ borderLeftColor: starvingColor, borderLeftWidth: 3 }}>
-                <CardContent className='px-3 py-2.5 space-y-0.5'>
-                    <p className='text-[11px] text-muted-foreground font-medium'>Starving</p>
-                    <p className='text-lg font-semibold leading-tight'>
-                        {formatNumberWithUnit(totalStarving, 'persons')}
-                    </p>
-                    <p className='text-xs text-muted-foreground'>{formatPct(starvingPct)}</p>
-                </CardContent>
-            </Card>
-
-            <Card className='flex-1 overflow-hidden' style={{ borderLeftColor: avgStarvColor, borderLeftWidth: 3 }}>
-                <CardContent className='px-3 py-2.5 space-y-0.5'>
-                    <p className='text-[11px] text-muted-foreground font-medium'>Avg starvation</p>
-                    <p className='text-lg font-semibold leading-tight'>{formatPct(globalAvgStarvation)}</p>
-                    <p className='text-xs text-muted-foreground'>Weighted by population</p>
-                </CardContent>
-            </Card>
-
-            <Card className='flex-1 overflow-hidden' style={{ borderLeftColor: avgBufferColor, borderLeftWidth: 3 }}>
-                <CardContent className='px-3 py-2.5 space-y-0.5'>
-                    <p className='text-[11px] text-muted-foreground font-medium'>Avg buffer</p>
-                    <p className='text-lg font-semibold leading-tight'>{formatPct(globalAvgBuffer)}</p>
-                    <p className='text-xs text-muted-foreground'>Normalized to food target</p>
-                </CardContent>
-            </Card>
-        </div>
-    );
-
     return (
         <>
-            <span className='mb-2 flex justify-between items-center'>
-                <h4 className='text-sm font-semibold mb-2' id='food'>
-                    Starvation heatmap
-                </h4>
-                <BandLegend />
-            </span>
+            <ResponsiveContainer width='100%' minHeight={200} minWidth={290}>
+                <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
+                    <XAxis dataKey='age' tick={{ fontSize: 10 }} />
+                    <YAxis
+                        width={40}
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        domain={yDomain}
+                    />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {isVerySmall ? null : <Tooltip content={tooltip as any} />}
 
-            <Card>
-                <CardContent className='px-3 pt-3 pb-2'>
-                    <ResponsiveContainer width='100%' minHeight={200} minWidth={290}>
-                        <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
-                            <XAxis dataKey='age' tick={{ fontSize: 10 }} />
-                            <YAxis
-                                width={40}
-                                tick={{ fontSize: 10 }}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
-                                domain={yDomain}
-                            />
-                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                            {isVerySmall ? null : <Tooltip content={tooltip as any} />}
-
-                            {groupKeys.map((gk) => (
-                                <Bar
-                                    key={gk}
-                                    dataKey={`${gk}_total`}
-                                    stackId='nutrition'
-                                    legendType='none'
-                                    isAnimationActive={false}
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    shape={(props: any) => <SegmentedBar {...props} groupKey={gk} />}
-                                />
-                            ))}
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
-
-            {summaryCards}
+                    {groupKeys.map((gk) => (
+                        <Bar
+                            key={gk}
+                            dataKey={`${gk}_total`}
+                            stackId='nutrition'
+                            legendType='none'
+                            isAnimationActive={false}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            shape={(props: any) => <SegmentedBar {...props} groupKey={gk} />}
+                        />
+                    ))}
+                </BarChart>
+            </ResponsiveContainer>
+            <BandLegend />
         </>
     );
 }

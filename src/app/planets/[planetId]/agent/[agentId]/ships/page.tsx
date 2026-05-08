@@ -15,10 +15,25 @@ export default function AgentShipsPage() {
         <Page title={`Ship Management`}>
             <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
                 <Tabs defaultValue='my-ships'>
-                    <TabsList>
-                        <TabsTrigger value='shipyards'>Shipyards</TabsTrigger>
-                        <TabsTrigger value='my-ships'>My Ships</TabsTrigger>
-                        <TabsTrigger value='marketplace'>Marketplace</TabsTrigger>
+                    <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
+                        <TabsTrigger
+                            value='shipyards'
+                            className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                        >
+                            Shipyards
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value='my-ships'
+                            className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                        >
+                            My Ships
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value='marketplace'
+                            className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                        >
+                            Marketplace
+                        </TabsTrigger>
                     </TabsList>
                     <TabsContent value='shipyards'>
                         <ShipyardsTab

@@ -171,8 +171,13 @@ export default function WealthDistributionChart({ rows, groupMode }: Props): Rea
     }
 
     return (
-        <ResponsiveContainer width='100%' minHeight={180} minWidth={290}>
-            <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap='5%'>
+        <ResponsiveContainer width='100%' height={240}>
+            <BarChart
+                data={data}
+                margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+                barCategoryGap='5%'
+                stackOffset='sign'
+            >
                 <XAxis dataKey='age' tick={{ fontSize: 10 }} domain={[0, 100]} />
                 <YAxis
                     width={48}

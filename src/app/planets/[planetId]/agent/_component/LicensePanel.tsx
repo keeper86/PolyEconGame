@@ -111,7 +111,6 @@ export function LicensePanel({ agentId, planetId, isOwnAgent, licenses }: Props)
 
     return (
         <div className='space-y-2'>
-            <h3 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide'>Planetary Licenses</h3>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <LicenseCard
                     type='commercial'

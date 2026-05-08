@@ -52,7 +52,7 @@ export default function FinancialPage() {
                 {hasNoAssets ? (
                     <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
                 ) : !isLoading && assets ? (
-                    <>
+                    <span className='flex flex-col gap-3'>
                         <Card>
                             <CardContent className='px-3 py-3 space-y-3'>
                                 <BankPanel bank={economy.bank} planetId={planetId} />
@@ -98,7 +98,7 @@ export default function FinancialPage() {
                             isOwnAgent={isOwnAgent}
                             licenses={assets.licenses}
                         />
-                    </>
+                    </span>
                 ) : (
                     <div className='text-sm text-muted-foreground'>Loading…</div>
                 )}
