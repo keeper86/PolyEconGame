@@ -29,12 +29,20 @@ export { seedRng };
 const MAX_TICKER_EVENTS = 200;
 
 export function advanceTick(gameState: GameState) {
+    const agents = [
+        ...gameState.agents.values(),
+        ...gameState.forexMarketMakers.values(),
+        ...gameState.arbitrageTraders.values(),
+    ];
     gameState.planets.forEach((planet) => {
         const planetMap = new Map([[planet.id, planet]]);
+
+        const agentsOnPlanet = agents.filter((agent) => agent.assets[planet.id]);
 
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
             resetAgentMetrics(gameState.forexMarketMakers, planet);
+            resetAgentMetrics(gameState.arbitrageTraders, planet);
         }
 
         environmentTick(planet);

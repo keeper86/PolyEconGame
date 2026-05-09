@@ -6,7 +6,7 @@ import {
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
     isFirstTickInMonth,
 } from '../constants';
-import type { Agent, GameState, PendingArbitrageRoute } from '../planet/planet';
+import type { Agent, GameState } from '../planet/planet';
 import { ALL_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { travelTime } from '../ships/shipHandlers';
 import { effectiveShipValue, executeShipPurchase, findCheapestShipListing, updateShipEma } from '../ships/shipMarket';
@@ -16,114 +16,8 @@ import { getCurrencyResourceName } from '../market/currencyResources';
 
 const EXPAND_FLEET_SHIP_TYPE = shiptypes.solid.bulkCarrier1;
 
-function advanceRoutePhases(agent: Agent, gameState: GameState): void {
-    if (!agent.pendingArbitrageRoutes) {
-        return;
-    }
-
-    for (const [shipId, route] of agent.pendingArbitrageRoutes) {
-        const ship = agent.ships.find((s) => s.id === shipId) as TransportShip | undefined;
-        if (!ship) {
-            // Ship no longer exists — clean up route and its buy bid
-            agent.pendingArbitrageRoutes.delete(shipId);
-            const originMarketBuy = agent.assets[route.originPlanetId]?.market?.buy;
-            if (originMarketBuy) {
-                delete originMarketBuy[route.resourceName];
-            }
-            continue;
-        }
-
-        const originAssets = agent.assets[route.originPlanetId];
-        const destAssets = agent.assets[route.destPlanetId];
-
-        if (route.phase === 'buying') {
-            // Refresh the buy bid each tick
-            if (originAssets?.market) {
-                const resource = RESOURCES_BY_NAME.get(route.resourceName);
-                if (resource) {
-                    originAssets.market.buy[route.resourceName] = {
-                        resource,
-                        bidPrice: route.bidPricePerUnit,
-                        bidStorageTarget: route.quantity,
-                    };
-                }
-            }
-
-            // Check if enough goods are in storage and ship is idle at origin
-            const storage = originAssets?.storageFacility;
-            const available = storage?.currentInStorage[route.resourceName]?.quantity ?? 0;
-
-            if (
-                available >= route.quantity &&
-                ship.state.type === 'idle' &&
-                ship.state.planetId === route.originPlanetId
-            ) {
-                const resource = RESOURCES_BY_NAME.get(route.resourceName);
-                if (resource) {
-                    // Clear the buy bid — goods are in storage, ready to load
-                    if (originAssets?.market) {
-                        delete originAssets.market.buy[route.resourceName];
-                    }
-                    // Initiate loading: the shipHandlers will pull from agent's own storage
-                    (ship as TransportShip).state = {
-                        type: 'loading',
-                        planetId: route.originPlanetId,
-                        to: route.destPlanetId,
-                        cargoGoal: { resource, quantity: route.quantity },
-                        currentCargo: { resource, quantity: 0 },
-                        // No deadlineTick — loading will keep retrying without a timeout
-                    };
-                    route.phase = 'loading';
-                }
-            }
-            continue;
-        }
-
-        if (route.phase === 'loading') {
-            if (ship.state.type === 'transporting') {
-                route.phase = 'in_transit';
-            } else if (ship.state.type === 'idle') {
-                // Loading aborted (e.g. empty storage)
-                agent.pendingArbitrageRoutes.delete(shipId);
-            }
-            continue;
-        }
-
-        if (route.phase === 'in_transit') {
-            if (
-                ship.state.type === 'unloading' ||
-                (ship.state.type === 'idle' && 'planetId' in ship.state && ship.state.planetId === route.destPlanetId)
-            ) {
-                route.phase = 'unloading';
-            }
-            continue;
-        }
-
-        if (route.phase === 'unloading') {
-            if (ship.state.type === 'idle' && 'planetId' in ship.state && ship.state.planetId === route.destPlanetId) {
-                // Post sell offer at destination
-                const resource = RESOURCES_BY_NAME.get(route.resourceName);
-                const destPlanet = gameState.planets.get(route.destPlanetId);
-                if (resource && destAssets?.market && destPlanet) {
-                    const sellPrice = (destPlanet.marketPrices[route.resourceName] ?? route.bidPricePerUnit) * 1.05;
-                    destAssets.market.sell[route.resourceName] = {
-                        resource,
-                        offerPrice: sellPrice,
-                        offerRetainment: 0,
-                        automated: true,
-                    };
-                }
-                agent.pendingArbitrageRoutes.delete(shipId);
-                // Track when the ship became idle again
-                ship.idleAtTick = gameState.tick;
-            }
-            continue;
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
-// Route scanner (runs monthly for idle ships)
+// Route scanner
 // ---------------------------------------------------------------------------
 
 type RouteCandidate = {
@@ -131,7 +25,6 @@ type RouteCandidate = {
     destPlanetId: string;
     resourceName: string;
     quantity: number;
-    bidPricePerUnit: number;
     netMargin: number;
 };
 
@@ -170,7 +63,7 @@ function scanBestRoute(
                 continue;
             }
 
-            // Check buyer has deposits to fund the purchase
+            // Check agent has deposits to fund the purchase
             const agentOriginDeposits = agent.assets[origin.id]?.deposits ?? 0;
             const requiredCapital = pBuy * maxQty;
             if (agentOriginDeposits < requiredCapital) {
@@ -202,7 +95,6 @@ function scanBestRoute(
                         destPlanetId: dest.id,
                         resourceName: resource.name,
                         quantity: maxQty,
-                        bidPricePerUnit: pBuy * 1.02, // bid slightly above market
                         netMargin: net,
                     };
                 }
@@ -213,20 +105,16 @@ function scanBestRoute(
     return best;
 }
 
-function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
-    if (!agent.pendingArbitrageRoutes) {
-        return;
-    }
-    const routedShipIds = new Set(agent.pendingArbitrageRoutes.keys());
+// ---------------------------------------------------------------------------
+// Assign routes to idle ships (every tick)
+// ---------------------------------------------------------------------------
 
+function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
     for (const ship of agent.ships) {
         if (ship.type.type !== 'transport') {
             continue;
         }
         if (ship.state.type !== 'idle') {
-            continue;
-        }
-        if (routedShipIds.has(ship.id)) {
             continue;
         }
 
@@ -236,32 +124,82 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
             continue;
         }
 
-        const route: PendingArbitrageRoute = {
-            shipId: ship.id,
-            originPlanetId: candidate.originPlanetId,
-            destPlanetId: candidate.destPlanetId,
-            resourceName: candidate.resourceName,
-            quantity: candidate.quantity,
-            bidPricePerUnit: candidate.bidPricePerUnit,
-            phase: 'buying',
-        };
-        agent.pendingArbitrageRoutes.set(ship.id, route);
-
-        // Post initial buy bid
-        const originAssets = agent.assets[candidate.originPlanetId];
         const resource = RESOURCES_BY_NAME.get(candidate.resourceName);
-        if (originAssets?.market && resource) {
-            originAssets.market.buy[candidate.resourceName] = {
-                resource,
-                bidPrice: candidate.bidPricePerUnit,
-                bidStorageTarget: candidate.quantity,
-            };
+        if (!resource) {
+            continue;
+        }
+
+        // Set ship directly to loading — automaticPricing will create the buy bid,
+        // and the shipHandlers loading state will pull from storage once goods arrive.
+        (ship as TransportShip).state = {
+            type: 'loading',
+            planetId: candidate.originPlanetId,
+            to: candidate.destPlanetId,
+            cargoGoal: { resource, quantity: candidate.quantity },
+            currentCargo: { resource, quantity: 0 },
+        };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Post sell offers for goods in storage (every tick)
+// ---------------------------------------------------------------------------
+
+function postSellOffers(agent: Agent, gameState: GameState): void {
+    // Collect resources actively being loaded per planet — we don't want to sell those
+    const loadingByPlanet = new Map<string, Set<string>>();
+    for (const ship of agent.ships) {
+        if (ship.type.type !== 'transport' || ship.state.type !== 'loading') {
+            continue;
+        }
+        const s = ship.state as { planetId: string; cargoGoal: { resource: { name: string } } | null };
+        if (!s.cargoGoal) {
+            continue;
+        }
+        const set = loadingByPlanet.get(s.planetId) ?? new Set<string>();
+        set.add(s.cargoGoal.resource.name);
+        loadingByPlanet.set(s.planetId, set);
+    }
+
+    for (const [planetId, assets] of Object.entries(agent.assets)) {
+        if (!assets.market) {
+            continue;
+        }
+        const planet = gameState.planets.get(planetId);
+        if (!planet) {
+            continue;
+        }
+
+        const loadingResources = loadingByPlanet.get(planetId) ?? new Set<string>();
+
+        for (const [resourceName, entry] of Object.entries(assets.storageFacility.currentInStorage)) {
+            if (loadingResources.has(resourceName) || entry.quantity <= 0) {
+                continue;
+            }
+
+            const marketPrice = planet.marketPrices[resourceName];
+            if (!marketPrice || marketPrice <= 0) {
+                continue;
+            }
+
+            const offerPrice = marketPrice * 1.05;
+            const existing = assets.market.sell[resourceName];
+            if (!existing) {
+                assets.market.sell[resourceName] = {
+                    resource: entry.resource,
+                    offerPrice,
+                    offerRetainment: 0,
+                    automated: true,
+                };
+            } else if (existing.automated) {
+                existing.offerPrice = offerPrice;
+            }
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// Fleet management (runs monthly)
+// Fleet management (monthly)
 // ---------------------------------------------------------------------------
 
 function manageFleet(agent: Agent, gameState: GameState): void {
@@ -283,16 +221,8 @@ function manageFleet(agent: Agent, gameState: GameState): void {
     }
 
     // Trim persistently idle ships
-    if (!agent.pendingArbitrageRoutes) {
-        return;
-    }
-    const routedShipIds = new Set(agent.pendingArbitrageRoutes.keys());
-
     for (const ship of agent.ships) {
         if (ship.state.type !== 'idle') {
-            continue;
-        }
-        if (routedShipIds.has(ship.id)) {
             continue;
         }
         if (ship.type.type !== 'transport') {
@@ -309,7 +239,6 @@ function manageFleet(agent: Agent, gameState: GameState): void {
             continue;
         }
 
-        // Already listed?
         const planetId = ship.state.planetId;
         const assets = agent.assets[planetId];
         if (!assets) {
@@ -343,13 +272,10 @@ export function arbitrageTraderTick(gameState: GameState): void {
     const monthly = isFirstTickInMonth(gameState.tick);
 
     for (const agent of gameState.arbitrageTraders.values()) {
-        // Every tick: advance route phases
-        advanceRoutePhases(agent, gameState);
+        assignRoutesToIdleShips(agent, gameState);
+        postSellOffers(agent, gameState);
 
         if (monthly) {
-            // Assign routes to newly idle ships
-            assignRoutesToIdleShips(agent, gameState);
-            // Manage fleet size
             manageFleet(agent, gameState);
         }
     }

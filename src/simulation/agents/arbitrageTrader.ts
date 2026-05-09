@@ -22,7 +22,6 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 starterLoanTaken: true,
                 associatedPlanetId: homePlanet.id,
                 agentRole: 'arbitrage_trader',
-                pendingArbitrageRoutes: new Map(),
                 ships: [],
                 assets: {},
             };

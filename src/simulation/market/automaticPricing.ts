@@ -223,6 +223,23 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 });
             }
         }
+        // Transport ships in loading state need their cargoGoal quantity; this surfaces the
+        // demand as an automated buy entry so the market bid is always visible and price-adjusted.
+        if (
+            ship.type.type === 'transport' &&
+            ship.state.type === 'loading' &&
+            ship.state.planetId === planet.id &&
+            ship.state.cargoGoal !== null &&
+            ship.state.cargoGoal !== undefined
+        ) {
+            const { resource, quantity } = ship.state.cargoGoal;
+            const existing = aggregatedBuyTargets.get(resource.name);
+            if (existing) {
+                existing.storageTarget += quantity;
+            } else {
+                aggregatedBuyTargets.set(resource.name, { resource, storageTarget: quantity });
+            }
+        }
     }
 
     // Set automated buy entries that are no longer needed to 0 (e.g. construction finished)

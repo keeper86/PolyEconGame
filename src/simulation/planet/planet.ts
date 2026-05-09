@@ -274,18 +274,6 @@ export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): 
     return license !== undefined && !license.frozen;
 }
 
-export type ArbitrageRoutePhase = 'buying' | 'loading' | 'in_transit' | 'unloading' | 'selling';
-
-export type PendingArbitrageRoute = {
-    shipId: string;
-    originPlanetId: string;
-    destPlanetId: string;
-    resourceName: string;
-    quantity: number;
-    bidPricePerUnit: number;
-    phase: ArbitrageRoutePhase;
-};
-
 export type Agent = {
     id: string;
     automated: boolean;
@@ -295,7 +283,6 @@ export type Agent = {
     starterLoanTaken: boolean;
     associatedPlanetId: string;
     agentRole?: 'shipbuilder' | 'arbitrage_trader';
-    pendingArbitrageRoutes?: Map<string, PendingArbitrageRoute>;
     ships: Ship[];
     assets: {
         [planetId in string]: AgentPlanetAssets;

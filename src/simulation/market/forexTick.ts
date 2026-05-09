@@ -14,7 +14,7 @@ export function forexTick(gameState: GameState): void {
     }
 
     // All forex participants: regular agents + market-makers
-    const allParticipants = [...gameState.agents.values(), ...gameState.forexMarketMakers.values()];
+    const allParticipants = [...gameState.agents.values(), ...gameState.forexMarketMakers.values(), ...gameState.arbitrageTraders.values()];
 
     // Pre-scan participants to find planet pairs that actually have live forex orders,
     // avoiding the full O(n²) work for pairs with no activity.
