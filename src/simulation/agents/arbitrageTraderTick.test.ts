@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+    ARBITRAGE_BOOTSTRAP_LOAN,
     ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD,
+    ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_MIN_CAPITAL_RESERVE,
     ARBITRAGE_MIN_PROFIT_MARGIN,
+    ARBITRAGE_SEED_DEPOSIT,
+    ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
 } from '../constants';
 import type { Agent } from '../planet/planet';
 import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../utils/testHelper';
@@ -10,6 +14,10 @@ import { createShip, shiptypes } from '../ships/ships';
 import type { TransportShip } from '../ships/ships';
 import { arbitrageTraderTick } from './arbitrageTraderTick';
 import { getCurrencyResourceName } from '../market/currencyResources';
+import { MAX_AGE, SKILL } from '../population/population';
+import { seedArbitrageTraderAgents } from './arbitrageTrader';
+import { effectiveShipValue } from '../ships/shipMarket';
+import { travelTime } from '../ships/shipHandlers';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -125,7 +133,16 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
             planetId: 'p-origin',
             to: 'p-dest',
             cargoGoal: null,
-            currentCargo: { resource: { name: 'Steel', form: 'solid', level: 'refined', volumePerQuantity: 0.3, massPerQuantity: 1 }, quantity: 0 },
+            currentCargo: {
+                resource: {
+                    name: 'Steel',
+                    form: 'solid',
+                    level: 'refined',
+                    volumePerQuantity: 0.3,
+                    massPerQuantity: 1,
+                },
+                quantity: 0,
+            },
         };
 
         const originalState = ship.state;
@@ -185,7 +202,7 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
     it("does not assign a route whose origin differs from the ship's current planet (BUG B1)", () => {
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100, // p-origin cheap
-            destPrice: 300,   // p-dest expensive
+            destPrice: 300, // p-dest expensive
             agentDeposits: 50_000_000,
             tick: 5,
         });
@@ -268,7 +285,13 @@ describe('arbitrageTraderTick – postSellOffers', () => {
         const { state, agent } = makeTwoPlanetState({ tick: 5, originPrice: 100, destPrice: 100 });
 
         // Put Steel in dest storage
-        const steelResource = { name: 'Steel', form: 'solid' as const, level: 'refined' as const, volumePerQuantity: 0.3, massPerQuantity: 1 };
+        const steelResource = {
+            name: 'Steel',
+            form: 'solid' as const,
+            level: 'refined' as const,
+            volumePerQuantity: 0.3,
+            massPerQuantity: 1,
+        };
         agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
@@ -286,7 +309,13 @@ describe('arbitrageTraderTick – postSellOffers', () => {
     it('does not post a sell offer for a resource currently being loaded by a ship at that planet', () => {
         const { state, agent, ship } = makeTwoPlanetState({ tick: 5, originPrice: 100, destPrice: 100 });
 
-        const steelResource = { name: 'Steel', form: 'solid' as const, level: 'refined' as const, volumePerQuantity: 0.3, massPerQuantity: 1 };
+        const steelResource = {
+            name: 'Steel',
+            form: 'solid' as const,
+            level: 'refined' as const,
+            volumePerQuantity: 0.3,
+            massPerQuantity: 1,
+        };
 
         // Ship is loading Steel at p-origin
         ship.state = {
@@ -313,7 +342,13 @@ describe('arbitrageTraderTick – postSellOffers', () => {
     it('updates an existing automated sell offer price', () => {
         const { state, agent } = makeTwoPlanetState({ tick: 5, originPrice: 100, destPrice: 100 });
 
-        const steelResource = { name: 'Steel', form: 'solid' as const, level: 'refined' as const, volumePerQuantity: 0.3, massPerQuantity: 1 };
+        const steelResource = {
+            name: 'Steel',
+            form: 'solid' as const,
+            level: 'refined' as const,
+            volumePerQuantity: 0.3,
+            massPerQuantity: 1,
+        };
         agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
@@ -336,7 +371,13 @@ describe('arbitrageTraderTick – postSellOffers', () => {
     it('does not overwrite a manually managed (non-automated) sell entry', () => {
         const { state, agent } = makeTwoPlanetState({ tick: 5, originPrice: 100, destPrice: 100 });
 
-        const steelResource = { name: 'Steel', form: 'solid' as const, level: 'refined' as const, volumePerQuantity: 0.3, massPerQuantity: 1 };
+        const steelResource = {
+            name: 'Steel',
+            form: 'solid' as const,
+            level: 'refined' as const,
+            volumePerQuantity: 0.3,
+            massPerQuantity: 1,
+        };
         agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
@@ -595,5 +636,235 @@ describe('arbitrageTraderTick – robustness', () => {
         state.arbitrageTraders.clear();
 
         expect(() => arbitrageTraderTick(state)).not.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Capital barrier — why arbitrage agents don't transport at typical prices
+// ---------------------------------------------------------------------------
+
+describe('arbitrageTraderTick – capital barrier', () => {
+    // Bulk Carrier 1 cargo capacity for Steel (form='solid', massPerQuantity=1 kg/unit):
+    //   maxByVolume = 200,000 / 0.3 = 666,666 units
+    //   maxByMass   = 150,000 / 1   = 150,000 units  ← binding constraint
+    //   maxQty = 150,000
+    //
+    // Bootstrap deposits on home planet = ARBITRAGE_SEED_DEPOSIT + ARBITRAGE_BOOTSTRAP_LOAN
+    //                                   = 50,000 + 200,000 = 250,000
+    //
+    // Capital check (scanBestRoute): agentDeposits >= pBuy × maxQty
+    //   → max affordable pBuy = floor(250,000 / 150,000) = 1
+
+    const BOOTSTRAP_DEPOSITS = ARBITRAGE_SEED_DEPOSIT + ARBITRAGE_BOOTSTRAP_LOAN; // 250,000
+    const STEEL_MAX_QTY = 150_000; // mass-limited for Bulk Carrier 1
+
+    it('blocks route assignment when bootstrap deposits cannot cover a full Steel cargo at pBuy=2', () => {
+        // requiredCapital = 2 × 150,000 = 300,000 > 250,000 deposits → capital check fails
+        // destPrice is intentionally very high to confirm capital — not margin — is the blocker.
+        const { state, ship } = makeTwoPlanetState({
+            originPrice: 2,
+            destPrice: 10_000,
+            agentDeposits: BOOTSTRAP_DEPOSITS,
+            tick: 5,
+        });
+
+        arbitrageTraderTick(state);
+
+        expect(ship.state.type).toBe('idle');
+    });
+
+    it('permits route assignment when deposits cover a full Steel cargo at pBuy=1', () => {
+        // requiredCapital = 1 × 150,000 = 150,000 ≤ 250,000 deposits → capital check passes
+        const { state, ship } = makeTwoPlanetState({
+            originPrice: 1,
+            destPrice: 200,
+            agentDeposits: BOOTSTRAP_DEPOSITS,
+            tick: 5,
+        });
+
+        arbitrageTraderTick(state);
+
+        expect(ship.state.type).toBe('loading');
+    });
+
+    it('capital threshold boundary: largest pBuy that still passes is floor(deposits / maxQty)', () => {
+        const maxAffordablePBuy = Math.floor(BOOTSTRAP_DEPOSITS / STEEL_MAX_QTY); // = 1
+
+        // At boundary price → passes
+        const { state: stateOk, ship: shipOk } = makeTwoPlanetState({
+            originPrice: maxAffordablePBuy,
+            destPrice: maxAffordablePBuy * 100,
+            agentDeposits: BOOTSTRAP_DEPOSITS,
+            tick: 5,
+        });
+        arbitrageTraderTick(stateOk);
+        expect(shipOk.state.type).toBe('loading');
+
+        // One unit above → fails
+        const { state: stateBlocked, ship: shipBlocked } = makeTwoPlanetState({
+            originPrice: maxAffordablePBuy + 1,
+            destPrice: (maxAffordablePBuy + 1) * 100,
+            agentDeposits: BOOTSTRAP_DEPOSITS,
+            tick: 5,
+        });
+        arbitrageTraderTick(stateBlocked);
+        expect(shipBlocked.state.type).toBe('idle');
+    });
+
+    it('route is unblocked when the agent has been capitalised beyond bootstrap level', () => {
+        // In practice, arbitrage agents accumulate deposits after their first successful trades.
+        // With sufficient capital, higher commodity prices become reachable.
+        const richDeposits = STEEL_MAX_QTY * 100; // can afford Steel at pBuy=100
+        const { state, ship } = makeTwoPlanetState({
+            originPrice: 100,
+            destPrice: 200,
+            agentDeposits: richDeposits,
+            tick: 5,
+        });
+
+        arbitrageTraderTick(state);
+
+        expect(ship.state.type).toBe('loading');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Transport cost formula — confirming it is negligible vs price margin
+// ---------------------------------------------------------------------------
+
+describe('arbitrageTraderTick – transport cost formula', () => {
+    // For Bulk Carrier 1 (speed=6, scale='small' → scaleMapping=1) with fresh condition
+    // (maintainanceStatus=1, maxMaintenance=1, no maintenance service market price):
+    //
+    //   effectiveShipValue = scaleMapping(1) × speed(6) × qualityFactor(1) × maxMaintenance(1) = 6
+    //   oneWayTicks        = ceil(1000 / 6) = 167
+    //   roundTripTicks     = 2×167 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS(60) = 394
+    //   depreciationPerTrip = (6 / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS) × 394 ≈ 0.657
+    //   costPerUnit         = 0.657 / 150,000 ≈ 0.0000044  (< 0.0001% of Steel price)
+    //
+    // Conclusion: transport depreciation is negligible; the operative threshold is simply
+    // net = (destPrice - originPrice) / originPrice > ARBITRAGE_MIN_PROFIT_MARGIN (5%).
+
+    it('computes the expected depreciation cost per unit for a new Bulk Carrier 1 on Steel', () => {
+        const { pOrigin, ship } = makeTwoPlanetState({ tick: 5 });
+        const shipAsTransport = ship as TransportShip;
+
+        const shipValue = effectiveShipValue(shipAsTransport); // no gameState → no maintenance penalty
+        const oneWayTicks = travelTime(shipAsTransport);
+        const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
+        const depreciationPerTrip = (shipValue / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS) * roundTripTicks;
+        const steelMaxQty = Math.floor(
+            Math.min(
+                shipAsTransport.type.cargoSpecification.volume / 0.3, // volumePerQuantity for Steel
+                shipAsTransport.type.cargoSpecification.mass / 1, // massPerQuantity for Steel
+            ),
+        );
+        const costPerUnit = depreciationPerTrip / steelMaxQty;
+
+        // Ship should be worth 6, one-way 167 ticks, round-trip 394 ticks
+        expect(shipValue).toBe(6);
+        expect(oneWayTicks).toBe(167);
+        expect(roundTripTicks).toBe(394);
+        expect(steelMaxQty).toBe(150_000);
+        // costPerUnit < 0.001 confirms transport cost is negligible vs any sane commodity price
+        expect(costPerUnit).toBeLessThan(0.001);
+        void pOrigin; // used above for context
+    });
+
+    it('route is assigned when the price gap barely exceeds 5% (transport cost negligible)', () => {
+        // net = (106 - 100 - ~0.0000044) / 100 ≈ 5.9999% > 5% → route
+        const { state, ship } = makeTwoPlanetState({
+            originPrice: 100,
+            destPrice: 106,
+            agentDeposits: 50_000_000, // remove capital constraint
+            tick: 5,
+        });
+
+        arbitrageTraderTick(state);
+
+        expect(ship.state.type).toBe('loading');
+    });
+
+    it('route is NOT assigned when price gap equals exactly 5% (threshold is strict >)', () => {
+        // net = (105 - 100 - ~0.0000044) / 100 ≈ 4.9999% < 5% → no route
+        const { state, ship } = makeTwoPlanetState({
+            originPrice: 100,
+            destPrice: 105,
+            agentDeposits: 50_000_000,
+            tick: 5,
+        });
+
+        arbitrageTraderTick(state);
+
+        expect(ship.state.type).toBe('idle');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Seeding — initial active workforce is zero (the "196 workers" explained)
+// ---------------------------------------------------------------------------
+
+describe('seedArbitrageTraderAgents – initial active workforce', () => {
+    // Arbitrage agents are initialised with a workforceDemography array of
+    // MAX_AGE+1 (= 101) empty age-cohort slots.  This is a structural skeleton
+    // required by the demographic engine — it does NOT represent real workers.
+    //
+    // The "196 workers" figure sometimes visible in the UI is NOT active worker
+    // count.  Active worker count at seeding time is 0 for every arbitrage agent.
+    //
+    // Arbitrage agents hold only a commercial license (no workforce license), so
+    // hireWorkforce will never populate their demography, and automaticWorkerAllocation
+    // derives a zero target (no facilities with workerRequirement).
+
+    function totalActiveWorkers(agent: Agent): number {
+        let total = 0;
+        for (const assets of Object.values(agent.assets)) {
+            const wd = assets.workforceDemography;
+            if (!wd) {
+                continue;
+            }
+            for (let age = 0; age <= MAX_AGE; age++) {
+                for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
+                    for (const skill of SKILL) {
+                        total += wd[age][edu][skill].active;
+                    }
+                }
+            }
+        }
+        return total;
+    }
+
+    it('freshly seeded arbitrage agents have 0 active workers and a 101-slot demography', () => {
+        const pA = makePlanet({ id: 'p-a', name: 'Alpha' });
+        const pB = makePlanet({ id: 'p-b', name: 'Beta' });
+        const state = makeGameState([pA, pB], [], 0);
+
+        seedArbitrageTraderAgents(state);
+
+        expect(state.arbitrageTraders.size).toBeGreaterThan(0);
+
+        for (const agent of state.arbitrageTraders.values()) {
+            // The demography skeleton has MAX_AGE+1 = 101 age slots
+            const homePlanetDemography = agent.assets[agent.associatedPlanetId]?.workforceDemography;
+            expect(homePlanetDemography?.length).toBe(MAX_AGE + 1);
+
+            // But zero workers are actually employed anywhere
+            expect(totalActiveWorkers(agent)).toBe(0);
+        }
+    });
+
+    it('arbitrage agents have only a commercial license — no workforce license', () => {
+        const pA = makePlanet({ id: 'p-a', name: 'Alpha' });
+        const state = makeGameState([pA], [], 0);
+
+        seedArbitrageTraderAgents(state);
+
+        for (const agent of state.arbitrageTraders.values()) {
+            for (const [planetId, assets] of Object.entries(agent.assets)) {
+                expect(assets.licenses?.commercial).toBeDefined();
+                expect(assets.licenses?.workforce).toBeUndefined();
+                void planetId;
+            }
+        }
     });
 });

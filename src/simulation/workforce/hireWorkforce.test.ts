@@ -156,6 +156,48 @@ describe('hireWorkforce', () => {
         const unoccupiedAfter = sumPopOcc(p, 'none', 'unoccupied');
         expect(1000 - unoccupiedAfter).toBe(totalHired);
     });
+
+    it('skips agents with only a commercial license — arbitrage trader pattern', () => {
+        // Arbitrage agents hold a commercial license but NOT a workforce license.
+        // hireWorkforce gates hiring behind hasActiveLicense(assets, 'workforce').
+        // Even with non-zero allocatedWorkers targets and available population,
+        // no workers should be hired for such an agent.
+        const { planet: p } = makePlanetWithPopulation({ none: 10_000 });
+
+        const arbAgent = makeAgent('arb-0', 'p', 'Arbitrage Trader', {
+            agentRole: 'arbitrage_trader',
+            assets: {
+                p: makeAgentPlanetAssets('p', {
+                    deposits: 250_000,
+                    // commercial only — workforce key is absent
+                    licenses: { commercial: { acquiredTick: 0, frozen: false } },
+                    allocatedWorkers: makeAllocatedWorkers({ none: 500 }),
+                }),
+            },
+        });
+
+        hireWorkforce(agentMap(arbAgent), p);
+
+        const hired = totalActiveForEdu(arbAgent.assets.p.workforceDemography!, 'none');
+        expect(hired).toBe(0);
+
+        // Population should be completely untouched
+        expect(sumPopOcc(p, 'none', 'unoccupied')).toBe(10_000);
+    });
+
+    it('contrast: agent WITH a workforce license does hire workers', () => {
+        // Confirm that the commercial-only restriction is the discriminating factor.
+        const { planet: p } = makePlanetWithPopulation({ none: 10_000 });
+
+        // makeAgent() creates an agent with BOTH commercial AND workforce licenses by default
+        const regularAgent = makeAgent();
+        regularAgent.assets.p.allocatedWorkers.none = 500;
+
+        hireWorkforce(agentMap(regularAgent), p);
+
+        const hired = totalActiveForEdu(regularAgent.assets.p.workforceDemography!, 'none');
+        expect(hired).toBe(500);
+    });
 });
 
 // ---------------------------------------------------------------------------
