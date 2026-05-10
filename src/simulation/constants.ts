@@ -284,43 +284,54 @@ export const CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1: Record<string, number> = {
 // Forex market-maker constants
 // ---------------------------------------------------------------------------
 
-/** Number of automated market-maker agents created per planet at simulation start. */
-export const FOREX_MM_COUNT = 3;
-
 /**
- * Seeding loan amount per market-maker per foreign planet (denominated in the
- * foreign planet's currency).  Each MM receives this much of every other
- * planet's currency as initial inventory, funded by a loan from that planet's
- * central bank.
+ * One market-maker is created per planet at simulation start.  Each MM is a
+ * globally-acting agent — it quotes on every (tradingPlanet, issuingPlanet)
+ * pair — but has a "home" planet where it holds the bulk of its working capital.
  */
-export const FOREX_MM_SEED_LOAN = 1_000_000;
+export const FOREX_MM_COUNT = 1;
 
 /**
- * Working-capital loan amount per market-maker from their home planet's bank
- * (denominated in home currency).  Used to fund bid orders.
+ * Working-capital loan granted to each MM from its *home* planet's bank
+ * (denominated in home currency).  This is the primary buying budget.
  */
 export const FOREX_MM_WORKING_CAPITAL = 10_000_000;
 
 /**
- * Inventory reference level used by the pricing algorithm.
- * Ratio = currentDeposit / TARGET drives the spread skew.
+ * Seeding loan granted to each MM from every *foreign* planet's bank
+ * (denominated in that planet's currency).  Acts as initial inventory so the
+ * MM can immediately offer to sell those currencies.  Equal to
+ * FOREX_MM_WORKING_CAPITAL so that the fair-mid starts at DEFAULT_EXCHANGE_RATE
+ * (localBalance / foreignBalance = 1).
  */
-export const FOREX_MM_TARGET_DEPOSIT = FOREX_MM_SEED_LOAN;
-
-/** Half-spread around mid-price (e.g. 0.03 = ask at mid×1.03, bid at mid×0.97). */
-export const FOREX_MM_BASE_SPREAD = 0.03;
+export const FOREX_MM_SEED_LOAN = 10_000_000;
 
 /**
- * Maximum additional skew applied to ask/bid when inventory is at 0 % or
- * 200 % of target.  Must be < FOREX_MM_BASE_SPREAD to guarantee ask > bid.
+ * Inventory reference level used by the bid-split algorithm.
+ * The MM tries to maintain at least this many units of each foreign currency.
  */
-export const FOREX_MM_MAX_SKEW = 0.02;
+export const FOREX_MM_TARGET_DEPOSIT = 10_000_000;
+
+/** Half-spread around fair-mid (e.g. 0.03 = ask at mid×1.03, bid at mid×0.97). */
+export const FOREX_MM_BASE_SPREAD = 0.03;
 
 /**
  * Fraction of FOREX_MM_TARGET_DEPOSIT retained before repaying seeding loans.
  * MMs keep at least this buffer before any excess is used for loan repayment.
  */
 export const FOREX_MM_RETAIN_RATIO = 0.5;
+
+/**
+ * Minimum profit margin (as a fraction of trade cost) required for the MM
+ * arbitrage sweep to execute a cross-planet or triangular trade.
+ */
+export const FOREX_MM_ARBITRAGE_THRESHOLD = 0.005;
+
+/**
+ * Maximum fraction of a MM's available balance consumed by a single arbitrage
+ * leg.  Limits exposure and prevents the MM from fully draining one currency.
+ */
+export const FOREX_MM_MAX_ARBITRAGE_FRACTION = 0.25;
 
 // ---------------------------------------------------------------------------
 // Shipbuilder agent constants

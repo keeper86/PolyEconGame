@@ -626,7 +626,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         .map((ar) => ar.data)
                         .toArray();
                     const forexMMs = [...snap.forexMarketMakers.values()].filter(
-                        (mm) => mm.associatedPlanetId === msg.planetId,
+                        (mm) => mm.assets[msg.planetId] !== undefined,
                     );
                     data = { tick: snap.tick, planet: pr ? pr.data : null, agents: [...agents, ...forexMMs] };
                     break;

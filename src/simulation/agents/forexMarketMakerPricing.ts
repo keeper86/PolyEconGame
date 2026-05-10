@@ -1,5 +1,5 @@
-import { FOREX_MM_BASE_SPREAD, FOREX_MM_MAX_SKEW, FOREX_MM_TARGET_DEPOSIT, PRICE_CEIL } from '../constants';
-import type { Agent, GameState } from '../planet/planet';
+import { FOREX_MM_BASE_SPREAD, FOREX_MM_TARGET_DEPOSIT, PRICE_CEIL } from '../constants';
+import type { Agent, GameState, Planet } from '../planet/planet';
 import {
     DEFAULT_EXCHANGE_RATE,
     FOREX_PRICE_FLOOR,
@@ -7,82 +7,71 @@ import {
     getCurrencyResourceName,
 } from '../market/currencyResources';
 
-/**
- * Update ask and bid prices for every market-maker on every planet they trade on.
- *
- * Algorithm (per MM, per foreign currency F):
- *
- *   inventoryRatio = clamp(currentDepositOnF / TARGET, 0, 2)
- *   skew           = (inventoryRatio − 1) × MAX_SKEW
- *                    > 0 when over-stocked (lean to sell → lower ask/bid)
- *                    < 0 when under-stocked (lean to buy → higher ask/bid)
- *
- *   askPrice = mid × (1 + BASE_SPREAD − skew)
- *   bidPrice = mid × (1 − BASE_SPREAD − skew)
- *
- *   Both are clamped, and a guard ensures ask > bid.
- */
 export function forexMarketMakerPricing(gameState: GameState): void {
+    const planets = Array.from(gameState.planets.values());
+    const numTradingPlanets = Math.max(1, planets.length - 1);
+
     for (const mm of gameState.forexMarketMakers.values()) {
-        priceMM(mm, gameState);
+        priceMM(mm, planets, numTradingPlanets);
     }
 }
 
-function priceMM(mm: Agent, gameState: GameState): void {
-    const homeAssets = mm.assets[mm.associatedPlanetId];
-    if (!homeAssets) {
-        return;
-    }
-
-    if (!homeAssets.market) {
-        homeAssets.market = { sell: {}, buy: {} };
-    }
-
-    const tradingPlanet = gameState.planets.get(mm.associatedPlanetId);
-    if (!tradingPlanet) {
-        return;
-    }
-
-    for (const [planetId] of gameState.planets) {
-        if (planetId === mm.associatedPlanetId) {
+function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void {
+    for (const tradingPlanet of planets) {
+        const tradingAssets = mm.assets[tradingPlanet.id];
+        if (!tradingAssets) {
             continue;
         }
 
-        const foreignAssets = mm.assets[planetId];
-        if (!foreignAssets) {
-            continue;
+        if (!tradingAssets.market) {
+            tradingAssets.market = { sell: {}, buy: {} };
         }
 
-        const curName = getCurrencyResourceName(planetId);
-        const curResource = getCurrencyResource(planetId);
-        const mid = tradingPlanet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
+        for (const issuingPlanet of planets) {
+            if (issuingPlanet.id === tradingPlanet.id) {
+                continue;
+            }
 
-        const inventory = foreignAssets.deposits;
-        const inventoryRatio = Math.max(0, Math.min(2, inventory / FOREX_MM_TARGET_DEPOSIT));
-        // skew > 0 when over-stocked: widen asks downward, bids downward
-        const skew = (inventoryRatio - 1) * FOREX_MM_MAX_SKEW;
+            const foreignAssets = mm.assets[issuingPlanet.id];
+            if (!foreignAssets) {
+                continue;
+            }
 
-        const askPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, mid * (1 + FOREX_MM_BASE_SPREAD - skew)));
-        // Ensure bid is strictly below ask
-        const rawBid = mid * (1 - FOREX_MM_BASE_SPREAD - skew);
-        const bidPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(askPrice * 0.999, rawBid));
+            const curName = getCurrencyResourceName(issuingPlanet.id);
+            const curResource = getCurrencyResource(issuingPlanet.id);
 
-        // --- Ask: sell F-currency (inventory backed on F) ---
-        if (!homeAssets.market.sell[curName]) {
-            homeAssets.market.sell[curName] = { resource: curResource };
+            // Fair mid: how much local currency (on tradingPlanet) per unit of
+            // foreign currency.  More local → foreign is cheap; more foreign →
+            // foreign is expensive.  Guard against near-zero foreign balance.
+            const localBalance = tradingAssets.deposits;
+            const foreignBalance = foreignAssets.deposits;
+            const fairMid = DEFAULT_EXCHANGE_RATE * (localBalance / Math.max(1, foreignBalance));
+
+            const askPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid * (1 + FOREX_MM_BASE_SPREAD)));
+            // Ensure bid is strictly below ask
+            const rawBid = fairMid * (1 - FOREX_MM_BASE_SPREAD);
+            const bidPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(askPrice * 0.999, rawBid));
+
+            // --- Ask: sell F-currency on this trading planet ---
+            if (!tradingAssets.market.sell[curName]) {
+                tradingAssets.market.sell[curName] = { resource: curResource };
+            }
+            const offer = tradingAssets.market.sell[curName];
+            offer.resource = curResource;
+            offer.offerPrice = askPrice;
+            offer.offerRetainment = 0;
+
+            // --- Bid: buy F-currency on this trading planet (split across all N-1 trading planets) ---
+            const deficit = Math.max(0, FOREX_MM_TARGET_DEPOSIT - foreignBalance);
+            const splitTarget = foreignBalance + deficit / numTradingPlanets;
+
+            if (!tradingAssets.market.buy[curName]) {
+                tradingAssets.market.buy[curName] = { resource: curResource };
+            }
+            const bid = tradingAssets.market.buy[curName];
+            bid.resource = curResource;
+            bid.bidPrice = bidPrice;
+            bid.bidStorageTarget = splitTarget;
         }
-        const offer = homeAssets.market.sell[curName];
-        offer.resource = curResource;
-        offer.offerPrice = askPrice;
-        offer.offerRetainment = 0;
-
-        // --- Bid: buy F-currency (paying from home deposits) ---
-        if (!homeAssets.market.buy[curName]) {
-            homeAssets.market.buy[curName] = { resource: curResource };
-        }
-        const bid = homeAssets.market.buy[curName];
-        bid.resource = curResource;
-        bid.bidPrice = bidPrice;
-        bid.bidStorageTarget = FOREX_MM_TARGET_DEPOSIT;
     }
 }

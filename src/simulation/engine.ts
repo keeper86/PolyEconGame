@@ -1,12 +1,12 @@
+import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
+import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
+import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
+import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
-import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
-import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { forexTick } from './market/forexTick';
-import { shipbuilderTick } from './agents/shipbuilderTick';
-import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { marketTick } from './market/market';
 import { claimBillingTick } from './planet/claimBilling';
@@ -29,15 +29,8 @@ export { seedRng };
 const MAX_TICKER_EVENTS = 200;
 
 export function advanceTick(gameState: GameState) {
-    const agents = [
-        ...gameState.agents.values(),
-        ...gameState.forexMarketMakers.values(),
-        ...gameState.arbitrageTraders.values(),
-    ];
     gameState.planets.forEach((planet) => {
         const planetMap = new Map([[planet.id, planet]]);
-
-        const agentsOnPlanet = agents.filter((agent) => agent.assets[planet.id]);
 
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
