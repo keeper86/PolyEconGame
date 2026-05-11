@@ -9,7 +9,7 @@ import {
     PRICE_CEIL,
     TICKS_PER_YEAR,
 } from '../constants';
-import { getCurrencyResourceName } from '../market/currencyResources';
+import { getCurrencyResourceName, FOREX_PRICE_FLOOR } from '../market/currencyResources';
 import { makeGameState, makeGovernmentAgent, makePlanet } from '../utils/testHelper';
 import { seedRng } from '../utils/stochasticRound';
 import { seedForexMarketMakers } from './forexMarketMaker';
@@ -237,13 +237,13 @@ describe('forexMarketMakerPricing', () => {
         const { state } = makeSeededStateMultiPlanet();
 
         // p1-homed MM: local (p1) balance = TARGET, foreign (p2) balance = 2×TARGET
-        // → fairMid = DEFAULT × TARGET / (2×TARGET) = 0.5
+        // Shading formula: shading = 1 + 0.1*(T/T − 1) − 0.1*(2T/T − 1) = 1 − 0.1 = 0.9
         const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
         p1mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
         p1mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT * 2; // fully overstocked
 
         // p2-homed MM: local (p1) balance = TARGET, foreign (p2) balance = TARGET
-        // → fairMid = DEFAULT × TARGET / TARGET = 1.0 (neutral)
+        // Shading formula: shading = 1 (neutral)
         const p2mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p2')!;
         p2mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
         p2mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT;
@@ -256,25 +256,34 @@ describe('forexMarketMakerPricing', () => {
 
         expect(overstockedAsk).toBeLessThan(neutralAsk);
 
-        // fairMid_over = 0.5, fairMid_neutral = 1.0
-        expect(overstockedAsk).toBeCloseTo(0.5 * (1 + FOREX_MM_BASE_SPREAD), 6);
+        // fairMid_over = 0.9, fairMid_neutral = 1.0
+        expect(overstockedAsk).toBeCloseTo(0.9 * (1 + FOREX_MM_BASE_SPREAD), 6);
         expect(neutralAsk).toBeCloseTo(1.0 * (1 + FOREX_MM_BASE_SPREAD), 6);
     });
 
-    it('understocked MM (inventory = 0) has ask clamped to PRICE_CEIL', () => {
+    it('MM with depleted foreign inventory quotes a higher ask than neutral', () => {
         const { state } = makeSeededStateMultiPlanet();
 
-        // With foreignBalance → 0, fairMid → ∞ via the Math.max(1, ...) guard.
-        // fairMid = WORKING_CAPITAL / 1 = WORKING_CAPITAL, which far exceeds PRICE_CEIL.
+        // With the inventory-shading model, foreign=0 gives shading > 1 → ask rises
+        // (bounded, not explosive).
         const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
-        p1mm.assets.p2!.deposits = 0; // fully understocked
+        p1mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
+        p1mm.assets.p2!.deposits = 0; // fully depleted foreign inventory
+
+        const p2mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p2')!;
+        p2mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
+        p2mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT; // neutral
 
         forexMarketMakerPricing(state);
 
         const curP2 = getCurrencyResourceName('p2');
-        const understockedAsk = p1mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
+        const depletedAsk = p1mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
+        const neutralAsk  = p2mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
 
-        expect(understockedAsk).toBe(PRICE_CEIL);
+        // Foreign depleted → shading > 1 → higher ask.
+        expect(depletedAsk).toBeGreaterThan(neutralAsk);
+        // Still below ceiling.
+        expect(depletedAsk).toBeLessThanOrEqual(PRICE_CEIL);
     });
 
     it('3-planet MM splits bid target equally across both trading planets', () => {
@@ -298,6 +307,64 @@ describe('forexMarketMakerPricing', () => {
         expect(bidOnP1 + bidOnP2).toBeCloseTo(FOREX_MM_TARGET_DEPOSIT, 0);
 
         void planets; // used in state
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Inventory-shading mid-price bounds
+// ---------------------------------------------------------------------------
+
+describe('forexMarketMakerPricing – inventory shading bounds', () => {
+    it('balanced inventory (both at target) produces fairMid ≈ DEFAULT_EXCHANGE_RATE', () => {
+        const { state } = makeSeededStateMultiPlanet();
+        const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
+
+        // Set both balances to exactly the target so shading = 1.
+        p1mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
+        p1mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT;
+
+        forexMarketMakerPricing(state);
+
+        const curP2 = getCurrencyResourceName('p2');
+        const ask = p1mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
+        const bid = p1mm.assets.p1!.market!.buy[curP2]?.bidPrice ?? 0;
+
+        // fairMid = 1.0; with spread the ask/bid should bracket DEFAULT_EXCHANGE_RATE (1.0).
+        expect(ask).toBeCloseTo(1.0 * (1 + FOREX_MM_BASE_SPREAD), 6);
+        expect(bid).toBeCloseTo(1.0 * (1 - FOREX_MM_BASE_SPREAD), 6);
+    });
+
+    it('extreme long local → ask is clamped at PRICE_CEIL', () => {
+        const { state } = makeSeededStateMultiPlanet();
+        const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
+
+        // Make local balance astronomically large relative to the target;
+        // shading shoots up, clamping to PRICE_CEIL keeps the ask finite.
+        p1mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT * 1e8; // 100 million × TARGET
+        p1mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT;
+
+        forexMarketMakerPricing(state);
+
+        const curP2 = getCurrencyResourceName('p2');
+        const ask = p1mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
+        expect(ask).toBeLessThanOrEqual(PRICE_CEIL);
+        expect(ask).toBeGreaterThan(1.0); // still priced above mid-neutral
+    });
+
+    it('extreme long foreign → bid is floored at FOREX_PRICE_FLOOR', () => {
+        const { state } = makeSeededStateMultiPlanet();
+        const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
+
+        // Massive foreign inventory: shading collapses, flooring keeps the bid non-negative.
+        p1mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
+        p1mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT * 1e8; // 100 million × TARGET
+
+        forexMarketMakerPricing(state);
+
+        const curP2 = getCurrencyResourceName('p2');
+        const bid = p1mm.assets.p1!.market!.buy[curP2]?.bidPrice ?? 0;
+        expect(bid).toBeGreaterThanOrEqual(FOREX_PRICE_FLOOR);
+        expect(bid).toBeLessThan(1.0); // priced below mid-neutral
     });
 });
 

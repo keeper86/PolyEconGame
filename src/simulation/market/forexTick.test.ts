@@ -260,6 +260,177 @@ describe('forexTick', () => {
         const issues = checkMonetaryConservation(gs.agents, gs.planets);
         expect(issues).toEqual([]);
     });
+
+    // -----------------------------------------------------------------------
+    // Forex ask escrow integrity
+    // -----------------------------------------------------------------------
+
+    it('restores deposits fully when no buyers exist (no-fill tick)', () => {
+        creditForeignDeposit(aA, pB, 100);
+        const curB = getCurrencyResourceName('pB');
+        aA.assets.pA.market = { sell: {}, buy: {} };
+        aA.assets.pA.market.sell[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            offerPrice: 1.0,
+            offerRetainment: 0,
+            automated: false,
+        };
+        pA.marketPrices[curB] = 1.0;
+
+        forexTick(gs);
+
+        // The full 100 units must be back in free deposits, nothing held.
+        expect(aA.assets.pB!.deposits).toBeCloseTo(100, 8);
+        expect(aA.assets.pB!.depositHold).toBe(0);
+    });
+
+    it('returns only the unfilled portion after a partial fill', () => {
+        // agentA offers 10 pB-currency (retaining 90), buyer wants 3 units.
+        creditForeignDeposit(aA, pB, 100);
+        const curB = getCurrencyResourceName('pB');
+        aA.assets.pA.market = { sell: {}, buy: {} };
+        aA.assets.pA.market.sell[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            offerPrice: 1.0,
+            offerRetainment: 90, // only 10 units offered (100 - 90 retained)
+            automated: false,
+        };
+        pA.marketPrices[curB] = 1.0;
+
+        // Buyer wants exactly 3 units.
+        aB.assets.pA.deposits = 10;
+        pA.bank.deposits += 10;
+        pA.bank.loans += 10;
+        aB.assets.pA.market = { sell: {}, buy: {} };
+        aB.assets.pA.market.buy[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            bidPrice: 1.0,
+            bidStorageTarget: 3,
+            automated: false,
+        };
+
+        forexTick(gs);
+
+        // 3 sold out of 10 offered; 90 retained was never at risk.
+        // Net: agentA holds 100 - 3 = 97 pB-currency.
+        expect(aA.assets.pB!.deposits).toBeCloseTo(97, 6);
+        expect(aA.assets.pB!.depositHold).toBe(0);
+
+        // Total foreign conserved.
+        const issues = checkMonetaryConservation(gs.agents, gs.planets);
+        expect(issues).toEqual([]);
+    });
+
+    it('prevents cross-pair double-spending for the same issuing currency', () => {
+        // Three-planet world: agentA sells pB-currency on both pA and pC.
+        // The first pair locks the balance; the second pair must see only the remainder.
+        // We verify total pB-currency is conserved when both pairs have eager buyers.
+
+        const pC = makePlanet({ id: 'pC', name: 'Planet C' });
+        gs.planets.set('pC', pC);
+
+        // Give agentA a presence on pC so it can post asks there.
+        aA.assets.pC = makeAgentPlanetAssets('pC');
+
+        // Give agentB a presence on pC so it can bid there.
+        aB.assets.pC = makeAgentPlanetAssets('pC');
+        aB.assets.pC.deposits = 200;
+        pC.bank.deposits += 200;
+        pC.bank.loans += 200;
+
+        // agentA holds 100 pB-currency, posts sell on both pA and pC.
+        creditForeignDeposit(aA, pB, 100);
+        const curB = getCurrencyResourceName('pB');
+
+        aA.assets.pA.market = { sell: {}, buy: {} };
+        aA.assets.pA.market.sell[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            offerPrice: 1.0,
+            offerRetainment: 0,
+            automated: false,
+        };
+        aA.assets.pC.market = { sell: {}, buy: {} };
+        aA.assets.pC.market.sell[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            offerPrice: 1.0,
+            offerRetainment: 0,
+            automated: false,
+        };
+
+        // agentB bids aggressively on both pA and pC; each bid wants 80 units.
+        aB.assets.pA.deposits = 200;
+        pA.bank.deposits += 200;
+        pA.bank.loans += 200;
+        aB.assets.pA.market = { sell: {}, buy: {} };
+        aB.assets.pA.market.buy[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            bidPrice: 1.0,
+            bidStorageTarget: 80,
+            automated: false,
+        };
+        aB.assets.pC.market = { sell: {}, buy: {} };
+        aB.assets.pC.market.buy[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            bidPrice: 1.0,
+            bidStorageTarget: 80,
+            automated: false,
+        };
+
+        pA.marketPrices[curB] = 1.0;
+        pC.marketPrices[curB] = 1.0;
+
+        forexTick(gs);
+
+        // Total pB-currency held by all agents must equal 100 (what was created by creditForeignDeposit).
+        const totalPBCurrency =
+            (aA.assets.pB?.deposits ?? 0) +
+            (aA.assets.pB?.depositHold ?? 0) +
+            (aB.assets.pB?.deposits ?? 0) +
+            (aB.assets.pB?.depositHold ?? 0);
+        expect(totalPBCurrency).toBeCloseTo(100, 6);
+
+        // No agent holds a spurious hold after the tick.
+        expect(aA.assets.pB?.depositHold ?? 0).toBe(0);
+        expect(aB.assets.pB?.depositHold ?? 0).toBe(0);
+    });
+
+    it('scales buyer order down when deposits are insufficient and hold matches cost', () => {
+        // agentA has plenty of pB-currency to sell.
+        creditForeignDeposit(aA, pB, 500);
+        const curB = getCurrencyResourceName('pB');
+        aA.assets.pA.market = { sell: {}, buy: {} };
+        aA.assets.pA.market.sell[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            offerPrice: 1.0,
+            offerRetainment: 0,
+            automated: false,
+        };
+        pA.marketPrices[curB] = 1.0;
+
+        // agentB only has 50 local deposits but bids for 200 units.
+        const buyerDeposits = 50;
+        aB.assets.pA.deposits = buyerDeposits;
+        pA.bank.deposits += buyerDeposits;
+        pA.bank.loans += buyerDeposits;
+        aB.assets.pA.market = { sell: {}, buy: {} };
+        aB.assets.pA.market.buy[curB] = {
+            resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
+            bidPrice: 1.0,
+            bidStorageTarget: 200,
+            automated: false,
+        };
+
+        forexTick(gs);
+
+        // After the tick: buyer's local hold fully released after settlement.
+        expect(aB.assets.pA.depositHold).toBe(0);
+        // Buyer received ≤ 50 pB-currency (capped by budget, ×0.99 scale factor).
+        expect(aB.assets.pB?.deposits ?? 0).toBeLessThanOrEqual(buyerDeposits);
+        expect(aB.assets.pB?.deposits ?? 0).toBeGreaterThan(0); // but some was received
+
+        const issues = checkMonetaryConservation(gs.agents, gs.planets);
+        expect(issues).toEqual([]);
+    });
 });
 
 describe('forexTick — heterogeneous pricing seeds', () => {

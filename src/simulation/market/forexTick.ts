@@ -82,6 +82,7 @@ function clearForexPair(
         for (const ask of askOrders) {
             const issuingAssets = ask.agent.assets[issuingPlanetId];
             if (issuingAssets) {
+                issuingAssets.deposits += ask.quantity;
                 issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity);
             }
         }

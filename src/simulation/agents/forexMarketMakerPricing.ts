@@ -40,12 +40,19 @@ function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void 
             const curName = getCurrencyResourceName(issuingPlanet.id);
             const curResource = getCurrencyResource(issuingPlanet.id);
 
-            // Fair mid: how much local currency (on tradingPlanet) per unit of
-            // foreign currency.  More local → foreign is cheap; more foreign →
-            // foreign is expensive.  Guard against near-zero foreign balance.
+            // Fair mid: bounded linear inventory-shading model.
+            // When long local (relative to target), mid rises  → foreign more expensive → encourages selling foreign.
+            // When long foreign,                  mid falls  → foreign cheaper       → encourages buying  foreign.
             const localBalance = tradingAssets.deposits;
             const foreignBalance = foreignAssets.deposits;
-            const fairMid = DEFAULT_EXCHANGE_RATE * (localBalance / Math.max(1, foreignBalance));
+            const alpha = 0.1;
+            const beta  = 0.1;
+            const shading =
+                1 +
+                alpha * (localBalance / FOREX_MM_TARGET_DEPOSIT - 1) -
+                beta  * (foreignBalance / FOREX_MM_TARGET_DEPOSIT - 1);
+            let fairMid = DEFAULT_EXCHANGE_RATE * shading;
+            fairMid = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid));
 
             const askPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid * (1 + FOREX_MM_BASE_SPREAD)));
             // Ensure bid is strictly below ask

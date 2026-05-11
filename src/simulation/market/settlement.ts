@@ -180,7 +180,8 @@ export function settleForexTrades(
             localAssets.deposits += ask.revenue;
             localAssets.monthAcc.revenue += ask.revenue;
 
-            ask.agent.assets[issuingPlanetId]!.deposits -= filled;
+            // NOTE: foreign currency was already deducted from deposits at collection time
+            // (deposits -= quantity in collectForexAsks). We do not deduct again here.
 
             const offer = localAssets.market?.sell[curName];
             if (offer) {
@@ -189,10 +190,12 @@ export function settleForexTrades(
             }
         }
 
+        // Return unsold foreign currency and clear the reservation
         const issuingAssets = ask.agent.assets[issuingPlanetId]!;
-        issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity);
+        issuingAssets.deposits += unfilled;                                    // return unsold
+        issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity); // clear hold
 
-        if (process.env.SIM_DEBUG === '1' && unfilled > 0) {
+        if (process.env.SIM_DEBUG === '1') {
             if (issuingAssets.depositHold < 0) {
                 throw new Error(
                     `Forex escrow underflow for agent=${ask.agent.id} issuingPlanet=${issuingPlanetId}: hold=${issuingAssets.depositHold}`,
