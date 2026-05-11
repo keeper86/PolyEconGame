@@ -278,8 +278,9 @@ function MonthlyMetricChart({
                                 stroke={config.color}
                                 strokeWidth={2}
                                 fill={`url(#${config.gradId})`}
-                                dot={false}
+                                dot={{ r: 2.5, fill: config.color }}
                                 activeDot={{ r: 3, fill: config.color, stroke: '#1e293b', strokeWidth: 2 }}
+                                isAnimationActive={false}
                                 connectNulls={false}
                                 name='value'
                             />
@@ -290,8 +291,9 @@ function MonthlyMetricChart({
                                 strokeWidth={2}
                                 strokeOpacity={0.35}
                                 fill='none'
-                                dot={false}
+                                dot={{ r: 2, fill: config.color, fillOpacity: 0.4, stroke: 'none' }}
                                 activeDot={false}
+                                isAnimationActive={false}
                                 connectNulls={false}
                                 name='ghostValue'
                             />
@@ -372,8 +374,9 @@ function NonMonthlyMetricChart({
                                 stroke={config.color}
                                 strokeWidth={2}
                                 fill={`url(#${config.gradId})`}
-                                dot={false}
+                                dot={{ r: 2.5, fill: config.color }}
                                 activeDot={{ r: 3, fill: config.color, stroke: '#1e293b', strokeWidth: 2 }}
+                                isAnimationActive={false}
                             />
                         </AreaChart>
                     </ResponsiveContainer>

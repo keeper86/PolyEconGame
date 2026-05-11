@@ -244,8 +244,9 @@ function SimplePriceAreaChart({
                     strokeWidth={1}
                     strokeDasharray='3 3'
                     fill={`url(#${gradId})`}
-                    dot={false}
+                    dot={{ r: 2, fill: '#38bdf8' }}
                     activeDot={false}
+                    isAnimationActive={false}
                     name='maxPrice'
                 />
                 <Area
@@ -255,8 +256,9 @@ function SimplePriceAreaChart({
                     strokeWidth={1}
                     strokeDasharray='3 3'
                     fill='var(--background, #0f172a)'
-                    dot={false}
+                    dot={{ r: 2, fill: '#38bdf8' }}
                     activeDot={false}
+                    isAnimationActive={false}
                     name='minPrice'
                 />
                 <Area
@@ -265,8 +267,9 @@ function SimplePriceAreaChart({
                     stroke='#f59e0b'
                     strokeWidth={2}
                     fill='none'
-                    dot={false}
+                    dot={{ r: 2.5, fill: '#f59e0b' }}
                     activeDot={{ r: 3, fill: '#f59e0b', stroke: '#1e293b', strokeWidth: 2 }}
+                    isAnimationActive={false}
                     name='avgPrice'
                     connectNulls={false}
                 />
@@ -278,8 +281,9 @@ function SimplePriceAreaChart({
                         strokeWidth={2}
                         strokeOpacity={0.35}
                         fill='none'
-                        dot={false}
+                        dot={{ r: 2, fill: '#f59e0b', fillOpacity: 0.4, stroke: 'none' }}
                         activeDot={false}
+                        isAnimationActive={false}
                         name='ghostAvgPrice'
                         connectNulls={false}
                     />
@@ -293,8 +297,9 @@ function SimplePriceAreaChart({
                         strokeOpacity={0.3}
                         strokeDasharray='3 3'
                         fill='none'
-                        dot={false}
+                        dot={{ r: 2, fill: '#38bdf8', fillOpacity: 0.3, stroke: 'none' }}
                         activeDot={false}
+                        isAnimationActive={false}
                         name='ghostMaxPrice'
                         connectNulls={false}
                     />
@@ -308,8 +313,9 @@ function SimplePriceAreaChart({
                         strokeOpacity={0.3}
                         strokeDasharray='3 3'
                         fill='none'
-                        dot={false}
+                        dot={{ r: 2, fill: '#38bdf8', fillOpacity: 0.3, stroke: 'none' }}
                         activeDot={false}
+                        isAnimationActive={false}
                         name='ghostMinPrice'
                         connectNulls={false}
                     />
