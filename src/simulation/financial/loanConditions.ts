@@ -11,11 +11,12 @@ export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditi
 
     const existingLoans = totalOutstandingLoans(assets?.activeLoans ?? []);
 
-    const lastMonthlyRevenue = assets?.lastMonthAcc.revenue ?? 0;
+    const lastMonthlyRevenue = (assets?.lastMonthAcc.revenue ?? 0) - (assets?.lastMonthAcc.forexRevenue ?? 0);
     const lastMonthlyExpenses =
         (assets?.lastMonthAcc.wages ?? 0) +
         (assets?.lastMonthAcc.purchases ?? 0) +
-        (assets?.lastMonthAcc.claimPayments ?? 0);
+        (assets?.lastMonthAcc.claimPayments ?? 0) -
+        (assets?.lastMonthAcc.forexPurchases ?? 0);
 
     const monthlyNetCashFlow = lastMonthlyRevenue - lastMonthlyExpenses;
 

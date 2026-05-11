@@ -26,7 +26,6 @@ import {
     loggingCamp,
     logisticsHub,
     machineryFactory,
-    naturalGasWell,
     oilRefinery,
     oilWell,
     packagingPlant,
@@ -142,7 +141,6 @@ interface FacilityTarget {
 const TARGETS: Record<string, FacilityTarget> = {
     coalMine: { totalScale: 64_546, agentCount: 3 },
     oilWell: { totalScale: 781_908, agentCount: 4 },
-    naturalGasWell: { totalScale: 71_324, agentCount: 4 },
     loggingCamp: { totalScale: 422_917, agentCount: 4 },
     stoneQuarry: { totalScale: 160_000, agentCount: 3 },
     copperMine: { totalScale: 53_516, agentCount: 3 },
@@ -708,7 +706,6 @@ function getFacilityFactory(type: string): FacilityFactory {
     const MAP: Record<string, FacilityFactory> = {
         coalMine,
         oilWell,
-        naturalGasWell,
         loggingCamp,
         stoneQuarry,
         copperMine,

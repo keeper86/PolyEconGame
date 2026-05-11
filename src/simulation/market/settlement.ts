@@ -178,7 +178,7 @@ export function settleForexTrades(
         // Credit local-currency revenue
         if (filled > 0) {
             localAssets.deposits += ask.revenue;
-            localAssets.monthAcc.revenue += ask.revenue;
+            localAssets.monthAcc.forexRevenue += ask.revenue;
 
             // NOTE: foreign currency was already deducted from deposits at collection time
             // (deposits -= quantity in collectForexAsks). We do not deduct again here.
@@ -226,7 +226,7 @@ export function settleForexTrades(
 
         // Consume the hold for the filled amount
         localAssets.depositHold -= holdConsumed;
-        localAssets.monthAcc.purchases += holdConsumed;
+        localAssets.monthAcc.forexPurchases += holdConsumed;
 
         bid.agent.assets[issuingPlanetId]!.deposits += bid.filled;
 
