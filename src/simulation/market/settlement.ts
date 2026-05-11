@@ -192,7 +192,7 @@ export function settleForexTrades(
 
         // Return unsold foreign currency and clear the reservation
         const issuingAssets = ask.agent.assets[issuingPlanetId]!;
-        issuingAssets.deposits += unfilled;                                    // return unsold
+        issuingAssets.deposits += unfilled; // return unsold
         issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity); // clear hold
 
         if (process.env.SIM_DEBUG === '1') {

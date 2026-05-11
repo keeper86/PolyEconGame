@@ -278,7 +278,7 @@ describe('forexMarketMakerPricing', () => {
 
         const curP2 = getCurrencyResourceName('p2');
         const depletedAsk = p1mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
-        const neutralAsk  = p2mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
+        const neutralAsk = p2mm.assets.p1!.market!.sell[curP2]?.offerPrice ?? 0;
 
         // Foreign depleted → shading > 1 → higher ask.
         expect(depletedAsk).toBeGreaterThan(neutralAsk);

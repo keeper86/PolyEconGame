@@ -46,11 +46,11 @@ function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void 
             const localBalance = tradingAssets.deposits;
             const foreignBalance = foreignAssets.deposits;
             const alpha = 0.1;
-            const beta  = 0.1;
+            const beta = 0.1;
             const shading =
                 1 +
                 alpha * (localBalance / FOREX_MM_TARGET_DEPOSIT - 1) -
-                beta  * (foreignBalance / FOREX_MM_TARGET_DEPOSIT - 1);
+                beta * (foreignBalance / FOREX_MM_TARGET_DEPOSIT - 1);
             let fairMid = DEFAULT_EXCHANGE_RATE * shading;
             fairMid = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid));
 
