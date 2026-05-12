@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-    ARBITRAGE_BOOTSTRAP_LOAN,
     ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD,
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_MIN_CAPITAL_RESERVE,
@@ -8,16 +7,16 @@ import {
     ARBITRAGE_SEED_DEPOSIT,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
 } from '../constants';
-import type { Agent } from '../planet/planet';
-import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../utils/testHelper';
-import { createShip, shiptypes } from '../ships/ships';
-import type { TransportShip } from '../ships/ships';
-import { arbitrageTraderTick } from './arbitrageTraderTick';
 import { getCurrencyResourceName } from '../market/currencyResources';
+import type { Agent } from '../planet/planet';
 import { MAX_AGE, SKILL } from '../population/population';
-import { seedArbitrageTraderAgents } from './arbitrageTrader';
-import { effectiveShipValue } from '../ships/shipMarket';
 import { travelTime } from '../ships/shipHandlers';
+import { effectiveShipValue } from '../ships/shipMarket';
+import type { TransportShip } from '../ships/ships';
+import { createShip, shiptypes } from '../ships/ships';
+import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../utils/testHelper';
+import { seedArbitrageTraderAgents } from './arbitrageTrader';
+import { arbitrageTraderTick } from './arbitrageTraderTick';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -655,7 +654,7 @@ describe('arbitrageTraderTick – capital barrier', () => {
     // Capital check (scanBestRoute): agentDeposits >= pBuy × maxQty
     //   → max affordable pBuy = floor(250,000 / 150,000) = 1
 
-    const BOOTSTRAP_DEPOSITS = ARBITRAGE_SEED_DEPOSIT + ARBITRAGE_BOOTSTRAP_LOAN; // 250,000
+    const BOOTSTRAP_DEPOSITS = ARBITRAGE_SEED_DEPOSIT; // 250,000
     const STEEL_MAX_QTY = 150_000; // mass-limited for Bulk Carrier 1
 
     it('blocks route assignment when bootstrap deposits cannot cover a full Steel cargo at pBuy=2', () => {

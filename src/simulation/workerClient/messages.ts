@@ -1,5 +1,6 @@
 import type { TickerEvent } from 'src/server/controller/simulation';
 import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
+import type { ResourceQuantity } from '../planet/claims';
 
 export type InboundMessage =
     | { type: 'ping' }
@@ -100,7 +101,7 @@ export type InboundMessage =
           agentId: string;
           planetId: string; // fromPlanetId — contract lives in poster's assets on this planet
           toPlanetId: string;
-          cargo: { resourceName: string; quantity: number };
+          cargo: ResourceQuantity;
           maxDurationInTicks: number;
           offeredReward: number;
           expiresAtTick: number;
@@ -128,7 +129,7 @@ export type InboundMessage =
           fromPlanetId: string;
           toPlanetId: string;
           shipId: string;
-          cargoGoal: { resourceName: string; quantity: number } | null;
+          cargoGoal: ResourceQuantity | null;
       }
     | {
           type: 'dispatchPassengerShip';
@@ -439,7 +440,7 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           toPlanetId: string;
-          cargo: { resourceName: string; quantity: number };
+          cargo: ResourceQuantity;
           maxDurationInTicks: number;
           offeredReward: number;
           expiresAtTick: number;
@@ -467,7 +468,7 @@ export type PendingAction =
           fromPlanetId: string;
           toPlanetId: string;
           shipId: string;
-          cargoGoal: { resourceName: string; quantity: number } | null;
+          cargoGoal: ResourceQuantity | null;
       }
     | {
           type: 'dispatchPassengerShip';

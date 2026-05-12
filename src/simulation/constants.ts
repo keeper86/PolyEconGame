@@ -281,8 +281,8 @@ export const CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1: Record<string, number> = {
 };
 
 export const FOREX_MM_COUNT = 1;
-export const FOREX_MM_WORKING_CAPITAL = 10_000_000;
-export const FOREX_MM_SEED_LOAN = 10_000_000;
+export const FOREX_MM_WORKING_CAPITAL = 1_000_000_000;
+export const FOREX_MM_SEED_LOAN = 1_000_000_000;
 export const FOREX_MM_TARGET_DEPOSIT = 10_000_000;
 export const FOREX_MM_BASE_SPREAD = 0.03;
 export const FOREX_MM_RETAIN_RATIO = 0.5;
@@ -318,10 +318,7 @@ export const SHIPBUILDER_INPUT_BUFFER_TICKS = 20;
 // ---------------------------------------------------------------------------
 
 /** Seed deposit granted to each arbitrage trader on every planet. */
-export const ARBITRAGE_SEED_DEPOSIT = 50_000;
-
-/** Bootstrap loan funding the first ship for each arbitrage trader. */
-export const ARBITRAGE_BOOTSTRAP_LOAN = 200_000;
+export const ARBITRAGE_SEED_DEPOSIT = 1_000_000;
 
 /** Minimum net return on capital (as fraction of buy price) required to activate a route. */
 export const ARBITRAGE_MIN_PROFIT_MARGIN = 0.05;

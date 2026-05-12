@@ -39,7 +39,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
         if (s.type === 'loading') {
             return (
                 <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
-                    {s.cargoGoal && s.cargoGoal.quantity !== 0 ? (
+                    {s.cargoGoal && s.currentCargo && s.cargoGoal.quantity !== 0 ? (
                         <>
                             <ProductIcon productName={s.cargoGoal.resource.name} />
                             <span>

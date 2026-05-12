@@ -1,4 +1,4 @@
-import { ARBITRAGE_SEED_DEPOSIT, ARBITRAGE_BOOTSTRAP_LOAN } from '../constants';
+import { ARBITRAGE_SEED_DEPOSIT } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import type { Agent, GameState } from '../planet/planet';
@@ -39,7 +39,7 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 assets.licenses = { commercial: { acquiredTick: 0, frozen: false } };
                 assets.market = { sell: {}, buy: {} };
 
-                grantLoan(assets, planet.bank, ARBITRAGE_SEED_DEPOSIT, 'arbitrageBootstrap', 0);
+                grantLoan(assets, planet.bank, ARBITRAGE_SEED_DEPOSIT, 'starter', 0);
                 agent.assets[planet.id] = assets;
             }
 
@@ -51,7 +51,6 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 homePlanet,
             );
             agent.ships.push(bootstrapShip);
-            grantLoan(agent.assets[homePlanet.id], homePlanet.bank, ARBITRAGE_BOOTSTRAP_LOAN, 'arbitrageBootstrap', 0);
 
             gameState.arbitrageTraders.set(agentId, agent);
             gameState.agents.set(agentId, agent);

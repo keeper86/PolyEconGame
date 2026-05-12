@@ -3,9 +3,11 @@ import {
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_MIN_CAPITAL_RESERVE,
     ARBITRAGE_MIN_PROFIT_MARGIN,
+    ARBITRAGE_SEED_DEPOSIT,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
     isFirstTickInMonth,
 } from '../constants';
+import { repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import type { Agent, GameState } from '../planet/planet';
 import { ALL_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { travelTime } from '../ships/shipHandlers';
@@ -43,6 +45,8 @@ function scanBestRoute(
     const planets = Array.from(gameState.planets.values());
     let best: RouteCandidate | null = null;
     let bestNet = ARBITRAGE_MIN_PROFIT_MARGIN;
+    const debug = process.env.SIM_DEBUG === '1';
+    const monthly = isFirstTickInMonth(gameState.tick);
 
     const oneWayTicks = travelTime(ship);
     const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
@@ -66,17 +70,26 @@ function scanBestRoute(
         for (const origin of planets.filter((p) => p.id === shipPlanetId)) {
             const pBuy = origin.marketPrices[resource.name];
             if (!pBuy || pBuy <= 0) {
+                if (debug && monthly) {
+                    console.log(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no buy price`);
+                }
                 continue;
             }
 
-            // Check agent has deposits to fund the purchase
+            // Check agent has deposits to fund the purchase; scale down quantity if needed
             const agentOriginDeposits = agent.assets[origin.id]?.deposits ?? 0;
-            const requiredCapital = pBuy * maxQty;
-            if (agentOriginDeposits < requiredCapital) {
+            const affordableQty = pBuy > 0 ? Math.floor(agentOriginDeposits / pBuy) : 0;
+            const qty = Math.min(maxQty, affordableQty);
+            if (qty < 1) {
+                if (debug && monthly) {
+                    console.log(
+                        `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient capital for even 1 unit (have ${agentOriginDeposits.toFixed(0)}, need ${pBuy.toFixed(0)}/unit)`,
+                    );
+                }
                 continue;
             }
 
-            const costPerUnit = depreciationPerTrip / maxQty;
+            const costPerUnit = depreciationPerTrip / qty;
 
             for (const dest of planets) {
                 if (dest.id === origin.id) {
@@ -85,6 +98,11 @@ function scanBestRoute(
 
                 const pSellDest = dest.marketPrices[resource.name];
                 if (!pSellDest || pSellDest <= 0) {
+                    if (debug && monthly) {
+                        console.log(
+                            `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no sell price at dest`,
+                        );
+                    }
                     continue;
                 }
 
@@ -94,13 +112,18 @@ function scanBestRoute(
                 const pSellOrigin = pSellDest * forexRate;
 
                 const net = (pSellOrigin - pBuy - costPerUnit) / pBuy;
+                if (debug && monthly) {
+                    console.log(
+                        `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellAdj=${pSellOrigin.toFixed(2)} costPerUnit=${costPerUnit.toFixed(2)} net=${net.toFixed(3)} (need>${ARBITRAGE_MIN_PROFIT_MARGIN})`,
+                    );
+                }
                 if (net > bestNet) {
                     bestNet = net;
                     best = {
                         originPlanetId: origin.id,
                         destPlanetId: dest.id,
                         resourceName: resource.name,
-                        quantity: maxQty,
+                        quantity: qty,
                         netMargin: net,
                     };
                 }
@@ -116,6 +139,9 @@ function scanBestRoute(
 // ---------------------------------------------------------------------------
 
 function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
+    const debug = process.env.SIM_DEBUG === '1';
+    const monthly = isFirstTickInMonth(gameState.tick);
+
     for (const ship of agent.ships) {
         if (ship.type.type !== 'transport') {
             continue;
@@ -125,9 +151,21 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
         }
 
         const shipPlanetId = (ship.state as { planetId: string }).planetId;
+
         const candidate = scanBestRoute(ship as TransportShip, agent, gameState, shipPlanetId);
         if (!candidate) {
+            if (debug && monthly) {
+                console.log(
+                    `[arb] ${agent.id} ship '${ship.name}': no viable route found (margin threshold=${ARBITRAGE_MIN_PROFIT_MARGIN})`,
+                );
+            }
             continue;
+        }
+
+        if (debug) {
+            console.log(
+                `[arb] ${agent.id} ship '${ship.name}': ASSIGNED ${candidate.resourceName} ${candidate.originPlanetId}→${candidate.destPlanetId} qty=${candidate.quantity} margin=${candidate.netMargin.toFixed(3)}`,
+            );
         }
 
         const resource = RESOURCES_BY_NAME.get(candidate.resourceName);
@@ -266,6 +304,36 @@ function manageFleet(agent: Agent, gameState: GameState): void {
         };
         createShipListing(ship, assets, listing);
         updateShipEma(gameState.shipCapitalMarket, ship.type.name, listing.askPrice);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Loan repayment (called from engine instead of generic automaticLoanRepayment)
+// ---------------------------------------------------------------------------
+
+export function arbitrageTraderRepaymentTick(gameState: GameState): void {
+    for (const agent of gameState.arbitrageTraders.values()) {
+        for (const [planetId, assets] of Object.entries(agent.assets)) {
+            const planet = gameState.planets.get(planetId);
+            if (!planet) {
+                continue;
+            }
+            const agentLoanTotal = totalOutstandingLoans(assets.activeLoans);
+            if (agentLoanTotal <= 0) {
+                continue;
+            }
+            // Retain the seed deposit as permanent working capital; only repay true excess.
+            const excess = Math.max(0, assets.deposits - ARBITRAGE_SEED_DEPOSIT);
+            const repayment = Math.min(agentLoanTotal, excess);
+            if (repayment <= 0) {
+                continue;
+            }
+            const actualRepayment = repayLoansOldestFirst(assets.activeLoans, repayment);
+            assets.deposits -= actualRepayment;
+            planet.bank.loans -= actualRepayment;
+            planet.bank.deposits -= actualRepayment;
+            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
+        }
     }
 }
 

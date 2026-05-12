@@ -1,12 +1,11 @@
 import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
-import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { Facility } from '../planet/facility';
+import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { GameState } from '../planet/planet';
-import { pushTickerEvent } from '../planet/planet';
-import type { ConstructionContract, ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
-import { shiptypes } from '../ships/ships';
 import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { appendTradeRecord, createShipListing, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
+import type { ConstructionContract, ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
+import { shiptypes } from '../ships/ships';
 import type { OutboundMessage, PendingAction } from './messages';
 
 function generateId(prefix: string): string {
@@ -50,17 +49,17 @@ export function handlePostTransportContract(
     }
 
     // Resolve resource type from the planet's storage catalog
-    const storageEntry = assets.storageFacility.currentInStorage[cargo.resourceName];
+    const storageEntry = assets.storageFacility.currentInStorage[cargo.resource.name];
     if (!storageEntry) {
         safePostMessage({
             type: 'transportContractPostFailed',
             requestId,
-            reason: `Unknown resource '${cargo.resourceName}'`,
+            reason: `Unknown resource '${cargo.resource.name}'`,
         });
         return;
     }
 
-    const availableQuantity = queryStorageFacility(assets.storageFacility, cargo.resourceName);
+    const availableQuantity = queryStorageFacility(assets.storageFacility, cargo.resource.name);
     if (cargo.quantity > availableQuantity) {
         safePostMessage({
             type: 'transportContractPostFailed',
@@ -75,7 +74,7 @@ export function handlePostTransportContract(
     assets.depositHold += offeredReward;
 
     // Escrow the cargo so it cannot be sold after posting
-    lockIntoEscrow(assets.storageFacility, cargo.resourceName, cargo.quantity);
+    lockIntoEscrow(assets.storageFacility, cargo.resource.name, cargo.quantity);
 
     const contractId = generateId('tc');
     const contract: TransportContract = {
@@ -870,81 +869,47 @@ export function handleDispatchShip(
         return;
     }
 
-    if (!cargoGoal) {
-        // Ferry-mode: transit without cargo — go directly to transporting
-        ship.state = {
-            type: 'transporting',
-            from: fromPlanetId,
-            to: toPlanetId,
-            cargo: null,
-            arrivalTick: state.tick + Math.ceil(1000 / ship.type.speed),
-        };
+    if (cargoGoal) {
+        const assets = agent.assets[fromPlanetId];
+        if (!assets?.storageFacility) {
+            safePostMessage({
+                type: 'shipDispatchFailed',
+                requestId,
+                reason: 'No storage facility on departure planet',
+            });
+            return;
+        }
 
-        // Emit ticker event
-        const fromPlanet = state.planets.get(fromPlanetId);
-        const toPlanet = state.planets.get(toPlanetId);
-        pushTickerEvent(state, {
-            category: 'shipDispatched',
-            planetId: fromPlanetId,
-            agentId,
-            agentName: agent.name,
-            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
-            tick: state.tick,
-        });
+        const targetAssets = agent.assets[toPlanetId];
+        if (!targetAssets?.storageFacility) {
+            safePostMessage({
+                type: 'shipDispatchFailed',
+                requestId,
+                reason: 'No storage facility on destination planet',
+            });
+            return;
+        }
 
-        safePostMessage({ type: 'shipDispatched', requestId, agentId, shipId: ship.id });
-        return;
-    }
-
-    const assets = agent.assets[fromPlanetId];
-    if (!assets?.storageFacility) {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'No storage facility on departure planet' });
-        return;
-    }
-
-    const targetAssets = agent.assets[toPlanetId];
-    if (!targetAssets?.storageFacility) {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'No storage facility on destination planet' });
-        return;
-    }
-
-    const storageEntry = assets.storageFacility.currentInStorage[cargoGoal.resourceName];
-    if (!storageEntry) {
-        safePostMessage({
-            type: 'shipDispatchFailed',
-            requestId,
-            reason: `Unknown resource '${cargoGoal.resourceName}'`,
-        });
-        return;
-    }
-
-    const available = queryStorageFacility(assets.storageFacility, cargoGoal.resourceName);
-    if (cargoGoal.quantity > available) {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Insufficient cargo quantity in storage' });
-        return;
+        const storageEntry = assets.storageFacility.currentInStorage[cargoGoal.resource.name];
+        if (!storageEntry) {
+            safePostMessage({
+                type: 'shipDispatchFailed',
+                requestId,
+                reason: `Unknown resource '${cargoGoal.resource.name}'`,
+            });
+            return;
+        }
     }
 
     ship.state = {
         type: 'loading',
         planetId: fromPlanetId,
         to: toPlanetId,
-        cargoGoal: { resource: storageEntry.resource, quantity: cargoGoal.quantity },
-        currentCargo: { resource: storageEntry.resource, quantity: 0 },
+        cargoGoal,
+        currentCargo: cargoGoal ? { resource: cargoGoal.resource, quantity: 0 } : null,
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
         // No contractId or posterAgentId — cargo is loaded from own storage
     };
-
-    // Emit ticker event
-    const fromPlanet = state.planets.get(fromPlanetId);
-    const toPlanet = state.planets.get(toPlanetId);
-    pushTickerEvent(state, {
-        category: 'shipDispatched',
-        planetId: fromPlanetId,
-        agentId,
-        agentName: agent.name,
-        message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId}`,
-        tick: state.tick,
-    });
 
     safePostMessage({ type: 'shipDispatched', requestId, agentId, shipId: ship.id });
 }
@@ -1144,18 +1109,6 @@ export function handleDispatchConstructionShip(
         progress: 0,
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
-
-    // Emit ticker event
-    const fromPlanet = state.planets.get(fromPlanetId);
-    const toPlanet = state.planets.get(toPlanetId);
-    pushTickerEvent(state, {
-        category: 'shipDispatched',
-        planetId: fromPlanetId,
-        agentId,
-        agentName: agent.name,
-        message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? fromPlanetId} → ${toPlanet?.name ?? toPlanetId} (construction)`,
-        tick: state.tick,
-    });
 
     safePostMessage({ type: 'constructionShipDispatched', requestId, agentId, shipId: ship.id });
 }
