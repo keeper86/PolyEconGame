@@ -288,6 +288,8 @@ export const FOREX_MM_BASE_SPREAD = 0.03;
 export const FOREX_MM_RETAIN_RATIO = 0.5;
 export const FOREX_MM_ARBITRAGE_THRESHOLD = 0.005;
 export const FOREX_MM_MAX_ARBITRAGE_FRACTION = 0.25;
+export const FOREX_MM_MAX_TRADE_FRACTION = 0.1;
+export const FOREX_MM_MIN_TRADE_AMOUNT = 10_000;
 
 // ---------------------------------------------------------------------------
 // Shipbuilder agent constants
