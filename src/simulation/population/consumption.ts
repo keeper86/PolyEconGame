@@ -35,13 +35,8 @@ export function consumeServices(population: Population) {
                 population.lastConsumption[def.resource.name] =
                     (population.lastConsumption[def.resource.name] ?? 0) + consumed;
 
-                if (def.serviceKey === 'grocery') {
-                    const consumptionFactor = consumed / demand;
-                    category.services.grocery.starvationLevel = updateStarvationLevel(
-                        category.services.grocery.starvationLevel,
-                        consumptionFactor,
-                    );
-                }
+                const consumptionFactor = consumed / demand;
+                serviceState.starvationLevel = updateStarvationLevel(serviceState.starvationLevel, consumptionFactor);
             }
         });
     });

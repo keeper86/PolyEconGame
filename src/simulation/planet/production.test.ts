@@ -4,8 +4,8 @@ import { constructionTick, productionTick } from './production';
 
 import type { TransportShipType } from '../ships/ships';
 import {
-    agentMap,
     makeAgent,
+    makeGameState,
     makeManagementFacility,
     makePlanetWithPopulation,
     makeProductionFacility,
@@ -13,7 +13,6 @@ import {
     makeStorageFacility,
 } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
-import type { GameState } from './planet';
 import {
     agriculturalProductResourceType,
     ironOreResourceType,
@@ -62,17 +61,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gameState: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gameState = makeGameState(planet, [agent, gov]);
 
         productionTick(gameState, planet);
 
@@ -115,17 +104,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gameState: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gameState = makeGameState(planet, [agent, gov]);
 
         productionTick(gameState, planet);
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
@@ -168,17 +147,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         // facility should record overqualified usage for jobEdu 'none'
@@ -240,17 +209,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'scale-fac');
@@ -292,17 +251,7 @@ describe('productionTick (basic)', () => {
             },
         ];
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         // Only 1 slot needed — totalUsedByEdu.secondary should be ≤ 1 (the slot capacity)
@@ -346,17 +295,7 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         // Both facilities must have run (efficiency > 0)
@@ -400,17 +339,7 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
@@ -446,17 +375,7 @@ describe('constructionTick', () => {
             quantity: 80,
         };
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
 
         expect(facility.construction).not.toBeNull();
@@ -486,17 +405,7 @@ describe('constructionTick', () => {
             quantity: 20,
         };
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
 
         expect(facility.construction).toBeNull();
@@ -520,17 +429,7 @@ describe('constructionTick', () => {
         agent.assets.p.productionFacilities = [facility];
         // No construction service in storage
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
 
         expect(facility.construction).not.toBeNull();
@@ -559,17 +458,7 @@ describe('constructionTick', () => {
             quantity: 30,
         };
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
 
         expect(mgmtFacility.construction!.progress).toBe(30);
@@ -602,17 +491,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             quantity: 20,
         };
 
-        const gs: GameState = {
-            tick: 5,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov], 5);
 
         constructionTick(gs, planet);
 
@@ -647,17 +526,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             quantity: 20,
         };
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
 
         constructionTick(gs, planet);
 
@@ -698,17 +567,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             quantity: 100,
         };
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
 
         constructionTick(gs, planet);
 
@@ -738,17 +597,7 @@ describe('productionTick — storage facility', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.novice.active = 2; // 2 workers, 1 for storage
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         const results = agent.assets.p.storageFacility.lastTickResults;
@@ -780,17 +629,7 @@ describe('productionTick — storage facility', () => {
 
         const initialEfficiency = agent.assets.p.storageFacility.lastTickResults.overallEfficiency;
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         // lastTickResults should not have been updated (still 0 from initialization)
@@ -834,17 +673,7 @@ describe('productionTick — management facility', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.novice.active = 1;
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBeGreaterThan(0);
@@ -874,17 +703,7 @@ describe('productionTick — management facility', () => {
         agent.assets.p.managementFacilities = [mgmtFacility];
         // No workers → efficiency = 0
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(0);
@@ -918,17 +737,7 @@ describe('productionTick — management facility', () => {
 
         const initialEfficiency = mgmtFacility.lastTickResults.overallEfficiency;
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
@@ -979,17 +788,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 9; // scale=9 needs 9 effective workers
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
@@ -1013,17 +812,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         };
         // No workers added
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBe(0);
@@ -1060,17 +849,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         wf[30].secondary.novice.active = 1;
         const initialEfficiency = shipyard.lastTickResults.overallEfficiency;
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBe(initialEfficiency);
@@ -1111,17 +890,7 @@ describe('productionTick — shipCompleted ticker events', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        const gs: GameState = {
-            tick: 10,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov], 10);
 
         productionTick(gs, planet);
 
@@ -1161,17 +930,7 @@ describe('productionTick — shipCompleted ticker events', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        const gs: GameState = {
-            tick: 0,
-            planets: new Map([[planet.id, planet]]),
-            agents: agentMap(agent, gov),
-            shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
-            forexMarketMakers: new Map(),
-            shipbuilderAgents: new Map(),
-            arbitrageTraders: new Map(),
-            tickerEvents: [],
-            nextEventId: 1,
-        };
+        const gs = makeGameState(planet, [agent, gov]);
 
         productionTick(gs, planet);
 
