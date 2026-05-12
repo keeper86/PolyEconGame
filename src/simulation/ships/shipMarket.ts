@@ -180,11 +180,7 @@ export function findCheapestShipListing(
  * assets.shipListings — callers must only call this when they have already
  * validated that the ship is idle and not already listed.
  */
-export function createShipListing(
-    ship: Ship,
-    assets: { shipListings: ShipListing[] },
-    listing: ShipListing,
-): void {
+export function createShipListing(ship: Ship, assets: { shipListings: ShipListing[] }, listing: ShipListing): void {
     ship.state = { type: 'listed', planetId: listing.planetId };
     assets.shipListings.push(listing);
 }

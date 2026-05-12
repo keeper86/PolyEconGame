@@ -92,7 +92,7 @@ function makeTwoPlanetState(opts?: {
 
 describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
     it('sets idle ship to loading state when a profitable route exists', () => {
-        const { state, agent, ship } = makeTwoPlanetState({
+        const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 500,
             agentDeposits: 50_000_000,

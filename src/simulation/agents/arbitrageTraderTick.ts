@@ -9,7 +9,13 @@ import {
 import type { Agent, GameState } from '../planet/planet';
 import { ALL_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { travelTime } from '../ships/shipHandlers';
-import { createShipListing, effectiveShipValue, executeShipPurchase, findCheapestShipListing, updateShipEma } from '../ships/shipMarket';
+import {
+    createShipListing,
+    effectiveShipValue,
+    executeShipPurchase,
+    findCheapestShipListing,
+    updateShipEma,
+} from '../ships/shipMarket';
 import type { ShipListing, TransportShip } from '../ships/ships';
 import { canCarryResource, shiptypes } from '../ships/ships';
 import { getCurrencyResourceName } from '../market/currencyResources';

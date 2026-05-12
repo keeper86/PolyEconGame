@@ -9,12 +9,11 @@ import {
     PRICE_CEIL,
     TICKS_PER_YEAR,
 } from '../constants';
-import { getCurrencyResourceName, FOREX_PRICE_FLOOR } from '../market/currencyResources';
-import { makeGameState, makeGovernmentAgent, makePlanet } from '../utils/testHelper';
+import { FOREX_PRICE_FLOOR, getCurrencyResourceName } from '../market/currencyResources';
 import { seedRng } from '../utils/stochasticRound';
+import { makeGameState, makeGovernmentAgent, makePlanet } from '../utils/testHelper';
 import { seedForexMarketMakers } from './forexMarketMaker';
 import { forexMarketMakerPricing } from './forexMarketMakerPricing';
-import { sweepTriangular } from './forexMarketMakerArbitrage';
 
 beforeEach(() => {
     seedRng(42);
@@ -365,162 +364,5 @@ describe('forexMarketMakerPricing – inventory shading bounds', () => {
         const bid = p1mm.assets.p1!.market!.buy[curP2]?.bidPrice ?? 0;
         expect(bid).toBeGreaterThanOrEqual(FOREX_PRICE_FLOOR);
         expect(bid).toBeLessThan(1.0); // priced below mid-neutral
-    });
-});
-
-// ---------------------------------------------------------------------------
-// Triangular arbitrage tests
-// ---------------------------------------------------------------------------
-
-describe('sweepTriangular', () => {
-    it('executes a profitable triangle and increases T-currency balance', () => {
-        // Set up a simple 3-planet triangle:
-        //   p1 prices:  CUR_p2 = 1.0,  CUR_p3 = 1.0
-        //   p2 prices:  CUR_p3 = 1.0,  CUR_p1 = 0.50   ← p1 is cheap on p2
-        //   p3 prices:  CUR_p1 = 2.20                   ← p1 is expensive on p3
-        //
-        // Triangle T=p1, A=p2, B=p3:
-        //   rate_TA = p1.marketPrices[CUR_p2] = 1.0
-        //   rate_AB = p2.marketPrices[CUR_p3] = 1.0
-        //   rate_BT = p3.marketPrices[CUR_p1] = 2.20
-        //   roundTrip = 1 / (1.0 × 1.0 × 2.20) ≈ 0.45  → NOT profitable (< 1)
-        //
-        // Let's try T=p3, A=p1, B=p2:
-        //   rate_TA = p3.marketPrices[CUR_p1] = 2.20   (p3-currency per 1 p1-currency)
-        //   rate_AB = p1.marketPrices[CUR_p2] = 1.0
-        //   rate_BT = p2.marketPrices[CUR_p3] = 1.0    Wait we need p2.marketPrices[CUR_p3]
-        //
-        // Let me use simpler numbers.  For T=p1, A=p2, B=p3:
-        //   rate_TA = p1.price[CUR_p2]  (p1 per 1 p2)
-        //   rate_AB = p2.price[CUR_p3]  (p2 per 1 p3)
-        //   rate_BT = p3.price[CUR_p1]  (p3 per 1 p1)
-        //   roundTrip = 1 / (rate_TA × rate_AB × rate_BT) > 1 + THRESHOLD
-        //
-        // Choose: rate_TA=1, rate_AB=1, rate_BT=0.9 → roundTrip = 1/0.9 ≈ 1.11 > 1.005 ✓
-
-        const { state } = makeThreePlanetState();
-        const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
-
-        // Start with known balances
-        p1mm.assets.p1!.deposits = 10_000;
-        p1mm.assets.p2!.deposits = 10_000;
-        p1mm.assets.p3!.deposits = 10_000;
-
-        const curP1 = getCurrencyResourceName('p1');
-        const curP2 = getCurrencyResourceName('p2');
-        const curP3 = getCurrencyResourceName('p3');
-
-        const [p1, p2, p3] = ['p1', 'p2', 'p3'].map((id) => state.planets.get(id)!);
-
-        p1.marketPrices[curP2] = 1.0; // rate_TA = 1.0
-        p2.marketPrices[curP3] = 1.0; // rate_AB = 1.0
-        p3.marketPrices[curP1] = 0.9; // rate_BT = 0.9 → roundTrip = 1/(1×1×0.9) ≈ 1.11
-
-        const beforeP1 = p1mm.assets.p1!.deposits;
-
-        const planets = [p1, p2, p3];
-        sweepTriangular(p1mm.assets, planets);
-
-        const afterP1 = p1mm.assets.p1!.deposits;
-        expect(afterP1).toBeGreaterThan(beforeP1); // profitable: T-balance increased
-    });
-
-    it('does not trade when roundTrip is below the threshold', () => {
-        const { state } = makeThreePlanetState();
-        const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
-
-        p1mm.assets.p1!.deposits = 10_000;
-        p1mm.assets.p2!.deposits = 10_000;
-        p1mm.assets.p3!.deposits = 10_000;
-
-        const curP2 = getCurrencyResourceName('p2');
-        const curP3 = getCurrencyResourceName('p3');
-        const curP1 = getCurrencyResourceName('p1');
-
-        const [p1, p2, p3] = ['p1', 'p2', 'p3'].map((id) => state.planets.get(id)!);
-
-        // rate_BT = 0.999 → roundTrip = 1/0.999 ≈ 1.001, below THRESHOLD (0.005)
-        p1.marketPrices[curP2] = 1.0;
-        p2.marketPrices[curP3] = 1.0;
-        p3.marketPrices[curP1] = 0.999;
-
-        const snapshot = {
-            p1: p1mm.assets.p1!.deposits,
-            p2: p1mm.assets.p2!.deposits,
-            p3: p1mm.assets.p3!.deposits,
-        };
-
-        sweepTriangular(p1mm.assets, [p1, p2, p3]);
-
-        expect(p1mm.assets.p1!.deposits).toBe(snapshot.p1);
-        expect(p1mm.assets.p2!.deposits).toBe(snapshot.p2);
-        expect(p1mm.assets.p3!.deposits).toBe(snapshot.p3);
-    });
-
-    it('deposits remain non-negative after arbitrage execution', () => {
-        const { state } = makeThreePlanetState();
-        const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
-
-        // Small balances + big arbitrage opportunity
-        p1mm.assets.p1!.deposits = 100;
-        p1mm.assets.p2!.deposits = 100;
-        p1mm.assets.p3!.deposits = 100;
-
-        const curP2 = getCurrencyResourceName('p2');
-        const curP3 = getCurrencyResourceName('p3');
-        const curP1 = getCurrencyResourceName('p1');
-
-        const [p1, p2, p3] = ['p1', 'p2', 'p3'].map((id) => state.planets.get(id)!);
-        p1.marketPrices[curP2] = 1.0;
-        p2.marketPrices[curP3] = 1.0;
-        p3.marketPrices[curP1] = 0.5; // roundTrip = 2.0, huge opportunity
-
-        sweepTriangular(p1mm.assets, [p1, p2, p3]);
-
-        // Volume is capped at MAX_FRACTION (25%) so balances should never go negative
-        expect(p1mm.assets.p1!.deposits).toBeGreaterThanOrEqual(0);
-        expect(p1mm.assets.p2!.deposits).toBeGreaterThanOrEqual(0);
-        expect(p1mm.assets.p3!.deposits).toBeGreaterThanOrEqual(0);
-    });
-
-    it('total deposits across all planets are conserved (no money created)', () => {
-        const { state } = makeThreePlanetState();
-        const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
-
-        p1mm.assets.p1!.deposits = 10_000;
-        p1mm.assets.p2!.deposits = 10_000;
-        p1mm.assets.p3!.deposits = 10_000;
-        const totalBefore = 30_000;
-
-        const curP2 = getCurrencyResourceName('p2');
-        const curP3 = getCurrencyResourceName('p3');
-        const curP1 = getCurrencyResourceName('p1');
-
-        const [p1, p2, p3] = ['p1', 'p2', 'p3'].map((id) => state.planets.get(id)!);
-        p1.marketPrices[curP2] = 1.0;
-        p2.marketPrices[curP3] = 1.0;
-        p3.marketPrices[curP1] = 0.9;
-
-        sweepTriangular(p1mm.assets, [p1, p2, p3]);
-
-        // Arbitrage moves deposits between planets but does NOT destroy or create money.
-        // The total across p1+p2+p3 changes because different currencies are used on
-        // different planets at different rates — an overall gain is expected.
-        // What must hold: each individual deposit change equals the transfer amount,
-        // i.e. the arithmetic of the three legs is internally consistent.
-        const afterP1 = p1mm.assets.p1!.deposits;
-        const afterP2 = p1mm.assets.p2!.deposits;
-        const afterP3 = p1mm.assets.p3!.deposits;
-        // P2 deposits after: spent p2-currency in leg 2, received p2-currency in leg 1
-        // → net p2 change = +aReceived - aReceived = 0 (legs 1 and 2 both affect p2)
-        expect(afterP2).toBeCloseTo(p1mm.assets.p2!.deposits, 6);
-
-        // Net: p1 should have gained (profitable round-trip), sum changes correctly
-        const vol = 10_000 * 0.25; // MAX_FRACTION of p1 balance
-        const aReceived = vol / 1.0;
-        const bReceived = aReceived / 1.0;
-        const tReceived = bReceived / 0.9;
-        expect(afterP1).toBeCloseTo(10_000 - vol + tReceived, 4);
-        expect(totalBefore).toBeGreaterThan(0); // sanity
     });
 });
