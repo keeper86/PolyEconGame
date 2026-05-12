@@ -619,7 +619,7 @@ describe('handleDispatchShip validation', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 200 },
+            cargoGoal: { resource: steelResourceType, quantity: 200 },
         });
 
         expect(messages[0]).toMatchObject({ type: 'shipDispatched' });
@@ -639,7 +639,7 @@ describe('handleDispatchShip validation', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 200 },
+            cargoGoal: { resource: steelResourceType, quantity: 200 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });

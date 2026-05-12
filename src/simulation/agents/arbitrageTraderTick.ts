@@ -2,7 +2,7 @@ import {
     ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD,
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_MIN_CAPITAL_RESERVE,
-    ARBITRAGE_MIN_PROFIT_MARGIN,
+    ARBITRAGE_MIN_PROFIT_PER_TICK,
     ARBITRAGE_SEED_DEPOSIT,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
     isFirstTickInMonth,
@@ -33,7 +33,8 @@ type RouteCandidate = {
     destPlanetId: string;
     resourceName: string;
     quantity: number;
-    netMargin: number;
+    /** Net profit per tick in currency units (includes repositioning leg if any). */
+    profitPerTick: number;
 };
 
 function scanBestRoute(
@@ -44,14 +45,14 @@ function scanBestRoute(
 ): RouteCandidate | null {
     const planets = Array.from(gameState.planets.values());
     let best: RouteCandidate | null = null;
-    let bestNet = ARBITRAGE_MIN_PROFIT_MARGIN;
+    let bestProfitPerTick = ARBITRAGE_MIN_PROFIT_PER_TICK;
     const debug = process.env.SIM_DEBUG === '1';
     const monthly = isFirstTickInMonth(gameState.tick);
 
     const oneWayTicks = travelTime(ship);
     const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
-    const depreciationPerTrip =
-        (effectiveShipValue(ship, gameState) / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS) * roundTripTicks;
+    const shipValue = effectiveShipValue(ship, gameState);
+    const depreciationRatePerTick = shipValue / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS;
 
     for (const resource of ALL_RESOURCES) {
         if (!canCarryResource(ship, resource)) {
@@ -66,8 +67,7 @@ function scanBestRoute(
             continue;
         }
 
-        // Only consider routes that start from the ship's current planet
-        for (const origin of planets.filter((p) => p.id === shipPlanetId)) {
+        for (const origin of planets) {
             const pBuy = origin.marketPrices[resource.name];
             if (!pBuy || pBuy <= 0) {
                 if (debug && monthly) {
@@ -89,7 +89,10 @@ function scanBestRoute(
                 continue;
             }
 
-            const costPerUnit = depreciationPerTrip / qty;
+            // Repositioning leg: ticks to travel from current planet to origin (0 if already there)
+            const repositionTicks = origin.id === shipPlanetId ? 0 : oneWayTicks;
+            const totalTicks = repositionTicks + roundTripTicks;
+            const depreciation = depreciationRatePerTick * totalTicks;
 
             for (const dest of planets) {
                 if (dest.id === origin.id) {
@@ -111,20 +114,21 @@ function scanBestRoute(
                 const forexRate = origin.marketPrices[currencyName] ?? 1.0;
                 const pSellOrigin = pSellDest * forexRate;
 
-                const net = (pSellOrigin - pBuy - costPerUnit) / pBuy;
+                const grossProfit = (pSellOrigin - pBuy) * qty;
+                const profitPerTick = (grossProfit - depreciation) / totalTicks;
                 if (debug && monthly) {
                     console.log(
-                        `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellAdj=${pSellOrigin.toFixed(2)} costPerUnit=${costPerUnit.toFixed(2)} net=${net.toFixed(3)} (need>${ARBITRAGE_MIN_PROFIT_MARGIN})`,
+                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellAdj=${pSellOrigin.toFixed(2)} qty=${qty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                     );
                 }
-                if (net > bestNet) {
-                    bestNet = net;
+                if (profitPerTick > bestProfitPerTick) {
+                    bestProfitPerTick = profitPerTick;
                     best = {
                         originPlanetId: origin.id,
                         destPlanetId: dest.id,
                         resourceName: resource.name,
                         quantity: qty,
-                        netMargin: net,
+                        profitPerTick,
                     };
                 }
             }
@@ -156,15 +160,32 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
         if (!candidate) {
             if (debug && monthly) {
                 console.log(
-                    `[arb] ${agent.id} ship '${ship.name}': no viable route found (margin threshold=${ARBITRAGE_MIN_PROFIT_MARGIN})`,
+                    `[arb] ${agent.id} ship '${ship.name}': no viable route found (profitPerTick threshold=${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                 );
             }
             continue;
         }
 
+        if (candidate.originPlanetId !== shipPlanetId) {
+            // Ship needs to reposition to the origin planet first — send it empty
+            if (debug) {
+                console.log(
+                    `[arb] ${agent.id} ship '${ship.name}': REPOSITIONING ${shipPlanetId}→${candidate.originPlanetId} for ${candidate.resourceName} route (profitPerTick=${candidate.profitPerTick.toFixed(2)})`,
+                );
+            }
+            (ship as TransportShip).state = {
+                type: 'loading',
+                planetId: shipPlanetId,
+                to: candidate.originPlanetId,
+                cargoGoal: null,
+                currentCargo: null,
+            };
+            continue;
+        }
+
         if (debug) {
             console.log(
-                `[arb] ${agent.id} ship '${ship.name}': ASSIGNED ${candidate.resourceName} ${candidate.originPlanetId}→${candidate.destPlanetId} qty=${candidate.quantity} margin=${candidate.netMargin.toFixed(3)}`,
+                `[arb] ${agent.id} ship '${ship.name}': ASSIGNED ${candidate.resourceName} ${candidate.originPlanetId}→${candidate.destPlanetId} qty=${candidate.quantity} profitPerTick=${candidate.profitPerTick.toFixed(2)}`,
             );
         }
 

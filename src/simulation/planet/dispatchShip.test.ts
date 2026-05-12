@@ -115,7 +115,7 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 100 },
+            cargoGoal: { resource: steelResourceType, quantity: 100 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
@@ -131,7 +131,7 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 100 },
+            cargoGoal: { resource: steelResourceType, quantity: 100 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: expect.stringContaining('Steel') });
     });
@@ -149,7 +149,7 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 200 },
+            cargoGoal: { resource: steelResourceType, quantity: 200 },
         });
         expect(messages[0]).toMatchObject({
             type: 'shipDispatchFailed',
@@ -170,7 +170,7 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 300 },
+            cargoGoal: { resource: steelResourceType, quantity: 300 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatched', shipId: ship.id });
         expect(ship.state.type).toBe('loading');
@@ -179,7 +179,7 @@ describe('handleDispatchShip', () => {
             expect(ship.state.contractId).toBeUndefined();
             expect(ship.state.posterAgentId).toBeUndefined();
             expect(ship.state.cargoGoal?.quantity).toBe(300);
-            expect(ship.state.cargoGoal?.resource.name).toBe('Steel');
+            expect(ship.state.cargoGoal?.resource).toBe(steelResourceType);
         }
     });
 });

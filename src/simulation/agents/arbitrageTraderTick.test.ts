@@ -3,7 +3,7 @@ import {
     ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD,
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_MIN_CAPITAL_RESERVE,
-    ARBITRAGE_MIN_PROFIT_MARGIN,
+    ARBITRAGE_MIN_PROFIT_PER_TICK,
     ARBITRAGE_SEED_DEPOSIT,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
 } from '../constants';
@@ -106,10 +106,14 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
         expect(s.to).toBe('p-dest');
     });
 
-    it('does not assign a route when the price gap is too small', () => {
+    it('does not assign a route when there is no price spread', () => {
+        // With pBuy == pSell the gross profit is zero and profitPerTick is negative
+        // (depreciation with no earnings), which is below ARBITRAGE_MIN_PROFIT_PER_TICK.
+        // Note: a tiny spread like $1 on 150k units IS profitable under the new metric
+        // (profitPerTick ≈ 381 >> 100), so the operative guard is strictly no-gap / negative-gap.
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
-            destPrice: 101,
+            destPrice: 100,
             agentDeposits: 50_000_000,
             tick: 5,
         });
@@ -198,21 +202,34 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
         expect(ship.state.type).toBe('loading');
     });
 
-    it("does not assign a route whose origin differs from the ship's current planet (BUG B1)", () => {
+    it('dispatches ship as empty ferry when idle at destination and profit route requires repositioning', () => {
+        // Best route: buy Steel at p-origin (100) → sell at p-dest (300).
+        // Ship is already at p-dest, so it needs to reposition to p-origin first.
+        // profitPerTick = ((300-100)×150k - depr_561) / 561 ≈ 53,476 >> threshold
         const { state, ship } = makeTwoPlanetState({
-            originPrice: 100, // p-origin cheap
-            destPrice: 300, // p-dest expensive
+            originPrice: 100,
+            destPrice: 300,
             agentDeposits: 50_000_000,
             tick: 5,
         });
 
-        // Ship is idle at p-dest — from there the only candidate is p-origin (sell price 100),
-        // which would yield a negative margin, so no route should be assigned.
         ship.state = { type: 'idle', planetId: 'p-dest' };
 
         arbitrageTraderTick(state);
 
-        expect(ship.state.type).toBe('idle');
+        // Ship must be sent as an empty ferry from p-dest to p-origin
+        expect(ship.state.type).toBe('loading');
+        const s = ship.state as unknown as {
+            type: 'loading';
+            planetId: string;
+            to: string;
+            cargoGoal: unknown;
+            currentCargo: unknown;
+        };
+        expect(s.cargoGoal).toBeNull();
+        expect(s.currentCargo).toBeNull();
+        expect(s.planetId).toBe('p-dest');
+        expect(s.to).toBe('p-origin');
     });
 
     it('applies forex conversion when evaluating cross-planet profitability', () => {
@@ -258,19 +275,17 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
         expect(ship.state.type).toBe('idle');
     });
 
-    it('minimum profit margin is enforced', () => {
-        const originPrice = 100;
-        const destPrice = Math.round(originPrice * (1 + ARBITRAGE_MIN_PROFIT_MARGIN));
+    it('rejects route when there is no gross profit (sell price equals buy price)', () => {
+        // profitPerTick = ((100-100)×qty - depr) / totalTicks < 0 < ARBITRAGE_MIN_PROFIT_PER_TICK
         const { state, ship } = makeTwoPlanetState({
-            originPrice,
-            destPrice,
+            originPrice: 100,
+            destPrice: 100,
             agentDeposits: 50_000_000,
             tick: 5,
         });
 
         arbitrageTraderTick(state);
 
-        // With trip cost included, net < margin, so no route
         expect(ship.state.type).toBe('idle');
     });
 });
@@ -639,7 +654,6 @@ describe('arbitrageTraderTick – robustness', () => {
 });
 
 describe('arbitrageTraderTick – capital barrier', () => {
-
     const BOOTSTRAP_DEPOSITS = ARBITRAGE_SEED_DEPOSIT; // 250,000
     const STEEL_MAX_QTY = 150_000; // mass-limited for Bulk Carrier 1
 
@@ -721,47 +735,44 @@ describe('arbitrageTraderTick – transport cost formula', () => {
     // For Bulk Carrier 1 (speed=6, scale='small' → scaleMapping=1) with fresh condition
     // (maintainanceStatus=1, maxMaintenance=1, no maintenance service market price):
     //
-    //   effectiveShipValue = scaleMapping(1) × speed(6) × qualityFactor(1) × maxMaintenance(1) = 6
-    //   oneWayTicks        = ceil(1000 / 6) = 167
-    //   roundTripTicks     = 2×167 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS(60) = 394
-    //   depreciationPerTrip = (6 / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS) × 394 ≈ 0.657
-    //   costPerUnit         = 0.657 / 150,000 ≈ 0.0000044  (< 0.0001% of Steel price)
+    //   effectiveShipValue       = scaleMapping(1) × speed(6) × qualityFactor(1) × maxMaintenance(1) = 6
+    //   oneWayTicks              = ceil(1000 / 6) = 167
+    //   roundTripTicks           = 2×167 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS(60) = 394
+    //   depreciationRatePerTick  = 6 / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS = 6/3600 ≈ 0.001667
+    //   depreciation (local)     = 0.001667 × 394 ≈ 0.657
+    //   depreciation (reposition)= 0.001667 × (167 + 394) = 0.001667 × 561 ≈ 0.935
     //
-    // Conclusion: transport depreciation is negligible; the operative threshold is simply
-    // net = (destPrice - originPrice) / originPrice > ARBITRAGE_MIN_PROFIT_MARGIN (5%).
+    // Threshold: profitPerTick = (grossProfit - depreciation) / totalTicks > ARBITRAGE_MIN_PROFIT_PER_TICK (100)
+    // For Steel maxQty=150k and a $1 gap: profitPerTick ≈ 150,000/394 ≈ 381 >> 100.
+    // The threshold only bites when quantity is very small (capital-constrained) or there is no real spread.
 
-    it('computes the expected depreciation cost per unit for a new Bulk Carrier 1 on Steel', () => {
+    it('computes the expected local and reposition depreciation for a new Bulk Carrier 1', () => {
         const { pOrigin, ship } = makeTwoPlanetState({ tick: 5 });
         const shipAsTransport = ship as TransportShip;
 
         const shipValue = effectiveShipValue(shipAsTransport); // no gameState → no maintenance penalty
         const oneWayTicks = travelTime(shipAsTransport);
         const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
-        const depreciationPerTrip = (shipValue / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS) * roundTripTicks;
-        const steelMaxQty = Math.floor(
-            Math.min(
-                shipAsTransport.type.cargoSpecification.volume / 0.3, // volumePerQuantity for Steel
-                shipAsTransport.type.cargoSpecification.mass / 1, // massPerQuantity for Steel
-            ),
-        );
-        const costPerUnit = depreciationPerTrip / steelMaxQty;
+        const depreciationRatePerTick = shipValue / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS;
+        const depreciationLocal = depreciationRatePerTick * roundTripTicks;
+        const totalTicksReposition = oneWayTicks + roundTripTicks;
+        const depreciationReposition = depreciationRatePerTick * totalTicksReposition;
 
-        // Ship should be worth 6, one-way 167 ticks, round-trip 394 ticks
         expect(shipValue).toBe(6);
         expect(oneWayTicks).toBe(167);
         expect(roundTripTicks).toBe(394);
-        expect(steelMaxQty).toBe(150_000);
-        // costPerUnit < 0.001 confirms transport cost is negligible vs any sane commodity price
-        expect(costPerUnit).toBeLessThan(0.001);
-        void pOrigin; // used above for context
+        expect(totalTicksReposition).toBe(561);
+        expect(depreciationLocal).toBeCloseTo(0.657, 2);
+        expect(depreciationReposition).toBeCloseTo(0.935, 2);
+        void pOrigin;
     });
 
-    it('route is assigned when the price gap barely exceeds 5% (transport cost negligible)', () => {
-        // net = (106 - 100 - ~0.0000044) / 100 ≈ 5.9999% > 5% → route
+    it('assigns route when price gap produces profitPerTick above ARBITRAGE_MIN_PROFIT_PER_TICK', () => {
+        // profitPerTick = (6 × 150,000 − depr) / 394 ≈ 2,285 >> ARBITRAGE_MIN_PROFIT_PER_TICK (100)
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 106,
-            agentDeposits: 50_000_000, // remove capital constraint
+            agentDeposits: 50_000_000,
             tick: 5,
         });
 
@@ -770,8 +781,9 @@ describe('arbitrageTraderTick – transport cost formula', () => {
         expect(ship.state.type).toBe('loading');
     });
 
-    it('route is NOT assigned when price gap equals exactly 5% (threshold is strict >)', () => {
-        // net = (105 - 100 - ~0.0000044) / 100 ≈ 4.9999% < 5% → no route
+    it('also assigns route at a 5% price gap since profitPerTick is well above the absolute threshold', () => {
+        // profitPerTick = (5 × 150,000 − depr) / 394 ≈ 1,904 >> ARBITRAGE_MIN_PROFIT_PER_TICK (100)
+        // Under the old % threshold this was rejected; the new absolute threshold accepts it.
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 105,
@@ -781,7 +793,159 @@ describe('arbitrageTraderTick – transport cost formula', () => {
 
         arbitrageTraderTick(state);
 
-        expect(ship.state.type).toBe('idle');
+        expect(ship.state.type).toBe('loading');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-planet repositioning
+// ---------------------------------------------------------------------------
+
+/**
+ * Three-planet state: ship starts idle at p-current; routes available on p-origin and p-dest.
+ * Setting currentSteelPrice=0 removes p-current as a viable origin (no buy opportunity).
+ */
+function makeThreePlanetState(opts: {
+    currentSteelPrice?: number;
+    originSteelPrice?: number;
+    destSteelPrice?: number;
+    agentDeposits?: number;
+    tick?: number;
+}) {
+    const {
+        currentSteelPrice = 0,
+        originSteelPrice = 100,
+        destSteelPrice = 2_000,
+        agentDeposits = 50_000_000,
+        tick = 5,
+    } = opts;
+
+    const pCurrent = makePlanet({ id: 'p-current', name: 'Current', marketPrices: { Steel: currentSteelPrice } });
+    const pOrigin = makePlanet({ id: 'p-origin', name: 'Origin', marketPrices: { Steel: originSteelPrice } });
+    const pDest = makePlanet({ id: 'p-dest', name: 'Destination', marketPrices: { Steel: destSteelPrice } });
+
+    const makeAssets = (id: string) =>
+        makeAgentPlanetAssets(id, {
+            deposits: agentDeposits,
+            market: { sell: {}, buy: {} },
+            licenses: { commercial: { acquiredTick: 0, frozen: false } },
+        });
+
+    const agentId = 'arb-three';
+    const agent = makeAgent(agentId, 'p-current', 'Three-Planet Arb', {
+        agentRole: 'arbitrage_trader',
+        automated: true,
+        assets: {
+            'p-current': makeAssets('p-current'),
+            'p-origin': makeAssets('p-origin'),
+            'p-dest': makeAssets('p-dest'),
+        },
+    });
+
+    const ship = createShip(SHIP_TYPE, 0, 'Trader Ship', pCurrent) as TransportShip;
+    agent.ships.push(ship);
+
+    const state = makeGameState([pCurrent, pOrigin, pDest], [agent], tick);
+    state.arbitrageTraders.set(agentId, agent);
+
+    return { state, pCurrent, pOrigin, pDest, agent, ship };
+}
+
+describe('arbitrageTraderTick – cross-planet repositioning', () => {
+    it('dispatches ship as empty ferry when the only profitable route starts on a different planet', () => {
+        // p-current has Steel=0 → no buy opportunity there.
+        // Only viable route: p-origin(100) → p-dest(2000)
+        // profitPerTick ≈ ((2000-100)×150k) / 561 ≈ 508k >> threshold
+        const { state, ship } = makeThreePlanetState({
+            currentSteelPrice: 0,
+            originSteelPrice: 100,
+            destSteelPrice: 2_000,
+        });
+
+        arbitrageTraderTick(state);
+
+        expect(ship.state.type).toBe('loading');
+        const s = ship.state as unknown as {
+            type: 'loading';
+            planetId: string;
+            to: string;
+            cargoGoal: unknown;
+            currentCargo: unknown;
+        };
+        expect(s.cargoGoal).toBeNull();
+        expect(s.currentCargo).toBeNull();
+        expect(s.planetId).toBe('p-current');
+        expect(s.to).toBe('p-origin');
+    });
+
+    it('prefers cross-planet route over local when cross-planet profitPerTick is higher', () => {
+        // Local route  (p-current=500 → p-dest=10000): qty=min(150k, 50M/500)=100k
+        //   profitPerTick = (9500×100k) / 394 ≈ 2,411k
+        // Remote route (p-origin=100 → p-dest=10000, +reposition): qty=150k
+        //   profitPerTick = (9900×150k) / 561 ≈ 2,648k  ← remote wins
+        const { state, ship } = makeThreePlanetState({
+            currentSteelPrice: 500,
+            originSteelPrice: 100,
+            destSteelPrice: 10_000,
+        });
+
+        arbitrageTraderTick(state);
+
+        // Remote route wins → ship sent as empty ferry to p-origin
+        expect(ship.state.type).toBe('loading');
+        const s = ship.state as { type: 'loading'; planetId: string; to: string; cargoGoal: unknown };
+        expect(s.cargoGoal).toBeNull();
+        expect(s.planetId).toBe('p-current');
+        expect(s.to).toBe('p-origin');
+    });
+
+    it('stays on the local route when local profitPerTick beats the repositioning route', () => {
+        // Local route  (p-current=100 → p-dest=200): qty=150k
+        //   profitPerTick = (100×150k) / 394 ≈ 38,071
+        // Remote route (p-origin=96 → p-dest=200, +reposition): qty=150k
+        //   profitPerTick = (104×150k) / 561 ≈ 27,807  ← local wins
+        const { state, ship } = makeThreePlanetState({
+            currentSteelPrice: 100,
+            originSteelPrice: 96,
+            destSteelPrice: 200,
+        });
+
+        arbitrageTraderTick(state);
+
+        // Local route wins → ship loads directly
+        expect(ship.state.type).toBe('loading');
+        const s = ship.state as {
+            type: 'loading';
+            planetId: string;
+            to: string;
+            cargoGoal: { resource: { name: string } } | null;
+        };
+        expect(s.cargoGoal).not.toBeNull();
+        expect(s.cargoGoal!.resource.name).toBe('Steel');
+        expect(s.planetId).toBe('p-current');
+        expect(s.to).toBe('p-dest');
+    });
+
+    it('repositioning ticks increase totalTicks and decrease profitPerTick for the same gross profit', () => {
+        // For BulkCarrier1: oneWayTicks=167, roundTripTicks=394, totalTicksWithReposition=561
+        // The reposition leg adds a full oneWayTicks overhead, penalising the profit-per-tick
+        // metric and making the agent prefer routes that start at the ship's current location.
+        const { ship } = makeTwoPlanetState({ originPrice: 100, destPrice: 500, agentDeposits: 50_000_000, tick: 5 });
+        const shipAsTransport = ship as TransportShip;
+
+        const qty = 150_000;
+        const oneWayTicks = travelTime(shipAsTransport); // 167
+        const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS; // 394
+        const totalTicksReposition = oneWayTicks + roundTripTicks; // 561
+        const depRatePerTick = effectiveShipValue(shipAsTransport) / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS;
+        const grossProfit = (500 - 100) * qty;
+
+        const profitPerTickLocal = (grossProfit - depRatePerTick * roundTripTicks) / roundTripTicks;
+        const profitPerTickReposition = (grossProfit - depRatePerTick * totalTicksReposition) / totalTicksReposition;
+
+        expect(profitPerTickLocal).toBeGreaterThan(profitPerTickReposition);
+        // Even with the reposition penalty the route still clears the minimum threshold
+        expect(profitPerTickReposition).toBeGreaterThan(ARBITRAGE_MIN_PROFIT_PER_TICK);
     });
 });
 

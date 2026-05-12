@@ -320,8 +320,8 @@ export const SHIPBUILDER_INPUT_BUFFER_TICKS = 20;
 /** Seed deposit granted to each arbitrage trader on every planet. */
 export const ARBITRAGE_SEED_DEPOSIT = 1_000_000;
 
-/** Minimum net return on capital (as fraction of buy price) required to activate a route. */
-export const ARBITRAGE_MIN_PROFIT_MARGIN = 0.05;
+/** Minimum net profit per tick (in currency units) required to activate a route, including any repositioning leg. */
+export const ARBITRAGE_MIN_PROFIT_PER_TICK = 100;
 
 /** Minimum total deposits on home planet before buying an additional ship. */
 export const ARBITRAGE_MIN_CAPITAL_RESERVE = 100_000;
