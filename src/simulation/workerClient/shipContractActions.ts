@@ -6,7 +6,7 @@ import { pushTickerEvent } from '../planet/planet';
 import type { ConstructionContract, ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
 import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
-import { appendTradeRecord, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
+import { appendTradeRecord, createShipListing, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
 import type { OutboundMessage, PendingAction } from './messages';
 
 function generateId(prefix: string): string {
@@ -675,8 +675,6 @@ export function handlePostShipListing(
         return;
     }
 
-    ship.state = { type: 'listed', planetId };
-
     const listingId = generateId('sl');
     const listing: ShipListing = {
         id: listingId,
@@ -688,7 +686,7 @@ export function handlePostShipListing(
         planetId,
         postedAtTick: state.tick,
     };
-    assets.shipListings.push(listing);
+    createShipListing(ship, assets, listing);
 
     safePostMessage({ type: 'shipListingPosted', requestId, agentId, listingId });
 }

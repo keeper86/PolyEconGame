@@ -175,6 +175,21 @@ export function findCheapestShipListing(
 }
 
 /**
+ * Creates a ship listing and marks the ship as listed.
+ * This is the single authoritative place that mutates both ship.state and
+ * assets.shipListings — callers must only call this when they have already
+ * validated that the ship is idle and not already listed.
+ */
+export function createShipListing(
+    ship: Ship,
+    assets: { shipListings: ShipListing[] },
+    listing: ShipListing,
+): void {
+    ship.state = { type: 'listed', planetId: listing.planetId };
+    assets.shipListings.push(listing);
+}
+
+/**
  * Executes an atomic ship purchase: deducts funds from the buyer, credits the
  * seller, transfers the ship to the buyer's fleet, and removes the listing.
  * Updates the ship capital market EMA and appends a trade record.

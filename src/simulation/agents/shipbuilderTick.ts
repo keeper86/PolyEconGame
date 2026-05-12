@@ -10,7 +10,7 @@ import type { ShipConstructionFacility } from '../planet/facility';
 import type { TransportShipType } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
 import type { ShipListing } from '../ships/ships';
-import { updateShipEma } from '../ships/shipMarket';
+import { createShipListing, updateShipEma } from '../ships/shipMarket';
 
 const ALL_TRANSPORT_TYPES: readonly TransportShipType[] = Object.values(shiptypes)
     .filter((cat) => cat !== shiptypes.passenger)
@@ -82,7 +82,7 @@ function autoListIdleShips(agent: Agent, gameState: GameState): void {
             planetId,
             postedAtTick: gameState.tick,
         };
-        assets.shipListings.push(listing);
+        createShipListing(ship, assets, listing);
 
         // Record price signal even before a trade occurs
         updateShipEma(gameState.shipCapitalMarket, ship.type.name, askPrice);

@@ -9,7 +9,7 @@ import {
 import type { Agent, GameState } from '../planet/planet';
 import { ALL_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { travelTime } from '../ships/shipHandlers';
-import { effectiveShipValue, executeShipPurchase, findCheapestShipListing, updateShipEma } from '../ships/shipMarket';
+import { createShipListing, effectiveShipValue, executeShipPurchase, findCheapestShipListing, updateShipEma } from '../ships/shipMarket';
 import type { ShipListing, TransportShip } from '../ships/ships';
 import { canCarryResource, shiptypes } from '../ships/ships';
 import { getCurrencyResourceName } from '../market/currencyResources';
@@ -258,9 +258,8 @@ function manageFleet(agent: Agent, gameState: GameState): void {
             planetId,
             postedAtTick: gameState.tick,
         };
-        assets.shipListings.push(listing);
+        createShipListing(ship, assets, listing);
         updateShipEma(gameState.shipCapitalMarket, ship.type.name, listing.askPrice);
-        ship.state = { type: 'listed', planetId };
     }
 }
 

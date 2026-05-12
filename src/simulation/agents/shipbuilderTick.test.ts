@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     SHIPBUILDER_LISTING_MARKUP,
     SHIPBUILDER_PROFIT_THRESHOLD,
@@ -10,6 +10,7 @@ import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../
 import { createShip, shiptypes } from '../ships/ships';
 import type { ShipConstructionFacility } from '../planet/facility';
 import { shipbuilderTick } from './shipbuilderTick';
+import { handleAcceptShipListing } from '../workerClient/shipContractActions';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -201,6 +202,52 @@ describe('shipbuilderTick – autoListIdleShips', () => {
         shipbuilderTick(state);
         // EMA should be initialised from the listing ask price
         expect(state.shipCapitalMarket.emaPrice[SHIP_TYPE.name]).toBeGreaterThan(0);
+    });
+
+    it('sets ship state to "listed" so a buyer can accept the listing', () => {
+        const { state, planet, builder } = makeStateWithShipbuilder('p1');
+        const ship = createShip(SHIP_TYPE, 0, 'Carrier 1', planet);
+        builder.ships.push(ship);
+
+        shipbuilderTick(state);
+
+        expect(ship.state.type).toBe('listed');
+    });
+
+    it('auto-listed ship can be accepted by a buyer via handleAcceptShipListing', () => {
+        const { state, planet, builder } = makeStateWithShipbuilder('p1');
+        const ship = createShip(SHIP_TYPE, 0, 'Carrier 1', planet);
+        builder.ships.push(ship);
+
+        shipbuilderTick(state);
+
+        const listing = builder.assets.p1!.shipListings[0];
+        expect(listing).toBeDefined();
+
+        // Set up a buyer with enough deposits
+        const buyer = makeAgent('buyer', 'p1');
+        buyer.assets.p1!.deposits = listing.askPrice * 2;
+        state.agents.set(buyer.id, buyer);
+
+        const messages: ReturnType<typeof vi.fn> = vi.fn();
+        handleAcceptShipListing(
+            state,
+            {
+                type: 'acceptShipListing',
+                requestId: 'req-1',
+                buyerAgentId: buyer.id,
+                buyerPlanetId: 'p1',
+                sellerAgentId: builder.id,
+                listingId: listing.id,
+            },
+            messages,
+        );
+
+        expect(messages).toHaveBeenCalledOnce();
+        expect(messages.mock.calls[0][0]).toMatchObject({ type: 'shipListingAccepted' });
+        // The ship transferred to the buyer
+        expect(buyer.ships).toHaveLength(1);
+        expect(buyer.ships[0].id).toBe(ship.id);
     });
 });
 

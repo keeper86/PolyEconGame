@@ -31,14 +31,12 @@ function ProductCell({
     return (
         <Link
             href={href as never}
-            className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 hover:ring-2 hover:ring-primary/50 transition-all'
+            className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 hover:ring-2 hover:ring-primary/50 transition-all w-[100px]'
         >
-            <ProductIcon productName={resourceName} size={24} />
-            <span className='tabular-nums text-xs font-medium'>
+            <ProductIcon productName={resourceName} size={36} />
+            <span className='flex flex-col flex-grow text-xs font-medium text-right'>
                 {formatNumberWithUnit(currentValue, 'currency', planetId)}
-                <span className='text-muted-foreground ml-1'>
-                    ({formatNumberWithUnit(lastValue, 'currency', planetId)})
-                </span>
+                <span className='text-muted-foreground'>{formatNumberWithUnit(lastValue, 'currency', planetId)}</span>
             </span>
         </Link>
     );
@@ -117,18 +115,21 @@ export default function ProductResolutionPanel({
         if (currentBought.value !== 0 || lastBought.value !== 0) {
             boughtEntries.push([name, currentBought, lastBought]);
         }
+        boughtEntries.sort((a, b) => b[1].value - a[1].value); // Sort by current month value desc
 
         const currentSold = monthAcc.soldResources[name] ?? { quantity: 0, value: 0 };
         const lastSold = lastMonthAcc.soldResources[name] ?? { quantity: 0, value: 0 };
         if (currentSold.value !== 0 || lastSold.value !== 0) {
             soldEntries.push([name, currentSold, lastSold]);
         }
+        soldEntries.sort((a, b) => b[1].value - a[1].value); // Sort by current month value desc
 
         const currentDepr = monthAcc.depreciatedServices[name] ?? { quantity: 0, value: 0 };
         const lastDepr = lastMonthAcc.depreciatedServices[name] ?? { quantity: 0, value: 0 };
         if (currentDepr.value !== 0 || lastDepr.value !== 0) {
             depreciatedEntries.push([name, currentDepr, lastDepr]);
         }
+        depreciatedEntries.sort((a, b) => b[1].value - a[1].value); // Sort by current month value desc
     }
 
     return (

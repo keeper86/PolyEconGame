@@ -1,5 +1,6 @@
 import { SHIPBUILDER_WORKING_CAPITAL, SHIPBUILDER_BOOTSTRAP_LOAN, SHIPBUILDER_LISTING_MARKUP } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
+import { createShipListing } from '../ships/shipMarket';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import type { Agent, GameState } from '../planet/planet';
 import { createShip, shiptypes } from '../ships/ships';
@@ -94,7 +95,7 @@ export function seedShipbuilderAgents(gameState: GameState): void {
                 planetId: planet.id,
                 postedAtTick: 0,
             };
-            assets.shipListings.push(listing);
+            createShipListing(ship, assets, listing);
         }
 
         // Register in both the role-index Map and the main agents Map
