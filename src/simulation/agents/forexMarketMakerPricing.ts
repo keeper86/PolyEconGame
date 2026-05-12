@@ -1,4 +1,10 @@
-import { FOREX_MM_BASE_SPREAD, FOREX_MM_MAX_TRADE_FRACTION, FOREX_MM_MIN_TRADE_AMOUNT, FOREX_MM_TARGET_DEPOSIT, PRICE_CEIL } from '../constants';
+import {
+    FOREX_MM_BASE_SPREAD,
+    FOREX_MM_MAX_TRADE_FRACTION,
+    FOREX_MM_MIN_TRADE_AMOUNT,
+    FOREX_MM_TARGET_DEPOSIT,
+    PRICE_CEIL,
+} from '../constants';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import {
     DEFAULT_EXCHANGE_RATE,

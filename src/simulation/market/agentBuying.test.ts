@@ -300,7 +300,6 @@ describe('automaticPricing — buy side', () => {
         const bid = buyer.assets.p.market!.buy[COAL]!;
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
     });
-
 });
 
 // ---------------------------------------------------------------------------
