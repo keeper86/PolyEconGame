@@ -4,7 +4,6 @@ import {
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_MIN_CAPITAL_RESERVE,
     ARBITRAGE_MIN_PROFIT_PER_TICK,
-    ARBITRAGE_SEED_DEPOSIT,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
 } from '../constants';
 import { getCurrencyResourceName } from '../market/currencyResources';
@@ -562,7 +561,8 @@ describe('arbitrageTraderTick – manageFleet: trim idle ships', () => {
 
     it("BUG M2 – ship state should transition to 'listed' when added to shipListings", () => {
         const currentTick = 1;
-        const { state, agent, ship } = makeTwoPlanetState({ tick: currentTick });
+        // agentDeposits: 0 → no route is affordable, ship stays idle so manageFleet can list it
+        const { state, agent, ship } = makeTwoPlanetState({ tick: currentTick, agentDeposits: 0 });
 
         ship.builtAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
         ship.idleAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
@@ -654,15 +654,15 @@ describe('arbitrageTraderTick – robustness', () => {
 });
 
 describe('arbitrageTraderTick – capital barrier', () => {
-    const BOOTSTRAP_DEPOSITS = ARBITRAGE_SEED_DEPOSIT; // 250,000
-    const STEEL_MAX_QTY = 150_000; // mass-limited for Bulk Carrier 1
+    // The implementation caps qty = min(maxQty, floor(deposits / pBuy)).
+    // A route is blocked only when floor(deposits / pBuy) < 1, i.e. pBuy > deposits.
+    const BOOTSTRAP_DEPOSITS = 250_000;
 
-    it('blocks route assignment when bootstrap deposits cannot cover a full Steel cargo at pBuy=2', () => {
-        // requiredCapital = 2 × 150,000 = 300,000 > 250,000 deposits → capital check fails
-        // destPrice is intentionally very high to confirm capital — not margin — is the blocker.
+    it('blocks route assignment when unit price exceeds total deposits (cannot afford even 1 unit)', () => {
+        // pBuy=500_000 > deposits=250_000 → affordableQty=0 → route skipped
         const { state, ship } = makeTwoPlanetState({
-            originPrice: 2,
-            destPrice: 10_000,
+            originPrice: 500_000,
+            destPrice: 10_000_000,
             agentDeposits: BOOTSTRAP_DEPOSITS,
             tick: 5,
         });
@@ -672,10 +672,10 @@ describe('arbitrageTraderTick – capital barrier', () => {
         expect(ship.state.type).toBe('idle');
     });
 
-    it('permits route assignment when deposits cover a full Steel cargo at pBuy=1', () => {
-        // requiredCapital = 1 × 150,000 = 150,000 ≤ 250,000 deposits → capital check passes
+    it('permits route assignment with partial cargo when deposits are less than maxQty * pBuy', () => {
+        // pBuy=2, deposits=250_000 → affordableQty=125_000 < maxQty=150_000 → dispatched with partial qty
         const { state, ship } = makeTwoPlanetState({
-            originPrice: 1,
+            originPrice: 2,
             destPrice: 200,
             agentDeposits: BOOTSTRAP_DEPOSITS,
             tick: 5,
@@ -686,23 +686,21 @@ describe('arbitrageTraderTick – capital barrier', () => {
         expect(ship.state.type).toBe('loading');
     });
 
-    it('capital threshold boundary: largest pBuy that still passes is floor(deposits / maxQty)', () => {
-        const maxAffordablePBuy = Math.floor(BOOTSTRAP_DEPOSITS / STEEL_MAX_QTY); // = 1
-
-        // At boundary price → passes
+    it('capital threshold boundary: blocks when pBuy > deposits, passes when pBuy == deposits', () => {
+        // At pBuy == deposits: floor(deposits/pBuy) = 1 unit → passes
         const { state: stateOk, ship: shipOk } = makeTwoPlanetState({
-            originPrice: maxAffordablePBuy,
-            destPrice: maxAffordablePBuy * 100,
+            originPrice: BOOTSTRAP_DEPOSITS,
+            destPrice: BOOTSTRAP_DEPOSITS * 100,
             agentDeposits: BOOTSTRAP_DEPOSITS,
             tick: 5,
         });
         arbitrageTraderTick(stateOk);
         expect(shipOk.state.type).toBe('loading');
 
-        // One unit above → fails
+        // At pBuy = deposits + 1: floor(deposits/pBuy) = 0 → blocked
         const { state: stateBlocked, ship: shipBlocked } = makeTwoPlanetState({
-            originPrice: maxAffordablePBuy + 1,
-            destPrice: (maxAffordablePBuy + 1) * 100,
+            originPrice: BOOTSTRAP_DEPOSITS + 1,
+            destPrice: (BOOTSTRAP_DEPOSITS + 1) * 100,
             agentDeposits: BOOTSTRAP_DEPOSITS,
             tick: 5,
         });
@@ -713,7 +711,7 @@ describe('arbitrageTraderTick – capital barrier', () => {
     it('route is unblocked when the agent has been capitalised beyond bootstrap level', () => {
         // In practice, arbitrage agents accumulate deposits after their first successful trades.
         // With sufficient capital, higher commodity prices become reachable.
-        const richDeposits = STEEL_MAX_QTY * 100; // can afford Steel at pBuy=100
+        const richDeposits = 15_000_000; // can afford 150,000 units at pBuy=100
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 200,

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     FOREX_MM_BASE_SPREAD,
     FOREX_MM_COUNT,
+    FOREX_MM_MAX_TRADE_FRACTION,
     FOREX_MM_SEED_LOAN,
     FOREX_MM_TARGET_DEPOSIT,
     FOREX_MM_WORKING_CAPITAL,
@@ -236,13 +237,13 @@ describe('forexMarketMakerPricing', () => {
         const { state } = makeSeededStateMultiPlanet();
 
         // p1-homed MM: local (p1) balance = TARGET, foreign (p2) balance = 2×TARGET
-        // Shading formula: shading = 1 + 0.1*(T/T − 1) − 0.1*(2T/T − 1) = 1 − 0.1 = 0.9
+        // Constant-product formula: fairMid = DEFAULT * (local / foreign) = 1.0 * (T / 2T) = 0.5
         const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
         p1mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
         p1mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT * 2; // fully overstocked
 
         // p2-homed MM: local (p1) balance = TARGET, foreign (p2) balance = TARGET
-        // Shading formula: shading = 1 (neutral)
+        // Constant-product formula: fairMid = 1.0 * (T / T) = 1.0
         const p2mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p2')!;
         p2mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
         p2mm.assets.p2!.deposits = FOREX_MM_TARGET_DEPOSIT;
@@ -255,19 +256,18 @@ describe('forexMarketMakerPricing', () => {
 
         expect(overstockedAsk).toBeLessThan(neutralAsk);
 
-        // fairMid_over = 0.9, fairMid_neutral = 1.0
-        expect(overstockedAsk).toBeCloseTo(0.9 * (1 + FOREX_MM_BASE_SPREAD), 6);
+        // fairMid_over = 0.5, fairMid_neutral = 1.0
+        expect(overstockedAsk).toBeCloseTo(0.5 * (1 + FOREX_MM_BASE_SPREAD), 6);
         expect(neutralAsk).toBeCloseTo(1.0 * (1 + FOREX_MM_BASE_SPREAD), 6);
     });
 
     it('MM with depleted foreign inventory quotes a higher ask than neutral', () => {
         const { state } = makeSeededStateMultiPlanet();
 
-        // With the inventory-shading model, foreign=0 gives shading > 1 → ask rises
-        // (bounded, not explosive).
+        // With the constant-product model, near-zero foreign gives fairMid → PRICE_CEIL → ask = PRICE_CEIL.
         const p1mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p1')!;
         p1mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
-        p1mm.assets.p2!.deposits = 0; // fully depleted foreign inventory
+        p1mm.assets.p2!.deposits = 1; // near-zero foreign inventory (not zero, to keep the ask posted)
 
         const p2mm = [...state.forexMarketMakers.values()].find((mm) => mm.associatedPlanetId === 'p2')!;
         p2mm.assets.p1!.deposits = FOREX_MM_TARGET_DEPOSIT;
@@ -295,15 +295,18 @@ describe('forexMarketMakerPricing', () => {
         forexMarketMakerPricing(state);
 
         const curP3 = getCurrencyResourceName('p3');
-        // MM wants TARGET more p3-currency.  It bids on p1 AND p2 (2 trading planets).
-        // Each planet should get bidStorageTarget = 0 + TARGET/2.
+        // MM wants to acquire more p3-currency.  It bids on both p1 and p2 (2 trading planets).
+        // The per-tick bid is capped at FOREX_MM_MAX_TRADE_FRACTION of the per-planet split target.
+        // splitTarget = 0 + TARGET/2 = 5M; maxBidQty = 5M * 0.1 = 500K
+        // cappedBidTarget = min(0 + 500K, 5M) = 500K per planet
         const bidOnP1 = p1mm.assets.p1!.market!.buy[curP3]?.bidStorageTarget ?? 0;
         const bidOnP2 = p1mm.assets.p2!.market!.buy[curP3]?.bidStorageTarget ?? 0;
 
-        expect(bidOnP1).toBeCloseTo(FOREX_MM_TARGET_DEPOSIT / 2, 0);
-        expect(bidOnP2).toBeCloseTo(FOREX_MM_TARGET_DEPOSIT / 2, 0);
-        // Both halves sum to the full target
-        expect(bidOnP1 + bidOnP2).toBeCloseTo(FOREX_MM_TARGET_DEPOSIT, 0);
+        const expectedPerPlanet = (FOREX_MM_TARGET_DEPOSIT / 2) * FOREX_MM_MAX_TRADE_FRACTION;
+        expect(bidOnP1).toBeCloseTo(expectedPerPlanet, 0);
+        expect(bidOnP2).toBeCloseTo(expectedPerPlanet, 0);
+        // Both halves sum to the capped target
+        expect(bidOnP1 + bidOnP2).toBeCloseTo(expectedPerPlanet * 2, 0);
 
         void planets; // used in state
     });
