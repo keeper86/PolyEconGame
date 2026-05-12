@@ -15,14 +15,16 @@ export function forexMarketMakerPricing(gameState: GameState): void {
         priceMM(mm, planets, numTradingPlanets);
     }
 }
-
 function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void {
+    const TARGET = FOREX_MM_TARGET_DEPOSIT; // 10_000_000
+    const SPREAD = FOREX_MM_BASE_SPREAD; // 0.03
+    const MIN_FOREIGN = 1e-6; // prevents division by zero
+
     for (const tradingPlanet of planets) {
         const tradingAssets = mm.assets[tradingPlanet.id];
         if (!tradingAssets) {
             continue;
         }
-
         if (!tradingAssets.market) {
             tradingAssets.market = { sell: {}, buy: {} };
         }
@@ -31,7 +33,6 @@ function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void 
             if (issuingPlanet.id === tradingPlanet.id) {
                 continue;
             }
-
             const foreignAssets = mm.assets[issuingPlanet.id];
             if (!foreignAssets) {
                 continue;
@@ -40,36 +41,46 @@ function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void 
             const curName = getCurrencyResourceName(issuingPlanet.id);
             const curResource = getCurrencyResource(issuingPlanet.id);
 
-            // Fair mid: bounded linear inventory-shading model.
-            // When long local (relative to target), mid rises  → foreign more expensive → encourages selling foreign.
-            // When long foreign,                  mid falls  → foreign cheaper       → encourages buying  foreign.
             const localBalance = tradingAssets.deposits;
             const foreignBalance = foreignAssets.deposits;
-            const alpha = 0.1;
-            const beta = 0.1;
-            const shading =
-                1 +
-                alpha * (localBalance / FOREX_MM_TARGET_DEPOSIT - 1) -
-                beta * (foreignBalance / FOREX_MM_TARGET_DEPOSIT - 1);
-            let fairMid = DEFAULT_EXCHANGE_RATE * shading;
-            fairMid = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid));
 
-            const askPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid * (1 + FOREX_MM_BASE_SPREAD)));
-            // Ensure bid is strictly below ask
-            const rawBid = fairMid * (1 - FOREX_MM_BASE_SPREAD);
+            // ---- constant-product mid-price ----
+            // price = DEFAULT * (localBalance / foreignBalance)
+            // With identical targets, anchoring is automatic.
+            let fairMid: number;
+            if (foreignBalance <= 0) {
+                // No foreign currency left – price “infinite” (set to ceiling)
+                fairMid = PRICE_CEIL;
+            } else {
+                fairMid = DEFAULT_EXCHANGE_RATE * (localBalance / Math.max(foreignBalance, MIN_FOREIGN));
+                fairMid = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid));
+            }
+
+            // Ask price: sell foreign
+            const askPrice = Math.min(PRICE_CEIL, fairMid * (1 + SPREAD));
+
+            // Bid price: buy foreign (must be < askPrice)
+            const rawBid = fairMid * (1 - SPREAD);
             const bidPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(askPrice * 0.999, rawBid));
 
-            // --- Ask: sell F-currency on this trading planet ---
-            if (!tradingAssets.market.sell[curName]) {
-                tradingAssets.market.sell[curName] = { resource: curResource };
+            // ---- Ask order ----
+            // Only offer if we actually possess foreign currency
+            if (foreignBalance > 0) {
+                if (!tradingAssets.market.sell[curName]) {
+                    tradingAssets.market.sell[curName] = { resource: curResource };
+                }
+                const offer = tradingAssets.market.sell[curName];
+                offer.resource = curResource;
+                offer.offerPrice = askPrice;
+                offer.offerRetainment = 0;
+            } else {
+                // Remove any stale ask
+                delete tradingAssets.market.sell[curName];
             }
-            const offer = tradingAssets.market.sell[curName];
-            offer.resource = curResource;
-            offer.offerPrice = askPrice;
-            offer.offerRetainment = 0;
 
-            // --- Bid: buy F-currency on this trading planet (split across all N-1 trading planets) ---
-            const deficit = Math.max(0, FOREX_MM_TARGET_DEPOSIT - foreignBalance);
+            // ---- Bid order ----
+            // Split desired purchase amount across trading planets (unchanged logic)
+            const deficit = Math.max(0, TARGET - foreignBalance);
             const splitTarget = foreignBalance + deficit / numTradingPlanets;
 
             if (!tradingAssets.market.buy[curName]) {

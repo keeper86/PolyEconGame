@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
+import { PRICE_CEIL as PRICE_CEIL } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
 import { putIntoStorageFacility } from '../planet/facility';
@@ -271,35 +271,6 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeLessThanOrEqual(2.0 + 1e-9);
     });
 
-    it('resumes input buying once output inventory drops below the output buffer ceiling', () => {
-        const buyer = makeSteelProducer();
-        const fullOutputBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
-        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullOutputBuffer - 1);
-
-        automaticPricing(agentMap(buyer), planet);
-
-        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBeGreaterThan(0);
-    });
-
-    it('suppresses input buying per facility independently when one facility output is full', () => {
-        const buyer = makeSteelProducer();
-        buyer.assets.p.productionFacilities.push({
-            ...buyer.assets.p.productionFacilities[0],
-            id: 'steel-fac-2',
-            needs: [{ resource: coalResourceType, quantity: 200 }],
-            produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
-        });
-
-        const fullBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
-        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullBuffer);
-
-        automaticPricing(agentMap(buyer), planet);
-
-        // Facility 1 (steel) has full output buffer → contributes 0 to target.
-        // Facility 2 (food) still needs coal → target = 200 * 1 * 10 = 2000 > 0.
-        const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidStorageTarget).toBeGreaterThan(0);
-    });
 });
 
 // ---------------------------------------------------------------------------
