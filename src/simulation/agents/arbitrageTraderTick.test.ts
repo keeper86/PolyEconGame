@@ -638,21 +638,7 @@ describe('arbitrageTraderTick – robustness', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Capital barrier — why arbitrage agents don't transport at typical prices
-// ---------------------------------------------------------------------------
-
 describe('arbitrageTraderTick – capital barrier', () => {
-    // Bulk Carrier 1 cargo capacity for Steel (form='solid', massPerQuantity=1 kg/unit):
-    //   maxByVolume = 200,000 / 0.3 = 666,666 units
-    //   maxByMass   = 150,000 / 1   = 150,000 units  ← binding constraint
-    //   maxQty = 150,000
-    //
-    // Bootstrap deposits on home planet = ARBITRAGE_SEED_DEPOSIT + ARBITRAGE_BOOTSTRAP_LOAN
-    //                                   = 50,000 + 200,000 = 250,000
-    //
-    // Capital check (scanBestRoute): agentDeposits >= pBuy × maxQty
-    //   → max affordable pBuy = floor(250,000 / 150,000) = 1
 
     const BOOTSTRAP_DEPOSITS = ARBITRAGE_SEED_DEPOSIT; // 250,000
     const STEEL_MAX_QTY = 150_000; // mass-limited for Bulk Carrier 1
