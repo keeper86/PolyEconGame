@@ -43,6 +43,10 @@ function makeTwoPlanetState(opts?: {
         name: 'Origin',
         marketPrices: { Steel: originPrice },
     });
+    // Populate order book so depth-aware price queries work
+    if (originPrice > 0) {
+        pOrigin.orderBooks = { Steel: { asks: [{ price: originPrice, quantity: 1_000_000 }], bids: [] } };
+    }
     const pDest = makePlanet({
         id: 'p-dest',
         name: 'Destination',
@@ -52,6 +56,7 @@ function makeTwoPlanetState(opts?: {
             [getCurrencyResourceName('p-dest')]: 1.0,
         },
     });
+    pDest.orderBooks = { Steel: { asks: [], bids: [{ price: destPrice, quantity: 1_000_000 }] } };
 
     const agentId = 'arb-0';
     const assetsOrigin = makeAgentPlanetAssets('p-origin', {
@@ -819,8 +824,18 @@ function makeThreePlanetState(opts: {
     } = opts;
 
     const pCurrent = makePlanet({ id: 'p-current', name: 'Current', marketPrices: { Steel: currentSteelPrice } });
+    if (currentSteelPrice > 0) {
+        pCurrent.orderBooks = {
+            Steel: {
+                asks: [{ price: currentSteelPrice, quantity: 1_000_000 }],
+                bids: [{ price: currentSteelPrice, quantity: 1_000_000 }],
+            },
+        };
+    }
     const pOrigin = makePlanet({ id: 'p-origin', name: 'Origin', marketPrices: { Steel: originSteelPrice } });
+    pOrigin.orderBooks = { Steel: { asks: [{ price: originSteelPrice, quantity: 1_000_000 }], bids: [] } };
     const pDest = makePlanet({ id: 'p-dest', name: 'Destination', marketPrices: { Steel: destSteelPrice } });
+    pDest.orderBooks = { Steel: { asks: [], bids: [{ price: destSteelPrice, quantity: 1_000_000 }] } };
 
     const makeAssets = (id: string) =>
         makeAgentPlanetAssets(id, {

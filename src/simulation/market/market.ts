@@ -6,6 +6,7 @@ import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';
 import { binHouseholdBids, buildPopulationDemand, householdDemandPriority } from './populationDemand';
 import { computeMarketSummary, settleAgentBuyers, settleAgentSellers, settleHouseholds } from './settlement';
+import { buildPlanetOrderBook } from './orderBookSnapshot';
 
 export type { BidOrder } from './marketTypes';
 
@@ -29,6 +30,7 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     }
 
     releaseRemainingHolds(agents, planet);
+    buildPlanetOrderBook(planet, askBooks, agentBidBooks);
 }
 
 /**

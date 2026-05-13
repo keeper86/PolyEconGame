@@ -22,6 +22,7 @@ import {
 import type { ShipListing, TransportShip } from '../ships/ships';
 import { canCarryResource, shiptypes } from '../ships/ships';
 import { getCurrencyResourceName } from '../market/currencyResources';
+import { getEffectiveBuyPrice, getEffectiveSellPrice } from '../market/orderBookSnapshot';
 
 const EXPAND_FLEET_SHIP_TYPE = shiptypes.solid.bulkCarrier1;
 
@@ -69,8 +70,9 @@ function scanBestRoute(
         }
 
         for (const origin of planets) {
-            const pBuy = origin.marketPrices[resource.name];
-            if (!pBuy || pBuy <= 0) {
+            // Use spot price only for affordability estimate (order book may be absent on first tick)
+            const pBuySpot = origin.marketPrices[resource.name];
+            if (!pBuySpot || pBuySpot <= 0) {
                 if (debug && monthly) {
                     console.log(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no buy price`);
                 }
@@ -79,12 +81,23 @@ function scanBestRoute(
 
             // Check agent has deposits to fund the purchase; scale down quantity if needed
             const agentOriginDeposits = agent.assets[origin.id]?.deposits ?? 0;
-            const affordableQty = pBuy > 0 ? Math.floor(agentOriginDeposits / pBuy) : 0;
+            const affordableQty = Math.floor(agentOriginDeposits / pBuySpot);
             const qty = Math.min(maxQty, affordableQty);
             if (qty < 1) {
                 if (debug && monthly) {
                     console.log(
-                        `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient capital for even 1 unit (have ${agentOriginDeposits.toFixed(0)}, need ${pBuy.toFixed(0)}/unit)`,
+                        `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient capital for even 1 unit (have ${agentOriginDeposits.toFixed(0)}, need ${pBuySpot.toFixed(0)}/unit)`,
+                    );
+                }
+                continue;
+            }
+
+            // Depth-aware buy price: walks the ask ladder for the actual fill quantity
+            const pBuy = getEffectiveBuyPrice(origin, resource.name, qty);
+            if (!pBuy) {
+                if (debug && monthly) {
+                    console.log(
+                        `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient ask depth for qty=${qty}`,
                     );
                 }
                 continue;
@@ -100,11 +113,12 @@ function scanBestRoute(
                     continue;
                 }
 
-                const pSellDest = dest.marketPrices[resource.name];
-                if (!pSellDest || pSellDest <= 0) {
+                // Depth-aware sell price: walks the bid ladder at destination
+                const pSellDest = getEffectiveSellPrice(dest, resource.name, qty);
+                if (!pSellDest) {
                     if (debug && monthly) {
                         console.log(
-                            `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no sell price at dest`,
+                            `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: insufficient bid depth for qty=${qty}`,
                         );
                     }
                     continue;
