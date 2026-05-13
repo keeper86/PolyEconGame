@@ -1,9 +1,11 @@
+import { arbitrageTraderRepaymentTick, arbitrageTraderTick } from './agents/arbitrageTraderTick';
+import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
+import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
+import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
-import { forexMarketMakerPricing } from './market/forexMarketMakerPricing';
-import { forexMMRepaymentTick } from './market/forexMarketMakerTick';
 import { forexTick } from './market/forexTick';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { marketTick } from './market/market';
@@ -112,8 +114,11 @@ export function advanceTick(gameState: GameState) {
     forexMarketMakerPricing(gameState);
     forexTick(gameState);
     forexMMRepaymentTick(gameState);
+    arbitrageTraderRepaymentTick(gameState);
 
     shipTick(gameState);
+    shipbuilderTick(gameState);
+    arbitrageTraderTick(gameState);
 
     if (gameState.tickerEvents.length > MAX_TICKER_EVENTS) {
         gameState.tickerEvents = gameState.tickerEvents.slice(-MAX_TICKER_EVENTS);

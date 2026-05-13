@@ -33,6 +33,7 @@ const loanSchema = z.object({
         'shipPenaltyCoverage',
         'licenseBootstrap',
         'forexWorkingCapital',
+        'shipbuilderBootstrap',
     ]),
     principal: z.number(),
     remainingPrincipal: z.number(),
@@ -144,12 +145,6 @@ export const getLatestAgents = () =>
             };
         });
 
-/**
- * Lightweight summaries for the agent list page.
- * Returns only the data needed for AgentSummaryCard — no full Agent blob.
- * When `planetId` is provided, each agent's balance is normalised into the
- * local currency of that planet using the forex mean (EMA) exchange rate.
- */
 export const getAgentListSummaries = () =>
     protectedProcedure
         .input(z.object({ planetId: z.string().optional() }))

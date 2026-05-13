@@ -85,6 +85,10 @@ interface GameStateRecordShape {
     shipCapitalMarket: ShipCapitalMarket;
     /** Stored as a plain Map — market-makers are not frequent enough to need structural sharing. */
     forexMarketMakers: globalThis.Map<string, Agent>;
+    /** Stored as a plain Map — role-indexed view of shipbuilder agents. */
+    shipbuilderAgents: globalThis.Map<string, Agent>;
+    /** Stored as a plain Map — role-indexed view of arbitrage trader agents. */
+    arbitrageTraders: globalThis.Map<string, Agent>;
     /** Persisted so that ticker event IDs never go backwards after snapshot recovery. */
     nextEventId: number;
 }
@@ -95,6 +99,8 @@ const GAME_STATE_RECORD_DEFAULTS: GameStateRecordShape = {
     agents: Map<string, AgentRecord>(),
     shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
     forexMarketMakers: new globalThis.Map<string, Agent>(),
+    shipbuilderAgents: new globalThis.Map<string, Agent>(),
+    arbitrageTraders: new globalThis.Map<string, Agent>(),
     nextEventId: 1,
 };
 
@@ -130,6 +136,8 @@ export function toImmutableGameState(state: GameState): GameStateRecord {
         agents,
         shipCapitalMarket: state.shipCapitalMarket,
         forexMarketMakers: state.forexMarketMakers,
+        shipbuilderAgents: state.shipbuilderAgents,
+        arbitrageTraders: state.arbitrageTraders,
         nextEventId: state.nextEventId,
     });
 }
@@ -157,6 +165,8 @@ export function fromImmutableGameState(record: GameStateRecord): GameState {
         agents,
         shipCapitalMarket: record.shipCapitalMarket,
         forexMarketMakers: record.forexMarketMakers,
+        shipbuilderAgents: record.shipbuilderAgents,
+        arbitrageTraders: record.arbitrageTraders,
         tickerEvents: [],
         nextEventId: record.nextEventId,
     };

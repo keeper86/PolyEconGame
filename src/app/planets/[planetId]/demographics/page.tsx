@@ -9,14 +9,22 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import type { Skill } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { educationLevelKeys } from '@/simulation/population/education';
+import {
+    ADMINISTRATIVE_BUFFER_TARGET_TICKS,
+    CONSTRUCTION_BUFFER_TARGET_TICKS,
+    EDUCATION_BUFFER_TARGET_TICKS,
+    GROCERY_BUFFER_TARGET_TICKS,
+    HEALTHCARE_BUFFER_TARGET_TICKS,
+    LOGISTICS_BUFFER_TARGET_TICKS,
+    RETAIL_BUFFER_TARGET_TICKS,
+} from '@/simulation/constants';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/CohortFilter';
 import type { GroupMode } from './_components/demographicsTypes';
-import { GV_FOOD, GV_POP, GV_STARV, GV_WEALTH, SERVICE_TARGET_PER_PERSON } from './_components/demographicsTypes';
-import GroceryBufferChart from './_components/GroceryBufferChart';
-import NutritionHeatmapChart from './_components/NutritionHeatmapChart';
+import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
+import ServiceSection from './_components/ServiceSection';
 import PlanetDemography from './_components/PlanetDemography';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import WealthDistributionChart from './_components/WealthDistributionChart';
@@ -87,163 +95,19 @@ export default function PlanetDemographicsPage() {
     const groupPop = [0, 0, 0, 0];
     const groupAgeWeightedSum = [0, 0, 0, 0];
     const wealthWeightedSum = [0, 0, 0, 0];
-    const foodSum = [0, 0, 0, 0];
-    const starvSum = [0, 0, 0, 0];
     for (const row of rows) {
         for (let i = 0; i < 4; i++) {
             const gv = row.groupValues[i];
             groupPop[i] += gv[GV_POP];
-
             groupAgeWeightedSum[i] += row.age * gv[GV_POP];
-
             wealthWeightedSum[i] += gv[GV_WEALTH];
-            foodSum[i] += gv[GV_FOOD];
-            starvSum[i] += gv[GV_STARV];
         }
     }
-    const bufferRatio = groupPop.map((pop, i) => (pop > 0 ? foodSum[i] / pop / SERVICE_TARGET_PER_PERSON : 0));
-    const avgStarv = groupPop.map((pop, i) => (pop > 0 ? starvSum[i] / pop : 0));
     const populationTotal = groupPop.reduce((s, v) => s + v, 0);
     const groupMeanAge = groupPop.map((pop, i) => (pop > 0 ? groupAgeWeightedSum[i] / pop : 0));
     const totalWealth = wealthWeightedSum.reduce((s, v) => s + v, 0);
     const wealthMean = groupPop.map((pop, i) => (pop > 0 ? wealthWeightedSum[i] / pop : 0));
     const wealthShare = wealthWeightedSum.map((w) => (totalWealth > 0 ? (w / totalWealth) * 100 : 0));
-
-    // ── Grocery buffer cards ────────────────────────────────────────────────
-    const groceryCards = isSmallScreen ? (
-        <div className='flex gap-1 mb-2'>
-            {groupKeys.map((key, i) => {
-                const ratio = bufferRatio[i];
-                const pct = (ratio * 100).toFixed(1);
-                const valueColor =
-                    ratio >= 0.95
-                        ? 'text-green-600'
-                        : ratio >= 0.75
-                          ? 'text-green-500'
-                          : ratio >= 0.5
-                            ? 'text-yellow-500'
-                            : ratio >= 0.25
-                              ? 'text-orange-500'
-                              : ratio >= 0.1
-                                ? 'text-red-500'
-                                : 'text-red-700';
-                return (
-                    <div
-                        key={key}
-                        className='flex-1 px-1.5 py-1 border rounded text-xs'
-                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
-                    >
-                        <div className='text-muted-foreground text-[9px] leading-tight truncate'>
-                            {groupLabels[key]}
-                        </div>
-                        <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
-                            {pct}%
-                        </div>
-                        <div className='text-[9px] text-muted-foreground leading-tight'>of target</div>
-                    </div>
-                );
-            })}
-        </div>
-    ) : (
-        <div className='flex gap-2 mb-3'>
-            {groupKeys.map((key, i) => {
-                const ratio = bufferRatio[i];
-                const pct = (ratio * 100).toFixed(1);
-                const valueColor =
-                    ratio >= 0.95
-                        ? 'text-green-600'
-                        : ratio >= 0.75
-                          ? 'text-green-500'
-                          : ratio >= 0.5
-                            ? 'text-yellow-500'
-                            : ratio >= 0.25
-                              ? 'text-orange-500'
-                              : ratio >= 0.1
-                                ? 'text-red-500'
-                                : 'text-red-700';
-                const label =
-                    ratio >= 0.95
-                        ? 'fully stocked'
-                        : ratio >= 0.75
-                          ? 'well stocked'
-                          : ratio >= 0.5
-                            ? 'below target'
-                            : ratio >= 0.25
-                              ? 'low supply'
-                              : ratio >= 0.1
-                                ? 'very low'
-                                : 'critically empty';
-                return (
-                    <Card
-                        key={key}
-                        className='flex-1 overflow-hidden'
-                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
-                    >
-                        <CardContent className='px-3 py-2.5 space-y-0.5'>
-                            <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
-                            <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>{pct}%</p>
-                            <p className='text-xs text-muted-foreground'>{label}</p>
-                        </CardContent>
-                    </Card>
-                );
-            })}
-        </div>
-    );
-
-    // ── Starvation cards ─────────────────────────────────────────────────────
-    const starvationCards = isSmallScreen ? (
-        <div className='flex gap-1 mb-2'>
-            {groupKeys.map((key, i) => {
-                const s = avgStarv[i];
-                const pct = (s * 100).toFixed(1);
-                const valueColor = s < 0.05 ? 'text-green-600' : s < 0.25 ? 'text-amber-500' : 'text-red-500';
-                return (
-                    <div
-                        key={key}
-                        className='flex-1 px-1.5 py-1 border rounded text-xs'
-                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
-                    >
-                        <div className='text-muted-foreground text-[9px] leading-tight truncate'>
-                            {groupLabels[key]}
-                        </div>
-                        <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
-                            {pct}%
-                        </div>
-                        <div className='text-[9px] text-muted-foreground leading-tight'>starvation</div>
-                    </div>
-                );
-            })}
-        </div>
-    ) : (
-        <div className='flex gap-2 mb-3'>
-            {groupKeys.map((key, i) => {
-                const s = avgStarv[i];
-                const pct = (s * 100).toFixed(1);
-                const valueColor = s < 0.05 ? 'text-green-600' : s < 0.25 ? 'text-amber-500' : 'text-red-500';
-                const label =
-                    s < 0.05
-                        ? 'well-fed'
-                        : s < 0.25
-                          ? 'light starvation'
-                          : s < 0.5
-                            ? 'moderate starvation'
-                            : 'severe starvation';
-                return (
-                    <Card
-                        key={key}
-                        className='flex-1 overflow-hidden'
-                        style={{ borderLeftColor: groupColors[key], borderLeftWidth: 3 }}
-                    >
-                        <CardContent className='px-3 py-2.5 space-y-0.5'>
-                            <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
-                            <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>{pct}%</p>
-                            <p className='text-xs text-muted-foreground'>{label}</p>
-                        </CardContent>
-                    </Card>
-                );
-            })}
-        </div>
-    );
 
     // ── Wealth transfer totals — summed from lastTransferMatrix ─────────────
     const transferMatrix = data.data.lastTransferMatrix ?? [];
@@ -526,11 +390,124 @@ export default function PlanetDemographicsPage() {
                         <span className='font-semibold'>Grocery Buffers</span>
                     </AccordionTrigger>
                     <AccordionContent>
-                        {groceryCards}
-                        <GroceryBufferChart rows={rows} groupMode={group} />
-                        <p className='py-4 text-sm font-medium'>Starvation map</p>
-                        {starvationCards}
-                        <NutritionHeatmapChart rows={rows} groupMode={group} />
+                        <ServiceSection
+                            serviceKey='grocery'
+                            serviceLabel='Grocery Buffers'
+                            bufferTargetTicks={GROCERY_BUFFER_TARGET_TICKS}
+                            rows={rows}
+                            groupMode={group}
+                            groupKeys={groupKeys}
+                            groupColors={groupColors}
+                            groupLabels={groupLabels}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value='healthcare'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Healthcare Buffers</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <ServiceSection
+                            serviceKey='healthcare'
+                            serviceLabel='Healthcare Buffers'
+                            bufferTargetTicks={HEALTHCARE_BUFFER_TARGET_TICKS}
+                            rows={rows}
+                            groupMode={group}
+                            groupKeys={groupKeys}
+                            groupColors={groupColors}
+                            groupLabels={groupLabels}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value='logistics'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Logistics Buffers</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <ServiceSection
+                            serviceKey='logistics'
+                            serviceLabel='Logistics Buffers'
+                            bufferTargetTicks={LOGISTICS_BUFFER_TARGET_TICKS}
+                            rows={rows}
+                            groupMode={group}
+                            groupKeys={groupKeys}
+                            groupColors={groupColors}
+                            groupLabels={groupLabels}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value='retail'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Retail Buffers</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <ServiceSection
+                            serviceKey='retail'
+                            serviceLabel='Retail Buffers'
+                            bufferTargetTicks={RETAIL_BUFFER_TARGET_TICKS}
+                            rows={rows}
+                            groupMode={group}
+                            groupKeys={groupKeys}
+                            groupColors={groupColors}
+                            groupLabels={groupLabels}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value='construction'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Construction Buffers</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <ServiceSection
+                            serviceKey='construction'
+                            serviceLabel='Construction Buffers'
+                            bufferTargetTicks={CONSTRUCTION_BUFFER_TARGET_TICKS}
+                            rows={rows}
+                            groupMode={group}
+                            groupKeys={groupKeys}
+                            groupColors={groupColors}
+                            groupLabels={groupLabels}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value='administrative'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Administrative Buffers</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <ServiceSection
+                            serviceKey='administrative'
+                            serviceLabel='Administrative Buffers'
+                            bufferTargetTicks={ADMINISTRATIVE_BUFFER_TARGET_TICKS}
+                            rows={rows}
+                            groupMode={group}
+                            groupKeys={groupKeys}
+                            groupColors={groupColors}
+                            groupLabels={groupLabels}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value='education-svc'>
+                    <AccordionTrigger>
+                        <span className='font-semibold'>Education Buffers</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <ServiceSection
+                            serviceKey='education'
+                            serviceLabel='Education Buffers'
+                            bufferTargetTicks={EDUCATION_BUFFER_TARGET_TICKS}
+                            rows={rows}
+                            groupMode={group}
+                            groupKeys={groupKeys}
+                            groupColors={groupColors}
+                            groupLabels={groupLabels}
+                        />
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>

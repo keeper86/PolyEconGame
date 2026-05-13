@@ -34,6 +34,8 @@ interface WireGameState {
     agents: Agent[];
     shipCapitalMarket?: ShipCapitalMarket;
     forexMarketMakers?: Agent[];
+    shipbuilderAgents?: Agent[];
+    arbitrageTraders?: Agent[];
     nextEventId: number;
 }
 
@@ -44,6 +46,8 @@ function gameStateToWire(gs: GameState): WireGameState {
         agents: [...gs.agents.values()],
         shipCapitalMarket: gs.shipCapitalMarket,
         forexMarketMakers: [...gs.forexMarketMakers.values()],
+        shipbuilderAgents: [...gs.shipbuilderAgents.values()],
+        arbitrageTraders: [...gs.arbitrageTraders.values()],
         nextEventId: gs.nextEventId,
     };
 }
@@ -76,12 +80,30 @@ function wireToGameState(wire: WireGameState): GameState {
     for (const mm of wire.forexMarketMakers ?? []) {
         forexMarketMakers.set(mm.id, mm);
     }
+    const shipbuilderAgents = new Map<string, Agent>();
+    for (const sb of wire.shipbuilderAgents ?? []) {
+        // Prefer the canonical agent object from the agents map so all role-indexed
+        // maps share the same object instances and mutations stay consistent.
+        const canonical = agents.get(sb.id);
+        if (canonical) {
+            shipbuilderAgents.set(sb.id, canonical);
+        }
+    }
+    const arbitrageTraders = new Map<string, Agent>();
+    for (const at of wire.arbitrageTraders ?? []) {
+        const canonical = agents.get(at.id);
+        if (canonical) {
+            arbitrageTraders.set(at.id, canonical);
+        }
+    }
     return {
         tick: wire.tick,
         planets,
         agents,
         shipCapitalMarket: wire.shipCapitalMarket ?? { tradeHistory: [], emaPrice: {} },
         forexMarketMakers,
+        shipbuilderAgents,
+        arbitrageTraders,
         tickerEvents: [],
         nextEventId: wire.nextEventId,
     };

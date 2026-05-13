@@ -3,7 +3,7 @@ import {
     SHIP_MARKET_MAX_TRADE_HISTORY,
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
 } from '../constants';
-import type { GameState } from '../planet/planet';
+import type { Agent, GameState } from '../planet/planet';
 import { maintenanceServiceResourceType } from '../planet/services';
 import type { Ship, ShipBuyingOffer } from './ships';
 import { shiptypes, scaleMapping, type ShipCapitalMarket, type ShipListing, type ShipTradeRecord } from './ships';
@@ -141,6 +141,109 @@ export function findCompatibleTrades(gameState: GameState): CompatibleTrade[] {
 
 function findShipById(gameState: GameState, agentId: string, shipId: string): Ship | undefined {
     return gameState.agents.get(agentId)?.ships.find((s) => s.id === shipId);
+}
+
+/**
+ * Finds the cheapest open ship listing for a given ship type name across all
+ * agents (including shipbuilders).  Returns the listing and the seller agent,
+ * or null if none is available at or below maxPrice.
+ */
+export function findCheapestShipListing(
+    gameState: GameState,
+    shipTypeName: string,
+    maxPrice: number,
+): { listing: ShipListing; sellerAgent: Agent } | null {
+    let best: { listing: ShipListing; sellerAgent: Agent } | null = null;
+
+    for (const agent of gameState.agents.values()) {
+        for (const assets of Object.values(agent.assets)) {
+            for (const listing of assets.shipListings) {
+                if (listing.shipTypeName !== shipTypeName) {
+                    continue;
+                }
+                if (listing.askPrice > maxPrice) {
+                    continue;
+                }
+                if (!best || listing.askPrice < best.listing.askPrice) {
+                    best = { listing, sellerAgent: agent };
+                }
+            }
+        }
+    }
+
+    return best;
+}
+
+/**
+ * Creates a ship listing and marks the ship as listed.
+ * This is the single authoritative place that mutates both ship.state and
+ * assets.shipListings — callers must only call this when they have already
+ * validated that the ship is idle and not already listed.
+ */
+export function createShipListing(ship: Ship, assets: { shipListings: ShipListing[] }, listing: ShipListing): void {
+    ship.state = { type: 'listed', planetId: listing.planetId };
+    assets.shipListings.push(listing);
+}
+
+/**
+ * Executes an atomic ship purchase: deducts funds from the buyer, credits the
+ * seller, transfers the ship to the buyer's fleet, and removes the listing.
+ * Updates the ship capital market EMA and appends a trade record.
+ *
+ * Does nothing and returns false if the listing is not found or the buyer
+ * lacks sufficient deposits on the specified planet.
+ */
+export function executeShipPurchase(
+    gameState: GameState,
+    listing: ShipListing,
+    sellerAgent: Agent,
+    buyerAgent: Agent,
+    buyerPlanetId: string,
+): boolean {
+    const buyerAssets = buyerAgent.assets[buyerPlanetId];
+    if (!buyerAssets || buyerAssets.deposits < listing.askPrice) {
+        return false;
+    }
+
+    const sellerAssets = sellerAgent.assets[listing.planetId];
+    if (!sellerAssets) {
+        return false;
+    }
+
+    // Verify ship exists before mutating any state (keep operation atomic)
+    const shipIdx = sellerAgent.ships.findIndex((s) => s.id === listing.shipId);
+    if (shipIdx === -1) {
+        return false;
+    }
+
+    // Remove listing
+    const idx = sellerAssets.shipListings.findIndex((l) => l.id === listing.id);
+    if (idx === -1) {
+        return false;
+    }
+    sellerAssets.shipListings.splice(idx, 1);
+    const [ship] = sellerAgent.ships.splice(shipIdx, 1);
+    // Ship stays at the listing planet (not teleported to buyer's planet)
+    ship.state = { type: 'idle', planetId: listing.planetId };
+    ship.idleAtTick = gameState.tick;
+    buyerAgent.ships.push(ship);
+
+    // Transfer funds
+    buyerAssets.deposits -= listing.askPrice;
+    sellerAssets.deposits += listing.askPrice;
+
+    // Update market data
+    updateShipEma(gameState.shipCapitalMarket, listing.shipTypeName, listing.askPrice);
+    appendTradeRecord(gameState.shipCapitalMarket, {
+        shipTypeName: listing.shipTypeName,
+        price: listing.askPrice,
+        tick: gameState.tick,
+        maintainanceStatus: ship.maintainanceStatus,
+        maxMaintenance: ship.maxMaintenance,
+        effectiveValue: effectiveShipValue(ship, gameState),
+    });
+
+    return true;
 }
 
 /**

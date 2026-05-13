@@ -290,8 +290,9 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
                         strokeOpacity={0.6}
                         strokeDasharray='3 3'
                         fill='none'
-                        dot={false}
+                        dot={{ r: 2, fill: '#4f46e5', fillOpacity: 0.4, stroke: 'none' }}
                         activeDot={false}
+                        isAnimationActive={false}
                         name='ghostValue'
                         connectNulls={false}
                     />
@@ -301,8 +302,9 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
                         stroke='#4f46e5'
                         strokeWidth={2}
                         fill='url(#popGradMon)'
-                        dot={false}
+                        dot={{ r: 2.5, fill: '#4f46e5' }}
                         activeDot={{ r: 3, fill: '#4f46e5', stroke: '#1e293b', strokeWidth: 2 }}
+                        isAnimationActive={false}
                         name='value'
                         connectNulls={false}
                     />
@@ -380,8 +382,9 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
                         stroke='#4f46e5'
                         strokeWidth={2}
                         fill='url(#popGradYr)'
-                        dot={false}
+                        dot={{ r: 2.5, fill: '#4f46e5' }}
                         activeDot={{ r: 3 }}
+                        isAnimationActive={false}
                         name='value'
                     />
                 </AreaChart>
@@ -446,8 +449,9 @@ function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
                         stroke='#4f46e5'
                         strokeWidth={2}
                         fill='url(#popGradDec)'
-                        dot={false}
+                        dot={{ r: 2.5, fill: '#4f46e5' }}
                         activeDot={{ r: 3 }}
+                        isAnimationActive={false}
                         name='value'
                     />
                 </AreaChart>

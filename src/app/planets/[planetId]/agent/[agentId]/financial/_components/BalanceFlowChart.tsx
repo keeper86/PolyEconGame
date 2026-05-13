@@ -217,8 +217,9 @@ export function BalanceFlowChart({
                             stroke='#4f46e5'
                             strokeWidth={2}
                             fill='url(#gradBalance2)'
-                            dot={false}
+                            dot={{ r: 2.5, fill: '#4f46e5' }}
                             activeDot={{ r: 3, fill: '#4f46e5', stroke: '#1e293b', strokeWidth: 2 }}
+                            isAnimationActive={false}
                             connectNulls={false}
                         />
                         <Area
@@ -228,8 +229,9 @@ export function BalanceFlowChart({
                             stroke='#06b6d4'
                             strokeWidth={2}
                             fill='url(#gradIncome2)'
-                            dot={false}
+                            dot={{ r: 2.5, fill: '#06b6d4' }}
                             activeDot={{ r: 3, fill: '#06b6d4', stroke: '#1e293b', strokeWidth: 2 }}
+                            isAnimationActive={false}
                             connectNulls={false}
                         />
                         <Area
@@ -241,7 +243,7 @@ export function BalanceFlowChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={false}
+                            dot={{ r: 2, fill: '#4f46e5', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}
@@ -256,7 +258,7 @@ export function BalanceFlowChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={false}
+                            dot={{ r: 2, fill: '#06b6d4', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}

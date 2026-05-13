@@ -31,14 +31,12 @@ function ProductCell({
     return (
         <Link
             href={href as never}
-            className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 hover:ring-2 hover:ring-primary/50 transition-all'
+            className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 hover:ring-2 hover:ring-primary/50 transition-all w-[100px]'
         >
-            <ProductIcon productName={resourceName} size={24} />
-            <span className='tabular-nums text-xs font-medium'>
+            <ProductIcon productName={resourceName} size={36} />
+            <span className='flex flex-col flex-grow text-xs font-medium text-right'>
                 {formatNumberWithUnit(currentValue, 'currency', planetId)}
-                <span className='text-muted-foreground ml-1'>
-                    ({formatNumberWithUnit(lastValue, 'currency', planetId)})
-                </span>
+                <span className='text-muted-foreground'>{formatNumberWithUnit(lastValue, 'currency', planetId)}</span>
             </span>
         </Link>
     );
@@ -130,6 +128,10 @@ export default function ProductResolutionPanel({
             depreciatedEntries.push([name, currentDepr, lastDepr]);
         }
     }
+
+    boughtEntries.sort((a, b) => b[1].value - a[1].value);
+    soldEntries.sort((a, b) => b[1].value - a[1].value);
+    depreciatedEntries.sort((a, b) => b[1].value - a[1].value);
 
     return (
         <div className='space-y-3'>

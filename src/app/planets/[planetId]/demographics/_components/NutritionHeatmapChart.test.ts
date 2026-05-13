@@ -143,6 +143,12 @@ const TEST_GROUP_KEYS = [...OCCUPATIONS] as string[];
 
 /** Create an AggRow with all population in the first group (education). */
 function makeAggRow(age: number, pop: number, totalFoodStock: number, weightedStarvation: number): AggRow {
+    const emptyEntry: [[number, number], [number, number], [number, number], [number, number]] = [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+        [0, 0],
+    ];
     return {
         age,
         total: pop,
@@ -154,6 +160,14 @@ function makeAggRow(age: number, pop: number, totalFoodStock: number, weightedSt
             [0, 0, 0, 0],
             [0, 0, 0, 0],
         ],
+        serviceBuffers: {
+            healthcare: emptyEntry,
+            logistics: emptyEntry,
+            retail: emptyEntry,
+            construction: emptyEntry,
+            administrative: emptyEntry,
+            education: emptyEntry,
+        },
     };
 }
 

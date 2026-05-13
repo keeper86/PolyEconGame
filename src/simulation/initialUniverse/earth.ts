@@ -24,7 +24,6 @@ import {
     loggingCamp,
     logisticsHub,
     machineryFactory,
-    naturalGasWell,
     oilRefinery,
     oilWell,
     packagingPlant,
@@ -469,8 +468,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
 
     for (const spec of oilSpecs) {
         const oilId = `earth-oil-${spec.id}`;
-        const gasId = `earth-gas-${spec.id}`;
-        govClaims.push(oilId, gasId);
+        govClaims.push(oilId);
 
         oilClaims.push(
             makeClaim({
@@ -482,24 +480,10 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 renewable: false,
             }),
         );
-        gasClaims.push(
-            makeClaim({
-                id: gasId,
-                type: naturalGasFieldResourceType,
-                quantity: spec.gas,
-                tenantAgentId: spec.id,
-                tenantCostInCoins: Math.floor(spec.gas * 0.0002),
-                renewable: false,
-            }),
-        );
 
         const oilFacility = oilWell(EARTH_ID, `${spec.id}-oil`);
         oilFacility.scale = Math.max(1, Math.round(spec.oil / 10_000_00));
         oilFacility.maxScale = oilFacility.scale;
-
-        const gasFacility = naturalGasWell(EARTH_ID, `${spec.id}-gas`);
-        gasFacility.scale = Math.max(1, Math.round(spec.gas / 10_000_00));
-        gasFacility.maxScale = gasFacility.scale;
 
         agents.push(
             makeAgent({
@@ -507,9 +491,9 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 name: spec.name,
                 associatedPlanetId: EARTH_ID,
                 planetId: EARTH_ID,
-                facilities: [oilFacility, gasFacility],
+                facilities: [oilFacility],
                 storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
-                tenancies: [oilId, gasId],
+                tenancies: [oilId],
             }),
         );
     }

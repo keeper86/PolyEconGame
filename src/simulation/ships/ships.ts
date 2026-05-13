@@ -1,5 +1,4 @@
-import { pushTickerEvent } from '../planet/planet';
-import type { ResourceQuantity, TransportableResourceType } from '../planet/claims';
+import type { Resource, ResourceQuantity, TransportableResourceType } from '../planet/claims';
 import type { Facility } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
 import {
@@ -103,7 +102,7 @@ export type BaseShipStatusLoading = {
 export type TransportShipStatusLoading = BaseShipStatusLoading & {
     type: 'loading';
     cargoGoal: ResourceQuantity | null;
-    currentCargo: ResourceQuantity;
+    currentCargo: ResourceQuantity | null;
 };
 
 export type ConstructionShipStatusLoading = BaseShipStatusLoading & {
@@ -207,6 +206,7 @@ export type BaseShip = {
     id: string;
     name: string;
     builtAtTick: number;
+    idleAtTick?: number; // tick at which the ship last became idle; undefined for legacy deserialized ships
     maintainanceStatus: number; // 0..1, degrades over time and with use, can be restored by consuming maintenance services up to maxMaintenance
     maxMaintenance: number; // degrades after each full repair cycle, when it reaches 0 the ship becomes derelict
     cumulativeRepairAcc: number; // accumulates repair consumed; triggers maxMaintenance degradation when >= 1
@@ -258,13 +258,6 @@ export const shipTick = (gameState: GameState): void => {
                 continue;
             }
 
-            const preState =
-                ship.state.type === 'transporting' ||
-                ship.state.type === 'construction_transporting' ||
-                ship.state.type === 'passenger_transporting'
-                    ? { from: (ship.state as { from: string }).from }
-                    : null;
-
             let result: TransitionResult;
             if (ship.type.type === 'transport') {
                 result = transportHandlers[ship.state.type as TransportShipStatusType](
@@ -287,36 +280,12 @@ export const shipTick = (gameState: GameState): void => {
             }
 
             if (result.action === 'transition') {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ship.state = result.newState as any;
-
-                // Emit arrival event when a ship transitions from a transporting state to an arrival state
-                if (preState) {
-                    const newStateType = ship.state.type;
-                    if (
-                        newStateType === 'unloading' ||
-                        newStateType === 'reconstruction' ||
-                        newStateType === 'passenger_unloading' ||
-                        newStateType === 'idle'
-                    ) {
-                        const toPlanetId =
-                            'planetId' in ship.state ? (ship.state as { planetId: string }).planetId : '';
-                        const toPlanet = gameState.planets.get(toPlanetId);
-                        const fromPlanet = gameState.planets.get(preState.from);
-                        pushTickerEvent(gameState, {
-                            category: 'shipArrived',
-                            planetId: toPlanetId,
-                            agentId: agent.id,
-                            agentName: agent.name,
-                            message: `${agent.name}'s ${ship.name} arrived at ${toPlanet?.name ?? toPlanetId} from ${fromPlanet?.name ?? preState.from}`,
-                            tick: gameState.tick,
-                        });
-                    }
-                }
+                ship.state = result.newState;
             }
         }
     }
 };
+
 export const defaultBuildingCost: ResourceQuantity[] = [
     { resource: steelResourceType, quantity: 100 },
     { resource: electronicComponentResourceType, quantity: 50 },
@@ -481,6 +450,7 @@ export const createShip = (
             maxMaintenance: 1,
             cumulativeRepairAcc: 0,
             builtAtTick,
+            idleAtTick: builtAtTick,
         };
     }
     if (shipTemplate.type === 'passenger') {
@@ -488,6 +458,7 @@ export const createShip = (
             id: crypto.randomUUID(),
             name,
             builtAtTick,
+            idleAtTick: builtAtTick,
             type: shipTemplate,
             state: {
                 type: 'idle',
@@ -502,6 +473,7 @@ export const createShip = (
         id: crypto.randomUUID(),
         name,
         builtAtTick,
+        idleAtTick: builtAtTick,
         type: shipTemplate,
         state: {
             type: 'idle',
@@ -537,6 +509,22 @@ export type ShipCapitalMarket = {
     tradeHistory: ShipTradeRecord[];
     emaPrice: Record<string, number>;
 };
+
+/**
+ * Returns true if the given transport ship can carry the given resource.
+ * Solid/liquid/gas/pieces resources are matched against the ship's cargo spec type.
+ * Services, land-bound resources, and currencies cannot be transported.
+ */
+export function canCarryResource(ship: Ship, resource: Resource): boolean {
+    if (ship.type.type !== 'transport') {
+        return false;
+    }
+    const form = resource.form;
+    if (form === 'services' || form === 'landBoundResource' || form === 'currency') {
+        return false;
+    }
+    return ship.type.cargoSpecification.type === (form as TransportableResourceType);
+}
 
 export type ContractStatus = 'open' | 'accepted';
 

@@ -340,7 +340,7 @@ export default function BuySection({
                             {buyErrorMsg && (
                                 <span className='text-xs text-destructive flex items-center gap-1'>
                                     <AlertCircle className='h-3.5 w-3.5' />
-                                    <span dangerouslySetInnerHTML={{ __html: buyErrorMsg }} />
+                                    <span>{buyErrorMsg}</span>
                                 </span>
                             )}
                         </div>

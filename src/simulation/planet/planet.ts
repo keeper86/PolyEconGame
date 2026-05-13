@@ -222,6 +222,8 @@ export type MonthAccumulator = {
     purchases: number;
     claimPayments: number;
     totalWorkersTicks: number;
+    forexRevenue: number;
+    forexPurchases: number;
     producedResources: Record<string, ResourceAccumulator>;
     consumedResources: Record<string, ResourceAccumulator>;
     boughtResources: Record<string, ResourceAccumulator>;
@@ -282,6 +284,7 @@ export type Agent = {
     foundedTick: number;
     starterLoanTaken: boolean;
     associatedPlanetId: string;
+    agentRole?: 'shipbuilder' | 'arbitrage_trader';
     ships: Ship[];
     assets: {
         [planetId in string]: AgentPlanetAssets;
@@ -294,6 +297,10 @@ export interface GameState {
     agents: Map<string, Agent>;
     shipCapitalMarket: ShipCapitalMarket;
     forexMarketMakers: Map<string, Agent>;
+    /** Role-indexed view of shipbuilder agents (also present in agents). */
+    shipbuilderAgents: Map<string, Agent>;
+    /** Role-indexed view of arbitrage trader agents (also present in agents). */
+    arbitrageTraders: Map<string, Agent>;
     tickerEvents: TickerEvent[];
     nextEventId: number;
 }
@@ -312,6 +319,8 @@ export function createEmptyAccumulator(): MonthAccumulator {
         purchases: 0,
         claimPayments: 0,
         totalWorkersTicks: 0,
+        forexRevenue: 0,
+        forexPurchases: 0,
         producedResources: {},
         consumedResources: {},
         boughtResources: {},
@@ -334,6 +343,8 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             purchases: assets.monthAcc.purchases,
             claimPayments: assets.monthAcc.claimPayments,
             totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
+            forexRevenue: assets.monthAcc.forexRevenue,
+            forexPurchases: assets.monthAcc.forexPurchases,
             producedResources: { ...assets.monthAcc.producedResources },
             consumedResources: { ...assets.monthAcc.consumedResources },
             boughtResources: { ...assets.monthAcc.boughtResources },

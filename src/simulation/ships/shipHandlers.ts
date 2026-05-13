@@ -244,7 +244,7 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
         if (s.contractId) {
             const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
             const storage = storageAgent.assets[s.planetId]?.storageFacility;
-            if (storage && s.currentCargo.quantity > 0) {
+            if (storage && s.currentCargo && s.currentCargo.quantity > 0) {
                 lockIntoEscrow(storage, s.currentCargo.resource.name, s.currentCargo.quantity);
             }
             outer: for (const a of ctx.agents.values()) {
@@ -274,7 +274,17 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
         return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } satisfies ShipStatusIdle };
     }
 
-    if (!s.cargoGoal) {
+    if (!s.cargoGoal || !s.currentCargo) {
+        const toPlanet = ctx.planets.get(s.to);
+        const fromPlanet = ctx.planets.get(s.planetId);
+        pushTickerEvent(ctx, {
+            category: 'shipDispatched',
+            planetId: s.planetId,
+            agentId: agent.id,
+            agentName: agent.name,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (transport)`,
+            tick: ctx.tick,
+        });
         return {
             action: 'transition',
             newState: {
@@ -290,6 +300,16 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
     const storage = storageAgent.assets[s.planetId]?.storageFacility;
     if (!storage) {
+        const toPlanet = ctx.planets.get(s.to);
+        const fromPlanet = ctx.planets.get(s.planetId);
+        pushTickerEvent(ctx, {
+            category: 'shipDispatched',
+            planetId: s.planetId,
+            agentId: agent.id,
+            agentName: agent.name,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (transport)`,
+            tick: ctx.tick,
+        });
         return {
             action: 'transition',
             newState: {
@@ -309,6 +329,16 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     s.currentCargo.quantity += removedQuantity;
 
     if (removedQuantity === missingCargo) {
+        const toPlanet = ctx.planets.get(s.to);
+        const fromPlanet = ctx.planets.get(s.planetId);
+        pushTickerEvent(ctx, {
+            category: 'shipDispatched',
+            planetId: s.planetId,
+            agentId: agent.id,
+            agentName: agent.name,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (transport)`,
+            tick: ctx.tick,
+        });
         return {
             action: 'transition',
             newState: {
@@ -323,7 +353,7 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     return STAY;
 }
 
-function handleTransporting(ship: TransportShip, ctx: GameState): TransitionResult {
+function handleTransporting(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state;
     if (s.type !== 'transporting') {
         return STAY;
@@ -331,6 +361,17 @@ function handleTransporting(ship: TransportShip, ctx: GameState): TransitionResu
     if (ctx.tick < s.arrivalTick) {
         return STAY;
     }
+
+    const toPlanet = ctx.planets.get(s.to);
+    const fromPlanet = ctx.planets.get(s.from);
+    pushTickerEvent(ctx, {
+        category: 'shipArrived',
+        planetId: s.to,
+        agentId: agent.id,
+        agentName: agent.name,
+        message: `${agent.name}'s ${ship.name} arrived at ${toPlanet?.name ?? s.to} from ${fromPlanet?.name ?? s.from}`,
+        tick: ctx.tick,
+    });
 
     const cargo = s.cargo;
     if (!cargo) {
@@ -426,6 +467,16 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
     }
 
     if (!s.buildingTarget) {
+        const toPlanet = ctx.planets.get(s.to);
+        const fromPlanet = ctx.planets.get(s.planetId);
+        pushTickerEvent(ctx, {
+            category: 'shipDispatched',
+            planetId: s.planetId,
+            agentId: agent.id,
+            agentName: agent.name,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (construction)`,
+            tick: ctx.tick,
+        });
         return {
             action: 'transition',
             newState: {
@@ -440,6 +491,16 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
 
     const target = s.buildingTarget;
     if (target.construction === null) {
+        const toPlanet = ctx.planets.get(s.to);
+        const fromPlanet = ctx.planets.get(s.planetId);
+        pushTickerEvent(ctx, {
+            category: 'shipDispatched',
+            planetId: s.planetId,
+            agentId: agent.id,
+            agentName: agent.name,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (construction)`,
+            tick: ctx.tick,
+        });
         return {
             action: 'transition',
             newState: {
@@ -460,11 +521,22 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
     return STAY;
 }
 
-function handleConstructionTransporting(ship: ConstructionShip, ctx: GameState): TransitionResult {
+function handleConstructionTransporting(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as ConstructionShipStatusTransporting;
     if (ctx.tick < s.arrivalTick) {
         return STAY;
     }
+
+    const toPlanet = ctx.planets.get(s.to);
+    const fromPlanet = ctx.planets.get(s.from);
+    pushTickerEvent(ctx, {
+        category: 'shipArrived',
+        planetId: s.to,
+        agentId: agent.id,
+        agentName: agent.name,
+        message: `${agent.name}'s ${ship.name} arrived at ${toPlanet?.name ?? s.to} from ${fromPlanet?.name ?? s.from}`,
+        tick: ctx.tick,
+    });
 
     const target = s.buildingTarget;
     if (!target) {
@@ -683,6 +755,17 @@ function handlePassengerTransporting(ship: PassengerShip, ctx: GameState, agent:
     // Unload immediately on arrival — no separate unloading tick needed
     const unloadAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
     unloadPassengersToWorkforce(unloadAgent, destPlanet, s.to, s.manifest);
+
+    const fromPlanet = ctx.planets.get(s.from);
+    pushTickerEvent(ctx, {
+        category: 'shipArrived',
+        planetId: s.to,
+        agentId: agent.id,
+        agentName: agent.name,
+        message: `${agent.name}'s ${ship.name} arrived at ${destPlanet.name} from ${fromPlanet?.name ?? s.from}`,
+        tick: ctx.tick,
+    });
+
     return { action: 'transition', newState: { type: 'idle', planetId: s.to } };
 }
 

@@ -26,7 +26,6 @@ import {
     loggingCamp,
     logisticsHub,
     machineryFactory,
-    naturalGasWell,
     oilRefinery,
     oilWell,
     packagingPlant,
@@ -51,7 +50,6 @@ import {
     forestResourceType,
     ironOreDepositResourceType,
     limestoneDepositResourceType,
-    naturalGasFieldResourceType,
     oilReservoirResourceType,
     sandDepositResourceType,
     stoneDepositResourceType,
@@ -80,7 +78,6 @@ const TOTAL_WATER = 2_000_000_000;
 const TOTAL_IRON_ORE = 5_000_000_000_000;
 const TOTAL_COAL = 4_000_000_000_000;
 const TOTAL_OIL = 3_000_000_000_000;
-const TOTAL_GAS = 2_000_500_000_000;
 const TOTAL_FOREST = 200_000_000_000;
 const TOTAL_COPPER = 1_000_500_000_000;
 const TOTAL_SAND = 2_000_000_000_000;
@@ -142,7 +139,6 @@ interface FacilityTarget {
 const TARGETS: Record<string, FacilityTarget> = {
     coalMine: { totalScale: 64_546, agentCount: 3 },
     oilWell: { totalScale: 781_908, agentCount: 4 },
-    naturalGasWell: { totalScale: 71_324, agentCount: 4 },
     loggingCamp: { totalScale: 422_917, agentCount: 4 },
     stoneQuarry: { totalScale: 160_000, agentCount: 3 },
     copperMine: { totalScale: 53_516, agentCount: 3 },
@@ -210,8 +206,6 @@ const NAMES: Record<string, string[]> = {
         'Caspian Energy Group',
         'Sahara Petroleum',
         'Borealis Oil Ltd',
-    ],
-    naturalGasWell: [
         'Global Gas Corp',
         'NordicGas Ltd',
         'Meridian Natural Gas',
@@ -671,8 +665,6 @@ function depositPerScale(facilityType: string): number {
             return 500000; // coalDepositResourceType
         case 'oilWell':
             return 300000; // oilReservoirResourceType
-        case 'naturalGasWell':
-            return 100000; // naturalGasFieldResourceType
         case 'loggingCamp':
             return 400000; // forestResourceType
         case 'stoneQuarry':
@@ -708,7 +700,6 @@ function getFacilityFactory(type: string): FacilityFactory {
     const MAP: Record<string, FacilityFactory> = {
         coalMine,
         oilWell,
-        naturalGasWell,
         loggingCamp,
         stoneQuarry,
         copperMine,
@@ -765,7 +756,6 @@ interface ClaimPool {
         | typeof waterSourceResourceType
         | typeof coalDepositResourceType
         | typeof oilReservoirResourceType
-        | typeof naturalGasFieldResourceType
         | typeof forestResourceType
         | typeof stoneDepositResourceType
         | typeof copperDepositResourceType
@@ -783,7 +773,6 @@ function resourceType(facilityType: string): ClaimPool['type'] | null {
     const MAP: Record<string, ClaimPool['type']> = {
         coalMine: coalDepositResourceType,
         oilWell: oilReservoirResourceType,
-        naturalGasWell: naturalGasFieldResourceType,
         loggingCamp: forestResourceType,
         stoneQuarry: stoneDepositResourceType,
         copperMine: copperDepositResourceType,
@@ -804,7 +793,6 @@ function renewableForResource(facilityType: string): boolean {
     const NON_RENEWABLE = new Set([
         'coalMine',
         'oilWell',
-        'naturalGasWell',
         'copperMine',
         'ironExtractionFacility',
         'stoneQuarry',
@@ -1247,13 +1235,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             renewable: renewableForResource('oilWell'),
         },
         {
-            facilityType: 'naturalGasWell',
-            total: TOTAL_GAS,
-            type: naturalGasFieldResourceType,
-            prefix: `${PROC_PLANET_ID}-gas`,
-            renewable: renewableForResource('naturalGasWell'),
-        },
-        {
             facilityType: 'loggingCamp',
             total: TOTAL_FOREST,
             type: forestResourceType,
@@ -1395,7 +1376,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [ironOreDepositResourceType.name]: getPool('ironExtractionFacility'),
             [coalDepositResourceType.name]: getPool('coalMine'),
             [oilReservoirResourceType.name]: getPool('oilWell'),
-            [naturalGasFieldResourceType.name]: getPool('naturalGasWell'),
             [forestResourceType.name]: getPool('loggingCamp'),
             [copperDepositResourceType.name]: getPool('copperMine'),
             [sandDepositResourceType.name]: getPool('sandMine'),
@@ -1434,7 +1414,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const extractionRatePerScale: Record<string, number> = {
         coalMine: 0.5,
         oilWell: 0.3,
-        naturalGasWell: 0.1,
         copperMine: 0.4,
         ironExtractionFacility: 0.4,
     };

@@ -238,8 +238,9 @@ export function ExpensesRevenueChart({
                             stroke='#ef4444'
                             strokeWidth={1.5}
                             fill='url(#gradWages)'
-                            dot={false}
+                            dot={{ r: 2.5, fill: '#ef4444' }}
                             activeDot={{ r: 3 }}
+                            isAnimationActive={false}
                             connectNulls={false}
                         />
                         <Area
@@ -248,8 +249,9 @@ export function ExpensesRevenueChart({
                             stroke='#f59e0b'
                             strokeWidth={1.5}
                             fill='url(#gradPurchases)'
-                            dot={false}
+                            dot={{ r: 2.5, fill: '#f59e0b' }}
                             activeDot={{ r: 3 }}
+                            isAnimationActive={false}
                             connectNulls={false}
                         />
                         <Area
@@ -258,8 +260,9 @@ export function ExpensesRevenueChart({
                             stroke='#8b5cf6'
                             strokeWidth={1.5}
                             fill='url(#gradClaims)'
-                            dot={false}
+                            dot={{ r: 2.5, fill: '#8b5cf6' }}
                             activeDot={{ r: 3 }}
+                            isAnimationActive={false}
                             connectNulls={false}
                         />
                         <Area
@@ -268,8 +271,9 @@ export function ExpensesRevenueChart({
                             stroke='#10b981'
                             strokeWidth={2}
                             fill='url(#gradRevenue)'
-                            dot={false}
-                            activeDot={{ r: 3, fill: '#10b981', stroke: '#1e293b', strokeWidth: 2 }}
+                            dot={{ r: 3, fill: '#10b981' }}
+                            activeDot={{ r: 3, fill: '#10b981' }}
+                            isAnimationActive={false}
                             connectNulls={false}
                         />
                         <Area
@@ -280,7 +284,7 @@ export function ExpensesRevenueChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={false}
+                            dot={{ r: 2, fill: '#ef4444', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}
@@ -294,7 +298,7 @@ export function ExpensesRevenueChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={false}
+                            dot={{ r: 2, fill: '#f59e0b', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}
@@ -308,7 +312,7 @@ export function ExpensesRevenueChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={false}
+                            dot={{ r: 2, fill: '#8b5cf6', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}
@@ -322,7 +326,7 @@ export function ExpensesRevenueChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={false}
+                            dot={{ r: 2, fill: '#10b981', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}

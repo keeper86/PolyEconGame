@@ -4,13 +4,6 @@ import type { GameState } from '../planet/planet';
 import type { Loan } from '../financial/loanTypes';
 import { ROLLOVER_FEE_RATE } from '../financial/financialTick';
 
-/**
- * Enforce loan maturities for forex market-makers.
- *
- * Any loan whose maturityTick has been reached must be repaid immediately.
- * If the MM lacks sufficient deposits, the shortfall is covered by a new
- * rollover loan (with a fresh maturity and a 5% fee).
- */
 function enforceForexMMLoanMaturities(gameState: GameState): void {
     for (const mm of gameState.forexMarketMakers.values()) {
         for (const [planetId, assets] of Object.entries(mm.assets)) {
@@ -75,14 +68,6 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
     }
 }
 
-/**
- * Repayment tick for forex market-maker loans.
- *
- * Runs after forexTick() each tick.  For each MM and each planet where it
- * holds a loan, any deposits above the retention threshold are used to repay
- * the loan symmetrically (both bank.loans and bank.deposits shrink together,
- * preserving the monetary-conservation invariant).
- */
 export function forexMMRepaymentTick(gameState: GameState): void {
     // First enforce maturities
     enforceForexMMLoanMaturities(gameState);

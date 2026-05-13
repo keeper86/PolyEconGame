@@ -43,6 +43,7 @@ export function collectForexAsks(
         const askPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, offer.offerPrice));
         const quantity = available;
 
+        issuingAssets!.deposits -= quantity;
         issuingAssets!.depositHold = alreadyHeld + quantity;
 
         offer.lastPlacedQty = quantity;

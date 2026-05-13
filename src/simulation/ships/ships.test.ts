@@ -601,8 +601,11 @@ describe('handleDispatchShip validation', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 10);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id, cargoGoal: null });
         expect(messages[0]).toMatchObject({ type: 'shipDispatched' });
-        // ferry goes straight to transporting, no deadlineTick
-        expect(ship.state.type).toBe('transporting');
+        // ferry goes through loading state (cargoGoal: null), deadlineTick is set
+        expect(ship.state.type).toBe('loading');
+        if (ship.state.type === 'loading') {
+            expect(ship.state.deadlineTick).toBeGreaterThan(10);
+        }
     });
 
     it('succeeds with cargo goal and sets deadlineTick on loading state', () => {
@@ -619,7 +622,7 @@ describe('handleDispatchShip validation', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 200 },
+            cargoGoal: { resource: steelResourceType, quantity: 200 },
         });
 
         expect(messages[0]).toMatchObject({ type: 'shipDispatched' });
@@ -639,7 +642,7 @@ describe('handleDispatchShip validation', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 200 },
+            cargoGoal: { resource: steelResourceType, quantity: 200 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });

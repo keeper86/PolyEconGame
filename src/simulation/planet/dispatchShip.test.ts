@@ -90,17 +90,17 @@ describe('handleDispatchShip', () => {
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
 
-    it('dispatches ferry mode (no cargo) directly to transporting', () => {
+    it('dispatches ferry mode (no cargo) into loading state', () => {
         const agent = makeAgent('a1', 'p1');
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id, cargoGoal: null });
         expect(messages[0]).toMatchObject({ type: 'shipDispatched', agentId: 'a1', shipId: ship.id });
-        expect(ship.state.type).toBe('transporting');
-        if (ship.state.type === 'transporting') {
+        expect(ship.state.type).toBe('loading');
+        if (ship.state.type === 'loading') {
             expect(ship.state.to).toBe('p2');
-            expect(ship.state.cargo).toBeNull();
+            expect(ship.state.cargoGoal).toBeNull();
         }
     });
 
@@ -115,7 +115,7 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 100 },
+            cargoGoal: { resource: steelResourceType, quantity: 100 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed' });
     });
@@ -131,12 +131,12 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 100 },
+            cargoGoal: { resource: steelResourceType, quantity: 100 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: expect.stringContaining('Steel') });
     });
 
-    it('fails when insufficient cargo in storage', () => {
+    it('dispatches even when requested quantity exceeds storage (loading phase handles shortfall)', () => {
         const storage = makeStorageFacility({ planetId: 'p1' });
         putIntoStorageFacility(storage, steelResourceType, 50);
         const assets = makeAgentPlanetAssets('p1', { storageFacility: storage });
@@ -149,12 +149,10 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 200 },
+            cargoGoal: { resource: steelResourceType, quantity: 200 },
         });
-        expect(messages[0]).toMatchObject({
-            type: 'shipDispatchFailed',
-            reason: 'Insufficient cargo quantity in storage',
-        });
+        expect(messages[0]).toMatchObject({ type: 'shipDispatched', shipId: ship.id });
+        expect(ship.state.type).toBe('loading');
     });
 
     it('dispatches with cargo into loading state and cargo drawn from own storage', () => {
@@ -170,7 +168,7 @@ describe('handleDispatchShip', () => {
             fromPlanetId: 'p1',
             toPlanetId: 'p2',
             shipId: ship.id,
-            cargoGoal: { resourceName: 'Steel', quantity: 300 },
+            cargoGoal: { resource: steelResourceType, quantity: 300 },
         });
         expect(messages[0]).toMatchObject({ type: 'shipDispatched', shipId: ship.id });
         expect(ship.state.type).toBe('loading');
@@ -179,7 +177,7 @@ describe('handleDispatchShip', () => {
             expect(ship.state.contractId).toBeUndefined();
             expect(ship.state.posterAgentId).toBeUndefined();
             expect(ship.state.cargoGoal?.quantity).toBe(300);
-            expect(ship.state.cargoGoal?.resource.name).toBe('Steel');
+            expect(ship.state.cargoGoal?.resource).toBe(steelResourceType);
         }
     });
 });

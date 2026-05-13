@@ -9,7 +9,6 @@ import {
     forestResourceType,
     ironOreDepositResourceType,
     limestoneDepositResourceType,
-    naturalGasFieldResourceType,
     oilReservoirResourceType,
     sandDepositResourceType,
     stoneDepositResourceType,
@@ -129,23 +128,10 @@ export const oilWell = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 2,
     },
     needs: [{ resource: oilReservoirResourceType, quantity: 0.3 }],
-    produces: [{ resource: crudeOilResourceType, quantity: 300 }],
-});
-
-export const naturalGasWell = (planetId: string, id: string): ProductionFacility => ({
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Natural Gas Well',
-    powerConsumptionPerTick: 0.5,
-    workerRequirement: {
-        none: 5,
-        primary: 10,
-        secondary: 6,
-        tertiary: 1,
-    },
-    needs: [{ resource: naturalGasFieldResourceType, quantity: 0.1 }],
-    produces: [{ resource: naturalGasResourceType, quantity: 100 }],
+    produces: [
+        { resource: crudeOilResourceType, quantity: 300 },
+        { resource: naturalGasResourceType, quantity: 100 },
+    ],
 });
 
 export const loggingCamp = (planetId: string, id: string): ProductionFacility => ({
@@ -958,7 +944,6 @@ const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
 export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(coalMine),
     entry(oilWell),
-    entry(naturalGasWell),
     entry(loggingCamp),
     entry(stoneQuarry),
     entry(copperMine),

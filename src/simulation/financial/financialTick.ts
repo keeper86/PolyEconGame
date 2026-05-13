@@ -236,6 +236,10 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         if (!agent.automated) {
             return;
         }
+        // Agents with a dedicated repayment tick handle their own loan management.
+        if (agent.agentRole === 'arbitrage_trader' || agent.agentRole === 'shipbuilder') {
+            return;
+        }
         const assets = agent.assets[planet.id];
         if (!assets?.workforceDemography) {
             return;
