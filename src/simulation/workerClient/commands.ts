@@ -1,39 +1,40 @@
 import { randomUUID } from 'node:crypto';
-import { sendCommandSpec } from './transport';
+import type { ResourceQuantity } from '../planet/claims';
 import {
-    createAgentSpec,
-    requestLoanSpec,
-    repayLoanSpec,
-    setAutomationSpec,
-    setWorkerAllocationTargetsSpec,
-    setSellOffersSpec,
-    cancelSellOfferSpec,
-    cancelBuyBidSpec,
-    setBuyBidsSpec,
-    buildFacilitySpec,
-    expandFacilitySpec,
-    setFacilityScaleSpec,
-    leaseClaimSpec,
-    quitClaimSpec,
-    postTransportContractSpec,
-    acceptTransportContractSpec,
-    cancelTransportContractSpec,
-    postConstructionContractSpec,
     acceptConstructionContractSpec,
-    cancelConstructionContractSpec,
-    postShipBuyingOfferSpec,
     acceptShipBuyingOfferSpec,
-    postShipListingSpec,
-    cancelShipListingSpec,
     acceptShipListingSpec,
-    dispatchShipSpec,
+    acceptTransportContractSpec,
+    acquireLicenseSpec,
+    buildFacilitySpec,
+    buildShipConstructionFacilitySpec,
+    cancelBuyBidSpec,
+    cancelConstructionContractSpec,
+    cancelSellOfferSpec,
+    cancelShipListingSpec,
+    cancelTransportContractSpec,
+    createAgentSpec,
     dispatchConstructionShipSpec,
     dispatchPassengerShipSpec,
-    buildShipConstructionFacilitySpec,
+    dispatchShipSpec,
+    expandFacilitySpec,
     expandShipConstructionFacilitySpec,
+    leaseClaimSpec,
+    postConstructionContractSpec,
+    postShipBuyingOfferSpec,
+    postShipListingSpec,
+    postTransportContractSpec,
+    quitClaimSpec,
+    repayLoanSpec,
+    requestLoanSpec,
+    setAutomationSpec,
+    setBuyBidsSpec,
+    setFacilityScaleSpec,
+    setSellOffersSpec,
     setShipConstructionTargetSpec,
-    acquireLicenseSpec,
+    setWorkerAllocationTargetsSpec,
 } from './commandSpec';
+import { sendCommandSpec } from './transport';
 
 export function workerCreateAgent(opts: {
     agentId: string;
@@ -239,7 +240,7 @@ export function workerPostTransportContract(opts: {
     agentId: string;
     planetId: string;
     toPlanetId: string;
-    cargo: { resourceName: string; quantity: number };
+    cargo: ResourceQuantity;
     maxDurationInTicks: number;
     offeredReward: number;
     expiresAtTick: number;
@@ -517,7 +518,7 @@ export function workerDispatchShip(opts: {
     fromPlanetId: string;
     toPlanetId: string;
     shipId: string;
-    cargoGoal: { resourceName: string; quantity: number } | null;
+    cargoGoal: ResourceQuantity | null;
     timeoutMs?: number;
 }): Promise<string> {
     const { agentId, fromPlanetId, toPlanetId, shipId, cargoGoal, timeoutMs } = opts;

@@ -1,3 +1,4 @@
+import { getResourceByName } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import {
@@ -78,7 +79,11 @@ export const postTransportContract = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const contractId = await workerPostTransportContract(input);
+            const resource = getResourceByName(input.cargo.resourceName);
+            if (!resource) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name' });
+            }
+            const contractId = await workerPostTransportContract({ ...input, cargo: { ...input.cargo, resource } });
             return { contractId };
         });
 
@@ -135,8 +140,17 @@ export const dispatchShip = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const shipId = await workerDispatchShip(input);
-            return { shipId };
+            if (input.cargoGoal) {
+                const resource = getResourceByName(input.cargoGoal.resourceName);
+                if (!resource) {
+                    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name in cargo goal' });
+                }
+                const shipId = await workerDispatchShip({ ...input, cargoGoal: { ...input.cargoGoal, resource } });
+                return { shipId };
+            } else {
+                const shipId = await workerDispatchShip({ ...input, cargoGoal: null });
+                return { shipId };
+            }
         });
 
 export const dispatchConstructionShip = () =>
