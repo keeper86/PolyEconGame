@@ -210,18 +210,18 @@ export function executeShipPurchase(
         return false;
     }
 
+    // Verify ship exists before mutating any state (keep operation atomic)
+    const shipIdx = sellerAgent.ships.findIndex((s) => s.id === listing.shipId);
+    if (shipIdx === -1) {
+        return false;
+    }
+
     // Remove listing
     const idx = sellerAssets.shipListings.findIndex((l) => l.id === listing.id);
     if (idx === -1) {
         return false;
     }
     sellerAssets.shipListings.splice(idx, 1);
-
-    // Transfer ship
-    const shipIdx = sellerAgent.ships.findIndex((s) => s.id === listing.shipId);
-    if (shipIdx === -1) {
-        return false;
-    }
     const [ship] = sellerAgent.ships.splice(shipIdx, 1);
     // Ship stays at the listing planet (not teleported to buyer's planet)
     ship.state = { type: 'idle', planetId: listing.planetId };

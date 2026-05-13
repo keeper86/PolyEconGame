@@ -82,11 +82,19 @@ function wireToGameState(wire: WireGameState): GameState {
     }
     const shipbuilderAgents = new Map<string, Agent>();
     for (const sb of wire.shipbuilderAgents ?? []) {
-        shipbuilderAgents.set(sb.id, sb);
+        // Prefer the canonical agent object from the agents map so all role-indexed
+        // maps share the same object instances and mutations stay consistent.
+        const canonical = agents.get(sb.id);
+        if (canonical) {
+            shipbuilderAgents.set(sb.id, canonical);
+        }
     }
     const arbitrageTraders = new Map<string, Agent>();
     for (const at of wire.arbitrageTraders ?? []) {
-        arbitrageTraders.set(at.id, at);
+        const canonical = agents.get(at.id);
+        if (canonical) {
+            arbitrageTraders.set(at.id, canonical);
+        }
     }
     return {
         tick: wire.tick,

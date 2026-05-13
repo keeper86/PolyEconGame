@@ -468,8 +468,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
 
     for (const spec of oilSpecs) {
         const oilId = `earth-oil-${spec.id}`;
-        const gasId = `earth-gas-${spec.id}`;
-        govClaims.push(oilId, gasId);
+        govClaims.push(oilId);
 
         oilClaims.push(
             makeClaim({
@@ -494,7 +493,7 @@ export function buildEarth(): { planet: Planet; agents: Agent[] } {
                 planetId: EARTH_ID,
                 facilities: [oilFacility],
                 storage: makeStorage({ planetId: EARTH_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
-                tenancies: [oilId, gasId],
+                tenancies: [oilId],
             }),
         );
     }

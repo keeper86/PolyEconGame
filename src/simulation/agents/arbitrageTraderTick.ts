@@ -6,6 +6,7 @@ import {
     ARBITRAGE_SEED_DEPOSIT,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
     isFirstTickInMonth,
+    MAX_DISPATCH_TIMEOUT_TICKS,
 } from '../constants';
 import { repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import type { Agent, GameState } from '../planet/planet';
@@ -179,6 +180,7 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
                 to: candidate.originPlanetId,
                 cargoGoal: null,
                 currentCargo: null,
+                deadlineTick: gameState.tick + MAX_DISPATCH_TIMEOUT_TICKS,
             };
             continue;
         }
@@ -202,6 +204,7 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
             to: candidate.destPlanetId,
             cargoGoal: { resource, quantity: candidate.quantity },
             currentCargo: { resource, quantity: 0 },
+            deadlineTick: gameState.tick + MAX_DISPATCH_TIMEOUT_TICKS,
         };
     }
 }

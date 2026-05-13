@@ -35,7 +35,6 @@ export function advanceTick(gameState: GameState) {
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
             resetAgentMetrics(gameState.forexMarketMakers, planet);
-            resetAgentMetrics(gameState.arbitrageTraders, planet);
         }
 
         environmentTick(planet);

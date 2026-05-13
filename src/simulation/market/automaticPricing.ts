@@ -229,15 +229,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             ship.type.type === 'transport' &&
             ship.state.type === 'loading' &&
             ship.state.planetId === planet.id &&
-            ship.state.cargoGoal !== null &&
-            ship.state.cargoGoal !== undefined
+            ship.state.cargoGoal != null
         ) {
             const { resource, quantity } = ship.state.cargoGoal;
-            const existing = aggregatedBuyTargets.get(resource.name);
-            if (existing) {
-                existing.storageTarget += quantity;
-            } else {
-                aggregatedBuyTargets.set(resource.name, { resource, storageTarget: quantity });
+            const alreadyLoaded = ship.state.currentCargo?.quantity ?? 0;
+            const remaining = quantity - alreadyLoaded;
+            if (remaining > 0) {
+                const existing = aggregatedBuyTargets.get(resource.name);
+                if (existing) {
+                    existing.storageTarget += remaining;
+                } else {
+                    aggregatedBuyTargets.set(resource.name, { resource, storageTarget: remaining });
+                }
             }
         }
     }
