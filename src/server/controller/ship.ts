@@ -1,4 +1,4 @@
-import { getResourceByName } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
+import { RESOURCES_BY_NAME } from '../../simulation/planet/resourceCatalog';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import {
@@ -79,7 +79,7 @@ export const postTransportContract = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const resource = getResourceByName(input.cargo.resourceName);
+            const resource = RESOURCES_BY_NAME.get(input.cargo.resourceName);
             if (!resource) {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name' });
             }
@@ -141,7 +141,7 @@ export const dispatchShip = () =>
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
             if (input.cargoGoal) {
-                const resource = getResourceByName(input.cargoGoal.resourceName);
+                const resource = RESOURCES_BY_NAME.get(input.cargoGoal.resourceName);
                 if (!resource) {
                     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name in cargo goal' });
                 }

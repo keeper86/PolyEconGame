@@ -115,22 +115,23 @@ export default function ProductResolutionPanel({
         if (currentBought.value !== 0 || lastBought.value !== 0) {
             boughtEntries.push([name, currentBought, lastBought]);
         }
-        boughtEntries.sort((a, b) => b[1].value - a[1].value); // Sort by current month value desc
 
         const currentSold = monthAcc.soldResources[name] ?? { quantity: 0, value: 0 };
         const lastSold = lastMonthAcc.soldResources[name] ?? { quantity: 0, value: 0 };
         if (currentSold.value !== 0 || lastSold.value !== 0) {
             soldEntries.push([name, currentSold, lastSold]);
         }
-        soldEntries.sort((a, b) => b[1].value - a[1].value); // Sort by current month value desc
 
         const currentDepr = monthAcc.depreciatedServices[name] ?? { quantity: 0, value: 0 };
         const lastDepr = lastMonthAcc.depreciatedServices[name] ?? { quantity: 0, value: 0 };
         if (currentDepr.value !== 0 || lastDepr.value !== 0) {
             depreciatedEntries.push([name, currentDepr, lastDepr]);
         }
-        depreciatedEntries.sort((a, b) => b[1].value - a[1].value); // Sort by current month value desc
     }
+
+    boughtEntries.sort((a, b) => b[1].value - a[1].value);
+    soldEntries.sort((a, b) => b[1].value - a[1].value);
+    depreciatedEntries.sort((a, b) => b[1].value - a[1].value);
 
     return (
         <div className='space-y-3'>
