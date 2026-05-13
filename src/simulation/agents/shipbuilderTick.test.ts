@@ -257,7 +257,8 @@ describe('shipbuilderTick – autoListIdleShips', () => {
 
 describe('shipbuilderTick – decideBuild', () => {
     it('skips decideBuild on non-first tick of month', () => {
-        const { state, builder } = makeStateWithShipbuilder('p1', 1); // tick 1 is not month start
+        // tick 2: isFirstTickInMonth(2) = 2 % TICKS_PER_MONTH === 1 → false
+        const { state, builder } = makeStateWithShipbuilder('p1', 2);
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
 
         shipbuilderTick(state);
