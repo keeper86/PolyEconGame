@@ -274,32 +274,10 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
         return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } satisfies ShipStatusIdle };
     }
 
-    if (!s.cargoGoal || !s.currentCargo) {
-        const toPlanet = ctx.planets.get(s.to);
-        const fromPlanet = ctx.planets.get(s.planetId);
-        pushTickerEvent(ctx, {
-            category: 'shipDispatched',
-            planetId: s.planetId,
-            agentId: agent.id,
-            agentName: agent.name,
-            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (transport)`,
-            tick: ctx.tick,
-        });
-        return {
-            action: 'transition',
-            newState: {
-                type: 'transporting',
-                from: s.planetId,
-                to: s.to,
-                cargo: s.currentCargo,
-                arrivalTick: ctx.tick + travelTime(ship),
-            },
-        };
-    }
-
     const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
     const storage = storageAgent.assets[s.planetId]?.storageFacility;
-    if (!storage) {
+
+    if (!s.cargoGoal || !s.currentCargo || !storage) {
         const toPlanet = ctx.planets.get(s.to);
         const fromPlanet = ctx.planets.get(s.planetId);
         pushTickerEvent(ctx, {
@@ -307,7 +285,7 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
             planetId: s.planetId,
             agentId: agent.id,
             agentName: agent.name,
-            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (transport)`,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (empty)`,
             tick: ctx.tick,
         });
         return {
@@ -336,7 +314,7 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
             planetId: s.planetId,
             agentId: agent.id,
             agentName: agent.name,
-            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (transport)`,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (s.currentCargo.quantity ${s.currentCargo.quantity}/${s.cargoGoal.quantity} ${s.cargoGoal.resource.name})`,
             tick: ctx.tick,
         });
         return {

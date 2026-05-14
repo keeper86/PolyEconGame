@@ -292,6 +292,67 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
 
         expect(ship.state.type).toBe('idle');
     });
+
+    it('finds route when destination bid depth is less than ship cargo capacity', () => {
+        // Mirrors the Earth→Alpha Centauri scenario: a seller at origin lists 2Mt of Steel
+        // at 20.5/t, but the buyer at destination bids on only 1,000t at 1,000/t.
+        // BulkCarrier1 can carry 150,000t, so without bid-depth capping the sell-price
+        // query for 150,000t returns null and the trader incorrectly stays idle.
+        // After the fix the effective fill quantity is capped to 1,000 and the route is found.
+        const BID_DEPTH = 1_000;
+        const pOrigin = makePlanet({
+            id: 'p-origin',
+            name: 'Origin',
+            marketPrices: { Steel: 20.5 },
+        });
+        pOrigin.orderBooks = {
+            Steel: { asks: [{ price: 20.5, quantity: 2_000_000 }], bids: [] },
+        };
+
+        const pDest = makePlanet({
+            id: 'p-dest',
+            name: 'Destination',
+            marketPrices: {
+                Steel: 1_000,
+                [getCurrencyResourceName('p-dest')]: 1.0,
+            },
+        });
+        pDest.orderBooks = {
+            Steel: { asks: [], bids: [{ price: 1_000, quantity: BID_DEPTH }] },
+        };
+
+        const agentId = 'arb-shallow';
+        const agent: Agent = makeAgent(agentId, 'p-origin', 'Shallow Arb', {
+            agentRole: 'arbitrage_trader',
+            automated: true,
+            assets: {
+                'p-origin': makeAgentPlanetAssets('p-origin', {
+                    deposits: 10_000_000,
+                    market: { sell: {}, buy: {} },
+                    licenses: { commercial: { acquiredTick: 0, frozen: false } },
+                }),
+                'p-dest': makeAgentPlanetAssets('p-dest', {
+                    deposits: 0,
+                    market: { sell: {}, buy: {} },
+                    licenses: { commercial: { acquiredTick: 0, frozen: false } },
+                }),
+            },
+        });
+        const ship = createShip(SHIP_TYPE, 0, 'Shallow Ship', pOrigin) as TransportShip;
+        agent.ships.push(ship);
+
+        const state = makeGameState([pOrigin, pDest], [agent], 5);
+        state.arbitrageTraders.set(agentId, agent);
+
+        arbitrageTraderTick(state);
+
+        // Route must be found and ship dispatched — quantity capped to bid depth, not cargo capacity
+        expect(ship.state.type).toBe('loading');
+        const s = ship.state as { type: 'loading'; planetId: string; to: string; cargoGoal: { quantity: number } | null };
+        expect(s.planetId).toBe('p-origin');
+        expect(s.to).toBe('p-dest');
+        expect(s.cargoGoal?.quantity).toBe(BID_DEPTH);
+    });
 });
 
 // ---------------------------------------------------------------------------

@@ -54,7 +54,7 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
             const bootstrapShip = createShip(
                 BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length],
                 0,
-                `Trader Ship ${i + 1} (${homePlanet.name})`,
+                `${BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length].cargoSpecification.type} Ship ${i + 1} (${homePlanet.name})`,
                 homePlanet,
             );
             agent.ships.push(bootstrapShip);

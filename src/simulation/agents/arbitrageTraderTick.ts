@@ -73,9 +73,6 @@ function scanBestRoute(
             // Use spot price only for affordability estimate (order book may be absent on first tick)
             const pBuySpot = origin.marketPrices[resource.name];
             if (!pBuySpot || pBuySpot <= 0) {
-                if (debug && monthly) {
-                    console.log(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no buy price`);
-                }
                 continue;
             }
 
@@ -84,21 +81,18 @@ function scanBestRoute(
             const affordableQty = Math.floor(agentOriginDeposits / pBuySpot);
             const qty = Math.min(maxQty, affordableQty);
             if (qty < 1) {
-                if (debug && monthly) {
-                    console.log(
-                        `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient capital for even 1 unit (have ${agentOriginDeposits.toFixed(0)}, need ${pBuySpot.toFixed(0)}/unit)`,
-                    );
-                }
                 continue;
             }
 
-            // Depth-aware buy price: walks the ask ladder for the actual fill quantity
-            const pBuy = getEffectiveBuyPrice(origin, resource.name, qty);
-            if (!pBuy) {
+            // Quick guard: skip origins with no ask depth at all.
+            // The precise buy price is computed per-destination below using effectiveQty.
+            const originAskDepth = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
+                (sum, level) => sum + level.quantity,
+                0,
+            );
+            if (originAskDepth < 1) {
                 if (debug && monthly) {
-                    console.log(
-                        `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient ask depth for qty=${qty}`,
-                    );
+                    console.log(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no ask depth`);
                 }
                 continue;
             }
@@ -113,14 +107,39 @@ function scanBestRoute(
                     continue;
                 }
 
-                // Depth-aware sell price: walks the bid ladder at destination
-                const pSellDest = getEffectiveSellPrice(dest, resource.name, qty);
-                if (!pSellDest) {
+                // Cap the trade size to what the destination bid ladder can actually absorb.
+                // Without this cap, getEffectiveSellPrice returns null whenever bid depth is
+                // less than the ship's full cargo capacity, hiding routes with thin but real demand.
+                const destBidDepth = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
+                    (sum, level) => sum + level.quantity,
+                    0,
+                );
+                if (destBidDepth < 1) {
                     if (debug && monthly) {
                         console.log(
-                            `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: insufficient bid depth for qty=${qty}`,
+                            `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no bid depth at destination`,
                         );
                     }
+                    continue;
+                }
+                const effectiveQty = Math.min(qty, destBidDepth);
+
+                // Depth-aware buy price for the effective (possibly reduced) quantity.
+                // Recomputed here so the VWAP reflects the actual fill size.
+                const pBuy = getEffectiveBuyPrice(origin, resource.name, effectiveQty);
+                if (!pBuy) {
+                    if (debug && monthly) {
+                        console.log(
+                            `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient ask depth for effectiveQty=${effectiveQty}`,
+                        );
+                    }
+                    continue;
+                }
+
+                // Depth-aware sell price: walks the bid ladder at destination
+                const pSellDest = getEffectiveSellPrice(dest, resource.name, effectiveQty);
+                if (!pSellDest) {
+                    // Should not happen — bid depth was checked above — guard only
                     continue;
                 }
 
@@ -129,11 +148,11 @@ function scanBestRoute(
                 const forexRate = origin.marketPrices[currencyName] ?? 1.0;
                 const pSellOrigin = pSellDest * forexRate;
 
-                const grossProfit = (pSellOrigin - pBuy) * qty;
+                const grossProfit = (pSellOrigin - pBuy) * effectiveQty;
                 const profitPerTick = (grossProfit - depreciation) / totalTicks;
                 if (debug && monthly) {
                     console.log(
-                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellAdj=${pSellOrigin.toFixed(2)} qty=${qty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
+                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                     );
                 }
                 if (profitPerTick > bestProfitPerTick) {
@@ -142,7 +161,7 @@ function scanBestRoute(
                         originPlanetId: origin.id,
                         destPlanetId: dest.id,
                         resourceName: resource.name,
-                        quantity: qty,
+                        quantity: effectiveQty,
                         profitPerTick,
                     };
                 }
@@ -234,7 +253,7 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
         if (ship.type.type !== 'transport' || ship.state.type !== 'loading') {
             continue;
         }
-        const s = ship.state as { planetId: string; cargoGoal: { resource: { name: string } } | null };
+        const s = ship.state;
         if (!s.cargoGoal) {
             continue;
         }
@@ -267,6 +286,11 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
             const offerPrice = marketPrice * 1.05;
             const existing = assets.market.sell[resourceName];
             if (!existing) {
+                if (process.env.SIM_DEBUG === '1') {
+                    console.log(
+                        `[arb] ${agent.id} on ${planet.name}: posting new sell offer for ${entry.quantity} ${resourceName} at ${offerPrice.toFixed(2)} (market price ${marketPrice.toFixed(2)})`,
+                    );
+                }
                 assets.market.sell[resourceName] = {
                     resource: entry.resource,
                     offerPrice,
@@ -350,6 +374,7 @@ function manageFleet(agent: Agent, gameState: GameState): void {
 // ---------------------------------------------------------------------------
 
 export function arbitrageTraderRepaymentTick(gameState: GameState): void {
+    return;
     for (const agent of gameState.arbitrageTraders.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             const planet = gameState.planets.get(planetId);
@@ -367,6 +392,12 @@ export function arbitrageTraderRepaymentTick(gameState: GameState): void {
                 continue;
             }
             const actualRepayment = repayLoansOldestFirst(assets.activeLoans, repayment);
+            if (process.env.SIM_DEBUG === '1') {
+                const afterRepaymentTotal = totalOutstandingLoans(assets.activeLoans);
+                console.log(
+                    `[arb] ${agent.id} on ${planet.name} repaid ${actualRepayment.toFixed(0)} (before: ${agentLoanTotal.toFixed(0)}, after: ${afterRepaymentTotal.toFixed(0)})`,
+                );
+            }
             assets.deposits -= actualRepayment;
             planet.bank.loans -= actualRepayment;
             planet.bank.deposits -= actualRepayment;
@@ -380,14 +411,8 @@ export function arbitrageTraderRepaymentTick(gameState: GameState): void {
 // ---------------------------------------------------------------------------
 
 export function arbitrageTraderTick(gameState: GameState): void {
-    const monthly = isFirstTickInMonth(gameState.tick);
-
     for (const agent of gameState.arbitrageTraders.values()) {
         assignRoutesToIdleShips(agent, gameState);
         postSellOffers(agent, gameState);
-
-        if (monthly) {
-            manageFleet(agent, gameState);
-        }
     }
 }
