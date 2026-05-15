@@ -17,6 +17,7 @@ import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/
 import { solveSupplyChain, type SolverObjective, type SolverResult } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
+import { TradeRoutesTab } from './TradeRoutesTab';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -760,6 +761,7 @@ export default function SupplyChainTool() {
                     <TabsTrigger value='graph'>Dependency Graph</TabsTrigger>
                     <TabsTrigger value='solver'>Auto-Solver</TabsTrigger>
                     <TabsTrigger value='live'>Live State</TabsTrigger>
+                    <TabsTrigger value='trade-routes'>Trade Routes</TabsTrigger>
                 </TabsList>
 
                 {/* ── DASHBOARD ── */}
@@ -993,6 +995,11 @@ export default function SupplyChainTool() {
                 {/* ── LIVE STATE ── */}
                 <TabsContent value='live' className='mt-4'>
                     <LiveStateTab onApplyScales={(newScales) => setScales(newScales)} />
+                </TabsContent>
+
+                {/* ── TRADE ROUTES ── */}
+                <TabsContent value='trade-routes' className='mt-4'>
+                    <TradeRoutesTab />
                 </TabsContent>
             </Tabs>
         </div>

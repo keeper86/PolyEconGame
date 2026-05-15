@@ -169,8 +169,7 @@ export default function Footer() {
         const now = performance.now();
         const effectiveElapsed = now - lastSpawnTimeRef.current - totalPausedDurationRef.current;
         const distanceTraveled = (effectiveElapsed * prevSpeed) / 1000;
-        const threshold =
-            lastSpawnWidthRef.current + GAP_PX + Math.max(0, containerWidth * (1 - prevSpeed / speed));
+        const threshold = lastSpawnWidthRef.current + GAP_PX + Math.max(0, containerWidth * (1 - prevSpeed / speed));
         if (distanceTraveled < threshold) {
             return;
         }

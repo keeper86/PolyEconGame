@@ -138,7 +138,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const initialPrice = planet.marketPrices[resource.name];
 
-            const skipBrake = resource.form === 'services';
+            const skipBrake = true; //resource.form === 'services';
             adjustOfferPrice(
                 offer,
                 inventoryQty,
@@ -263,7 +263,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const marketPrice = planet.marketPrices[resourceName];
         const profitGap = inputProfitGaps.get(resourceName) ?? 0;
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap);
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, 0);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);

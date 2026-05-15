@@ -50,14 +50,16 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 agent.assets[planet.id] = assets;
             }
 
-            // Bootstrap ship: one Bulk Carrier idle at home planet
-            const bootstrapShip = createShip(
-                BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length],
-                0,
-                `${BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length].cargoSpecification.type} Ship ${i + 1} (${homePlanet.name})`,
-                homePlanet,
-            );
-            agent.ships.push(bootstrapShip);
+            for (let i = 0; i < 6; i++) {
+                // Bootstrap ship: one Bulk Carrier idle at home planet
+                const bootstrapShip = createShip(
+                    BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length],
+                    0,
+                    `${BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length].cargoSpecification.type} Ship ${i + 1} (${homePlanet.name})`,
+                    homePlanet,
+                );
+                agent.ships.push(bootstrapShip);
+            }
 
             gameState.arbitrageTraders.set(agentId, agent);
             gameState.agents.set(agentId, agent);
