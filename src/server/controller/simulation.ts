@@ -1,5 +1,4 @@
 import { getCurrencyResourceName, DEFAULT_EXCHANGE_RATE } from '@/simulation/market/currencyResources';
-import { getEffectiveBuyPrice, getEffectiveSellPrice } from '@/simulation/market/orderBookSnapshot';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';

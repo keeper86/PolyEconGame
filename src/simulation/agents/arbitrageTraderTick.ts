@@ -7,7 +7,6 @@ import {
     MAX_DISPATCH_TIMEOUT_TICKS,
 } from '../constants';
 import { getCurrencyResourceName } from '../market/currencyResources';
-import { getEffectiveBuyPrice, getEffectiveSellPrice } from '../market/orderBookSnapshot';
 import type { Agent, GameState } from '../planet/planet';
 import { ALL_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { travelTime } from '../ships/shipHandlers';
@@ -23,6 +22,19 @@ type RouteCandidate = {
     /** Net profit per tick in currency units (includes repositioning leg if any). */
     profitPerTick: number;
 };
+
+type PriceAggregate = {
+    quantity: number;
+    price: number;
+};
+const emptyPriceAggregate: PriceAggregate = { quantity: 0, price: 0 };
+const orderBookReducer = (maxQty: number) => (sum: PriceAggregate, level: PriceAggregate) =>
+    sum.quantity >= maxQty
+        ? sum
+        : {
+              quantity: sum.quantity + Math.min(level.quantity, maxQty - sum.quantity),
+              price: sum.price + level.price * Math.min(level.quantity, maxQty - sum.quantity),
+          };
 
 function scanBestRoute(
     ship: TransportShip,
@@ -54,13 +66,22 @@ function scanBestRoute(
         const maxQty = Math.floor(Math.min(maxByVolume, maxByMass));
 
         for (const origin of planets) {
-            const originAskDepth = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
-                (sum, level) => sum + level.quantity,
-                0,
+            const bids = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
+                orderBookReducer(maxQty),
+                emptyPriceAggregate,
             );
-            if (originAskDepth <= 0) {
+            if (bids.quantity <= 0) {
                 if (debug && monthly) {
                     console.log(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no ask depth`);
+                }
+                continue;
+            }
+
+            if (bids.price <= 0) {
+                if (debug && monthly) {
+                    console.log(
+                        `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient ask depth for effectiveQty=${bids.quantity} (available=${bids})`,
+                    );
                 }
                 continue;
             }
@@ -76,11 +97,18 @@ function scanBestRoute(
                     continue;
                 }
 
-                const destBidDepth = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
-                    (sum, level) => sum + level.quantity,
-                    0,
+                const offers = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
+                    (sum, level) =>
+                        sum.quantity >= maxQty
+                            ? sum
+                            : {
+                                  quantity: sum.quantity + Math.min(level.quantity, maxQty - sum.quantity),
+                                  price: sum.price + level.price * Math.min(level.quantity, maxQty - sum.quantity),
+                              },
+                    { quantity: 0, price: 0 },
                 );
-                if (destBidDepth <= 0) {
+
+                if (offers.quantity <= 0) {
                     if (debug && monthly) {
                         console.log(
                             `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no bid depth at destination`,
@@ -88,51 +116,28 @@ function scanBestRoute(
                     }
                     continue;
                 }
-                const effectiveQty = Math.min(maxQty, destBidDepth);
-
-                // Depth-aware buy price for the effective (possibly reduced) quantity.
-                // Recomputed here so the VWAP reflects the actual fill size.
-                const pBuy = getEffectiveBuyPrice(origin, resource.name, effectiveQty);
-                if (!pBuy) {
-                    if (debug && monthly) {
-                        console.log(
-                            `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient ask depth for effectiveQty=${effectiveQty}`,
-                        );
-                    }
-                    continue;
-                }
-
-                // Depth-aware sell price: walks the bid ladder at destination
-                const pSellDest = getEffectiveSellPrice(dest, resource.name, effectiveQty);
-                if (!pSellDest) {
-                    // Should not happen — bid depth was checked above — guard only
-                    continue;
-                }
 
                 const currencyName = getCurrencyResourceName(dest.id);
-                const estimatedForexQty = pSellDest * effectiveQty;
-                const forexBidRate =
-                    estimatedForexQty > 0 ? getEffectiveSellPrice(origin, currencyName, estimatedForexQty) : null;
+                const buyingCosts = offers.price / offers.quantity;
                 const midForexRate = origin.marketPrices[currencyName] ?? 1.0;
-                // Fall back to a discounted mid-price when the forex bid book is too thin.
-                const forexRate = forexBidRate ?? midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
-                const pSellOrigin = pSellDest * forexRate;
+                const forexRate = midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
+                const pSellOrigin = buyingCosts * forexRate;
 
-                const grossProfit = (pSellOrigin - pBuy) * effectiveQty;
+                const grossProfit = (pSellOrigin - bids.price / bids.quantity) * offers.quantity;
                 if (grossProfit > 0 && fromOrigin) {
                     candidatesFromOrigin.push({
                         originPlanetId: origin.id,
                         destPlanetId: dest.id,
                         resourceName: resource.name,
-                        quantity: effectiveQty,
+                        quantity: offers.quantity,
                         profitPerTick: grossProfit / totalTicks,
                     });
                 }
                 const profitPerTick = (grossProfit - depreciation) / totalTicks;
                 if (debug && monthly) {
-                    const fxSource = forexBidRate ? 'bid-book' : `mid×${ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT}`;
+                    const fxSource = `mid×${ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT}`;
                     console.log(
-                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellDest=${pSellDest.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
+                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${offers.price.toFixed(2)} sellDest=${buyingCosts.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${offers.quantity} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                     );
                 }
                 if (profitPerTick > bestProfitPerTick) {
@@ -141,7 +146,7 @@ function scanBestRoute(
                         originPlanetId: origin.id,
                         destPlanetId: dest.id,
                         resourceName: resource.name,
-                        quantity: effectiveQty,
+                        quantity: offers.quantity,
                         profitPerTick,
                     };
                 }

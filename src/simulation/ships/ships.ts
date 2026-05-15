@@ -260,7 +260,7 @@ function addPipelineEntry(planets: Map<string, Planet>, toPlanetId: string, carg
     if (existing) {
         existing.quantity += cargo.quantity;
     } else {
-        planet.transportPipeline[cargo.resource.name] = { resource: cargo.resource, quantity: cargo.quantity };
+        planet.transportPipeline[cargo.resource.name] = { ...cargo };
     }
 }
 

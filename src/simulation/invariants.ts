@@ -376,8 +376,12 @@ export function checkTransportPipeline(gameState: GameState): string[] {
     for (const agent of gameState.agents.values()) {
         for (const ship of agent.ships) {
             const s = ship.state;
-            if (s.type !== 'transporting') continue;
-            if (!s.cargo || s.cargo.quantity <= 0) continue;
+            if (s.type !== 'transporting') {
+                continue;
+            }
+            if (!s.cargo || s.cargo.quantity <= 0) {
+                continue;
+            }
             let byResource = expected.get(s.to);
             if (!byResource) {
                 byResource = new Map<string, number>();
@@ -407,7 +411,9 @@ export function checkTransportPipeline(gameState: GameState): string[] {
 
         // Check for phantom entries (pipeline has a quantity but no ship is carrying it)
         for (const [resourceName, entry] of Object.entries(pipeline)) {
-            if (!entry || entry.quantity <= PIPELINE_EPSILON) continue;
+            if (!entry || entry.quantity <= PIPELINE_EPSILON) {
+                continue;
+            }
             const expectedQty = byResource?.get(resourceName) ?? 0;
             if (entry.quantity - expectedQty > PIPELINE_EPSILON) {
                 discrepancies.push(
