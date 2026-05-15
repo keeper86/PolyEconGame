@@ -1,4 +1,5 @@
 import {
+    ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT,
     ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD,
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_MIN_CAPITAL_RESERVE,
@@ -107,9 +108,6 @@ function scanBestRoute(
                     continue;
                 }
 
-                // Cap the trade size to what the destination bid ladder can actually absorb.
-                // Without this cap, getEffectiveSellPrice returns null whenever bid depth is
-                // less than the ship's full cargo capacity, hiding routes with thin but real demand.
                 const destBidDepth = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
                     (sum, level) => sum + level.quantity,
                     0,
@@ -143,16 +141,21 @@ function scanBestRoute(
                     continue;
                 }
 
-                // Convert destination price to origin currency
                 const currencyName = getCurrencyResourceName(dest.id);
-                const forexRate = origin.marketPrices[currencyName] ?? 1.0;
+                const estimatedForexQty = pSellDest * effectiveQty;
+                const forexBidRate =
+                    estimatedForexQty > 0 ? getEffectiveSellPrice(origin, currencyName, estimatedForexQty) : null;
+                const midForexRate = origin.marketPrices[currencyName] ?? 1.0;
+                // Fall back to a discounted mid-price when the forex bid book is too thin.
+                const forexRate = forexBidRate ?? midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
                 const pSellOrigin = pSellDest * forexRate;
 
                 const grossProfit = (pSellOrigin - pBuy) * effectiveQty;
                 const profitPerTick = (grossProfit - depreciation) / totalTicks;
                 if (debug && monthly) {
+                    const fxSource = forexBidRate ? 'bid-book' : `mid×${ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT}`;
                     console.log(
-                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
+                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${pBuy.toFixed(2)} sellDest=${pSellDest.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                     );
                 }
                 if (profitPerTick > bestProfitPerTick) {
@@ -297,8 +300,6 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
                     offerRetainment: 0,
                     automated: true,
                 };
-            } else if (existing.automated) {
-                existing.offerPrice = offerPrice;
             }
         }
     }

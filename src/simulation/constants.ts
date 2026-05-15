@@ -334,3 +334,11 @@ export const ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS = 3_600;
 
 /** Fixed overhead ticks added to each trip estimate to cover loading and unloading. */
 export const ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS = 60;
+
+/**
+ * Haircut applied to the mid-market forex rate when the destination-currency
+ * bid book at origin is too thin to price the full conversion.  Set below 1
+ * to discourage routes whose profitability depends on unrealistically good
+ * forex fills.
+ */
+export const ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT = 0.9;

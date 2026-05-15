@@ -82,6 +82,7 @@ export default function Footer() {
     // Steric state: time-based, accounts for paused duration since last spawn
     const lastSpawnTimeRef = useRef<number>(-Infinity);
     const lastSpawnWidthRef = useRef<number>(0);
+    const lastSpawnSpeedRef = useRef<number>(BASE_SPEED_PX_PER_SEC);
     const pauseStartRef = useRef<number>(0);
     const totalPausedDurationRef = useRef<number>(0); // ms paused since last spawn
 
@@ -158,13 +159,19 @@ export default function Footer() {
         const width = measureTextWidth(fullText);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
+        const prevSpeed = lastSpawnSpeedRef.current;
 
-        // Steric check: approximate right-edge of last-spawned element using elapsed time
-        // minus any time spent paused since that spawn.
+        // Steric check: estimate right-edge of last-spawned element using its actual
+        // animation speed (prevSpeed), not the newly computed speed.
+        // Also widen the threshold when speed > prevSpeed: a faster item will close the
+        // gap over time, so we need a larger initial separation to avoid overlap before
+        // the previous item exits the screen.
         const now = performance.now();
         const effectiveElapsed = now - lastSpawnTimeRef.current - totalPausedDurationRef.current;
-        const distanceTraveled = (effectiveElapsed * speed) / 1000;
-        if (distanceTraveled < lastSpawnWidthRef.current + GAP_PX) {
+        const distanceTraveled = (effectiveElapsed * prevSpeed) / 1000;
+        const threshold =
+            lastSpawnWidthRef.current + GAP_PX + Math.max(0, containerWidth * (1 - prevSpeed / speed));
+        if (distanceTraveled < threshold) {
             return;
         }
 
@@ -172,6 +179,7 @@ export default function Footer() {
 
         lastSpawnTimeRef.current = now;
         lastSpawnWidthRef.current = width;
+        lastSpawnSpeedRef.current = speed;
         totalPausedDurationRef.current = 0; // reset: track pauses from this spawn onward
         lastDisplayedIdRef.current = nextEvent.id;
 

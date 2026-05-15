@@ -348,7 +348,12 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
 
         // Route must be found and ship dispatched — quantity capped to bid depth, not cargo capacity
         expect(ship.state.type).toBe('loading');
-        const s = ship.state as { type: 'loading'; planetId: string; to: string; cargoGoal: { quantity: number } | null };
+        const s = ship.state as {
+            type: 'loading';
+            planetId: string;
+            to: string;
+            cargoGoal: { quantity: number } | null;
+        };
         expect(s.planetId).toBe('p-origin');
         expect(s.to).toBe('p-dest');
         expect(s.cargoGoal?.quantity).toBe(BID_DEPTH);
