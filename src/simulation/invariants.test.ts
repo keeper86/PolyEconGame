@@ -9,7 +9,14 @@ import { describe, it, expect } from 'vitest';
 import { checkMonetaryConservation, checkTransportPipeline, checkWealthBankConsistency } from './invariants';
 import { advanceTick, seedRng } from './engine';
 import { putIntoStorageFacility } from './planet/facility';
-import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet, makeProductionFacility, makeWorld } from './utils/testHelper';
+import {
+    makeAgent,
+    makeAgentPlanetAssets,
+    makeGameState,
+    makePlanet,
+    makeProductionFacility,
+    makeWorld,
+} from './utils/testHelper';
 import { agriculturalProductResourceType, steelResourceType } from './planet/resources';
 import { createShip, shipTick, shiptypes } from './ships/ships';
 import type { TransportShip, TransportShipStatusTransporting } from './ships/ships';
@@ -279,8 +286,8 @@ describe('checkTransportPipeline', () => {
         const pDest = makePlanet({ id: 'p2', name: 'Dest' });
         const agent = makeAgent('agent-1', 'p1', 'Agent 1', {
             assets: {
-                'p1': makeAgentPlanetAssets('p1'),
-                'p2': makeAgentPlanetAssets('p2'),
+                p1: makeAgentPlanetAssets('p1'),
+                p2: makeAgentPlanetAssets('p2'),
             },
         });
         const gameState = makeGameState([pOrigin, pDest], [agent]);
@@ -317,8 +324,8 @@ describe('checkTransportPipeline', () => {
         const pDest = makePlanet({ id: 'p2', name: 'Dest' });
         const agent = makeAgent('agent-1', 'p1', 'Agent 1', {
             assets: {
-                'p1': makeAgentPlanetAssets('p1'),
-                'p2': makeAgentPlanetAssets('p2'),
+                p1: makeAgentPlanetAssets('p1'),
+                p2: makeAgentPlanetAssets('p2'),
             },
         });
         const gameState = makeGameState([pOrigin, pDest], [agent]);

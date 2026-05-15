@@ -253,7 +253,9 @@ export type Ship = TransportShip | ConstructionShip | PassengerShip;
 
 function addPipelineEntry(planets: Map<string, Planet>, toPlanetId: string, cargo: ResourceQuantity): void {
     const planet = planets.get(toPlanetId);
-    if (!planet) return;
+    if (!planet) {
+        return;
+    }
     const existing = planet.transportPipeline[cargo.resource.name];
     if (existing) {
         existing.quantity += cargo.quantity;
@@ -264,7 +266,9 @@ function addPipelineEntry(planets: Map<string, Planet>, toPlanetId: string, carg
 
 function removePipelineEntry(planets: Map<string, Planet>, toPlanetId: string, cargo: ResourceQuantity): void {
     const planet = planets.get(toPlanetId);
-    if (!planet) return;
+    if (!planet) {
+        return;
+    }
     const existing = planet.transportPipeline[cargo.resource.name];
     if (existing) {
         existing.quantity = Math.max(0, existing.quantity - cargo.quantity);

@@ -383,10 +383,7 @@ export function checkTransportPipeline(gameState: GameState): string[] {
                 byResource = new Map<string, number>();
                 expected.set(s.to, byResource);
             }
-            byResource.set(
-                s.cargo.resource.name,
-                (byResource.get(s.cargo.resource.name) ?? 0) + s.cargo.quantity,
-            );
+            byResource.set(s.cargo.resource.name, (byResource.get(s.cargo.resource.name) ?? 0) + s.cargo.quantity);
         }
     }
 
