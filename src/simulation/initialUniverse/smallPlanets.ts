@@ -191,7 +191,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         id: spec.id,
         name: spec.name,
         position: spec.position,
-        population: createPopulation(spec.population),
+        population: createPopulation(spec.population, 18),
         governmentId: govId,
         bank: {
             loans: 0,

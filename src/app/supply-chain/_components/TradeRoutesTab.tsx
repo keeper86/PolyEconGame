@@ -51,8 +51,12 @@ function fmt(n: number, decimals = 1): string {
 }
 
 function profitClass(v: number): string {
-    if (v >= ARBITRAGE_MIN_PROFIT_PER_TICK) { return 'text-green-600 font-semibold'; }
-    if (v >= 0) { return 'text-amber-600'; }
+    if (v >= ARBITRAGE_MIN_PROFIT_PER_TICK) {
+        return 'text-green-600 font-semibold';
+    }
+    if (v >= 0) {
+        return 'text-amber-600';
+    }
     return 'text-red-500';
 }
 
@@ -62,12 +66,10 @@ type SortKey = 'resource' | 'origin' | 'dest' | 'qty' | 'buyPrice' | 'sellAdj' |
 type SortDir = 'asc' | 'desc';
 
 function SortIcon({ col, sortKey, dir }: { col: SortKey; sortKey: SortKey; dir: SortDir }) {
-    if (col !== sortKey) { return <ArrowUpDown className='inline ml-1 h-3 w-3 opacity-40' />; }
-    return dir === 'asc' ? (
-        <ArrowUp className='inline ml-1 h-3 w-3' />
-    ) : (
-        <ArrowDown className='inline ml-1 h-3 w-3' />
-    );
+    if (col !== sortKey) {
+        return <ArrowUpDown className='inline ml-1 h-3 w-3 opacity-40' />;
+    }
+    return dir === 'asc' ? <ArrowUp className='inline ml-1 h-3 w-3' /> : <ArrowDown className='inline ml-1 h-3 w-3' />;
 }
 
 function sortRoutes(rows: ArbitrageRouteRow[], key: SortKey, dir: SortDir): ArbitrageRouteRow[] {
@@ -165,7 +167,9 @@ export function TradeRoutesTab() {
     }
 
     const filteredAndSorted = useMemo(() => {
-        if (!data) { return []; }
+        if (!data) {
+            return [];
+        }
         const filtered = minProfit > 0 ? data.routes.filter((r) => r.profitPerTick >= minProfit) : data.routes;
         return sortRoutes(filtered, sortKey, sortDir);
     }, [data, minProfit, sortKey, sortDir]);
@@ -238,8 +242,7 @@ export function TradeRoutesTab() {
             {data && (
                 <div className='flex flex-wrap gap-4 text-sm px-1'>
                     <span>
-                        Total routes:{' '}
-                        <span className='font-semibold font-mono'>{totalRoutes}</span>
+                        Total routes: <span className='font-semibold font-mono'>{totalRoutes}</span>
                     </span>
                     <span>
                         Positive profit:{' '}
@@ -251,8 +254,7 @@ export function TradeRoutesTab() {
                     </span>
                     {minProfit > 0 && (
                         <span>
-                            Showing:{' '}
-                            <span className='font-semibold font-mono'>{filteredAndSorted.length}</span>
+                            Showing: <span className='font-semibold font-mono'>{filteredAndSorted.length}</span>
                         </span>
                     )}
                 </div>
@@ -276,9 +278,7 @@ export function TradeRoutesTab() {
                 </div>
             )}
 
-            {isFetching && (
-                <div className='py-12 text-center text-sm text-muted-foreground'>Scanning order books…</div>
-            )}
+            {isFetching && <div className='py-12 text-center text-sm text-muted-foreground'>Scanning order books…</div>}
 
             {/* Results table */}
             {data && !isFetching && filteredAndSorted.length > 0 && (
@@ -390,17 +390,12 @@ export function TradeRoutesTab() {
                                                         </TooltipTrigger>
                                                         <TooltipContent>
                                                             <div className='text-xs space-y-0.5'>
-                                                                <div>
-                                                                    Sell at dest: {row.sellPriceDest.toFixed(2)}
-                                                                </div>
+                                                                <div>Sell at dest: {row.sellPriceDest.toFixed(2)}</div>
                                                                 <div>
                                                                     Forex rate: {row.forexRate.toFixed(4)} (
                                                                     {row.forexSource})
                                                                 </div>
-                                                                <div>
-                                                                    Adjusted sell:{' '}
-                                                                    {row.sellPriceAdj.toFixed(2)}
-                                                                </div>
+                                                                <div>Adjusted sell: {row.sellPriceAdj.toFixed(2)}</div>
                                                             </div>
                                                         </TooltipContent>
                                                     </Tooltip>
@@ -412,7 +407,9 @@ export function TradeRoutesTab() {
                                             <TableCell className='text-right font-mono text-muted-foreground'>
                                                 {row.depreciation > 0 ? `-${fmt(row.depreciation)}` : '—'}
                                             </TableCell>
-                                            <TableCell className={`text-right font-mono ${profitClass(row.profitPerTick)}`}>
+                                            <TableCell
+                                                className={`text-right font-mono ${profitClass(row.profitPerTick)}`}
+                                            >
                                                 {row.profitPerTick.toFixed(1)}
                                             </TableCell>
                                             <TableCell className='text-right font-mono'>

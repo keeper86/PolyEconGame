@@ -401,7 +401,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         id: AC_ID,
         name: 'Alpha Centauri',
         position: { x: 4.37, y: 0, z: 0 },
-        population: createPopulation(1_000_000),
+        population: createPopulation(1_000_000, 18),
         governmentId: GOV,
         bank: {
             loans: 0,

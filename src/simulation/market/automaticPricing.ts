@@ -160,8 +160,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null) {
-            const needs =
-                facility.type === 'ship_construction' ? (facility.produces?.buildingCost ?? []) : facility.needs;
+            let needs = [];
+            if (facility.type === 'ship_construction') {
+                needs = (facility.produces?.buildingCost ?? []).map((resource) => {
+                    return {
+                        resource: resource.resource,
+                        quantity: resource.quantity * Math.max(0, 1 / (facility.produces?.buildingTime ?? 1)),
+                    };
+                });
+            } else {
+                needs = facility.needs;
+            }
+
             for (const { resource, quantity } of needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
@@ -503,12 +513,6 @@ function adjustOfferPrice(
             factor = Math.max(factor, effectiveMaxDown);
         }
     }
-
-    // Cost spring (output side): additive upward correction proportional to how far
-    // the current price sits below the production cost floor.  At the floor the
-    // spring is zero; it grows linearly as price falls further below.  This is the
-    // error-correction term from ABM price-dynamics literature (cf. EURACE, Dosi
-    // et al.): a signal coupling rising input costs to output prices.
     if (brakeZoneTop > PRICE_FLOOR && price > 0) {
         const deviation = Math.max(0, brakeZoneTop / price - 1);
         factor += COST_SPRING_STRENGTH * deviation;
@@ -586,33 +590,16 @@ function adjustBidPrice(
     }
 
     const lastBought = bid.lastBought ?? 0;
-    // lastEffectiveQty is the quantity actually placed in the order book last tick
-    // by collectAgentBids (after proportional deposit scaling). It is a better
-    // denominator for fill-rate than the raw shortfall, which changes each tick.
+
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
-    // Cost spring (input side): subtract a correction proportional to the
-    // facility profitability gap, nudging bid prices downward when the agent's
-    // total production costs exceed its output revenue.  Symmetric to the
-    // output-side spring: together they create a restoring force toward
-    // break-even that weakens once profitability is reached.
-    //
-    // The gap penalty is weighted by fill rate so that it is zero when the
-    // agent cannot procure inputs at all (fillRate = 0).  Without this weight,
-    // a downstream processor whose output revenue is near zero (e.g. upstream
-    // markets not yet settled) accumulates an enormous profitability gap that
-    // overcomes the upward fill-rate signal and pins bids at PRICE_FLOOR —
-    // a deadlock the market cannot resolve on its own.  As supply becomes
-    // available (fillRate → TARGET_FILL_RATE) the full cost-awareness
-    // gradually re-engages.
     const gapWeight = Math.min(1, fillRate / TARGET_FILL_RATE);
     const factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
 
     const priceCeil = PRICE_CEIL;
     const newPrice = bid.bidPrice * factor;
 
-    // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
     if (!isFinite(newPrice) || newPrice <= 0) {
         bid.bidPrice = PRICE_FLOOR;
     } else {

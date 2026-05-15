@@ -114,7 +114,6 @@ export function advanceTick(gameState: GameState) {
     forexMarketMakerPricing(gameState);
     forexTick(gameState);
     forexMMRepaymentTick(gameState);
-    arbitrageTraderRepaymentTick(gameState);
 
     shipTick(gameState);
     shipbuilderTick(gameState);

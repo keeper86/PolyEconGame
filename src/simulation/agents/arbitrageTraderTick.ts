@@ -1,35 +1,19 @@
 import {
     ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT,
-    ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD,
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
-    ARBITRAGE_MIN_CAPITAL_RESERVE,
     ARBITRAGE_MIN_PROFIT_PER_TICK,
-    ARBITRAGE_SEED_DEPOSIT,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
     isFirstTickInMonth,
     MAX_DISPATCH_TIMEOUT_TICKS,
 } from '../constants';
-import { repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
+import { getCurrencyResourceName } from '../market/currencyResources';
+import { getEffectiveBuyPrice, getEffectiveSellPrice } from '../market/orderBookSnapshot';
 import type { Agent, GameState } from '../planet/planet';
 import { ALL_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { travelTime } from '../ships/shipHandlers';
-import {
-    createShipListing,
-    effectiveShipValue,
-    executeShipPurchase,
-    findCheapestShipListing,
-    updateShipEma,
-} from '../ships/shipMarket';
-import type { ShipListing, TransportShip } from '../ships/ships';
-import { canCarryResource, shiptypes } from '../ships/ships';
-import { getCurrencyResourceName } from '../market/currencyResources';
-import { getEffectiveBuyPrice, getEffectiveSellPrice } from '../market/orderBookSnapshot';
-
-const EXPAND_FLEET_SHIP_TYPE = shiptypes.solid.bulkCarrier1;
-
-// ---------------------------------------------------------------------------
-// Route scanner
-// ---------------------------------------------------------------------------
+import { effectiveShipValue } from '../ships/shipMarket';
+import type { TransportShip } from '../ships/ships';
+import { canCarryResource } from '../ships/ships';
 
 type RouteCandidate = {
     originPlanetId: string;
@@ -66,32 +50,13 @@ function scanBestRoute(
         const maxByVolume = cargoSpecification.volume / resource.volumePerQuantity;
         const maxByMass = cargoSpecification.mass / resource.massPerQuantity;
         const maxQty = Math.floor(Math.min(maxByVolume, maxByMass));
-        if (maxQty < 1) {
-            continue;
-        }
 
         for (const origin of planets) {
-            // Use spot price only for affordability estimate (order book may be absent on first tick)
-            const pBuySpot = origin.marketPrices[resource.name];
-            if (!pBuySpot || pBuySpot <= 0) {
-                continue;
-            }
-
-            // Check agent has deposits to fund the purchase; scale down quantity if needed
-            const agentOriginDeposits = agent.assets[origin.id]?.deposits ?? 0;
-            const affordableQty = Math.floor(agentOriginDeposits / pBuySpot);
-            const qty = Math.min(maxQty, affordableQty);
-            if (qty < 1) {
-                continue;
-            }
-
-            // Quick guard: skip origins with no ask depth at all.
-            // The precise buy price is computed per-destination below using effectiveQty.
             const originAskDepth = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
                 (sum, level) => sum + level.quantity,
                 0,
             );
-            if (originAskDepth < 1) {
+            if (originAskDepth <= 0) {
                 if (debug && monthly) {
                     console.log(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no ask depth`);
                 }
@@ -112,7 +77,7 @@ function scanBestRoute(
                     (sum, level) => sum + level.quantity,
                     0,
                 );
-                if (destBidDepth < 1) {
+                if (destBidDepth <= 0) {
                     if (debug && monthly) {
                         console.log(
                             `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no bid depth at destination`,
@@ -120,7 +85,7 @@ function scanBestRoute(
                     }
                     continue;
                 }
-                const effectiveQty = Math.min(qty, destBidDepth);
+                const effectiveQty = Math.min(maxQty, destBidDepth);
 
                 // Depth-aware buy price for the effective (possibly reduced) quantity.
                 // Recomputed here so the VWAP reflects the actual fill size.
@@ -304,112 +269,6 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Fleet management (monthly)
-// ---------------------------------------------------------------------------
-
-function manageFleet(agent: Agent, gameState: GameState): void {
-    const homeId = agent.associatedPlanetId;
-    const homeAssets = agent.assets[homeId];
-    if (!homeAssets) {
-        return;
-    }
-
-    const emaPrice = gameState.shipCapitalMarket.emaPrice[EXPAND_FLEET_SHIP_TYPE.name] ?? 0;
-
-    // Expand fleet if deposits allow
-    if (emaPrice > 0 && homeAssets.deposits > ARBITRAGE_MIN_CAPITAL_RESERVE + emaPrice) {
-        const maxBuyPrice = emaPrice * 1.1;
-        const result = findCheapestShipListing(gameState, EXPAND_FLEET_SHIP_TYPE.name, maxBuyPrice);
-        if (result) {
-            executeShipPurchase(gameState, result.listing, result.sellerAgent, agent, homeId);
-        }
-    }
-
-    // Trim persistently idle ships
-    for (const ship of agent.ships) {
-        if (ship.state.type !== 'idle') {
-            continue;
-        }
-        if (ship.type.type !== 'transport') {
-            continue;
-        }
-
-        const idleSince = gameState.tick - (ship.idleAtTick ?? ship.builtAtTick);
-        if (idleSince < ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD) {
-            continue;
-        }
-
-        const currentValue = effectiveShipValue(ship, gameState);
-        if (emaPrice <= currentValue) {
-            continue;
-        }
-
-        const planetId = ship.state.planetId;
-        const assets = agent.assets[planetId];
-        if (!assets) {
-            continue;
-        }
-        if (assets.shipListings.some((l) => l.shipId === ship.id)) {
-            continue;
-        }
-
-        const listing: ShipListing = {
-            id: crypto.randomUUID(),
-            sellerAgentId: agent.id,
-            shipId: ship.id,
-            shipName: ship.name,
-            shipTypeName: ship.type.name,
-            askPrice: Math.round(emaPrice),
-            planetId,
-            postedAtTick: gameState.tick,
-        };
-        createShipListing(ship, assets, listing);
-        updateShipEma(gameState.shipCapitalMarket, ship.type.name, listing.askPrice);
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Loan repayment (called from engine instead of generic automaticLoanRepayment)
-// ---------------------------------------------------------------------------
-
-export function arbitrageTraderRepaymentTick(gameState: GameState): void {
-    return;
-    for (const agent of gameState.arbitrageTraders.values()) {
-        for (const [planetId, assets] of Object.entries(agent.assets)) {
-            const planet = gameState.planets.get(planetId);
-            if (!planet) {
-                continue;
-            }
-            const agentLoanTotal = totalOutstandingLoans(assets.activeLoans);
-            if (agentLoanTotal <= 0) {
-                continue;
-            }
-            // Retain the seed deposit as permanent working capital; only repay true excess.
-            const excess = Math.max(0, assets.deposits - ARBITRAGE_SEED_DEPOSIT);
-            const repayment = Math.min(agentLoanTotal, excess);
-            if (repayment <= 0) {
-                continue;
-            }
-            const actualRepayment = repayLoansOldestFirst(assets.activeLoans, repayment);
-            if (process.env.SIM_DEBUG === '1') {
-                const afterRepaymentTotal = totalOutstandingLoans(assets.activeLoans);
-                console.log(
-                    `[arb] ${agent.id} on ${planet.name} repaid ${actualRepayment.toFixed(0)} (before: ${agentLoanTotal.toFixed(0)}, after: ${afterRepaymentTotal.toFixed(0)})`,
-                );
-            }
-            assets.deposits -= actualRepayment;
-            planet.bank.loans -= actualRepayment;
-            planet.bank.deposits -= actualRepayment;
-            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Main tick
-// ---------------------------------------------------------------------------
 
 export function arbitrageTraderTick(gameState: GameState): void {
     for (const agent of gameState.arbitrageTraders.values()) {

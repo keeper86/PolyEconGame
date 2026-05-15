@@ -321,7 +321,7 @@ export const SHIPBUILDER_INPUT_BUFFER_TICKS = 20;
 export const ARBITRAGE_SEED_DEPOSIT = 1_000_000;
 
 /** Minimum net profit per tick (in currency units) required to activate a route, including any repositioning leg. */
-export const ARBITRAGE_MIN_PROFIT_PER_TICK = 100;
+export const ARBITRAGE_MIN_PROFIT_PER_TICK = 0;
 
 /** Minimum total deposits on home planet before buying an additional ship. */
 export const ARBITRAGE_MIN_CAPITAL_RESERVE = 100_000;

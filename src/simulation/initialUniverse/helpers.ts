@@ -166,7 +166,7 @@ function addTo(
     pop.demography[age][occ][edu].novice.total += count;
 }
 
-export function createPopulation(total: number): Population {
+export function createPopulation(total: number, buffer: number = 6): Population {
     const perAge = Math.floor(total / (MAX_AGE + 1));
     const pop: Population = {
         demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
@@ -229,9 +229,7 @@ export function createPopulation(total: number): Population {
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {
-                // Initialize with a full buffer so the population has 3 months of
-                // grocery coverage before starvation can begin.
-                category.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS * 6;
+                category.services.grocery.buffer = buffer * GROCERY_BUFFER_TARGET_TICKS;
             }
         });
     }
