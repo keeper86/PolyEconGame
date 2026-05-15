@@ -504,6 +504,8 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
         marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
+        transportPipeline: {},
+        orderBooks: {},
         lastMarketResult: {},
         avgMarketResult: {},
         monthPriceAcc: {},

@@ -1,6 +1,8 @@
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     AUTOMATED_COST_FLOOR_MARKUP,
+    AUTOMATED_PRICE_CAP_FACTOR,
+    BID_PRICE_CAP_FACTOR,
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
@@ -273,7 +275,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const marketPrice = planet.marketPrices[resourceName];
         const profitGap = inputProfitGaps.get(resourceName) ?? 0;
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, 0);
+        const bidPriceCap =
+            isFinite(marketPrice) && marketPrice > 0 ? marketPrice * BID_PRICE_CAP_FACTOR : PRICE_CEIL;
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap, bidPriceCap);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);
@@ -518,6 +522,27 @@ function adjustOfferPrice(
         factor += COST_SPRING_STRENGTH * deviation;
     }
 
+    // Upper ceiling brake: mirror of the lower cost-floor brake.
+    // Prevents prices from spiralling to PRICE_CEIL during prolonged scarcity
+    // (e.g. while waiting for an import shipment).  The cap is set at
+    // costFloor × AUTOMATED_PRICE_CAP_FACTOR so the signal is still strong.
+    if (costFloor > PRICE_FLOOR) {
+        const priceCap = costFloor * AUTOMATED_PRICE_CAP_FACTOR;
+        const capZoneBottom = priceCap / (1 + AUTOMATED_COST_FLOOR_BUFFER);
+        if (factor > 1 && price >= capZoneBottom) {
+            // Linearly dampen max upward factor from PRICE_ADJUST_MAX_UP → 1.0 as
+            // price approaches priceCap.
+            const t = Math.max(0, Math.min(1, (price - capZoneBottom) / (priceCap - capZoneBottom)));
+            const effectiveMaxUp = PRICE_ADJUST_MAX_UP + t * (1 - PRICE_ADJUST_MAX_UP);
+            factor = Math.min(factor, effectiveMaxUp);
+        }
+        if (price > 0) {
+            // Ceiling spring: pulls price back when above the cap.
+            const overshoot = Math.max(0, price / priceCap - 1);
+            factor -= COST_SPRING_STRENGTH * overshoot;
+        }
+    }
+
     const newPrice = price * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
@@ -555,11 +580,10 @@ function adjustBidPrice(
     storageTarget: number,
     marketPrice: number,
     profitabilityGap: number = 0,
+    priceCap: number = PRICE_CEIL,
 ): void {
     // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
-        // No meaningful demand, set storage target to current inventory level
-        // This prevents creating bids with quantities that would fail validation
         bid.bidStorageTarget = storageTarget - shortfall; // Effectively current inventory
         // Keep existing price or initialize it from market price
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
@@ -569,8 +593,6 @@ function adjustBidPrice(
         return;
     }
 
-    // Set the storage target — same field as the human player, so that disabling
-    // automation leaves a fully visible, correctly bounded bid in the UI.
     bid.bidStorageTarget = storageTarget;
 
     if (shortfall <= 0) {
@@ -595,14 +617,26 @@ function adjustBidPrice(
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
     const gapWeight = Math.min(1, fillRate / TARGET_FILL_RATE);
-    const factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
+    let factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
 
-    const priceCeil = PRICE_CEIL;
+    // Upper ceiling brake: symmetric to the offer-side brake.
+    // Caps bid price growth during long voyages where fill rate stays at 0.
+    const capZoneBottom = priceCap / (1 + AUTOMATED_COST_FLOOR_BUFFER);
+    if (factor > 1 && bid.bidPrice >= capZoneBottom) {
+        const t = Math.max(0, Math.min(1, (bid.bidPrice - capZoneBottom) / (priceCap - capZoneBottom)));
+        const effectiveMaxUp = PRICE_ADJUST_MAX_UP + t * (1 - PRICE_ADJUST_MAX_UP);
+        factor = Math.min(factor, effectiveMaxUp);
+    }
+    if (bid.bidPrice > 0) {
+        const overshoot = Math.max(0, bid.bidPrice / priceCap - 1);
+        factor -= COST_SPRING_STRENGTH * overshoot;
+    }
+
     const newPrice = bid.bidPrice * factor;
 
     if (!isFinite(newPrice) || newPrice <= 0) {
         bid.bidPrice = PRICE_FLOOR;
     } else {
-        bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(priceCeil, newPrice));
+        bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(priceCap, newPrice));
     }
 }

@@ -1,4 +1,4 @@
-import { arbitrageTraderRepaymentTick, arbitrageTraderTick } from './agents/arbitrageTraderTick';
+import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { shipbuilderTick } from './agents/shipbuilderTick';

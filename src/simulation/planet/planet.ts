@@ -131,13 +131,10 @@ export type Planet = {
      * TODO: move this to own type in market.
      */
     marketPrices: Record<string, number>;
-
-    /**
-     * Tick-scoped order book snapshot, rebuilt after each market clearing phase.
-     * Keyed by resource name. Undefined before the first tick or on planets where
-     * no agent has active orders.
-     */
-    orderBooks?: Record<string, ResourceOrderBook>;
+    orderBooks: Record<string, ResourceOrderBook>;
+    transportPipeline: {
+        [resourceName in string]: ResourceQuantity;
+    };
 
     lastMarketResult: {
         [resourceName: string]: MarketResult;

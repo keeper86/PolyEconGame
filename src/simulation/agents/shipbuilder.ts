@@ -44,7 +44,7 @@ function makeShipyard(planetId: string, agentId: string): ShipConstructionFacili
 
 export function seedShipbuilderAgents(gameState: GameState): void {
     for (const planet of gameState.planets.values()) {
-        if (planet.name !== 'earth') {
+        if (planet.name !== 'Earth') {
             continue;
         }
         const agentId = `shipbuilder_${planet.id}`;
