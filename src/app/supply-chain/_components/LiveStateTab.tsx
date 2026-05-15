@@ -7,6 +7,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Agent } from '@/simulation/planet/planet';
@@ -69,7 +70,7 @@ interface ResourceActualRow {
 
 // ─── Aggregation ──────────────────────────────────────────────────────────────
 
-function aggregateFacilities(agents: Agent[]): FacilityAggRow[] {
+function aggregateFacilities(agents: Agent[], filterPlanetId?: string): FacilityAggRow[] {
     const map = new Map<
         string,
         {
@@ -104,7 +105,11 @@ function aggregateFacilities(agents: Agent[]): FacilityAggRow[] {
     }
 
     for (const agent of agents) {
-        for (const planetAssets of Object.values(agent.assets ?? {})) {
+        const allAssets = agent.assets ?? {};
+        const assetEntries = filterPlanetId
+            ? Object.entries(allAssets).filter(([id]) => id === filterPlanetId)
+            : Object.entries(allAssets);
+        for (const [, planetAssets] of assetEntries) {
             for (const fac of (planetAssets.productionFacilities as ProductionFacility[]) ?? []) {
                 const entry = getEntry(fac.name);
                 entry.instanceCount++;
@@ -597,6 +602,7 @@ interface LiveStateTabProps {
 }
 
 export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
+    const [selectedPlanetId, setSelectedPlanetId] = useState<string>('all');
     const [facSort, setFacSort] = useState<{ key: FacilitySortKey; dir: SortDir }>({ key: 'efficiency', dir: 'asc' });
     const [resSort, setResSort] = useState<{ key: ResourceSortKey; dir: SortDir }>({
         key: 'effectiveness',
@@ -621,9 +627,18 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
 
     const tick = agentData?.tick ?? 0;
     const agents = useMemo(() => (agentData?.agents.map((a) => a.agentSummary as Agent) ?? []) as Agent[], [agentData]);
-    const livePop = planetData?.planets.reduce((s, p) => s + p.populationTotal, 0) ?? 0;
+    const planets = useMemo(() => planetData?.planets ?? [], [planetData]);
+    const livePop = useMemo(() => {
+        if (selectedPlanetId === 'all') {
+            return planets.reduce((s, p) => s + p.populationTotal, 0);
+        }
+        return planets.find((p) => p.planetId === selectedPlanetId)?.populationTotal ?? 0;
+    }, [planets, selectedPlanetId]);
 
-    const facilityRows = useMemo(() => aggregateFacilities(agents), [agents]);
+    const facilityRows = useMemo(
+        () => aggregateFacilities(agents, selectedPlanetId === 'all' ? undefined : selectedPlanetId),
+        [agents, selectedPlanetId],
+    );
 
     const maxScales = useMemo(() => {
         const s: Record<string, number> = {};
@@ -703,6 +718,24 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
 
     return (
         <div className='space-y-4'>
+            {/* Planet selector */}
+            <div className='flex items-center gap-3'>
+                <span className='text-sm font-medium text-muted-foreground shrink-0'>Planet</span>
+                <Select value={selectedPlanetId} onValueChange={setSelectedPlanetId}>
+                    <SelectTrigger className='w-52'>
+                        <SelectValue placeholder='All planets' />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value='all'>All planets</SelectItem>
+                        {planets.map((p) => (
+                            <SelectItem key={p.planetId} value={p.planetId}>
+                                {p.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
             {/* Status bar */}
             <div className='flex flex-wrap items-center gap-4 p-3 bg-muted/40 rounded-lg border text-sm'>
                 <span>

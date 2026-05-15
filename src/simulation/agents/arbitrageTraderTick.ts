@@ -32,6 +32,8 @@ function scanBestRoute(
 ): RouteCandidate | null {
     const planets = Array.from(gameState.planets.values());
     let best: RouteCandidate | null = null;
+    const candidatesFromOrigin: RouteCandidate[] = [];
+
     let bestProfitPerTick = ARBITRAGE_MIN_PROFIT_PER_TICK;
     const debug = process.env.SIM_DEBUG === '1';
     const monthly = isFirstTickInMonth(gameState.tick);
@@ -64,7 +66,8 @@ function scanBestRoute(
             }
 
             // Repositioning leg: ticks to travel from current planet to origin (0 if already there)
-            const repositionTicks = origin.id === shipPlanetId ? 0 : oneWayTicks;
+            const fromOrigin = origin.id === shipPlanetId;
+            const repositionTicks = fromOrigin ? 0 : oneWayTicks;
             const totalTicks = repositionTicks + roundTripTicks;
             const depreciation = depreciationRatePerTick * totalTicks;
 
@@ -116,6 +119,15 @@ function scanBestRoute(
                 const pSellOrigin = pSellDest * forexRate;
 
                 const grossProfit = (pSellOrigin - pBuy) * effectiveQty;
+                if (grossProfit > 0 && fromOrigin) {
+                    candidatesFromOrigin.push({
+                        originPlanetId: origin.id,
+                        destPlanetId: dest.id,
+                        resourceName: resource.name,
+                        quantity: effectiveQty,
+                        profitPerTick: grossProfit / totalTicks,
+                    });
+                }
                 const profitPerTick = (grossProfit - depreciation) / totalTicks;
                 if (debug && monthly) {
                     const fxSource = forexBidRate ? 'bid-book' : `mid×${ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT}`;
@@ -134,6 +146,18 @@ function scanBestRoute(
                     };
                 }
             }
+        }
+    }
+    if (best === null) {
+        return null;
+    }
+
+    if (best.originPlanetId !== shipPlanetId) {
+        const [opportunityRoute] = candidatesFromOrigin
+            .filter((c) => c.destPlanetId === best.originPlanetId)
+            .sort((a, b) => b.profitPerTick - a.profitPerTick);
+        if (opportunityRoute) {
+            return opportunityRoute;
         }
     }
 
