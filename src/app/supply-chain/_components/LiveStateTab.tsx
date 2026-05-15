@@ -541,9 +541,7 @@ function TradeOpportunityInline({
     direction: 'import' | 'export';
 }) {
     if (route === undefined) {
-        return (
-            <span className='text-xs text-muted-foreground italic animate-pulse'>scanning trade routes…</span>
-        );
+        return <span className='text-xs text-muted-foreground italic animate-pulse'>scanning trade routes…</span>;
     }
     if (route === null) {
         return <span className='text-xs text-muted-foreground'>— no profitable route found</span>;
@@ -568,9 +566,7 @@ function TradeOpportunityInline({
             <Badge
                 variant='outline'
                 className={`text-[9px] py-0 px-1 ${
-                    direction === 'import'
-                        ? 'text-blue-600 border-blue-400'
-                        : 'text-purple-600 border-purple-400'
+                    direction === 'import' ? 'text-blue-600 border-blue-400' : 'text-purple-600 border-purple-400'
                 }`}
             >
                 {direction === 'import' ? '↓ import' : '↑ export'}

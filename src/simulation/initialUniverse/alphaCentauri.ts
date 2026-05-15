@@ -1,10 +1,10 @@
-import { initialMarketPrices } from './initialMarketPrices';
 import {
     arableLandResourceType,
     coalDepositResourceType,
     ironOreDepositResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
+import type { Agent, Planet } from '../planet/planet';
 import {
     administrativeCenter,
     agriculturalProductionFacility,
@@ -13,19 +13,16 @@ import {
     coalPowerPlant,
     foodProcessingPlant,
     groceryChain,
-    hospital,
     ironExtractionFacility,
     ironSmelter,
     logisticsHub,
     packagingPlant,
-    pharmaceuticalPlant,
-    retailChain,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
-import type { Agent, Planet } from '../planet/planet';
-import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
-import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 import type { ResourceClaimEntry } from './helpers';
+import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
+import { initialMarketPrices } from './initialMarketPrices';
+import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 
 export const AC_ID = 'alpha-centauri';
 const GOV = 'ac-government';
@@ -145,7 +142,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
     }
 
     // Iron mining + smelting
-    const [colonyIron, energyCorp, foodProc, pharmaColony] = industrialSpecs;
+    const [colonyIron, energyCorp, foodProc] = industrialSpecs;
 
     const ironId = 'ac-iron-colony-iron';
     govClaims.push(ironId);
@@ -223,21 +220,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Pharmaceuticals
-    const ph1 = pharmaceuticalPlant(AC_ID, 'ac-pharma-colony-plant');
-    ph1.scale = 20;
-    ph1.maxScale = 20;
-    agents.push(
-        makeAgent({
-            id: pharmaColony.id,
-            name: pharmaColony.name,
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [ph1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-pharma-colony-storage', name: 'Colony Pharma Storage' }),
-        }),
-    );
-
     // Beverage plant (needed for grocery chains)
     const bev1 = beveragePlant(AC_ID, 'ac-beverage-plant');
     bev1.scale = 20;
@@ -310,36 +292,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [groc1],
             storage: makeStorage({ planetId: AC_ID, id: 'ac-grocery-storage', name: 'AC Grocery Storage' }),
-        }),
-    );
-
-    // Retail chain
-    const ret1 = retailChain(AC_ID, 'ac-retail-chain');
-    ret1.scale = 50;
-    ret1.maxScale = 50;
-    agents.push(
-        makeAgent({
-            id: 'ac-retail-corp',
-            name: 'AC Retail Corp',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [ret1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-retail-storage', name: 'AC Retail Storage' }),
-        }),
-    );
-
-    // Hospital (healthcare service)
-    const hosp1 = hospital(AC_ID, 'ac-hospital');
-    hosp1.scale = 30;
-    hosp1.maxScale = 30;
-    agents.push(
-        makeAgent({
-            id: 'ac-healthcare-corp',
-            name: 'AC Healthcare Corp',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [hosp1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-healthcare-storage', name: 'AC Healthcare Storage' }),
         }),
     );
 

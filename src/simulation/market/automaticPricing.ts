@@ -275,8 +275,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const marketPrice = planet.marketPrices[resourceName];
         const profitGap = inputProfitGaps.get(resourceName) ?? 0;
-        const bidPriceCap =
-            isFinite(marketPrice) && marketPrice > 0 ? marketPrice * BID_PRICE_CAP_FACTOR : PRICE_CEIL;
+        const bidPriceCap = isFinite(marketPrice) && marketPrice > 0 ? marketPrice * BID_PRICE_CAP_FACTOR : PRICE_CEIL;
         adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap, bidPriceCap);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {

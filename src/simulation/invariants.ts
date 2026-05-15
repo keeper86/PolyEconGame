@@ -5,7 +5,7 @@
  * Each function returns an array of discrepancy messages (empty = healthy).
  */
 
-import type { Agent, Planet } from './planet/planet';
+import type { Agent, GameState, Planet } from './planet/planet';
 import { educationLevelKeys } from './population/education';
 import { SKILL, forEachPopulationCohort } from './population/population';
 
@@ -347,6 +347,77 @@ export function checkWealthBankConsistency(
                 totalPopulation,
                 diffPerCapita: totalPopulation > 0 ? diff / totalPopulation : 0,
             });
+        }
+    }
+
+    return discrepancies;
+}
+
+// ---------------------------------------------------------------------------
+// Transport pipeline ↔ in-transit ships consistency
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify that planet.transportPipeline is consistent with the cargo
+ * currently carried by ships in the 'transporting' state.
+ *
+ * For each destination planet and resource:
+ *   transportPipeline[resource] ≈ Σ cargo.quantity for all in-transit ships
+ *
+ * This invariant should hold at all times after shipTick runs, because the
+ * pipeline is updated incrementally at state transition boundaries.
+ */
+export function checkTransportPipeline(gameState: GameState): string[] {
+    const discrepancies: string[] = [];
+    const PIPELINE_EPSILON = 1e-9;
+
+    // Build the expected pipeline by scanning all agents' ships
+    const expected = new Map<string, Map<string, number>>();
+    for (const agent of gameState.agents.values()) {
+        for (const ship of agent.ships) {
+            const s = ship.state;
+            if (s.type !== 'transporting') continue;
+            if (!s.cargo || s.cargo.quantity <= 0) continue;
+            let byResource = expected.get(s.to);
+            if (!byResource) {
+                byResource = new Map<string, number>();
+                expected.set(s.to, byResource);
+            }
+            byResource.set(
+                s.cargo.resource.name,
+                (byResource.get(s.cargo.resource.name) ?? 0) + s.cargo.quantity,
+            );
+        }
+    }
+
+    // Compare against the stored transportPipeline for every planet
+    for (const [planetId, planet] of gameState.planets) {
+        const byResource = expected.get(planetId);
+        const pipeline = planet.transportPipeline;
+
+        // Check that every expected quantity is present and correct
+        if (byResource) {
+            for (const [resourceName, expectedQty] of byResource) {
+                const stored = pipeline[resourceName]?.quantity ?? 0;
+                if (Math.abs(stored - expectedQty) > PIPELINE_EPSILON) {
+                    discrepancies.push(
+                        `planet=${planetId} resource=${resourceName}: ` +
+                            `transportPipeline=${stored.toFixed(4)} ≠ expected=${expectedQty.toFixed(4)}`,
+                    );
+                }
+            }
+        }
+
+        // Check for phantom entries (pipeline has a quantity but no ship is carrying it)
+        for (const [resourceName, entry] of Object.entries(pipeline)) {
+            if (!entry || entry.quantity <= PIPELINE_EPSILON) continue;
+            const expectedQty = byResource?.get(resourceName) ?? 0;
+            if (entry.quantity - expectedQty > PIPELINE_EPSILON) {
+                discrepancies.push(
+                    `planet=${planetId} resource=${resourceName}: ` +
+                        `phantom pipeline entry: transportPipeline=${entry.quantity.toFixed(4)}, expected=${expectedQty.toFixed(4)}`,
+                );
+            }
         }
     }
 
