@@ -748,7 +748,7 @@ function computeArbitrageRoutesForShip(
             }
             const askFill = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
                 orderBookReducer(maxQty),
-                emptyPriceAggregate,
+                emptyPriceAggregate(),
             );
             if (askFill.quantity < 1) {
                 continue;
@@ -764,7 +764,7 @@ function computeArbitrageRoutesForShip(
 
                 const bidFill = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
                     orderBookReducer(askFill.quantity),
-                    emptyPriceAggregate,
+                    emptyPriceAggregate(),
                 );
                 if (bidFill.quantity < 1) {
                     continue;

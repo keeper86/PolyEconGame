@@ -64,6 +64,7 @@ import type {
     TransportShipStatusType,
     TransportShipStatusUnloading,
 } from './ships';
+import { nextRandom } from '../utils/stochasticRound';
 
 export type TransitionResult =
     | { action: 'stay' }
@@ -72,7 +73,7 @@ export type TransitionResult =
 const STAY: TransitionResult = { action: 'stay' };
 
 export function travelTime(ship: Ship): number {
-    return Math.ceil(1000 / ship.type.speed);
+    return Math.ceil(((1 + 0.1 * (2 * nextRandom() - 1)) * 1000) / ship.type.speed);
 }
 
 export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState): boolean {

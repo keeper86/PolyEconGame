@@ -27,7 +27,7 @@ export type PriceAggregate = {
     quantity: number;
     price: number;
 };
-export const emptyPriceAggregate: PriceAggregate = { quantity: 0, price: 0 };
+export const emptyPriceAggregate = (): PriceAggregate => ({ quantity: 0, price: 0 });
 
 export const orderBookReducer = (maxQty: number) => (sum: PriceAggregate, level: PriceAggregate) =>
     sum.quantity >= maxQty
@@ -69,7 +69,7 @@ function scanBestRoute(
         for (const origin of planets) {
             const bids = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
                 orderBookReducer(maxQty),
-                emptyPriceAggregate,
+                emptyPriceAggregate(),
             );
             if (bids.quantity <= 0) {
                 if (debug && monthly) {
@@ -100,7 +100,7 @@ function scanBestRoute(
 
                 const offers = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
                     orderBookReducer(bids.quantity),
-                    emptyPriceAggregate,
+                    emptyPriceAggregate(),
                 );
 
                 if (offers.quantity <= 0) {
@@ -222,7 +222,6 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
             continue;
         }
 
-        const cargoGoal = { resource, quantity: Math.min(3 * candidate.quantity, maxQ) };
         (ship as TransportShip).state = {
             type: 'loading',
             planetId: candidate.originPlanetId,
