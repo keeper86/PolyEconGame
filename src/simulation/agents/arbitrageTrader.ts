@@ -4,12 +4,7 @@ import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import type { Agent, GameState } from '../planet/planet';
 import { createShip, shiptypes } from '../ships/ships';
 
-const BOOTSTRAP_SHIP_TYPES = [
-    shiptypes.solid.bulkCarrier1,
-    shiptypes.liquid.tanker1,
-    shiptypes.pieces.freighter1,
-    shiptypes.gas.gasCarrier1,
-];
+const BOOTSTRAP_SHIP_TYPES = [shiptypes.solid.bulkCarrier1, shiptypes.liquid.tanker1, shiptypes.pieces.freighter1];
 
 export function seedArbitrageTraderAgents(gameState: GameState): void {
     const planets = Array.from(gameState.planets.values());
