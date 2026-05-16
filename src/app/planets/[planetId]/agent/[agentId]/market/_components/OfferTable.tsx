@@ -1,16 +1,5 @@
 'use client';
 
-/**
- * OfferTable
- *
- * Displays per-agent food market offers in merit order (cheapest first).
- * Highlights the marginal seller — the last agent whose offer was
- * (at least partially) needed to fill aggregate demand.
- *
- * Columns:
- *   Agent | Offer price | Offered (t) | Sold (t) | Sell-through | Revenue
- */
-
 import React from 'react';
 import { cn, formatNumberWithUnit, getCurrencySymbol } from '@/lib/utils';
 
@@ -49,13 +38,15 @@ function OfferTableComponent({ offers, clearingPrice, planetId }: Props): React.
 
     const currencySymbol = getCurrencySymbol(planetId ?? '');
 
+    const visibleOffers = offers.filter((row) => row.lastPlacedQuantity > 0);
+
     // The marginal agent is the one whose offer price is closest to the
     // clearing price from below (last infra-marginal or first supra-marginal).
     const marginalIdx = (() => {
         let best = -1;
         let bestDiff = Infinity;
-        for (let i = 0; i < offers.length; i++) {
-            const diff = Math.abs(offers[i].offerPrice - clearingPrice);
+        for (let i = 0; i < visibleOffers.length; i++) {
+            const diff = Math.abs(visibleOffers[i].offerPrice - clearingPrice);
             if (diff < bestDiff) {
                 bestDiff = diff;
                 best = i;
@@ -79,7 +70,7 @@ function OfferTableComponent({ offers, clearingPrice, planetId }: Props): React.
                     </tr>
                 </thead>
                 <tbody>
-                    {offers.map((row, i) => {
+                    {visibleOffers.map((row, i) => {
                         const isMarginal = i === marginalIdx && row.sellThrough > 0 && row.sellThrough < 0.999;
                         return (
                             <tr

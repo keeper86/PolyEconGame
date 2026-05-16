@@ -1,5 +1,6 @@
 import { SHIPBUILDER_WORKING_CAPITAL, SHIPBUILDER_BOOTSTRAP_LOAN, SHIPBUILDER_LISTING_MARKUP } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
+import { EARTH_ID } from '../initialUniverse/earth';
 import { createShipListing } from '../ships/shipMarket';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import type { Agent, GameState } from '../planet/planet';
@@ -11,7 +12,6 @@ import type { ShipConstructionFacility } from '../planet/facility';
 const BOOTSTRAP_SHIP_TYPES = [
     shiptypes.solid.bulkCarrier1,
     shiptypes.liquid.tanker1,
-    shiptypes.gas.gasCarrier1,
     shiptypes.pieces.freighter1,
 ] as const;
 
@@ -44,6 +44,9 @@ function makeShipyard(planetId: string, agentId: string): ShipConstructionFacili
 
 export function seedShipbuilderAgents(gameState: GameState): void {
     for (const planet of gameState.planets.values()) {
+        if (planet.id !== EARTH_ID) {
+            continue;
+        }
         const agentId = `shipbuilder_${planet.id}`;
 
         const storage = makeStorage({

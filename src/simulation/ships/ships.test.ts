@@ -43,14 +43,16 @@ function makeConstructionShip(name: string, planetId: string): ConstructionShip 
 describe('travelTime', () => {
     it('returns ceil(1000 / speed) for a transport ship', () => {
         const ship = makeTransportShip('S', 'p1');
-        // bulkCarrier1 speed = 6
-        expect(travelTime(ship)).toBe(Math.ceil(1000 / 6));
+        // bulkCarrier1 speed = 6; travelTime has ±10% jitter
+        expect(travelTime(ship)).toBeGreaterThanOrEqual(Math.ceil(900 / 6));
+        expect(travelTime(ship)).toBeLessThanOrEqual(Math.ceil(1100 / 6));
     });
 
     it('returns ceil(1000 / speed) for a construction ship (speed 4)', () => {
         const ship = makeConstructionShip('C', 'p1');
-        // constructionShipType speed = 4
-        expect(travelTime(ship)).toBe(Math.ceil(1000 / 4));
+        // constructionShipType speed = 4; travelTime has ±10% jitter
+        expect(travelTime(ship)).toBeGreaterThanOrEqual(Math.ceil(900 / 4));
+        expect(travelTime(ship)).toBeLessThanOrEqual(Math.ceil(1100 / 4));
     });
 });
 

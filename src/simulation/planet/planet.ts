@@ -99,6 +99,16 @@ export type PlanetaryMarket = {
     };
 };
 
+/**
+ * A single side of an order book for one resource, as a sorted price ladder.
+ * asks: ascending by price (cheapest first).
+ * bids: descending by price (highest first).
+ */
+export type ResourceOrderBook = {
+    asks: Array<{ price: number; quantity: number }>;
+    bids: Array<{ price: number; quantity: number }>;
+};
+
 export type Planet = {
     id: string;
     name: string;
@@ -121,6 +131,10 @@ export type Planet = {
      * TODO: move this to own type in market.
      */
     marketPrices: Record<string, number>;
+    orderBooks: Record<string, ResourceOrderBook>;
+    transportPipeline: {
+        [resourceName in string]: ResourceQuantity;
+    };
 
     lastMarketResult: {
         [resourceName: string]: MarketResult;

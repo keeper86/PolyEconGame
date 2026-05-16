@@ -1,4 +1,4 @@
-import { arbitrageTraderRepaymentTick, arbitrageTraderTick } from './agents/arbitrageTraderTick';
+import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { shipbuilderTick } from './agents/shipbuilderTick';
@@ -114,7 +114,6 @@ export function advanceTick(gameState: GameState) {
     forexMarketMakerPricing(gameState);
     forexTick(gameState);
     forexMMRepaymentTick(gameState);
-    arbitrageTraderRepaymentTick(gameState);
 
     shipTick(gameState);
     shipbuilderTick(gameState);

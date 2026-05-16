@@ -247,6 +247,34 @@ export type PassengerShip = BaseShip & {
 
 export type Ship = TransportShip | ConstructionShip | PassengerShip;
 
+// ---------------------------------------------------------------------------
+// Transport pipeline helpers
+// ---------------------------------------------------------------------------
+
+function addPipelineEntry(planets: Map<string, Planet>, toPlanetId: string, cargo: ResourceQuantity): void {
+    const planet = planets.get(toPlanetId);
+    if (!planet) {
+        return;
+    }
+    const existing = planet.transportPipeline[cargo.resource.name];
+    if (existing) {
+        existing.quantity += cargo.quantity;
+    } else {
+        planet.transportPipeline[cargo.resource.name] = { ...cargo };
+    }
+}
+
+function removePipelineEntry(planets: Map<string, Planet>, toPlanetId: string, cargo: ResourceQuantity): void {
+    const planet = planets.get(toPlanetId);
+    if (!planet) {
+        return;
+    }
+    const existing = planet.transportPipeline[cargo.resource.name];
+    if (existing) {
+        existing.quantity = Math.max(0, existing.quantity - cargo.quantity);
+    }
+}
+
 export const shipTick = (gameState: GameState): void => {
     for (const agent of gameState.agents.values()) {
         for (const ship of agent.ships) {
@@ -280,7 +308,21 @@ export const shipTick = (gameState: GameState): void => {
             }
 
             if (result.action === 'transition') {
+                const oldState = ship.state;
                 ship.state = result.newState;
+                if (ship.type.type === 'transport') {
+                    if (oldState.type === 'loading' && result.newState.type === 'transporting') {
+                        const newTransporting = result.newState as TransportShipStatusTransporting;
+                        if (newTransporting.cargo && newTransporting.cargo.quantity > 0) {
+                            addPipelineEntry(gameState.planets, newTransporting.to, newTransporting.cargo);
+                        }
+                    } else if (oldState.type === 'transporting') {
+                        const oldTransporting = oldState as TransportShipStatusTransporting;
+                        if (oldTransporting.cargo && oldTransporting.cargo.quantity > 0) {
+                            removePipelineEntry(gameState.planets, oldTransporting.to, oldTransporting.cargo);
+                        }
+                    }
+                }
             }
         }
     }

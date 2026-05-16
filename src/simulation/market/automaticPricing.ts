@@ -1,6 +1,8 @@
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     AUTOMATED_COST_FLOOR_MARKUP,
+    AUTOMATED_PRICE_CAP_FACTOR,
+    BID_PRICE_CAP_FACTOR,
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
@@ -11,19 +13,12 @@ import {
     PRICE_CEIL,
     PRICE_FLOOR,
     SERVICE_DEPRECIATION_RATE_PER_TICK,
-    TICKS_PER_MONTH,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
-import {
-    DEFAULT_EXCHANGE_RATE,
-    FOREX_PRICE_FLOOR,
-    getCurrencyResource,
-    getCurrencyResourceName,
-} from './currencyResources';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -167,8 +162,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null) {
-            const needs =
-                facility.type === 'ship_construction' ? (facility.produces?.buildingCost ?? []) : facility.needs;
+            let needs = [];
+            if (facility.type === 'ship_construction') {
+                needs = (facility.produces?.buildingCost ?? []).map((resource) => {
+                    return {
+                        resource: resource.resource,
+                        quantity: resource.quantity * Math.max(0, 1 / (facility.produces?.buildingTime ?? 1)),
+                    };
+                });
+            } else {
+                needs = facility.needs;
+            }
+
             for (const { resource, quantity } of needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
@@ -270,164 +275,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const marketPrice = planet.marketPrices[resourceName];
         const profitGap = inputProfitGaps.get(resourceName) ?? 0;
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap);
+        const bidPriceCap = isFinite(marketPrice) && marketPrice > 0 ? marketPrice * BID_PRICE_CAP_FACTOR : PRICE_CEIL;
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap, bidPriceCap);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);
         }
-    }
-
-    // --- Forex pricing: buy/sell orders for foreign currencies ---
-    if (agent.automated) {
-        automaticForexPricing(agent, assets, planet);
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Forex pricing helpers
-// ---------------------------------------------------------------------------
-
-/** How many ticks of foreign-planet operating costs an agent wants to hold as foreign-currency buffer. */
-const FOREX_BUFFER_TICKS = 30;
-/** Maximum urgency premium on bid price (fraction). */
-const FOREX_URGENCY_MAX = 0.3;
-/** Maximum random noise range on forex prices (fraction, applied symmetrically). */
-const FOREX_NOISE_RANGE = 0.05;
-
-/**
- * Returns a deterministic seed in [0, 1) derived from the agent’s id.
- * Used to add reproducible per-agent heterogeneity to forex pricing without
- * storing extra state.
- */
-export function getAgentDeterministicSeed(agent: Agent): number {
-    // FNV-1a 32-bit hash
-    let h = 0x811c9dc5;
-    for (let i = 0; i < agent.id.length; i++) {
-        h ^= agent.id.charCodeAt(i);
-        h = (Math.imul(h, 0x01000193) | 0) >>> 0;
-    }
-    return h / 0xffffffff;
-}
-
-/**
- * Estimate how many units of `foreignPlanetId`’s currency the agent needs
- * as a working-capital buffer, based on last month’s wages + purchases there.
- */
-function computeForexBufferTarget(agent: Agent, foreignPlanetId: string): number {
-    const fa = agent.assets[foreignPlanetId];
-    if (!fa) {
-        return 0;
-    }
-    const perTick = (fa.lastMonthAcc.wages + fa.lastMonthAcc.purchases) / TICKS_PER_MONTH;
-    return perTick * FOREX_BUFFER_TICKS;
-}
-
-/** Adjust the ask price for a forex sell order using tâtonnement + noise. */
-function adjustForexAskPrice(offer: AgentMarketOfferState, lastExchangeRate: number, seed: number): void {
-    if (offer.offerPrice === undefined) {
-        offer.offerPrice = Math.max(FOREX_PRICE_FLOOR, lastExchangeRate);
-        return;
-    }
-    const sold = offer.lastSold ?? 0;
-    const placed = offer.lastPlacedQty ?? 0;
-    const st = placed > 0 ? sold / placed : 1;
-    const base = sellThroughFactor(st) * offer.offerPrice;
-    // Per-agent noise centred slightly above zero so prices don’t collapse
-    const noise = (seed - 0.4) * FOREX_NOISE_RANGE;
-    offer.offerPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, base * (1 + noise)));
-}
-
-/** Adjust the bid price for a forex buy order using fill-rate + urgency. */
-function adjustForexBidPrice(bid: AgentMarketBidState, lastExchangeRate: number, urgency: number, seed: number): void {
-    if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
-        bid.bidPrice = Math.max(FOREX_PRICE_FLOOR, lastExchangeRate);
-        return;
-    }
-    const bought = bid.lastBought ?? 0;
-    const demanded = bid.lastEffectiveQty ?? 1;
-    const fillRate = demanded > 0 ? bought / demanded : 1;
-    const baseFactor = fillRateFactor(fillRate);
-    const urgencyPremium = urgency * FOREX_URGENCY_MAX;
-    // Slight upward noise bias so bids don’t stall at min price when idle
-    const noise = (seed - 0.3) * FOREX_NOISE_RANGE;
-    const newPrice = bid.bidPrice * baseFactor * (1 + urgencyPremium + noise);
-    bid.bidPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, newPrice));
-}
-
-/**
- * Initialise and update forex market entries for all foreign currencies
- * the automated agent needs to sell (surplus) or buy (shortfall).
- *
- * Currency entries sit in the same `assets.market.sell / buy` maps as
- * physical goods, but are handled exclusively by `forexTick` — the local
- * `marketTick` skips resources with `form === 'currency'`.
- */
-function automaticForexPricing(agent: Agent, assets: AgentPlanetAssets, planet: Planet): void {
-    if (!assets.market) {
-        return;
-    }
-    const seed = getAgentDeterministicSeed(agent);
-
-    // SELL orders — offer surplus foreign-currency holdings
-    for (const [foreignPlanetId, foreignAssets] of Object.entries(agent.assets)) {
-        if (foreignPlanetId === planet.id) {
-            continue;
-        }
-        const balance = foreignAssets.deposits;
-        if (!(balance > 0)) {
-            continue;
-        }
-        const curName = getCurrencyResourceName(foreignPlanetId);
-        const curResource = getCurrencyResource(foreignPlanetId);
-        const lastRate = planet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
-        const bufferTarget = computeForexBufferTarget(agent, foreignPlanetId);
-        const holds = agent.assets[foreignPlanetId]?.depositHold ?? 0;
-        const surplus = balance - holds - bufferTarget;
-
-        if (!assets.market.sell[curName]) {
-            assets.market.sell[curName] = { resource: curResource, automated: true };
-        }
-        const offer = assets.market.sell[curName];
-        offer.resource = curResource;
-
-        if (surplus > 0) {
-            // Retain the buffer; offer only the surplus
-            offer.offerRetainment = balance - surplus;
-            adjustForexAskPrice(offer, lastRate, seed);
-        } else {
-            // Nothing to sell; keep entry but lock full balance as retainment
-            offer.offerRetainment = balance;
-            if (offer.offerPrice === undefined) {
-                offer.offerPrice = Math.max(FOREX_PRICE_FLOOR, lastRate);
-            }
-        }
-    }
-
-    // BUY orders — bid for currencies needed on foreign planets the agent operates on
-    for (const foreignPlanetId of Object.keys(agent.assets)) {
-        if (foreignPlanetId === planet.id) {
-            continue;
-        }
-        const bufferTarget = computeForexBufferTarget(agent, foreignPlanetId);
-        if (bufferTarget <= 0) {
-            continue;
-        }
-        const curName = getCurrencyResourceName(foreignPlanetId);
-        const curResource = getCurrencyResource(foreignPlanetId);
-        const lastRate = planet.marketPrices[curName] ?? DEFAULT_EXCHANGE_RATE;
-        const current = agent.assets[foreignPlanetId]?.deposits ?? 0;
-        const shortfall = Math.max(0, bufferTarget - current);
-        const urgency = bufferTarget > 0 ? Math.min(1, shortfall / bufferTarget) : 0;
-
-        if (!assets.market.buy[curName]) {
-            assets.market.buy[curName] = { resource: curResource, automated: true };
-        }
-        const bid = assets.market.buy[curName];
-        bid.resource = curResource;
-        // bidStorageTarget here means “desired foreign deposit amount” (in foreign-currency units),
-        // read by forexOrderCollection to determine how much to bid.
-        bid.bidStorageTarget = bufferTarget;
-        adjustForexBidPrice(bid, lastRate, urgency, seed);
     }
 }
 
@@ -663,15 +516,26 @@ function adjustOfferPrice(
             factor = Math.max(factor, effectiveMaxDown);
         }
     }
-
-    // Cost spring (output side): additive upward correction proportional to how far
-    // the current price sits below the production cost floor.  At the floor the
-    // spring is zero; it grows linearly as price falls further below.  This is the
-    // error-correction term from ABM price-dynamics literature (cf. EURACE, Dosi
-    // et al.): a signal coupling rising input costs to output prices.
     if (brakeZoneTop > PRICE_FLOOR && price > 0) {
         const deviation = Math.max(0, brakeZoneTop / price - 1);
         factor += COST_SPRING_STRENGTH * deviation;
+    }
+
+    if (costFloor > PRICE_FLOOR) {
+        const priceCap = costFloor * AUTOMATED_PRICE_CAP_FACTOR;
+        const capZoneBottom = priceCap / (1 + AUTOMATED_COST_FLOOR_BUFFER);
+        if (factor > 1 && price >= capZoneBottom) {
+            // Linearly dampen max upward factor from PRICE_ADJUST_MAX_UP → 1.0 as
+            // price approaches priceCap.
+            const t = Math.max(0, Math.min(1, (price - capZoneBottom) / (priceCap - capZoneBottom)));
+            const effectiveMaxUp = PRICE_ADJUST_MAX_UP + t * (1 - PRICE_ADJUST_MAX_UP);
+            factor = Math.min(factor, effectiveMaxUp);
+        }
+        if (price > 0) {
+            // Ceiling spring: pulls price back when above the cap.
+            const overshoot = Math.max(0, price / priceCap - 1);
+            factor -= COST_SPRING_STRENGTH * overshoot;
+        }
     }
 
     const newPrice = price * factor;
@@ -711,11 +575,10 @@ function adjustBidPrice(
     storageTarget: number,
     marketPrice: number,
     profitabilityGap: number = 0,
+    priceCap: number = PRICE_CEIL,
 ): void {
     // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
-        // No meaningful demand, set storage target to current inventory level
-        // This prevents creating bids with quantities that would fail validation
         bid.bidStorageTarget = storageTarget - shortfall; // Effectively current inventory
         // Keep existing price or initialize it from market price
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
@@ -725,8 +588,6 @@ function adjustBidPrice(
         return;
     }
 
-    // Set the storage target — same field as the human player, so that disabling
-    // automation leaves a fully visible, correctly bounded bid in the UI.
     bid.bidStorageTarget = storageTarget;
 
     if (shortfall <= 0) {
@@ -746,36 +607,31 @@ function adjustBidPrice(
     }
 
     const lastBought = bid.lastBought ?? 0;
-    // lastEffectiveQty is the quantity actually placed in the order book last tick
-    // by collectAgentBids (after proportional deposit scaling). It is a better
-    // denominator for fill-rate than the raw shortfall, which changes each tick.
+
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
-    // Cost spring (input side): subtract a correction proportional to the
-    // facility profitability gap, nudging bid prices downward when the agent's
-    // total production costs exceed its output revenue.  Symmetric to the
-    // output-side spring: together they create a restoring force toward
-    // break-even that weakens once profitability is reached.
-    //
-    // The gap penalty is weighted by fill rate so that it is zero when the
-    // agent cannot procure inputs at all (fillRate = 0).  Without this weight,
-    // a downstream processor whose output revenue is near zero (e.g. upstream
-    // markets not yet settled) accumulates an enormous profitability gap that
-    // overcomes the upward fill-rate signal and pins bids at PRICE_FLOOR —
-    // a deadlock the market cannot resolve on its own.  As supply becomes
-    // available (fillRate → TARGET_FILL_RATE) the full cost-awareness
-    // gradually re-engages.
     const gapWeight = Math.min(1, fillRate / TARGET_FILL_RATE);
-    const factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
+    let factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
 
-    const priceCeil = PRICE_CEIL;
+    // Upper ceiling brake: symmetric to the offer-side brake.
+    // Caps bid price growth during long voyages where fill rate stays at 0.
+    const capZoneBottom = priceCap / (1 + AUTOMATED_COST_FLOOR_BUFFER);
+    if (factor > 1 && bid.bidPrice >= capZoneBottom) {
+        const t = Math.max(0, Math.min(1, (bid.bidPrice - capZoneBottom) / (priceCap - capZoneBottom)));
+        const effectiveMaxUp = PRICE_ADJUST_MAX_UP + t * (1 - PRICE_ADJUST_MAX_UP);
+        factor = Math.min(factor, effectiveMaxUp);
+    }
+    if (bid.bidPrice > 0) {
+        const overshoot = Math.max(0, bid.bidPrice / priceCap - 1);
+        factor -= COST_SPRING_STRENGTH * overshoot;
+    }
+
     const newPrice = bid.bidPrice * factor;
 
-    // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
     if (!isFinite(newPrice) || newPrice <= 0) {
         bid.bidPrice = PRICE_FLOOR;
     } else {
-        bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(priceCeil, newPrice));
+        bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(priceCap, newPrice));
     }
 }

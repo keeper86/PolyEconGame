@@ -54,14 +54,6 @@ export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
 export const EDUCATION_BUFFER_TARGET_TICKS = 2;
 
 /**
- * Grocery starvation level below which education is treated as a valid
- * household need in the intergenerational transfer system.
- * When starvation exceeds this threshold the household is under food stress
- * and education spending is deferred.
- */
-export const EDUCATION_STARVATION_THRESHOLD = 0.05;
-
-/**
  * Minimum grocery service price (prevents zero or negative prices).
  */
 export const PRICE_FLOOR = 0.01;
@@ -111,6 +103,25 @@ export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
 
 /**
+ * Upper price ceiling for automatic offer pricing, expressed as a multiple of
+ * the estimated production cost floor.  A seller's offer price will be
+ * dampened as it approaches `costFloor × AUTOMATED_PRICE_CAP_FACTOR` and a
+ * downward spring kicks in above that level.  This prevents supply-scarce
+ * goods from spiralling to PRICE_CEIL while still generating a strong import
+ * signal (e.g. 10× production cost is already an extraordinary premium).
+ */
+export const AUTOMATED_PRICE_CAP_FACTOR = 20.0;
+
+/**
+ * Upper price ceiling for automatic bid pricing, expressed as a multiple of
+ * the current market price when the bid is being evaluated.  Mirrors
+ * AUTOMATED_PRICE_CAP_FACTOR on the buyer side: prevents import bids from
+ * rising to PRICE_CEIL over a long voyage (where fill rate = 0 every tick),
+ * which would exhaust deposits and collapse the effective order quantity.
+ */
+export const BID_PRICE_CAP_FACTOR = 16.0;
+
+/**
  * Stiffness of the cost-equilibrium spring that couples input and output prices.
  *
  * Implements a symmetric error-correction mechanism (cf. von Cramon-Taubadel 1998,
@@ -152,7 +163,7 @@ export const RETAINED_EARNINGS_THRESHOLD = 1.5;
  * procurement buffer.  Used both in automaticPricing (bid quantity) and in the
  * financial tick (retained-earnings extension + input-buffer loan).
  */
-export const INPUT_BUFFER_TARGET_TICKS = 10;
+export const INPUT_BUFFER_TARGET_TICKS = 180;
 
 /**
  * Maximum output inventory expressed as ticks of production.
@@ -321,7 +332,7 @@ export const SHIPBUILDER_INPUT_BUFFER_TICKS = 20;
 export const ARBITRAGE_SEED_DEPOSIT = 1_000_000;
 
 /** Minimum net profit per tick (in currency units) required to activate a route, including any repositioning leg. */
-export const ARBITRAGE_MIN_PROFIT_PER_TICK = 100;
+export const ARBITRAGE_MIN_PROFIT_PER_TICK = 0;
 
 /** Minimum total deposits on home planet before buying an additional ship. */
 export const ARBITRAGE_MIN_CAPITAL_RESERVE = 100_000;
@@ -334,3 +345,11 @@ export const ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS = 3_600;
 
 /** Fixed overhead ticks added to each trip estimate to cover loading and unloading. */
 export const ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS = 60;
+
+/**
+ * Haircut applied to the mid-market forex rate when the destination-currency
+ * bid book at origin is too thin to price the full conversion.  Set below 1
+ * to discourage routes whose profitability depends on unrealistically good
+ * forex fills.
+ */
+export const ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT = 0.9;

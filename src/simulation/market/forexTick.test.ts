@@ -432,27 +432,3 @@ describe('forexTick', () => {
         expect(issues).toEqual([]);
     });
 });
-
-describe('forexTick — heterogeneous pricing seeds', () => {
-    it('getAgentDeterministicSeed returns different values for different agents', async () => {
-        const { getAgentDeterministicSeed } = await import('./automaticPricing');
-        const agentA = makeAgent('alpha', 'p');
-        const agentB = makeAgent('beta', 'p');
-        const agentC = makeAgent('gamma', 'p');
-
-        const seedA = getAgentDeterministicSeed(agentA);
-        const seedB = getAgentDeterministicSeed(agentB);
-        const seedC = getAgentDeterministicSeed(agentC);
-
-        // All in [0, 1)
-        expect(seedA).toBeGreaterThanOrEqual(0);
-        expect(seedA).toBeLessThan(1);
-
-        // All different
-        expect(seedA).not.toBe(seedB);
-        expect(seedB).not.toBe(seedC);
-
-        // Deterministic (same input → same output)
-        expect(getAgentDeterministicSeed(makeAgent('alpha', 'p'))).toBe(seedA);
-    });
-});

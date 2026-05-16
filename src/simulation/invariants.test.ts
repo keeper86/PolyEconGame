@@ -6,11 +6,20 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { checkMonetaryConservation, checkWealthBankConsistency } from './invariants';
+import { checkMonetaryConservation, checkTransportPipeline, checkWealthBankConsistency } from './invariants';
 import { advanceTick, seedRng } from './engine';
 import { putIntoStorageFacility } from './planet/facility';
-import { makeProductionFacility, makeWorld } from './utils/testHelper';
-import { agriculturalProductResourceType } from './planet/resources';
+import {
+    makeAgent,
+    makeAgentPlanetAssets,
+    makeGameState,
+    makePlanet,
+    makeProductionFacility,
+    makeWorld,
+} from './utils/testHelper';
+import { agriculturalProductResourceType, steelResourceType } from './planet/resources';
+import { createShip, shipTick, shiptypes } from './ships/ships';
+import type { TransportShip, TransportShipStatusTransporting } from './ships/ships';
 
 describe('checkMonetaryConservation', () => {
     it('reports no violation when all balances are zero', () => {
@@ -216,3 +225,126 @@ describe(
     },
     { timeout: 10000 },
 );
+
+// ---------------------------------------------------------------------------
+// Transport pipeline consistency
+// ---------------------------------------------------------------------------
+
+describe('checkTransportPipeline', () => {
+    it('holds with no ships in transit', () => {
+        const { gameState } = makeWorld({ populationByEdu: { none: 10 }, companyIds: [] });
+        expect(checkTransportPipeline(gameState)).toEqual([]);
+    });
+
+    it('holds when pipeline matches a transporting ship', () => {
+        const pOrigin = makePlanet({ id: 'p1', name: 'Origin' });
+        const pDest = makePlanet({ id: 'p2', name: 'Dest' });
+        const agent = makeAgent('agent-1', 'p1');
+        const gameState = makeGameState([pOrigin, pDest], [agent]);
+
+        const ship = createShip(shiptypes.solid.bulkCarrier1, 0, 'Test Ship', pOrigin) as TransportShip;
+        ship.state = {
+            type: 'transporting',
+            from: 'p1',
+            to: 'p2',
+            cargo: { resource: steelResourceType, quantity: 500 },
+            arrivalTick: 100,
+        };
+        agent.ships.push(ship);
+
+        // Manually set the pipeline to the expected value
+        pDest.transportPipeline[steelResourceType.name] = { resource: steelResourceType, quantity: 500 };
+
+        expect(checkTransportPipeline(gameState)).toEqual([]);
+    });
+
+    it('detects a missing pipeline entry (regression: stale pipeline)', () => {
+        const pOrigin = makePlanet({ id: 'p1', name: 'Origin' });
+        const pDest = makePlanet({ id: 'p2', name: 'Dest' });
+        const agent = makeAgent('agent-1', 'p1');
+        const gameState = makeGameState([pOrigin, pDest], [agent]);
+
+        const ship = createShip(shiptypes.solid.bulkCarrier1, 0, 'Test Ship', pOrigin) as TransportShip;
+        ship.state = {
+            type: 'transporting',
+            from: 'p1',
+            to: 'p2',
+            cargo: { resource: steelResourceType, quantity: 500 },
+            arrivalTick: 100,
+        };
+        agent.ships.push(ship);
+        // transportPipeline intentionally NOT updated — simulates missing bookkeeping
+
+        const discrepancies = checkTransportPipeline(gameState);
+        expect(discrepancies.length).toBeGreaterThan(0);
+        expect(discrepancies[0]).toContain('p2');
+        expect(discrepancies[0]).toContain(steelResourceType.name);
+    });
+
+    it('adds pipeline entry on loading→transporting and removes on transporting→unloading via shipTick', () => {
+        const pOrigin = makePlanet({ id: 'p1', name: 'Origin' });
+        const pDest = makePlanet({ id: 'p2', name: 'Dest' });
+        const agent = makeAgent('agent-1', 'p1', 'Agent 1', {
+            assets: {
+                p1: makeAgentPlanetAssets('p1'),
+                p2: makeAgentPlanetAssets('p2'),
+            },
+        });
+        const gameState = makeGameState([pOrigin, pDest], [agent]);
+        gameState.tick = 1;
+
+        // Pre-loaded: currentCargo === cargoGoal so the handler dispatches immediately
+        const ship = createShip(shiptypes.solid.bulkCarrier1, 0, 'Test Ship', pOrigin) as TransportShip;
+        ship.state = {
+            type: 'loading',
+            planetId: 'p1',
+            to: 'p2',
+            cargoGoal: { resource: steelResourceType, quantity: 1000 },
+            currentCargo: { resource: steelResourceType, quantity: 1000 },
+        };
+        agent.ships.push(ship);
+
+        // loading → transporting: pipeline entry is added
+        shipTick(gameState);
+        expect(ship.state.type).toBe('transporting');
+        expect(pDest.transportPipeline[steelResourceType.name]?.quantity).toBe(1000);
+        expect(checkTransportPipeline(gameState)).toEqual([]);
+
+        // Advance to arrival tick: transporting → unloading, pipeline entry is removed
+        const arrivalTick = (ship.state as TransportShipStatusTransporting).arrivalTick;
+        gameState.tick = arrivalTick;
+        shipTick(gameState);
+        expect(ship.state.type).toBe('unloading');
+        expect(pDest.transportPipeline[steelResourceType.name]?.quantity ?? 0).toBe(0);
+        expect(checkTransportPipeline(gameState)).toEqual([]);
+    });
+
+    it('aggregates quantities from two ships heading to the same destination', () => {
+        const pOrigin = makePlanet({ id: 'p1', name: 'Origin' });
+        const pDest = makePlanet({ id: 'p2', name: 'Dest' });
+        const agent = makeAgent('agent-1', 'p1', 'Agent 1', {
+            assets: {
+                p1: makeAgentPlanetAssets('p1'),
+                p2: makeAgentPlanetAssets('p2'),
+            },
+        });
+        const gameState = makeGameState([pOrigin, pDest], [agent]);
+        gameState.tick = 1;
+
+        for (const qty of [800, 600]) {
+            const ship = createShip(shiptypes.solid.bulkCarrier1, 0, `Ship ${qty}`, pOrigin) as TransportShip;
+            ship.state = {
+                type: 'loading',
+                planetId: 'p1',
+                to: 'p2',
+                cargoGoal: { resource: steelResourceType, quantity: qty },
+                currentCargo: { resource: steelResourceType, quantity: qty },
+            };
+            agent.ships.push(ship);
+        }
+
+        shipTick(gameState);
+        expect(pDest.transportPipeline[steelResourceType.name]?.quantity).toBe(1400);
+        expect(checkTransportPipeline(gameState)).toEqual([]);
+    });
+});

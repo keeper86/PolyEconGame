@@ -1,5 +1,13 @@
-import { getCurrencyResourceName, DEFAULT_EXCHANGE_RATE } from '@/simulation/market/currencyResources';
+import { emptyPriceAggregate, orderBookReducer } from '@/simulation/agents/arbitrageTraderTick';
+import {
+    ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT,
+    ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
+    ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
+} from '@/simulation/constants';
+import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
+import { shiptypes } from '@/simulation/ships/ships';
 import { z } from 'zod';
 import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
@@ -630,27 +638,32 @@ export const getLoanConditions = () =>
             return { conditions: conditions ?? null, activeLoans: activeLoans ?? [] };
         });
 
-const tickerEventSchema = z.object({
+const baseTickerEventSchema = z.object({
     id: z.number(),
-    category: z.enum([
-        'agentCreated',
-        'shipDispatched',
-        'shipArrived',
-        'shipCompleted',
-        'facilityCompleted',
-        'licenseAcquired',
-        'agentBankrupt',
-        'contractAccepted',
-        'loanRollover',
-        'priceSpike',
-        'populationMilestone',
-    ]),
     planetId: z.string(),
-    agentId: z.string().optional(),
-    agentName: z.string().optional(),
-    message: z.string(),
     tick: z.number(),
 });
+
+const tickerEventSchema = baseTickerEventSchema.extend(
+    z.object({
+        category: z.enum([
+            'agentCreated',
+            'shipDispatched',
+            'shipArrived',
+            'shipCompleted',
+            'facilityCompleted',
+            'licenseAcquired',
+            'agentBankrupt',
+            'contractAccepted',
+            'loanRollover',
+            'priceSpike',
+            'populationMilestone',
+        ]),
+        agentId: z.string().optional(),
+        agentName: z.string().optional(),
+        message: z.string(),
+    }).shape,
+);
 
 export type TickerEvent = z.infer<typeof tickerEventSchema>;
 
@@ -663,4 +676,229 @@ export const getTickerEvents = () =>
             const filtered =
                 input.lastSeenId !== undefined ? tickerEvents.filter((e) => e.id > input.lastSeenId!) : tickerEvents;
             return { tickerEvents: filtered };
+        });
+
+// ---------------------------------------------------------------------------
+// Trade Route Scanner — dev-only endpoint used by the supply-chain analyser.
+// Replicates the arbitrageur's scan logic against live planet order books.
+// ---------------------------------------------------------------------------
+
+const ALL_TRANSPORT_SHIP_TYPES = [
+    ...Object.values(shiptypes.solid),
+    ...Object.values(shiptypes.liquid),
+    ...Object.values(shiptypes.gas),
+    ...Object.values(shiptypes.pieces),
+] as const;
+
+const routeRowSchema = z.object({
+    resourceName: z.string(),
+    originPlanetId: z.string(),
+    originPlanetName: z.string(),
+    destPlanetId: z.string(),
+    destPlanetName: z.string(),
+    quantity: z.number(),
+    buyPrice: z.number(),
+    sellPriceDest: z.number(),
+    forexRate: z.number(),
+    sellPriceAdj: z.number(),
+    grossProfit: z.number(),
+    depreciation: z.number(),
+    netProfit: z.number(),
+    roundTripTicks: z.number(),
+    profitPerTick: z.number(),
+});
+
+export type ArbitrageRouteRow = z.infer<typeof routeRowSchema>;
+
+type PlanetList = Awaited<ReturnType<typeof workerQueries.getAllPlanets>>['planets'];
+
+function computeArbitrageRoutesForShip(
+    planets: PlanetList,
+    shipType: (typeof ALL_TRANSPORT_SHIP_TYPES)[number],
+    depreciation: number,
+    roundTripTicks: number,
+    opts: { resourceNames?: Set<string>; destPlanetId?: string; originPlanetId?: string } = {},
+): ArbitrageRouteRow[] {
+    const routes: ArbitrageRouteRow[] = [];
+    const { cargoSpecification } = shipType;
+
+    for (const resource of ALL_RESOURCES) {
+        // Skip resource types this ship can't carry
+        const form = resource.form;
+        if (form === 'services' || form === 'landBoundResource' || form === 'currency') {
+            continue;
+        }
+        if (cargoSpecification.type !== form) {
+            continue;
+        }
+        if (opts.resourceNames && !opts.resourceNames.has(resource.name)) {
+            continue;
+        }
+
+        const maxByVolume = cargoSpecification.volume / resource.volumePerQuantity;
+        const maxByMass = cargoSpecification.mass / resource.massPerQuantity;
+        const maxQty = Math.floor(Math.min(maxByVolume, maxByMass));
+        if (maxQty < 1) {
+            continue;
+        }
+
+        for (const origin of planets) {
+            if (opts.originPlanetId && origin.id !== opts.originPlanetId) {
+                continue;
+            }
+            const askFill = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
+                orderBookReducer(maxQty),
+                emptyPriceAggregate(),
+            );
+            if (askFill.quantity < 1) {
+                continue;
+            }
+
+            for (const dest of planets) {
+                if (dest.id === origin.id) {
+                    continue;
+                }
+                if (opts.destPlanetId && dest.id !== opts.destPlanetId) {
+                    continue;
+                }
+
+                const bidFill = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
+                    orderBookReducer(askFill.quantity),
+                    emptyPriceAggregate(),
+                );
+                if (bidFill.quantity < 1) {
+                    continue;
+                }
+
+                const effectiveQty = bidFill.quantity;
+                const pBuy = askFill.price / askFill.quantity;
+                const pSellDest = bidFill.price / bidFill.quantity;
+
+                const currencyName = getCurrencyResourceName(dest.id);
+                const midForexRate = origin.marketPrices[currencyName] ?? DEFAULT_EXCHANGE_RATE;
+                const forexRate = midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
+
+                const pSellAdj = pSellDest * forexRate;
+                const grossProfit = (pSellAdj - pBuy) * effectiveQty;
+                const netProfit = grossProfit - depreciation;
+                const profitPerTick = netProfit / roundTripTicks;
+
+                routes.push({
+                    resourceName: resource.name,
+                    originPlanetId: origin.id,
+                    originPlanetName: origin.name,
+                    destPlanetId: dest.id,
+                    destPlanetName: dest.name,
+                    quantity: effectiveQty,
+                    buyPrice: pBuy,
+                    sellPriceDest: pSellDest,
+                    forexRate,
+                    sellPriceAdj: pSellAdj,
+                    grossProfit,
+                    depreciation,
+                    netProfit,
+                    roundTripTicks,
+                    profitPerTick,
+                });
+            }
+        }
+    }
+
+    return routes;
+}
+
+export const getArbitrageRoutes = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                shipTypeName: z.string(),
+                maxRoutes: z.number().int().min(1).max(500).default(200),
+            }),
+        )
+        .output(
+            z.object({
+                tick: z.number(),
+                shipTypeName: z.string(),
+                routes: z.array(routeRowSchema),
+            }),
+        )
+        .query(async ({ input }) => {
+            const shipType = ALL_TRANSPORT_SHIP_TYPES.find((s) => s.name === input.shipTypeName);
+            if (!shipType || shipType.type !== 'transport') {
+                return { tick: 0, shipTypeName: input.shipTypeName, routes: [] };
+            }
+
+            const [{ tick, planets }, { shipCapitalMarket }] = await Promise.all([
+                workerQueries.getAllPlanets(),
+                workerQueries.getShipCapitalMarket(),
+            ]);
+
+            const oneWayTicks = Math.ceil(1000 / shipType.speed);
+            const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
+            const emaPrice = shipCapitalMarket.emaPrice[shipType.name] ?? 0;
+            const depreciationRatePerTick = emaPrice > 0 ? emaPrice / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS : 0;
+            const depreciation = depreciationRatePerTick * roundTripTicks;
+
+            const routes = computeArbitrageRoutesForShip(planets, shipType, depreciation, roundTripTicks);
+            routes.sort((a, b) => b.profitPerTick - a.profitPerTick);
+            return {
+                tick,
+                shipTypeName: input.shipTypeName,
+                routes: routes.slice(0, input.maxRoutes),
+            };
+        });
+
+export const getArbitrageForResources = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                resourceNames: z.array(z.string()),
+                destPlanetId: z.string().optional(),
+                originPlanetId: z.string().optional(),
+            }),
+        )
+        .output(
+            z.object({
+                tick: z.number(),
+                byResource: z.record(z.string(), routeRowSchema.nullable()),
+            }),
+        )
+        .query(async ({ input }) => {
+            if (input.resourceNames.length === 0) {
+                return { tick: 0, byResource: {} };
+            }
+
+            const resourceNameSet = new Set(input.resourceNames);
+            const [{ tick, planets }, { shipCapitalMarket }] = await Promise.all([
+                workerQueries.getAllPlanets(),
+                workerQueries.getShipCapitalMarket(),
+            ]);
+
+            const byResource: Record<string, ArbitrageRouteRow | null> = {};
+            for (const name of input.resourceNames) {
+                byResource[name] = null;
+            }
+
+            for (const shipType of ALL_TRANSPORT_SHIP_TYPES) {
+                const oneWayTicks = Math.ceil(1000 / shipType.speed);
+                const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
+                const emaPrice = shipCapitalMarket.emaPrice[shipType.name] ?? 0;
+                const depreciationRatePerTick = emaPrice > 0 ? emaPrice / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS : 0;
+                const depreciation = depreciationRatePerTick * roundTripTicks;
+
+                const routes = computeArbitrageRoutesForShip(planets, shipType, depreciation, roundTripTicks, {
+                    resourceNames: resourceNameSet,
+                    destPlanetId: input.destPlanetId,
+                    originPlanetId: input.originPlanetId,
+                });
+
+                for (const route of routes) {
+                    const current = byResource[route.resourceName];
+                    if (!current || route.profitPerTick > current.profitPerTick) {
+                        byResource[route.resourceName] = route;
+                    }
+                }
+            }
+
+            return { tick, byResource };
         });

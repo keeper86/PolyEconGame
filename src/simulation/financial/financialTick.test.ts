@@ -65,10 +65,10 @@ describe('preProductionFinancialTick', () => {
 
         preProductionFinancialTick(agentMap(agent), planet);
 
-        // Wage bill = hired * 1.0; loan = hired; after paying wages deposits = 0
-        expect(planet.bank!.loans).toBe(hired * TICKS_PER_MONTH);
-        expect(agent.assets[planet.id]?.deposits ?? 0).toBe(hired * (TICKS_PER_MONTH - 1)); // loan - wage bill
-        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(hired * TICKS_PER_MONTH);
+        // Wage bill per tick = hired * 1.0; loan = 6 months of wages; after paying 1 tick deposits = loan - wageBill
+        expect(planet.bank!.loans).toBe(6 * hired * TICKS_PER_MONTH);
+        expect(agent.assets[planet.id]?.deposits ?? 0).toBe(hired * (6 * TICKS_PER_MONTH - 1)); // loan - wage bill
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(6 * hired * TICKS_PER_MONTH);
     });
 
     it('does not create a loan when firm already has enough deposits', () => {
@@ -225,9 +225,9 @@ describe('money conservation', () => {
 
         preProductionFinancialTick(agentMap(agent), planet);
 
-        // Loan created = hired (wage bill with no prior deposits)
-        expect(planet.bank!.loans).toBe(hired * TICKS_PER_MONTH);
-        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(hired * TICKS_PER_MONTH);
+        // Loan created = 6 months of wage bill (6 * hired * TICKS_PER_MONTH)
+        expect(planet.bank!.loans).toBe(6 * hired * TICKS_PER_MONTH);
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(6 * hired * TICKS_PER_MONTH);
     });
 
     it('full cycle: wages paid and loan repayment only triggers with excess deposits above 1-year threshold', () => {
@@ -241,7 +241,7 @@ describe('money conservation', () => {
         // grantLoan adds the loan amount to deposits, then wages are deducted.
         preProductionFinancialTick(agentMap(agent), planet, 1);
         const loansAfterA = planet.bank!.loans;
-        expect(loansAfterA).toBe(hired * TICKS_PER_MONTH);
+        expect(loansAfterA).toBe(6 * hired * TICKS_PER_MONTH);
 
         // After paying wages, the agent still has (loan - wageBill) in deposits.
         const depositsAfterA = agent.assets[planet.id]!.deposits;
@@ -250,7 +250,7 @@ describe('money conservation', () => {
         // Set up lastMonthAcc so the 1-year threshold is meaningful.
         // Monthly wage expense = hired * 1.0 * TICKS_PER_MONTH = 3000.
         // 1-year threshold = 12 * 3000 = 36000.
-        // Deposits = 2900, which is well below 36000, so no repayment.
+        // Deposits = loansAfterA - hired (17900 when loan=18000), which is below 36000, so no repayment.
         agent.assets[planet.id]!.lastMonthAcc.wages = hired * TICKS_PER_MONTH;
 
         // Step B: auto-repayment — deposits are below the 1-year threshold
@@ -346,18 +346,18 @@ describe('enforceLoanMaturities', () => {
         maturesLoans(agentMap(agent), planet, 100); // tick 100 >= 50
 
         // canRepay = min(100, 30) = 30, shortfall = 70
-        // fee = round(70 * 0.05) = 4, rolloverPrincipal = 74
+        // rolloverPrincipal = shortfall = 70 (no fee)
         // Step 1: repay 30 from deposits → deposits = 0, loans = 70, deposits = 0
-        // Step 2: grantLoan(74) → deposits = 74, loans = 144, deposits = 74
-        // Step 3: repay shortfall 70 → deposits = 4, loans = 74, deposits = 4
-        // Net: deposits = 4 (the fee amount), loans = 74 (rollover loan)
-        expect(agent.assets[planet.id]!.deposits).toBe(4);
-        // Total outstanding: 74 (the rollover loan)
-        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(74);
-        // Bank: loans = 100 - 30 (repaid) + 74 (new rollover) - 70 (shortfall repaid) = 74
-        // deposits = 30 - 30 (repaid) + 74 (new rollover) - 70 (shortfall repaid) = 4
-        expect(planet.bank!.loans).toBe(74);
-        expect(planet.bank!.deposits).toBe(4);
+        // Step 2: grantLoan(70) → deposits = 70, loans = 140, deposits = 70
+        // Step 3: repay shortfall 70 → deposits = 0, loans = 70, deposits = 0
+        // Net: deposits = 0, loans = 70 (the rollover loan)
+        expect(agent.assets[planet.id]!.deposits).toBe(0);
+        // Total outstanding: 70 (the rollover loan)
+        expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(70);
+        // Bank: loans = 100 - 30 (repaid) + 70 (new rollover) - 70 (shortfall repaid) = 70
+        // deposits = 30 - 30 (repaid) + 70 (new rollover) - 70 (shortfall repaid) = 0
+        expect(planet.bank!.loans).toBe(70);
+        expect(planet.bank!.deposits).toBe(0);
     });
 
     it('preserves monetary conservation invariant after rollover with shortfall', () => {

@@ -1,47 +1,6 @@
-/**
- * utils/stochasticRound.ts
- *
- * Stochastic (probabilistic) rounding that preserves expected value.
- *
- * ## Problem
- *
- * `Math.floor()` introduces a systematic **downward bias** when applied to
- * fractional population counts.  If expected births per tick = 0.8,
- * `Math.floor(0.8)` yields 0 **every** tick, causing small planets to go
- * extinct purely from integer truncation.  Over many iterations this
- * creates structural undercounting in births, deaths, hiring, disability,
- * and production.
- *
- * ## Solution
- *
- * **Stochastic rounding**: given a real value `x`, return `floor(x)` with
- * probability `1 − frac(x)`, and `ceil(x)` with probability `frac(x)`.
- *
- *     E[stochasticRound(x)] = x
- *
- * This is unbiased and, for values < 1, correctly produces the occasional
- * birth/death/event that `Math.floor()` would permanently suppress.
- *
- * ## Determinism
- *
- * A simple xorshift128+ PRNG is used so the simulation is fully
- * reproducible from a seed.  Call `seedRng(n)` at simulation start or
- * in tests to get deterministic results.
- */
-
-// ---------------------------------------------------------------------------
-// xorshift128+ PRNG — fast, good-quality, seedable
-// ---------------------------------------------------------------------------
-
 let s0 = 1;
 let s1 = 2;
 
-/**
- * Seed the shared PRNG.  Must be called before the simulation starts
- * (or at the beginning of each test) to ensure reproducible results.
- *
- * Passing `undefined` or `null` resets to a fixed default seed (1, 2).
- */
 export function seedRng(seed?: number | null): void {
     if (seed == null) {
         s0 = 1;

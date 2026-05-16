@@ -7,11 +7,14 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Agent } from '@/simulation/planet/planet';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { computeSupplyChainBalance } from './computeBalance';
+import type { ArbitrageRouteRow } from '@/server/controller/simulation';
+import { ARBITRAGE_MIN_PROFIT_PER_TICK } from '@/simulation/constants';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -69,7 +72,7 @@ interface ResourceActualRow {
 
 // ─── Aggregation ──────────────────────────────────────────────────────────────
 
-function aggregateFacilities(agents: Agent[]): FacilityAggRow[] {
+function aggregateFacilities(agents: Agent[], filterPlanetId?: string): FacilityAggRow[] {
     const map = new Map<
         string,
         {
@@ -104,7 +107,11 @@ function aggregateFacilities(agents: Agent[]): FacilityAggRow[] {
     }
 
     for (const agent of agents) {
-        for (const planetAssets of Object.values(agent.assets ?? {})) {
+        const allAssets = agent.assets ?? {};
+        const assetEntries = filterPlanetId
+            ? Object.entries(allAssets).filter(([id]) => id === filterPlanetId)
+            : Object.entries(allAssets);
+        for (const [, planetAssets] of assetEntries) {
             for (const fac of (planetAssets.productionFacilities as ProductionFacility[]) ?? []) {
                 const entry = getEntry(fac.name);
                 entry.instanceCount++;
@@ -246,6 +253,9 @@ function buildResourceActuals(
 const _STATIC_SC = computeSupplyChainBalance({}, 0);
 const RESOURCE_PRODUCERS: Map<string, string[]> = new Map(
     _STATIC_SC.resources.map((r) => [r.resourceName, r.producedBy]),
+);
+const FACILITY_OUTPUTS: Map<string, string[]> = new Map(
+    _STATIC_SC.facilities.map((f) => [f.name, f.produces.map((p) => p.resourceName)]),
 );
 
 type OriginResult = {
@@ -521,6 +531,50 @@ function OriginBadge({ facilityName, originMap }: { facilityName: string; origin
     );
 }
 
+// ─── Trade opportunity inline ─────────────────────────────────────────────────
+
+function TradeOpportunityInline({
+    route,
+    direction,
+}: {
+    route: ArbitrageRouteRow | null | undefined;
+    direction: 'import' | 'export';
+}) {
+    if (route === undefined) {
+        return <span className='text-xs text-muted-foreground italic animate-pulse'>scanning trade routes…</span>;
+    }
+    if (route === null) {
+        return <span className='text-xs text-muted-foreground'>— no profitable route found</span>;
+    }
+    const isProfitable = route.profitPerTick >= ARBITRAGE_MIN_PROFIT_PER_TICK;
+    return (
+        <div className='flex flex-wrap items-center gap-x-2 gap-y-0 text-xs mt-1 text-muted-foreground'>
+            <span>🚢</span>
+            <span className='font-medium text-foreground'>{route.resourceName}</span>
+            <span>
+                {route.originPlanetName} → {route.destPlanetName}
+            </span>
+            <span>·</span>
+            <span>
+                buy {fmt(route.buyPrice)} / sell {fmt(route.sellPriceAdj)}
+            </span>
+            <span>·</span>
+            <span className={`font-semibold ${isProfitable ? 'text-green-600' : 'text-amber-600'}`}>
+                {route.profitPerTick >= 0 ? '+' : ''}
+                {fmt(route.profitPerTick)}/tick
+            </span>
+            <Badge
+                variant='outline'
+                className={`text-[9px] py-0 px-1 ${
+                    direction === 'import' ? 'text-blue-600 border-blue-400' : 'text-purple-600 border-purple-400'
+                }`}
+            >
+                {direction === 'import' ? '↓ import' : '↑ export'}
+            </Badge>
+        </div>
+    );
+}
+
 // ─── Sorting helpers ──────────────────────────────────────────────────────────
 
 type FacilitySortKey = 'name' | 'instances' | 'scale' | 'efficiency' | 'bottleneck' | 'output' | 'origin';
@@ -597,6 +651,7 @@ interface LiveStateTabProps {
 }
 
 export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
+    const [selectedPlanetId, setSelectedPlanetId] = useState<string>('all');
     const [facSort, setFacSort] = useState<{ key: FacilitySortKey; dir: SortDir }>({ key: 'efficiency', dir: 'asc' });
     const [resSort, setResSort] = useState<{ key: ResourceSortKey; dir: SortDir }>({
         key: 'effectiveness',
@@ -621,9 +676,18 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
 
     const tick = agentData?.tick ?? 0;
     const agents = useMemo(() => (agentData?.agents.map((a) => a.agentSummary as Agent) ?? []) as Agent[], [agentData]);
-    const livePop = planetData?.planets.reduce((s, p) => s + p.populationTotal, 0) ?? 0;
+    const planets = useMemo(() => planetData?.planets ?? [], [planetData]);
+    const livePop = useMemo(() => {
+        if (selectedPlanetId === 'all') {
+            return planets.reduce((s, p) => s + p.populationTotal, 0);
+        }
+        return planets.find((p) => p.planetId === selectedPlanetId)?.populationTotal ?? 0;
+    }, [planets, selectedPlanetId]);
 
-    const facilityRows = useMemo(() => aggregateFacilities(agents), [agents]);
+    const facilityRows = useMemo(
+        () => aggregateFacilities(agents, selectedPlanetId === 'all' ? undefined : selectedPlanetId),
+        [agents, selectedPlanetId],
+    );
 
     const maxScales = useMemo(() => {
         const s: Record<string, number> = {};
@@ -660,6 +724,78 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
         }
         return [...map.values()].sort((a, b) => b.victims.length - a.victims.length);
     }, [originMap]);
+
+    const importResources = useMemo(() => {
+        const names = new Set<string>();
+        for (const { rootFacility, rootType, rootResource } of rootCausesArray) {
+            if (rootType === 'workers') {
+                for (const out of FACILITY_OUTPUTS.get(rootFacility) ?? []) {
+                    names.add(out);
+                }
+            } else if (rootType === 'resource_shortage' && rootResource) {
+                names.add(rootResource);
+            }
+        }
+        return [...names];
+    }, [rootCausesArray]);
+
+    const exportResources = useMemo(() => {
+        const names = new Set<string>();
+        for (const { rootType, rootResource } of rootCausesArray) {
+            if (rootType === 'market_failure' && rootResource) {
+                names.add(rootResource);
+            }
+        }
+        return [...names];
+    }, [rootCausesArray]);
+
+    const { data: importRoutesData } = useSimulationQuery({
+        ...trpc.simulation.getArbitrageForResources.queryOptions({
+            resourceNames: importResources,
+            destPlanetId: selectedPlanetId === 'all' ? undefined : selectedPlanetId,
+        }),
+        enabled: importResources.length > 0,
+    });
+
+    const { data: exportRoutesData } = useSimulationQuery({
+        ...trpc.simulation.getArbitrageForResources.queryOptions({
+            resourceNames: exportResources,
+            originPlanetId: selectedPlanetId === 'all' ? undefined : selectedPlanetId,
+        }),
+        enabled: exportResources.length > 0,
+    });
+
+    const rootCauseRouteMap = useMemo(() => {
+        const map = new Map<string, { route: ArbitrageRouteRow | null | undefined; direction: 'import' | 'export' }>();
+        for (const { rootFacility, rootType, rootResource } of rootCausesArray) {
+            if (rootType === 'workers') {
+                if (!importRoutesData) {
+                    map.set(rootFacility, { route: undefined, direction: 'import' });
+                } else {
+                    const outputs = FACILITY_OUTPUTS.get(rootFacility) ?? [];
+                    let bestRoute: ArbitrageRouteRow | null = null;
+                    for (const out of outputs) {
+                        const r = importRoutesData.byResource[out] ?? null;
+                        if (r !== null && (!bestRoute || r.profitPerTick > bestRoute.profitPerTick)) {
+                            bestRoute = r;
+                        }
+                    }
+                    map.set(rootFacility, { route: bestRoute, direction: 'import' });
+                }
+            } else if (rootType === 'resource_shortage' && rootResource) {
+                map.set(rootFacility, {
+                    route: importRoutesData ? (importRoutesData.byResource[rootResource] ?? null) : undefined,
+                    direction: 'import',
+                });
+            } else if (rootType === 'market_failure' && rootResource) {
+                map.set(rootFacility, {
+                    route: exportRoutesData ? (exportRoutesData.byResource[rootResource] ?? null) : undefined,
+                    direction: 'export',
+                });
+            }
+        }
+        return map;
+    }, [rootCausesArray, importRoutesData, exportRoutesData]);
 
     const sortedFacilityRows = useMemo(
         () => sortFacilityRows(facilityRows, facSort.key, facSort.dir, originMap),
@@ -703,6 +839,24 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
 
     return (
         <div className='space-y-4'>
+            {/* Planet selector */}
+            <div className='flex items-center gap-3'>
+                <span className='text-sm font-medium text-muted-foreground shrink-0'>Planet</span>
+                <Select value={selectedPlanetId} onValueChange={setSelectedPlanetId}>
+                    <SelectTrigger className='w-52'>
+                        <SelectValue placeholder='All planets' />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value='all'>All planets</SelectItem>
+                        {planets.map((p) => (
+                            <SelectItem key={p.planetId} value={p.planetId}>
+                                {p.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
             {/* Status bar */}
             <div className='flex flex-wrap items-center gap-4 p-3 bg-muted/40 rounded-lg border text-sm'>
                 <span>
@@ -848,6 +1002,14 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                                                         <span className='font-medium text-foreground/70'>{v}</span>
                                                     </span>
                                                 ))}
+                                            </div>
+                                        )}
+                                        {rootCauseRouteMap.has(rootFacility) && (
+                                            <div className='mt-1.5 pt-1.5 border-t border-border/50'>
+                                                <TradeOpportunityInline
+                                                    route={rootCauseRouteMap.get(rootFacility)!.route}
+                                                    direction={rootCauseRouteMap.get(rootFacility)!.direction}
+                                                />
                                             </div>
                                         )}
                                     </div>

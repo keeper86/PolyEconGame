@@ -34,8 +34,8 @@ describe('per-agent loan bookkeeping', () => {
         preProductionFinancialTick(agentMap(agent), planet);
 
         const agentLoan = totalOutstandingLoans(agent.assets[planet.id]!.activeLoans);
-        expect(agentLoan).toBeCloseTo(count * TICKS_PER_MONTH, 6);
-        expect(planet.bank!.loans).toBeCloseTo(count * TICKS_PER_MONTH, 6);
+        expect(agentLoan).toBeCloseTo(6 * count * TICKS_PER_MONTH, 6);
+        expect(planet.bank!.loans).toBeCloseTo(6 * count * TICKS_PER_MONTH, 6);
     });
 
     it('agent repays only their own loan', () => {

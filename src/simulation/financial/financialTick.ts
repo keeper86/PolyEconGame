@@ -95,7 +95,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         // 2. Working-capital loan if needed (MONEY CREATION)
         //    bank.loans↑  bank.deposits↑  agent.deposits↑
         if (assets.deposits < wageBill) {
-            const shortfall = TICKS_PER_MONTH * wageBill - assets.deposits; // loan to cover wage bill for 1 year
+            const shortfall = 6 * TICKS_PER_MONTH * wageBill - assets.deposits; // loan to cover wage bill for 1 year
             grantLoan(assets, bank, shortfall, 'wageCoverage', tick);
         }
 
@@ -190,30 +190,14 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
         // If there's a shortfall, create a rollover loan (with fee) and use it
         // to fully repay the remaining matured principal.
         if (shortfall > 0) {
-            const fee = Math.round(shortfall * ROLLOVER_FEE_RATE);
-            const rolloverPrincipal = shortfall + fee;
+            const rolloverPrincipal = shortfall;
 
-            // Issue a new rollover loan — this creates money (deposits↑, loans↑)
             grantLoan(assets, bank, rolloverPrincipal, 'discretionary', tick);
 
-            // Immediately use the new deposits to repay the shortfall portion
-            // of the matured loans.  This destroys money (deposits↓, loans↓).
             assets.deposits -= shortfall;
             bank.loans -= shortfall;
             bank.deposits -= shortfall;
 
-            // The fee stays in the agent's deposits (it was created as part of
-            // the rollover loan but not spent on repayment).  It represents the
-            // bank's fee income and increases bank equity.
-            // Net effect on bank balance sheet:
-            //   loans:  +rolloverPrincipal - shortfall = +fee
-            //   deposits: +rolloverPrincipal - shortfall = +fee
-            //   equity: unchanged (deposits - loans = 0 before and after)
-            // The fee remains as agent deposits (liability) matched by the
-            // rollover loan (asset), so equity is unaffected.
-
-            // Move the rollover loan from activeLoans (where grantLoan pushed it)
-            // into remainingLoans.
             const rolloverLoan = assets.activeLoans.pop()!;
             remainingLoans.push(rolloverLoan);
         }

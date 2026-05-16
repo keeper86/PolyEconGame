@@ -37,6 +37,7 @@ import {
     getAgentListSummaries,
     getAgentOverview,
     getAgentPlanetDetail,
+    getArbitrageForResources,
     getCurrentTick,
     getLatestAgents,
     getLatestPlanetSummaries,
@@ -97,6 +98,7 @@ const simulationRouter = trpcRoot.router({
     getPlanetClaims: getPlanetClaims(),
     getAgentClaims: getAgentClaims(),
     getTickerEvents: getTickerEvents(),
+    getArbitrageForResources: getArbitrageForResources(),
     // historical endpoints removed
 });
 
