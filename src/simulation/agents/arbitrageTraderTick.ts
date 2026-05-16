@@ -112,7 +112,7 @@ function scanBestRoute(
                     continue;
                 }
 
-                const effectiveQty = Math.min(maxQty, offers.quantity * 3);
+                const effectiveQty = Math.min(maxQty, offers.quantity);
                 const currencyName = getCurrencyResourceName(dest.id);
                 const buyingCosts = offers.price / effectiveQty;
                 const midForexRate = origin.marketPrices[currencyName] ?? 1.0;
