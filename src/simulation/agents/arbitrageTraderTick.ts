@@ -23,12 +23,12 @@ type RouteCandidate = {
     profitPerTick: number;
 };
 
-type PriceAggregate = {
+export type PriceAggregate = {
     quantity: number;
     price: number;
 };
-const emptyPriceAggregate: PriceAggregate = { quantity: 0, price: 0 };
-const orderBookReducer = (maxQty: number) => (sum: PriceAggregate, level: PriceAggregate) =>
+export const emptyPriceAggregate: PriceAggregate = { quantity: 0, price: 0 };
+export const orderBookReducer = (maxQty: number) => (sum: PriceAggregate, level: PriceAggregate) =>
     sum.quantity >= maxQty
         ? sum
         : {

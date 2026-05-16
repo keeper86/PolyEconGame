@@ -1,4 +1,5 @@
 import { getCurrencyResourceName, DEFAULT_EXCHANGE_RATE } from '@/simulation/market/currencyResources';
+import { emptyPriceAggregate, orderBookReducer, type PriceAggregate } from '@/simulation/agents/arbitrageTraderTick';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
@@ -699,7 +700,6 @@ const routeRowSchema = z.object({
     buyPrice: z.number(),
     sellPriceDest: z.number(),
     forexRate: z.number(),
-    forexSource: z.enum(['bid-book', 'mid-fallback']),
     sellPriceAdj: z.number(),
     grossProfit: z.number(),
     depreciation: z.number(),
@@ -746,8 +746,11 @@ function computeArbitrageRoutesForShip(
             if (opts.originPlanetId && origin.id !== opts.originPlanetId) {
                 continue;
             }
-            const originAskDepth = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce((s, l) => s + l.quantity, 0);
-            if (originAskDepth < 1) {
+            const askFill = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
+                orderBookReducer(maxQty),
+                emptyPriceAggregate,
+            );
+            if (askFill.quantity < 1) {
                 continue;
             }
 
@@ -759,30 +762,21 @@ function computeArbitrageRoutesForShip(
                     continue;
                 }
 
-                const destBidDepth = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce((s, l) => s + l.quantity, 0);
-                if (destBidDepth < 1) {
+                const bidFill = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
+                    orderBookReducer(askFill.quantity),
+                    emptyPriceAggregate,
+                );
+                if (bidFill.quantity < 1) {
                     continue;
                 }
 
-                const effectiveQty = Math.min(maxQty, originAskDepth, destBidDepth);
-
-                const pBuy = getEffectiveBuyPrice(origin, resource.name, effectiveQty);
-                if (!pBuy) {
-                    continue;
-                }
-
-                const pSellDest = getEffectiveSellPrice(dest, resource.name, effectiveQty);
-                if (!pSellDest) {
-                    continue;
-                }
+                const effectiveQty = bidFill.quantity;
+                const pBuy = askFill.price / askFill.quantity;
+                const pSellDest = bidFill.price / bidFill.quantity;
 
                 const currencyName = getCurrencyResourceName(dest.id);
-                const estimatedForexQty = pSellDest * effectiveQty;
-                const forexBidRate =
-                    estimatedForexQty > 0 ? getEffectiveSellPrice(origin, currencyName, estimatedForexQty) : null;
                 const midForexRate = origin.marketPrices[currencyName] ?? DEFAULT_EXCHANGE_RATE;
-                const forexRate = forexBidRate ?? midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
-                const forexSource: 'bid-book' | 'mid-fallback' = forexBidRate ? 'bid-book' : 'mid-fallback';
+                const forexRate = midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
 
                 const pSellAdj = pSellDest * forexRate;
                 const grossProfit = (pSellAdj - pBuy) * effectiveQty;
@@ -799,7 +793,6 @@ function computeArbitrageRoutesForShip(
                     buyPrice: pBuy,
                     sellPriceDest: pSellDest,
                     forexRate,
-                    forexSource,
                     sellPriceAdj: pSellAdj,
                     grossProfit,
                     depreciation,
