@@ -54,14 +54,6 @@ export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
 export const EDUCATION_BUFFER_TARGET_TICKS = 2;
 
 /**
- * Grocery starvation level below which education is treated as a valid
- * household need in the intergenerational transfer system.
- * When starvation exceeds this threshold the household is under food stress
- * and education spending is deferred.
- */
-export const EDUCATION_STARVATION_THRESHOLD = 0.05;
-
-/**
  * Minimum grocery service price (prevents zero or negative prices).
  */
 export const PRICE_FLOOR = 0.01;
@@ -171,15 +163,7 @@ export const RETAINED_EARNINGS_THRESHOLD = 1.5;
  * procurement buffer.  Used both in automaticPricing (bid quantity) and in the
  * financial tick (retained-earnings extension + input-buffer loan).
  */
-export const INPUT_BUFFER_TARGET_TICKS = 10;
-
-/**
- * When a resource has no local producer on the planet, or has chronic unmet demand,
- * agents target this many ticks of stock instead of INPUT_BUFFER_TARGET_TICKS.
- * A typical interstellar voyage takes ~167 ticks (≈5.5 months); 300 ticks covers
- * roughly two voyage legs so that demand stays visible even when a ship is en route.
- */
-export const IMPORT_BUFFER_TARGET_TICKS = 300;
+export const INPUT_BUFFER_TARGET_TICKS = 180;
 
 /**
  * Maximum output inventory expressed as ticks of production.

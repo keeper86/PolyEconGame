@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
 import { putIntoStorageFacility } from '../planet/facility';
@@ -99,9 +99,9 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        // facility needs 30/tick × scale 1 × 10-tick buffer = 300
+        // facility needs 30/tick × scale 1 × INPUT_BUFFER_TARGET_TICKS
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
-        expect(bid.bidStorageTarget).toBe(30 * 1 * 10);
+        expect(bid.bidStorageTarget).toBe(30 * 1 * INPUT_BUFFER_TARGET_TICKS);
     });
 
     it('keeps bidStorageTarget at the full buffer target regardless of current inventory', () => {
@@ -113,14 +113,16 @@ describe('automaticPricing — buy side', () => {
         // The storage target is the desired inventory level, not the remaining shortfall.
         // Effective buy quantity (target − inventory) is computed dynamically each tick.
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidStorageTarget).toBe(30 * 1 * 10);
+        expect(bid.bidStorageTarget).toBe(30 * 1 * INPUT_BUFFER_TARGET_TICKS);
         const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
-        expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(Math.max(0, 30 * 1 * 10 - 500));
+        expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(
+            Math.max(0, 30 * 1 * INPUT_BUFFER_TARGET_TICKS - 500),
+        );
     });
 
     it('effective buy quantity is 0 when buffer is already fully covered by storage', () => {
         const buyer = makeSteelProducer();
-        const fullBuffer = 30 * 1 * 10;
+        const fullBuffer = 30 * 1 * INPUT_BUFFER_TARGET_TICKS;
         putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, fullBuffer + 100);
 
         automaticPricing(agentMap(buyer), planet);

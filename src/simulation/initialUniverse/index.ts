@@ -6,6 +6,7 @@ import { buildSmallPlanets } from './smallPlanets';
 import { seedForexMarketMakers } from '../agents/forexMarketMaker';
 import { seedShipbuilderAgents } from '../agents/shipbuilder';
 import { seedArbitrageTraderAgents } from '../agents/arbitrageTrader';
+import { prefillAgentStorageFromFacilities } from './helpers';
 
 export {
     createPopulation,
@@ -16,6 +17,7 @@ export {
     makeProductionFacility,
     makeStorage,
     makeWaterExtraction,
+    prefillAgentStorageFromFacilities,
     type ResourceClaimEntry,
 } from './helpers';
 export { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
@@ -48,6 +50,8 @@ export function createInitialGameState(): GameState {
     seedForexMarketMakers(gameState);
     seedShipbuilderAgents(gameState);
     seedArbitrageTraderAgents(gameState);
+
+    prefillAgentStorageFromFacilities(gameState);
 
     return gameState;
 }

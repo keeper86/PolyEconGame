@@ -333,7 +333,8 @@ describe('shipTick passenger boarding', () => {
             const keys = Object.keys(shipState.manifest);
             expect(keys.length).toBeGreaterThan(0);
             const total = Object.values(shipState.manifest).reduce((s, c) => s + c.total, 0);
-            expect(total).toBeCloseTo(200, 0);
+            // Allow a few deaths from stochastic mortality during boarding
+            expect(total).toBeCloseTo(200, -1);
         }
     });
 
@@ -545,11 +546,13 @@ describe('shipTick passenger boarding', () => {
 
         const count = 100;
         seedWorkforce(agent, planet, 30, count);
-        const flightTicks = Math.ceil(1000 / passengerLiner.speed);
-        const groceryRequired = count * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS);
-        const healthcareRequired = count * SERVICE_PER_PERSON_PER_TICK * (flightTicks + HEALTHCARE_BUFFER_TARGET_TICKS);
-        // Provide exactly enough
-        putProvisions(agent, 'p1', groceryRequired, healthcareRequired);
+        // Provide enough for the maximum possible flight time (base ±10% jitter)
+        const maxFlightTicks = Math.ceil((1.1 * 1000) / passengerLiner.speed);
+        const groceryProvided = count * SERVICE_PER_PERSON_PER_TICK * (maxFlightTicks + GROCERY_BUFFER_TARGET_TICKS);
+        const healthcareProvided =
+            count * SERVICE_PER_PERSON_PER_TICK * (maxFlightTicks + HEALTHCARE_BUFFER_TARGET_TICKS);
+        // Provide exactly enough for the maximum possible travel time
+        putProvisions(agent, 'p1', groceryProvided, healthcareProvided);
 
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
@@ -571,8 +574,12 @@ describe('shipTick passenger boarding', () => {
         const storage = agent.assets.p1!.storageFacility;
         const groceryLeft = storage.currentInStorage[groceryServiceResourceType.name]?.quantity ?? 0;
         const healthcareLeft = storage.currentInStorage[healthcareServiceResourceType.name]?.quantity ?? 0;
-        expect(groceryLeft).toBeCloseTo(0, 3);
-        expect(healthcareLeft).toBeCloseTo(0, 3);
+        // Most provisions consumed; at most the jitter range (~25 ticks) worth can remain
+        const maxJitterTicks = maxFlightTicks - Math.ceil((0.9 * 1000) / passengerLiner.speed);
+        expect(groceryLeft).toBeLessThanOrEqual(count * SERVICE_PER_PERSON_PER_TICK * (maxJitterTicks + 1));
+        expect(healthcareLeft).toBeLessThanOrEqual(count * SERVICE_PER_PERSON_PER_TICK * (maxJitterTicks + 1));
+        expect(groceryLeft).toBeGreaterThanOrEqual(0);
+        expect(healthcareLeft).toBeGreaterThanOrEqual(0);
     });
 });
 

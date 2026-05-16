@@ -1,4 +1,4 @@
-import { GROCERY_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { GROCERY_BUFFER_TARGET_TICKS, INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/claims';
 import {
@@ -8,7 +8,7 @@ import {
     type AgentPlanetAssets,
 } from '../planet/planet';
 import { type ResourceClaim, type ResourceQuantity } from '../planet/claims';
-import type { ProductionFacility, StorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, type ProductionFacility, type StorageFacility } from '../planet/facility';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -154,6 +154,41 @@ export function makeAgent(opts: {
         starterLoanTaken: false,
         assets: { [opts.planetId]: assets },
     };
+}
+
+/**
+ * Pre-fills each agent's storage with INPUT_BUFFER_TARGET_TICKS worth of every
+ * material input across all their production facilities.
+ *
+ * This eliminates the artificial startup shortage that causes price spikes at
+ * the beginning of a simulation run (agents start with full procurement buffers
+ * instead of having to buy everything from scratch).
+ *
+ * Skipped resource forms:
+ *   - 'services'        — 20 % depreciation / tick; pre-filled stock would vanish within ~5 ticks
+ *   - 'landBoundResource' — cannot be placed in a storage facility
+ *   - 'currency'        — not a consumable production input
+ */
+export function prefillAgentStorageFromFacilities(gameState: { agents: Map<string, Agent> }): void {
+    for (const agent of gameState.agents.values()) {
+        for (const [, assets] of Object.entries(agent.assets)) {
+            const storage = (assets as AgentPlanetAssets).storageFacility;
+            const facilities = (assets as AgentPlanetAssets).productionFacilities;
+            for (const facility of facilities) {
+                for (const { resource, quantity } of facility.needs) {
+                    if (
+                        resource.form === 'services' ||
+                        resource.form === 'landBoundResource' ||
+                        resource.form === 'currency'
+                    ) {
+                        continue;
+                    }
+                    const targetQty = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+                    putIntoStorageFacility(storage, resource, targetQty);
+                }
+            }
+        }
+    }
 }
 
 function addTo(

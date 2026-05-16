@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_MARKUP,
+    INPUT_BUFFER_TARGET_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_DOWN_SOFT,
     PRICE_ADJUST_MAX_UP,
@@ -81,8 +82,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // buffer = 200 * 10 * 10 = 20 000 > 5 000 available → retainment should be 20,000
-        expect(offer?.offerRetainment).toBe(20_000);
+        // buffer = 200 * scale(10) * INPUT_BUFFER_TARGET_TICKS > 5 000 available → retainment = full buffer target
+        expect(offer?.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
 
     it('offers surplus above the reserved buffer', () => {
@@ -106,8 +107,8 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // 65 000 − 20 000 reserved = 45 000 sellable, retainment should be 20,000
-        expect(offer?.offerRetainment).toBe(20_000);
+        // 65 000 − (200 * 10 * INPUT_BUFFER_TARGET_TICKS) reserved = sellable, retainment = full buffer target
+        expect(offer?.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
 
     it('still offers full inventory when no facility needs that resource as input', () => {

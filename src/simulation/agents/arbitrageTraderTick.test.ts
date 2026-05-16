@@ -834,11 +834,13 @@ describe('arbitrageTraderTick – transport cost formula', () => {
         const depreciationReposition = depreciationRatePerTick * totalTicksReposition;
 
         expect(shipValue).toBe(6);
-        expect(oneWayTicks).toBe(167);
-        expect(roundTripTicks).toBe(394);
-        expect(totalTicksReposition).toBe(561);
-        expect(depreciationLocal).toBeCloseTo(0.657, 2);
-        expect(depreciationReposition).toBeCloseTo(0.935, 2);
+        // travelTime has ±10% jitter; speed=6 → range [ceil(900/6), ceil(1100/6)] = [150, 184]
+        expect(oneWayTicks).toBeGreaterThanOrEqual(Math.ceil(900 / SHIP_TYPE.speed));
+        expect(oneWayTicks).toBeLessThanOrEqual(Math.ceil(1100 / SHIP_TYPE.speed));
+        expect(roundTripTicks).toBe(oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS);
+        expect(totalTicksReposition).toBe(oneWayTicks + roundTripTicks);
+        expect(depreciationLocal).toBeCloseTo(depreciationRatePerTick * roundTripTicks, 5);
+        expect(depreciationReposition).toBeCloseTo(depreciationRatePerTick * totalTicksReposition, 5);
         void pOrigin;
     });
 
