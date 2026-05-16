@@ -28,7 +28,7 @@ export type PriceAggregate = {
     price: number;
 };
 export const emptyPriceAggregate: PriceAggregate = { quantity: 0, price: 0 };
-export const TRANSPORT_DURATION_FACTOR = 3.5;
+
 export const orderBookReducer = (maxQty: number) => (sum: PriceAggregate, level: PriceAggregate) =>
     sum.quantity >= maxQty
         ? sum

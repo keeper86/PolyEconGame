@@ -22,7 +22,7 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
 
             const agent: Agent = {
                 id: agentId,
-                name: `Arbitrage Trader ${i + 1} (${homePlanet.name})`,
+                name: `${homePlanet.name} Trader ${i + 1} `,
                 automated: true,
                 automateWorkerAllocation: true,
                 foundedTick: 0,
@@ -55,7 +55,7 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 const bootstrapShip = createShip(
                     BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length],
                     0,
-                    `${BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length].cargoSpecification.type} Ship ${i + 1} (${homePlanet.name})`,
+                    `${BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length].cargoSpecification.type} Ship ${i + 1}`,
                     homePlanet,
                 );
                 agent.ships.push(bootstrapShip);
