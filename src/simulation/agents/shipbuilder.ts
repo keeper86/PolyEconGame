@@ -12,7 +12,6 @@ import type { ShipConstructionFacility } from '../planet/facility';
 const BOOTSTRAP_SHIP_TYPES = [
     shiptypes.solid.bulkCarrier1,
     shiptypes.liquid.tanker1,
-    shiptypes.gas.gasCarrier1,
     shiptypes.pieces.freighter1,
 ] as const;
 

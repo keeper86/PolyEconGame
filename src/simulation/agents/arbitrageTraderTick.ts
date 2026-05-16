@@ -73,14 +73,14 @@ function scanBestRoute(
             );
             if (bids.quantity <= 0) {
                 if (debug && monthly) {
-                    console.log(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no ask depth`);
+                    console.debug(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no ask depth`);
                 }
                 continue;
             }
 
             if (bids.price <= 0) {
                 if (debug && monthly) {
-                    console.log(
+                    console.debug(
                         `[arb] ${agent.id} '${resource.name}' on ${origin.id}: insufficient ask depth for effectiveQty=${bids.quantity} (available=${bids})`,
                     );
                 }
@@ -105,7 +105,7 @@ function scanBestRoute(
 
                 if (offers.quantity <= 0) {
                     if (debug && monthly) {
-                        console.log(
+                        console.debug(
                             `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no bid depth at destination`,
                         );
                     }
@@ -132,7 +132,7 @@ function scanBestRoute(
                 const profitPerTick = (grossProfit - depreciation) / totalTicks;
                 if (debug && monthly) {
                     const fxSource = `mid×${ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT}`;
-                    console.log(
+                    console.debug(
                         `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${offers.price.toFixed(2)} sellDest=${buyingCosts.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                     );
                 }
@@ -186,7 +186,7 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
         const candidate = scanBestRoute(ship as TransportShip, agent, gameState, shipPlanetId);
         if (!candidate) {
             if (debug && monthly) {
-                console.log(
+                console.debug(
                     `[arb] ${agent.id} ship '${ship.name}': no viable route found (profitPerTick threshold=${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                 );
             }
@@ -196,7 +196,7 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
         if (candidate.originPlanetId !== shipPlanetId) {
             // Ship needs to reposition to the origin planet first — send it empty
             if (debug) {
-                console.log(
+                console.debug(
                     `[arb] ${agent.id} ship '${ship.name}': REPOSITIONING ${shipPlanetId}→${candidate.originPlanetId} for ${candidate.resourceName} route (profitPerTick=${candidate.profitPerTick.toFixed(2)})`,
                 );
             }
@@ -212,7 +212,7 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
         }
 
         if (debug) {
-            console.log(
+            console.debug(
                 `[arb] ${agent.id} ship '${ship.name}': ASSIGNED ${candidate.resourceName} ${candidate.originPlanetId}→${candidate.destPlanetId} qty=${candidate.quantity} profitPerTick=${candidate.profitPerTick.toFixed(2)}`,
             );
         }
@@ -278,7 +278,7 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
             const existing = assets.market.sell[resourceName];
             if (!existing) {
                 if (process.env.SIM_DEBUG === '1') {
-                    console.log(
+                    console.debug(
                         `[arb] ${agent.id} on ${planet.name}: posting new sell offer for ${entry.quantity} ${resourceName} at ${offerPrice.toFixed(2)} (market price ${marketPrice.toFixed(2)})`,
                     );
                 }

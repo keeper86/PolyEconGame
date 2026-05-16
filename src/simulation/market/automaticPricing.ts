@@ -21,70 +21,18 @@ import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAsse
 import { constructionServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
 
-/**
- * Returns the set of resource names that should use IMPORT_BUFFER_TARGET_TICKS:
- * any resource that has no local producer on this planet, OR that shows chronic
- * unmet demand in the planet's smoothed market history.
- */
-function buildImportDemandSet(agents: Map<string, Agent>, planet: Planet): Set<string> {
-    // Collect every resource produced locally (any agent, any facility on this planet).
-    const locallyProduced = new Set<string>();
-    for (const agent of agents.values()) {
-        const assets = agent.assets[planet.id];
-        if (!assets) {
-            continue;
-        }
-        for (const facility of assets.productionFacilities) {
-            for (const { resource } of facility.produces) {
-                locallyProduced.add(resource.name);
-            }
-        }
-    }
-
+function buildImportDemandSet(planet: Planet): Set<string> {
     const result = new Set<string>();
-
-    // Resources tracked in avg market results: add if no local producer or chronic shortfall.
     for (const [name, mr] of Object.entries(planet.avgMarketResult ?? {})) {
-        if (!locallyProduced.has(name) || (mr.unfilledDemand ?? 0) > 0) {
+        if (mr.totalSupply <= EPSILON || (mr.unfilledDemand ?? 0) / mr.totalSupply > 2) {
             result.add(name);
         }
     }
-
-    // Resources needed by agents but not yet in market history (new demand, no history yet).
-    for (const agent of agents.values()) {
-        const assets = agent.assets[planet.id];
-        if (!assets) {
-            continue;
-        }
-        for (const facility of assets.productionFacilities) {
-            for (const { resource } of facility.needs) {
-                if (
-                    resource.form !== 'services' &&
-                    resource.form !== 'landBoundResource' &&
-                    !locallyProduced.has(resource.name)
-                ) {
-                    result.add(resource.name);
-                }
-            }
-        }
-        for (const facility of assets.managementFacilities) {
-            for (const { resource } of facility.needs) {
-                if (
-                    resource.form !== 'services' &&
-                    resource.form !== 'landBoundResource' &&
-                    !locallyProduced.has(resource.name)
-                ) {
-                    result.add(resource.name);
-                }
-            }
-        }
-    }
-
     return result;
 }
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
-    const importDemandResources = buildImportDemandSet(agents, planet);
+    const importDemandResources = buildImportDemandSet(planet);
     agents.forEach((agent) => {
         automaticPricingForAgent(agent, planet, importDemandResources);
     });
