@@ -521,10 +521,6 @@ function adjustOfferPrice(
         factor += COST_SPRING_STRENGTH * deviation;
     }
 
-    // Upper ceiling brake: mirror of the lower cost-floor brake.
-    // Prevents prices from spiralling to PRICE_CEIL during prolonged scarcity
-    // (e.g. while waiting for an import shipment).  The cap is set at
-    // costFloor × AUTOMATED_PRICE_CAP_FACTOR so the signal is still strong.
     if (costFloor > PRICE_FLOOR) {
         const priceCap = costFloor * AUTOMATED_PRICE_CAP_FACTOR;
         const capZoneBottom = priceCap / (1 + AUTOMATED_COST_FLOOR_BUFFER);

@@ -760,7 +760,6 @@ export default function SupplyChainTool() {
                     <TabsTrigger value='graph'>Dependency Graph</TabsTrigger>
                     <TabsTrigger value='solver'>Auto-Solver</TabsTrigger>
                     <TabsTrigger value='live'>Live State</TabsTrigger>
-                    <TabsTrigger value='trade-routes'>Trade Routes</TabsTrigger>
                 </TabsList>
 
                 {/* ── DASHBOARD ── */}

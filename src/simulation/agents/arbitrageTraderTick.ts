@@ -28,6 +28,7 @@ export type PriceAggregate = {
     price: number;
 };
 export const emptyPriceAggregate: PriceAggregate = { quantity: 0, price: 0 };
+export const TRANSPORT_DURATION_FACTOR = 3.5;
 export const orderBookReducer = (maxQty: number) => (sum: PriceAggregate, level: PriceAggregate) =>
     sum.quantity >= maxQty
         ? sum
@@ -98,14 +99,8 @@ function scanBestRoute(
                 }
 
                 const offers = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
-                    (sum, level) =>
-                        sum.quantity >= maxQty
-                            ? sum
-                            : {
-                                  quantity: sum.quantity + Math.min(level.quantity, maxQty - sum.quantity),
-                                  price: sum.price + level.price * Math.min(level.quantity, maxQty - sum.quantity),
-                              },
-                    { quantity: 0, price: 0 },
+                    orderBookReducer(bids.quantity),
+                    emptyPriceAggregate,
                 );
 
                 if (offers.quantity <= 0) {
@@ -117,19 +112,20 @@ function scanBestRoute(
                     continue;
                 }
 
+                const effectiveQty = Math.min(maxQty, offers.quantity * 3);
                 const currencyName = getCurrencyResourceName(dest.id);
-                const buyingCosts = offers.price / offers.quantity;
+                const buyingCosts = offers.price / effectiveQty;
                 const midForexRate = origin.marketPrices[currencyName] ?? 1.0;
                 const forexRate = midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
                 const pSellOrigin = buyingCosts * forexRate;
 
-                const grossProfit = (pSellOrigin - bids.price / bids.quantity) * offers.quantity;
+                const grossProfit = (pSellOrigin - bids.price / bids.quantity) * effectiveQty;
                 if (grossProfit > 0 && fromOrigin) {
                     candidatesFromOrigin.push({
                         originPlanetId: origin.id,
                         destPlanetId: dest.id,
                         resourceName: resource.name,
-                        quantity: offers.quantity,
+                        quantity: effectiveQty,
                         profitPerTick: grossProfit / totalTicks,
                     });
                 }
@@ -137,7 +133,7 @@ function scanBestRoute(
                 if (debug && monthly) {
                     const fxSource = `mid×${ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT}`;
                     console.log(
-                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${offers.price.toFixed(2)} sellDest=${buyingCosts.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${offers.quantity} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
+                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${offers.price.toFixed(2)} sellDest=${buyingCosts.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                     );
                 }
                 if (profitPerTick > bestProfitPerTick) {
@@ -146,7 +142,7 @@ function scanBestRoute(
                         originPlanetId: origin.id,
                         destPlanetId: dest.id,
                         resourceName: resource.name,
-                        quantity: offers.quantity,
+                        quantity: effectiveQty,
                         profitPerTick,
                     };
                 }
@@ -226,8 +222,7 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
             continue;
         }
 
-        // Set ship directly to loading — automaticPricing will create the buy bid,
-        // and the shipHandlers loading state will pull from storage once goods arrive.
+        const cargoGoal = { resource, quantity: Math.min(3 * candidate.quantity, maxQ) };
         (ship as TransportShip).state = {
             type: 'loading',
             planetId: candidate.originPlanetId,

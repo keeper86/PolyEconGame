@@ -207,13 +207,15 @@ export default function Footer() {
     }, []);
 
     return (
-        <footer className='shrink-0 w-full border-t border-border bg-background h-12'>
+        <footer
+            className='shrink-0 w-full border-t border-border bg-background h-12'
+            onMouseEnter={pause}
+            onMouseLeave={resume}
+        >
             <div
                 ref={containerRef}
                 className='relative h-full overflow-hidden bg-muted/50'
                 style={{ '--ticker-play-state': isPaused ? 'paused' : 'running' } as React.CSSProperties}
-                onMouseEnter={pause}
-                onMouseLeave={resume}
                 aria-label='Simulation event ticker'
             >
                 {/* hidden measurement span – same styling as ticker items */}

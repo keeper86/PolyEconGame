@@ -47,12 +47,9 @@ export default function BidTable({ bids }: Props): React.ReactElement {
                     </tr>
                 </thead>
                 <tbody>
-                    {bids.map((row, i) => {
-                        if (row.demandedQuantity === 0) {
-                            // Skip bids that were placed but not actually available for purchase.
-                            return null;
-                        }
-                        return (
+                    {bids
+                        .filter((row) => row.demandedQuantity > 0)
+                        .map((row, i) => (
                             <tr key={row.agentId} className='border-b last:border-0'>
                                 <td className='py-1 pr-2 text-muted-foreground tabular-nums'>{i + 1}</td>
                                 <td className='py-1 pr-2 font-medium truncate max-w-[120px]'>{row.agentName}</td>
@@ -72,8 +69,7 @@ export default function BidTable({ bids }: Props): React.ReactElement {
                                     {formatNumberWithUnit(row.lastSpent, 'currency')}
                                 </td>
                             </tr>
-                        );
-                    })}
+                        ))}
                 </tbody>
             </table>
         </div>

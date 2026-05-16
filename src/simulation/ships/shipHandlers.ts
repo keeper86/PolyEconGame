@@ -16,6 +16,7 @@ import {
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     TICKS_PER_YEAR,
 } from '../constants';
+import { formatCargoQty } from '../utils/numberFormat';
 import { grantLoan } from '../financial/loanTypes';
 import type { Facility, ProductionFacility } from '../planet/facility';
 import {
@@ -280,12 +281,16 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     if (!s.cargoGoal || !s.currentCargo || !storage) {
         const toPlanet = ctx.planets.get(s.to);
         const fromPlanet = ctx.planets.get(s.planetId);
+        const cargoDesc =
+            s.currentCargo != null && s.currentCargo.quantity > 0
+                ? `(cargo ${formatCargoQty(s.currentCargo.quantity, s.currentCargo.resource.form)})`
+                : '(empty)';
         pushTickerEvent(ctx, {
             category: 'shipDispatched',
             planetId: s.planetId,
             agentId: agent.id,
             agentName: agent.name,
-            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (empty)`,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} ${cargoDesc}`,
             tick: ctx.tick,
         });
         return {
@@ -314,7 +319,7 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
             planetId: s.planetId,
             agentId: agent.id,
             agentName: agent.name,
-            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (s.currentCargo.quantity ${s.currentCargo.quantity}/${s.cargoGoal.quantity} ${s.cargoGoal.resource.name})`,
+            message: `${agent.name}'s ${ship.name} departed ${fromPlanet?.name ?? s.planetId} → ${toPlanet?.name ?? s.to} (cargo ${formatCargoQty(s.currentCargo.quantity, s.cargoGoal.resource.form)}/${formatCargoQty(s.cargoGoal.quantity, s.cargoGoal.resource.form)} ${s.cargoGoal.resource.name})`,
             tick: ctx.tick,
         });
         return {
