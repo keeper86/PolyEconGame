@@ -5,6 +5,7 @@ import {
     BID_PRICE_CAP_FACTOR,
     COST_SPRING_STRENGTH,
     EPSILON,
+    IMPORT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
@@ -20,13 +21,76 @@ import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAsse
 import { constructionServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
 
+/**
+ * Returns the set of resource names that should use IMPORT_BUFFER_TARGET_TICKS:
+ * any resource that has no local producer on this planet, OR that shows chronic
+ * unmet demand in the planet's smoothed market history.
+ */
+function buildImportDemandSet(agents: Map<string, Agent>, planet: Planet): Set<string> {
+    // Collect every resource produced locally (any agent, any facility on this planet).
+    const locallyProduced = new Set<string>();
+    for (const agent of agents.values()) {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            continue;
+        }
+        for (const facility of assets.productionFacilities) {
+            for (const { resource } of facility.produces) {
+                locallyProduced.add(resource.name);
+            }
+        }
+    }
+
+    const result = new Set<string>();
+
+    // Resources tracked in avg market results: add if no local producer or chronic shortfall.
+    for (const [name, mr] of Object.entries(planet.avgMarketResult ?? {})) {
+        if (!locallyProduced.has(name) || (mr.unfilledDemand ?? 0) > 0) {
+            result.add(name);
+        }
+    }
+
+    // Resources needed by agents but not yet in market history (new demand, no history yet).
+    for (const agent of agents.values()) {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            continue;
+        }
+        for (const facility of assets.productionFacilities) {
+            for (const { resource } of facility.needs) {
+                if (
+                    resource.form !== 'services' &&
+                    resource.form !== 'landBoundResource' &&
+                    !locallyProduced.has(resource.name)
+                ) {
+                    result.add(resource.name);
+                }
+            }
+        }
+        for (const facility of assets.managementFacilities) {
+            for (const { resource } of facility.needs) {
+                if (
+                    resource.form !== 'services' &&
+                    resource.form !== 'landBoundResource' &&
+                    !locallyProduced.has(resource.name)
+                ) {
+                    result.add(resource.name);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
+    const importDemandResources = buildImportDemandSet(agents, planet);
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet);
+        automaticPricingForAgent(agent, planet, importDemandResources);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet, importDemandResources: Set<string>): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -54,7 +118,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget =
+                resource.form === 'services'
+                    ? 3
+                    : importDemandResources.has(resource.name)
+                      ? IMPORT_BUFFER_TARGET_TICKS
+                      : INPUT_BUFFER_TARGET_TICKS;
             const target = quantity * facility.scale * bufferTarget;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
@@ -64,7 +133,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget =
+                resource.form === 'services'
+                    ? 3
+                    : importDemandResources.has(resource.name)
+                      ? IMPORT_BUFFER_TARGET_TICKS
+                      : INPUT_BUFFER_TARGET_TICKS;
             const target = quantity * facility.scale * bufferTarget;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
@@ -108,7 +182,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (facility.produces) {
             const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
-                const bufferTarget = need.resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                const bufferTarget =
+                    need.resource.form === 'services'
+                        ? 3
+                        : importDemandResources.has(need.resource.name)
+                          ? IMPORT_BUFFER_TARGET_TICKS
+                          : INPUT_BUFFER_TARGET_TICKS;
                 const target = need.quantity * ratePerTick * bufferTarget;
                 inputReserve.set(need.resource.name, (inputReserve.get(need.resource.name) ?? 0) + target);
             }
@@ -185,7 +264,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                         return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
                     });
                 }
-                const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                const bufferTarget =
+                    resource.form === 'services'
+                        ? 3
+                        : importDemandResources.has(resource.name)
+                          ? IMPORT_BUFFER_TARGET_TICKS
+                          : INPUT_BUFFER_TARGET_TICKS;
                 const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * bufferTarget;
 
                 const existing = aggregatedBuyTargets.get(resource.name);

@@ -174,6 +174,14 @@ export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 export const INPUT_BUFFER_TARGET_TICKS = 10;
 
 /**
+ * When a resource has no local producer on the planet, or has chronic unmet demand,
+ * agents target this many ticks of stock instead of INPUT_BUFFER_TARGET_TICKS.
+ * A typical interstellar voyage takes ~167 ticks (≈5.5 months); 300 ticks covers
+ * roughly two voyage legs so that demand stays visible even when a ship is en route.
+ */
+export const IMPORT_BUFFER_TARGET_TICKS = 300;
+
+/**
  * Maximum output inventory expressed as ticks of production.
  * When an agent's output storage reaches this threshold, the facility is
  * supply-constrained by lack of demand: input buying is suppressed entirely
