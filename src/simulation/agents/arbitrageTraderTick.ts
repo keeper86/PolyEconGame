@@ -67,10 +67,8 @@ function scanBestRoute(
         const maxQty = Math.floor(Math.min(maxByVolume, maxByMass));
 
         for (const origin of planets) {
-            const bids = (origin.orderBooks?.[resource.name]?.asks ?? []).reduce(
-                orderBookReducer(maxQty),
-                emptyPriceAggregate(),
-            );
+            const originAsks = origin.orderBooks?.[resource.name]?.asks ?? [];
+            const bids = originAsks.reduce(orderBookReducer(maxQty), emptyPriceAggregate());
             if (bids.quantity <= 0) {
                 if (debug && monthly) {
                     console.debug(`[arb] ${agent.id} '${resource.name}' on ${origin.id}: no ask depth`);
@@ -113,13 +111,14 @@ function scanBestRoute(
                 }
 
                 const effectiveQty = Math.min(maxQty, offers.quantity);
+                const effectiveBids = originAsks.reduce(orderBookReducer(effectiveQty), emptyPriceAggregate());
                 const currencyName = getCurrencyResourceName(dest.id);
                 const buyingCosts = offers.price / effectiveQty;
                 const midForexRate = origin.marketPrices[currencyName] ?? 1.0;
                 const forexRate = midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
                 const pSellOrigin = buyingCosts * forexRate;
 
-                const grossProfit = (pSellOrigin - bids.price / bids.quantity) * effectiveQty;
+                const grossProfit = (pSellOrigin - effectiveBids.price / effectiveQty) * effectiveQty;
                 if (grossProfit > 0 && fromOrigin) {
                     candidatesFromOrigin.push({
                         originPlanetId: origin.id,

@@ -17,7 +17,8 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
 
             const agent: Agent = {
                 id: agentId,
-                name: `${homePlanet.name} Trader ${i + 1} `,
+                name: `${homePlanet.name} Trader ${i + 1}`,
+
                 automated: true,
                 automateWorkerAllocation: true,
                 foundedTick: 0,

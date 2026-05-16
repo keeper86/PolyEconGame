@@ -749,19 +749,21 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
         return [...names];
     }, [rootCausesArray]);
 
-    const { data: importRoutesData } = useSimulationQuery(
-        trpc.simulation.getArbitrageForResources.queryOptions({
+    const { data: importRoutesData } = useSimulationQuery({
+        ...trpc.simulation.getArbitrageForResources.queryOptions({
             resourceNames: importResources,
             destPlanetId: selectedPlanetId === 'all' ? undefined : selectedPlanetId,
         }),
-    );
+        enabled: importResources.length > 0,
+    });
 
-    const { data: exportRoutesData } = useSimulationQuery(
-        trpc.simulation.getArbitrageForResources.queryOptions({
+    const { data: exportRoutesData } = useSimulationQuery({
+        ...trpc.simulation.getArbitrageForResources.queryOptions({
             resourceNames: exportResources,
             originPlanetId: selectedPlanetId === 'all' ? undefined : selectedPlanetId,
         }),
-    );
+        enabled: exportResources.length > 0,
+    });
 
     const rootCauseRouteMap = useMemo(() => {
         const map = new Map<string, { route: ArbitrageRouteRow | null | undefined; direction: 'import' | 'export' }>();
