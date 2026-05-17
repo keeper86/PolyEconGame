@@ -161,7 +161,6 @@ export default function Footer() {
         const speed = speedRef.current;
         const prevSpeed = lastSpawnSpeedRef.current;
 
-
         const now = performance.now();
         const effectiveElapsed = now - lastSpawnTimeRef.current - totalPausedDurationRef.current;
         const distanceTraveled = (effectiveElapsed * prevSpeed) / 1000;

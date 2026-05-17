@@ -73,6 +73,7 @@ export const zeroLastTicksProductionResults = {
     totalUsedByEdu: {},
     lastProduced: {},
     lastConsumed: {},
+    costBalance: 0,
 };
 
 const defaultPollutionPerTick = {

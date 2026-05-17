@@ -87,6 +87,8 @@ export type LastTickResults = {
             [workerEdu in EducationLevelType]?: number;
         };
     };
+
+    costBalance: number;
 };
 
 export type LastProductionTickResults = LastTickResults & {

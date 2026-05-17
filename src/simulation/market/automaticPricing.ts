@@ -138,7 +138,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const initialPrice = planet.marketPrices[resource.name];
 
-            const skipBrake = resource.form === 'services';
+            const skipBrake = true; //resource.form === 'services';
             adjustOfferPrice(
                 offer,
                 inventoryQty,

@@ -48,6 +48,7 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
                 totalUsedByEdu: {},
                 lastProduced: {},
                 lastConsumed: {},
+                costBalance: 0,
             },
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },

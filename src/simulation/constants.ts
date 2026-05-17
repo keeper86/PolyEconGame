@@ -103,25 +103,6 @@ export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
 
 /**
- * Upper price ceiling for automatic offer pricing, expressed as a multiple of
- * the estimated production cost floor.  A seller's offer price will be
- * dampened as it approaches `costFloor × AUTOMATED_PRICE_CAP_FACTOR` and a
- * downward spring kicks in above that level.  This prevents supply-scarce
- * goods from spiralling to PRICE_CEIL while still generating a strong import
- * signal (e.g. 10× production cost is already an extraordinary premium).
- */
-export const AUTOMATED_PRICE_CAP_FACTOR = 20.0;
-
-/**
- * Upper price ceiling for automatic bid pricing, expressed as a multiple of
- * the current market price when the bid is being evaluated.  Mirrors
- * AUTOMATED_PRICE_CAP_FACTOR on the buyer side: prevents import bids from
- * rising to PRICE_CEIL over a long voyage (where fill rate = 0 every tick),
- * which would exhaust deposits and collapse the effective order quantity.
- */
-export const BID_PRICE_CAP_FACTOR = 16.0;
-
-/**
  * Stiffness of the cost-equilibrium spring that couples input and output prices.
  *
  * Implements a symmetric error-correction mechanism (cf. von Cramon-Taubadel 1998,
@@ -163,7 +144,7 @@ export const RETAINED_EARNINGS_THRESHOLD = 1.5;
  * procurement buffer.  Used both in automaticPricing (bid quantity) and in the
  * financial tick (retained-earnings extension + input-buffer loan).
  */
-export const INPUT_BUFFER_TARGET_TICKS = 30;
+export const INPUT_BUFFER_TARGET_TICKS = 10;
 
 /**
  * Maximum output inventory expressed as ticks of production.
@@ -171,7 +152,7 @@ export const INPUT_BUFFER_TARGET_TICKS = 30;
  * supply-constrained by lack of demand: input buying is suppressed entirely
  * until inventory drops below this ceiling.
  */
-export const OUTPUT_BUFFER_MAX_TICKS = 30;
+export const OUTPUT_BUFFER_MAX_TICKS = 10;
 
 // ---------------------------------------------------------------------------
 // Bank credit / loan origination constants

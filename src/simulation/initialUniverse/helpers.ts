@@ -57,6 +57,7 @@ export function makeProductionFacility(opts: {
             totalUsedByEdu: {},
             lastProduced: {},
             lastConsumed: {},
+            costBalance: 0,
         },
     };
 }
@@ -92,6 +93,7 @@ export function makeStorage(opts: {
             overqualifiedWorkers: {},
             exactUsedByEdu: {},
             totalUsedByEdu: {},
+            costBalance: 0,
         },
         escrow: {},
     };

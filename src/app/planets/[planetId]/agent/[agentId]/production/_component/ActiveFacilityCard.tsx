@@ -98,9 +98,15 @@ export function ActiveFacilityCard({
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
                     <div className='flex items-center gap-1 flex-col mb-auto'>
                         <h3 className='font-semibold leading-tight '>{facility.name}</h3>
-                        <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                            Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
-                        </Badge>
+                        <span className='flex items-center gap-1'>
+                            <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
+                                Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
+                            </Badge>
+                            <div className='text-xs text-muted-foreground'>
+                                revenue/tick{' '}
+                                {formatNumberWithUnit(facility.lastTickResults.costBalance, 'currency', planetId)}
+                            </div>
+                        </span>
                     </div>
                     <WorkerBars
                         workerRequirement={facility.workerRequirement}
