@@ -1,4 +1,4 @@
-const EPSILON = 1e-4;
+const EPSILON = 1e-3;
 
 export function formatNumbers(n: number | null | undefined): string {
     if (n == null || !isFinite(n)) {

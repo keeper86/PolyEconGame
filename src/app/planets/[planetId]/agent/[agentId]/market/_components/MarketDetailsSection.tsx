@@ -57,7 +57,7 @@ export default function MarketDetailsSection({
 
             <BidTable bids={market.bids} />
 
-            {market.populationDemand > 0 && resource?.form !== 'services' && (
+            {market.populationDemand > 0 && resource?.form === 'services' && (
                 <>
                     <span className='text-xs font-medium text-muted-foreground'>
                         <h4 className='text-sm font-semibold mb-1'>Population demand</h4>

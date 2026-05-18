@@ -10,7 +10,7 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 
 /* ---------- constants ---------- */
 const MAX_LOCAL_EVENTS = 60;
-const GAP_PX = 24; // minimum horizontal gap between events (steric interaction)
+const GAP_PX = 48; // minimum horizontal gap between events (steric interaction)
 const BASE_SPEED_PX_PER_SEC = 80;
 const MIN_SPEED_PX_PER_SEC = 30;
 const MAX_SPEED_PX_PER_SEC = 500;

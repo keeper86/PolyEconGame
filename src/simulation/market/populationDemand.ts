@@ -2,15 +2,25 @@ import {
     ADMINISTRATIVE_BUFFER_TARGET_TICKS,
     CONSTRUCTION_BUFFER_TARGET_TICKS,
     EDUCATION_BUFFER_TARGET_TICKS,
-    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     GROCERY_BUFFER_TARGET_TICKS,
     HEALTHCARE_BUFFER_TARGET_TICKS,
     LOGISTICS_BUFFER_TARGET_TICKS,
+    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     RETAIL_BUFFER_TARGET_TICKS,
     SERVICE_PER_PERSON_PER_TICK,
 } from '../constants';
-import type { Planet } from '../planet/planet';
 import type { Resource } from '../planet/claims';
+import type { ProductionFacility } from '../planet/facility';
+import type { Planet } from '../planet/planet';
+import {
+    administrativeCenter,
+    constructionFacility,
+    educationCenter,
+    groceryChain,
+    hospital,
+    logisticsHub,
+    retailChain,
+} from '../planet/productionFacilities';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
@@ -75,6 +85,8 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 1.5,
     },
 ];
+
+export type ServiceKey = ServiceDefinition['serviceKey'];
 
 /** O(1) lookup by resource name — used by settlement and consumption. */
 export const SERVICE_DEFINITION_BY_RESOURCE_NAME = new Map<string, ServiceDefinition>(
@@ -193,6 +205,45 @@ export function binHouseholdBids(
     return bins.filter((b) => b.quantity > 0);
 }
 
+const groceryChainTemplate: ProductionFacility = groceryChain('', '');
+const retailTemplate: ProductionFacility = retailChain('', '');
+const healthcareTemplate: ProductionFacility = hospital('', '');
+const educationTemplate: ProductionFacility = educationCenter('', '');
+const constructionTemplate: ProductionFacility = constructionFacility('', '');
+const administrativeTemplate: ProductionFacility = administrativeCenter('', '');
+const logisticsTemplate: ProductionFacility = logisticsHub('', '');
+
+export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionFacility; produced: number }> = {
+    grocery: {
+        template: groceryChainTemplate,
+        produced: groceryChainTemplate.produces[0].quantity,
+    },
+    retail: {
+        template: retailTemplate,
+        produced: retailTemplate.produces[0].quantity,
+    },
+    healthcare: {
+        template: healthcareTemplate,
+        produced: healthcareTemplate.produces[0].quantity,
+    },
+    education: {
+        template: educationTemplate,
+        produced: educationTemplate.produces[0].quantity,
+    },
+    construction: {
+        template: constructionTemplate,
+        produced: constructionTemplate.produces[0].quantity,
+    },
+    administrative: {
+        template: administrativeTemplate,
+        produced: administrativeTemplate.produces[0].quantity,
+    },
+    logistics: {
+        template: logisticsTemplate,
+        produced: logisticsTemplate.produces[0].quantity,
+    },
+};
+
 export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
     const allBids = new Map<string, BidOrder[]>(SERVICE_DEFINITIONS.map((def) => [def.resource.name, []]));
 
@@ -221,8 +272,24 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue; // Only education group buys education services
                 }
 
+                let currentProductionCost = Number.MAX_SAFE_INTEGER;
+                const serviceFacility = serviceFacilityTemplate[def.serviceKey];
+                if (def.serviceKey === 'grocery') {
+                    serviceFacility.template.needs.forEach((need) => {
+                        if (need.resource.name === def.resource.name) {
+                            currentProductionCost = need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
+                        }
+                    });
+                    currentProductionCost +=
+                        (serviceFacility.template.workerRequirement.none ?? 0) +
+                        (serviceFacility.template.workerRequirement.primary ?? 0) +
+                        (serviceFacility.template.workerRequirement.secondary ?? 0) +
+                        (serviceFacility.template.workerRequirement.tertiary ?? 0);
+                    currentProductionCost /= serviceFacility.produced;
+                }
                 const referencePrice =
-                    planet.marketPrices[def.resource.name] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+                    Math.min(planet.marketPrices[def.resource.name], currentProductionCost * 3) *
+                    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
                 if (referencePrice <= 0) {
                     continue;
                 }
