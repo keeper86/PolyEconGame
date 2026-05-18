@@ -304,6 +304,10 @@ function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: 
     return totalUnits > 0 ? totalCost / totalUnits : 0;
 }
 
+const currentAverageMarketPrice = (planet: Planet, resourceName: string): number => {
+    return planet.marketPrices[resourceName] ?? PRICE_FLOOR;
+};
+
 function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
     const accumulated = new Map<string, { totalCost: number; totalUnits: number }>();
 
@@ -318,7 +322,7 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: str
             const price =
                 resource.form === 'landBoundResource'
                     ? getLandBoundCostPerUnit(planet, agentId, resource.name)
-                    : planet.marketPrices[resource.name];
+                    : currentAverageMarketPrice(planet, resource.name);
             inputCostPerTick += price * quantity * facility.scale;
         }
 
@@ -338,12 +342,12 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: str
         // Value-weighted output cost split
         let totalOutputValue = 0;
         for (const { resource: out, quantity } of facility.produces) {
-            const price = planet.marketPrices[out.name];
+            const price = currentAverageMarketPrice(planet, out.name);
             totalOutputValue += price * quantity * facility.scale;
         }
 
         for (const { resource: out, quantity } of facility.produces) {
-            const outPrice = planet.marketPrices[out.name];
+            const outPrice = currentAverageMarketPrice(planet, out.name);
             const costShare =
                 totalOutputValue > 0
                     ? (outPrice * quantity * facility.scale) / totalOutputValue
@@ -386,7 +390,7 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId
 
         let outputRevenue = 0;
         for (const { resource: out, quantity } of facility.produces) {
-            const p = planet.marketPrices[out.name];
+            const p = currentAverageMarketPrice(planet, out.name);
             outputRevenue += p * quantity * facility.scale;
         }
         if (outputRevenue <= 0) {
@@ -398,7 +402,7 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId
             const p =
                 resource.form === 'landBoundResource'
                     ? getLandBoundCostPerUnit(planet, agentId, resource.name)
-                    : planet.marketPrices[resource.name];
+                    : currentAverageMarketPrice(planet, resource.name);
             totalCost += p * quantity * facility.scale;
         }
         for (const edu of educationLevelKeys) {

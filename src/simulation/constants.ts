@@ -89,12 +89,12 @@ export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
 export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.6;
 
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
-export const COST_SPRING_STRENGTH = 0.02;
+export const COST_SPRING_STRENGTH = 0.06;
 
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
 export const INPUT_BUFFER_TARGET_TICKS = 30;
-export const OUTPUT_BUFFER_MAX_TICKS = 30;
+export const OUTPUT_BUFFER_MAX_TICKS = 20;
 
 // ---------------------------------------------------------------------------
 // Bank credit / loan origination constants
