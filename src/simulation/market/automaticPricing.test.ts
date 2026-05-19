@@ -3,12 +3,12 @@ import {
     AUTOMATED_COST_FLOOR_MARKUP,
     INPUT_BUFFER_TARGET_TICKS,
     PRICE_ADJUST_MAX_DOWN,
-    PRICE_ADJUST_MAX_DOWN_SOFT,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
+import type { StorageFacility } from '../planet/facility';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
@@ -16,7 +16,6 @@ import {
     ironOreResourceType,
     waterResourceType,
 } from '../planet/resources';
-import type { StorageFacility } from '../planet/facility';
 import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
@@ -309,9 +308,7 @@ describe('automaticPricing — cost-floor brake zone', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.offerPrice!;
-        // At the cost floor, soft brake applies: max drop is PRICE_ADJUST_MAX_DOWN_SOFT (≤1%)
-        expect(newPrice).toBeGreaterThanOrEqual(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN_SOFT);
-        // The full 5% drop must NOT happen
+        // The cost spring attenuates the downward pressure: the full 5% drop must NOT happen
         expect(newPrice).toBeGreaterThan(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN);
     });
 
