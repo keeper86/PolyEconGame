@@ -1,4 +1,4 @@
-import { AC_ID } from '@/simulation/utils/initialWorld';
+import { AC_ID } from '@/simulation/initialUniverse';
 import { Globe } from 'lucide-react';
 import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';

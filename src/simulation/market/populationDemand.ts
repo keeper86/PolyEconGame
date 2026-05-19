@@ -64,7 +64,7 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         resource: educationServiceResourceType,
         serviceKey: 'education',
         bufferTargetTicks: EDUCATION_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 12,
     },
     {
         resource: retailServiceResourceType,
@@ -76,13 +76,13 @@ export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
         resource: constructionServiceResourceType,
         serviceKey: 'construction',
         bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 2,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 12,
     },
     {
         resource: administrativeServiceResourceType,
         serviceKey: 'administrative',
         bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 1.5,
+        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 12,
     },
 ];
 

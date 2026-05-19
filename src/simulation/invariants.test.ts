@@ -311,7 +311,7 @@ describe('checkTransportPipeline', () => {
         expect(checkTransportPipeline(gameState)).toEqual([]);
 
         // Advance to arrival tick: transporting → unloading, pipeline entry is removed
-        const arrivalTick = (ship.state as TransportShipStatusTransporting).arrivalTick;
+        const arrivalTick = (ship.state as unknown as TransportShipStatusTransporting).arrivalTick;
         gameState.tick = arrivalTick;
         shipTick(gameState);
         expect(ship.state.type).toBe('unloading');

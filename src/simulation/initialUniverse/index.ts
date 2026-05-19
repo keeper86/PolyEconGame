@@ -1,6 +1,5 @@
 import type { GameState, Planet } from '../planet/planet';
 import { AC_ID, buildAlphaCentauri } from './alphaCentauri';
-import { EARTH_ID } from './earth';
 import { buildProceduralWorld, PROC_PLANET_ID } from './proceduralWorld';
 import { buildSmallPlanets } from './smallPlanets';
 import { seedForexMarketMakers } from '../agents/forexMarketMaker';
@@ -21,7 +20,7 @@ export {
     type ResourceClaimEntry,
 } from './helpers';
 export { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
-export { AC_ID, EARTH_ID, PROC_PLANET_ID };
+export { AC_ID, PROC_PLANET_ID };
 
 export function createInitialGameState(): GameState {
     const { planet: earth, agents: earthAgents } = buildProceduralWorld();

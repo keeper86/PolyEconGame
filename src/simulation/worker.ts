@@ -20,7 +20,7 @@ import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { computePopulationTotal } from './snapshotRepository';
-import { createInitialGameState } from './utils/initialWorld';
+import { createInitialGameState } from './initialUniverse';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
 import {

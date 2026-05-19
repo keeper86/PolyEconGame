@@ -8,24 +8,6 @@ import { maintenanceServiceResourceType } from '../planet/services';
 import type { Ship, ShipBuyingOffer } from './ships';
 import { shiptypes, scaleMapping, type ShipCapitalMarket, type ShipListing, type ShipTradeRecord } from './ships';
 
-/**
- * Computes a heuristic effective value for a ship.
- *
- * Incorporates:
- * - scale (cargo capacity proxy)
- * - current maintainanceStatus (operational quality)
- * - maxMaintenance (remaining life ceiling)
- * - speed (operational performance)
- * - future maintenance cost: estimated remaining repair cost to fill the ship's
- *   remaining life, discounted using the maintenance service price on the ship's
- *   current planet (if available via gameState).
- *
- * This value is informational only — it does not affect settlement logic.
- *
- * @param ship - The ship to evaluate.
- * @param gameState - Optional game state for market price lookup.
- * @returns A non-negative heuristic value.
- */
 export function effectiveShipValue(ship: Ship, gameState?: GameState): number {
     const { scale, speed } = ship.type;
     const { maintainanceStatus, maxMaintenance } = ship;

@@ -8,20 +8,14 @@ export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
 
-/** Service consumption per person per tick (1 unit/person/tick for all services) */
-export const SERVICE_PER_PERSON_PER_TICK = 1 / 30;
+/** Service consumption per person per tick (1 unit/person/month for all services) */
+export const SERVICE_PER_PERSON_PER_TICK = 1 / TICKS_PER_MONTH;
 
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
-export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 1.05;
+export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 1.1;
 
-/**
- * Number of months in the departing/firing pipeline.
- * Fired workers enter this pipeline and work at reduced efficiency
- * for its duration before leaving entirely.
- * Voluntary quits also use this pipeline.
- */
 export const NOTICE_PERIOD_MONTHS = 3;
 
 /** True only on clean month boundaries (every TICKS_PER_MONTH ticks). */
@@ -31,62 +25,27 @@ export const isFirstTickInMonth = (tick: number): boolean => tick % TICKS_PER_MO
 /** True only on clean year boundaries (every TICKS_PER_YEAR ticks). */
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
 
-// ---------------------------------------------------------------------------
-// Grocery service market constants
-// ---------------------------------------------------------------------------
-
-/**
- * Household grocery service buffer target expressed in ticks of consumption.
- * Population tries to maintain this many ticks worth of grocery service.
- * 1 month = TICKS_PER_MONTH ticks.
- */
 export const GROCERY_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
 
-/**
- * Service buffer targets expressed in ticks of consumption.
- * Each service has its own buffer target for household inventory management.
- */
-export const HEALTHCARE_BUFFER_TARGET_TICKS = 4;
-export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 3;
-export const LOGISTICS_BUFFER_TARGET_TICKS = 4;
-export const RETAIL_BUFFER_TARGET_TICKS = 10;
-export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
-export const EDUCATION_BUFFER_TARGET_TICKS = 2;
+export const HEALTHCARE_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
+export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
+export const LOGISTICS_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
+export const RETAIL_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
+export const CONSTRUCTION_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
+export const EDUCATION_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
 
-/**
- * Minimum grocery service price (prevents zero or negative prices).
- */
 export const PRICE_FLOOR = 0.001;
 export const PRICE_CEIL = 1000000.0;
 
-// ---------------------------------------------------------------------------
-// Per-agent food pricing constants
-// ---------------------------------------------------------------------------
-
-/**
- * Maximum multiplicative price adjustment per tick (upward).
- * e.g. 1.05 means price can increase at most 5 % per tick.
- */
 export const PRICE_ADJUST_MAX_UP = 1.05;
 
-/**
- * Maximum multiplicative price adjustment per tick (downward).
- * e.g. 0.95 means price can decrease at most 5 % per tick.
- */
 export const PRICE_ADJUST_MAX_DOWN = 0.95;
 
-/**
- * Maximum multiplicative price adjustment per tick (downward) when the offer
- * price is within the cost-floor brake zone.  Much smaller than
- * PRICE_ADJUST_MAX_DOWN so that prices descend very slowly near production
- * cost, keeping supply chains alive while downstream demand signals propagate.
- * e.g. 0.99 means at most 1 % decrease per tick at/near the cost floor.
- */
 export const PRICE_ADJUST_MAX_DOWN_SOFT = 0.99;
 
 export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
 
-export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.6;
+export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
 export const COST_SPRING_STRENGTH = 0.06;

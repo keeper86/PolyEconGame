@@ -138,7 +138,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const initialPrice = planet.marketPrices[resource.name];
 
-            const skipBrake = resource.form === 'services';
+            const skipBrake = true; //resource.form === 'services';
             adjustOfferPrice(
                 offer,
                 inventoryQty,
@@ -439,21 +439,8 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId
 // ---------------------------------------------------------------------------
 
 const TARGET_SELL_THROUGH = 0.9;
-const SERVICE_SELL_THROUGH_TARGET = 0.98;
+const SERVICE_SELL_THROUGH_TARGET = 0.95;
 
-/**
- * Map sell-through ∈ [0, 1] onto a price-adjustment factor using two linear
- * segments that each span the full configured range:
- *
- *   sellThrough = 0             → PRICE_ADJUST_MAX_DOWN   (max price cut)
- *   sellThrough = TARGET        → 1.0                     (no change)
- *   sellThrough = 1             → PRICE_ADJUST_MAX_UP     (max price rise)
- *
- * The single-segment formula `1 + speed * (sellThrough - TARGET)` only ever
- * reaches a factor of ~1.02 at full sell-through (= 1 + speed * 0.1), making
- * the PRICE_ADJUST_MAX_UP cap unreachable and creating a strong downward bias
- * once a price has been pushed to the floor.
- */
 function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THROUGH): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
     if (clamped >= target) {

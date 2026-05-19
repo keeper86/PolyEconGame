@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { GameState } from './planet/planet';
-import { createInitialGameState } from './utils/initialWorld';
+import { createInitialGameState } from './initialUniverse';
 
 // Mock the worker module to test the action queue logic
 describe('Worker action queue hybrid model', () => {

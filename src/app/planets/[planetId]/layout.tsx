@@ -1,6 +1,6 @@
 'use client';
 
-import { AC_ID } from '@/simulation/utils/initialWorld';
+import { AC_ID } from '@/simulation/initialUniverse';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import type { ReactNode } from 'react';
