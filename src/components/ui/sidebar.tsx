@@ -159,7 +159,9 @@ function Sidebar({
     const threshold = 60; // px drag distance to trigger open/close
 
     React.useEffect(() => {
-        if (!isMobile || openMobile) { return; }
+        if (!isMobile || openMobile) {
+            return;
+        }
 
         let startX = -1;
         let currentX = -1;
@@ -171,11 +173,15 @@ function Sidebar({
             currentX = startX;
         };
         const onTouchMove = (e: TouchEvent) => {
-            if (startX < 0) { return; }
+            if (startX < 0) {
+                return;
+            }
             currentX = e.touches[0].clientX;
         };
         const onTouchEnd = () => {
-            if (startX < 0) { return; }
+            if (startX < 0) {
+                return;
+            }
             const deltaX = currentX - startX;
             if ((side === 'left' && deltaX > threshold) || (side === 'right' && deltaX < -threshold)) {
                 setOpenMobile(true);
