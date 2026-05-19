@@ -1,16 +1,17 @@
 import {
     GENERATION_GAP,
     GENERATION_KERNEL_N,
-    GROCERY_BUFFER_TARGET_TICKS,
     MIN_EMPLOYABLE_AGE,
     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
-    SERVICE_PER_PERSON_PER_TICK,
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { nextRandom } from '../utils/stochasticRound';
 import type { Planet } from '../planet/planet';
 import { groceryServiceResourceType } from '../planet/services';
+import { SERVICE_DEFINITIONS } from './serviceDefinitions';
+
+const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
@@ -84,8 +85,8 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             cell.wealth = mergeGaussianMoments(cell.pop, cell.wealth, n, cat.wealth);
             cell.pop += n;
             // Convert grocery service buffer ticks to equivalent service units
-            // buffer ticks * SERVICE_PER_PERSON_PER_TICK * n = total service units
-            cell.groceryBuffer += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * n;
+            // buffer ticks * consumptionRatePerPersonPerTick * n = total service units
+            cell.groceryBuffer += cat.services.grocery.buffer * groceryDef.consumptionRatePerPersonPerTick * n;
         });
 
         cache[age] = ageCells;
@@ -170,9 +171,9 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const groceryPrice =
         planet.marketPrices[groceryServiceResourceType.name] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
 
-    const groceryTargetPerPerson = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+    const groceryTargetPerPerson = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
 
-    const baseGroceryCost = SERVICE_PER_PERSON_PER_TICK * groceryPrice;
+    const baseGroceryCost = groceryDef.consumptionRatePerPersonPerTick * groceryPrice;
 
     const cache = buildAggregateCache(demography);
 

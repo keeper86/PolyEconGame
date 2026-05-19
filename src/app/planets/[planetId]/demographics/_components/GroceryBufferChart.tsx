@@ -2,7 +2,9 @@
 
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { GROCERY_BUFFER_TARGET_TICKS } from '@/simulation/constants';
+import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
+
+const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useMemo } from 'react';
@@ -83,7 +85,7 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
                                 {(ratio * 100).toFixed(0)}% ·{' '}
-                                {formatNumberWithUnit(ratio * GROCERY_BUFFER_TARGET_TICKS, 'days')}·{' '}
+                                {formatNumberWithUnit(ratio * groceryDef.bufferTargetTicks, 'days')}·{' '}
                                 {formatNumberWithUnit(pop, 'persons')}
                             </span>
                         </div>

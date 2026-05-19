@@ -1,5 +1,5 @@
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
+import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import {
     groceryServiceResourceType,
     healthcareServiceResourceType,
@@ -132,11 +132,13 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
         }
     }
 
-    // Population service demand: each service consumed at SERVICE_PER_PERSON_PER_TICK per person per tick
+    // Population service demand: each service consumed at its consumptionRatePerPersonPerTick per person per tick
     if (population > 0) {
+        const serviceDefByName = new Map(SERVICE_DEFINITIONS.map((d) => [d.resource.name, d]));
         for (const svc of POPULATION_DEMANDED_SERVICES) {
             const r = getOrCreate(svc.name, 'services', 'services', false);
-            r.populationDemandPerTick += population * SERVICE_PER_PERSON_PER_TICK;
+            const rate = serviceDefByName.get(svc.name)?.consumptionRatePerPersonPerTick ?? 0;
+            r.populationDemandPerTick += population * rate;
         }
     }
 

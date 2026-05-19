@@ -16,7 +16,6 @@
 
 import solver from 'javascript-lp-solver';
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import { SERVICE_DEFINITION_BY_RESOURCE_NAME } from '@/simulation/market/populationDemand';
 import {
     groceryServiceResourceType,
@@ -172,7 +171,7 @@ function buildLPModel(config: SolverConfig): Model {
         const key = resourceConstraintKey(svc.name);
         if (constraints[key]) {
             const def = SERVICE_DEFINITION_BY_RESOURCE_NAME.get(svc.name);
-            const perPerson = def?.consumptionRatePerPersonPerTick ?? SERVICE_PER_PERSON_PER_TICK;
+            const perPerson = def?.consumptionRatePerPersonPerTick ?? 0;
             (constraints[key] as { min?: number; max?: number }).min = population * perPerson;
         }
     }
@@ -294,7 +293,7 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
             }
         }
         const def = SERVICE_DEFINITION_BY_RESOURCE_NAME.get(svc.name);
-        const perPerson = def?.consumptionRatePerPersonPerTick ?? SERVICE_PER_PERSON_PER_TICK;
+        const perPerson = def?.consumptionRatePerPersonPerTick ?? 0;
         const demandForSvc = config.population * perPerson;
         serviceCoverage[svc.name] = demandForSvc > 0 ? supplyPerTick / demandForSvc : 1;
     }

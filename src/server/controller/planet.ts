@@ -11,10 +11,11 @@ import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
-import { SERVICE_PER_PERSON_PER_TICK } from '../../simulation/constants';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
 import { SERVICE_DEFINITIONS } from '../../simulation/market/populationDemand';
+
+const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
 import type { ServiceName, Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { computeGlobalStarvation, computePopulationTotal } from '../../simulation/snapshotRepository';
@@ -348,7 +349,8 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                         gPop += cat.total;
                         // Convert buffer (ticks) → service units so the client
                         // ratio = gFoodStock/pop / SERVICE_TARGET_PER_PERSON normalises correctly.
-                        gFoodStock += cat.services.grocery.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
+                        gFoodStock +=
+                            cat.services.grocery.buffer * groceryDef.consumptionRatePerPersonPerTick * cat.total;
                         gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                         for (const def of nonGroceryDefs) {

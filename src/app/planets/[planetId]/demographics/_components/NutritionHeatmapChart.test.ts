@@ -1,20 +1,3 @@
-/**
- * NutritionHeatmapChart.test.ts
- *
- * Unit test for the data transformation logic used by NutritionHeatmapChart.
- *
- * The chart classifies each group using a **six-band starvation-only** scheme:
- *   fatalStarvation    (S > 0.9)
- *   severeStarvation   (S > 0.75)
- *   seriousStarvation  (S > 0.5)
- *   moderateStarvation (S > 0.25)
- *   lightStarvation    (S > 0.05)
- *   noStarvation       (S ≤ 0.05)
- *
- * The component receives AggRow[] from the server (not raw demography) and
- * classifies each group by its population-weighted average starvation.
- */
-
 import type { AggRow } from '@/app/planets/[planetId]/demographics/_components/demographicsTypes';
 import {
     GV_FOOD,
@@ -22,9 +5,11 @@ import {
     GV_STARV,
     SERVICE_TARGET_PER_PERSON,
 } from '@/app/planets/[planetId]/demographics/_components/demographicsTypes';
-import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
+import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { describe, expect, it } from 'vitest';
+
+const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
 
 // ---- Replicate component structure ----
 
@@ -77,7 +62,7 @@ function computeChartData(rows: AggRow[], groupKeys: readonly string[]): ChartRo
 
             const avgStarvation = gPop > 0 && weightedStarv > 0 ? weightedStarv / gPop : 0;
             const avgStock = gPop > 0 ? totalFood / gPop : 0;
-            const avgBuffer = SERVICE_TARGET_PER_PERSON > 0 ? avgStock / SERVICE_TARGET_PER_PERSON : 0;
+            const avgBuffer = avgStock / SERVICE_TARGET_PER_PERSON;
 
             const bandIdx = classifyBand(avgStarvation);
             for (let bi = 0; bi < BANDS.length; bi++) {
@@ -283,8 +268,11 @@ describe('NutritionHeatmapChart — computeChartData', () => {
         expect(stats.globalAvgBuffer).toBeCloseTo(0.5, 3);
     });
 
-    it('SERVICE_TARGET_PER_PERSON matches GROCERY_BUFFER_TARGET_TICKS × SERVICE_PER_PERSON_PER_TICK', () => {
-        expect(SERVICE_TARGET_PER_PERSON).toBeCloseTo(GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK, 10);
+    it('SERVICE_TARGET_PER_PERSON matches bufferTargetTicks × consumptionRatePerPersonPerTick', () => {
+        expect(SERVICE_TARGET_PER_PERSON).toBeCloseTo(
+            groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick,
+            10,
+        );
     });
 
     it('mixed ages: each age classified independently', () => {

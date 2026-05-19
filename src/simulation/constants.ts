@@ -8,9 +8,6 @@ export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
 
-/** Service consumption per person per tick (1 unit/person/month for all services) */
-export const SERVICE_PER_PERSON_PER_TICK = 1 / TICKS_PER_MONTH;
-
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
@@ -24,15 +21,6 @@ export const isFirstTickInMonth = (tick: number): boolean => tick % TICKS_PER_MO
 
 /** True only on clean year boundaries (every TICKS_PER_YEAR ticks). */
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
-
-export const GROCERY_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
-
-export const HEALTHCARE_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
-export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
-export const LOGISTICS_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
-export const RETAIL_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
-export const CONSTRUCTION_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
-export const EDUCATION_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
 
 export const PRICE_FLOOR = 0.001;
 export const PRICE_CEIL = 1000000.0;

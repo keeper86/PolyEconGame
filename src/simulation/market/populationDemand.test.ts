@@ -1,9 +1,10 @@
 import { test, expect, describe, it } from 'vitest';
-import { binHouseholdBids, buildPopulationDemand } from './populationDemand';
+import { binHouseholdBids, buildPopulationDemand, SERVICE_DEFINITIONS } from './populationDemand';
 import { createEmptyPopulationCohort, forEachPopulationCohort } from '../population/population';
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
-import { GROCERY_BUFFER_TARGET_TICKS, SERVICE_PER_PERSON_PER_TICK } from '../constants';
 import type { Planet } from '../planet/planet';
+
+const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
 import { makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
 import type { BidOrder } from './marketTypes';
 
@@ -134,7 +135,7 @@ describe('buildPopulationDemandForResource', () => {
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
                         cat.wealth = { mean: 100, variance: 0 };
-                        cat.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS;
+                        cat.services.grocery.buffer = groceryDef.bufferTargetTicks;
                     }
                 }),
             );
@@ -273,7 +274,7 @@ describe('buildPopulationDemand', () => {
         planet.marketPrices[GROCERY_SERVICE] = groceryPrice;
         planet.marketPrices[HEALTHCARE_SERVICE] = healthcarePrice;
 
-        const groceryTarget = GROCERY_BUFFER_TARGET_TICKS * SERVICE_PER_PERSON_PER_TICK;
+        const groceryTarget = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
 
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
@@ -305,7 +306,7 @@ describe('buildPopulationDemand', () => {
                 if (cat.total > 0) {
                     cat.wealth = { mean: 100, variance: 0 };
                     // Grocery buffer full — no grocery demand, all wealth goes to healthcare
-                    cat.services.grocery.buffer = GROCERY_BUFFER_TARGET_TICKS;
+                    cat.services.grocery.buffer = groceryDef.bufferTargetTicks;
                     cat.services.healthcare.buffer = 0;
                 }
             }),

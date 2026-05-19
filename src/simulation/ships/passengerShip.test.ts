@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
-import {
-    EDUCATION_BUFFER_TARGET_TICKS,
-    GROCERY_BUFFER_TARGET_TICKS,
-    HEALTHCARE_BUFFER_TARGET_TICKS,
-    SERVICE_PER_PERSON_PER_TICK,
-    TICKS_PER_YEAR,
-} from '../constants';
+import { TICKS_PER_YEAR } from '../constants';
+import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
+
+const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
+const healthcareDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'healthcare')!;
+const educationDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'education')!;
 import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
@@ -67,10 +66,10 @@ function seedWorkforce(
     demCell.total += count;
     demCell.wealth = wealth;
     demCell.services = {
-        grocery: { buffer: GROCERY_BUFFER_TARGET_TICKS, starvationLevel: 0 },
+        grocery: { buffer: groceryDef.bufferTargetTicks, starvationLevel: 0 },
         retail: { buffer: 10, starvationLevel: 0 },
         logistics: { buffer: 4, starvationLevel: 0 },
-        healthcare: { buffer: HEALTHCARE_BUFFER_TARGET_TICKS, starvationLevel: 0 },
+        healthcare: { buffer: healthcareDef.bufferTargetTicks, starvationLevel: 0 },
         construction: { buffer: 2, starvationLevel: 0 },
         administrative: { buffer: 3, starvationLevel: 0 },
         education: { buffer: 2, starvationLevel: 0 },
@@ -305,7 +304,8 @@ describe('shipTick passenger boarding', () => {
 
         seedWorkforce(agent, planet, 30, 500);
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
-        const provisions = 500 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS);
+        const provisions =
+            500 * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks);
         putProvisions(agent, 'p1', provisions * 2, provisions * 2);
 
         const ship = makePassengerShip('S1', 'p1');
@@ -345,7 +345,8 @@ describe('shipTick passenger boarding', () => {
 
         seedWorkforce(agent, planet, 30, 300);
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
-        const prov = 300 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS) * 2;
+        const prov =
+            300 * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks) * 2;
         putProvisions(agent, 'p1', prov, prov);
 
         const ship = makePassengerShip('S1', 'p1');
@@ -497,7 +498,8 @@ describe('shipTick passenger boarding', () => {
         const count = 10_000;
         seedWorkforce(agent, planet, 30, count);
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
-        const prov = count * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS) * 2;
+        const prov =
+            count * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks) * 2;
         putProvisions(agent, 'p1', prov, prov);
 
         const ship = makePassengerShip('S1', 'p1', 50_000);
@@ -548,9 +550,10 @@ describe('shipTick passenger boarding', () => {
         seedWorkforce(agent, planet, 30, count);
         // Provide enough for the maximum possible flight time (base ±10% jitter)
         const maxFlightTicks = Math.ceil((1.1 * 1000) / passengerLiner.speed);
-        const groceryProvided = count * SERVICE_PER_PERSON_PER_TICK * (maxFlightTicks + GROCERY_BUFFER_TARGET_TICKS);
+        const groceryProvided =
+            count * groceryDef.consumptionRatePerPersonPerTick * (maxFlightTicks + groceryDef.bufferTargetTicks);
         const healthcareProvided =
-            count * SERVICE_PER_PERSON_PER_TICK * (maxFlightTicks + HEALTHCARE_BUFFER_TARGET_TICKS);
+            count * healthcareDef.consumptionRatePerPersonPerTick * (maxFlightTicks + healthcareDef.bufferTargetTicks);
         // Provide exactly enough for the maximum possible travel time
         putProvisions(agent, 'p1', groceryProvided, healthcareProvided);
 
@@ -576,8 +579,12 @@ describe('shipTick passenger boarding', () => {
         const healthcareLeft = storage.currentInStorage[healthcareServiceResourceType.name]?.quantity ?? 0;
         // Most provisions consumed; at most the jitter range (~25 ticks) worth can remain
         const maxJitterTicks = maxFlightTicks - Math.ceil((0.9 * 1000) / passengerLiner.speed);
-        expect(groceryLeft).toBeLessThanOrEqual(count * SERVICE_PER_PERSON_PER_TICK * (maxJitterTicks + 1));
-        expect(healthcareLeft).toBeLessThanOrEqual(count * SERVICE_PER_PERSON_PER_TICK * (maxJitterTicks + 1));
+        expect(groceryLeft).toBeLessThanOrEqual(
+            count * groceryDef.consumptionRatePerPersonPerTick * (maxJitterTicks + 1),
+        );
+        expect(healthcareLeft).toBeLessThanOrEqual(
+            count * healthcareDef.consumptionRatePerPersonPerTick * (maxJitterTicks + 1),
+        );
         expect(groceryLeft).toBeGreaterThanOrEqual(0);
         expect(healthcareLeft).toBeGreaterThanOrEqual(0);
     });
@@ -677,9 +684,9 @@ describe('shipTick passenger transporting / arrival', () => {
         shipTick(state);
 
         const cell = planet2.population.demography[30].employed.none.novice;
-        expect(cell.services.grocery.buffer).toBe(GROCERY_BUFFER_TARGET_TICKS);
+        expect(cell.services.grocery.buffer).toBe(groceryDef.bufferTargetTicks);
         expect(cell.services.grocery.starvationLevel).toBe(0);
-        expect(cell.services.healthcare.buffer).toBe(HEALTHCARE_BUFFER_TARGET_TICKS);
+        expect(cell.services.healthcare.buffer).toBe(healthcareDef.bufferTargetTicks);
     });
 
     it('throws when destination planet is missing at arrival', () => {
@@ -776,8 +783,10 @@ describe('calculateProvisions', () => {
         const flightTicks = 50;
         const provisions = calculateProvisions(manifest, flightTicks);
 
-        const expectedGrocery = 100 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS);
-        const expectedHealthcare = 100 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + HEALTHCARE_BUFFER_TARGET_TICKS);
+        const expectedGrocery =
+            100 * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks);
+        const expectedHealthcare =
+            100 * healthcareDef.consumptionRatePerPersonPerTick * (flightTicks + healthcareDef.bufferTargetTicks);
 
         expect(provisions.groceryProvisioned.goal).toBeCloseTo(expectedGrocery, 5);
         expect(provisions.healthcareProvisioned.goal).toBeCloseTo(expectedHealthcare, 5);
@@ -792,7 +801,8 @@ describe('calculateProvisions', () => {
         const flightTicks = 30;
         const provisions = calculateProvisions(manifest, flightTicks);
 
-        const expectedEducation = 50 * SERVICE_PER_PERSON_PER_TICK * (flightTicks + EDUCATION_BUFFER_TARGET_TICKS);
+        const expectedEducation =
+            50 * educationDef.consumptionRatePerPersonPerTick * (flightTicks + educationDef.bufferTargetTicks);
         expect(provisions.educationProvisioned.goal).toBeCloseTo(expectedEducation, 5);
     });
 

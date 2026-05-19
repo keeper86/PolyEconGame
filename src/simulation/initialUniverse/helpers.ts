@@ -1,4 +1,7 @@
-import { GROCERY_BUFFER_TARGET_TICKS, INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
+
+const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/claims';
 import {
@@ -266,7 +269,7 @@ export function createPopulation(total: number, buffer: number = 6): Population 
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {
-                category.services.grocery.buffer = buffer * GROCERY_BUFFER_TARGET_TICKS;
+                category.services.grocery.buffer = buffer * groceryDef.bufferTargetTicks;
             }
         });
     }

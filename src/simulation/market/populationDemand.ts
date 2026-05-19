@@ -1,15 +1,4 @@
-import {
-    ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-    CONSTRUCTION_BUFFER_TARGET_TICKS,
-    EDUCATION_BUFFER_TARGET_TICKS,
-    GROCERY_BUFFER_TARGET_TICKS,
-    HEALTHCARE_BUFFER_TARGET_TICKS,
-    LOGISTICS_BUFFER_TARGET_TICKS,
-    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
-    RETAIL_BUFFER_TARGET_TICKS,
-    SERVICE_PER_PERSON_PER_TICK,
-} from '../constants';
-import type { Resource } from '../planet/claims';
+import { RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
 import {
@@ -21,80 +10,16 @@ import {
     logisticsHub,
     retailChain,
 } from '../planet/productionFacilities';
-import {
-    administrativeServiceResourceType,
-    constructionServiceResourceType,
-    educationServiceResourceType,
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
-    logisticsServiceResourceType,
-    retailServiceResourceType,
-} from '../planet/services';
-import type { ServiceName } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
-
-export type ServiceDefinition = {
-    readonly resource: Resource;
-    readonly serviceKey: ServiceName;
-    readonly bufferTargetTicks: number;
-    readonly consumptionRatePerPersonPerTick: number;
-};
-
-export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
-    {
-        resource: groceryServiceResourceType,
-        serviceKey: 'grocery',
-        bufferTargetTicks: GROCERY_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: healthcareServiceResourceType,
-        serviceKey: 'healthcare',
-        bufferTargetTicks: HEALTHCARE_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: logisticsServiceResourceType,
-        serviceKey: 'logistics',
-        bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: educationServiceResourceType,
-        serviceKey: 'education',
-        bufferTargetTicks: EDUCATION_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 12,
-    },
-    {
-        resource: retailServiceResourceType,
-        serviceKey: 'retail',
-        bufferTargetTicks: RETAIL_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: constructionServiceResourceType,
-        serviceKey: 'construction',
-        bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 12,
-    },
-    {
-        resource: administrativeServiceResourceType,
-        serviceKey: 'administrative',
-        bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 12,
-    },
-];
-
-export type ServiceKey = ServiceDefinition['serviceKey'];
-
-/** O(1) lookup by resource name — used by settlement and consumption. */
-export const SERVICE_DEFINITION_BY_RESOURCE_NAME = new Map<string, ServiceDefinition>(
-    SERVICE_DEFINITIONS.map((def) => [def.resource.name, def]),
-);
-
-// Priority order derived from the definition array order.
-export const householdDemandPriority: string[] = SERVICE_DEFINITIONS.map((d) => d.resource.name);
+export type { ServiceDefinition, ServiceKey } from './serviceDefinitions';
+export {
+    SERVICE_DEFINITIONS,
+    SERVICE_DEFINITION_BY_RESOURCE_NAME,
+    householdDemandPriority,
+} from './serviceDefinitions';
+import { SERVICE_DEFINITIONS } from './serviceDefinitions';
+import type { ServiceKey } from './serviceDefinitions';
 
 // ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
@@ -288,7 +213,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     currentProductionCost /= serviceFacility.produced;
                 }
                 const referencePrice =
-                    Math.min(planet.marketPrices[def.resource.name], currentProductionCost * 3) *
+                    Math.min(planet.marketPrices[def.resource.name], currentProductionCost * 2) *
                     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
                 if (referencePrice <= 0) {
                     continue;
