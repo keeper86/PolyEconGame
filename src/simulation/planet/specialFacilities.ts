@@ -8,6 +8,7 @@ const zeroLastTicksResults: LastManagementTickResults = {
     exactUsedByEdu: {},
     totalUsedByEdu: {},
     lastConsumed: {},
+    costBalance: 0,
 };
 
 const defaultPollutionPerTick = {

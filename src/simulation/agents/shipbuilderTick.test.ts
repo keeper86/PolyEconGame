@@ -56,6 +56,7 @@ function makeShipyard(planetId: string, agentId: string): ShipConstructionFacili
             totalUsedByEdu: {},
             resourceEfficiency: {},
             lastConsumed: {},
+            costBalance: 0,
         },
     };
 }

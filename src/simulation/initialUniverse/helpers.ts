@@ -1,4 +1,6 @@
-import { GROCERY_BUFFER_TARGET_TICKS, INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
+
 import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/claims';
 import {
@@ -57,6 +59,7 @@ export function makeProductionFacility(opts: {
             totalUsedByEdu: {},
             lastProduced: {},
             lastConsumed: {},
+            costBalance: 0,
         },
     };
 }
@@ -92,6 +95,7 @@ export function makeStorage(opts: {
             overqualifiedWorkers: {},
             exactUsedByEdu: {},
             totalUsedByEdu: {},
+            costBalance: 0,
         },
         escrow: {},
     };
@@ -264,7 +268,7 @@ export function createPopulation(total: number, buffer: number = 6): Population 
     for (const cohort of pop.demography) {
         forEachPopulationCohort(cohort, (category) => {
             if (category.total > 0) {
-                category.services.grocery.buffer = buffer * GROCERY_BUFFER_TARGET_TICKS;
+                category.services.grocery.buffer = buffer * SERVICE_DEFINITIONS.grocery.bufferTargetTicks;
             }
         });
     }

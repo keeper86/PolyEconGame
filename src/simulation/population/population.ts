@@ -1,8 +1,8 @@
+import { destroyWealthOnDeath, mergeWealthInto } from '../financial/wealthOps';
+import type { Planet } from '../planet/planet';
 import { type WorkforceCohort } from '../workforce/workforce';
 import type { EducationLevelType } from './education';
 import { educationLevelKeys } from './education';
-import type { Planet } from '../planet/planet';
-import { mergeWealthInto, destroyWealthOnDeath } from '../financial/wealthOps';
 
 export const forEachOccupiedPopulation = <T>(
     cohort: WorkforceCohort<T>,
@@ -105,6 +105,7 @@ export type PopulationCategory = {
         logistics: ServiceState;
         healthcare: ServiceState;
         construction: ServiceState;
+        maintenance: ServiceState;
         administrative: ServiceState;
         education: ServiceState;
     };
@@ -135,6 +136,7 @@ export const nullServicesState = () => ({
     logistics: { buffer: 0, starvationLevel: 0 },
     healthcare: { buffer: 0, starvationLevel: 0 },
     construction: { buffer: 0, starvationLevel: 0 },
+    maintenance: { buffer: 0, starvationLevel: 0 },
     administrative: { buffer: 0, starvationLevel: 0 },
     education: { buffer: 0, starvationLevel: 0 },
 });

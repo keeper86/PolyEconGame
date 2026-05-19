@@ -110,7 +110,7 @@ function scanBestRoute(
                     continue;
                 }
 
-                const effectiveQty = Math.min(maxQty, offers.quantity);
+                const effectiveQty = Math.min(maxQty, offers.quantity * 30);
                 const effectiveBids = originAsks.reduce(orderBookReducer(effectiveQty), emptyPriceAggregate());
                 const currencyName = getCurrencyResourceName(dest.id);
                 const buyingCosts = offers.price / effectiveQty;

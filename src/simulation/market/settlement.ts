@@ -1,9 +1,9 @@
+import { debitConsumptionPurchase } from '../financial/wealthOps';
 import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '../planet/facility';
 import type { Planet } from '../planet/planet';
-import { debitConsumptionPurchase } from '../financial/wealthOps';
-import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
-import { SERVICE_DEFINITION_BY_RESOURCE_NAME } from './populationDemand';
 import { getCurrencyResourceName } from './currencyResources';
+import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
+import { getServiceDefinitionByResourceName } from './serviceDefinitions';
 
 export function settleHouseholds(
     planet: Planet,
@@ -14,7 +14,7 @@ export function settleHouseholds(
 ): void {
     // Derive serviceKey and rate from the single source of truth.
     // Returns early for non-service resources (no entry in the map).
-    const def = SERVICE_DEFINITION_BY_RESOURCE_NAME.get(resourceName);
+    const def = getServiceDefinitionByResourceName(resourceName);
     if (!def) {
         return;
     }

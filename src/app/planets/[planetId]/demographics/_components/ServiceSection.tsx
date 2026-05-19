@@ -2,16 +2,15 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import type { ServiceName } from '@/simulation/population/population';
 import NutritionHeatmapChart from './NutritionHeatmapChart';
 import ServiceBufferChart from './ServiceBufferChart';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { GV_FOOD, GV_POP, GV_STARV, SERVICE_TARGET_MAP } from './demographicsTypes';
+import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 
 type Props = {
     serviceKey: ServiceName;
-    serviceLabel: string;
-    bufferTargetTicks: number;
     rows: AggRow[];
     groupMode: GroupMode;
     groupKeys: readonly string[];
@@ -19,18 +18,11 @@ type Props = {
     groupLabels: Record<string, string>;
 };
 
-export default function ServiceSection({
-    serviceKey,
-    serviceLabel: _serviceLabel,
-    bufferTargetTicks,
-    rows,
-    groupMode,
-    groupKeys,
-    groupColors,
-    groupLabels,
-}: Props) {
+export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys, groupColors, groupLabels }: Props) {
     const isSmallScreen = useIsSmallScreen();
-    const targetPerPerson = SERVICE_TARGET_MAP[serviceKey];
+    const targetPerPerson =
+        SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
+        SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
 
     // ── Aggregate buffer and starvation per group ─────────────────────────
     const groupPop = [0, 0, 0, 0];
@@ -200,12 +192,7 @@ export default function ServiceSection({
     return (
         <>
             {bufferCards}
-            <ServiceBufferChart
-                rows={rows}
-                groupMode={groupMode}
-                serviceKey={serviceKey}
-                bufferTargetTicks={bufferTargetTicks}
-            />
+            <ServiceBufferChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />
             <p className='py-4 text-sm font-medium'>Deprivation map</p>
             {starvationCards}
             <NutritionHeatmapChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />

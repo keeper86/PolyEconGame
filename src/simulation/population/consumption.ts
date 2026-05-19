@@ -1,4 +1,4 @@
-import { SERVICE_DEFINITIONS } from '../market/populationDemand';
+import { allServices } from '../market/serviceDefinitions';
 import { forEachPopulationCohort, type Population } from './population';
 
 export const STARVATION_ADJUST_TICKS = 30;
@@ -20,7 +20,7 @@ export function consumeServices(population: Population) {
 
             const pop = category.total;
 
-            for (const def of SERVICE_DEFINITIONS) {
+            for (const def of allServices) {
                 const rate = def.consumptionRatePerPersonPerTick;
                 const demand = pop * rate;
                 const serviceState = category.services[def.serviceKey];

@@ -333,6 +333,7 @@ export function makeManagementFacility(
             exactUsedByEdu: {},
             totalUsedByEdu: {},
             lastConsumed: {},
+            costBalance: 0,
         },
         ...overrides,
     };
@@ -362,6 +363,7 @@ export function makeProductionFacility(
             totalUsedByEdu: {},
             lastProduced: {},
             lastConsumed: {},
+            costBalance: 0,
         },
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,

@@ -1,6 +1,6 @@
 import { SHIPBUILDER_WORKING_CAPITAL, SHIPBUILDER_BOOTSTRAP_LOAN, SHIPBUILDER_LISTING_MARKUP } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
-import { EARTH_ID } from '../initialUniverse/earth';
+import { PROC_PLANET_ID } from '../initialUniverse';
 import { createShipListing } from '../ships/shipMarket';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import type { Agent, GameState } from '../planet/planet';
@@ -38,13 +38,14 @@ function makeShipyard(planetId: string, agentId: string): ShipConstructionFacili
             totalUsedByEdu: {},
             resourceEfficiency: {},
             lastConsumed: {},
+            costBalance: 0,
         },
     };
 }
 
 export function seedShipbuilderAgents(gameState: GameState): void {
     for (const planet of gameState.planets.values()) {
-        if (planet.id !== EARTH_ID) {
+        if (planet.id !== PROC_PLANET_ID) {
             continue;
         }
         const agentId = `shipbuilder_${planet.id}`;

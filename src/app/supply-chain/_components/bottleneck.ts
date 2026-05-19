@@ -8,15 +8,15 @@
  * facilities only, not at their upstream inputs recursively.
  */
 
+import { getServiceDefinitionByResourceName } from '@/simulation/market/serviceDefinitions';
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { SERVICE_PER_PERSON_PER_TICK } from '@/simulation/constants';
 import {
+    administrativeServiceResourceType,
+    constructionServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
-    administrativeServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
-    constructionServiceResourceType,
 } from '@/simulation/planet/services';
 import type { SupplyChainBalance } from './computeBalance';
 
@@ -63,14 +63,14 @@ export function computeBottlenecks(
     scales: Record<string, number>,
     population: number,
 ): BottleneckReport[] {
-    const demandPerTick = population * SERVICE_PER_PERSON_PER_TICK;
-
     // Build a lookup from resource name → ResourceBalance for quick access
     const balanceByName = new Map(balance.resources.map((r) => [r.resourceName, r]));
 
     const reports: BottleneckReport[] = [];
 
     for (const svc of DEMANDED_SERVICES) {
+        const svcDef = getServiceDefinitionByResourceName(svc.name);
+        const demandPerTick = population * (svcDef?.consumptionRatePerPersonPerTick ?? 0);
         // ── Collect all facilities that produce this service ──────────────────
         type ServiceProducer = { facilityName: string; outputQuantity: number; scale: number };
         const producers: ServiceProducer[] = [];

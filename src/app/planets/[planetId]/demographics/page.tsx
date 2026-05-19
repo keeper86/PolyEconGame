@@ -9,15 +9,6 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import type { Skill } from '@/simulation/population/population';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { educationLevelKeys } from '@/simulation/population/education';
-import {
-    ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-    CONSTRUCTION_BUFFER_TARGET_TICKS,
-    EDUCATION_BUFFER_TARGET_TICKS,
-    GROCERY_BUFFER_TARGET_TICKS,
-    HEALTHCARE_BUFFER_TARGET_TICKS,
-    LOGISTICS_BUFFER_TARGET_TICKS,
-    RETAIL_BUFFER_TARGET_TICKS,
-} from '@/simulation/constants';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -25,6 +16,7 @@ import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/Co
 import type { GroupMode } from './_components/demographicsTypes';
 import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
 import ServiceSection from './_components/ServiceSection';
+
 import PlanetDemography from './_components/PlanetDemography';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import WealthDistributionChart from './_components/WealthDistributionChart';
@@ -392,8 +384,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='grocery'
-                            serviceLabel='Grocery Buffers'
-                            bufferTargetTicks={GROCERY_BUFFER_TARGET_TICKS}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -410,8 +400,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='healthcare'
-                            serviceLabel='Healthcare Buffers'
-                            bufferTargetTicks={HEALTHCARE_BUFFER_TARGET_TICKS}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -428,8 +416,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='logistics'
-                            serviceLabel='Logistics Buffers'
-                            bufferTargetTicks={LOGISTICS_BUFFER_TARGET_TICKS}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -446,8 +432,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='retail'
-                            serviceLabel='Retail Buffers'
-                            bufferTargetTicks={RETAIL_BUFFER_TARGET_TICKS}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -464,8 +448,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='construction'
-                            serviceLabel='Construction Buffers'
-                            bufferTargetTicks={CONSTRUCTION_BUFFER_TARGET_TICKS}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -482,8 +464,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='administrative'
-                            serviceLabel='Administrative Buffers'
-                            bufferTargetTicks={ADMINISTRATIVE_BUFFER_TARGET_TICKS}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -500,8 +480,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='education'
-                            serviceLabel='Education Buffers'
-                            bufferTargetTicks={EDUCATION_BUFFER_TARGET_TICKS}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}

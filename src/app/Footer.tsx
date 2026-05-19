@@ -10,7 +10,7 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 
 /* ---------- constants ---------- */
 const MAX_LOCAL_EVENTS = 60;
-const GAP_PX = 24; // minimum horizontal gap between events (steric interaction)
+const GAP_PX = 48; // minimum horizontal gap between events (steric interaction)
 const BASE_SPEED_PX_PER_SEC = 80;
 const MIN_SPEED_PX_PER_SEC = 30;
 const MAX_SPEED_PX_PER_SEC = 500;
@@ -161,15 +161,13 @@ export default function Footer() {
         const speed = speedRef.current;
         const prevSpeed = lastSpawnSpeedRef.current;
 
-        // Steric check: estimate right-edge of last-spawned element using its actual
-        // animation speed (prevSpeed), not the newly computed speed.
-        // Also widen the threshold when speed > prevSpeed: a faster item will close the
-        // gap over time, so we need a larger initial separation to avoid overlap before
-        // the previous item exits the screen.
         const now = performance.now();
         const effectiveElapsed = now - lastSpawnTimeRef.current - totalPausedDurationRef.current;
         const distanceTraveled = (effectiveElapsed * prevSpeed) / 1000;
-        const threshold = lastSpawnWidthRef.current + GAP_PX + Math.max(0, containerWidth * (1 - prevSpeed / speed));
+        const threshold =
+            lastSpawnWidthRef.current +
+            GAP_PX +
+            containerWidth * (1 - Math.min(speed, prevSpeed) / Math.max(speed, prevSpeed));
         if (distanceTraveled < threshold) {
             return;
         }

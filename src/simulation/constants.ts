@@ -8,20 +8,11 @@ export const TICKS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, derived — never set independently
 
-/** Service consumption per person per tick (1 unit/person/tick for all services) */
-export const SERVICE_PER_PERSON_PER_TICK = 1 / 30;
-
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
-export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 1.25;
+export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 2;
 
-/**
- * Number of months in the departing/firing pipeline.
- * Fired workers enter this pipeline and work at reduced efficiency
- * for its duration before leaving entirely.
- * Voluntary quits also use this pipeline.
- */
 export const NOTICE_PERIOD_MONTHS = 3;
 
 /** True only on clean month boundaries (every TICKS_PER_MONTH ticks). */
@@ -31,147 +22,24 @@ export const isFirstTickInMonth = (tick: number): boolean => tick % TICKS_PER_MO
 /** True only on clean year boundaries (every TICKS_PER_YEAR ticks). */
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
 
-// ---------------------------------------------------------------------------
-// Grocery service market constants
-// ---------------------------------------------------------------------------
-
-/**
- * Household grocery service buffer target expressed in ticks of consumption.
- * Population tries to maintain this many ticks worth of grocery service.
- * 1 month = TICKS_PER_MONTH ticks.
- */
-export const GROCERY_BUFFER_TARGET_TICKS = TICKS_PER_MONTH;
-
-/**
- * Service buffer targets expressed in ticks of consumption.
- * Each service has its own buffer target for household inventory management.
- */
-export const HEALTHCARE_BUFFER_TARGET_TICKS = 4;
-export const ADMINISTRATIVE_BUFFER_TARGET_TICKS = 3;
-export const LOGISTICS_BUFFER_TARGET_TICKS = 4;
-export const RETAIL_BUFFER_TARGET_TICKS = 10;
-export const CONSTRUCTION_BUFFER_TARGET_TICKS = 2;
-export const EDUCATION_BUFFER_TARGET_TICKS = 2;
-
-/**
- * Minimum grocery service price (prevents zero or negative prices).
- */
-export const PRICE_FLOOR = 0.01;
+export const PRICE_FLOOR = 0.001;
 export const PRICE_CEIL = 1000000.0;
 
-// ---------------------------------------------------------------------------
-// Per-agent food pricing constants
-// ---------------------------------------------------------------------------
+export const PRICE_ADJUST_MAX_UP = 1.025;
 
-/**
- * Maximum multiplicative price adjustment per tick (upward).
- * e.g. 1.05 means price can increase at most 5 % per tick.
- */
-export const PRICE_ADJUST_MAX_UP = 1.05;
+export const PRICE_ADJUST_MAX_DOWN = 0.975;
 
-/**
- * Maximum multiplicative price adjustment per tick (downward).
- * e.g. 0.95 means price can decrease at most 5 % per tick.
- */
-export const PRICE_ADJUST_MAX_DOWN = 0.95;
-
-/**
- * Maximum multiplicative price adjustment per tick (downward) when the offer
- * price is within the cost-floor brake zone.  Much smaller than
- * PRICE_ADJUST_MAX_DOWN so that prices descend very slowly near production
- * cost, keeping supply chains alive while downstream demand signals propagate.
- * e.g. 0.99 means at most 1 % decrease per tick at/near the cost floor.
- */
-export const PRICE_ADJUST_MAX_DOWN_SOFT = 0.99;
-
-/**
- * Minimum profit-margin markup added on top of estimated production cost to
- * derive the soft cost floor for automatic pricing.
- * e.g. 0.05 → agents target at least 5 % above break-even.
- */
 export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
 
 export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 
-/**
- * Width of the cost-floor brake zone, expressed as a fraction of the floor
- * price.  Within this zone the maximum downward adjustment is linearly
- * interpolated from PRICE_ADJUST_MAX_DOWN_SOFT (at the floor) to
- * PRICE_ADJUST_MAX_DOWN (at the top of the zone).
- * e.g. 0.2 → brake zone spans from costFloor to costFloor × 1.2.
- */
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
+export const COST_SPRING_STRENGTH = 0.02;
 
-/**
- * Upper price ceiling for automatic offer pricing, expressed as a multiple of
- * the estimated production cost floor.  A seller's offer price will be
- * dampened as it approaches `costFloor × AUTOMATED_PRICE_CAP_FACTOR` and a
- * downward spring kicks in above that level.  This prevents supply-scarce
- * goods from spiralling to PRICE_CEIL while still generating a strong import
- * signal (e.g. 10× production cost is already an extraordinary premium).
- */
-export const AUTOMATED_PRICE_CAP_FACTOR = 20.0;
-
-/**
- * Upper price ceiling for automatic bid pricing, expressed as a multiple of
- * the current market price when the bid is being evaluated.  Mirrors
- * AUTOMATED_PRICE_CAP_FACTOR on the buyer side: prevents import bids from
- * rising to PRICE_CEIL over a long voyage (where fill rate = 0 every tick),
- * which would exhaust deposits and collapse the effective order quantity.
- */
-export const BID_PRICE_CAP_FACTOR = 16.0;
-
-/**
- * Stiffness of the cost-equilibrium spring that couples input and output prices.
- *
- * Implements a symmetric error-correction mechanism (cf. von Cramon-Taubadel 1998,
- * Dosi et al. EURACE): a restoring force proportional to the profitability gap
- * keeps the supply chain anchored near break-even without hard price floors.
- *
- *   Output side: factor += COST_SPRING_STRENGTH × max(0, costFloor/price − 1)
- *     → upward nudge on offer price when selling below production cost.
- *
- *   Input side:  factor −= COST_SPRING_STRENGTH × max(0, totalCost/revenue − 1)
- *     → downward nudge on bid price when facility costs exceed output revenue.
- *
- * Both springs are zero when the facility is profitable, strengthen linearly with
- * the cost gap, and are additive on top of the normal tâtonnement signal.
- * Set to 0 to disable.  A value of 0.1 gives a gentle but persistent pull
- * toward break-even: a 20 % cost overrun adds ~2 % correction per tick.
- */
-export const COST_SPRING_STRENGTH = 0.1;
-
-/**
- * Sensitivity of the multiplicative price factor to the gradient of M.
- * Larger values make agents change prices faster in response to the metric.
- */
-export const PRICE_ADJUST_SENSITIVITY = 0.01;
-
-// ---------------------------------------------------------------------------
-// Persistent money / loan repayment constants
-// ---------------------------------------------------------------------------
-
-/**
- * Retained earnings threshold as a fraction of the last wage bill.
- * Firms only repay loans when deposits exceed this multiple of their wage bill.
- * E.g. 1.5 means firms keep 1.5× wage-bill as buffer before repaying.
- */
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
-/**
- * Number of ticks of input stock an automated agent tries to maintain as a
- * procurement buffer.  Used both in automaticPricing (bid quantity) and in the
- * financial tick (retained-earnings extension + input-buffer loan).
- */
-export const INPUT_BUFFER_TARGET_TICKS = 180;
-
-/**
- * Maximum output inventory expressed as ticks of production.
- * When an agent's output storage reaches this threshold, the facility is
- * supply-constrained by lack of demand: input buying is suppressed entirely
- * until inventory drops below this ceiling.
- */
-export const OUTPUT_BUFFER_MAX_TICKS = 5;
+export const INPUT_BUFFER_TARGET_TICKS = 30;
+export const OUTPUT_BUFFER_MAX_TICKS = 20;
 
 // ---------------------------------------------------------------------------
 // Bank credit / loan origination constants

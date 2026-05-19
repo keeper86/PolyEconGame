@@ -1,10 +1,9 @@
-import {
-    EDUCATION_BUFFER_TARGET_TICKS,
-    GROCERY_BUFFER_TARGET_TICKS,
-    HEALTHCARE_BUFFER_TARGET_TICKS,
-    SERVICE_PER_PERSON_PER_TICK,
-    TICKS_PER_YEAR,
-} from '../constants';
+import { TICKS_PER_YEAR } from '../constants';
+import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
+
+const groceryDef = SERVICE_DEFINITIONS.grocery;
+const healthcareDef = SERVICE_DEFINITIONS.healthcare;
+const educationDef = SERVICE_DEFINITIONS.education;
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import { ageDependentBaseDisabilityProb } from '../population/disability';
@@ -57,6 +56,7 @@ function mergeIntoManifest(
                 logistics: { ...sourceCategory.services.logistics },
                 healthcare: { ...sourceCategory.services.healthcare },
                 construction: { ...sourceCategory.services.construction },
+                maintenance: { ...sourceCategory.services.maintenance },
                 administrative: { ...sourceCategory.services.administrative },
                 education: { ...sourceCategory.services.education },
             },
@@ -181,20 +181,25 @@ export function calculateProvisions(manifest: PassengerManifest, flightTicks: nu
         return provisionList;
     }
 
-    const groceryRequired = totalPassengers * SERVICE_PER_PERSON_PER_TICK * (flightTicks + GROCERY_BUFFER_TARGET_TICKS);
+    const groceryRequired =
+        totalPassengers * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks);
     if (groceryRequired > 0) {
         provisionList.groceryProvisioned.goal = groceryRequired;
     }
 
     const healthcareRequired =
-        totalPassengers * SERVICE_PER_PERSON_PER_TICK * (flightTicks + HEALTHCARE_BUFFER_TARGET_TICKS);
+        totalPassengers *
+        healthcareDef.consumptionRatePerPersonPerTick *
+        (flightTicks + healthcareDef.bufferTargetTicks);
     if (healthcareRequired > 0) {
         provisionList.healthcareProvisioned.goal = healthcareRequired;
     }
 
     if (educationPassengers > 0) {
         const educationRequired =
-            educationPassengers * SERVICE_PER_PERSON_PER_TICK * (flightTicks + EDUCATION_BUFFER_TARGET_TICKS);
+            educationPassengers *
+            educationDef.consumptionRatePerPersonPerTick *
+            (flightTicks + educationDef.bufferTargetTicks);
         if (educationRequired > 0) {
             provisionList.educationProvisioned.goal = educationRequired;
         }
@@ -288,6 +293,7 @@ export function advanceManifestAge(
                 logistics: { ...category.services.logistics },
                 healthcare: { ...category.services.healthcare },
                 construction: { ...category.services.construction },
+                maintenance: { ...category.services.maintenance },
                 administrative: { ...category.services.administrative },
                 education: { ...category.services.education },
             },
@@ -487,7 +493,7 @@ export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerMani
 }
 
 function setBuffersToMax(category: PopulationCategory): void {
-    category.services.grocery = { buffer: GROCERY_BUFFER_TARGET_TICKS, starvationLevel: 0 };
-    category.services.healthcare = { buffer: HEALTHCARE_BUFFER_TARGET_TICKS, starvationLevel: 0 };
-    category.services.education = { buffer: EDUCATION_BUFFER_TARGET_TICKS, starvationLevel: 0 };
+    category.services.grocery = { buffer: groceryDef.bufferTargetTicks, starvationLevel: 0 };
+    category.services.healthcare = { buffer: healthcareDef.bufferTargetTicks, starvationLevel: 0 };
+    category.services.education = { buffer: educationDef.bufferTargetTicks, starvationLevel: 0 };
 }

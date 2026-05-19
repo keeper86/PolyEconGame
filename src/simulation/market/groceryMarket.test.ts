@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { GROCERY_BUFFER_TARGET_TICKS, PRICE_ADJUST_MAX_UP, SERVICE_PER_PERSON_PER_TICK } from '../constants';
+import { PRICE_ADJUST_MAX_UP } from '../constants';
+import { SERVICE_DEFINITIONS } from './populationDemand';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import {
     administrativeServiceResourceType,
@@ -15,12 +16,15 @@ import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation 
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 
+const groceryDef = SERVICE_DEFINITIONS.grocery;
+const retailDef = SERVICE_DEFINITIONS.retail;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const GROCERY_SERVICE = groceryServiceResourceType.name;
-const RETAIL_SERVICE = retailServiceResourceType.name;
+const GROCERY_SERVICE = groceryDef.resource.name;
+const RETAIL_SERVICE = retailDef.resource.name;
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
     return makeGS(planet, agents, 1);
@@ -48,6 +52,7 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
                 totalUsedByEdu: {},
                 lastProduced: {},
                 lastConsumed: {},
+                costBalance: 0,
             },
             workerRequirement: {},
             pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -165,7 +170,7 @@ describe('groceryMarketTick', () => {
         marketTick(agentMap(groceryAgent), planet);
 
         // after tick, avg buffer per person should equal the single buffer target
-        const expected = GROCERY_BUFFER_TARGET_TICKS;
+        const expected = groceryDef.bufferTargetTicks;
         // Population lives at ages 14–64 (MIN_EMPLOYABLE_AGE upwards); age 0 is empty.
         const cat = planet.population.demography[14].unoccupied.none.novice;
         expect(cat.total).toBeGreaterThan(0); // sanity: cell is populated
@@ -198,7 +203,7 @@ describe('groceryMarketTick', () => {
         planet.bank.deposits = planet.bank.householdDeposits;
 
         // Supply: only enough for the rich cohort (small supply)
-        const supplyQty = GROCERY_BUFFER_TARGET_TICKS * richCat.total * 0.5;
+        const supplyQty = groceryDef.bufferTargetTicks * richCat.total * 0.5;
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, supplyQty);
         setGroceryOffer(groceryAgent, 0.5);
 
@@ -228,7 +233,7 @@ describe('groceryMarketTick', () => {
         setGroceryOffer(expensiveAgent, 5.0);
 
         // Households need bid prices ≥ cheap ask (1.0).
-        // bidPrice = wealth / desiredPerPerson = wealth / GROCERY_BUFFER_TARGET_TICKS
+        // bidPrice = wealth / desiredPerPerson = wealth / groceryDef.bufferTargetTicks
         // Use wealth = 150 → bidPrice = 150/90 ≈ 1.67 → can afford cheap (ask=1.0) but not expensive (ask=5.0)
         const totalPop = giveHouseholdsWealth(planet, 150);
         planet.bank.householdDeposits = totalPop * 150;
@@ -513,8 +518,8 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         let total = 0;
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
-                // buffer is in ticks; convert to units: buffer * SERVICE_PER_PERSON_PER_TICK * population
-                total += cat.services.retail.buffer * SERVICE_PER_PERSON_PER_TICK * cat.total;
+                // buffer is in ticks; convert to units: buffer * consumptionRatePerPersonPerTick * population
+                total += cat.services.retail.buffer * retailDef.consumptionRatePerPersonPerTick * cat.total;
             }),
         );
         return total;
@@ -580,7 +585,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
     });
 
     it('empty grocery buffer + no food seller → wealth intact → retail service demand unaffected', () => {
-        const fullBuffer = GROCERY_BUFFER_TARGET_TICKS;
+        const fullBuffer = groceryDef.bufferTargetTicks;
         const planetWithFullFood = setupPlanet(fullBuffer);
         const planetWithNoFood = setupPlanet(0);
 

@@ -1,88 +1,22 @@
-import {
-    ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-    CONSTRUCTION_BUFFER_TARGET_TICKS,
-    EDUCATION_BUFFER_TARGET_TICKS,
-    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
-    GROCERY_BUFFER_TARGET_TICKS,
-    HEALTHCARE_BUFFER_TARGET_TICKS,
-    LOGISTICS_BUFFER_TARGET_TICKS,
-    RETAIL_BUFFER_TARGET_TICKS,
-    SERVICE_PER_PERSON_PER_TICK,
-} from '../constants';
+import { RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY } from '../constants';
+import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
-import type { Resource } from '../planet/claims';
 import {
-    administrativeServiceResourceType,
-    constructionServiceResourceType,
-    educationServiceResourceType,
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
-    logisticsServiceResourceType,
-    retailServiceResourceType,
-} from '../planet/services';
-import type { ServiceName } from '../population/population';
+    administrativeCenter,
+    constructionFacility,
+    educationCenter,
+    groceryChain,
+    hospital,
+    logisticsHub,
+    maintenanceFacility,
+    retailChain,
+} from '../planet/productionFacilities';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
-
-export type ServiceDefinition = {
-    readonly resource: Resource;
-    readonly serviceKey: ServiceName;
-    readonly bufferTargetTicks: number;
-    readonly consumptionRatePerPersonPerTick: number;
-};
-
-export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
-    {
-        resource: groceryServiceResourceType,
-        serviceKey: 'grocery',
-        bufferTargetTicks: GROCERY_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: healthcareServiceResourceType,
-        serviceKey: 'healthcare',
-        bufferTargetTicks: HEALTHCARE_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: logisticsServiceResourceType,
-        serviceKey: 'logistics',
-        bufferTargetTicks: LOGISTICS_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: educationServiceResourceType,
-        serviceKey: 'education',
-        bufferTargetTicks: EDUCATION_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: retailServiceResourceType,
-        serviceKey: 'retail',
-        bufferTargetTicks: RETAIL_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK,
-    },
-    {
-        resource: constructionServiceResourceType,
-        serviceKey: 'construction',
-        bufferTargetTicks: CONSTRUCTION_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 2,
-    },
-    {
-        resource: administrativeServiceResourceType,
-        serviceKey: 'administrative',
-        bufferTargetTicks: ADMINISTRATIVE_BUFFER_TARGET_TICKS,
-        consumptionRatePerPersonPerTick: SERVICE_PER_PERSON_PER_TICK / 1.5,
-    },
-];
-
-/** O(1) lookup by resource name — used by settlement and consumption. */
-export const SERVICE_DEFINITION_BY_RESOURCE_NAME = new Map<string, ServiceDefinition>(
-    SERVICE_DEFINITIONS.map((def) => [def.resource.name, def]),
-);
-
-// Priority order derived from the definition array order.
-export const householdDemandPriority: string[] = SERVICE_DEFINITIONS.map((d) => d.resource.name);
+import type { ServiceKey } from './serviceDefinitions';
+import { allServices, householdDemandPriority } from './serviceDefinitions';
+export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
+export type { ServiceDefinition, ServiceKey } from './serviceDefinitions';
 
 // ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
@@ -193,8 +127,52 @@ export function binHouseholdBids(
     return bins.filter((b) => b.quantity > 0);
 }
 
+const groceryChainTemplate: ProductionFacility = groceryChain('', '');
+const retailTemplate: ProductionFacility = retailChain('', '');
+const healthcareTemplate: ProductionFacility = hospital('', '');
+const educationTemplate: ProductionFacility = educationCenter('', '');
+const constructionTemplate: ProductionFacility = constructionFacility('', '');
+const maintenanceTemplate: ProductionFacility = maintenanceFacility('', '');
+const administrativeTemplate: ProductionFacility = administrativeCenter('', '');
+const logisticsTemplate: ProductionFacility = logisticsHub('', '');
+
+export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionFacility; produced: number }> = {
+    grocery: {
+        template: groceryChainTemplate,
+        produced: groceryChainTemplate.produces[0].quantity,
+    },
+    retail: {
+        template: retailTemplate,
+        produced: retailTemplate.produces[0].quantity,
+    },
+    healthcare: {
+        template: healthcareTemplate,
+        produced: healthcareTemplate.produces[0].quantity,
+    },
+    education: {
+        template: educationTemplate,
+        produced: educationTemplate.produces[0].quantity,
+    },
+    construction: {
+        template: constructionTemplate,
+        produced: constructionTemplate.produces[0].quantity,
+    },
+    maintenance: {
+        template: maintenanceTemplate,
+        produced: maintenanceTemplate.produces[0].quantity,
+    },
+    administrative: {
+        template: administrativeTemplate,
+        produced: administrativeTemplate.produces[0].quantity,
+    },
+    logistics: {
+        template: logisticsTemplate,
+        produced: logisticsTemplate.produces[0].quantity,
+    },
+};
+
 export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
-    const allBids = new Map<string, BidOrder[]>(SERVICE_DEFINITIONS.map((def) => [def.resource.name, []]));
+    const allBids = new Map<string, BidOrder[]>(householdDemandPriority.map((resourceName) => [resourceName, []]));
 
     planet.population.demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -212,25 +190,39 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
             let remainingWealth = wm.mean;
 
-            for (const def of SERVICE_DEFINITIONS) {
+            for (const service of allServices) {
                 if (remainingWealth <= 0) {
                     break;
                 }
 
-                if (def.serviceKey === 'education' && occ !== 'education') {
+                if (service.serviceKey === 'education' && occ !== 'education') {
                     continue; // Only education group buys education services
                 }
 
+                let currentProductionCost = Number.MAX_SAFE_INTEGER;
+                const serviceFacility = serviceFacilityTemplate[service.serviceKey];
+
+                serviceFacility.template.needs.forEach((need) => {
+                    currentProductionCost += need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
+                });
+                currentProductionCost +=
+                    (serviceFacility.template.workerRequirement.none ?? 0) +
+                    (serviceFacility.template.workerRequirement.primary ?? 0) +
+                    (serviceFacility.template.workerRequirement.secondary ?? 0) +
+                    (serviceFacility.template.workerRequirement.tertiary ?? 0);
+                currentProductionCost /= serviceFacility.produced;
+
                 const referencePrice =
-                    planet.marketPrices[def.resource.name] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+                    Math.min(planet.marketPrices[service.resource.name], currentProductionCost * 5) *
+                    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
                 if (referencePrice <= 0) {
                     continue;
                 }
 
-                const serviceBuffer = category.services[def.serviceKey]?.buffer ?? 0;
-                const rate = def.consumptionRatePerPersonPerTick;
-                const bufferFillDeficit = Math.max(0, def.bufferTargetTicks - serviceBuffer);
-                const willingPrice = referencePrice * (bufferFillDeficit / def.bufferTargetTicks);
+                const serviceBuffer = category.services[service.serviceKey]?.buffer ?? 0;
+                const rate = service.consumptionRatePerPersonPerTick;
+                const bufferFillDeficit = Math.max(0, service.bufferTargetTicks - serviceBuffer);
+                const willingPrice = referencePrice * (bufferFillDeficit / service.bufferTargetTicks);
                 if (willingPrice <= 0) {
                     continue;
                 }
@@ -249,7 +241,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 remainingWealth -= quantityPerPerson * willingPrice;
 
-                const bids = allBids.get(def.resource.name)!;
+                const bids = allBids.get(service.resource.name)!;
                 bids.push({
                     age,
                     edu,

@@ -5,12 +5,13 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { ServiceName } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { GV_FOOD, GV_POP, GV_STARV, SERVICE_TARGET_MAP } from './demographicsTypes';
+import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 
 // ─── Nutrition bands ──────────────────────────────────────────────────────────
 
@@ -245,7 +246,9 @@ export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'g
     const groupKeys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const groupLabels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const groupColors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
-    const targetPerPerson = SERVICE_TARGET_MAP[serviceKey];
+    const targetPerPerson =
+        SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
+        SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
 
     const { data, yDomain } = useMemo(() => {
         const builtData: ChartRow[] = [];
