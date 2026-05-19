@@ -104,3 +104,32 @@ export const allServices = Object.values(SERVICE_DEFINITIONS);
 
 // Priority order derived from the definition array order.
 export const householdDemandPriority: string[] = allServices.map((d) => d.resource.name);
+
+export type ServiceTierSupportWeightOverride = {
+    generationGap?: number;
+    sigma?: number;
+    kernelN?: number;
+};
+
+export type ServiceTier = {
+    readonly name: string;
+    readonly services: ServiceName[];
+    readonly coverageFraction: number;
+    readonly mandatoryForOwnConsumption: boolean;
+    readonly supportWeightOverride?: ServiceTierSupportWeightOverride;
+};
+
+export const SERVICE_TIERS: ServiceTier[] = [
+    {
+        name: 'survival',
+        services: ['grocery', 'healthcare'],
+        coverageFraction: 1.0,
+        mandatoryForOwnConsumption: true,
+    },
+    {
+        name: 'comfort',
+        services: ['logistics', 'retail', 'education', 'construction', 'maintenance', 'administrative'],
+        coverageFraction: 0.5,
+        mandatoryForOwnConsumption: false,
+    },
+];

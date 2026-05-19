@@ -48,7 +48,7 @@ function scanBestRoute(
     const candidatesFromOrigin: RouteCandidate[] = [];
 
     let bestProfitPerTick = ARBITRAGE_MIN_PROFIT_PER_TICK;
-    const debug = process.env.SIM_DEBUG === '1';
+    const debug = false; //process.env.SIM_DEBUG === '2';
     const monthly = isFirstTickInMonth(gameState.tick);
 
     const oneWayTicks = travelTime(ship);

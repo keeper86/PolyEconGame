@@ -27,7 +27,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
+import { GENERATION_GAP, RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY, SUPPORT_WEIGHT_SIGMA } from '../constants';
 import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 import type { Planet } from '../planet/planet';
 
@@ -348,6 +348,20 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
     });
 
     it('infants with higher food-stock deficit receive more than those with less deficit', () => {
+        // With unlimited parent wealth the comfort tier fully equalizes per-capita welfare
+        // across all infant groups: survival-tier transfers to age-0 (more needy) are
+        // offset by larger comfort-tier transfers to age-1 (less needy but wealthier gap),
+        // producing identical final wealth. We use constrained parent wealth so the
+        // survival tier exhausts all parent surplus, leaving zero for the comfort tier.
+        const healthcareDef = SERVICE_DEFINITIONS.healthcare;
+        const survivalFloor =
+            (groceryDef.consumptionRatePerPersonPerTick + healthcareDef.consumptionRatePerPersonPerTick) *
+            RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+        placePeople(planet, PARENT_AGE, 1000, {
+            wealthMean: survivalFloor * 2, // surplus above floor, but insufficient to cover all survival needs
+            foodStock: foodTarget * 1000,
+        });
+
         // Add a second group of infants with partial food stock.
         // 50% stocked: 100 people × (foodTarget × 0.5) ticks total = 15 ticks per person
         const partialFood = foodTarget * 0.5 * 100;
@@ -357,7 +371,8 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
 
         intergenerationalTransfersForPlanet(planet);
 
-        // Age-0 infants got nothing (no food at all) → should receive more per capita.
+        // Age-0 infants (no food at all) have higher per-capita need than age-1 (50% stocked),
+        // so they receive more per capita from the survival tier.
         const age0PerCapita = wealthAt(planet, 0) / 200;
         const age1PerCapita = wealthAt(planet, 1) / 100;
 

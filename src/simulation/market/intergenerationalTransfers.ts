@@ -8,10 +8,8 @@ import {
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { nextRandom } from '../utils/stochasticRound';
 import type { Planet } from '../planet/planet';
-import { groceryServiceResourceType } from '../planet/services';
-import { SERVICE_DEFINITIONS } from './serviceDefinitions';
-
-const groceryDef = SERVICE_DEFINITIONS.grocery;
+import { allServices, SERVICE_DEFINITIONS, SERVICE_TIERS } from './serviceDefinitions';
+import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
@@ -21,16 +19,9 @@ import type {
     PopulationCategory,
     PopulationTransferCohort,
     PopulationTransferMatrix,
+    ServiceName,
 } from '../population/population';
 import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../population/population';
-
-/** Per-age aggregated snapshot of supporter surplus. */
-interface SurplusSnapshot {
-    /** Total surplus wealth available for transfer (currency units). */
-    totalSurplus: number;
-    /** Total supporter population contributing to this surplus. */
-    totalPop: number;
-}
 
 /** Per-age aggregated dependent need. */
 interface DependentNeed {
@@ -47,8 +38,8 @@ interface DependentNeed {
 interface CellAggregate {
     pop: number;
     wealth: GaussianMoments;
-    /** Total grocery service buffer (in service units) across all skill sub-cells. */
-    groceryBuffer: number;
+    /** Total service buffer (in service units) per service key, across all skill sub-cells. */
+    buffers: Partial<Record<ServiceName, number>>;
 }
 
 /**
@@ -72,7 +63,7 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
         for (const occ of OCCUPATIONS) {
             ageCells[occ] = {} as { [L in EducationLevelType]: CellAggregate };
             for (const edu of educationLevelKeys) {
-                ageCells[occ][edu] = { pop: 0, wealth: { mean: 0, variance: 0 }, groceryBuffer: 0 };
+                ageCells[occ][edu] = { pop: 0, wealth: { mean: 0, variance: 0 }, buffers: {} };
             }
         }
 
@@ -84,9 +75,13 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             const cell = ageCells[occ][edu];
             cell.wealth = mergeGaussianMoments(cell.pop, cell.wealth, n, cat.wealth);
             cell.pop += n;
-            // Convert grocery service buffer ticks to equivalent service units
+            // Convert per-category service buffers (ticks) to aggregate service units:
             // buffer ticks * consumptionRatePerPersonPerTick * n = total service units
-            cell.groceryBuffer += cat.services.grocery.buffer * groceryDef.consumptionRatePerPersonPerTick * n;
+            for (const svc of allServices) {
+                const key = svc.serviceKey;
+                cell.buffers[key] =
+                    (cell.buffers[key] ?? 0) + cat.services[key].buffer * svc.consumptionRatePerPersonPerTick * n;
+            }
         });
 
         cache[age] = ageCells;
@@ -95,8 +90,10 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
     return cache;
 }
 
-export function supportWeight(ageDifference: number): number {
-    const sigma = SUPPORT_WEIGHT_SIGMA;
+export function supportWeight(ageDifference: number, override?: ServiceTierSupportWeightOverride): number {
+    const sigma = override?.sigma ?? SUPPORT_WEIGHT_SIGMA;
+    const generationGap = override?.generationGap ?? GENERATION_GAP;
+    const kernelN = override?.kernelN ?? GENERATION_KERNEL_N;
     let best = 0;
 
     const amplitude = (n: number): number => {
@@ -106,8 +103,8 @@ export function supportWeight(ageDifference: number): number {
             return Math.exp(-0.5 * (n - 1)); // children and younger relatives
         }
     };
-    for (let n = -GENERATION_KERNEL_N; n <= GENERATION_KERNEL_N; n++) {
-        const target = n * GENERATION_GAP;
+    for (let n = -kernelN; n <= kernelN; n++) {
+        const target = n * generationGap;
         const delta = ageDifference - target;
 
         const w = amplitude(n) * Math.exp(-(delta * delta) / (2 * sigma * sigma));
@@ -127,6 +124,79 @@ export function effectiveSurplus(mean: number, variance: number, floor: number, 
     const cv2 = mean > 0 ? variance / (mean * mean) : 0;
     const alpha = 1 / (1 + cv2);
     return alpha * naiveSurplus * population;
+}
+
+/** Compute per-age total supporter surplus given a wealth floor. Only ages >= MIN_EMPLOYABLE_AGE contribute. */
+function computeSurplusSnapshot(cache: AggregateCache, floor: number): number[] {
+    const numAges = cache.length;
+    const snapshot: number[] = new Array(numAges);
+    for (let age = 0; age < numAges; age++) {
+        let totalSurplus = 0;
+        if (age >= MIN_EMPLOYABLE_AGE) {
+            for (const occ of OCCUPATIONS) {
+                for (const edu of educationLevelKeys) {
+                    const { pop, wealth } = cache[age][occ][edu];
+                    if (pop <= 0) {
+                        continue;
+                    }
+                    totalSurplus += effectiveSurplus(wealth.mean, wealth.variance, floor, pop);
+                }
+            }
+        }
+        snapshot[age] = totalSurplus;
+    }
+    return snapshot;
+}
+
+/**
+ * Compute per-age dependent need for a set of tier services.
+ * Need = cost to fill buffers to coverageFraction of target, minus wealth available after
+ * covering higher-priority (alreadyCommittedCost) spending.
+ */
+function computeDependentNeedsForTier(
+    cache: AggregateCache,
+    tierServices: ServiceName[],
+    marketPrices: Record<string, number>,
+    coverageFraction: number,
+    alreadyCommittedCost: number,
+): DependentNeed[] {
+    const numAges = cache.length;
+    const needs: DependentNeed[] = new Array(numAges);
+
+    const serviceParams = tierServices.map((key) => {
+        const def = SERVICE_DEFINITIONS[key];
+        const price = (marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+        const targetPerPerson = def.bufferTargetTicks * def.consumptionRatePerPersonPerTick * coverageFraction;
+        return { key, price, targetPerPerson };
+    });
+
+    for (let age = 0; age < numAges; age++) {
+        let totalNeed = 0;
+        let totalPop = 0;
+        for (const occ of OCCUPATIONS) {
+            for (const edu of educationLevelKeys) {
+                const { pop, buffers, wealth } = cache[age][occ][edu];
+                if (pop <= 0) {
+                    continue;
+                }
+                let totalCostGap = 0;
+                for (const { key, price, targetPerPerson } of serviceParams) {
+                    const perCapitaBuffer = (buffers[key] ?? 0) / pop;
+                    const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
+                    // Apply a fill-fraction discount so urgency tapers as the buffer fills.
+                    const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
+                    totalCostGap += gap * price * (1 - fillFraction);
+                }
+                // Wealth available for this tier = total wealth minus what is reserved for higher tiers.
+                const availableWealth = Math.max(0, wealth.mean - alreadyCommittedCost);
+                const netNeed = Math.max(0, totalCostGap - availableWealth);
+                totalNeed += netNeed * pop;
+                totalPop += pop;
+            }
+        }
+        needs[age] = { totalNeed, totalPop };
+    }
+    return needs;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,168 +238,126 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
 
-    const groceryPrice =
-        planet.marketPrices[groceryServiceResourceType.name] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
-
-    const groceryTargetPerPerson = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
-
-    const baseGroceryCost = groceryDef.consumptionRatePerPersonPerTick * groceryPrice;
-
-    const cache = buildAggregateCache(demography);
-
     const transferMatrix: PopulationTransferMatrix = createZeroTransferMatrix(numAges);
 
-    const survivalSurplusSnapshot: SurplusSnapshot[] = new Array(numAges);
+    let cumulativeMandatoryCost = 0;
+    let activeCache = buildAggregateCache(demography);
 
-    for (let age = 0; age < numAges; age++) {
-        let totalSurplus = 0;
-        let totalSupporterPop = 0;
+    for (let tierIdx = 0; tierIdx < SERVICE_TIERS.length; tierIdx++) {
+        const tier = SERVICE_TIERS[tierIdx];
 
-        for (const occ of OCCUPATIONS) {
-            for (const edu of educationLevelKeys) {
-                const { pop, wealth } = cache[age][occ][edu];
-                if (pop <= 0) {
-                    continue;
-                }
-                if (age < MIN_EMPLOYABLE_AGE) {
-                    continue;
-                }
-                const raw = effectiveSurplus(wealth.mean, wealth.variance, baseGroceryCost, pop);
-                totalSurplus += raw;
-                totalSupporterPop += pop;
-            }
+        // Cost per tick to consume all services in this tier (at urgency price).
+        const tierCostPerTick = tier.services.reduce((sum, key) => {
+            const def = SERVICE_DEFINITIONS[key];
+            const price =
+                (planet.marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+            return sum + def.consumptionRatePerPersonPerTick * price;
+        }, 0);
+
+        // Supporters must keep enough for all previous mandatory tiers (and this one if mandatory).
+        const tierFloor = cumulativeMandatoryCost + (tier.mandatoryForOwnConsumption ? tierCostPerTick : 0);
+
+        // Rebuild cache after the first tier because debit/credit calls mutate demography wealth.
+        if (tierIdx > 0) {
+            activeCache = buildAggregateCache(demography);
         }
 
-        survivalSurplusSnapshot[age] = { totalSurplus, totalPop: totalSupporterPop };
-    }
-
-    // Compute per-age aggregate dependent need (across ALL edu levels and skills)
-    const computeDependentNeeds = (targetPerPerson: number): DependentNeed[] => {
-        const needs: DependentNeed[] = new Array(numAges);
-        for (let age = 0; age < numAges; age++) {
-            let totalNeed = 0;
-            let totalPop = 0;
-
-            for (const occ of OCCUPATIONS) {
-                for (const edu of educationLevelKeys) {
-                    const { pop, groceryBuffer, wealth } = cache[age][occ][edu];
-                    if (pop <= 0) {
-                        continue;
-                    }
-                    const perCapitaGroceryBuffer = groceryBuffer / pop;
-                    const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
-                    // Cost to fill the gap at real market price (no urgency inflation here —
-                    // urgency belongs in market demand bids, not in transfer amounts).
-                    // Apply a discount factor [0,1] based on how full the per-capita buffer is
-                    // relative to the target, so urgency tapers to zero as the buffer fills.
-                    const fillFraction = Math.min(1, perCapitaGroceryBuffer / targetPerPerson);
-                    const costGap = gap * groceryPrice * (1 - fillFraction);
-                    // Subtract existing per-capita wealth so we only transfer what they
-                    // genuinely cannot self-fund.
-                    const selfFund = Math.max(0, wealth.mean);
-                    const netNeed = Math.max(0, costGap - selfFund);
-                    totalNeed += netNeed * pop;
-                    totalPop += pop;
-                }
-            }
-
-            needs[age] = { totalNeed, totalPop };
-        }
-        return needs;
-    };
-
-    //Let's check the transfers a bit more.
-
-    //This is entirely to supply everyone with groceryService.
-
-    const survivalNeeds = computeDependentNeeds(groceryTargetPerPerson);
-    const remaining = survivalSurplusSnapshot.map((s) => s.totalSurplus);
-
-    // Compute global scarcity factor so all cohorts share shortages proportionally
-    // rather than earlier ages consuming the supply pool first.
-    const totalSupply = remaining.reduce((sum, s) => sum + s, 0);
-    const totalDemand = survivalNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
-    const scarcityFactor = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 1;
-
-    // Shuffle age indices to eliminate systematic processing-order bias over contested
-    // supplier pools. Statistically correct in expectation across ticks.
-    const ageOrder = Array.from({ length: numAges }, (_, i) => i);
-    for (let i = ageOrder.length - 1; i > 0; i--) {
-        const j = Math.floor(nextRandom() * (i + 1));
-        [ageOrder[i], ageOrder[j]] = [ageOrder[j], ageOrder[i]];
-    }
-
-    for (const age of ageOrder) {
-        const dependentNeed = survivalNeeds[age];
-        const need = dependentNeed.totalNeed * scarcityFactor;
-        if (need <= 0) {
-            continue;
-        }
-
-        // Compute support weights from all ages with capacity > 0
-        const weightedSuppliers: { supAge: number; weight: number }[] = [];
-        let totalWeight = 0;
-
-        for (let supAge = 0; supAge < numAges; supAge++) {
-            if (remaining[supAge] <= 0) {
-                continue;
-            }
-
-            // Signed age difference: positive = supporter is older than dependent
-            const ageDiff = supAge - age;
-            const w = supportWeight(ageDiff);
-            if (w < 1e-10) {
-                continue;
-            }
-
-            weightedSuppliers.push({ supAge, weight: w });
-            totalWeight += w;
-        }
-
-        if (totalWeight <= 0) {
-            continue;
-        }
-
-        // Proportional allocation pass
-        let totalTransfer = 0;
-        const transfers: { supAge: number; amount: number }[] = [];
-
-        for (const { supAge, weight } of weightedSuppliers) {
-            const share = (weight / totalWeight) * need;
-            const actual = Math.min(share, remaining[supAge]);
-            if (actual <= 0) {
-                continue;
-            }
-            transfers.push({ supAge, amount: actual });
-            totalTransfer += actual;
-        }
-
-        if (totalTransfer <= 0) {
-            continue;
-        }
-
-        // Debit each supporter age (uses effective surplus for proportional allocation)
-        // Track actual debits to ensure credit matches exactly.
-        let actualTotalDebited = 0;
-        for (const { supAge, amount } of transfers) {
-            const debited = debitSupporters(cache, demography, supAge, amount, baseGroceryCost, transferMatrix);
-            remaining[supAge] -= debited;
-            actualTotalDebited += debited;
-        }
-
-        if (actualTotalDebited <= 0) {
-            continue;
-        }
-
-        creditDependents(
-            cache,
-            demography,
-            age,
-            actualTotalDebited,
-            groceryTargetPerPerson,
-            groceryPrice,
-            transferMatrix,
+        const remaining = computeSurplusSnapshot(activeCache, tierFloor);
+        const tierNeeds = computeDependentNeedsForTier(
+            activeCache,
+            tier.services,
+            planet.marketPrices,
+            tier.coverageFraction,
+            cumulativeMandatoryCost,
         );
+
+        // Compute global scarcity factor so all cohorts share shortages proportionally.
+        const totalSupply = remaining.reduce((sum, s) => sum + s, 0);
+        const totalDemand = tierNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
+        const scarcityFactor = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 1;
+
+        // Shuffle age indices to eliminate systematic processing-order bias over contested
+        // supplier pools. Statistically correct in expectation across ticks.
+        const ageOrder = Array.from({ length: numAges }, (_, i) => i);
+        for (let i = ageOrder.length - 1; i > 0; i--) {
+            const j = Math.floor(nextRandom() * (i + 1));
+            [ageOrder[i], ageOrder[j]] = [ageOrder[j], ageOrder[i]];
+        }
+
+        for (const age of ageOrder) {
+            const need = tierNeeds[age].totalNeed * scarcityFactor;
+            if (need <= 0) {
+                continue;
+            }
+
+            // Compute support weights from all ages with remaining surplus.
+            const weightedSuppliers: { supAge: number; weight: number }[] = [];
+            let totalWeight = 0;
+
+            for (let supAge = 0; supAge < numAges; supAge++) {
+                if (remaining[supAge] <= 0) {
+                    continue;
+                }
+                // Signed age difference: positive = supporter is older than dependent
+                const ageDiff = supAge - age;
+                const w = supportWeight(ageDiff, tier.supportWeightOverride);
+                if (w < 1e-10) {
+                    continue;
+                }
+                weightedSuppliers.push({ supAge, weight: w });
+                totalWeight += w;
+            }
+
+            if (totalWeight <= 0) {
+                continue;
+            }
+
+            // Proportional allocation pass.
+            let totalTransfer = 0;
+            const transfers: { supAge: number; amount: number }[] = [];
+
+            for (const { supAge, weight } of weightedSuppliers) {
+                const share = (weight / totalWeight) * need;
+                const actual = Math.min(share, remaining[supAge]);
+                if (actual <= 0) {
+                    continue;
+                }
+                transfers.push({ supAge, amount: actual });
+                totalTransfer += actual;
+            }
+
+            if (totalTransfer <= 0) {
+                continue;
+            }
+
+            // Debit each supporter age; track actual debits so credit matches exactly.
+            let actualTotalDebited = 0;
+            for (const { supAge, amount } of transfers) {
+                const debited = debitSupporters(activeCache, demography, supAge, amount, tierFloor, transferMatrix);
+                remaining[supAge] -= debited;
+                actualTotalDebited += debited;
+            }
+
+            if (actualTotalDebited <= 0) {
+                continue;
+            }
+
+            creditDependents(
+                activeCache,
+                demography,
+                age,
+                actualTotalDebited,
+                tier.services,
+                planet.marketPrices,
+                tier.coverageFraction,
+                cumulativeMandatoryCost,
+                transferMatrix,
+            );
+        }
+
+        if (tier.mandatoryForOwnConsumption) {
+            cumulativeMandatoryCost += tierCostPerTick;
+        }
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -407,8 +435,10 @@ function creditDependents(
     demography: Cohort<PopulationCategory>[],
     age: number,
     amount: number,
-    targetPerPerson: number,
-    groceryPrice: number,
+    tierServices: ServiceName[],
+    marketPrices: Record<string, number>,
+    coverageFraction: number,
+    alreadyCommittedCost: number,
     transferMatrix?: PopulationTransferMatrix,
 ): void {
     if (amount <= 0) {
@@ -422,22 +452,38 @@ function creditDependents(
         need: number;
     }
 
+    // Must use urgency-adjusted prices and the same fill-fraction discount as
+    // computeDependentNeedsForTier so that per-cell need proportions are consistent
+    // with the global need calculation. Using raw prices here would let cells appear
+    // need-free when the global calculation (at urgency price) found a shortfall,
+    // causing creditDependents to return early without distributing — destroying wealth.
+    const serviceParams = tierServices.map((key) => {
+        const def = SERVICE_DEFINITIONS[key];
+        const price = (marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+        const targetPerPerson = def.bufferTargetTicks * def.consumptionRatePerPersonPerTick * coverageFraction;
+        return { key, price, targetPerPerson };
+    });
+
     const cells: CellInfo[] = [];
     let totalNeed = 0;
     let totalPop = 0;
 
     for (const occ of OCCUPATIONS) {
         for (const edu of educationLevelKeys) {
-            const { pop, groceryBuffer, wealth } = cache[age][occ][edu];
+            const { pop, buffers, wealth } = cache[age][occ][edu];
             if (pop <= 0) {
                 continue;
             }
-            const perCapitaGroceryBuffer = groceryBuffer / pop;
-            const gap = Math.max(0, targetPerPerson - perCapitaGroceryBuffer);
-            // Real cost at market price — no urgency inflation.
-            const costGap = gap * groceryPrice;
-            const selfFund = Math.max(0, wealth.mean);
-            const need = Math.max(0, costGap - selfFund) * pop;
+            let totalCostGap = 0;
+            for (const { key, price, targetPerPerson } of serviceParams) {
+                const perCapitaBuffer = (buffers[key] ?? 0) / pop;
+                const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
+                const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
+                totalCostGap += gap * price * (1 - fillFraction);
+            }
+            // Wealth available for this tier after covering higher-priority spending.
+            const availableWealth = Math.max(0, wealth.mean - alreadyCommittedCost);
+            const need = Math.max(0, totalCostGap - availableWealth) * pop;
             cells.push({ occ, edu, pop, need });
             totalNeed += need;
             totalPop += pop;
