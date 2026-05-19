@@ -1,9 +1,9 @@
 import { TICKS_PER_YEAR } from '../constants';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
-const healthcareDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'healthcare')!;
-const educationDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'education')!;
+const groceryDef = SERVICE_DEFINITIONS.grocery;
+const healthcareDef = SERVICE_DEFINITIONS.healthcare;
+const educationDef = SERVICE_DEFINITIONS.education;
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import { ageDependentBaseDisabilityProb } from '../population/disability';

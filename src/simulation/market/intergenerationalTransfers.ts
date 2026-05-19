@@ -11,7 +11,7 @@ import type { Planet } from '../planet/planet';
 import { groceryServiceResourceType } from '../planet/services';
 import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
+const groceryDef = SERVICE_DEFINITIONS.grocery;
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,

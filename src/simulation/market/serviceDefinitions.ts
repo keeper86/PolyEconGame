@@ -18,71 +18,79 @@ export type ServiceDefinition = {
     readonly consumptionRatePerPersonPerTick: number;
 };
 
-export const groceryDefinition: ServiceDefinition = {
+const groceryDefinition: ServiceDefinition = {
     resource: groceryServiceResourceType,
     serviceKey: 'grocery',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-};
+} as const;
 
-export const healthcareDefinition: ServiceDefinition = {
+const healthcareDefinition: ServiceDefinition = {
     resource: healthcareServiceResourceType,
     serviceKey: 'healthcare',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-};
+} as const;
 
-export const logisticsDefinition: ServiceDefinition = {
+const logisticsDefinition: ServiceDefinition = {
     resource: logisticsServiceResourceType,
     serviceKey: 'logistics',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-};
+} as const;
 
-export const educationDefinition: ServiceDefinition = {
+const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
     serviceKey: 'education',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH / 12,
-};
+} as const;
 
-export const retailDefinition: ServiceDefinition = {
+const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     serviceKey: 'retail',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-};
+} as const;
 
-export const constructionDefinition: ServiceDefinition = {
+const constructionDefinition: ServiceDefinition = {
     resource: constructionServiceResourceType,
     serviceKey: 'construction',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH / 12,
-};
+} as const;
 
-export const administrativeDefinition: ServiceDefinition = {
+const administrativeDefinition: ServiceDefinition = {
     resource: administrativeServiceResourceType,
     serviceKey: 'administrative',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH / 12,
+} as const;
+
+export type ServiceKey =
+    | typeof groceryDefinition.serviceKey
+    | typeof healthcareDefinition.serviceKey
+    | typeof logisticsDefinition.serviceKey
+    | typeof educationDefinition.serviceKey
+    | typeof retailDefinition.serviceKey
+    | typeof constructionDefinition.serviceKey
+    | typeof administrativeDefinition.serviceKey;
+
+export const SERVICE_DEFINITIONS: Record<ServiceKey, ServiceDefinition> = {
+    grocery: groceryDefinition,
+    healthcare: healthcareDefinition,
+    logistics: logisticsDefinition,
+    education: educationDefinition,
+    retail: retailDefinition,
+    construction: constructionDefinition,
+    administrative: administrativeDefinition,
+} as const;
+
+export const getServiceDefinitionByResourceName = (resourceName: string): ServiceDefinition | undefined => {
+    return Object.values(SERVICE_DEFINITIONS).find((def) => def.resource.name === resourceName);
 };
 
-export const SERVICE_DEFINITIONS: readonly ServiceDefinition[] = [
-    groceryDefinition,
-    healthcareDefinition,
-    logisticsDefinition,
-    educationDefinition,
-    retailDefinition,
-    constructionDefinition,
-    administrativeDefinition,
-];
-
-export type ServiceKey = ServiceDefinition['serviceKey'];
-
-/** O(1) lookup by resource name — used by settlement and consumption. */
-export const SERVICE_DEFINITION_BY_RESOURCE_NAME = new Map<string, ServiceDefinition>(
-    SERVICE_DEFINITIONS.map((def) => [def.resource.name, def]),
-);
+export const allServices = Object.values(SERVICE_DEFINITIONS);
 
 // Priority order derived from the definition array order.
-export const householdDemandPriority: string[] = SERVICE_DEFINITIONS.map((d) => d.resource.name);
+export const householdDemandPriority: string[] = allServices.map((d) => d.resource.name);

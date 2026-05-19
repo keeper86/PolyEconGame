@@ -16,11 +16,7 @@ import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/Co
 import type { GroupMode } from './_components/demographicsTypes';
 import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
 import ServiceSection from './_components/ServiceSection';
-import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 
-const serviceDefByKey = new Map(SERVICE_DEFINITIONS.map((d) => [d.serviceKey, d]));
-
-const getBufferTargetTicks = (key: string): number => serviceDefByKey.get(key as never)?.bufferTargetTicks ?? 0;
 import PlanetDemography from './_components/PlanetDemography';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import WealthDistributionChart from './_components/WealthDistributionChart';
@@ -388,8 +384,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='grocery'
-                            serviceLabel='Grocery Buffers'
-                            bufferTargetTicks={getBufferTargetTicks('grocery')}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -406,8 +400,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='healthcare'
-                            serviceLabel='Healthcare Buffers'
-                            bufferTargetTicks={getBufferTargetTicks('healthcare')}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -424,8 +416,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='logistics'
-                            serviceLabel='Logistics Buffers'
-                            bufferTargetTicks={getBufferTargetTicks('logistics')}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -442,8 +432,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='retail'
-                            serviceLabel='Retail Buffers'
-                            bufferTargetTicks={getBufferTargetTicks('retail')}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -460,8 +448,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='construction'
-                            serviceLabel='Construction Buffers'
-                            bufferTargetTicks={getBufferTargetTicks('construction')}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -478,8 +464,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='administrative'
-                            serviceLabel='Administrative Buffers'
-                            bufferTargetTicks={getBufferTargetTicks('administrative')}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}
@@ -496,8 +480,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         <ServiceSection
                             serviceKey='education'
-                            serviceLabel='Education Buffers'
-                            bufferTargetTicks={getBufferTargetTicks('education')}
                             rows={rows}
                             groupMode={group}
                             groupKeys={groupKeys}

@@ -16,15 +16,15 @@ import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation 
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
-const retailDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'retail')!;
+const groceryDef = SERVICE_DEFINITIONS.grocery;
+const retailDef = SERVICE_DEFINITIONS.retail;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const GROCERY_SERVICE = groceryServiceResourceType.name;
-const RETAIL_SERVICE = retailServiceResourceType.name;
+const GROCERY_SERVICE = groceryDef.resource.name;
+const RETAIL_SERVICE = retailDef.resource.name;
 
 function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
     return makeGS(planet, agents, 1);

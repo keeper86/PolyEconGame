@@ -12,14 +12,10 @@ import {
 } from '../planet/productionFacilities';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
-export type { ServiceDefinition, ServiceKey } from './serviceDefinitions';
-export {
-    SERVICE_DEFINITIONS,
-    SERVICE_DEFINITION_BY_RESOURCE_NAME,
-    householdDemandPriority,
-} from './serviceDefinitions';
-import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 import type { ServiceKey } from './serviceDefinitions';
+import { allServices, householdDemandPriority } from './serviceDefinitions';
+export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
+export type { ServiceDefinition, ServiceKey } from './serviceDefinitions';
 
 // ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
@@ -170,7 +166,7 @@ export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionF
 };
 
 export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
-    const allBids = new Map<string, BidOrder[]>(SERVICE_DEFINITIONS.map((def) => [def.resource.name, []]));
+    const allBids = new Map<string, BidOrder[]>(householdDemandPriority.map((resourceName) => [resourceName, []]));
 
     planet.population.demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -188,20 +184,20 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
             let remainingWealth = wm.mean;
 
-            for (const def of SERVICE_DEFINITIONS) {
+            for (const service of allServices) {
                 if (remainingWealth <= 0) {
                     break;
                 }
 
-                if (def.serviceKey === 'education' && occ !== 'education') {
+                if (service.serviceKey === 'education' && occ !== 'education') {
                     continue; // Only education group buys education services
                 }
 
                 let currentProductionCost = Number.MAX_SAFE_INTEGER;
-                const serviceFacility = serviceFacilityTemplate[def.serviceKey];
-                if (def.serviceKey === 'grocery') {
+                const serviceFacility = serviceFacilityTemplate[service.serviceKey];
+                if (service.serviceKey === 'grocery') {
                     serviceFacility.template.needs.forEach((need) => {
-                        if (need.resource.name === def.resource.name) {
+                        if (need.resource.name === service.resource.name) {
                             currentProductionCost = need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
                         }
                     });
@@ -213,16 +209,16 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     currentProductionCost /= serviceFacility.produced;
                 }
                 const referencePrice =
-                    Math.min(planet.marketPrices[def.resource.name], currentProductionCost * 2) *
+                    Math.min(planet.marketPrices[service.resource.name], currentProductionCost * 2) *
                     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
                 if (referencePrice <= 0) {
                     continue;
                 }
 
-                const serviceBuffer = category.services[def.serviceKey]?.buffer ?? 0;
-                const rate = def.consumptionRatePerPersonPerTick;
-                const bufferFillDeficit = Math.max(0, def.bufferTargetTicks - serviceBuffer);
-                const willingPrice = referencePrice * (bufferFillDeficit / def.bufferTargetTicks);
+                const serviceBuffer = category.services[service.serviceKey]?.buffer ?? 0;
+                const rate = service.consumptionRatePerPersonPerTick;
+                const bufferFillDeficit = Math.max(0, service.bufferTargetTicks - serviceBuffer);
+                const willingPrice = referencePrice * (bufferFillDeficit / service.bufferTargetTicks);
                 if (willingPrice <= 0) {
                     continue;
                 }
@@ -241,7 +237,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 remainingWealth -= quantityPerPerson * willingPrice;
 
-                const bids = allBids.get(def.resource.name)!;
+                const bids = allBids.get(service.resource.name)!;
                 bids.push({
                     age,
                     edu,

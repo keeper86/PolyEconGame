@@ -1,15 +1,11 @@
 import type { AggRow } from '@/app/planets/[planetId]/demographics/_components/demographicsTypes';
-import {
-    GV_FOOD,
-    GV_POP,
-    GV_STARV,
-    SERVICE_TARGET_PER_PERSON,
-} from '@/app/planets/[planetId]/demographics/_components/demographicsTypes';
+import { GV_FOOD, GV_POP, GV_STARV } from '@/app/planets/[planetId]/demographics/_components/demographicsTypes';
 import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { describe, expect, it } from 'vitest';
 
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
+const groceryDef = SERVICE_DEFINITIONS.grocery;
+const SERVICE_TARGET_PER_PERSON = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
 
 // ---- Replicate component structure ----
 

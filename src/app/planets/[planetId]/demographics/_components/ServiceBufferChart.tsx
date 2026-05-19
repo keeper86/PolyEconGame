@@ -2,6 +2,7 @@
 
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { ServiceName } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
@@ -9,7 +10,7 @@ import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { GV_FOOD, GV_POP, SERVICE_TARGET_MAP } from './demographicsTypes';
+import { GV_FOOD, GV_POP } from './demographicsTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -135,7 +136,6 @@ type Props = {
     rows: AggRow[];
     groupMode: GroupMode;
     serviceKey: ServiceName;
-    bufferTargetTicks: number;
 };
 
 // ─── Empty placeholder ────────────────────────────────────────────────────────
@@ -153,18 +153,15 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ServiceBufferChart({
-    rows,
-    groupMode,
-    serviceKey,
-    bufferTargetTicks,
-}: Props): React.ReactElement {
+export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Props): React.ReactElement {
     const isVerySmall = useIsSmallScreen();
 
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
-    const targetPerPerson = SERVICE_TARGET_MAP[serviceKey];
+    const targetPerPerson =
+        SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
+        SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
 
     const { data, yDomain } = useMemo(() => {
         const rawData: ChartRow[] = rows
@@ -208,8 +205,8 @@ export default function ServiceBufferChart({
     }, [rows, keys, serviceKey, targetPerPerson, isVerySmall]);
 
     const tooltip = useMemo(
-        () => makeTooltip(keys, labels, colors, bufferTargetTicks),
-        [keys, labels, colors, bufferTargetTicks],
+        () => makeTooltip(keys, labels, colors, SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks),
+        [keys, labels, colors, serviceKey],
     );
 
     if (data.length === 0) {
