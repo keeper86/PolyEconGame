@@ -201,19 +201,17 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 let currentProductionCost = Number.MAX_SAFE_INTEGER;
                 const serviceFacility = serviceFacilityTemplate[service.serviceKey];
-                if (service.serviceKey === 'grocery') {
-                    serviceFacility.template.needs.forEach((need) => {
-                        if (need.resource.name === service.resource.name) {
-                            currentProductionCost = need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
-                        }
-                    });
-                    currentProductionCost +=
-                        (serviceFacility.template.workerRequirement.none ?? 0) +
-                        (serviceFacility.template.workerRequirement.primary ?? 0) +
-                        (serviceFacility.template.workerRequirement.secondary ?? 0) +
-                        (serviceFacility.template.workerRequirement.tertiary ?? 0);
-                    currentProductionCost /= serviceFacility.produced;
-                }
+
+                serviceFacility.template.needs.forEach((need) => {
+                    currentProductionCost = need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
+                });
+                currentProductionCost +=
+                    (serviceFacility.template.workerRequirement.none ?? 0) +
+                    (serviceFacility.template.workerRequirement.primary ?? 0) +
+                    (serviceFacility.template.workerRequirement.secondary ?? 0) +
+                    (serviceFacility.template.workerRequirement.tertiary ?? 0);
+                currentProductionCost /= serviceFacility.produced;
+
                 const referencePrice =
                     Math.min(planet.marketPrices[service.resource.name], currentProductionCost * 2) *
                     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
