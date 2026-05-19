@@ -3,9 +3,9 @@ import { seedRng } from '../utils/stochasticRound';
 import { TICKS_PER_YEAR } from '../constants';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
-const healthcareDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'healthcare')!;
-const educationDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'education')!;
+const groceryDef = SERVICE_DEFINITIONS.grocery;
+const healthcareDef = SERVICE_DEFINITIONS.healthcare;
+const educationDef = SERVICE_DEFINITIONS.education;
 import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
@@ -71,6 +71,7 @@ function seedWorkforce(
         logistics: { buffer: 4, starvationLevel: 0 },
         healthcare: { buffer: healthcareDef.bufferTargetTicks, starvationLevel: 0 },
         construction: { buffer: 2, starvationLevel: 0 },
+        maintenance: { buffer: 2, starvationLevel: 0 },
         administrative: { buffer: 3, starvationLevel: 0 },
         education: { buffer: 2, starvationLevel: 0 },
     };
@@ -671,6 +672,7 @@ describe('shipTick passenger transporting / arrival', () => {
                         retail: { buffer: 0, starvationLevel: 0 },
                         logistics: { buffer: 0, starvationLevel: 0 },
                         healthcare: { buffer: 0, starvationLevel: 0 },
+                        maintenance: { buffer: 0, starvationLevel: 0 },
                         construction: { buffer: 0, starvationLevel: 0 },
                         administrative: { buffer: 0, starvationLevel: 0 },
                         education: { buffer: 0, starvationLevel: 0 },

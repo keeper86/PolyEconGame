@@ -1,4 +1,4 @@
-import { TICKS_PER_MONTH } from '../constants';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
 import type { Resource } from '../planet/claims';
 import {
     administrativeServiceResourceType,
@@ -7,6 +7,7 @@ import {
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
+    maintenanceServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
 import type { ServiceName } from '../population/population';
@@ -42,8 +43,8 @@ const logisticsDefinition: ServiceDefinition = {
 const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
     serviceKey: 'education',
-    bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH / 12,
+    bufferTargetTicks: TICKS_PER_YEAR,
+    consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
 const retailDefinition: ServiceDefinition = {
@@ -56,15 +57,22 @@ const retailDefinition: ServiceDefinition = {
 const constructionDefinition: ServiceDefinition = {
     resource: constructionServiceResourceType,
     serviceKey: 'construction',
-    bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH / 12,
+    bufferTargetTicks: TICKS_PER_YEAR,
+    consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
+} as const;
+
+const maintenanceDefinition: ServiceDefinition = {
+    resource: maintenanceServiceResourceType,
+    serviceKey: 'maintenance',
+    bufferTargetTicks: TICKS_PER_YEAR,
+    consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
 const administrativeDefinition: ServiceDefinition = {
     resource: administrativeServiceResourceType,
     serviceKey: 'administrative',
-    bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH / 12,
+    bufferTargetTicks: TICKS_PER_YEAR,
+    consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
 export type ServiceKey =
@@ -74,6 +82,7 @@ export type ServiceKey =
     | typeof educationDefinition.serviceKey
     | typeof retailDefinition.serviceKey
     | typeof constructionDefinition.serviceKey
+    | typeof maintenanceDefinition.serviceKey
     | typeof administrativeDefinition.serviceKey;
 
 export const SERVICE_DEFINITIONS: Record<ServiceKey, ServiceDefinition> = {
@@ -83,6 +92,7 @@ export const SERVICE_DEFINITIONS: Record<ServiceKey, ServiceDefinition> = {
     education: educationDefinition,
     retail: retailDefinition,
     construction: constructionDefinition,
+    maintenance: maintenanceDefinition,
     administrative: administrativeDefinition,
 } as const;
 

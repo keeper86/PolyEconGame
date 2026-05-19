@@ -8,6 +8,7 @@ import {
     groceryChain,
     hospital,
     logisticsHub,
+    maintenanceFacility,
     retailChain,
 } from '../planet/productionFacilities';
 import { forEachPopulationCohort } from '../population/population';
@@ -131,6 +132,7 @@ const retailTemplate: ProductionFacility = retailChain('', '');
 const healthcareTemplate: ProductionFacility = hospital('', '');
 const educationTemplate: ProductionFacility = educationCenter('', '');
 const constructionTemplate: ProductionFacility = constructionFacility('', '');
+const maintenanceTemplate: ProductionFacility = maintenanceFacility('', '');
 const administrativeTemplate: ProductionFacility = administrativeCenter('', '');
 const logisticsTemplate: ProductionFacility = logisticsHub('', '');
 
@@ -154,6 +156,10 @@ export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionF
     construction: {
         template: constructionTemplate,
         produced: constructionTemplate.produces[0].quantity,
+    },
+    maintenance: {
+        template: maintenanceTemplate,
+        produced: maintenanceTemplate.produces[0].quantity,
     },
     administrative: {
         template: administrativeTemplate,

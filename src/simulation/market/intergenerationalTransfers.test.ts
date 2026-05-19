@@ -31,7 +31,7 @@ import { GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
 import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 import type { Planet } from '../planet/planet';
 
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
+const groceryDef = SERVICE_DEFINITIONS.grocery;
 
 import { educationLevelKeys } from '../population/education';
 import { OCCUPATIONS, SKILL } from '../population/population';

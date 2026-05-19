@@ -1,12 +1,12 @@
+import { getServiceDefinitionByResourceName } from '@/simulation/market/serviceDefinitions';
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import {
+    administrativeServiceResourceType,
+    constructionServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
-    administrativeServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
-    constructionServiceResourceType,
 } from '@/simulation/planet/services';
 
 /** Services that the population consumes (education is workforce-only, not direct pop demand). */
@@ -134,10 +134,9 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
 
     // Population service demand: each service consumed at its consumptionRatePerPersonPerTick per person per tick
     if (population > 0) {
-        const serviceDefByName = new Map(SERVICE_DEFINITIONS.map((d) => [d.resource.name, d]));
         for (const svc of POPULATION_DEMANDED_SERVICES) {
             const r = getOrCreate(svc.name, 'services', 'services', false);
-            const rate = serviceDefByName.get(svc.name)?.consumptionRatePerPersonPerTick ?? 0;
+            const rate = getServiceDefinitionByResourceName(svc.name)?.consumptionRatePerPersonPerTick ?? 0;
             r.populationDemandPerTick += population * rate;
         }
     }

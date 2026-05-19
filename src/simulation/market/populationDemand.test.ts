@@ -4,7 +4,7 @@ import { createEmptyPopulationCohort, forEachPopulationCohort } from '../populat
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
 import type { Planet } from '../planet/planet';
 
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
+const groceryDef = SERVICE_DEFINITIONS.grocery;
 import { makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
 import type { BidOrder } from './marketTypes';
 
@@ -24,6 +24,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             logistics: { buffer: 0, starvationLevel: 0 },
             healthcare: { buffer: 0, starvationLevel: 0 },
             construction: { buffer: 0, starvationLevel: 0 },
+            maintenance: { buffer: 0, starvationLevel: 0 },
             administrative: { buffer: 0, starvationLevel: 0 },
             education: { buffer: 0, starvationLevel: 0 },
         },
@@ -37,6 +38,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             logistics: { buffer: 1000, starvationLevel: 0 },
             healthcare: { buffer: 1000, starvationLevel: 0 },
             construction: { buffer: 1000, starvationLevel: 0 },
+            maintenance: { buffer: 1000, starvationLevel: 0 },
             administrative: { buffer: 1000, starvationLevel: 0 },
             education: { buffer: 1000, starvationLevel: 0 },
         },

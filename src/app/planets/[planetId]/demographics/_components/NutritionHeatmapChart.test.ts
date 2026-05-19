@@ -146,6 +146,7 @@ function makeAggRow(age: number, pop: number, totalFoodStock: number, weightedSt
             logistics: emptyEntry,
             retail: emptyEntry,
             construction: emptyEntry,
+            maintenance: emptyEntry,
             administrative: emptyEntry,
             education: emptyEntry,
         },

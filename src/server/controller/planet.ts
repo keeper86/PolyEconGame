@@ -1,36 +1,16 @@
-/**
- * controller/planet.ts
- *
- * Granular tRPC endpoints for the planet detail sub-pages.
- * Each endpoint fetches the live planet from the worker and projects
- * only the data that the corresponding sub-page actually needs,
- * keeping payloads small.
- */
-
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
+import { allServices, SERVICE_DEFINITIONS } from '@/simulation/market/serviceDefinitions';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
-import { SERVICE_DEFINITIONS } from '../../simulation/market/populationDemand';
-
-const groceryDef = SERVICE_DEFINITIONS.find((d) => d.serviceKey === 'grocery')!;
 import type { ServiceName, Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { computeGlobalStarvation, computePopulationTotal } from '../../simulation/snapshotRepository';
 import { workerQueries } from '../../simulation/workerClient/queries';
 import { protectedProcedure } from '../trpcRoot';
 
-// ---------------------------------------------------------------------------
-// Overview
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal data for the overview sub-page:
- * planet identity, position, resources, infrastructure, environment,
- * and pre-computed population/starvation totals for the live chart point.
- */
 export const getPlanetOverview = () =>
     protectedProcedure
         .input(z.object({ planetId: z.string() }))
@@ -230,7 +210,7 @@ type AggRow = {
     serviceBuffers: { [K in Exclude<ServiceName, 'grocery'>]: SvcBands4 };
 };
 
-const nonGroceryDefs = SERVICE_DEFINITIONS.filter((d) => d.serviceKey !== 'grocery');
+const nonGroceryDefs = allServices.filter((d) => d.serviceKey !== 'grocery');
 
 function emptyServiceBuffers(): AggRow['serviceBuffers'] {
     return {
@@ -253,6 +233,12 @@ function emptyServiceBuffers(): AggRow['serviceBuffers'] {
             [0, 0],
         ],
         construction: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
+        maintenance: [
             [0, 0],
             [0, 0],
             [0, 0],
@@ -350,7 +336,9 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                         // Convert buffer (ticks) → service units so the client
                         // ratio = gFoodStock/pop / SERVICE_TARGET_PER_PERSON normalises correctly.
                         gFoodStock +=
-                            cat.services.grocery.buffer * groceryDef.consumptionRatePerPersonPerTick * cat.total;
+                            cat.services.grocery.buffer *
+                            SERVICE_DEFINITIONS.grocery.consumptionRatePerPersonPerTick *
+                            cat.total;
                         gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                         for (const def of nonGroceryDefs) {
@@ -387,6 +375,7 @@ const serviceBuffersSchema = z.object({
     logistics: svcBands4,
     retail: svcBands4,
     construction: svcBands4,
+    maintenance: svcBands4,
     administrative: svcBands4,
     education: svcBands4,
 });
