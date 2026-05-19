@@ -357,7 +357,7 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
         };
         expect(s.planetId).toBe('p-origin');
         expect(s.to).toBe('p-dest');
-        expect(s.cargoGoal?.quantity).toBe(BID_DEPTH);
+        expect(s.cargoGoal?.quantity).toBe(BID_DEPTH * 30);
     });
 });
 

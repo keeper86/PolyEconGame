@@ -138,14 +138,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const initialPrice = planet.marketPrices[resource.name];
 
-            const skipBrake = true; //resource.form === 'services';
-            adjustOfferPrice(
-                offer,
-                inventoryQty,
-                initialPrice,
-                costFloors.get(resource.name) ?? PRICE_FLOOR,
-                skipBrake,
-            );
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloors.get(resource.name) ?? PRICE_FLOOR);
         }
     }
 
@@ -439,7 +432,7 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId
 // ---------------------------------------------------------------------------
 
 const TARGET_SELL_THROUGH = 0.9;
-const SERVICE_SELL_THROUGH_TARGET = 0.95;
+const SERVICE_SELL_THROUGH_TARGET = 0.98;
 
 function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THROUGH): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
@@ -457,7 +450,6 @@ function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
-    skipCostBrake: boolean = false,
 ): void {
     const sold = offer.lastSold;
     const price = offer.offerPrice;
@@ -490,17 +482,6 @@ function adjustOfferPrice(
         costFloor *
         (1 + AUTOMATED_COST_FLOOR_BUFFER) *
         (1 - (offer.resource.form === 'services' ? SERVICE_DEPRECIATION_RATE_PER_TICK : 0));
-    if (!skipCostBrake && factor < 1) {
-        if (price <= brakeZoneTop) {
-            const t =
-                brakeZoneTop > costFloor
-                    ? Math.max(0, Math.min(1, (price - costFloor) / (brakeZoneTop - costFloor)))
-                    : 0;
-            const effectiveMaxDown =
-                PRICE_ADJUST_MAX_DOWN_SOFT + t * (PRICE_ADJUST_MAX_DOWN - PRICE_ADJUST_MAX_DOWN_SOFT);
-            factor = Math.max(factor, effectiveMaxDown);
-        }
-    }
 
     if (brakeZoneTop > PRICE_FLOOR && price > 0) {
         const deviation = Math.max(0, brakeZoneTop / price - 1);

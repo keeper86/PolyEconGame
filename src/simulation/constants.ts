@@ -11,7 +11,7 @@ export const TICKS_PER_YEAR = TICKS_PER_MONTH * MONTHS_PER_YEAR; // = 360, deriv
 /** Minimum age at which a person can be employed. People below this age are never hireable. */
 export const MIN_EMPLOYABLE_AGE = 14;
 
-export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 1.1;
+export const RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY = 2;
 
 export const NOTICE_PERIOD_MONTHS = 3;
 
@@ -36,7 +36,7 @@ export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
 export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
-export const COST_SPRING_STRENGTH = 0.06;
+export const COST_SPRING_STRENGTH = 0.04;
 
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
