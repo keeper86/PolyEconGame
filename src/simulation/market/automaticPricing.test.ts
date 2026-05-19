@@ -172,7 +172,7 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        expect(newPrice).toBeCloseTo(PRICE * 0.95, 5);
+        expect(newPrice).toBeCloseTo(PRICE * PRICE_ADJUST_MAX_DOWN, 5);
     });
 
     it('has no price drift when sell-through exactly equals the target', () => {
