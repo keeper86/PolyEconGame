@@ -115,7 +115,7 @@ function scanBestRoute(
                     emptyPriceAggregate(),
                 );
 
-                const inTransport = dest.transportPipeline[resource.name].quantity ?? 0;
+                const inTransport = dest.transportPipeline[resource.name]?.quantity ?? 0;
 
                 const unbalancedQuantity = destBids.quantity - destOffers.quantity - inTransport;
 
@@ -128,11 +128,11 @@ function scanBestRoute(
                     continue;
                 }
 
-                const OVERSHOOT = 180;
+                const OVERSHOOT = 90;
                 const effectiveQty = Math.min(maxQty, unbalancedQuantity * OVERSHOOT);
                 const effectiveBids = originAsks.reduce(orderBookReducer(effectiveQty), emptyPriceAggregate());
                 const currencyName = getCurrencyResourceName(dest.id);
-                const buyingCosts = destBids.price / effectiveQty;
+                const buyingCosts = destBids.price / destBids.quantity;
                 const midForexRate = origin.marketPrices[currencyName] ?? 1.0;
                 const forexRate = midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
                 const pSellOrigin = buyingCosts * forexRate;

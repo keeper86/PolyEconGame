@@ -189,9 +189,9 @@ function Sidebar({
             startX = -1;
         };
 
-        document.addEventListener('touchstart', onTouchStart);
-        document.addEventListener('touchmove', onTouchMove);
-        document.addEventListener('touchend', onTouchEnd);
+        document.addEventListener('touchstart', onTouchStart, { passive: true });
+        document.addEventListener('touchmove', onTouchMove, { passive: true });
+        document.addEventListener('touchend', onTouchEnd, { passive: true });
         return () => {
             document.removeEventListener('touchstart', onTouchStart);
             document.removeEventListener('touchmove', onTouchMove);
