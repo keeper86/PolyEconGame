@@ -43,7 +43,7 @@ const logisticsDefinition: ServiceDefinition = {
 const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
     serviceKey: 'education',
-    bufferTargetTicks: TICKS_PER_YEAR,
+    bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
@@ -57,14 +57,14 @@ const retailDefinition: ServiceDefinition = {
 const constructionDefinition: ServiceDefinition = {
     resource: constructionServiceResourceType,
     serviceKey: 'construction',
-    bufferTargetTicks: TICKS_PER_YEAR,
+    bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
 const maintenanceDefinition: ServiceDefinition = {
     resource: maintenanceServiceResourceType,
     serviceKey: 'maintenance',
-    bufferTargetTicks: TICKS_PER_YEAR,
+    bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
@@ -130,6 +130,6 @@ export const SERVICE_TIERS: ServiceTier[] = [
         name: 'comfort',
         services: ['logistics', 'retail', 'education', 'construction', 'maintenance', 'administrative'],
         coverageFraction: 0.5,
-        mandatoryForOwnConsumption: false,
+        mandatoryForOwnConsumption: true,
     },
 ];

@@ -24,7 +24,7 @@ export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditi
     let storageCollateral = 0;
     if (assets?.storageFacility?.currentInStorage) {
         for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
-            if (entry?.quantity) {
+            if (entry?.quantity && entry.resource.form !== 'services') {
                 const price = planet.marketPrices[entry.resource.name] ?? 0;
                 storageCollateral += entry.quantity * price * LOAN_COLLATERAL_FACTOR;
             }
