@@ -1,4 +1,4 @@
-import { RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY } from '../constants';
+import { AUTOMATED_COST_CEILING_FACTOR, RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
 import {
@@ -199,7 +199,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue; // Only education group buys education services
                 }
 
-                let currentProductionCost = Number.MAX_SAFE_INTEGER;
+                let currentProductionCost = 0;
                 const serviceFacility = serviceFacilityTemplate[service.serviceKey];
 
                 serviceFacility.template.needs.forEach((need) => {
@@ -212,9 +212,14 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     (serviceFacility.template.workerRequirement.tertiary ?? 0);
                 currentProductionCost /= serviceFacility.produced;
 
+                currentProductionCost = currentProductionCost > 0 ? currentProductionCost : Number.MAX_SAFE_INTEGER;
+
                 const referencePrice =
-                    Math.min(planet.marketPrices[service.resource.name], currentProductionCost * 5) *
-                    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+                    Math.min(
+                        planet.avgMarketResult[service.resource.name]?.clearingPrice ?? Number.MAX_SAFE_INTEGER,
+                        currentProductionCost * AUTOMATED_COST_CEILING_FACTOR * 0.5,
+                    ) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+
                 if (referencePrice <= 0) {
                     continue;
                 }

@@ -282,8 +282,8 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
 
     // Grocery chain
     const groc1 = groceryChain(AC_ID, 'ac-grocery-chain');
-    groc1.scale = 100;
-    groc1.maxScale = 100;
+    groc1.scale = 1000;
+    groc1.maxScale = 1000;
     agents.push(
         makeAgent({
             id: 'ac-grocery-corp',
@@ -331,11 +331,11 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
 
     // Government agent
     const govWaterFacility = waterExtractionFacility(AC_ID, 'ac-gov-water');
-    govWaterFacility.scale = 20;
-    govWaterFacility.maxScale = 20;
+    govWaterFacility.scale = 100;
+    govWaterFacility.maxScale = 100;
     const govAgriFacility = agriculturalProductionFacility(AC_ID, 'ac-gov-agri');
-    govAgriFacility.scale = 20;
-    govAgriFacility.maxScale = 20;
+    govAgriFacility.scale = 100;
+    govAgriFacility.maxScale = 100;
 
     const govAgent = makeAgent({
         id: GOV,

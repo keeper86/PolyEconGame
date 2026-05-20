@@ -1,4 +1,5 @@
 import {
+    AUTOMATED_COST_CEILING_FACTOR,
     AUTOMATED_COST_FLOOR_BUFFER,
     AUTOMATED_COST_FLOOR_MARKUP,
     COST_SPRING_STRENGTH,
@@ -12,18 +13,72 @@ import {
     SERVICE_DEPRECIATION_RATE_PER_TICK,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
+import type { ProductionFacility } from '../planet/facility';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
+import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { constructionServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
 
+// ---------------------------------------------------------------------------
+// Static map from resource name → canonical producer facility template.
+// Built once at module load from the facility catalogue; first producer wins
+// for resources that can be made by multiple facility types.
+// ---------------------------------------------------------------------------
+const resourceProducerTemplates: Map<string, { facility: ProductionFacility; outputQty: number }> = (() => {
+    const map = new Map<string, { facility: ProductionFacility; outputQty: number }>();
+    for (const entry of ALL_FACILITY_ENTRIES) {
+        const facility = entry.factory('', '') as ProductionFacility;
+        for (const { resource, quantity } of facility.produces) {
+            if (!map.has(resource.name)) {
+                map.set(resource.name, { facility, outputQty: quantity });
+            }
+        }
+    }
+    return map;
+})();
+
+/**
+ * Compute a production cost per unit for every producible resource on this planet,
+ * using the current market prices for inputs. The formula mirrors populationDemand.ts:
+ *   cost = Σ(need.quantity × marketPrice) + Σ(workerRequirement[edu]) / outputQty
+ * Land-bound resource inputs are treated as free (same as populationDemand.ts).
+ * Returns a Map<resourceName, costPerUnit>.
+ */
+export function buildPlanetProductionCosts(planet: Planet): Map<string, number> {
+    const costs = new Map<string, number>();
+    for (const [resourceName, { facility, outputQty }] of resourceProducerTemplates) {
+        if (outputQty <= 0) {
+            continue;
+        }
+        let cost = 0;
+        for (const need of facility.needs) {
+            if (need.resource.form === 'landBoundResource') {
+                continue;
+            }
+            cost += need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
+        }
+        // Raw worker counts (same simplified formula as populationDemand.ts)
+        for (const edu of educationLevelKeys) {
+            cost += facility.workerRequirement[edu] ?? 0;
+        }
+        cost /= outputQty;
+        if (cost > 0) {
+            costs.set(resourceName, cost);
+        }
+    }
+
+    return costs;
+}
+
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
+    const planetProductionCosts = buildPlanetProductionCosts(planet);
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet);
+        automaticPricingForAgent(agent, planet, planetProductionCosts);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet, planetProductionCosts: Map<string, number>): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -264,7 +319,14 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const marketPrice = planet.marketPrices[resourceName];
         const profitGap = inputProfitGaps.get(resourceName) ?? 0;
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, profitGap);
+        adjustBidPrice(
+            bid,
+            shortfall,
+            storageTarget,
+            marketPrice,
+            profitGap,
+            planetProductionCosts.get(resourceName) ?? 0,
+        );
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);
@@ -444,7 +506,7 @@ function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THR
     }
 }
 
-function adjustOfferPrice(
+export function adjustOfferPrice(
     offer: AgentMarketOfferState,
     inventoryQty: number,
     initialPrice: number,
@@ -524,6 +586,7 @@ function adjustBidPrice(
     storageTarget: number,
     marketPrice: number,
     profitabilityGap: number = 0,
+    productionCost: number,
 ): void {
     // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
@@ -560,7 +623,16 @@ function adjustBidPrice(
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
     const gapWeight = Math.min(1, fillRate / TARGET_FILL_RATE);
-    const factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
+    let factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
+
+    // Ceiling spring: push bid down if it exceeds the estimated production cost × AUTOMATED_COST_CEILING_FACTOR.
+    // Mirrors the cap populationDemand.ts applies to household bids (currentProductionCost × 5 × RELATIVE_PRICE(=2) = ×10).
+    if (productionCost > 0) {
+        const costCeiling = productionCost * AUTOMATED_COST_CEILING_FACTOR;
+        const ceilingDeviation = Math.max(0, bid.bidPrice / costCeiling - 1);
+        factor -= COST_SPRING_STRENGTH * ceilingDeviation;
+    }
+
     const newPrice = bid.bidPrice * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity

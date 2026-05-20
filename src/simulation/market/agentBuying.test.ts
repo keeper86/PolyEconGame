@@ -196,7 +196,10 @@ describe('automaticPricing — buy side', () => {
     });
 
     it('raises bid price when previous tick was partially filled', () => {
-        // Steel at 8.0 → ceiling = (50 × 8) / 100 = 4.0, well above coal price of 2.0
+        // Use a coal price below the production-cost ceiling so the ceiling spring doesn't
+        // suppress the fill-rate adjustment. The ceiling is coalMine template cost (≈0.1/unit)
+        // × AUTOMATED_COST_CEILING_FACTOR (6) = 0.6. Coal at 0.4 is safely below that.
+        planet.marketPrices[COAL] = 0.4;
         planet.marketPrices[steelResourceType.name] = 8.0;
 
         const buyer = makeSteelProducer();

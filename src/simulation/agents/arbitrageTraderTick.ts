@@ -48,7 +48,7 @@ function scanBestRoute(
     const candidatesFromOrigin: RouteCandidate[] = [];
 
     let bestProfitPerTick = ARBITRAGE_MIN_PROFIT_PER_TICK;
-    const debug = process.env.SIM_DEBUG === '1';
+    const debug = false; //process.env.SIM_DEBUG === '2';
     const monthly = isFirstTickInMonth(gameState.tick);
 
     const oneWayTicks = travelTime(ship);
@@ -96,12 +96,12 @@ function scanBestRoute(
                     continue;
                 }
 
-                const offers = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
+                const destBids = (dest.orderBooks?.[resource.name]?.bids ?? []).reduce(
                     orderBookReducer(bids.quantity),
                     emptyPriceAggregate(),
                 );
 
-                if (offers.quantity <= 0) {
+                if (destBids.quantity <= 0) {
                     if (debug && monthly) {
                         console.debug(
                             `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no bid depth at destination`,
@@ -110,10 +110,29 @@ function scanBestRoute(
                     continue;
                 }
 
-                const effectiveQty = Math.min(maxQty, offers.quantity * 30);
+                const destOffers = (dest.orderBooks?.[resource.name]?.asks ?? []).reduce(
+                    orderBookReducer(bids.quantity),
+                    emptyPriceAggregate(),
+                );
+
+                const inTransport = dest.transportPipeline[resource.name]?.quantity ?? 0;
+
+                const unbalancedQuantity = destBids.quantity - destOffers.quantity - inTransport;
+
+                if (unbalancedQuantity <= 0) {
+                    if (debug && monthly) {
+                        console.debug(
+                            `[arb] ${agent.id} '${resource.name}' ${origin.id}→${dest.id}: no effective demand at destination (unbalancedQuantity=${unbalancedQuantity})`,
+                        );
+                    }
+                    continue;
+                }
+
+                const OVERSHOOT = 90;
+                const effectiveQty = Math.min(maxQty, unbalancedQuantity * OVERSHOOT);
                 const effectiveBids = originAsks.reduce(orderBookReducer(effectiveQty), emptyPriceAggregate());
                 const currencyName = getCurrencyResourceName(dest.id);
-                const buyingCosts = offers.price / effectiveQty;
+                const buyingCosts = destBids.price / destBids.quantity;
                 const midForexRate = origin.marketPrices[currencyName] ?? 1.0;
                 const forexRate = midForexRate * ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT;
                 const pSellOrigin = buyingCosts * forexRate;
@@ -132,7 +151,7 @@ function scanBestRoute(
                 if (debug && monthly) {
                     const fxSource = `mid×${ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT}`;
                     console.debug(
-                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${offers.price.toFixed(2)} sellDest=${buyingCosts.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
+                        `[arb] ${agent.id} '${resource.name}' ${shipPlanetId}→${origin.id}→${dest.id}: buy=${destBids.price.toFixed(2)} sellDest=${buyingCosts.toFixed(2)} fxRate=${forexRate.toFixed(4)}(${fxSource}) sellAdj=${pSellOrigin.toFixed(2)} effectiveQty=${effectiveQty} gross=${grossProfit.toFixed(0)} depr=${depreciation.toFixed(0)} profitPerTick=${profitPerTick.toFixed(2)} (need>${ARBITRAGE_MIN_PROFIT_PER_TICK})`,
                     );
                 }
                 if (profitPerTick > bestProfitPerTick) {
@@ -169,7 +188,7 @@ function scanBestRoute(
 // ---------------------------------------------------------------------------
 
 function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
-    const debug = process.env.SIM_DEBUG === '1';
+    const debug = false; // process.env.SIM_DEBUG === '1';
     const monthly = isFirstTickInMonth(gameState.tick);
 
     for (const ship of agent.ships) {
@@ -232,10 +251,6 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Post sell offers for goods in storage (every tick)
-// ---------------------------------------------------------------------------
-
 function postSellOffers(agent: Agent, gameState: GameState): void {
     // Collect resources actively being loaded per planet — we don't want to sell those
     const loadingByPlanet = new Map<string, Set<string>>();
@@ -268,24 +283,23 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
                 continue;
             }
 
-            const marketPrice = planet.marketPrices[resourceName];
+            const marketPrice =
+                (planet.orderBooks[resourceName]?.asks[0]?.price ?? planet.marketPrices[resourceName]) * 0.95;
             if (!marketPrice || marketPrice <= 0) {
                 continue;
             }
 
-            const offerPrice = marketPrice * 1.05;
-            const existing = assets.market.sell[resourceName];
-            if (!existing) {
+            if (!assets.market.sell[resourceName]) {
                 if (process.env.SIM_DEBUG === '1') {
                     console.debug(
-                        `[arb] ${agent.id} on ${planet.name}: posting new sell offer for ${entry.quantity} ${resourceName} at ${offerPrice.toFixed(2)} (market price ${marketPrice.toFixed(2)})`,
+                        `[arb] ${agent.id} on ${planet.name}: posting new sell offer for ${entry.quantity} ${resourceName} at ${(marketPrice * 1.05).toFixed(2)} (market price ${marketPrice.toFixed(2)})`,
                     );
                 }
                 assets.market.sell[resourceName] = {
                     resource: entry.resource,
-                    offerPrice,
-                    offerRetainment: 0,
                     automated: true,
+                    offerRetainment: 0,
+                    offerPrice: marketPrice,
                 };
             }
         }

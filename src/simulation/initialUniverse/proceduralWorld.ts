@@ -155,27 +155,27 @@ const TARGETS: Record<string, FacilityTarget> = {
     sawmill: { totalScale: 533_333, agentCount: 4 },
     cementPlant: { totalScale: 640_000, agentCount: 4 },
     glassFactory: { totalScale: 267_275, agentCount: 3 },
-    pesticidePlant: { totalScale: 208_025, agentCount: 3 },
+    pesticidePlant: { totalScale: 248_025, agentCount: 3 },
     paperMill: { totalScale: 61_111, agentCount: 3 },
     textileMill: { totalScale: 819_297, agentCount: 4 },
     concretePlant: { totalScale: 800_000, agentCount: 4 },
-    foodProcessingPlant: { totalScale: 1_100_000, agentCount: 4 },
-    beveragePlant: { totalScale: 566_667, agentCount: 3 },
-    pharmaceuticalPlant: { totalScale: 177_778, agentCount: 3 },
+    foodProcessingPlant: { totalScale: 1_000_000, agentCount: 4 },
+    beveragePlant: { totalScale: 466_667, agentCount: 3 },
+    pharmaceuticalPlant: { totalScale: 277_778, agentCount: 3 },
     clothingFactory: { totalScale: 888_889, agentCount: 4 },
     furnitureFactory: { totalScale: 1_066_667, agentCount: 4 },
     electronicComponentFactory: { totalScale: 445_964, agentCount: 3 },
     consumerElectronicsFactory: { totalScale: 888_889, agentCount: 4 },
     machineryFactory: { totalScale: 32_745, agentCount: 2 },
     vehicleFactory: { totalScale: 30_392, agentCount: 2 },
-    intensiveFarmFacility: { totalScale: 524_074, agentCount: 4 },
+    intensiveFarmFacility: { totalScale: 724_074, agentCount: 4 },
     packagingPlant: { totalScale: 1_611_111, agentCount: 4 },
     administrativeCenter: { totalScale: 2_132_889, agentCount: 4 },
     logisticsHub: { totalScale: 3_191_111, agentCount: 4 },
     constructionService: { totalScale: 1_333_333, agentCount: 4 },
-    groceryChain: { totalScale: 2_333_333, agentCount: 6 },
+    groceryChain: { totalScale: 1_833_333, agentCount: 6 },
     retailChain: { totalScale: 1_777_778, agentCount: 4 },
-    hospital: { totalScale: 888_889, agentCount: 4 },
+    hospital: { totalScale: 1_488_889, agentCount: 4 },
     siliconWaferFactory: { totalScale: 222_982, agentCount: 4 },
 };
 
@@ -1188,11 +1188,12 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         { id: 'edu-network-corp', name: 'Edu Network Corp' },
         { id: 'knowledge-global', name: 'Knowledge Global Ltd' },
         { id: 'campus-systems-inc', name: 'Campus Systems Inc' },
+        { id: 'scholars-union', name: 'Scholars Union' },
     ];
     for (const spec of educationSpecs) {
         const u = educationCenter(PROC_PLANET_ID, `${spec.id}-university`);
-        u.scale = 500;
-        u.maxScale = 500;
+        u.scale = 4000;
+        u.maxScale = 4000;
         agents.push(
             makeAgent({
                 id: spec.id,

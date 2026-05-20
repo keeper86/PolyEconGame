@@ -155,6 +155,50 @@ function Sidebar({
 }) {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
+    const edgeWidth = 20; // px from screen edge to detect open-swipe
+    const threshold = 60; // px drag distance to trigger open/close
+
+    React.useEffect(() => {
+        if (!isMobile || openMobile) {
+            return;
+        }
+
+        let startX = -1;
+        let currentX = -1;
+
+        const onTouchStart = (e: TouchEvent) => {
+            const x = e.touches[0].clientX;
+            const nearEdge = side === 'left' ? x < edgeWidth : x > window.innerWidth - edgeWidth;
+            startX = nearEdge ? x : -1;
+            currentX = startX;
+        };
+        const onTouchMove = (e: TouchEvent) => {
+            if (startX < 0) {
+                return;
+            }
+            currentX = e.touches[0].clientX;
+        };
+        const onTouchEnd = () => {
+            if (startX < 0) {
+                return;
+            }
+            const deltaX = currentX - startX;
+            if ((side === 'left' && deltaX > threshold) || (side === 'right' && deltaX < -threshold)) {
+                setOpenMobile(true);
+            }
+            startX = -1;
+        };
+
+        document.addEventListener('touchstart', onTouchStart, { passive: true });
+        document.addEventListener('touchmove', onTouchMove, { passive: true });
+        document.addEventListener('touchend', onTouchEnd, { passive: true });
+        return () => {
+            document.removeEventListener('touchstart', onTouchStart);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [isMobile, openMobile, side, setOpenMobile, edgeWidth, threshold]);
+
     if (collapsible === 'none') {
         return (
             <div
@@ -166,8 +210,6 @@ function Sidebar({
             </div>
         );
     }
-
-    const threshold = 60; // px to trigger close
 
     const handleTouchStart = (e: React.TouchEvent) => {
         swipeStateRef.startX = e.touches[0].clientX;

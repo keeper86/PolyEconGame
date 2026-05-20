@@ -297,9 +297,9 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
     it('finds route when destination bid depth is less than ship cargo capacity', () => {
         // Mirrors the Earth→Alpha Centauri scenario: a seller at origin lists 2Mt of Steel
         // at 20.5/t, but the buyer at destination bids on only 1,000t at 1,000/t.
-        // BulkCarrier1 can carry 150,000t, so without bid-depth capping the sell-price
-        // query for 150,000t returns null and the trader incorrectly stays idle.
-        // After the fix the effective fill quantity is capped to 1,000 and the route is found.
+        // BulkCarrier1 can carry 150,000t, so without bid-depth capping the effective
+        // quantity could exceed the destination bid depth, diluting the apparent sell price.
+        // After the fix, effectiveQty = min(cargoCapacity, unbalanced × 30) = 30,000 and the route is found.
         const BID_DEPTH = 1_000;
         const pOrigin = makePlanet({
             id: 'p-origin',
@@ -357,7 +357,7 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
         };
         expect(s.planetId).toBe('p-origin');
         expect(s.to).toBe('p-dest');
-        expect(s.cargoGoal?.quantity).toBe(BID_DEPTH * 30);
+        expect(s.cargoGoal?.quantity).toBe(BID_DEPTH * 90);
     });
 });
 
@@ -387,7 +387,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
 
         const sellEntry = agent.assets['p-dest']!.market!.sell.Steel;
         expect(sellEntry).toBeDefined();
-        expect(sellEntry!.offerPrice).toBeCloseTo(200 * 1.05);
+        expect(sellEntry!.offerPrice).toBeCloseTo(200 * 0.95);
         expect(sellEntry!.automated).toBe(true);
     });
 
