@@ -115,7 +115,9 @@ function scanBestRoute(
                     emptyPriceAggregate(),
                 );
 
-                const unbalancedQuantity = destBids.quantity - destOffers.quantity;
+                const inTransport = dest.transportPipeline[resource.name].quantity ?? 0;
+
+                const unbalancedQuantity = destBids.quantity - destOffers.quantity - inTransport;
 
                 if (unbalancedQuantity <= 0) {
                     if (debug && monthly) {
@@ -281,7 +283,8 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
                 continue;
             }
 
-            const marketPrice = planet.marketPrices[resourceName];
+            const marketPrice =
+                (planet.orderBooks[resourceName]?.asks[0]?.price ?? planet.marketPrices[resourceName]) * 0.95;
             if (!marketPrice || marketPrice <= 0) {
                 continue;
             }
@@ -295,11 +298,10 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
                 assets.market.sell[resourceName] = {
                     resource: entry.resource,
                     automated: true,
+                    offerRetainment: 0,
+                    offerPrice: marketPrice,
                 };
             }
-            const offer = assets.market.sell[resourceName];
-            offer.offerRetainment = 0;
-            offer.offerPrice = marketPrice * 0.95;
         }
     }
 }
