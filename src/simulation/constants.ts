@@ -22,7 +22,7 @@ export const isFirstTickInMonth = (tick: number): boolean => tick % TICKS_PER_MO
 /** True only on clean year boundaries (every TICKS_PER_YEAR ticks). */
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
 
-export const PRICE_FLOOR = 0.001;
+export const PRICE_FLOOR = 0.01;
 export const PRICE_CEIL = 1000000.0;
 
 export const PRICE_ADJUST_MAX_UP = 1.05;

@@ -33,6 +33,10 @@ export default function ResourceTrigger({
                 return storageQuantity !== undefined ? formatNumberWithUnit(storageQuantity, qtyUnit) : null;
             case 'clearingPrice':
                 return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : null;
+            case 'productionCost':
+                return overviewRow?.productionCost
+                    ? formatNumberWithUnit(overviewRow.productionCost, 'currency', planetId)
+                    : null;
             case 'totalProduction':
                 if (name.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                     return null;
@@ -71,6 +75,8 @@ export default function ResourceTrigger({
                 return 'text-foreground font-medium';
             case 'clearingPrice':
                 return 'text-foreground font-semibold';
+            case 'productionCost':
+                return 'text-muted-foreground';
             case 'totalProduction':
             case 'totalConsumption':
             case 'totalSupply':
@@ -89,6 +95,8 @@ export default function ResourceTrigger({
                 return storageQuantity ?? 0;
             case 'clearingPrice':
                 return overviewRow?.clearingPrice ?? 0;
+            case 'productionCost':
+                return overviewRow?.productionCost ?? 0;
             case 'totalProduction':
                 return overviewRow?.totalProduction ?? 0;
             case 'totalConsumption':

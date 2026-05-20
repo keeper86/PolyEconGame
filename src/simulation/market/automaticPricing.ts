@@ -38,13 +38,6 @@ const resourceProducerTemplates: Map<string, { facility: ProductionFacility; out
     return map;
 })();
 
-/**
- * Compute a production cost per unit for every producible resource on this planet,
- * using the current market prices for inputs. The formula mirrors populationDemand.ts:
- *   cost = Σ(need.quantity × marketPrice) + Σ(workerRequirement[edu]) / outputQty
- * Land-bound resource inputs are treated as free (same as populationDemand.ts).
- * Returns a Map<resourceName, costPerUnit>.
- */
 export function buildPlanetProductionCosts(planet: Planet): Map<string, number> {
     const costs = new Map<string, number>();
     for (const [resourceName, { facility, outputQty }] of resourceProducerTemplates) {
@@ -72,13 +65,12 @@ export function buildPlanetProductionCosts(planet: Planet): Map<string, number> 
 }
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
-    const planetProductionCosts = buildPlanetProductionCosts(planet);
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet, planetProductionCosts);
+        automaticPricingForAgent(agent, planet);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet, planetProductionCosts: Map<string, number>): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -325,7 +317,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, planetProduction
             storageTarget,
             marketPrice,
             profitGap,
-            planetProductionCosts.get(resourceName) ?? 0,
+            planet.lastMarketResult[resourceName]?.productionCost ?? 0,
         );
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {

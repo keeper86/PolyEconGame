@@ -867,6 +867,7 @@ const marketOverviewRowSchema = z.object({
     resourceName: z.string(),
     level: z.string(),
     clearingPrice: z.number(),
+    productionCost: z.number(),
     totalProduction: z.number(),
     totalConsumption: z.number(),
     totalSupply: z.number(),
@@ -936,12 +937,14 @@ export const getPlanetMarketOverview = () =>
                 const totalSupply = result?.totalSupply ?? 0;
                 const totalDemand = result?.totalDemand ?? 0;
                 const totalSold = result?.totalVolume ?? 0;
+                const productionCost = result?.productionCost ?? 0;
                 const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
 
                 return {
                     resourceName: resource.name,
                     level: resource.level,
                     clearingPrice,
+                    productionCost,
                     totalProduction: production[resource.name] ?? 0,
                     totalConsumption: consumption[resource.name] ?? 0,
                     totalSupply,
@@ -967,6 +970,7 @@ export const getPlanetMarketOverview = () =>
                     resourceName,
                     level: 'currency',
                     clearingPrice: result.clearingPrice ?? planet.marketPrices[resourceName] ?? 0,
+                    productionCost: 0,
                     totalProduction: 0,
                     totalConsumption: 0,
                     totalSupply,

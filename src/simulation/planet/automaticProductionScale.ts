@@ -13,6 +13,8 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             return;
         }
 
+        planet.marketPrices
+
         for (const facility of assets.productionFacilities) {
             const storableOutputs = facility.produces.filter(({ resource }) => resource.form !== 'services');
             const serviceOutputs = facility.produces.filter(({ resource }) => resource.form === 'services');

@@ -423,11 +423,33 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
         return agent;
     }
 
+    /**
+     * Seeds planet.lastMarketResult with productionCost values computed from the
+     * current marketPrices so that automaticPricing can read them (as it would
+     * after a real marketTick in the engine).
+     */
+    function seedProductionCosts(planet: ReturnType<typeof makePlanet>): void {
+        const costs = buildPlanetProductionCosts(planet);
+        for (const [name, cost] of costs) {
+            planet.lastMarketResult[name] = {
+                resourceName: name,
+                clearingPrice: 0,
+                totalVolume: 0,
+                totalDemand: 0,
+                totalSupply: 0,
+                unfilledDemand: 0,
+                unsoldSupply: 0,
+                productionCost: cost,
+            };
+        }
+    }
+
     it('ceiling spring reduces bid when price is far above productionCost × AUTOMATED_COST_CEILING_FACTOR', () => {
         // Lumber prodCost with logs price = 0: (0 + 44) / 200 = 0.22
         // ceiling = 0.22 × 10 = 2.2
         // Start bid at 1000 >> 2.2
         const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
+        seedProductionCosts(planet);
         const agent = makeLumberConsumerAgent(1000, 5, 10);
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -441,6 +463,7 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
         // Start bid at 1.0 < 2.2 — no ceiling correction should fire
         // With fill rate = 0 (lastBought=0, lastEffectiveQty=10), factor = PRICE_ADJUST_MAX_UP
         const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
+        seedProductionCosts(planet);
         const agent = makeLumberConsumerAgent(1.0, 0, 10);
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -456,6 +479,7 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
         // Agent B: bid at 100 (ceiling deviation = 100/2.2 - 1 ≈ 44.45)
         // Agent B's price should drop proportionally more
         const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
+        seedProductionCosts(planet);
         const agentA = makeLumberConsumerAgent(3, 5, 10);
         const agentB = makeLumberConsumerAgent(100, 5, 10);
 
@@ -488,6 +512,7 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
                 [waterResourceType.name]: 1000, // water revenue >> lumber cost → profitGap = 0
             },
         });
+        seedProductionCosts(planet);
         const agent = makeLumberConsumerAgent(4.4, 10, 10);
 
         automaticPricing(new Map([['co', agent]]), planet);
