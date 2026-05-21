@@ -355,7 +355,7 @@ function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: 
 }
 
 const currentAverageMarketPrice = (planet: Planet, resourceName: string): number => {
-    return planet.avgMarketResult[resourceName]?.clearingPrice ?? PRICE_FLOOR;
+    return planet.avgMarketResult[resourceName]?.clearingPrice ?? planet.marketPrices[resourceName] ?? PRICE_FLOOR;
 };
 
 function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {

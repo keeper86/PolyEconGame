@@ -64,9 +64,11 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 const delta = direction === 'up' ? maxStep : -maxStep;
                 if (direction === 'up' && facility.scale === facility.maxScale) {
                     facility.maxScale += delta * 0.1;
-                    console.log(
-                        `Increasing maxScale of ${facility.name} on ${planet.name} to ${facility.maxScale.toFixed(2)}`,
-                    );
+                    if (process.env.SIM_DEBUG) {
+                        console.log(
+                            `Increasing maxScale of ${facility.name} on ${planet.name} to ${facility.maxScale.toFixed(2)}`,
+                        );
+                    }
                     return;
                 }
                 facility.scale = Math.max(0, Math.min(facility.maxScale, facility.scale + delta));
@@ -94,7 +96,7 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             }
 
             if (score >= 2) {
-                if (planet.id === 'earth') {
+                if (planet.id === 'earth' && process.env.SIM_DEBUG) {
                     console.info(score, avgMargin, avgDemandExcess, avgSupplyExcess, facility.name);
                 }
 
@@ -103,7 +105,7 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             }
 
             if (score <= -2) {
-                if (planet.id === 'earth') {
+                if (planet.id === 'earth' && process.env.SIM_DEBUG) {
                     console.info(score, avgMargin, avgDemandExcess, avgSupplyExcess, facility.name);
                 }
 
