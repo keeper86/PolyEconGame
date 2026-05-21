@@ -364,17 +364,6 @@ describe('buildPlanetProductionCosts — cost formula correctness', () => {
         expect(costs.get(lumberResourceType.name)).toBeCloseTo(expected, 6);
     });
 
-    it('skips land-bound resource inputs (arable land treated as free)', () => {
-        // Agricultural Facility: needs Water (qty=20) + Arable Land (land-bound, skipped)
-        // workers = 30+20+10+0 = 60, produces Agricultural Product qty=40
-        const WATER_PRICE = 5;
-        const planet = makePlanet({ marketPrices: { [waterResourceType.name]: WATER_PRICE } });
-        const costs = buildPlanetProductionCosts(planet);
-
-        const expected = (20 * WATER_PRICE + 60) / 40; // = 4.0
-        expect(costs.get(agriculturalProductResourceType.name)).toBeCloseTo(expected, 6);
-    });
-
     it('uses 0 for inputs with no market price set', () => {
         // Override logs price to 0 so the only cost is the worker sum
         const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });

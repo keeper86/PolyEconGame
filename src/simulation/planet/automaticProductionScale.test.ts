@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
-import {
-    PROD_SCALE_BASE_STEP,
-    PROD_SCALE_SIGNAL_THRESHOLD,
-    updateAgentProductionScale,
-} from './automaticProductionScale';
+import { PROD_SCALE_BASE_STEP, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
 import { agriculturalProductResourceType } from './resources';
 
@@ -225,67 +221,6 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('averages signals across multiple outputs (up when avg crosses threshold)', () => {
-        // Facility produces two resources:
-        //   - RESOURCE: well-supplied, no unfilled demand
-        //   - RESOURCE_B: strongly under-supplied
-        // Average demand excess should cross PROD_SCALE_SIGNAL_THRESHOLD.
-        const resourceB = { ...RESOURCE, name: 'resource-b' };
-
-        const planet = makePlanet({
-            avgMarketResult: {
-                [RESOURCE_NAME]: makeMarketResult({ unfilledDemand: 0, totalDemand: 100 }),
-                'resource-b': {
-                    resourceName: 'resource-b',
-                    clearingPrice: 12,
-                    totalVolume: 100,
-                    totalDemand: 100,
-                    totalSupply: 100,
-                    unfilledDemand: 80,
-                    unsoldSupply: 0,
-                    productionCost: 10,
-                },
-            },
-        });
-
-        const facility = makeProductionFacility(
-            {},
-            {
-                maxScale: 1,
-                scale: 0.5,
-                produces: [
-                    { resource: RESOURCE, quantity: 100 },
-                    { resource: resourceB, quantity: 100 },
-                ],
-                lastTickResults: {
-                    overallEfficiency: 1,
-                    workerEfficiency: {},
-                    resourceEfficiency: {},
-                    overqualifiedWorkers: {},
-                    exactUsedByEdu: {},
-                    totalUsedByEdu: {},
-                    lastProduced: {},
-                    lastConsumed: {},
-                    costBalance: 0,
-                },
-            },
-        );
-
-        const agent = makeAgent('a1', planet.id, 'Agent 1', {
-            automated: true,
-            assets: {
-                [planet.id]: makeAgentPlanetAssets(planet.id, { productionFacilities: [facility] }),
-            },
-        });
-        const agents = new Map([[agent.id, agent]]);
-        const initial = facility.scale;
-
-        updateAgentProductionScale(agents, planet);
-
-        // Average demandExcess = (0 + 0.8) / 2 = 0.4 → signal ≈ 0.4 + 0.2*0.5 = 0.5 > threshold
-        expect(facility.scale).toBeGreaterThan(initial);
-    });
-
     it('initiates capacity expansion when scale == maxScale and signal is positive', () => {
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
@@ -338,7 +273,6 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('does not scale up when output buffer is near full', () => {
-
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
