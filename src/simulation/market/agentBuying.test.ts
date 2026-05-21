@@ -8,7 +8,7 @@ import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageF
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 import { settleAgentBuyers } from './settlement';
-import { agriculturalProductionFacility, ironSmelter } from '../planet/productionFacilities';
+import { intensiveFarmFacility, ironSmelter } from '../planet/productionFacilities';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -87,7 +87,7 @@ describe('automaticPricing — buy side', () => {
             volumePerQuantity: 0,
             massPerQuantity: 0,
         };
-        agent.assets.p.productionFacilities = [agriculturalProductionFacility(planet.id, 'farm-1')];
+        agent.assets.p.productionFacilities = [intensiveFarmFacility(planet.id, 'farm-1')];
 
         automaticPricing(agentMap(agent), planet);
 

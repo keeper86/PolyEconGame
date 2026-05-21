@@ -1,7 +1,7 @@
 import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
-import { agriculturalProductionFacility, waterExtractionFacility } from '../planet/productionFacilities';
+import { intensiveFarmFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/claims';
 import {
     createEmptyAccumulator,
@@ -323,7 +323,7 @@ export function makeWaterExtraction(planetId: string, agentId: string, scale: nu
 }
 
 export function makeAgriculturalProduction(planetId: string, agentId: string, scale: number): ProductionFacility {
-    const facility = agriculturalProductionFacility(planetId, `${agentId}-agricultural`);
+    const facility = intensiveFarmFacility(planetId, `${agentId}-agricultural`);
     facility.scale = scale;
     facility.maxScale = scale;
     return facility;

@@ -11,7 +11,6 @@ import {
 } from '../planet/landBoundResources';
 import {
     administrativeCenter,
-    agriculturalProductionFacility,
     beveragePlant,
     cementPlant,
     coalMine,
@@ -22,6 +21,7 @@ import {
     glassFactory,
     groceryChain,
     hospital,
+    intensiveFarmFacility,
     ironExtractionFacility,
     ironSmelter,
     loggingCamp,
@@ -121,7 +121,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         waterFacility.scale = scale;
         waterFacility.maxScale = scale;
 
-        const agriFacility = agriculturalProductionFacility(spec.id, `${company.id}-agri`);
+        const agriFacility = intensiveFarmFacility(spec.id, `${company.id}-agri`);
         agriFacility.scale = scale;
         agriFacility.maxScale = scale;
 
@@ -171,7 +171,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
     const govWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-gov-water-fac`);
     govWaterFacility.scale = spec.govAgriScale;
     govWaterFacility.maxScale = spec.govAgriScale;
-    const govAgriFacility = agriculturalProductionFacility(spec.id, `${spec.id}-gov-agri-fac`);
+    const govAgriFacility = intensiveFarmFacility(spec.id, `${spec.id}-gov-agri-fac`);
     govAgriFacility.scale = spec.govAgriScale;
     govAgriFacility.maxScale = spec.govAgriScale;
 

@@ -645,30 +645,11 @@ export const vehicleFactory = (planetId: string, id: string): ProductionFacility
     produces: [{ resource: vehicleResourceType, quantity: 10.5 }],
 });
 
-export const agriculturalProductionFacility = (planetId: string, id: string): ProductionFacility => ({
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Agricultural Facility',
-    powerConsumptionPerTick: 1,
-    workerRequirement: {
-        none: 30,
-        primary: 20,
-        secondary: 10,
-        tertiary: 0,
-    },
-    needs: [
-        { resource: waterResourceType, quantity: 20 },
-        { resource: arableLandResourceType, quantity: 50 },
-    ],
-    produces: [{ resource: agriculturalProductResourceType, quantity: 40 }],
-});
-
 export const intensiveFarmFacility = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Intensive Agricultural Facility',
+    name: 'Agricultural Facility',
     powerConsumptionPerTick: 1.2,
     workerRequirement: {
         none: 20,
@@ -952,7 +933,6 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(limestoneQuarry),
     entry(clayMine),
     entry(cottonFarm),
-    entry(agriculturalProductionFacility),
     entry(waterExtractionFacility),
     entry(ironExtractionFacility),
     entry(coalPowerPlant),

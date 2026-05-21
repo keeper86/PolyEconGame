@@ -355,7 +355,7 @@ function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: 
 }
 
 const currentAverageMarketPrice = (planet: Planet, resourceName: string): number => {
-    return planet.marketPrices[resourceName] ?? PRICE_FLOOR;
+    return planet.avgMarketResult[resourceName]?.clearingPrice ?? PRICE_FLOOR;
 };
 
 function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
@@ -548,7 +548,7 @@ export function adjustOfferPrice(
     const newPrice = price * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
-    if (!isFinite(newPrice) || newPrice <= 0) {
+    if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
         offer.offerPrice = PRICE_FLOOR;
     } else {
         offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));

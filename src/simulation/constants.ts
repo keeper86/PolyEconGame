@@ -34,7 +34,7 @@ export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
 export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 
 export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
-export const COST_SPRING_STRENGTH = 0.02;
+export const COST_SPRING_STRENGTH = 0.06;
 /** Maximum ratio of production cost an automated agent will bid for any input (mirrors populationDemand cap). */
 export const AUTOMATED_COST_CEILING_FACTOR = 6;
 

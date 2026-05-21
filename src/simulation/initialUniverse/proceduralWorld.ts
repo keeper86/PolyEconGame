@@ -1,6 +1,5 @@
 import {
     administrativeCenter,
-    agriculturalProductionFacility,
     beveragePlant,
     cementPlant,
     clayMine,
@@ -1330,7 +1329,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const govWaterFac = waterExtractionFacility(PROC_PLANET_ID, 'proc-gov-water');
     govWaterFac.scale = 200;
     govWaterFac.maxScale = 200;
-    const govAgriFac = agriculturalProductionFacility(PROC_PLANET_ID, 'proc-gov-agri');
+    const govAgriFac = intensiveFarmFacility(PROC_PLANET_ID, 'proc-gov-agri');
     govAgriFac.scale = 800;
     govAgriFac.maxScale = 800;
 
