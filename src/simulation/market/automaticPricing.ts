@@ -55,7 +55,11 @@ export function buildPlanetProductionCosts(planet: Planet): Map<string, number> 
         for (const edu of educationLevelKeys) {
             cost += facility.workerRequirement[edu] ?? 0;
         }
-        cost /= outputQty;
+        // Divide by total output qty across all outputs so the cost is split
+        // proportionally — avoids inflating per-unit cost when a facility produces
+        // more than one resource.
+        const totalOutputQty = facility.produces.reduce((sum, p) => sum + p.quantity, 0);
+        cost /= totalOutputQty;
         if (cost > 0) {
             costs.set(resourceName, cost);
         }

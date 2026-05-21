@@ -14,10 +14,12 @@ import type { StorageFacility } from '../planet/facility';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
+    crudeOilResourceType,
     fabricResourceType,
     ironOreResourceType,
     logsResourceType,
     lumberResourceType,
+    naturalGasResourceType,
     waterResourceType,
 } from '../planet/resources';
 import { seedRng } from '../utils/stochasticRound';
@@ -386,6 +388,18 @@ describe('buildPlanetProductionCosts — cost formula correctness', () => {
 
         // sawmill: logs price = 0, workers = 15+20+8+1 = 44, output = 200 → cost = 44 / 200 = 0.22
         expect(costs.get(lumberResourceType.name)).toBeCloseTo(44 / 200, 6);
+    });
+
+    it('splits cost proportionally for multi-output facilities (oil well)', () => {
+        // Oil Well: needs oilReservoir (land-bound, skipped), workers = 10+25+15+2 = 52
+        // produces CrudeOil qty=300 + NaturalGas qty=100, totalOutputQty=400
+        // correct cost per unit = 52 / 400 = 0.13 for both outputs
+        const planet = makePlanet({ marketPrices: {} });
+        const costs = buildPlanetProductionCosts(planet);
+
+        const expected = 52 / 400; // 0.13
+        expect(costs.get(crudeOilResourceType.name)).toBeCloseTo(expected, 6);
+        expect(costs.get(naturalGasResourceType.name)).toBeCloseTo(expected, 6);
     });
 });
 
