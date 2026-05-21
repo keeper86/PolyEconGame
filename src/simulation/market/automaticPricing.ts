@@ -1,7 +1,5 @@
 import {
     AUTOMATED_COST_CEILING_FACTOR,
-    AUTOMATED_COST_FLOOR_BUFFER,
-    AUTOMATED_COST_FLOOR_MARKUP,
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
@@ -10,9 +8,9 @@ import {
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
-    SERVICE_DEPRECIATION_RATE_PER_TICK,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
+import type { Resource } from '../planet/claims';
 import type { ProductionFacility } from '../planet/facility';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
@@ -192,17 +190,16 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
-    const aggregatedBuyTargets = new Map<
-        string,
-        { resource: (typeof assets.productionFacilities)[number]['needs'][number]['resource']; storageTarget: number }
-    >();
+    const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
 
     for (const facility of [
         ...assets.productionFacilities,
         ...assets.managementFacilities,
         ...assets.shipConstructionFacilities,
     ]) {
-        if (facility.construction === null) {
+        if (facility.construction === null || facility.construction.type === 'expansion') {
+            // Facilities with construction.type === 'expansion' still produce while expanding,
+            // so they need their normal input buffer in addition to construction services.
             let needs = [];
             if (facility.type === 'ship_construction') {
                 needs = (facility.produces?.buildingCost ?? []).map((resource) => {
@@ -235,7 +232,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     aggregatedBuyTargets.set(resource.name, { resource, storageTarget: facilityTarget });
                 }
             }
-        } else {
+        }
+        if (facility.construction !== null) {
             // Under construction → target construction service input buffer
             const facilityTarget = facility.construction.maximumConstructionServiceConsumption * 3;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
@@ -423,7 +421,7 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: str
             costFloors.set(name, PRICE_FLOOR);
         } else {
             const costPerUnit = totalCost / totalUnits;
-            costFloors.set(name, Math.max(PRICE_FLOOR, costPerUnit * (1 + AUTOMATED_COST_FLOOR_MARKUP)));
+            costFloors.set(name, Math.max(PRICE_FLOOR, costPerUnit));
         }
     }
     return costFloors;
@@ -502,6 +500,7 @@ function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THR
     }
 }
 
+export const AUTOMATED_COST_FLOOR_BUFFER = 0.5;
 export function adjustOfferPrice(
     offer: AgentMarketOfferState,
     inventoryQty: number,
@@ -535,10 +534,7 @@ export function adjustOfferPrice(
         offer.resource.form === 'services' ? SERVICE_SELL_THROUGH_TARGET : TARGET_SELL_THROUGH,
     );
 
-    const brakeZoneTop =
-        costFloor *
-        (1 + AUTOMATED_COST_FLOOR_BUFFER) *
-        (1 - (offer.resource.form === 'services' ? SERVICE_DEPRECIATION_RATE_PER_TICK : 0));
+    const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER * (offer.resource.form === 'services' ? 0.5 : 1));
 
     if (brakeZoneTop > PRICE_FLOOR && price > 0) {
         const deviation = Math.max(0, brakeZoneTop / price - 1);

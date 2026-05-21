@@ -184,10 +184,11 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(maxScale);
     });
 
-    it('skips a facility under construction', () => {
+    it('skips a facility under construction (type === "new")', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, {
             construction: {
+                type: 'new',
                 progress: 0,
                 totalConstructionServiceRequired: 1000,
                 constructionTargetMaxScale: 1,
@@ -301,7 +302,43 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction!.totalConstructionServiceRequired).toBeGreaterThan(0);
     });
 
+    it('scales up when profitable (positive costBalance) and demand exceeds threshold', () => {
+        // Profitable facility: revenue > actualCost → costBalance > 0
+        // lastProduced has 100 units at clearingPrice 12 → revenue = 1200
+        // costBalance = 200 → actualCost = revenue - costBalance = 1000
+        // profit margin = (1200 - 1000) / 1000 = 0.2
+        // demandExcess = 0.8 → signal = 0.8 - 0 + 0.2*0.5 = 0.9 > threshold
+        const planet = makePlanetWithAvg(
+            makeMarketResult({
+                unfilledDemand: 80,
+                totalDemand: 100,
+                clearingPrice: 12,
+                productionCost: 10,
+            }),
+        );
+        const { agents, facility } = makeSetup(planet, {
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: { [RESOURCE_NAME]: 100 },
+                lastConsumed: {},
+                costBalance: 200, // revenue(1200) - actualCost(1000) = 200
+            },
+        });
+        const initial = facility.scale;
+
+        updateAgentProductionScale(agents, planet);
+
+        // Should scale up (not down!) because the facility is profitable
+        expect(facility.scale).toBeGreaterThan(initial);
+    });
+
     it('does not scale up when output buffer is near full', () => {
+
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );

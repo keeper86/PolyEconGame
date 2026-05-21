@@ -1,67 +1,20 @@
 import { OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import type { ProductionFacility } from './facility';
-import { queryStorageFacility } from './facility';
-import type { Agent, Planet } from './planet';
-import { calculateCostsForConstruction, getFacilityType } from './facility';
+import {
+    calculateCostsForConstruction,
+    getFacilityType,
+    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+    queryStorageFacility,
+} from './facility';
+import type { Agent, AgentPlanetAssets, Planet } from './planet';
 
-// ---------------------------------------------------------------------------
-// Exported constants (tunable)
-// ---------------------------------------------------------------------------
-
-/**
- * Base fraction of maxScale that can be adjusted per month when the signal is
- * at full strength.  The actual step is `baseStep * |signal| * scale`, so
- * strong signals move faster and weak signals barely move.
- */
-export const PROD_SCALE_BASE_STEP = 0.05;
-
-/**
- * If any output's inventory exceeds this many ticks' worth of production,
- * the facility is considered "output buffer near full" and scale-up is blocked.
- */
+export const PROD_SCALE_BASE_STEP = 0.01;
 export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
-
-/**
- * If any input's resource efficiency (from lastTickResults) is below this
- * threshold, scale-up is blocked (the facility is starved of that input).
- */
 export const INPUT_EFFICIENCY_MIN = 0.5;
+export const PROD_SCALE_SIGNAL_THRESHOLD = 0.5;
+export const MAX_SCALE_EXPAND_FRACTION = 0.1;
 
-/**
- * Signal threshold for action.  When the weighted composite signal exceeds
- * this magnitude, a scale adjustment is made.
- */
-export const PROD_SCALE_SIGNAL_THRESHOLD = 0.3;
-
-/**
- * Maximum fraction by which maxScale can be expanded in a single construction
- * project (e.g. 0.25 = 25% increase).
- */
-export const MAX_SCALE_EXPAND_FRACTION = 0.25;
-
-/**
- * Maximum construction service consumption per tick for a capacity-expansion
- * project.  This limits how fast construction progresses.
- */
-export const MAX_CONSTRUCTION_SERVICE_CONSUMPTION = 100;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Compute a composite production-steering signal for a single facility.
- *
- * Returns a value in roughly [-1, +1] where:
- *   > 0  → pressure to scale up
- *   < 0  → pressure to scale down
- *   near 0 → hold steady
- */
-function computeFacilitySignal(
-    facility: ProductionFacility,
-    assets: NonNullable<Agent['assets'][string]>,
-    planet: Planet,
-): number {
+function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
     const { lastTickResults, produces, scale } = facility;
 
     // ---- 1. Demand / supply pressure from market aggregates ----
@@ -112,8 +65,8 @@ function computeFacilitySignal(
             const price = planet.avgMarketResult[name]?.clearingPrice ?? planet.marketPrices[name] ?? 0;
             return sum + qty * price;
         }, 0);
-        const totalCost = Math.abs(lastTickResults.costBalance) + revenue; // costBalance = revenue - cost
-        const cost = totalCost > 0 ? totalCost : revenue;
+        const actualCost = revenue - lastTickResults.costBalance; // costBalance = revenue - actualCost
+        const cost = actualCost > 0 ? actualCost : revenue;
         if (cost > 0) {
             // profit margin: (revenue - cost) / cost
             const margin = (revenue - cost) / cost;
@@ -145,6 +98,9 @@ function computeFacilitySignal(
     if (inputStarved && signal > 0) {
         signal = 0; // don't scale up when starved of inputs
     }
+    if (lastTickResults?.overallEfficiency < 0.85 && signal > 0) {
+        signal = 0;
+    }
 
     return signal;
 }
@@ -173,9 +129,10 @@ function initiateCapacityExpansion(facility: ProductionFacility): void {
     const totalCost = calculateCostsForConstruction(facilityType, currentMax, targetMax);
 
     facility.construction = {
+        type: 'expansion',
         constructionTargetMaxScale: targetMax,
         totalConstructionServiceRequired: totalCost,
-        maximumConstructionServiceConsumption: MAX_CONSTRUCTION_SERVICE_CONSUMPTION,
+        maximumConstructionServiceConsumption: totalCost / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
         progress: 0,
         lastTickInvestedConstructionServices: 0,
     };
@@ -197,8 +154,9 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
         }
 
         for (const facility of assets.productionFacilities) {
-            // Skip facilities under construction (they can't change scale while building).
-            if (facility.construction !== null) {
+            // Skip facilities under construction (type === 'new') — they cannot produce yet.
+            // Facilities with construction.type === 'expansion' can still produce while expanding.
+            if (facility.construction !== null && facility.construction.type === 'new') {
                 continue;
             }
 
@@ -214,7 +172,7 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
 
             if (signal > PROD_SCALE_SIGNAL_THRESHOLD) {
                 // Scale up
-                if (facility.scale >= facility.maxScale) {
+                if (facility.scale >= facility.maxScale && facility.lastTickResults?.overallEfficiency > 0.95) {
                     // At capacity — start a construction project to expand.
                     initiateCapacityExpansion(facility);
                 } else {

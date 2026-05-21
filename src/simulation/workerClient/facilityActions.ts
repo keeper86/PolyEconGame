@@ -51,6 +51,7 @@ export function handleBuildFacility(
     const facilityType = getFacilityType(newFacility);
     const costs = calculateCostsForConstruction(facilityType, 0, targetScale);
     newFacility.construction = {
+        type: 'new',
         progress: 0,
         constructionTargetMaxScale: targetScale,
         totalConstructionServiceRequired: costs,
@@ -111,6 +112,7 @@ export function handleExpandFacility(
     const facilityType = getFacilityType(facility);
     const costs = calculateCostsForConstruction(facilityType, facility.maxScale, targetScale);
     facility.construction = {
+        type: 'expansion',
         progress: 0,
         constructionTargetMaxScale: targetScale,
         totalConstructionServiceRequired: costs,
@@ -242,6 +244,7 @@ export function handleBuildShipConstructionFacility(
     newFacility.name = facilityName;
     const costs = calculateCostsForConstruction('ship_construction', 0, targetScale);
     newFacility.construction = {
+        type: 'new',
         progress: 0,
         constructionTargetMaxScale: targetScale,
         totalConstructionServiceRequired: costs,
@@ -307,6 +310,7 @@ export function handleExpandShipConstructionFacility(
     }
     const costs = calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale);
     facility.construction = {
+        type: 'expansion',
         progress: 0,
         constructionTargetMaxScale: targetScale,
         totalConstructionServiceRequired: costs,

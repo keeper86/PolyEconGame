@@ -304,16 +304,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    function flushAgentMonthlyHistory(gs: GameState, tick: number): Promise<void> {
+    function flushAgentMonthlyHistory(gs: GameStateRecord, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
             return Promise.resolve();
         }
         const rows = [...gs.agents.values()].flatMap((agent) => {
-            if (agent.automated) {
+            if (agent.data.automated) {
                 return [];
             }
-            return Object.entries(agent.assets).map(([planetId, assets]) => {
+            return Object.entries(agent.data.assets).map(([planetId, assets]) => {
                 const netBalance = assets.deposits - totalOutstandingLoans(assets.activeLoans);
                 const monthlyNetIncome = assets.monthAcc.revenue;
 
@@ -325,7 +325,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 let storageValue = 0;
                 for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
                     if (entry?.quantity) {
-                        const price = planet?.marketPrices[entry.resource.name] ?? 0;
+                        const price = planet?.data.marketPrices[entry.resource.name] ?? 0;
                         storageValue += entry.quantity * price;
                     }
                 }
@@ -355,7 +355,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    function flushPopulationHistory(gs: GameState, tick: number): Promise<void> {
+    function flushPopulationHistory(gs: GameStateRecord, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
             return Promise.resolve();
@@ -363,7 +363,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         const rows = [...gs.planets.values()].map((planet) => ({
             tick,
             planet_id: planet.id,
-            population: computePopulationTotal(planet),
+            population: computePopulationTotal(planet.data),
         }));
         if (rows.length === 0) {
             return Promise.resolve();
@@ -378,7 +378,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
      * then reset the accumulator for the next month.
      * Falls back to the current spot price when no trades occurred this month.
      */
-    function flushProductPrices(gs: GameState, tick: number): Promise<void> {
+    function flushProductPrices(gs: GameStateRecord, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
             return Promise.resolve();
@@ -392,11 +392,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             maxPrice: number;
         }> = [];
         for (const planet of gs.planets.values()) {
-            for (const [productName, spotPrice] of Object.entries(planet.marketPrices)) {
+            for (const [productName, spotPrice] of Object.entries(planet.data.marketPrices)) {
                 if (typeof spotPrice !== 'number' || !isFinite(spotPrice) || spotPrice <= 0) {
                     continue;
                 }
-                const acc = planet.monthPriceAcc[productName];
+                const acc = planet.data.monthPriceAcc[productName];
                 const avgPrice = acc ? acc.sum / acc.count : spotPrice;
                 const minPrice = acc ? acc.min : spotPrice;
                 const maxPrice = acc ? acc.max : spotPrice;
@@ -477,12 +477,18 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         })();
     }
 
-    function scheduleTick(): void {
+    function scheduleTick(interval: number = TICK_INTERVAL_MS): void {
         setTimeout(() => {
             if (!running) {
                 return;
             }
 
+            if (processingTick) {
+                scheduleTick(0);
+                return;
+            }
+
+            scheduleTick();
             // Start tick processing - prevent eager draining during tick
             processingTick = true;
 
@@ -499,16 +505,18 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             currentSnapshot = toImmutableGameState(state);
 
-            if (state.tick % 30 === 0) {
-                const tickAtFlush = state.tick;
+            processingTick = false;
+
+            if (currentSnapshot.tick % 30 === 0) {
+                const tickAtFlush = currentSnapshot.tick;
                 // Chain the CAGG refresh after the insert so it never races against uncommitted data.
                 // TimescaleDB only materializes buckets that are FULLY contained in [start, end).
                 // The monthly bucket at tick T spans [T, T+TICKS_PER_MONTH), so the end of the
                 // window must be >= T + TICKS_PER_MONTH to include it.
                 void Promise.all([
-                    flushProductPrices(state, tickAtFlush),
-                    flushPopulationHistory(state, tickAtFlush),
-                    flushAgentMonthlyHistory(state, tickAtFlush),
+                    flushProductPrices(currentSnapshot, tickAtFlush),
+                    flushPopulationHistory(currentSnapshot, tickAtFlush),
+                    flushAgentMonthlyHistory(currentSnapshot, tickAtFlush),
                 ])
                     .then(() => {
                         if (snapshotDb) {
@@ -520,31 +528,34 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     );
             }
 
-            if (state.tick % 360 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR, 'yearly').catch((err) =>
-                    console.error(`[worker] Failed to refresh yearly CAGGs at tick ${state.tick}:`, err),
+            if (currentSnapshot.tick % 360 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(snapshotDb, currentSnapshot.tick + TICKS_PER_YEAR, 'yearly').catch(
+                    (err) =>
+                        console.error(`[worker] Failed to refresh yearly CAGGs at tick ${currentSnapshot.tick}:`, err),
                 );
             }
-            if (state.tick % 3600 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR * 10, 'decade').catch((err) =>
-                    console.error(`[worker] Failed to refresh decade CAGGs at tick ${state.tick}:`, err),
+            if (currentSnapshot.tick % 3600 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(
+                    snapshotDb,
+                    currentSnapshot.tick + TICKS_PER_YEAR * 10,
+                    'decade',
+                ).catch((err) =>
+                    console.error(`[worker] Failed to refresh decade CAGGs at tick ${currentSnapshot.tick}:`, err),
                 );
             }
 
-            if (state.tick % SNAPSHOT_INTERVAL_TICKS === 1) {
-                spawnSnapshotTask(currentSnapshot, state.tick);
+            if (currentSnapshot.tick % SNAPSHOT_INTERVAL_TICKS === 1) {
+                spawnSnapshotTask(currentSnapshot, currentSnapshot.tick);
             }
 
             const elapsedMs = Date.now() - start;
-            if (state.tick % 17 === 0) {
-                console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
+            if (currentSnapshot.tick % 17 === 0) {
+                console.log(`[worker] Tick ${currentSnapshot.tick} completed in ${elapsedMs}ms`);
             }
 
             pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs };
             tryFlushMessages(Date.now());
-
-            scheduleTick();
-        }, TICK_INTERVAL_MS);
+        }, interval);
     }
 
     // -----------------------------------------------------------------

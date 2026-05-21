@@ -29,19 +29,16 @@ export const PRICE_ADJUST_MAX_UP = 1.05;
 
 export const PRICE_ADJUST_MAX_DOWN = 0.95;
 
-export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
-
 export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 
-export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
 export const COST_SPRING_STRENGTH = 0.06;
 /** Maximum ratio of production cost an automated agent will bid for any input (mirrors populationDemand cap). */
 export const AUTOMATED_COST_CEILING_FACTOR = 6;
 
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
-export const INPUT_BUFFER_TARGET_TICKS = 30;
-export const OUTPUT_BUFFER_MAX_TICKS = 20;
+export const INPUT_BUFFER_TARGET_TICKS = 45;
+export const OUTPUT_BUFFER_MAX_TICKS = 10;
 
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 

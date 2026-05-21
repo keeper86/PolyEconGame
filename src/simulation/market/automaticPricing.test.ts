@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_CEILING_FACTOR,
-    AUTOMATED_COST_FLOOR_MARKUP,
     COST_SPRING_STRENGTH,
     INPUT_BUFFER_TARGET_TICKS,
     PRICE_ADJUST_MAX_DOWN,
@@ -273,18 +272,13 @@ describe('automaticPricing — cost-floor brake zone', () => {
     beforeEach(() => seedRng(42));
 
     it('attenuates the downward adjustment when the offer price is at the cost floor', () => {
-        // Facility: scale=1, workerReq: { none: 1 }, needs: 10 agri-product @ INPUT_PRICE, produces: 5 clothing
-        // inputCostPerTick = NEEDS_QTY × INPUT_PRICE × scale = 10 × 2.0 × 1 = 20
-        // wageCostPerTick  = DEFAULT_WAGE_PER_EDU × 1 worker × scale = 1.0
-        // costPerUnit = (20 + 1) / 5 = 4.2
-        // costFloor = max(PRICE_FLOOR, 4.2 × (1 + AUTOMATED_COST_FLOOR_MARKUP)) = 4.41
         const INPUT_PRICE = 2.0;
         const NEEDS_QTY = 10;
         const PRODUCES_QTY = 5;
         const inputCost = NEEDS_QTY * INPUT_PRICE;
         const wageCost = DEFAULT_WAGE_PER_EDU; // 1 worker, scale 1
         const costPerUnit = (inputCost + wageCost) / PRODUCES_QTY;
-        const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit * (1 + AUTOMATED_COST_FLOOR_MARKUP));
+        const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit);
 
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 1 });
         facility.needs = [{ resource: agriculturalProductResourceType, quantity: NEEDS_QTY }];

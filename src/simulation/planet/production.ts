@@ -458,12 +458,15 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             ageProd[edu] = ageProductivityMultiplier(workforce ? weightedMeanAgeForEdu(workforce, edu) : 30);
         }
 
-        // All active (non-construction) facilities in one flat array.
+        // All active facilities in one flat array.
+        // Facilities with construction.type === 'expansion' can still produce while expanding.
         const activeFacilities: Array<Facility> = [
-            ...assets.productionFacilities.filter((f) => !f.construction),
-            ...(assets.storageFacility.construction === null ? [assets.storageFacility] : []),
-            ...assets.managementFacilities.filter((f) => !f.construction),
-            ...assets.shipConstructionFacilities.filter((f) => !f.construction),
+            ...assets.productionFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
+            ...(assets.storageFacility.construction === null || assets.storageFacility.construction.type === 'expansion'
+                ? [assets.storageFacility]
+                : []),
+            ...assets.managementFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
+            ...assets.shipConstructionFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
         ];
 
         const enrichedFacilities: EnrichedFacility[] = activeFacilities.map((facility) => {
