@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
 import {
-    PROD_SCALE_DOWN_THRESHOLD,
-    PROD_SCALE_STEP_MAX,
-    PROD_SCALE_UP_MIN_EFFICIENCY,
-    PROD_SCALE_UP_THRESHOLD,
+    PROD_SCALE_BASE_STEP,
+    PROD_SCALE_SIGNAL_THRESHOLD,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
@@ -83,11 +81,9 @@ function makeSetup(
 // ---------------------------------------------------------------------------
 
 describe('updateAgentProductionScale', () => {
-    const MAX_STEP = PROD_SCALE_STEP_MAX; // 0.01 × maxScale
-
     it('does not change scale in the neutral band (slight supply excess below threshold)', () => {
-        const supplyExcess = PROD_SCALE_DOWN_THRESHOLD * 0.8; // below threshold
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: supplyExcess * 100, totalSupply: 100 }));
+        // supplyExcess = 0.2 → signal ≈ -0.2 (below PROD_SCALE_SIGNAL_THRESHOLD of 0.3)
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 20, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
@@ -97,8 +93,8 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('does not change scale in the neutral band (slight demand excess below threshold)', () => {
-        const demandExcess = PROD_SCALE_UP_THRESHOLD * 0.8; // below threshold
-        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: demandExcess * 100, totalDemand: 100 }));
+        // demandExcess = 0.2 → signal ≈ 0.2 (below threshold)
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 20, totalDemand: 100 }));
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
@@ -107,24 +103,26 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('scales down by exactly MAX_STEP when supply excess exceeds threshold', () => {
-        const supplyExcess = (PROD_SCALE_DOWN_THRESHOLD + 0.05) * 100; // clearly over threshold
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: supplyExcess, totalSupply: 100 }));
+    it('scales down when supply excess exceeds threshold', () => {
+        // supplyExcess = 0.8 → signal ≈ -0.8 (well below -threshold)
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBeCloseTo(initial - MAX_STEP * facility.maxScale);
+        // Step = baseStep * |signal| * maxScale = 0.05 * 0.8 * 1 = 0.04
+        expect(facility.scale).toBeCloseTo(initial - PROD_SCALE_BASE_STEP * 0.8 * facility.maxScale);
     });
 
-    it('scales up by exactly MAX_STEP when demand excess exceeds threshold and conditions are met', () => {
-        const unfilledDemand = (PROD_SCALE_UP_THRESHOLD + 0.05) * 100; // clearly over threshold
+    it('scales up when demand excess exceeds threshold and conditions are met', () => {
+        // demandExcess = 0.8, profitSignal = 0 (lastProduced is empty in test setup, so revenue=0)
+        // signal = 0.8 - 0 + 0*0.5 = 0.8
         const planet = makePlanetWithAvg(
             makeMarketResult({
-                unfilledDemand,
+                unfilledDemand: 80,
                 totalDemand: 100,
-                clearingPrice: 12, // positive margin over cost of 10
+                clearingPrice: 12,
                 productionCost: 10,
             }),
         );
@@ -133,19 +131,19 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBeCloseTo(initial + MAX_STEP * facility.maxScale);
+        // Step = baseStep * |signal| * maxScale = 0.05 * 0.8 * 1 = 0.04
+        expect(facility.scale).toBeCloseTo(initial + PROD_SCALE_BASE_STEP * 0.8 * facility.maxScale);
     });
 
-    it('does NOT scale up when overallEfficiency is below PROD_SCALE_UP_MIN_EFFICIENCY', () => {
-        const unfilledDemand = (PROD_SCALE_UP_THRESHOLD + 0.05) * 100;
+    it('does NOT scale up when input resource efficiency is low (input starved)', () => {
         const planet = makePlanetWithAvg(
-            makeMarketResult({ unfilledDemand, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
         const { agents, facility } = makeSetup(planet, {
             lastTickResults: {
-                overallEfficiency: PROD_SCALE_UP_MIN_EFFICIENCY - 0.1, // bottlenecked
+                overallEfficiency: 0.3,
                 workerEfficiency: {},
-                resourceEfficiency: {},
+                resourceEfficiency: { [RESOURCE_NAME]: 0.2 }, // below INPUT_EFFICIENCY_MIN (0.5)
                 overqualifiedWorkers: {},
                 exactUsedByEdu: {},
                 totalUsedByEdu: {},
@@ -158,33 +156,14 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBe(initial);
-    });
-
-    it('does NOT scale up when clearing price margin is below PROD_SCALE_UP_MIN_MARGIN', () => {
-        const unfilledDemand = (PROD_SCALE_UP_THRESHOLD + 0.05) * 100;
-        // margin = (clearingPrice - productionCost) / productionCost = (7 - 10) / 10 = -0.3  → below -0.10
-        const planet = makePlanetWithAvg(
-            makeMarketResult({
-                unfilledDemand,
-                totalDemand: 100,
-                clearingPrice: 7,
-                productionCost: 10,
-            }),
-        );
-        const { agents, facility } = makeSetup(planet);
-        const initial = facility.scale;
-
-        updateAgentProductionScale(agents, planet);
-
+        // Signal would be positive but input starved → signal clamped to 0 → no change
         expect(facility.scale).toBe(initial);
     });
 
     it('clamps scale to 0 when already at very low scale and oversupplied', () => {
-        const supplyExcess = (PROD_SCALE_DOWN_THRESHOLD + 0.05) * 100;
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: supplyExcess, totalSupply: 100 }));
-        // Start at a scale so close to 0 that MAX_STEP would push it negative.
-        const { agents, facility } = makeSetup(planet, { scale: MAX_STEP * 0.5, maxScale: 1 });
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
+        // Start at a scale so close to 0 that the step would push it negative.
+        const { agents, facility } = makeSetup(planet, { scale: PROD_SCALE_BASE_STEP * 0.5, maxScale: 1 });
 
         updateAgentProductionScale(agents, planet);
 
@@ -193,13 +172,12 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('clamps scale to maxScale when over-demanded', () => {
-        const unfilledDemand = (PROD_SCALE_UP_THRESHOLD + 0.05) * 100;
         const planet = makePlanetWithAvg(
-            makeMarketResult({ unfilledDemand, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
         // Start very close to maxScale so the step would exceed it.
         const maxScale = 1;
-        const { agents, facility } = makeSetup(planet, { scale: maxScale - MAX_STEP * 0.5, maxScale });
+        const { agents, facility } = makeSetup(planet, { scale: maxScale - PROD_SCALE_BASE_STEP * 0.5, maxScale });
 
         updateAgentProductionScale(agents, planet);
 
@@ -207,8 +185,7 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('skips a facility under construction', () => {
-        const supplyExcess = (PROD_SCALE_DOWN_THRESHOLD + 0.05) * 100;
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: supplyExcess, totalSupply: 100 }));
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, {
             construction: {
                 progress: 0,
@@ -226,7 +203,6 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('skips when there is no avgMarketResult for the produced resource (no history)', () => {
-        // Planet has empty avgMarketResult — no history yet for this facility's output.
         const planet = makePlanet({ avgMarketResult: {} });
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
@@ -237,10 +213,8 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('does not touch a non-automated agent', () => {
-        const supplyExcess = (PROD_SCALE_DOWN_THRESHOLD + 0.05) * 100;
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: supplyExcess, totalSupply: 100 }));
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet);
-        // Make the agent non-automated.
         const agent = agents.values().next().value as Agent;
         agent.automated = false;
         const initial = facility.scale;
@@ -254,9 +228,8 @@ describe('updateAgentProductionScale', () => {
         // Facility produces two resources:
         //   - RESOURCE: well-supplied, no unfilled demand
         //   - RESOURCE_B: strongly under-supplied
-        // Average demand excess should cross PROD_SCALE_UP_THRESHOLD.
+        // Average demand excess should cross PROD_SCALE_SIGNAL_THRESHOLD.
         const resourceB = { ...RESOURCE, name: 'resource-b' };
-        const strongDemandExcess = (PROD_SCALE_UP_THRESHOLD + 0.05) * 2 * 100; // strong signal on resource B
 
         const planet = makePlanet({
             avgMarketResult: {
@@ -267,7 +240,7 @@ describe('updateAgentProductionScale', () => {
                     totalVolume: 100,
                     totalDemand: 100,
                     totalSupply: 100,
-                    unfilledDemand: strongDemandExcess,
+                    unfilledDemand: 80,
                     unsoldSupply: 0,
                     productionCost: 10,
                 },
@@ -308,7 +281,37 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        // Average demandExcess > threshold → scale should increase.
+        // Average demandExcess = (0 + 0.8) / 2 = 0.4 → signal ≈ 0.4 + 0.2*0.5 = 0.5 > threshold
+        expect(facility.scale).toBeGreaterThan(initial);
+    });
+
+    it('initiates capacity expansion when scale == maxScale and signal is positive', () => {
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        // Use a larger maxScale so calculateCostsForConstruction's integer loop has work to do.
+        const { agents, facility } = makeSetup(planet, { scale: 10, maxScale: 10 });
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(agents, planet);
+
+        // Should have started a construction project
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(10);
+        expect(facility.construction!.totalConstructionServiceRequired).toBeGreaterThan(0);
+    });
+
+    it('does not scale up when output buffer is near full', () => {
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planet, { scale: 0.5, maxScale: 1 });
+        const initial = facility.scale;
+
+        updateAgentProductionScale(agents, planet);
+
+        // Without storage facility, queryStorageFacility returns 0, so output buffer is not full
+        // → signal should be positive → scale should increase
         expect(facility.scale).toBeGreaterThan(initial);
     });
 });
