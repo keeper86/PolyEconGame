@@ -18,6 +18,7 @@ import { populationAdvanceYearTick, populationTick } from './population/populati
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
+import { updateAgentProductionScale } from './planet/automaticProductionScale';
 import { automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
@@ -55,6 +56,7 @@ export function advanceTick(gameState: GameState) {
         }
 
         if (isFirstTickInMonth(gameState.tick)) {
+            updateAgentProductionScale(gameState.agents, planet);
             automaticWorkerAllocation(gameState.agents, planet);
             hireWorkforce(gameState.agents, planet);
             if (process.env.SIM_DEBUG) {
@@ -65,8 +67,6 @@ export function advanceTick(gameState: GameState) {
         claimBillingTick(gameState.agents, planet, gameState.tick);
         maturesLoans(gameState.agents, planet, gameState.tick);
         preProductionFinancialTick(gameState.agents, planet, gameState.tick);
-
-        // updateAgentProductionScale(gameState.agents, planet);
 
         intergenerationalTransfersForPlanet(planet);
 

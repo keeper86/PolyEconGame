@@ -1,6 +1,15 @@
-import { OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import type { Agent, Planet } from './planet';
-import { queryStorageFacility } from './facility';
+
+/** Maximum production scale change per month, as a fraction of maxScale (±1%). */
+export const PROD_SCALE_STEP_MAX = 0.01;
+/** Fraction of totalSupply that is unsold before automated agents scale down. */
+export const PROD_SCALE_DOWN_THRESHOLD = 0.15;
+/** Fraction of totalDemand that is unfilled before automated agents scale up. */
+export const PROD_SCALE_UP_THRESHOLD = 0.1;
+/** Minimum overallEfficiency required to allow scale-up (avoids scaling up a bottlenecked facility). */
+export const PROD_SCALE_UP_MIN_EFFICIENCY = 0.7;
+export const PROD_SCALE_UP_MIN_MARGIN = -0.1;
+export const PROD_SCALE_UP_MAX_MARGIN = 0.5;
 
 export function updateAgentProductionScale(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -13,47 +22,86 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             return;
         }
 
-        planet.marketPrices
-
         for (const facility of assets.productionFacilities) {
-            const storableOutputs = facility.produces.filter(({ resource }) => resource.form !== 'services');
-            const serviceOutputs = facility.produces.filter(({ resource }) => resource.form === 'services');
-
-            // Shortage: any storable output is completely depleted — snap to full production
-            const storableShortage = storableOutputs.some(({ resource }) => {
-                const inventory = queryStorageFacility(assets.storageFacility, resource.name);
-                return inventory === 0;
-            });
-
-            // Service shortage: any service had unfilled demand last tick, or has no market
-            // history yet (first tick after startup — treat as shortage for safety)
-            const serviceShortage = serviceOutputs.some(({ resource }) => {
-                const result = planet.lastMarketResult[resource.name];
-                return !result || result.unfilledDemand > 0;
-            });
-
-            if (storableShortage || serviceShortage) {
-                facility.scale = facility.maxScale;
+            // Skip facilities still under construction.
+            if (facility.construction !== null) {
                 continue;
             }
 
-            // When scale is 0 the facility is idle; use 1 as the reference for
-            // threshold calculations so the comparisons remain meaningful.
-            const effectiveScale = Math.max(1, facility.scale);
+            let signalCount = 0;
+            let supplyExcessSum = 0;
+            let demandExcessSum = 0;
+            let marginSum = 0;
 
-            // Scale DOWN: every storable output buffer is full AND every service is over-supplied
-            const allStorablesOverBuffered = storableOutputs.every(({ resource, quantity }) => {
-                const inventory = queryStorageFacility(assets.storageFacility, resource.name);
-                return inventory >= quantity * effectiveScale * OUTPUT_BUFFER_MAX_TICKS;
-            });
+            for (const output of facility.produces) {
+                const avg = planet.avgMarketResult[output.resource.name];
+                if (!avg) {
+                    continue;
+                }
 
-            const allServicesOverSupplied = serviceOutputs.every(({ resource }) => {
-                const result = planet.lastMarketResult[resource.name];
-                return result !== undefined && result.unsoldSupply > 0;
-            });
+                const totalSupply = avg.totalSupply;
+                const totalDemand = avg.totalDemand;
 
-            if (allStorablesOverBuffered && allServicesOverSupplied) {
-                facility.scale = Math.max(0, facility.scale - 1);
+                const supplyExcess = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
+                const demandExcess = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
+
+                const productionCost = avg.productionCost ?? 0;
+                const margin = productionCost > 0 ? (avg.clearingPrice - productionCost) / productionCost : 0;
+
+                supplyExcessSum += supplyExcess;
+                demandExcessSum += demandExcess;
+                marginSum += margin;
+                signalCount++;
+            }
+
+            // No market history for any output — skip.
+            if (signalCount === 0) {
+                continue;
+            }
+
+            const maxStep = PROD_SCALE_STEP_MAX * facility.maxScale;
+            const updateScale = (direction: 'up' | 'down'): void => {
+                const delta = direction === 'up' ? maxStep : -maxStep;
+                facility.scale = Math.max(0, Math.min(facility.maxScale, facility.scale + delta));
+            };
+
+            const avgSupplyExcess = supplyExcessSum / signalCount;
+            const avgDemandExcess = demandExcessSum / signalCount;
+            const avgMargin = marginSum / signalCount;
+
+            let score = 0;
+            if (avgSupplyExcess > PROD_SCALE_DOWN_THRESHOLD) {
+                score -= 1;
+            }
+            if (avgDemandExcess > PROD_SCALE_UP_THRESHOLD) {
+                score += 1;
+            }
+            if (avgMargin < PROD_SCALE_UP_MIN_MARGIN) {
+                score -= 1;
+            }
+            if (avgMargin > PROD_SCALE_UP_MAX_MARGIN) {
+                score += 1;
+            }
+            if ((facility.lastTickResults?.overallEfficiency ?? 0) < PROD_SCALE_UP_MIN_EFFICIENCY && score > 0) {
+                score -= 1;
+            }
+
+            if (score >= 1) {
+                if (planet.id === 'earth') {
+                    console.info(score, avgMargin, avgDemandExcess, avgSupplyExcess, facility.name);
+                }
+
+                updateScale('up');
+                continue;
+            }
+
+            if (score <= -1) {
+                if (planet.id === 'earth') {
+                    console.info(score, avgMargin, avgDemandExcess, avgSupplyExcess, facility.name);
+                }
+
+                updateScale('down');
+                continue;
             }
         }
     });

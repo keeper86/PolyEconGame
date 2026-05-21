@@ -43,14 +43,6 @@ export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 export const INPUT_BUFFER_TARGET_TICKS = 30;
 export const OUTPUT_BUFFER_MAX_TICKS = 20;
 
-// ---------------------------------------------------------------------------
-// Bank credit / loan origination constants
-// ---------------------------------------------------------------------------
-
-/**
- * Maximum loan amount available to a brand-new agent with no prior history.
- * Serves as the baseline "starter loan" for bootstrapping a new company.
- */
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 
 /**

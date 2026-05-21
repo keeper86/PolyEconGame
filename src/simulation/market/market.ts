@@ -109,7 +109,7 @@ function clearResourceMarket(
             totalSupply,
             unfilledDemand: totalDemand,
             unsoldSupply: totalSupply,
-            productionCost: productionCosts.get(resourceName),
+            productionCost: productionCosts.get(resourceName) ?? referencePrice,
             populationBids: binHouseholdBids(householdBids, [], []),
         };
         updateAvgMarketResult(planet, resourceName);
@@ -147,7 +147,7 @@ function clearResourceMarket(
         totalSupply,
         unfilledDemand: Math.max(0, totalDemand - totalVolume),
         unsoldSupply,
-        productionCost: productionCosts.get(resourceName),
+        productionCost: productionCosts.get(resourceName) ?? clearingPrice,
         populationBids: binHouseholdBids(householdBids, householdBidFilled, householdBidCosts),
     };
     updateAvgMarketResult(planet, resourceName);
@@ -175,6 +175,7 @@ function updateAvgMarketResult(planet: Planet, resourceName: string): void {
             totalSupply: latest.totalSupply,
             unfilledDemand: latest.unfilledDemand,
             unsoldSupply: latest.unsoldSupply,
+            productionCost: latest.productionCost,
         };
         return;
     }
@@ -188,5 +189,6 @@ function updateAvgMarketResult(planet: Planet, resourceName: string): void {
         totalSupply: ema(latest.totalSupply, prior.totalSupply),
         unfilledDemand: ema(latest.unfilledDemand, prior.unfilledDemand),
         unsoldSupply: ema(latest.unsoldSupply, prior.unsoldSupply),
+        productionCost: ema(latest.productionCost, prior.productionCost),
     };
 }

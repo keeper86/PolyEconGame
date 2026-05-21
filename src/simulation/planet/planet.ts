@@ -207,8 +207,7 @@ export type MarketResult = {
     totalSupply: number;
     unfilledDemand: number;
     unsoldSupply: number;
-    /** Estimated production cost per unit for this resource (planet-wide, from canonical producer template). */
-    productionCost?: number;
+    productionCost: number;
     populationBids?: {
         priceMin: number;
         priceMax: number;
