@@ -3,6 +3,7 @@ import {
     AUTOMATED_COST_CEILING_FACTOR,
     COST_SPRING_STRENGTH,
     INPUT_BUFFER_TARGET_TICKS,
+    LAND_CLAIM_COST_PER_UNIT,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -374,13 +375,13 @@ describe('buildPlanetProductionCosts — cost formula correctness', () => {
     });
 
     it('splits cost proportionally for multi-output facilities (oil well)', () => {
-        // Oil Well: needs oilReservoir (land-bound, skipped), workers = 10+25+15+2 = 52
+        // Oil Well: needs oilReservoir (land-bound, qty=0.3 × LAND_CLAIM_COST_PER_UNIT), workers = 10+25+15+2 = 52
         // produces CrudeOil qty=300 + NaturalGas qty=100, totalOutputQty=400
-        // correct cost per unit = 52 / 400 = 0.13 for both outputs
+        const oilReservoirClaimCost = 0.3 * (LAND_CLAIM_COST_PER_UNIT['Oil Reservoir'] ?? 0);
         const planet = makePlanet({ marketPrices: {} });
         const costs = buildPlanetProductionCosts(planet);
 
-        const expected = 52 / 400; // 0.13
+        const expected = (oilReservoirClaimCost + 52) / 400;
         expect(costs.get(crudeOilResourceType.name)).toBeCloseTo(expected, 6);
         expect(costs.get(naturalGasResourceType.name)).toBeCloseTo(expected, 6);
     });

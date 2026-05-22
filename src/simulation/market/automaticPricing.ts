@@ -3,6 +3,7 @@ import {
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
+    LAND_CLAIM_COST_PER_UNIT,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
@@ -45,6 +46,7 @@ export function buildPlanetProductionCosts(planet: Planet): Map<string, number> 
         let cost = 0;
         for (const need of facility.needs) {
             if (need.resource.form === 'landBoundResource') {
+                cost += need.quantity * (LAND_CLAIM_COST_PER_UNIT[need.resource.name] ?? 0);
                 continue;
             }
             cost += need.quantity * (planet.marketPrices[need.resource.name] ?? 0);

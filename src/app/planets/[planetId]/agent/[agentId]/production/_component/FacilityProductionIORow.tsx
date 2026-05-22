@@ -44,7 +44,7 @@ export function FacilityProductionIORow({
             </div>
 
             <RiArrowRightBoxFill
-                className={`shrink-0 h-8 w-8 ${needs.length > 0 && produces.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                className={`shrink-0 h-8 w-8 ${needs.length > 0 || produces.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
             />
 
             <div className='flex flex-wrap gap-1.5 justify-center'>

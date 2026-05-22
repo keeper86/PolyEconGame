@@ -121,7 +121,7 @@ export default function ProductionFacilitiesPanel({
                                     const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
                                     const owned = ownedByName.get(previewName);
                                     if (owned) {
-                                        if (owned.construction !== null) {
+                                        if (owned.construction !== null && owned.construction.type === 'new') {
                                             return <UnderConstructionCard key={owned.id} facility={owned} />;
                                         }
                                         return (
