@@ -7,16 +7,17 @@ import {
 import type { Agent, Planet } from '../planet/planet';
 import {
     administrativeCenter,
-    agriculturalProductionFacility,
     beveragePlant,
     coalMine,
     coalPowerPlant,
     foodProcessingPlant,
     groceryChain,
+    intensiveFarmFacility,
     ironExtractionFacility,
     ironSmelter,
     logisticsHub,
     packagingPlant,
+    pesticidePlant,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
 import type { ResourceClaimEntry } from './helpers';
@@ -58,6 +59,7 @@ const industrialSpecs: IndustrialSpec[] = [
     { id: 'ac-energy-corp', name: 'AC Energy Corp' },
     { id: 'ac-food-proc', name: 'AC Food Processing' },
     { id: 'ac-pharma-colony', name: 'Colony Pharma' },
+    { id: 'ac-pesticides-inc', name: 'Pesticides Inc' },
 ];
 
 export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
@@ -124,7 +126,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         waterFacility.scale = waterScale;
         waterFacility.maxScale = waterScale;
 
-        const agriFacility = agriculturalProductionFacility(AC_ID, `${spec.id}-agri`);
+        const agriFacility = intensiveFarmFacility(AC_ID, `${spec.id}-agri`);
         agriFacility.scale = agriScale;
         agriFacility.maxScale = agriScale;
 
@@ -202,6 +204,21 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             facilities: [ec1, ec2],
             storage: makeStorage({ planetId: AC_ID, id: 'energy-corp-storage', name: 'AC Energy Storage' }),
             tenancies: [coalId],
+        }),
+    );
+
+    // Pesticides production
+    const pest1 = pesticidePlant(AC_ID, 'ac-pesticides');
+    pest1.scale = 20;
+    pest1.maxScale = 20;
+    agents.push(
+        makeAgent({
+            id: 'ac-pesticides-inc',
+            name: 'Pesticides Inc',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [pest1],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-pesticides-storage', name: 'AC Pesticides Storage' }),
         }),
     );
 
@@ -333,7 +350,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
     const govWaterFacility = waterExtractionFacility(AC_ID, 'ac-gov-water');
     govWaterFacility.scale = 100;
     govWaterFacility.maxScale = 100;
-    const govAgriFacility = agriculturalProductionFacility(AC_ID, 'ac-gov-agri');
+    const govAgriFacility = intensiveFarmFacility(AC_ID, 'ac-gov-agri');
     govAgriFacility.scale = 100;
     govAgriFacility.maxScale = 100;
 

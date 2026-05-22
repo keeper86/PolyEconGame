@@ -5,6 +5,7 @@ import type { PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {
+    type: 'new' | 'expansion';
     constructionTargetMaxScale: number;
     totalConstructionServiceRequired: number;
     maximumConstructionServiceConsumption: number;

@@ -249,6 +249,13 @@ export type InboundMessage =
           planetId: string;
           licenseType: 'commercial' | 'workforce';
       }
+    | {
+          type: 'cancelConstruction';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+      }
     | WorkerQueryMessage;
 
 export type OutboundMessage =
@@ -280,6 +287,8 @@ export type OutboundMessage =
     | { type: 'facilityExpandFailed'; requestId: string; reason: string }
     | { type: 'facilityScaleSet'; requestId: string; agentId: string; facilityId: string }
     | { type: 'facilityScaleSetFailed'; requestId: string; reason: string }
+    | { type: 'constructionCancelled'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'constructionCancelFailed'; requestId: string; reason: string }
     | { type: 'claimLeased'; requestId: string; agentId: string; claimId: string }
     | { type: 'claimLeaseFailed'; requestId: string; reason: string }
     | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string }
@@ -586,4 +595,11 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           licenseType: 'commercial' | 'workforce';
+      }
+    | {
+          type: 'cancelConstruction';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
       };

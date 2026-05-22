@@ -18,7 +18,7 @@ import {
     resourceNameToSlug,
     slugToResourceName,
 } from './marketHelpers';
-import type { Props } from './marketTypes';
+import type { LocalResourceState, Props } from './marketTypes';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
 
@@ -177,7 +177,7 @@ export default function MarketPanel({
         }));
     }, [resources]);
 
-    const [localStates, setLocalStates] = useState<Record<string, import('./marketTypes').LocalResourceState>>(() =>
+    const [localStates, setLocalStates] = useState<Record<string, LocalResourceState>>(() =>
         buildInitialState(resources, buyBids, sellOffers),
     );
 

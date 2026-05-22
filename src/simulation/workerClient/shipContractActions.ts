@@ -393,6 +393,7 @@ export function handleAcceptConstructionContract(
     const facilityBlueprint = facilityEntry.factory(contract.fromPlanetId, facilityId);
     // Put it under construction
     facilityBlueprint.construction = {
+        type: 'new',
         constructionTargetMaxScale: 1,
         totalConstructionServiceRequired: 100,
         maximumConstructionServiceConsumption: 10,
@@ -1093,6 +1094,7 @@ export function handleDispatchConstructionShip(
         const facilityId = generateId('cf');
         facilityBlueprint = facilityEntry.factory(fromPlanetId, facilityId);
         facilityBlueprint.construction = {
+            type: 'new',
             constructionTargetMaxScale: 1,
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 10,

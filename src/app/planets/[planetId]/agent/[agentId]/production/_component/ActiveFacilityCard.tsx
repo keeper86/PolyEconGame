@@ -7,13 +7,14 @@ import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { FacilityCardShell } from './FacilityCardShell';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ProductionFacility } from '@/simulation/planet/facility';
+import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityProductionIORow } from './FacilityProductionIORow';
 import { ScaleSelector } from './ScaleSelector';
+import { UnderConstructionCompactRow } from './UnderConstructionCard';
 import { WorkerBars } from './WorkerBars';
 
 export function ActiveFacilityCard({
@@ -98,7 +99,7 @@ export function ActiveFacilityCard({
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
                     <div className='flex items-center gap-1 flex-col mb-auto'>
                         <h3 className='font-semibold leading-tight '>{facility.name}</h3>
-                        <span className='flex items-center gap-1'>
+                        <span className='flex flex-col items-center gap-1'>
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
                                 Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
                             </Badge>
@@ -131,7 +132,7 @@ export function ActiveFacilityCard({
             <div className='mt-auto space-y-2'>
                 <Separator />
 
-                {showExpand ? (
+                {showExpand && !facility.construction ? (
                     <>
                         <p className='text-xs font-medium'>Expand to scale</p>
                         <ScaleSelector
@@ -140,19 +141,18 @@ export function ActiveFacilityCard({
                             onChange={(v) => setTargetScale(v)}
                         />
                         <p className='text-xs text-muted-foreground'>
-                            Construction cost:{' '}
+                            Cost:{' '}
                             <span className='tabular-nums font-medium text-foreground'>
                                 {formatNumberWithUnit(expandCost, 'units')}
                             </span>{' '}
-                            construction services
+                            construction
                             {estimatedCredits !== null && (
                                 <>
                                     {' '}
                                     <span className='text-muted-foreground'>≈</span>{' '}
                                     <span className='tabular-nums font-medium text-foreground'>
                                         {formatNumberWithUnit(estimatedCredits, 'currency', planetId)}
-                                    </span>{' '}
-                                    credits
+                                    </span>
                                 </>
                             )}
                         </p>
@@ -188,6 +188,7 @@ export function ActiveFacilityCard({
                             variant='outline'
                             size='sm'
                             className='flex-1 text-xs gap-1'
+                            disabled={facility.construction !== null}
                             onClick={() => {
                                 setTargetScale(facility.maxScale + 1);
                                 setShowExpand(true);
@@ -199,6 +200,7 @@ export function ActiveFacilityCard({
                             variant='outline'
                             size='sm'
                             className='flex-1 text-xs gap-1'
+                            disabled={facility.construction !== null}
                             onClick={() => setShowSetScale(true)}
                         >
                             Set scale
@@ -206,7 +208,7 @@ export function ActiveFacilityCard({
                     </div>
                 )}
 
-                {showSetScale && (
+                {showSetScale && !facility.construction && (
                     <>
                         <Separator />
                         <p className='text-xs font-medium'>Operating scale</p>
@@ -270,6 +272,7 @@ export function ActiveFacilityCard({
                     </>
                 )}
             </div>
+            {facility.construction !== null && <UnderConstructionCompactRow facility={facility} />}
         </FacilityCardShell>
     );
 }

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_CEILING_FACTOR,
-    AUTOMATED_COST_FLOOR_MARKUP,
     COST_SPRING_STRENGTH,
     INPUT_BUFFER_TARGET_TICKS,
+    LAND_CLAIM_COST_PER_UNIT,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -14,10 +14,12 @@ import type { StorageFacility } from '../planet/facility';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
+    crudeOilResourceType,
     fabricResourceType,
     ironOreResourceType,
     logsResourceType,
     lumberResourceType,
+    naturalGasResourceType,
     waterResourceType,
 } from '../planet/resources';
 import { seedRng } from '../utils/stochasticRound';
@@ -271,18 +273,13 @@ describe('automaticPricing — cost-floor brake zone', () => {
     beforeEach(() => seedRng(42));
 
     it('attenuates the downward adjustment when the offer price is at the cost floor', () => {
-        // Facility: scale=1, workerReq: { none: 1 }, needs: 10 agri-product @ INPUT_PRICE, produces: 5 clothing
-        // inputCostPerTick = NEEDS_QTY × INPUT_PRICE × scale = 10 × 2.0 × 1 = 20
-        // wageCostPerTick  = DEFAULT_WAGE_PER_EDU × 1 worker × scale = 1.0
-        // costPerUnit = (20 + 1) / 5 = 4.2
-        // costFloor = max(PRICE_FLOOR, 4.2 × (1 + AUTOMATED_COST_FLOOR_MARKUP)) = 4.41
         const INPUT_PRICE = 2.0;
         const NEEDS_QTY = 10;
         const PRODUCES_QTY = 5;
         const inputCost = NEEDS_QTY * INPUT_PRICE;
         const wageCost = DEFAULT_WAGE_PER_EDU; // 1 worker, scale 1
         const costPerUnit = (inputCost + wageCost) / PRODUCES_QTY;
-        const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit * (1 + AUTOMATED_COST_FLOOR_MARKUP));
+        const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit);
 
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 1 });
         facility.needs = [{ resource: agriculturalProductResourceType, quantity: NEEDS_QTY }];
@@ -368,17 +365,6 @@ describe('buildPlanetProductionCosts — cost formula correctness', () => {
         expect(costs.get(lumberResourceType.name)).toBeCloseTo(expected, 6);
     });
 
-    it('skips land-bound resource inputs (arable land treated as free)', () => {
-        // Agricultural Facility: needs Water (qty=20) + Arable Land (land-bound, skipped)
-        // workers = 30+20+10+0 = 60, produces Agricultural Product qty=40
-        const WATER_PRICE = 5;
-        const planet = makePlanet({ marketPrices: { [waterResourceType.name]: WATER_PRICE } });
-        const costs = buildPlanetProductionCosts(planet);
-
-        const expected = (20 * WATER_PRICE + 60) / 40; // = 4.0
-        expect(costs.get(agriculturalProductResourceType.name)).toBeCloseTo(expected, 6);
-    });
-
     it('uses 0 for inputs with no market price set', () => {
         // Override logs price to 0 so the only cost is the worker sum
         const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
@@ -386,6 +372,18 @@ describe('buildPlanetProductionCosts — cost formula correctness', () => {
 
         // sawmill: logs price = 0, workers = 15+20+8+1 = 44, output = 200 → cost = 44 / 200 = 0.22
         expect(costs.get(lumberResourceType.name)).toBeCloseTo(44 / 200, 6);
+    });
+
+    it('splits cost proportionally for multi-output facilities (oil well)', () => {
+        // Oil Well: needs oilReservoir (land-bound, qty=0.3 × LAND_CLAIM_COST_PER_UNIT), workers = 10+25+15+2 = 52
+        // produces CrudeOil qty=300 + NaturalGas qty=100, totalOutputQty=400
+        const oilReservoirClaimCost = 0.3 * (LAND_CLAIM_COST_PER_UNIT['Oil Reservoir'] ?? 0);
+        const planet = makePlanet({ marketPrices: {} });
+        const costs = buildPlanetProductionCosts(planet);
+
+        const expected = (oilReservoirClaimCost + 52) / 400;
+        expect(costs.get(crudeOilResourceType.name)).toBeCloseTo(expected, 6);
+        expect(costs.get(naturalGasResourceType.name)).toBeCloseTo(expected, 6);
     });
 });
 
@@ -423,11 +421,33 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
         return agent;
     }
 
+    /**
+     * Seeds planet.lastMarketResult with productionCost values computed from the
+     * current marketPrices so that automaticPricing can read them (as it would
+     * after a real marketTick in the engine).
+     */
+    function seedProductionCosts(planet: ReturnType<typeof makePlanet>): void {
+        const costs = buildPlanetProductionCosts(planet);
+        for (const [name, cost] of costs) {
+            planet.lastMarketResult[name] = {
+                resourceName: name,
+                clearingPrice: 0,
+                totalVolume: 0,
+                totalDemand: 0,
+                totalSupply: 0,
+                unfilledDemand: 0,
+                unsoldSupply: 0,
+                productionCost: cost,
+            };
+        }
+    }
+
     it('ceiling spring reduces bid when price is far above productionCost × AUTOMATED_COST_CEILING_FACTOR', () => {
         // Lumber prodCost with logs price = 0: (0 + 44) / 200 = 0.22
         // ceiling = 0.22 × 10 = 2.2
         // Start bid at 1000 >> 2.2
         const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
+        seedProductionCosts(planet);
         const agent = makeLumberConsumerAgent(1000, 5, 10);
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -441,6 +461,7 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
         // Start bid at 1.0 < 2.2 — no ceiling correction should fire
         // With fill rate = 0 (lastBought=0, lastEffectiveQty=10), factor = PRICE_ADJUST_MAX_UP
         const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
+        seedProductionCosts(planet);
         const agent = makeLumberConsumerAgent(1.0, 0, 10);
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -451,11 +472,8 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
     });
 
     it('ceiling spring magnitude scales with how far bid exceeds the ceiling', () => {
-        // Lumber prodCost = 0.22, ceiling = 2.2
-        // Agent A: bid at 3 (ceiling deviation = 3/2.2 - 1 ≈ 0.364)
-        // Agent B: bid at 100 (ceiling deviation = 100/2.2 - 1 ≈ 44.45)
-        // Agent B's price should drop proportionally more
-        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
+        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0, [lumberResourceType.name]: 0 } });
+        seedProductionCosts(planet);
         const agentA = makeLumberConsumerAgent(3, 5, 10);
         const agentB = makeLumberConsumerAgent(100, 5, 10);
 
@@ -476,25 +494,21 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
     });
 
     it('ceiling spring correction uses COST_SPRING_STRENGTH × ceilingDeviation', () => {
-        // Lumber prodCost = 0.22 (logs=0 override), ceiling = 2.2
-        // bid = 4.4 → ceilingDeviation = 4.4/2.2 - 1 = 1.0
-        // Water price set very high → consumer facility is profitable → profitGap = 0
-        // fillRate = 1 (lastBought=lastEffectiveQty=10) → fillRateFactor(1) = PRICE_ADJUST_MAX_DOWN
-        // factor = PRICE_ADJUST_MAX_DOWN - COST_SPRING_STRENGTH × 1.0
-        // newPrice = 4.4 × factor = 4.4 × 0.955 = 4.202
         const planet = makePlanet({
             marketPrices: {
                 [logsResourceType.name]: 0, // lumber prodCost = 44/200 = 0.22
+                [lumberResourceType.name]: 0, // pin market price to 0 so ceilingBase = prodCost
                 [waterResourceType.name]: 1000, // water revenue >> lumber cost → profitGap = 0
             },
         });
+        seedProductionCosts(planet);
         const agent = makeLumberConsumerAgent(4.4, 10, 10);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
         const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
         const lumberCost = 44 / 200; // 0.22 with logs price = 0
-        const ceiling = lumberCost * AUTOMATED_COST_CEILING_FACTOR;
+        const ceiling = lumberCost * AUTOMATED_COST_CEILING_FACTOR; // ceilingBase = max(0.22, 0) = 0.22
         const ceilingDeviation = Math.max(0, 4.4 / ceiling - 1);
         const expectedFactor = PRICE_ADJUST_MAX_DOWN - COST_SPRING_STRENGTH * ceilingDeviation;
         expect(bid.bidPrice).toBeCloseTo(4.4 * expectedFactor, 5);

@@ -10,6 +10,7 @@ import {
     buildShipConstructionFacilitySpec,
     cancelBuyBidSpec,
     cancelConstructionContractSpec,
+    cancelConstructionSpec,
     cancelSellOfferSpec,
     cancelShipListingSpec,
     cancelTransportContractSpec,
@@ -587,6 +588,20 @@ export function workerAcquireLicense(opts: {
     return sendCommandSpec(
         { type: 'acquireLicense', requestId: randomUUID(), agentId, planetId, licenseType },
         acquireLicenseSpec,
+        timeoutMs,
+    );
+}
+
+export function workerCancelConstruction(opts: {
+    agentId: string;
+    planetId: string;
+    facilityId: string;
+    timeoutMs?: number;
+}): Promise<void> {
+    const { agentId, planetId, facilityId, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'cancelConstruction', requestId: randomUUID(), agentId, planetId, facilityId },
+        cancelConstructionSpec,
         timeoutMs,
     );
 }

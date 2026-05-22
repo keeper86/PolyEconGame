@@ -1,18 +1,17 @@
 import {
     AUTOMATED_COST_CEILING_FACTOR,
-    AUTOMATED_COST_FLOOR_BUFFER,
-    AUTOMATED_COST_FLOOR_MARKUP,
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
+    LAND_CLAIM_COST_PER_UNIT,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
-    SERVICE_DEPRECIATION_RATE_PER_TICK,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
+import type { Resource } from '../planet/claims';
 import type { ProductionFacility } from '../planet/facility';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
@@ -38,13 +37,6 @@ const resourceProducerTemplates: Map<string, { facility: ProductionFacility; out
     return map;
 })();
 
-/**
- * Compute a production cost per unit for every producible resource on this planet,
- * using the current market prices for inputs. The formula mirrors populationDemand.ts:
- *   cost = Σ(need.quantity × marketPrice) + Σ(workerRequirement[edu]) / outputQty
- * Land-bound resource inputs are treated as free (same as populationDemand.ts).
- * Returns a Map<resourceName, costPerUnit>.
- */
 export function buildPlanetProductionCosts(planet: Planet): Map<string, number> {
     const costs = new Map<string, number>();
     for (const [resourceName, { facility, outputQty }] of resourceProducerTemplates) {
@@ -54,6 +46,7 @@ export function buildPlanetProductionCosts(planet: Planet): Map<string, number> 
         let cost = 0;
         for (const need of facility.needs) {
             if (need.resource.form === 'landBoundResource') {
+                cost += need.quantity * (LAND_CLAIM_COST_PER_UNIT[need.resource.name] ?? 0);
                 continue;
             }
             cost += need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
@@ -62,7 +55,11 @@ export function buildPlanetProductionCosts(planet: Planet): Map<string, number> 
         for (const edu of educationLevelKeys) {
             cost += facility.workerRequirement[edu] ?? 0;
         }
-        cost /= outputQty;
+        // Divide by total output qty across all outputs so the cost is split
+        // proportionally — avoids inflating per-unit cost when a facility produces
+        // more than one resource.
+        const totalOutputQty = facility.produces.reduce((sum, p) => sum + p.quantity, 0);
+        cost /= totalOutputQty;
         if (cost > 0) {
             costs.set(resourceName, cost);
         }
@@ -72,13 +69,12 @@ export function buildPlanetProductionCosts(planet: Planet): Map<string, number> 
 }
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
-    const planetProductionCosts = buildPlanetProductionCosts(planet);
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet, planetProductionCosts);
+        automaticPricingForAgent(agent, planet);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet, planetProductionCosts: Map<string, number>): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -196,17 +192,16 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, planetProduction
         }
     }
 
-    const aggregatedBuyTargets = new Map<
-        string,
-        { resource: (typeof assets.productionFacilities)[number]['needs'][number]['resource']; storageTarget: number }
-    >();
+    const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
 
     for (const facility of [
         ...assets.productionFacilities,
         ...assets.managementFacilities,
         ...assets.shipConstructionFacilities,
     ]) {
-        if (facility.construction === null) {
+        if (facility.construction === null || facility.construction.type === 'expansion') {
+            // Facilities with construction.type === 'expansion' still produce while expanding,
+            // so they need their normal input buffer in addition to construction services.
             let needs = [];
             if (facility.type === 'ship_construction') {
                 needs = (facility.produces?.buildingCost ?? []).map((resource) => {
@@ -239,7 +234,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, planetProduction
                     aggregatedBuyTargets.set(resource.name, { resource, storageTarget: facilityTarget });
                 }
             }
-        } else {
+        }
+        if (facility.construction !== null) {
             // Under construction → target construction service input buffer
             const facilityTarget = facility.construction.maximumConstructionServiceConsumption * 3;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
@@ -325,7 +321,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, planetProduction
             storageTarget,
             marketPrice,
             profitGap,
-            planetProductionCosts.get(resourceName) ?? 0,
+            planet.lastMarketResult[resourceName]?.productionCost ?? 0,
         );
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
@@ -359,7 +355,7 @@ function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: 
 }
 
 const currentAverageMarketPrice = (planet: Planet, resourceName: string): number => {
-    return planet.marketPrices[resourceName] ?? PRICE_FLOOR;
+    return planet.avgMarketResult[resourceName]?.clearingPrice ?? planet.marketPrices[resourceName] ?? PRICE_FLOOR;
 };
 
 function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
@@ -427,7 +423,7 @@ function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: str
             costFloors.set(name, PRICE_FLOOR);
         } else {
             const costPerUnit = totalCost / totalUnits;
-            costFloors.set(name, Math.max(PRICE_FLOOR, costPerUnit * (1 + AUTOMATED_COST_FLOOR_MARKUP)));
+            costFloors.set(name, Math.max(PRICE_FLOOR, costPerUnit));
         }
     }
     return costFloors;
@@ -506,6 +502,7 @@ function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THR
     }
 }
 
+export const AUTOMATED_COST_FLOOR_BUFFER = 0.5;
 export function adjustOfferPrice(
     offer: AgentMarketOfferState,
     inventoryQty: number,
@@ -539,10 +536,7 @@ export function adjustOfferPrice(
         offer.resource.form === 'services' ? SERVICE_SELL_THROUGH_TARGET : TARGET_SELL_THROUGH,
     );
 
-    const brakeZoneTop =
-        costFloor *
-        (1 + AUTOMATED_COST_FLOOR_BUFFER) *
-        (1 - (offer.resource.form === 'services' ? SERVICE_DEPRECIATION_RATE_PER_TICK : 0));
+    const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER * (offer.resource.form === 'services' ? 0.5 : 1));
 
     if (brakeZoneTop > PRICE_FLOOR && price > 0) {
         const deviation = Math.max(0, brakeZoneTop / price - 1);
@@ -552,7 +546,7 @@ export function adjustOfferPrice(
     const newPrice = price * factor;
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
-    if (!isFinite(newPrice) || newPrice <= 0) {
+    if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
         offer.offerPrice = PRICE_FLOOR;
     } else {
         offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));

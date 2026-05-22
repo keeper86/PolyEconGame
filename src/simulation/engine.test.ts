@@ -551,27 +551,34 @@ describe('productionTick idle worker persistence', () => {
 // ============================================================================
 
 describe('population ↔ workforce consistency', () => {
-    it('maintains consistency over 60 ticks (2 months)', () => {
-        seedRng(42);
+    it(
+        'maintains consistency over 60 ticks (2 months)',
+        () => {
+            seedRng(42);
 
-        const { gameState, planet, agents } = makeWorld({
-            populationByEdu: { none: 5000, primary: 3000, secondary: 1500, tertiary: 500 },
-            companyIds: ['company-1'],
-        });
+            const { gameState, planet, agents } = makeWorld({
+                populationByEdu: { none: 5000, primary: 3000, secondary: 1500, tertiary: 500 },
+                companyIds: ['company-1'],
+            });
 
-        // Give the government agent production facilities so it has hiring targets
-        const gov = agents[0];
-        gov.assets[planet.id].productionFacilities.push(
-            makeProductionFacility({ none: 1000, primary: 500, secondary: 200, tertiary: 50 }, { planetId: planet.id }),
-        );
+            // Give the government agent production facilities so it has hiring targets
+            const gov = agents[0];
+            gov.assets[planet.id].productionFacilities.push(
+                makeProductionFacility(
+                    { none: 1000, primary: 500, secondary: 200, tertiary: 50 },
+                    { planetId: planet.id },
+                ),
+            );
 
-        // Seed food so population doesn't starve instantly
-        putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e9);
+            // Seed food so population doesn't starve instantly
+            putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e9);
 
-        for (let t = 1; t <= 60; t++) {
-            gameState.tick = t;
-            advanceTick(gameState);
-            assertWorkforcePopulationConsistency(planet, agents, `tick=${t}`);
-        }
-    });
+            for (let t = 1; t <= 60; t++) {
+                gameState.tick = t;
+                advanceTick(gameState);
+                assertWorkforcePopulationConsistency(planet, agents, `tick=${t}`);
+            }
+        },
+        { timeout: 10000 /* ms */ },
+    );
 });

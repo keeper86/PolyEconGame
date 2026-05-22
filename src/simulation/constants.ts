@@ -22,35 +22,24 @@ export const isFirstTickInMonth = (tick: number): boolean => tick % TICKS_PER_MO
 /** True only on clean year boundaries (every TICKS_PER_YEAR ticks). */
 export const isYearBoundary = (tick: number): boolean => tick > 0 && tick % TICKS_PER_YEAR === 0;
 
-export const PRICE_FLOOR = 0.001;
+export const PRICE_FLOOR = 0.01;
 export const PRICE_CEIL = 1000000.0;
 
 export const PRICE_ADJUST_MAX_UP = 1.05;
 
 export const PRICE_ADJUST_MAX_DOWN = 0.95;
 
-export const AUTOMATED_COST_FLOOR_MARKUP = 0.05;
-
 export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
 
-export const AUTOMATED_COST_FLOOR_BUFFER = 0.2;
-export const COST_SPRING_STRENGTH = 0.02;
+export const COST_SPRING_STRENGTH = 0.06;
 /** Maximum ratio of production cost an automated agent will bid for any input (mirrors populationDemand cap). */
 export const AUTOMATED_COST_CEILING_FACTOR = 6;
 
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
-export const INPUT_BUFFER_TARGET_TICKS = 30;
-export const OUTPUT_BUFFER_MAX_TICKS = 20;
+export const INPUT_BUFFER_TARGET_TICKS = 45;
+export const OUTPUT_BUFFER_MAX_TICKS = 10;
 
-// ---------------------------------------------------------------------------
-// Bank credit / loan origination constants
-// ---------------------------------------------------------------------------
-
-/**
- * Maximum loan amount available to a brand-new agent with no prior history.
- * Serves as the baseline "starter loan" for bootstrapping a new company.
- */
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 
 /**

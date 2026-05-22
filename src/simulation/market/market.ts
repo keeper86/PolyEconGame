@@ -7,6 +7,7 @@ import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgent
 import { binHouseholdBids, buildPopulationDemand, householdDemandPriority } from './populationDemand';
 import { computeMarketSummary, settleAgentBuyers, settleAgentSellers, settleHouseholds } from './settlement';
 import { buildPlanetOrderBook } from './orderBookSnapshot';
+import { buildPlanetProductionCosts } from './automaticPricing';
 
 export type { BidOrder } from './marketTypes';
 
@@ -23,10 +24,12 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     // higher-priority services consume wealth before lower-priority ones.
     const householdBidMap = buildPopulationDemand(planet);
 
+    const productionCosts = buildPlanetProductionCosts(planet);
+
     const resourceOrder = buildResourceOrder(askBooks, agentBidBooks);
 
     for (const resourceName of resourceOrder) {
-        clearResourceMarket(resourceName, askBooks, agentBidBooks, householdBidMap, planet);
+        clearResourceMarket(resourceName, askBooks, agentBidBooks, householdBidMap, planet, productionCosts);
     }
 
     releaseRemainingHolds(agents, planet);
@@ -64,6 +67,7 @@ function clearResourceMarket(
     agentBidBooks: ReturnType<typeof collectAgentBids>,
     householdBidMap: Map<string, BidOrder[]>,
     planet: Planet,
+    productionCosts: Map<string, number>,
 ): void {
     const askOrders = askBooks.get(resourceName) ?? [];
     const agentBids = agentBidBooks.get(resourceName) ?? [];
@@ -105,6 +109,7 @@ function clearResourceMarket(
             totalSupply,
             unfilledDemand: totalDemand,
             unsoldSupply: totalSupply,
+            productionCost: productionCosts.get(resourceName) ?? referencePrice,
             populationBids: binHouseholdBids(householdBids, [], []),
         };
         updateAvgMarketResult(planet, resourceName);
@@ -142,6 +147,7 @@ function clearResourceMarket(
         totalSupply,
         unfilledDemand: Math.max(0, totalDemand - totalVolume),
         unsoldSupply,
+        productionCost: productionCosts.get(resourceName) ?? clearingPrice,
         populationBids: binHouseholdBids(householdBids, householdBidFilled, householdBidCosts),
     };
     updateAvgMarketResult(planet, resourceName);
@@ -169,6 +175,7 @@ function updateAvgMarketResult(planet: Planet, resourceName: string): void {
             totalSupply: latest.totalSupply,
             unfilledDemand: latest.unfilledDemand,
             unsoldSupply: latest.unsoldSupply,
+            productionCost: latest.productionCost,
         };
         return;
     }
@@ -182,5 +189,6 @@ function updateAvgMarketResult(planet: Planet, resourceName: string): void {
         totalSupply: ema(latest.totalSupply, prior.totalSupply),
         unfilledDemand: ema(latest.unfilledDemand, prior.unfilledDemand),
         unsoldSupply: ema(latest.unsoldSupply, prior.unsoldSupply),
+        productionCost: ema(latest.productionCost, prior.productionCost),
     };
 }

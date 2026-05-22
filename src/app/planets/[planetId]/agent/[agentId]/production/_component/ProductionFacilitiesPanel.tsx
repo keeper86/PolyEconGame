@@ -103,7 +103,7 @@ export default function ProductionFacilitiesPanel({
                                 {FACILITY_LEVEL_LABELS[level]}
                                 {ownedTotal > 0 && (
                                     <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
-                                        {ownedActive}/{levelFacilities.length}
+                                        {ownedActive}
                                     </Badge>
                                 )}
                             </TabsTrigger>
@@ -121,7 +121,7 @@ export default function ProductionFacilitiesPanel({
                                     const previewName = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
                                     const owned = ownedByName.get(previewName);
                                     if (owned) {
-                                        if (owned.construction !== null) {
+                                        if (owned.construction !== null && owned.construction.type === 'new') {
                                             return <UnderConstructionCard key={owned.id} facility={owned} />;
                                         }
                                         return (
