@@ -91,7 +91,7 @@ function validateBidFields(
             return { isValid: false, error: 'Quantity must be non-negative' };
         }
 
-        if (quantity > 0) {
+        if (quantity > 0 && quantity < EPSILON) {
             return { isValid: false, error: `Quantity must be at least ${EPSILON}` };
         }
 

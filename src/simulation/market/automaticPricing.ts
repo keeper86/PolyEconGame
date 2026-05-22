@@ -214,16 +214,16 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 needs = facility.needs;
             }
 
+            let outputBufferFull = false;
+            if (facility.type === 'production') {
+                outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
+                    const outInventory = queryStorageFacility(assets.storageFacility, out.name);
+                    return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
+                });
+            }
             for (const { resource, quantity } of needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
-                }
-                let outputBufferFull = false;
-                if (facility.type === 'production') {
-                    outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
-                        const outInventory = queryStorageFacility(assets.storageFacility, out.name);
-                        return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
-                    });
                 }
 
                 const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
