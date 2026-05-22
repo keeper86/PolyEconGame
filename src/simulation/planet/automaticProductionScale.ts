@@ -7,38 +7,51 @@ import {
     queryStorageFacility,
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
+import { constructionServiceResourceType } from './services';
 
 export const PROD_SCALE_BASE_STEP = 0.01;
 export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const PROD_SCALE_SIGNAL_THRESHOLD = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.1;
+/**
+ * Fraction of the estimated construction cost that must be covered by the agent's
+ * current deposits before an automated capacity expansion is initiated.
+ * 0.5 means the agent needs at least 50% of the estimated cost in deposits.
+ */
+export const EXPANSION_DEPOSIT_THRESHOLD = 0.5;
 
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
     const { lastTickResults, produces, scale } = facility;
 
-    // ---- 1. Demand / supply pressure from market aggregates ----
-    // Evaluate each output independently and take the strongest net signal.
-    // This prevents a worthless byproduct (e.g. natural gas from oil wells)
-    // from diluting the expansion signal from a valuable main product.
-    let maxOutputSignal = 0;
+    const maxOutputSignals: number[] = [];
+    let weightedOutputSignalSum = 0;
+    let totalWeight = 0;
 
     for (const output of produces) {
         const avg = planet.avgMarketResult[output.resource.name];
         if (!avg) {
             continue;
         }
+        const price = planet.marketPrices[output.resource.name];
+
         const totalDemand = avg.totalDemand;
         const totalSupply = avg.totalSupply;
 
         const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
         const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
 
-        const outputSignal = unfilledFrac - unsoldFrac;
-        if (outputSignal > maxOutputSignal) {
-            maxOutputSignal = outputSignal;
-        }
+        maxOutputSignals.push(unfilledFrac - unsoldFrac);
+        weightedOutputSignalSum += (unfilledFrac - unsoldFrac) * price;
+        totalWeight += price;
     }
+
+    if (totalWeight === 0) {
+        console.error('No market data for any outputs of facility', facility.id);
+        return 0;
+    }
+
+    const maxOutputSignal = weightedOutputSignalSum / totalWeight;
 
     // ---- 2. Output buffer check ----
     // If all output buffers are full (ticksOfInventory above threshold), we consider the buffer "full"
@@ -121,14 +134,37 @@ function adjustScale(facility: ProductionFacility, signal: number): number {
 }
 
 /**
+ * Returns true if the agent has enough deposits to cover at least
+ * `EXPANSION_DEPOSIT_THRESHOLD` of the estimated construction cost.
+ */
+function hasSufficientFundsForExpansion(
+    assets: AgentPlanetAssets,
+    planet: Planet,
+    totalConstructionServiceRequired: number,
+): boolean {
+    const constructionPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+    if (constructionPrice <= 0) {
+        // No price data — cannot estimate cost, skip expansion.
+        return false;
+    }
+    const estimatedCost = totalConstructionServiceRequired * constructionPrice;
+    return assets.deposits >= estimatedCost * EXPANSION_DEPOSIT_THRESHOLD;
+}
+
+/**
  * Initiate a construction project to expand maxScale.
  * Uses the existing `construction` field and `calculateCostsForConstruction`.
+ * Returns true if the expansion was initiated, false if the agent lacks funds.
  */
-function initiateCapacityExpansion(facility: ProductionFacility): void {
+function initiateCapacityExpansion(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): boolean {
     const currentMax = facility.maxScale;
     const targetMax = Math.max(Math.ceil(currentMax * (1 + MAX_SCALE_EXPAND_FRACTION)), currentMax + 1);
     const facilityType = getFacilityType(facility);
     const totalCost = calculateCostsForConstruction(facilityType, currentMax, targetMax);
+
+    if (!hasSufficientFundsForExpansion(assets, planet, totalCost)) {
+        return false;
+    }
 
     facility.construction = {
         type: 'expansion',
@@ -138,6 +174,7 @@ function initiateCapacityExpansion(facility: ProductionFacility): void {
         progress: 0,
         lastTickInvestedConstructionServices: 0,
     };
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +217,8 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                     facility.lastTickResults?.overallEfficiency > 0.95
                 ) {
                     // At capacity and no construction in progress — start a construction project to expand.
-                    initiateCapacityExpansion(facility);
+                    // Only proceeds if the agent has sufficient deposits to cover the estimated cost.
+                    initiateCapacityExpansion(facility, assets, planet);
                 } else {
                     adjustScale(facility, signal);
                 }

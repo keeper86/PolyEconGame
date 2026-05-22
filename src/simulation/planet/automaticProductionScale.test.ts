@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
-import { PROD_SCALE_BASE_STEP, updateAgentProductionScale } from './automaticProductionScale';
+import {
+    EXPANSION_DEPOSIT_THRESHOLD,
+    PROD_SCALE_BASE_STEP,
+    updateAgentProductionScale,
+} from './automaticProductionScale';
+import { constructionServiceResourceType } from './services';
 import type { Agent, MarketResult, Planet } from './planet';
 import { agriculturalProductResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
 
@@ -221,12 +226,17 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('initiates capacity expansion when scale == maxScale and signal is positive', () => {
+    it('initiates capacity expansion when scale == maxScale, signal is positive, and agent has sufficient deposits', () => {
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
         // Use a larger maxScale so calculateCostsForConstruction's integer loop has work to do.
         const { agents, facility } = makeSetup(planet, { scale: 10, maxScale: 10 });
+        // Give the agent enough deposits to cover the expansion cost.
+        // Construction price is 1.0 (from initialMarketPrices), totalCost ≈ sum of costs from 11 to 11.
+        // A large deposit ensures the check passes.
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].deposits = 1_000_000;
         expect(facility.construction).toBeNull();
 
         updateAgentProductionScale(agents, planet);
@@ -235,6 +245,20 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).not.toBeNull();
         expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(10);
         expect(facility.construction!.totalConstructionServiceRequired).toBeGreaterThan(0);
+    });
+
+    it('does NOT initiate capacity expansion when agent lacks sufficient deposits', () => {
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planet, { scale: 10, maxScale: 10 });
+        // Agent has zero deposits (default from makeAgentPlanetAssets) — insufficient.
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(agents, planet);
+
+        // Should NOT have started a construction project
+        expect(facility.construction).toBeNull();
     });
 
     it('scales up when profitable (positive costBalance) and demand exceeds threshold', () => {
