@@ -18,9 +18,10 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     const { lastTickResults, produces, scale } = facility;
 
     // ---- 1. Demand / supply pressure from market aggregates ----
-    let demandPressure = 0;
-    let supplyPressure = 0;
-    let outputCount = 0;
+    // Evaluate each output independently and take the strongest net signal.
+    // This prevents a worthless byproduct (e.g. natural gas from oil wells)
+    // from diluting the expansion signal from a valuable main product.
+    let maxOutputSignal = 0;
 
     for (const output of produces) {
         const avg = planet.avgMarketResult[output.resource.name];
@@ -33,27 +34,27 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
         const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
 
-        demandPressure += unfilledFrac;
-        supplyPressure += unsoldFrac;
-        outputCount++;
-    }
-
-    if (outputCount > 0) {
-        demandPressure /= outputCount;
-        supplyPressure /= outputCount;
+        const outputSignal = unfilledFrac - unsoldFrac;
+        if (outputSignal > maxOutputSignal) {
+            maxOutputSignal = outputSignal;
+        }
     }
 
     // ---- 2. Output buffer check ----
-    // If any output's inventory is near-full, that's a strong scale-down signal.
-    let outputBufferFull = false;
+    // If all output buffers are full (ticksOfInventory above threshold), we consider the buffer "full"
+    let outputBufferFull = 0;
     for (const output of produces) {
+        const avg = planet.avgMarketResult[output.resource.name];
+        // Skip outputs that have no market demand — they're just waste/byproducts
+        if (!avg || avg.totalDemand <= 0) {
+            continue;
+        }
         const inventory = queryStorageFacility(assets.storageFacility, output.resource.name);
         const effectiveScale = Math.max(scale, 1);
         const productionPerTick = output.quantity * effectiveScale;
         const ticksOfInventory = inventory / productionPerTick;
         if (ticksOfInventory >= OUTPUT_BUFFER_FULL_TICKS) {
-            outputBufferFull = true;
-            break;
+            outputBufferFull += 1;
         }
     }
 
@@ -90,11 +91,11 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     // ---- 5. Composite signal ----
     // Weights: demand/supply pressure are primary, profit is secondary.
     // Output buffer full or input starved act as vetoes on scale-up.
-    let signal = demandPressure - supplyPressure + profitSignal * 0.5;
+    let signal = maxOutputSignal + profitSignal * 0.5;
 
     // Vetoes
-    if (outputBufferFull) {
-        signal = Math.min(signal, -PROD_SCALE_SIGNAL_THRESHOLD * 0.5);
+    if (outputBufferFull === produces.length && signal > 0) {
+        signal = 0;
     }
     if (inputStarved && signal > 0) {
         signal = 0; // don't scale up when starved of inputs

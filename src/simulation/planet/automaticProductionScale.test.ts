@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
 import { PROD_SCALE_BASE_STEP, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
-import { agriculturalProductResourceType } from './resources';
+import { agriculturalProductResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -283,6 +283,145 @@ describe('updateAgentProductionScale', () => {
 
         // Without storage facility, queryStorageFacility returns 0, so output buffer is not full
         // → signal should be positive → scale should increase
+        expect(facility.scale).toBeGreaterThan(initial);
+    });
+
+    // -----------------------------------------------------------------------
+    // Multi-output facility tests (e.g. oil well: crude oil + natural gas)
+    // -----------------------------------------------------------------------
+
+    it('scales up a multi-output facility when main product is in shortage despite byproduct glut', () => {
+        // Oil well produces crude oil (high demand) and natural gas (worthless byproduct)
+        const OIL = crudeOilResourceType;
+        const GAS = naturalGasResourceType;
+
+        const planet = makePlanet({
+            avgMarketResult: {
+                [OIL.name]: {
+                    resourceName: OIL.name,
+                    clearingPrice: 50,
+                    totalVolume: 100,
+                    totalDemand: 100,
+                    totalSupply: 100,
+                    unfilledDemand: 80, // 80% unfilled → strong demand signal
+                    unsoldSupply: 0,
+                    productionCost: 10,
+                },
+                [GAS.name]: {
+                    resourceName: GAS.name,
+                    clearingPrice: 1,
+                    totalVolume: 10,
+                    totalDemand: 10,
+                    totalSupply: 100,
+                    unfilledDemand: 0,
+                    unsoldSupply: 90, // 90% unsold → massive oversupply
+                    productionCost: 1,
+                },
+            },
+        });
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                maxScale: 1,
+                scale: 0.5,
+                produces: [
+                    { resource: OIL, quantity: 300 },
+                    { resource: GAS, quantity: 100 },
+                ],
+                lastTickResults: {
+                    overallEfficiency: 1,
+                    workerEfficiency: {},
+                    resourceEfficiency: {},
+                    overqualifiedWorkers: {},
+                    exactUsedByEdu: {},
+                    totalUsedByEdu: {},
+                    lastProduced: {},
+                    lastConsumed: {},
+                    costBalance: 0,
+                },
+            },
+        );
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [facility],
+                }),
+            },
+        });
+
+        const agents = new Map([[agent.id, agent]]);
+        const initial = facility.scale;
+
+        updateAgentProductionScale(agents, planet);
+
+        // Oil signal = 0.8 - 0 = 0.8, Gas signal = 0 - 0.9 = -0.9
+        // maxOutputSignal = max(0.8, -0.9) = 0.8 → should scale up
+        expect(facility.scale).toBeGreaterThan(initial);
+    });
+
+    it('does not let a zero-demand byproduct trigger output buffer veto', () => {
+        // Oil well: crude oil in shortage, natural gas has zero demand (no market history)
+        const OIL = crudeOilResourceType;
+        const GAS = naturalGasResourceType;
+
+        const planet = makePlanet({
+            avgMarketResult: {
+                [OIL.name]: {
+                    resourceName: OIL.name,
+                    clearingPrice: 50,
+                    totalVolume: 100,
+                    totalDemand: 100,
+                    totalSupply: 100,
+                    unfilledDemand: 80,
+                    unsoldSupply: 0,
+                    productionCost: 10,
+                },
+                // GAS has no avgMarketResult at all — zero demand, never traded
+            },
+        });
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                maxScale: 1,
+                scale: 0.5,
+                produces: [
+                    { resource: OIL, quantity: 300 },
+                    { resource: GAS, quantity: 100 },
+                ],
+                lastTickResults: {
+                    overallEfficiency: 1,
+                    workerEfficiency: {},
+                    resourceEfficiency: {},
+                    overqualifiedWorkers: {},
+                    exactUsedByEdu: {},
+                    totalUsedByEdu: {},
+                    lastProduced: {},
+                    lastConsumed: {},
+                    costBalance: 0,
+                },
+            },
+        );
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [facility],
+                }),
+            },
+        });
+
+        const agents = new Map([[agent.id, agent]]);
+        const initial = facility.scale;
+
+        updateAgentProductionScale(agents, planet);
+
+        // Should scale up because oil demand signal dominates and gas (no market data)
+        // is skipped in both the signal computation and the buffer check
         expect(facility.scale).toBeGreaterThan(initial);
     });
 });
