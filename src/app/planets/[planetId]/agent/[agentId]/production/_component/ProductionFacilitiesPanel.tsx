@@ -103,7 +103,7 @@ export default function ProductionFacilitiesPanel({
                                 {FACILITY_LEVEL_LABELS[level]}
                                 {ownedTotal > 0 && (
                                     <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
-                                        {ownedActive}/{levelFacilities.length}
+                                        {ownedActive}
                                     </Badge>
                                 )}
                             </TabsTrigger>

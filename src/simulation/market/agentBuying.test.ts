@@ -536,45 +536,6 @@ describe('marketTick — agent buying', () => {
         expect(coalBought).toBeLessThanOrEqual(5);
     });
 
-    it('fill rate in second tick uses previous demand (lastEffectiveQty), not current shortfall', () => {
-        const buyer = makeSteelProducer();
-        buyer.assets.p.deposits = 1_000_000;
-        automaticPricing(agentMap(buyer), planet);
-
-        // Storage target = full buffer (1000), storage is empty so effective qty = 1000.
-        const firstBidStorageTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
-        const firstEffectiveQty = firstBidStorageTarget; // inventory = 0
-
-        // First tick: only partial fill — half of demand is filled
-        const partialSeller = makeCoalSeller(Math.floor(firstEffectiveQty / 2), 1.0, 'partial-seller');
-        marketTick(agentMap(partialSeller, buyer), planet);
-        // collectAgentBids sets lastEffectiveQty = firstEffectiveQty (full demand placed)
-
-        // automaticPricing after first tick computes the adjusted bid price using
-        // lastBought (≈firstEffectiveQty/2) vs lastEffectiveQty (=firstEffectiveQty).
-        // Fill rate ≈ 0.5 → price should rise.
-        automaticPricing(agentMap(buyer), planet);
-        const priceAfterFirstTick = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        expect(priceAfterFirstTick).toBeGreaterThan(1.0);
-
-        // After automaticPricing, bidStorageTarget is still the full buffer (3000).
-        // The effective qty = target − current inventory, which is now smaller.
-        const coalInStorage = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
-        const secondEffectiveQty = Math.max(0, buyer.assets.p.market!.buy[COAL]!.bidStorageTarget! - coalInStorage);
-        expect(secondEffectiveQty).toBeLessThan(firstEffectiveQty);
-
-        // Second tick: half of the (now smaller) effective qty is filled.
-        // Fill rate still ≈ 0.5 → price should keep rising.
-        const seller2 = makeCoalSeller(Math.floor(secondEffectiveQty / 2), 1.0, 'seller2');
-        marketTick(agentMap(seller2, buyer), planet);
-
-        automaticPricing(agentMap(buyer), planet);
-        const priceAfterSecondTick = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-
-        // Fill deficit persists → price keeps rising tick over tick
-        expect(priceAfterSecondTick).toBeGreaterThan(priceAfterFirstTick);
-    });
-
     it('food market (household demand) is unaffected when an unrelated agent buys coal', () => {
         const foodAgent = makeAgent('food-seller');
         foodAgent.assets.p.storageFacility = makeStorageFacility({

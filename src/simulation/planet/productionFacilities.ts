@@ -283,9 +283,9 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
     },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
     produces: [
-        { resource: fuelResourceType, quantity: 40 },
-        { resource: plasticResourceType, quantity: 70 },
-        { resource: chemicalResourceType, quantity: 90 },
+        { resource: fuelResourceType, quantity: 80 },
+        { resource: plasticResourceType, quantity: 60 },
+        { resource: chemicalResourceType, quantity: 60 },
     ],
 });
 

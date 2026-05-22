@@ -472,11 +472,7 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
     });
 
     it('ceiling spring magnitude scales with how far bid exceeds the ceiling', () => {
-        // Lumber prodCost = 0.22, ceiling = 2.2
-        // Agent A: bid at 3 (ceiling deviation = 3/2.2 - 1 ≈ 0.364)
-        // Agent B: bid at 100 (ceiling deviation = 100/2.2 - 1 ≈ 44.45)
-        // Agent B's price should drop proportionally more
-        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
+        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0, [lumberResourceType.name]: 0 } });
         seedProductionCosts(planet);
         const agentA = makeLumberConsumerAgent(3, 5, 10);
         const agentB = makeLumberConsumerAgent(100, 5, 10);
@@ -498,15 +494,10 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
     });
 
     it('ceiling spring correction uses COST_SPRING_STRENGTH × ceilingDeviation', () => {
-        // Lumber prodCost = 0.22 (logs=0 override), ceiling = 2.2
-        // bid = 4.4 → ceilingDeviation = 4.4/2.2 - 1 = 1.0
-        // Water price set very high → consumer facility is profitable → profitGap = 0
-        // fillRate = 1 (lastBought=lastEffectiveQty=10) → fillRateFactor(1) = PRICE_ADJUST_MAX_DOWN
-        // factor = PRICE_ADJUST_MAX_DOWN - COST_SPRING_STRENGTH × 1.0
-        // newPrice = 4.4 × factor = 4.4 × 0.955 = 4.202
         const planet = makePlanet({
             marketPrices: {
                 [logsResourceType.name]: 0, // lumber prodCost = 44/200 = 0.22
+                [lumberResourceType.name]: 0, // pin market price to 0 so ceilingBase = prodCost
                 [waterResourceType.name]: 1000, // water revenue >> lumber cost → profitGap = 0
             },
         });
@@ -517,7 +508,7 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
 
         const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
         const lumberCost = 44 / 200; // 0.22 with logs price = 0
-        const ceiling = lumberCost * AUTOMATED_COST_CEILING_FACTOR;
+        const ceiling = lumberCost * AUTOMATED_COST_CEILING_FACTOR; // ceilingBase = max(0.22, 0) = 0.22
         const ceilingDeviation = Math.max(0, 4.4 / ceiling - 1);
         const expectedFactor = PRICE_ADJUST_MAX_DOWN - COST_SPRING_STRENGTH * ceilingDeviation;
         expect(bid.bidPrice).toBeCloseTo(4.4 * expectedFactor, 5);
