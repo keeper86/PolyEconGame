@@ -48,8 +48,9 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     let outputBufferFull = false;
     for (const output of produces) {
         const inventory = queryStorageFacility(assets.storageFacility, output.resource.name);
-        const productionPerTick = output.quantity * scale;
-        const ticksOfInventory = productionPerTick > 0 ? inventory / productionPerTick : Infinity;
+        const effectiveScale = Math.max(scale, 1);
+        const productionPerTick = output.quantity * effectiveScale;
+        const ticksOfInventory = inventory / productionPerTick;
         if (ticksOfInventory >= OUTPUT_BUFFER_FULL_TICKS) {
             outputBufferFull = true;
             break;
@@ -124,7 +125,7 @@ function adjustScale(facility: ProductionFacility, signal: number): number {
  */
 function initiateCapacityExpansion(facility: ProductionFacility): void {
     const currentMax = facility.maxScale;
-    const targetMax = currentMax * (1 + MAX_SCALE_EXPAND_FRACTION);
+    const targetMax = Math.max(Math.ceil(currentMax * (1 + MAX_SCALE_EXPAND_FRACTION)), currentMax + 1);
     const facilityType = getFacilityType(facility);
     const totalCost = calculateCostsForConstruction(facilityType, currentMax, targetMax);
 
@@ -172,8 +173,12 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
 
             if (signal > PROD_SCALE_SIGNAL_THRESHOLD) {
                 // Scale up
-                if (facility.scale >= facility.maxScale && facility.lastTickResults?.overallEfficiency > 0.95) {
-                    // At capacity — start a construction project to expand.
+                if (
+                    facility.scale >= facility.maxScale &&
+                    facility.construction === null &&
+                    facility.lastTickResults?.overallEfficiency > 0.95
+                ) {
+                    // At capacity and no construction in progress — start a construction project to expand.
                     initiateCapacityExpansion(facility);
                 } else {
                     adjustScale(facility, signal);
