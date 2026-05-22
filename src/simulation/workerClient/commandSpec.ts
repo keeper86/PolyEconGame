@@ -439,3 +439,16 @@ export const acquireLicenseSpec: CommandSpec<
     failureType: 'licenseAcquisitionFailed',
     extract: (msg) => ({ agentId: msg.agentId, planetId: msg.planetId, licenseType: msg.licenseType }),
 };
+
+type CancelConstructionSuccess = Extract<OutboundMessage, { type: 'constructionCancelled' }>;
+type CancelConstructionFailure = Extract<OutboundMessage, { type: 'constructionCancelFailed' }>;
+export const cancelConstructionSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'cancelConstruction' }>,
+    CancelConstructionSuccess,
+    CancelConstructionFailure,
+    void
+> = {
+    successType: 'constructionCancelled',
+    failureType: 'constructionCancelFailed',
+    extract: () => undefined,
+};

@@ -2,12 +2,25 @@
 
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { useTRPC } from '@/lib/trpc';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React from 'react';
@@ -50,19 +63,24 @@ export function UnderConstructionCard({ facility }: { facility: Facility }): Rea
                 </>
             }
         >
-            <UnderConstructionCompactRow facility={facility} onCancel={() => {}} />
+            <UnderConstructionCompactRow facility={facility} />
         </FacilityCardShell>
     );
 }
 
-export function UnderConstructionCompactRow({
-    facility,
-    onCancel,
-}: {
-    facility: Facility;
-    onCancel: () => void;
-}): React.ReactElement {
+export function UnderConstructionCompactRow({ facility }: { facility: Facility }): React.ReactElement {
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
+    const cancelMutation = useMutation(
+        trpc.cancelConstruction.mutationOptions({
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
+                });
+            },
+        }),
+    );
     const cs = facility.construction;
 
     if (!cs) {
@@ -110,9 +128,35 @@ export function UnderConstructionCompactRow({
             </div>
             <div className='mt-auto space-y-2'>
                 <Separator />
-                <Button variant='outline' size='sm' className='w-full text-xs gap-1' onClick={onCancel}>
-                    Cancel Construction
-                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            className='w-full text-xs gap-1'
+                            disabled={cancelMutation.isPending}
+                        >
+                            {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Construction'}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel construction?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                All construction progress will be permanently lost. There is no refund for construction
+                                services already invested.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Keep building</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() => cancelMutation.mutate({ agentId, planetId, facilityId: facility.id })}
+                            >
+                                Cancel construction
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </>
     );

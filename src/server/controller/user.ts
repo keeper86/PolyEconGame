@@ -9,6 +9,7 @@ import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import {
     workerBuildFacility,
     workerCancelBuyBid,
+    workerCancelConstruction,
     workerCancelSellOffer,
     workerCreateAgent,
     workerLeaseClaim,
@@ -648,6 +649,43 @@ export const cancelBuyBid = () => {
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,
+            });
+        });
+};
+
+/**
+ * Cancel an in-progress facility construction or expansion.
+ */
+export const cancelConstruction = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+            }),
+        )
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'cancel-construction' },
+                `User ${userId} cancelling construction for agent ${input.agentId} facility ${input.facilityId} on planet ${input.planetId}`,
+            );
+
+            await workerCancelConstruction({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
             });
         });
 };

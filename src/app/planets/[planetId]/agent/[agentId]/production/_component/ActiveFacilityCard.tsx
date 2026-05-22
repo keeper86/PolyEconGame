@@ -272,7 +272,7 @@ export function ActiveFacilityCard({
                     </>
                 )}
             </div>
-            {facility.construction !== null && <UnderConstructionCompactRow facility={facility} onCancel={() => {}} />}
+            {facility.construction !== null && <UnderConstructionCompactRow facility={facility} />}
         </FacilityCardShell>
     );
 }

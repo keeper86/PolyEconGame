@@ -201,6 +201,9 @@ export function handleFacilityAction(
         case 'setShipConstructionTarget':
             handleSetShipConstructionTarget(state, action, safePostMessage);
             break;
+        case 'cancelConstruction':
+            handleCancelConstruction(state, action, safePostMessage);
+            break;
         default:
             // This function only handles facility actions
             break;
@@ -391,4 +394,55 @@ export function handleSetShipConstructionTarget(
         );
     }
     safePostMessage({ type: 'shipConstructionTargetSet', requestId, agentId, facilityId });
+}
+
+/**
+ * Handle 'cancelConstruction' action — cancel an in-progress build or expansion.
+ * For 'new' constructions the facility is removed entirely.
+ * For 'expansion' constructions the construction field is cleared.
+ */
+export function handleCancelConstruction(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'cancelConstruction' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, facilityId } = action;
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'constructionCancelFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'constructionCancelFailed',
+            requestId,
+            reason: `Agent has no assets on planet '${planetId}'`,
+        });
+        return;
+    }
+    const facilityIndex = assets.productionFacilities.findIndex((f) => f.id === facilityId);
+    if (facilityIndex === -1) {
+        safePostMessage({ type: 'constructionCancelFailed', requestId, reason: `Facility '${facilityId}' not found` });
+        return;
+    }
+    const facility = assets.productionFacilities[facilityIndex];
+    if (!facility.construction) {
+        safePostMessage({
+            type: 'constructionCancelFailed',
+            requestId,
+            reason: 'Facility is not under construction',
+        });
+        return;
+    }
+    if (facility.construction.type === 'new') {
+        assets.productionFacilities.splice(facilityIndex, 1);
+        console.log(
+            `[worker] Agent '${agentId}' cancelled new construction of '${facilityId}' on planet '${planetId}' — facility removed`,
+        );
+    } else {
+        facility.construction = null;
+        console.log(`[worker] Agent '${agentId}' cancelled expansion of '${facilityId}' on planet '${planetId}'`);
+    }
+    safePostMessage({ type: 'constructionCancelled', requestId, agentId, facilityId });
 }
