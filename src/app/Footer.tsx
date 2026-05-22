@@ -12,10 +12,12 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 const MAX_LOCAL_EVENTS = 60;
 const GAP_PX = 48; // minimum horizontal gap between events (steric interaction)
 const BASE_SPEED_PX_PER_SEC = 80;
+
+const RENDER_LAG_ESTIMATE_MS = 16;
 const MIN_SPEED_PX_PER_SEC = 30;
 const MAX_SPEED_PX_PER_SEC = 500;
 
-type DisplayedEvent = { id: number; event: TickerEvent; duration: number };
+type DisplayedEvent = { id: number; event: TickerEvent; duration: number; startX: number };
 
 /* ---------- helpers ---------- */
 function textColor(category: string): string {
@@ -102,13 +104,14 @@ export default function Footer() {
         return () => observer.disconnect();
     }, []);
 
-    const measureTextWidth = useCallback((text: string) => {
+    const measureTextWidth = useCallback((dateStr: string, message: string) => {
         const span = measureRef.current;
         if (!span) {
             return 100;
         }
-        span.textContent = text;
-        return span.offsetWidth;
+        span.textContent = `${dateStr} ${message}`;
+        // +6px accounts for the gap-1.5 between the date and message spans in the actual element
+        return span.offsetWidth + 6;
     }, []);
 
     const findNextEvent = useCallback((): TickerEvent | undefined => {
@@ -155,8 +158,7 @@ export default function Footer() {
         }
 
         const dateStr = mapTickToDate(nextEvent.tick);
-        const fullText = `${dateStr} ${nextEvent.message}`;
-        const width = measureTextWidth(fullText);
+        const width = measureTextWidth(dateStr, nextEvent.message);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
         const prevSpeed = lastSpawnSpeedRef.current;
@@ -174,13 +176,19 @@ export default function Footer() {
 
         const duration = (containerWidth + width) / speed;
 
-        lastSpawnTimeRef.current = now;
+        // Bias the recorded spawn time forward by one render frame so that effectiveElapsed
+        // isn't overestimated: the CSS animation starts ~RENDER_LAG_ESTIMATE_MS after
+        // setDisplayedEvents() is called, but the steric check runs immediately after.
+        lastSpawnTimeRef.current = now + RENDER_LAG_ESTIMATE_MS;
         lastSpawnWidthRef.current = width;
         lastSpawnSpeedRef.current = speed;
         totalPausedDurationRef.current = 0; // reset: track pauses from this spawn onward
         lastDisplayedIdRef.current = nextEvent.id;
 
-        setDisplayedEvents((prev) => [...prev, { id: nextEvent.id, event: nextEvent, duration }]);
+        setDisplayedEvents((prev) => [
+            ...prev,
+            { id: nextEvent.id, event: nextEvent, duration, startX: containerWidth },
+        ]);
     }, [computeSpeed, findNextEvent, measureTextWidth]);
 
     useEffect(() => {
@@ -231,13 +239,13 @@ export default function Footer() {
                     )}
                 />
 
-                {displayedEvents.map(({ id, event, duration }) => (
+                {displayedEvents.map(({ id, event, duration, startX }) => (
                     <div
                         key={id}
                         className='ticker-item absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
                         style={
                             {
-                                '--ticker-start': `${containerWidthRef.current}px`,
+                                '--ticker-start': `${startX}px`,
                                 'animationDuration': `${duration}s`,
                             } as React.CSSProperties
                         }
