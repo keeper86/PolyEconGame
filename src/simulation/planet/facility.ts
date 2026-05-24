@@ -33,14 +33,21 @@ export const getFacilityType = (facility: Facility): FacilityType => {
 };
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 30;
+const constructionCostFactor = 10000;
 export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scale: number) => number> = {
-    raw: (scale: number) => (100 * Math.pow(scale, 1.1)) / scale + 100,
-    refined: (scale: number) => (200 * Math.pow(scale, 1.1)) / scale + 100,
-    manufactured: (scale: number) => (400 * Math.pow(scale, 1.1)) / scale + 100,
-    services: (scale: number) => (300 * Math.pow(scale, 1.1)) / scale + 100,
-    storage: (scale: number) => (150 * Math.pow(scale, 1.1)) / scale + 100,
-    management: (scale: number) => (250 * Math.pow(scale, 1.1)) / scale + 100,
-    ship_construction: (scale: number) => (500 * Math.pow(scale, 1.1)) / scale + 100,
+    raw: (scale: number) => (constructionCostFactor * Math.pow(scale, 1.1)) / scale + constructionCostFactor,
+    refined: (scale: number) =>
+        (2 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 2 * constructionCostFactor,
+    manufactured: (scale: number) =>
+        (4 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 4 * constructionCostFactor,
+    services: (scale: number) =>
+        (3 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 3 * constructionCostFactor,
+    storage: (scale: number) =>
+        (1.5 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 1.5 * constructionCostFactor,
+    management: (scale: number) =>
+        (2.5 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 2.5 * constructionCostFactor,
+    ship_construction: (scale: number) =>
+        (5 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 5 * constructionCostFactor,
 };
 
 export const calculateCostsForConstruction = (

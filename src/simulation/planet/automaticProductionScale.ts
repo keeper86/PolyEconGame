@@ -13,16 +13,16 @@ import { constructionServiceResourceType } from './services';
 export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
-export const EXPANSION_DEPOSIT_THRESHOLD = 0.5;
+export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.05;
+export const PID_KP = 0.04;
 /** Integral gain: eliminates persistent steady-state offset. */
 export const PID_KI = 0.002;
 /** Derivative gain: dampens oscillations by braking when error changes. */
-export const PID_KD = 0.05;
+export const PID_KD = 0.06;
 export const PID_IMAX = 0.05;
-export const PID_OUT_MAX = 0.01;
-export const PID_D_ALPHA = 0.5;
+export const PID_OUT_MAX = 0.005;
+export const PID_D_ALPHA = 0.2;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 120;
 /** Anti-windup ceiling for the expansion accumulator. */
@@ -31,7 +31,7 @@ export const EXPANSION_INTEGRAL_MAX = 240;
  * Per-call decay applied to the expansion integral when scale < maxScale
  * or signal is not positive — slowly forgets old demand pressure.
  */
-export const EXPANSION_INTEGRAL_DECAY = 0.5;
+export const EXPANSION_INTEGRAL_DECAY = 1;
 
 function getDefaultPidState(): PidState {
     return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
@@ -61,6 +61,7 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                 ? avg.clearingPrice
                 : (orderBook?.bids[0]?.price ?? planet.marketPrices[output.resource.name] ?? 0);
 
+        // special handling for services.
         const totalDemand = avg.totalDemand;
         const totalSupply = avg.totalSupply;
         const ownSupply = queryStorageFacility(storage, output.resource.name);
@@ -181,7 +182,7 @@ function hasSufficientFundsForExpansion(
         return false;
     }
     const estimatedCost = totalConstructionServiceRequired * constructionPrice;
-    return assets.deposits >= estimatedCost * EXPANSION_DEPOSIT_THRESHOLD * 10000000;
+    return assets.deposits >= EXPANSION_DEPOSIT_THRESHOLD * estimatedCost;
 }
 
 /**
