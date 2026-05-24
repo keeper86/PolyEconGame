@@ -1,3 +1,4 @@
+import assert from 'assert';
 import { OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import type { PidState, ProductionFacility } from './facility';
 import {
@@ -11,48 +12,21 @@ import { constructionServiceResourceType } from './services';
 
 export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
 export const INPUT_EFFICIENCY_MIN = 0.5;
-export const MAX_SCALE_EXPAND_FRACTION = 0.1;
-/**
- * Fraction of the estimated construction cost that must be covered by the agent's
- * current deposits before an automated capacity expansion is initiated.
- * 0.5 means the agent needs at least 50% of the estimated cost in deposits.
- */
+export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 0.5;
 
-// ---------------------------------------------------------------------------
-// PID controller gains and tuning constants
-// ---------------------------------------------------------------------------
-
-/** Proportional gain: immediate reaction to current signal. */
-export const PID_KP = 0.01;
+export const PID_KP = 0.05;
 /** Integral gain: eliminates persistent steady-state offset. */
 export const PID_KI = 0.002;
 /** Derivative gain: dampens oscillations by braking when error changes. */
-export const PID_KD = 0.005;
-/**
- * Anti-windup clamp for the integral term (normalised, ×maxScale for absolute).
- * Prevents the integral from accumulating indefinitely when output is saturated.
- */
-export const PID_IMAX = 0.5;
-/** Maximum scale change per tick (normalised, ×maxScale for absolute). */
-export const PID_OUT_MAX = 0.1;
-/**
- * Low-pass filter alpha for the derivative error signal.
- * 0.2 = heavy smoothing (derivative is 20% new, 80% old); reduces noise amplification.
- */
-export const PID_D_ALPHA = 0.2;
+export const PID_KD = 0.05;
+export const PID_IMAX = 0.05;
+export const PID_OUT_MAX = 0.01;
+export const PID_D_ALPHA = 0.5;
 
-// ---------------------------------------------------------------------------
-// Expansion integral constants
-// ---------------------------------------------------------------------------
-
-/**
- * Accumulated signal months needed before an automated capacity expansion fires.
- * Prevents expansion on transient demand spikes.
- */
-export const EXPANSION_INTEGRAL_THRESHOLD = 12;
+export const EXPANSION_INTEGRAL_THRESHOLD = 120;
 /** Anti-windup ceiling for the expansion accumulator. */
-export const EXPANSION_INTEGRAL_MAX = 24;
+export const EXPANSION_INTEGRAL_MAX = 240;
 /**
  * Per-call decay applied to the expansion integral when scale < maxScale
  * or signal is not positive — slowly forgets old demand pressure.
@@ -64,10 +38,12 @@ function getDefaultPidState(): PidState {
 }
 
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
-    const { lastTickResults, produces, scale } = facility;
+    const { lastTickResults, produces, maxScale } = facility;
 
     let weightedOutputSignalSum = 0;
     let totalWeight = 0;
+    let revenue = 0;
+    let noData = 0;
 
     const storage = assets.storageFacility;
 
@@ -75,95 +51,88 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         const avg = planet.lastMarketResult[output.resource.name];
 
         if (!avg) {
+            noData++;
             continue;
         }
 
         const orderBook = planet.orderBooks[output.resource.name];
-        const price = orderBook?.bids[0]?.price ?? planet.marketPrices[output.resource.name];
+        const price =
+            avg.totalSupply > 0
+                ? avg.clearingPrice
+                : (orderBook?.bids[0]?.price ?? planet.marketPrices[output.resource.name] ?? 0);
 
         const totalDemand = avg.totalDemand;
+        const totalSupply = avg.totalSupply;
         const ownSupply = queryStorageFacility(storage, output.resource.name);
-        const perTick = lastTickResults.overallEfficiency * output.quantity * Math.max(scale, 1);
+        const perTick = output.quantity * Math.max(maxScale, 1);
         const buffer = perTick > 0 ? ownSupply / perTick : 0;
 
         const overfilled =
             buffer >= OUTPUT_BUFFER_FULL_TICKS ? (buffer / (buffer + OUTPUT_BUFFER_FULL_TICKS) - 0.5) * 2 : 0;
+        assert(
+            overfilled >= -1 && overfilled <= 1,
+            'Overfill signal should be between -1 and 1, but got' +
+                overfilled +
+                ' (buffer=' +
+                buffer +
+                ')' +
+                ', supply=' +
+                ownSupply +
+                ', perTick=' +
+                perTick,
+        );
+
+        const produced = planet.producedResources[output.resource.name] ?? 0;
+        const consumed = planet.consumedResources[output.resource.name] ?? 0;
+        const productionSignal = (produced - consumed) / Math.max(1, produced + consumed);
+        assert(
+            productionSignal >= -1 && productionSignal <= 1,
+            'Production signal should be between -1 and 1, but got' + productionSignal,
+        );
 
         const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
+        const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
+        const balance =
+            (5 * avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, 5 * avg.unfilledDemand + avg.unsoldSupply);
 
-        weightedOutputSignalSum += (unfilledFrac - overfilled) * price;
-        totalWeight += price;
+        const WEIGHT_UNFILLED = 2.0;
+        const WEIGHT_UNSOLD = 0.5;
+        const WEIGHT_BALANCE = 2.0;
+        const WEIGHT_PRODUCTION = 0.1;
+        const OVERFILL_PENALTY = 0.5;
+
+        weightedOutputSignalSum +=
+            price *
+            (WEIGHT_UNFILLED * unfilledFrac -
+                WEIGHT_UNSOLD * unsoldFrac -
+                OVERFILL_PENALTY * overfilled +
+                WEIGHT_BALANCE * balance -
+                WEIGHT_PRODUCTION * productionSignal);
+        revenue += (lastTickResults.lastProduced[output.resource.name] ?? 0) * price;
+
+        totalWeight +=
+            price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + WEIGHT_PRODUCTION + OVERFILL_PENALTY);
     }
 
     if (totalWeight === 0) {
-        console.error('No market data for any outputs of facility', facility.id);
+        if (noData !== produces.length) {
+            console.error('No market data for any outputs of facility', facility.id);
+        }
         return 0;
+    }
+
+    let profitSignal = 0;
+    const actualCost = revenue - lastTickResults.costBalance; // costBalance = revenue - actualCost
+    if (isFinite(actualCost) && actualCost > 0) {
+        const margin = (revenue - actualCost) / actualCost;
+        profitSignal = Math.max(-1, Math.min(1, margin));
     }
 
     const maxOutputSignal = weightedOutputSignalSum / totalWeight;
 
-    // ---- 2. Output buffer check ----
-    // If all output buffers are full (ticksOfInventory above threshold), we consider the buffer "full"
-    let outputBufferFull = 0;
-    for (const output of produces) {
-        const avg = planet.avgMarketResult[output.resource.name];
-        // Skip outputs that have no market demand — they're just waste/byproducts
-        if (!avg || avg.totalDemand <= 0) {
-            continue;
-        }
-        const inventory = queryStorageFacility(assets.storageFacility, output.resource.name);
-        const effectiveScale = Math.max(scale, 1);
-        const productionPerTick = output.quantity * effectiveScale;
-        const ticksOfInventory = inventory / productionPerTick;
-        if (ticksOfInventory >= OUTPUT_BUFFER_FULL_TICKS) {
-            outputBufferFull += 1;
-        }
-    }
-
-    // ---- 3. Profit signal from last tick's costBalance ----
-    // costBalance = revenue - consumed input cost (from processProductionFacility).
-    // We normalise it relative to a rough "scale * typical revenue" proxy.
-    let profitSignal = 0;
-    if (lastTickResults) {
-        const revenue = Object.entries(lastTickResults.lastProduced ?? {}).reduce((sum, [name, qty]) => {
-            const price = planet.lastMarketResult[name]?.clearingPrice ?? planet.marketPrices[name] ?? 0;
-            return sum + qty * price;
-        }, 0);
-        const actualCost = revenue - lastTickResults.costBalance; // costBalance = revenue - actualCost
-        const cost = actualCost > 0 ? actualCost : revenue;
-        if (cost > 0) {
-            // profit margin: (revenue - cost) / cost
-            const margin = (revenue - cost) / cost;
-            profitSignal = Math.max(-1, Math.min(1, margin));
-        }
-    }
-
-    // ---- 4. Input efficiency check ----
-    // If any input has low resource efficiency, the facility is starved.
-    let inputStarved = false;
-    if (lastTickResults?.resourceEfficiency) {
-        for (const eff of Object.values(lastTickResults.resourceEfficiency)) {
-            if (eff < INPUT_EFFICIENCY_MIN) {
-                inputStarved = true;
-                break;
-            }
-        }
-    }
-
-    // ---- 5. Composite signal ----
-    // Weights: demand/supply pressure are primary, profit is secondary.
-    // Output buffer full or input starved act as vetoes on scale-up.
-    let signal = maxOutputSignal + profitSignal * 0.5;
-
-    // Vetoes
-    if (outputBufferFull === produces.length && signal > 0) {
-        signal -= 0.1;
-    }
-    if (inputStarved && signal > 0) {
-        signal -= 0.1; // don't scale up when starved of inputs
-    }
-    if (lastTickResults?.overallEfficiency < 0.85 && signal > 0) {
-        signal -= 0.1;
+    let signal = (maxOutputSignal + profitSignal) / 2;
+    if (signal > 0) {
+        signal = Math.max(0, lastTickResults.overallEfficiency * signal);
     }
 
     return signal;
@@ -212,7 +181,7 @@ function hasSufficientFundsForExpansion(
         return false;
     }
     const estimatedCost = totalConstructionServiceRequired * constructionPrice;
-    return assets.deposits >= estimatedCost * EXPANSION_DEPOSIT_THRESHOLD;
+    return assets.deposits >= estimatedCost * EXPANSION_DEPOSIT_THRESHOLD * 10000000;
 }
 
 /**
@@ -263,20 +232,24 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 continue;
             }
 
-            // No market history for any output — skip.
-            const hasAnyMarketData = facility.produces.some((o) => planet.marketPrices[o.resource.name] !== undefined);
+            // No market history for any output — skip until lastMarketResult is populated.
+            const hasAnyMarketData = facility.produces.some(
+                (o) => planet.lastMarketResult[o.resource.name] !== undefined,
+            );
             if (!hasAnyMarketData) {
                 continue;
             }
 
             const signal = computeFacilitySignal(facility, assets, planet);
+            assert(signal >= -1, 'Signal should be positive due to earlier check for market data, but got' + signal);
+            assert(signal <= 1, 'Signal should be capped at 1, but got' + signal);
 
             // Retrieve or initialise PID state (undefined/null → fresh state).
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
 
             // Compute PID output and apply to scale.
             const delta = computePidDelta(signal, state, facility.maxScale);
-            facility.scale = Math.max(0, Math.min(facility.maxScale, facility.scale + delta));
+            facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
 
             if (facility.scale >= facility.maxScale && signal > 0) {
                 state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);
