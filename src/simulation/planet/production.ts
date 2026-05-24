@@ -154,6 +154,8 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
         if (need.resource.form === 'landBoundResource') {
             const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
             actualConsumed[need.resource.name] = extracted;
+            params.planet.consumedResources[need.resource.name] =
+                (params.planet.consumedResources[need.resource.name] ?? 0) + extracted;
             if (Math.abs(extracted / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(`Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`, {
                     planetId: planet.id,
@@ -165,6 +167,8 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
             const removed = removeFromStorageFacility(storage, need.resource.name, consumed);
             const actual = need.resource.form === 'services' ? consumed : removed;
             actualConsumed[need.resource.name] = actual;
+            params.planet.consumedResources[need.resource.name] =
+                (params.planet.consumedResources[need.resource.name] ?? 0) + actual;
             if (Math.abs(actual / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(`Unexpected: removed ${actual} of ${need.resource.name}, expected ${consumed}.`, {
                     planetId: planet.id,
@@ -191,6 +195,8 @@ function produceOutputs(params: ProductionParameters): Record<string, number> {
     for (const output of facility.produces) {
         const produced = output.quantity * facility.scale * overallEfficiency;
         actualProduced[output.resource.name] = produced;
+        params.planet.producedResources[output.resource.name] =
+            (params.planet.producedResources[output.resource.name] ?? 0) + produced;
         if (produced > 0) {
             const stored = putIntoStorageFacility(storage, output.resource, produced);
             if (Math.abs(stored / produced - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {

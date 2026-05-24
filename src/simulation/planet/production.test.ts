@@ -361,6 +361,7 @@ describe('constructionTick', () => {
         const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
         facility.id = 'facility-under-construction';
         facility.construction = {
+            type: 'new',
             constructionTargetMaxScale: 1,
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 50,
@@ -392,6 +393,7 @@ describe('constructionTick', () => {
         const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
         facility.id = 'completing-facility';
         facility.construction = {
+            type: 'new',
             constructionTargetMaxScale: 3,
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 50,
@@ -419,6 +421,7 @@ describe('constructionTick', () => {
         const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
         facility.id = 'stalled-facility';
         facility.construction = {
+            type: 'new',
             constructionTargetMaxScale: 1,
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 50,
@@ -445,6 +448,7 @@ describe('constructionTick', () => {
             { id: 'mgmt-under-construction', scale: 0, maxScale: 0 },
         );
         mgmtFacility.construction = {
+            type: 'new',
             constructionTargetMaxScale: 2,
             totalConstructionServiceRequired: 60,
             maximumConstructionServiceConsumption: 30,
@@ -478,6 +482,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         facility.id = 'completing-facility';
         facility.name = 'Iron Mine';
         facility.construction = {
+            type: 'new',
             constructionTargetMaxScale: 1,
             totalConstructionServiceRequired: 10,
             maximumConstructionServiceConsumption: 50,
@@ -513,6 +518,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
 
         const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
         facility.construction = {
+            type: 'new',
             constructionTargetMaxScale: 1,
             totalConstructionServiceRequired: 100,
             maximumConstructionServiceConsumption: 50,
@@ -543,6 +549,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         f1.id = 'f1';
         f1.name = 'Facility One';
         f1.construction = {
+            type: 'new',
             constructionTargetMaxScale: 1,
             totalConstructionServiceRequired: 5,
             maximumConstructionServiceConsumption: 50,
@@ -554,6 +561,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         f2.id = 'f2';
         f2.name = 'Facility Two';
         f2.construction = {
+            type: 'new',
             constructionTargetMaxScale: 1,
             totalConstructionServiceRequired: 5,
             maximumConstructionServiceConsumption: 50,
@@ -616,6 +624,7 @@ describe('productionTick — storage facility', () => {
             scale: 0,
             maxScale: 0,
             construction: {
+                type: 'new',
                 constructionTargetMaxScale: 1,
                 totalConstructionServiceRequired: 100,
                 maximumConstructionServiceConsumption: 50,
@@ -722,6 +731,7 @@ describe('productionTick — management facility', () => {
                 maxScale: 0,
                 buffer: 0,
                 construction: {
+                    type: 'new',
                     constructionTargetMaxScale: 1,
                     totalConstructionServiceRequired: 100,
                     maximumConstructionServiceConsumption: 50,
@@ -835,6 +845,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
                 maxScale: 0,
                 shipType,
                 construction: {
+                    type: 'new',
                     constructionTargetMaxScale: 1,
                     totalConstructionServiceRequired: 100,
                     maximumConstructionServiceConsumption: 50,

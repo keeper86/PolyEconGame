@@ -370,6 +370,7 @@ export function makeProductionFacility(
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
         needs: [],
         produces: [],
+        pidState: null,
         ...overrides,
     };
 }
@@ -511,6 +512,8 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         lastMarketResult: {},
         avgMarketResult: {},
         monthPriceAcc: {},
+        consumedResources: {},
+        producedResources: {},
         ...restOverrides,
     };
 }

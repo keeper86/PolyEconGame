@@ -3,12 +3,13 @@ import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
-import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financial/financialTick';
+import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
 import { checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { forexTick } from './market/forexTick';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { marketTick } from './market/market';
+import { updateAgentProductionScale } from './planet/automaticProductionScale';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
@@ -18,7 +19,6 @@ import { populationAdvanceYearTick, populationTick } from './population/populati
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
-import { updateAgentProductionScale } from './planet/automaticProductionScale';
 import { automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
@@ -55,15 +55,13 @@ export function advanceTick(gameState: GameState) {
             assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'after');
         }
 
-        if (isFirstTickInMonth(gameState.tick)) {
-            updateAgentProductionScale(gameState.agents, planet);
-            automaticWorkerAllocation(gameState.agents, planet);
-            hireWorkforce(gameState.agents, planet);
-            if (process.env.SIM_DEBUG) {
-                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
-            }
-            automaticLoanRepayment(gameState.agents, planet);
+        updateAgentProductionScale(gameState.agents, planet);
+        automaticWorkerAllocation(gameState.agents, planet);
+        hireWorkforce(gameState.agents, planet);
+        if (process.env.SIM_DEBUG) {
+            assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
         }
+
         claimBillingTick(gameState.agents, planet, gameState.tick);
         maturesLoans(gameState.agents, planet, gameState.tick);
         preProductionFinancialTick(gameState.agents, planet, gameState.tick);

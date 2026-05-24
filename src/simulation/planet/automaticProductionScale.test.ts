@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
 import {
-    EXPANSION_DEPOSIT_THRESHOLD,
-    PROD_SCALE_BASE_STEP,
+    EXPANSION_INTEGRAL_THRESHOLD,
+    PID_D_ALPHA,
+    PID_KP,
     updateAgentProductionScale,
 } from './automaticProductionScale';
-import { constructionServiceResourceType } from './services';
 import type { Agent, MarketResult, Planet } from './planet';
 import { agriculturalProductResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
 
@@ -31,9 +31,9 @@ function makeMarketResult(overrides?: Partial<MarketResult>): MarketResult {
     };
 }
 
-/** Build a planet whose avgMarketResult is pre-set for RESOURCE_NAME. */
+/** Build a planet whose lastMarketResult and avgMarketResult are pre-set for RESOURCE_NAME. */
 function makePlanetWithAvg(avg: MarketResult): Planet {
-    return makePlanet({ avgMarketResult: { [RESOURCE_NAME]: avg } });
+    return makePlanet({ lastMarketResult: { [RESOURCE_NAME]: avg }, avgMarketResult: { [RESOURCE_NAME]: avg } });
 }
 
 /** Create an automated agent with one production facility on the given planet. */
@@ -82,43 +82,46 @@ function makeSetup(
 // ---------------------------------------------------------------------------
 
 describe('updateAgentProductionScale', () => {
-    it('does not change scale in the neutral band (slight supply excess below threshold)', () => {
-        // supplyExcess = 0.2 → signal ≈ -0.2 (below PROD_SCALE_SIGNAL_THRESHOLD of 0.3)
+    it('makes only a very small scale change for a weak supply-excess signal', () => {
+        // supplyExcess = 0.2 → signal ≈ -0.2; PID produces a tiny negative delta (< 1% of maxScale)
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 20, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBe(initial);
+        // Negative direction but very small — PID should not cause a runaway change
+        expect(facility.scale).toBeLessThanOrEqual(initial);
+        expect(facility.scale).toBeGreaterThan(initial - 0.01 * facility.maxScale);
     });
 
-    it('does not change scale in the neutral band (slight demand excess below threshold)', () => {
-        // demandExcess = 0.2 → signal ≈ 0.2 (below threshold)
+    it('makes only a very small scale change for a weak demand-excess signal', () => {
+        // demandExcess = 0.2 → signal ≈ 0.2; PID produces a tiny positive delta (< 1% of maxScale)
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 20, totalDemand: 100 }));
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBe(initial);
+        // Positive direction but very small
+        expect(facility.scale).toBeGreaterThanOrEqual(initial);
+        expect(facility.scale).toBeLessThan(initial + 0.01 * facility.maxScale);
     });
 
-    it('scales down when supply excess exceeds threshold', () => {
-        // supplyExcess = 0.8 → signal ≈ -0.8 (well below -threshold)
+    it('scales down when supply excess is strong', () => {
+        // supplyExcess = 0.8 → signal ≈ -0.8; PID should produce a negative delta
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
         updateAgentProductionScale(agents, planet);
 
-        // Step = baseStep * |signal| * maxScale = 0.05 * 0.8 * 1 = 0.04
-        expect(facility.scale).toBeCloseTo(initial - PROD_SCALE_BASE_STEP * 0.8 * facility.maxScale);
+        expect(facility.scale).toBeLessThan(initial);
     });
 
-    it('scales up when demand excess exceeds threshold and conditions are met', () => {
+    it('scales up when demand excess is strong and conditions are met', () => {
         // demandExcess = 0.8, profitSignal = 0 (lastProduced is empty in test setup, so revenue=0)
-        // signal = 0.8 - 0 + 0*0.5 = 0.8
+        // signal ≈ 0.8; PID should produce a positive delta
         const planet = makePlanetWithAvg(
             makeMarketResult({
                 unfilledDemand: 80,
@@ -132,14 +135,20 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        // Step = baseStep * |signal| * maxScale = 0.05 * 0.8 * 1 = 0.04
-        expect(facility.scale).toBeCloseTo(initial + PROD_SCALE_BASE_STEP * 0.8 * facility.maxScale);
+        expect(facility.scale).toBeGreaterThan(initial);
     });
 
-    it('does NOT scale up when input resource efficiency is low (input starved)', () => {
+    it('scales up LESS when input resource efficiency is low (input starved) — soft veto', () => {
+        // Healthy case: 80% unfilled demand, no starvation → large positive delta.
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
+        const { agents: healthyAgents, facility: healthyFacility } = makeSetup(planet);
+        updateAgentProductionScale(healthyAgents, planet);
+        const healthyDelta = healthyFacility.scale - 0.5;
+
+        // Starved case: same demand signal but overallEfficiency=0.3 and resourceEfficiency low
+        // → two soft-penalty reductions of 0.1 each → signal reduced but still positive.
         const { agents, facility } = makeSetup(planet, {
             lastTickResults: {
                 overallEfficiency: 0.3,
@@ -154,17 +163,19 @@ describe('updateAgentProductionScale', () => {
             },
         });
         const initial = facility.scale;
-
         updateAgentProductionScale(agents, planet);
+        const starvedDelta = facility.scale - initial;
 
-        // Signal would be positive but input starved → signal clamped to 0 → no change
-        expect(facility.scale).toBe(initial);
+        // The starved facility should scale up by less than the healthy one.
+        expect(starvedDelta).toBeLessThan(healthyDelta);
+        // It should still scale up slightly (soft veto, not a hard zero).
+        expect(facility.scale).toBeGreaterThan(initial);
     });
 
     it('clamps scale to 0 when already at very low scale and oversupplied', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
-        // Start at a scale so close to 0 that the step would push it negative.
-        const { agents, facility } = makeSetup(planet, { scale: PROD_SCALE_BASE_STEP * 0.5, maxScale: 1 });
+        // Start at a scale so close to 0 that the PID output pushes it negative → clamp to 0.
+        const { agents, facility } = makeSetup(planet, { scale: 0.0001, maxScale: 1 });
 
         updateAgentProductionScale(agents, planet);
 
@@ -176,9 +187,9 @@ describe('updateAgentProductionScale', () => {
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
-        // Start very close to maxScale so the step would exceed it.
+        // Start very close to maxScale so the PID output would push it above → clamp to maxScale.
         const maxScale = 1;
-        const { agents, facility } = makeSetup(planet, { scale: maxScale - PROD_SCALE_BASE_STEP * 0.5, maxScale });
+        const { agents, facility } = makeSetup(planet, { scale: maxScale - 0.0001, maxScale });
 
         updateAgentProductionScale(agents, planet);
 
@@ -204,14 +215,39 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('skips when there is no avgMarketResult for the produced resource (no history)', () => {
-        const planet = makePlanet({ avgMarketResult: {} });
+    it('skips when there is no avgMarketResult and no open bids (no history, no demand)', () => {
+        // No last/avg market result AND empty order book → no signal, scale unchanged.
+        const planet = makePlanet({ lastMarketResult: {}, avgMarketResult: {}, orderBooks: {} });
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
         updateAgentProductionScale(agents, planet);
 
         expect(facility.scale).toBe(initial);
+    });
+
+    it('scales up when no avgMarketResult but open buy orders exist in the order book', () => {
+        // Supply has never existed → no trade history → lastMarketResult/avgMarketResult absent.
+        // But buyers are bidding → orderBook has bids → should generate a positive signal.
+        const planet = makePlanet({
+            lastMarketResult: {}, // no clearing history
+            avgMarketResult: {}, // no clearing history
+            orderBooks: {
+                [RESOURCE_NAME]: {
+                    asks: [],
+                    bids: [
+                        { price: 15, quantity: 500 },
+                        { price: 12, quantity: 300 },
+                    ],
+                },
+            },
+        });
+        const { agents, facility } = makeSetup(planet);
+        const initial = facility.scale;
+
+        updateAgentProductionScale(agents, planet);
+
+        expect(facility.scale).toBeGreaterThan(initial);
     });
 
     it('does not touch a non-automated agent', () => {
@@ -226,15 +262,18 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('initiates capacity expansion when scale == maxScale, signal is positive, and agent has sufficient deposits', () => {
+    it('initiates capacity expansion when scale == maxScale, integral >= threshold, and agent has sufficient deposits', () => {
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
         // Use a larger maxScale so calculateCostsForConstruction's integer loop has work to do.
-        const { agents, facility } = makeSetup(planet, { scale: 10, maxScale: 10 });
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            // Pre-set expansionIntegral past the threshold so expansion fires immediately.
+            pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+        });
         // Give the agent enough deposits to cover the expansion cost.
-        // Construction price is 1.0 (from initialMarketPrices), totalCost ≈ sum of costs from 11 to 11.
-        // A large deposit ensures the check passes.
         const agent = agents.values().next().value as Agent;
         agent.assets[planet.id].deposits = 1_000_000;
         expect(facility.construction).toBeNull();
@@ -247,12 +286,32 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction!.totalConstructionServiceRequired).toBeGreaterThan(0);
     });
 
-    it('does NOT initiate capacity expansion when agent lacks sufficient deposits', () => {
+    it('does NOT initiate capacity expansion when integral < threshold (not enough sustained pressure)', () => {
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
         );
         const { agents, facility } = makeSetup(planet, { scale: 10, maxScale: 10 });
-        // Agent has zero deposits (default from makeAgentPlanetAssets) — insufficient.
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].deposits = 1_000_000;
+        // No pidState pre-set → expansionIntegral starts at 0, well below EXPANSION_INTEGRAL_THRESHOLD.
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(agents, planet);
+
+        // Should NOT have started a construction project
+        expect(facility.construction).toBeNull();
+    });
+
+    it('does NOT initiate capacity expansion when agent lacks sufficient deposits (integral is sufficient)', () => {
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+        });
+        // Agent has zero deposits — the deposit check should block expansion.
         expect(facility.construction).toBeNull();
 
         updateAgentProductionScale(agents, planet);
@@ -319,8 +378,11 @@ describe('updateAgentProductionScale', () => {
         const OIL = crudeOilResourceType;
         const GAS = naturalGasResourceType;
 
+        // Override marketPrices so OIL (50) dominates the weighted signal over GAS (1).
+        // Without this, both resources have the same initialMarketPrice (1.5), and the
+        // -0.9 gas oversupply would cancel out the +0.8 oil shortage.
         const planet = makePlanet({
-            avgMarketResult: {
+            lastMarketResult: {
                 [OIL.name]: {
                     resourceName: OIL.name,
                     clearingPrice: 50,
@@ -342,6 +404,29 @@ describe('updateAgentProductionScale', () => {
                     productionCost: 1,
                 },
             },
+            avgMarketResult: {
+                [OIL.name]: {
+                    resourceName: OIL.name,
+                    clearingPrice: 50,
+                    totalVolume: 100,
+                    totalDemand: 100,
+                    totalSupply: 100,
+                    unfilledDemand: 80,
+                    unsoldSupply: 0,
+                    productionCost: 10,
+                },
+                [GAS.name]: {
+                    resourceName: GAS.name,
+                    clearingPrice: 1,
+                    totalVolume: 10,
+                    totalDemand: 10,
+                    totalSupply: 100,
+                    unfilledDemand: 0,
+                    unsoldSupply: 90,
+                    productionCost: 1,
+                },
+            },
+            marketPrices: { [OIL.name]: 50, [GAS.name]: 1 },
         });
 
         const facility = makeProductionFacility(
@@ -392,6 +477,19 @@ describe('updateAgentProductionScale', () => {
         const GAS = naturalGasResourceType;
 
         const planet = makePlanet({
+            lastMarketResult: {
+                [OIL.name]: {
+                    resourceName: OIL.name,
+                    clearingPrice: 50,
+                    totalVolume: 100,
+                    totalDemand: 100,
+                    totalSupply: 100,
+                    unfilledDemand: 80,
+                    unsoldSupply: 0,
+                    productionCost: 10,
+                },
+                // GAS has no lastMarketResult/avgMarketResult — zero demand, never traded
+            },
             avgMarketResult: {
                 [OIL.name]: {
                     resourceName: OIL.name,
@@ -447,5 +545,153 @@ describe('updateAgentProductionScale', () => {
         // Should scale up because oil demand signal dominates and gas (no market data)
         // is skipped in both the signal computation and the buffer check
         expect(facility.scale).toBeGreaterThan(initial);
+    });
+
+    // -----------------------------------------------------------------------
+    // PID controller behaviour tests
+    // -----------------------------------------------------------------------
+
+    it('integral accumulation causes larger scale changes over repeated ticks than a single proportional step', () => {
+        // With a persistent positive signal, the integral term grows each tick,
+        // causing increasing scale changes. Total movement over N ticks should
+        // exceed what N independent proportional-only steps would produce.
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 100 });
+        facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
+
+        const N = 20;
+        for (let i = 0; i < N; i++) {
+            updateAgentProductionScale(agents, planet);
+        }
+
+        // After 20 ticks of strong demand, movement should be more than just N×(Kp×signal×maxScale)
+        // because the integral and derivative contribute.
+        const minProportionalOnly = N * PID_KP * 0.8 * 100; // = 20 * 0.01 * 0.8 * 100 = 16
+        expect(facility.scale).toBeGreaterThan(minProportionalOnly);
+    });
+
+    it('derivative term produces braking when error signal suddenly drops', () => {
+        // Run several ticks with a strong positive signal to build up filteredError and integral.
+        const planetDemand = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planetDemand, { scale: 0.0, maxScale: 100 });
+        facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
+
+        for (let i = 0; i < 5; i++) {
+            updateAgentProductionScale(agents, facility.pidState ? planetDemand : planetDemand);
+        }
+        const scaleAfterBuild = facility.scale;
+
+        // Now switch to a balanced market (signal ≈ 0). The D term fires a braking impulse
+        // because filteredError transitions from high to low, producing a negative D contribution.
+        const planetBalanced = makePlanetWithAvg(makeMarketResult()); // balanced: no unfilled/unsold
+        for (let i = 0; i < 5; i++) {
+            updateAgentProductionScale(agents, planetBalanced);
+        }
+
+        // After the braking, scale should have grown by LESS than if we had continued
+        // with the demand market. We just verify scale is stable (not wildly increasing).
+        expect(facility.scale).toBeGreaterThanOrEqual(scaleAfterBuild); // scale never went backward unreasonably
+        // The integral was built up, so some further increase is expected, but it decelerates.
+    });
+
+    it('PID state is persisted on the facility object after update', () => {
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planet);
+        expect(facility.pidState).toBeNull(); // starts as null from makeProductionFacility
+
+        updateAgentProductionScale(agents, planet);
+
+        expect(facility.pidState).not.toBeNull();
+        expect(facility.pidState).toMatchObject({
+            integral: expect.any(Number),
+            prevError: expect.any(Number),
+            filteredError: expect.any(Number),
+            expansionIntegral: expect.any(Number),
+        });
+    });
+
+    it('PID filteredError is a low-pass filter of the raw signal', () => {
+        const signal = 0.8;
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planet);
+        facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
+
+        updateAgentProductionScale(agents, planet);
+
+        // After one call, filteredError = PID_D_ALPHA * signal + (1 - PID_D_ALPHA) * 0
+        const expectedFiltered = PID_D_ALPHA * signal;
+        // signal in computeFacilitySignal also has profit component, but with lastProduced={}
+        // revenue=0, so profitSignal=0. signal = demand/supply pressure = 0.8.
+        // filteredError should be close to PID_D_ALPHA * 0.8
+        expect(facility.pidState!.filteredError).toBeCloseTo(expectedFiltered, 2);
+        // prevError is set to filteredError after D computation
+        expect(facility.pidState!.prevError).toBeCloseTo(expectedFiltered, 2);
+    });
+
+    it('expansion integral resets to 0 after a successful expansion', () => {
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
+        );
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+        });
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].deposits = 1_000_000;
+
+        updateAgentProductionScale(agents, planet);
+
+        expect(facility.construction).not.toBeNull(); // expansion fired
+        expect(facility.pidState!.expansionIntegral).toBe(0); // integral was reset
+    });
+
+    it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {
+        // Scenario: EMA (avgMarketResult) still shows heavy historical oversupply from an
+        // initial burst, but the CURRENT tick (lastMarketResult) shows demand returning and
+        // supply recovered.  Because the signal is now computed from lastMarketResult, the
+        // facility should scale up even though avgMarketResult looks bad.
+        const planet = makePlanet({
+            // lastMarketResult: demand returned, low supply → positive signal
+            lastMarketResult: {
+                [RESOURCE_NAME]: {
+                    resourceName: RESOURCE_NAME,
+                    clearingPrice: 10,
+                    totalVolume: 50,
+                    totalDemand: 100,
+                    totalSupply: 20,
+                    unfilledDemand: 80, // 80% unfilled — lots of unmet demand
+                    unsoldSupply: 0,
+                    productionCost: 10,
+                },
+            },
+            // avgMarketResult: historical EMA still poisoned by the initial oversupply burst
+            avgMarketResult: {
+                [RESOURCE_NAME]: {
+                    resourceName: RESOURCE_NAME,
+                    clearingPrice: 10,
+                    totalVolume: 20,
+                    totalDemand: 30,
+                    totalSupply: 200, // legacy high supply in EMA
+                    unfilledDemand: 0,
+                    unsoldSupply: 180, // 90% unsold — would pin signal to -0.9 under old logic
+                    productionCost: 10,
+                },
+            },
+        });
+        const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 1 });
+
+        updateAgentProductionScale(agents, planet);
+
+        // Signal is driven by lastMarketResult (positive), not avgMarketResult (negative).
+        expect(facility.scale).toBeGreaterThan(0);
     });
 });

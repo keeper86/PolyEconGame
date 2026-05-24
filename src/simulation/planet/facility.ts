@@ -105,12 +105,20 @@ export type LastManagementTickResults = LastTickResults & {
     lastConsumed: { [resourceName: string]: number };
 };
 
+export type PidState = {
+    integral: number;
+    prevError: number;
+    filteredError: number;
+    expansionIntegral: number;
+};
+
 export type ProductionFacility = FacilityBase & {
     type: 'production';
     needs: ResourceQuantity[];
     produces: ResourceQuantity[];
 
     lastTickResults: LastProductionTickResults;
+    pidState?: PidState | null;
 };
 
 export type StorageFacility = FacilityBase & {
