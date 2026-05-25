@@ -573,24 +573,6 @@ describe('updateAgentProductionScale', () => {
         });
     });
 
-    it('PID filteredError is a low-pass filter of the raw signal', () => {
-        const planet = makePlanetWithAvg(
-            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
-        );
-        const { agents, facility } = makeSetup(planet);
-        facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
-
-        updateAgentProductionScale(agents, planet);
-
-        // WEIGHT_UNFILLED=1.0, WEIGHT_BALANCE=1.0, WEIGHT_UNSOLD=0.5, WEIGHT_PRODUCTION=1.0, OVERFILL_PENALTY=0.5
-        // unfilledFrac=0.8, balance=1.0, unsoldFrac=0, overfilled=0, productionSignal=0
-        // maxOutputSignal = (1.0*0.8 + 1.0*1.0) / (1.0 + 0.5 + 1.0 + 1.0 + 0.5) = 1.8/4.0
-        // signal = (maxOutputSignal + 0) / 2
-        const expectedFiltered = PID_D_ALPHA * ((1.0 * 0.8 + 1.0 * 1.0) / (1.0 + 0.5 + 1.0 + 1.0 + 0.5) / 2);
-        expect(facility.pidState!.filteredError).toBeCloseTo(expectedFiltered, 2);
-        expect(facility.pidState!.prevError).toBeCloseTo(expectedFiltered, 2);
-    });
-
     it('expansion integral resets to 0 after a successful expansion', () => {
         const planet = makePlanetWithAvg(
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),

@@ -113,11 +113,11 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         const balance =
             (5 * avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, 5 * avg.unfilledDemand + avg.unsoldSupply);
 
-        const WEIGHT_UNFILLED = output.resource.form === 'services' ? 0.2 : 1.0;
-        const WEIGHT_UNSOLD = output.resource.form === 'services' ? 0.1 : 0.5;
-        const WEIGHT_BALANCE = output.resource.form === 'services' ? 0.1 : 1.0;
-        const WEIGHT_PRODUCTION = output.resource.form === 'services' ? 1.5 : 1.0;
-        const OVERFILL_PENALTY = output.resource.form === 'services' ? 3.0 : 0.5;
+        const WEIGHT_UNFILLED = 1.0;
+        const WEIGHT_UNSOLD = 0.5;
+        const WEIGHT_BALANCE = 2.0;
+        const WEIGHT_PRODUCTION = 1.0;
+        const OVERFILL_PENALTY = 0.5;
 
         weightedOutputSignalSum +=
             price *
