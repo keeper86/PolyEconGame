@@ -48,6 +48,16 @@ export default function WorkforcePage() {
                     <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
                 ) : !isLoading && assets ? (
                     <div className='space-y-6'>
+                        <AutomationPanel
+                            agentId={agentId}
+                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                        />
+                        <WorkerAllocationPanel
+                            agentId={agentId}
+                            planetId={planetId}
+                            allocatedWorkers={assets.allocatedWorkers ?? {}}
+                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                        />
                         <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
                             <AgentMetricChart
                                 agentId={agentId}
@@ -72,16 +82,6 @@ export default function WorkforcePage() {
                             deathsPrevMonth={assets.deaths?.prevMonth}
                             disabilitiesThisMonth={assets.disabilities?.thisMonth}
                             disabilitiesPrevMonth={assets.disabilities?.prevMonth}
-                        />
-                        <AutomationPanel
-                            agentId={agentId}
-                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
-                        />
-                        <WorkerAllocationPanel
-                            agentId={agentId}
-                            planetId={planetId}
-                            allocatedWorkers={assets.allocatedWorkers ?? {}}
-                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
                         />
                     </div>
                 ) : (

@@ -36,7 +36,7 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
     return count > 0 ? sumAge / count : 30;
 }
 
-const CONSUMPTION_MISMATCH_TOLERANCE = 1e-9;
+const RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE = 1e-4;
 
 const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
     const assets = agent.assets[planet.id];
@@ -154,7 +154,9 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
         if (need.resource.form === 'landBoundResource') {
             const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
             actualConsumed[need.resource.name] = extracted;
-            if (extracted < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
+            params.planet.consumedResources[need.resource.name] =
+                (params.planet.consumedResources[need.resource.name] ?? 0) + extracted;
+            if (consumed > 0 && Math.abs(extracted / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(`Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`, {
                     planetId: planet.id,
                     agentId: agent.id,
@@ -165,7 +167,9 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
             const removed = removeFromStorageFacility(storage, need.resource.name, consumed);
             const actual = need.resource.form === 'services' ? consumed : removed;
             actualConsumed[need.resource.name] = actual;
-            if (actual < consumed - CONSUMPTION_MISMATCH_TOLERANCE) {
+            params.planet.consumedResources[need.resource.name] =
+                (params.planet.consumedResources[need.resource.name] ?? 0) + actual;
+            if (consumed > 0 && Math.abs(actual / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(`Unexpected: removed ${actual} of ${need.resource.name}, expected ${consumed}.`, {
                     planetId: planet.id,
                     agentId: agent.id,
@@ -191,9 +195,12 @@ function produceOutputs(params: ProductionParameters): Record<string, number> {
     for (const output of facility.produces) {
         const produced = output.quantity * facility.scale * overallEfficiency;
         actualProduced[output.resource.name] = produced;
+        params.planet.producedResources[output.resource.name] =
+            (params.planet.producedResources[output.resource.name] ?? 0) + produced;
         if (produced > 0) {
             const stored = putIntoStorageFacility(storage, output.resource, produced);
-            if (stored < produced - CONSUMPTION_MISMATCH_TOLERANCE) {
+            if (Math.abs(stored / produced - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
+                // produced > 0 already guards division
                 console.warn(`Unexpected: stored ${stored} of ${output.resource.name}, expected ${produced}.`);
             }
         }
@@ -435,6 +442,9 @@ function processStorageFacility(params: StorageParameters): void {
 // ---- main tick ----
 
 export function productionTick(gameState: GameState, planet: Planet): void {
+    planet.producedResources = {};
+    planet.consumedResources = {};
+
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {

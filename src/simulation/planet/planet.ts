@@ -147,6 +147,13 @@ export type Planet = {
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
+
+    producedResources: {
+        [resourceName in string]: number;
+    };
+    consumedResources: {
+        [resourceName in string]: number;
+    };
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };

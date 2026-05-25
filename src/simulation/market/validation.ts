@@ -230,7 +230,6 @@ export function validateAndPrepareBuyBid(
     // Validate price and quantity ranges (no deposit check — handled by collectAgentBids)
     const validation = validateBidFields(bid.bidPrice, cappedQuantity, availableStorageCapacity);
     if (!validation.isValid) {
-        console.warn(`Invalid buy bid for ${bid.resource.name}: ${validation.error}`);
         return null;
     }
 

@@ -213,17 +213,19 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             } else {
                 needs = facility.needs;
             }
+
+            let outputBufferFull = false;
+            if (facility.type === 'production') {
+                outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
+                    const outInventory = queryStorageFacility(assets.storageFacility, out.name);
+                    return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
+                });
+            }
             for (const { resource, quantity } of needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
                 }
-                let outputBufferFull = false;
-                if (facility.type === 'production') {
-                    outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
-                        const outInventory = queryStorageFacility(assets.storageFacility, out.name);
-                        return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
-                    });
-                }
+
                 const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
                 const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * bufferTarget;
 
@@ -489,7 +491,7 @@ function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId
 // ---------------------------------------------------------------------------
 
 const TARGET_SELL_THROUGH = 0.9;
-const SERVICE_SELL_THROUGH_TARGET = 0.98;
+const SERVICE_SELL_THROUGH_TARGET = 0.97;
 
 function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THROUGH): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
@@ -584,7 +586,7 @@ function adjustBidPrice(
 ): void {
     // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
-        bid.bidStorageTarget = storageTarget - shortfall; // Effectively current inventory
+        bid.bidStorageTarget = storageTarget - shortfall < EPSILON ? 0 : storageTarget - shortfall; // Effectively current inventory
         // Keep existing price or initialize it from market price
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
             const newPrice = marketPrice;
@@ -593,7 +595,7 @@ function adjustBidPrice(
         return;
     }
 
-    bid.bidStorageTarget = storageTarget;
+    bid.bidStorageTarget = storageTarget < EPSILON ? 0 : storageTarget;
 
     if (shortfall <= 0) {
         // No demand. Keep existing price or initialize it from market price.

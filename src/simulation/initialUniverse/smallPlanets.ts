@@ -208,6 +208,8 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         lastMarketResult: {},
         avgMarketResult: {},
         monthPriceAcc: {},
+        consumedResources: {},
+        producedResources: {},
         resources: {
             [arableLandResourceType.name]: arableClaims,
             [waterSourceResourceType.name]: waterClaims,

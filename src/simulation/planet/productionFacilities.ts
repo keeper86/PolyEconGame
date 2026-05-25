@@ -88,6 +88,7 @@ const makeFacilityDefaults = () => ({
     scale: 1,
     pollutionPerTick: { ...defaultPollutionPerTick },
     construction: null,
+    pidState: null,
     lastTickResults: {
         ...zeroLastTicksProductionResults,
         workerEfficiency: {},
@@ -901,6 +902,7 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
         })),
         produces: [{ resource: maintenanceServiceResourceType, quantity: 10 }],
         lastTickResults: { ...zeroLastTicksProductionResults },
+        pidState: null,
     };
 };
 

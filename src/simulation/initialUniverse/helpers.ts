@@ -61,6 +61,7 @@ export function makeProductionFacility(opts: {
             lastConsumed: {},
             costBalance: 0,
         },
+        pidState: null,
     };
 }
 
