@@ -9,12 +9,16 @@ import { getCaller } from 'tests/vitest/setupTestcontainer';
 import { describe, expect, it } from 'vitest';
 
 describe('simulation tRPC controller', () => {
-    it('getLatestPlanets returns empty result when no snapshots exist', async () => {
-        const caller = getCaller();
-        const result = await caller.simulation.getLatestPlanetSummaries();
-        expect(result).toBeDefined();
-        expect(Array.isArray(result.planets)).toBe(true);
-    });
+    it(
+        'getLatestPlanets returns empty result when no snapshots exist',
+        async () => {
+            const caller = getCaller();
+            const result = await caller.simulation.getLatestPlanetSummaries();
+            expect(result).toBeDefined();
+            expect(Array.isArray(result.planets)).toBe(true);
+        },
+        { timeout: 10_000 },
+    ); // increase timeout for potential database setup
 
     it('getLatestAgents returns shape', async () => {
         const caller = getCaller();
