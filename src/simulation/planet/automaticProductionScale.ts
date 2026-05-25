@@ -15,14 +15,14 @@ export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.04;
+export const PID_KP = 0.02;
 /** Integral gain: eliminates persistent steady-state offset. */
-export const PID_KI = 0.002;
+export const PID_KI = 0.001;
 /** Derivative gain: dampens oscillations by braking when error changes. */
-export const PID_KD = 0.06;
+export const PID_KD = 0.02;
 export const PID_IMAX = 0.05;
-export const PID_OUT_MAX = 0.005;
-export const PID_D_ALPHA = 0.2;
+export const PID_OUT_MAX = 0.001;
+export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 120;
 /** Anti-windup ceiling for the expansion accumulator. */
@@ -48,14 +48,32 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     const storage = assets.storageFacility;
 
     for (const output of produces) {
-        const avg = planet.lastMarketResult[output.resource.name];
+        const lastResult = planet.lastMarketResult[output.resource.name];
+        const orderBook = planet.orderBooks[output.resource.name];
 
-        if (!avg) {
+        if (!lastResult && !orderBook?.bids.length) {
             noData++;
             continue;
         }
 
-        const orderBook = planet.orderBooks[output.resource.name];
+        // When there is no market history yet but open bids exist, synthesise a
+        // MarketResult so the agent can ramp up towards observed demand.
+        const avg =
+            lastResult ??
+            (() => {
+                const totalBidQty = orderBook!.bids.reduce((sum, b) => sum + b.quantity, 0);
+                return {
+                    resourceName: output.resource.name,
+                    clearingPrice: 0,
+                    totalVolume: 0,
+                    totalDemand: totalBidQty,
+                    totalSupply: 0,
+                    unfilledDemand: totalBidQty,
+                    unsoldSupply: 0,
+                    productionCost: 0,
+                };
+            })();
+
         const price =
             avg.totalSupply > 0
                 ? avg.clearingPrice
@@ -95,10 +113,10 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         const balance =
             (5 * avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, 5 * avg.unfilledDemand + avg.unsoldSupply);
 
-        const WEIGHT_UNFILLED = output.resource.form === 'services' ? 0.2 : 2.0;
+        const WEIGHT_UNFILLED = output.resource.form === 'services' ? 0.2 : 1.0;
         const WEIGHT_UNSOLD = output.resource.form === 'services' ? 0.1 : 0.5;
-        const WEIGHT_BALANCE = output.resource.form === 'services' ? 0.1 : 2.0;
-        const WEIGHT_PRODUCTION = output.resource.form === 'services' ? 0.5 : 0.1;
+        const WEIGHT_BALANCE = output.resource.form === 'services' ? 0.1 : 1.0;
+        const WEIGHT_PRODUCTION = output.resource.form === 'services' ? 1.5 : 1.0;
         const OVERFILL_PENALTY = output.resource.form === 'services' ? 3.0 : 0.5;
 
         weightedOutputSignalSum +=
@@ -232,9 +250,11 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 continue;
             }
 
-            // No market history for any output — skip until lastMarketResult is populated.
+            // No market data at all — skip unless there are open bid orders in the order book.
             const hasAnyMarketData = facility.produces.some(
-                (o) => planet.lastMarketResult[o.resource.name] !== undefined,
+                (o) =>
+                    planet.lastMarketResult[o.resource.name] !== undefined ||
+                    (planet.orderBooks[o.resource.name]?.bids.length ?? 0) > 0,
             );
             if (!hasAnyMarketData) {
                 continue;

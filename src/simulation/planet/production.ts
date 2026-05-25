@@ -156,7 +156,7 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
             actualConsumed[need.resource.name] = extracted;
             params.planet.consumedResources[need.resource.name] =
                 (params.planet.consumedResources[need.resource.name] ?? 0) + extracted;
-            if (Math.abs(extracted / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
+            if (consumed > 0 && Math.abs(extracted / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(`Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`, {
                     planetId: planet.id,
                     agentId: agent.id,
@@ -169,7 +169,7 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
             actualConsumed[need.resource.name] = actual;
             params.planet.consumedResources[need.resource.name] =
                 (params.planet.consumedResources[need.resource.name] ?? 0) + actual;
-            if (Math.abs(actual / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
+            if (consumed > 0 && Math.abs(actual / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(`Unexpected: removed ${actual} of ${need.resource.name}, expected ${consumed}.`, {
                     planetId: planet.id,
                     agentId: agent.id,
@@ -200,6 +200,7 @@ function produceOutputs(params: ProductionParameters): Record<string, number> {
         if (produced > 0) {
             const stored = putIntoStorageFacility(storage, output.resource, produced);
             if (Math.abs(stored / produced - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
+                // produced > 0 already guards division
                 console.warn(`Unexpected: stored ${stored} of ${output.resource.name}, expected ${produced}.`);
             }
         }
@@ -441,6 +442,9 @@ function processStorageFacility(params: StorageParameters): void {
 // ---- main tick ----
 
 export function productionTick(gameState: GameState, planet: Planet): void {
+    planet.producedResources = {};
+    planet.consumedResources = {};
+
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {

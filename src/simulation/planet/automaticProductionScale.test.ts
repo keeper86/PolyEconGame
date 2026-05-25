@@ -219,7 +219,9 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('skips facility when no lastMarketResult even if open buy orders exist in the order book', () => {
+    it('scales UP when no lastMarketResult but open buy orders exist in the order book', () => {
+        // No market history yet but buyers are waiting → treat all bid quantity as unfilled demand
+        // and produce a positive scale signal.
         const planet = makePlanet({
             lastMarketResult: {},
             avgMarketResult: {},
@@ -238,7 +240,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBe(initial);
+        expect(facility.scale).toBeGreaterThan(initial);
     });
 
     it('does not touch a non-automated agent', () => {
@@ -609,7 +611,11 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        const expectedFiltered = PID_D_ALPHA * ((2.0 * 0.8 + 2.0 * 1.0) / (2.0 + 0.5 + 2.0 + 0.1 + 0.5) / 2);
+        // WEIGHT_UNFILLED=1.0, WEIGHT_BALANCE=1.0, WEIGHT_UNSOLD=0.5, WEIGHT_PRODUCTION=1.0, OVERFILL_PENALTY=0.5
+        // unfilledFrac=0.8, balance=1.0, unsoldFrac=0, overfilled=0, productionSignal=0
+        // maxOutputSignal = (1.0*0.8 + 1.0*1.0) / (1.0 + 0.5 + 1.0 + 1.0 + 0.5) = 1.8/4.0
+        // signal = (maxOutputSignal + 0) / 2
+        const expectedFiltered = PID_D_ALPHA * ((1.0 * 0.8 + 1.0 * 1.0) / (1.0 + 0.5 + 1.0 + 1.0 + 0.5) / 2);
         expect(facility.pidState!.filteredError).toBeCloseTo(expectedFiltered, 2);
         expect(facility.pidState!.prevError).toBeCloseTo(expectedFiltered, 2);
     });
