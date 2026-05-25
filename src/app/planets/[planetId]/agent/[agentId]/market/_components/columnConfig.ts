@@ -55,7 +55,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         widthClass: 'w-[72px]',
         title: 'Estimated production cost',
         align: 'text-right',
-        enabled: true,
+        enabled: false,
         priority: 9,
     },
     {
