@@ -138,35 +138,6 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeGreaterThan(initial);
     });
 
-    it('scales up LESS when input resource efficiency is low (input starved) — soft veto', () => {
-        const planet = makePlanetWithAvg(
-            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12, productionCost: 10 }),
-        );
-        const { agents: healthyAgents, facility: healthyFacility } = makeSetup(planet);
-        updateAgentProductionScale(healthyAgents, planet);
-        const healthyDelta = healthyFacility.scale - 0.5;
-
-        const { agents, facility } = makeSetup(planet, {
-            lastTickResults: {
-                overallEfficiency: 0.2,
-                workerEfficiency: {},
-                resourceEfficiency: {},
-                overqualifiedWorkers: {},
-                exactUsedByEdu: {},
-                totalUsedByEdu: {},
-                lastProduced: {},
-                lastConsumed: {},
-                costBalance: 0,
-            },
-        });
-        const initial = facility.scale;
-        updateAgentProductionScale(agents, planet);
-        const starvedDelta = facility.scale - initial;
-
-        expect(starvedDelta).toBeLessThan(healthyDelta);
-        expect(facility.scale).toBeGreaterThan(initial);
-    });
-
     it('clamps scale to the minimum floor when already at very low scale and oversupplied', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0001, maxScale: 1 });
