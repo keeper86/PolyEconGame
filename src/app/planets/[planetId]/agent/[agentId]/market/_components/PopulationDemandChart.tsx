@@ -57,21 +57,6 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payl
     );
 }
 
-function computeLogTicks(values: number[], base = 10, minFloor = 1e-4) {
-    if (!values || values.length === 0) {
-        return [minFloor, 1];
-    }
-    const minVal = Math.max(minFloor, Math.min(...values));
-    const maxVal = Math.max(...values, minVal);
-    const expMin = Math.floor(Math.log10(minVal));
-    const expMax = Math.ceil(Math.log10(maxVal));
-    const ticks: number[] = [];
-    for (let e = expMin; e <= expMax; e++) {
-        ticks.push(Math.pow(base, e));
-    }
-    return Array.from(new Set(ticks)).sort((a, b) => a - b);
-}
-
 export default function PopulationDemandChart({ bids }: Props) {
     if (!bids || bids.length === 0) {
         return <div className='text-xs text-muted-foreground py-4'>No population demand this tick.</div>;
@@ -87,13 +72,6 @@ export default function PopulationDemandChart({ bids }: Props) {
             displayQuantity: b.demandedQuantity,
         }));
 
-    const priceMids = data.map((d) => d.priceMid);
-    const logTicks = computeLogTicks(priceMids);
-    const xDomain: [number, number] = [
-        Math.pow(10, Math.floor(Math.log10(Math.max(1e-4, Math.min(...priceMids))))),
-        Math.pow(10, Math.ceil(Math.log10(Math.max(...priceMids)))),
-    ];
-
     return (
         <div style={{ width: '100%', height: 220 }}>
             <ResponsiveContainer width='100%' height='100%'>
@@ -102,10 +80,7 @@ export default function PopulationDemandChart({ bids }: Props) {
                     <XAxis
                         dataKey='priceMid'
                         type='number'
-                        scale='log'
-                        domain={xDomain}
-                        ticks={logTicks}
-                        allowDataOverflow
+                        scale='linear'
                         tick={{ fontSize: 10 }}
                         tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
                         label={{

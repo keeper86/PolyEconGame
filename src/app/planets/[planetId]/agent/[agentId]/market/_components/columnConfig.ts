@@ -50,15 +50,6 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         priority: 3,
     },
     {
-        id: 'productionCost',
-        label: 'Cost',
-        widthClass: 'w-[72px]',
-        title: 'Estimated production cost',
-        align: 'text-right',
-        enabled: false,
-        priority: 9,
-    },
-    {
         id: 'totalProduction',
         label: 'Prod',
         widthClass: 'w-[72px]',

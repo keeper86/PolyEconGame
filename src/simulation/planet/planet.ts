@@ -214,7 +214,6 @@ export type MarketResult = {
     totalSupply: number;
     unfilledDemand: number;
     unsoldSupply: number;
-    productionCost: number;
     populationBids?: {
         priceMin: number;
         priceMax: number;
