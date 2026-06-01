@@ -201,7 +201,7 @@ describe('automaticPricing — buy side', () => {
     it('raises bid price when previous tick was partially filled', () => {
         // Use a coal price below the production-cost ceiling so the ceiling spring doesn't
         // suppress the fill-rate adjustment. The ceiling is coalMine template cost (≈0.1/unit)
-        // × BID_OFFER_MAX_COST_MULTIPLIER (10) = 1.0. Coal at 0.4 is safely below that.
+        // × BID_OFFER_MAX_COST_MULTIPLIER (6) = 0.6. Coal at 0.4 is safely below that.
         planet.marketPrices[COAL] = 0.4;
         planet.marketPrices[steelResourceType.name] = 8.0;
 
