@@ -1,4 +1,4 @@
-import { defaultBuildingCost } from '../ships/ships';
+import { defaultBuildingCost } from './resources';
 import type { ResourceProcessLevel } from './claims';
 import type { ProductionFacility } from './facility';
 import {

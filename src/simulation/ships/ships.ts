@@ -2,6 +2,7 @@ import type { Resource, ResourceQuantity, TransportableResourceType } from '../p
 import type { Facility } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
 import {
+    defaultBuildingCost,
     electronicComponentResourceType,
     machineryResourceType,
     plasticResourceType,
@@ -328,12 +329,7 @@ export const shipTick = (gameState: GameState): void => {
     }
 };
 
-export const defaultBuildingCost: ResourceQuantity[] = [
-    { resource: steelResourceType, quantity: 100 },
-    { resource: electronicComponentResourceType, quantity: 50 },
-    { resource: machineryResourceType, quantity: 30 },
-    { resource: plasticResourceType, quantity: 20 },
-];
+export { defaultBuildingCost };
 
 const defaultRequiredCrew = {
     none: 0,
