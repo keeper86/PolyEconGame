@@ -22,6 +22,8 @@ import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryC
 import WealthDistributionChart from './_components/WealthDistributionChart';
 import TransferChart from './_components/TransferChart';
 import { Page } from '@/components/client/Page';
+import { ProductIcon } from '@/components/client/ProductIcon';
+import { getCurrencyResourceName } from '@/simulation/market/currencyResources';
 
 // ─── Skill selector constants ────────────────────────────────────────────────
 
@@ -353,7 +355,10 @@ export default function PlanetDemographicsPage() {
             <Accordion type='single' collapsible className='mt-1'>
                 <AccordionItem value='overview'>
                     <AccordionTrigger>
-                        <span className='font-semibold'>Overview</span>
+                        <span className='font-semibold flex items-center gap-3'>
+                            <ProductIcon productName='demography_overview' size={36} />
+                            Overview
+                        </span>
                     </AccordionTrigger>
                     <AccordionContent>
                         {occupationCards}
@@ -363,7 +368,10 @@ export default function PlanetDemographicsPage() {
 
                 <AccordionItem value='wealth'>
                     <AccordionTrigger>
-                        <span className='font-semibold'>Wealth distribution</span>
+                        <span className='font-semibold flex items-center gap-3'>
+                            <ProductIcon productName={getCurrencyResourceName(planetId)} size={36} />
+                            Wealth distribution
+                        </span>
                     </AccordionTrigger>
                     <AccordionContent>
                         <p className='text-xs text-muted-foreground font-normal mb-2'>

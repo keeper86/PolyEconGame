@@ -180,6 +180,7 @@ export const assetManifest = {
     form_liquid: '/images/products/liquid.webp',
     form_solid: '/images/products/solid.webp',
     form_pieces: '/images/products/pieces.webp',
+    demography_overview: '/images/misc/demography_overview.webp',
 } as const;
 
 export type AssetKey = keyof typeof assetManifest;
