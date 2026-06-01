@@ -139,6 +139,7 @@ export const assetManifest = {
     education: '/images/products/education_service.webp',
     packaging_material: '/images/products/packaging_material.webp',
     administration: '/images/products/administrative_service.webp',
+    maintenance: '/images/products/maintenance.webp',
     fuel: '/images/products/fuel.webp',
     shipyard_1: '/images/facilities/shipyard_scale1.webp',
     shipyard_2: '/images/facilities/shipyard_scale2.webp',

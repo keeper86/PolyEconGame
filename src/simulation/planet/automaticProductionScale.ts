@@ -19,7 +19,7 @@ export const PID_KP = 0.1;
 /** Integral gain: eliminates persistent steady-state offset. */
 export const PID_KI = 0.001;
 /** Derivative gain: dampens oscillations by braking when error changes. */
-export const PID_KD = 0.08;
+export const PID_KD = 0.05;
 export const PID_IMAX = 0.05;
 export const PID_OUT_MAX = 0.5;
 export const PID_D_ALPHA = 0.3;
@@ -110,8 +110,7 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
         const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
         const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
-        const balance =
-            (5 * avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, 5 * avg.unfilledDemand + avg.unsoldSupply);
+        const balance = (avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, avg.unfilledDemand + avg.unsoldSupply);
 
         const WEIGHT_UNFILLED = 1.0;
         const WEIGHT_UNSOLD = 0.5;
