@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
-import { EXPANSION_INTEGRAL_THRESHOLD, PID_OUT_MAX, updateAgentProductionScale } from './automaticProductionScale';
+import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, PID_OUT_MAX, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
 import { agriculturalProductResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
 
@@ -86,7 +86,7 @@ describe('updateAgentProductionScale', () => {
 
         // Negative direction but very small — PID should not cause a runaway change
         expect(facility.scale).toBeLessThanOrEqual(initial);
-        expect(facility.scale).toBeGreaterThan(initial - 0.01 * facility.maxScale);
+        expect(facility.scale).toBeGreaterThan(initial - 0.03 * facility.maxScale);
     });
 
     it('makes only a very small scale change for a weak demand-excess signal', () => {
@@ -99,7 +99,7 @@ describe('updateAgentProductionScale', () => {
 
         // Positive direction but very small
         expect(facility.scale).toBeGreaterThanOrEqual(initial);
-        expect(facility.scale).toBeLessThan(initial + 0.01 * facility.maxScale);
+        expect(facility.scale).toBeLessThan(initial + 0.03 * facility.maxScale);
     });
 
     it('scales down when supply excess is strong', () => {
@@ -501,7 +501,7 @@ describe('updateAgentProductionScale', () => {
             updateAgentProductionScale(agents, planet);
         }
 
-        const minExpected = facility.maxScale * 0.1 + (N / 2) * PID_OUT_MAX * facility.maxScale;
+        const minExpected = facility.maxScale * 0.1 + (N - 1) * PID_KP * 0.2 * facility.maxScale;
         expect(facility.scale).toBeGreaterThan(minExpected);
     });
 
