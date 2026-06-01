@@ -17,7 +17,7 @@ const SERVICE_LABELS: Record<ServiceName, string> = {
     logistics: 'Logistics Buffers',
     retail: 'Retail Buffers',
     construction: 'Construction Buffers',
-    administrative: 'Administrative Buffers',
+    administration: 'Administrative Buffers',
     education: 'Education Buffers',
     maintenance: 'Maintenance Buffers',
 };

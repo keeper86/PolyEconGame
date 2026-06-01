@@ -1,4 +1,4 @@
-import { allServices } from '../market/serviceDefinitions';
+import { allServices, serviceKeyOf } from '../market/serviceDefinitions';
 import { forEachPopulationCohort, type Population } from './population';
 
 export const STARVATION_ADJUST_TICKS = 30;
@@ -23,13 +23,13 @@ export function consumeServices(population: Population) {
             for (const def of allServices) {
                 const rate = def.consumptionRatePerPersonPerTick;
                 const demand = pop * rate;
-                const serviceState = category.services[def.serviceKey];
+                const serviceState = category.services[serviceKeyOf(def)];
                 const available = serviceState.buffer * rate * pop;
                 const consumed = Math.min(available, demand);
                 const bufferConsumed = consumed / (rate * pop);
                 serviceState.buffer = Math.max(0, serviceState.buffer - bufferConsumed);
 
-                if (def.serviceKey === 'education' && occ !== 'education' && consumed > 0) {
+                if (serviceKeyOf(def) === 'education' && occ !== 'education' && consumed > 0) {
                     console.warn(`Non-education occupation consuming education service: ${occ}`);
                 }
                 population.lastConsumption[def.resource.name] =

@@ -14,78 +14,62 @@ import type { ServiceName } from '../population/population';
 
 export type ServiceDefinition = {
     readonly resource: Resource;
-    readonly serviceKey: ServiceName;
     readonly bufferTargetTicks: number;
     readonly consumptionRatePerPersonPerTick: number;
 };
 
+/** Derives the ServiceName key from a ServiceDefinition by lowercasing the resource name. */
+export const serviceKeyOf = (def: ServiceDefinition): ServiceName => def.resource.name.toLowerCase() as ServiceName;
+
 const groceryDefinition: ServiceDefinition = {
     resource: groceryServiceResourceType,
-    serviceKey: 'grocery',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
 } as const;
 
 const healthcareDefinition: ServiceDefinition = {
     resource: healthcareServiceResourceType,
-    serviceKey: 'healthcare',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
 } as const;
 
 const logisticsDefinition: ServiceDefinition = {
     resource: logisticsServiceResourceType,
-    serviceKey: 'logistics',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
 } as const;
 
 const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
-    serviceKey: 'education',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
 const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
-    serviceKey: 'retail',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
 } as const;
 
 const constructionDefinition: ServiceDefinition = {
     resource: constructionServiceResourceType,
-    serviceKey: 'construction',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
 const maintenanceDefinition: ServiceDefinition = {
     resource: maintenanceServiceResourceType,
-    serviceKey: 'maintenance',
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
-const administrativeDefinition: ServiceDefinition = {
+const administrationDefinition: ServiceDefinition = {
     resource: administrativeServiceResourceType,
-    serviceKey: 'administrative',
     bufferTargetTicks: TICKS_PER_YEAR,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
 } as const;
 
-export type ServiceKey =
-    | typeof groceryDefinition.serviceKey
-    | typeof healthcareDefinition.serviceKey
-    | typeof logisticsDefinition.serviceKey
-    | typeof educationDefinition.serviceKey
-    | typeof retailDefinition.serviceKey
-    | typeof constructionDefinition.serviceKey
-    | typeof maintenanceDefinition.serviceKey
-    | typeof administrativeDefinition.serviceKey;
-
-export const SERVICE_DEFINITIONS: Record<ServiceKey, ServiceDefinition> = {
+export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
     grocery: groceryDefinition,
     healthcare: healthcareDefinition,
     logistics: logisticsDefinition,
@@ -93,7 +77,7 @@ export const SERVICE_DEFINITIONS: Record<ServiceKey, ServiceDefinition> = {
     retail: retailDefinition,
     construction: constructionDefinition,
     maintenance: maintenanceDefinition,
-    administrative: administrativeDefinition,
+    administration: administrationDefinition,
 } as const;
 
 export const getServiceDefinitionByResourceName = (resourceName: string): ServiceDefinition | undefined => {
@@ -128,7 +112,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
     },
     {
         name: 'comfort',
-        services: ['logistics', 'retail', 'education', 'construction', 'maintenance', 'administrative'],
+        services: ['logistics', 'retail', 'education', 'construction', 'maintenance', 'administration'],
         coverageFraction: 0.5,
         mandatoryForOwnConsumption: true,
     },

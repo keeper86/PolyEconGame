@@ -11,11 +11,11 @@ import {
     retailChain,
 } from '../planet/productionFacilities';
 import { forEachPopulationCohort } from '../population/population';
+import type { ServiceName } from '../population/population';
 import type { BidOrder } from './marketTypes';
-import type { ServiceKey } from './serviceDefinitions';
-import { allServices, householdDemandPriority } from './serviceDefinitions';
+import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
-export type { ServiceDefinition, ServiceKey } from './serviceDefinitions';
+export type { ServiceDefinition } from './serviceDefinitions';
 
 // ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
@@ -133,7 +133,7 @@ const maintenanceTemplate: ProductionFacility = maintenanceFacility('', '');
 const administrativeTemplate: ProductionFacility = administrativeCenter('', '');
 const logisticsTemplate: ProductionFacility = logisticsHub('', '');
 
-export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionFacility; produced: number }> = {
+export const serviceFacilityTemplate: Record<ServiceName, { template: ProductionFacility; produced: number }> = {
     grocery: {
         template: groceryChainTemplate,
         produced: groceryChainTemplate.produces[0].quantity,
@@ -158,7 +158,7 @@ export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionF
         template: maintenanceTemplate,
         produced: maintenanceTemplate.produces[0].quantity,
     },
-    administrative: {
+    administration: {
         template: administrativeTemplate,
         produced: administrativeTemplate.produces[0].quantity,
     },
@@ -192,7 +192,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     break;
                 }
 
-                if (service.serviceKey === 'education' && occ !== 'education') {
+                if (serviceKeyOf(service) === 'education' && occ !== 'education') {
                     continue; // Only education group buys education services
                 }
 
@@ -205,7 +205,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                const serviceBuffer = category.services[service.serviceKey]?.buffer ?? 0;
+                const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
                 const rate = service.consumptionRatePerPersonPerTick;
                 const bufferFillDeficit = (service.bufferTargetTicks - serviceBuffer) / service.bufferTargetTicks;
 

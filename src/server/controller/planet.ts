@@ -1,5 +1,5 @@
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
-import { allServices, SERVICE_DEFINITIONS } from '@/simulation/market/serviceDefinitions';
+import { allServices, SERVICE_DEFINITIONS, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
@@ -159,28 +159,6 @@ export const getPlanetEconomy = () =>
             };
         });
 
-// ---------------------------------------------------------------------------
-// Demographics (unified) — single query for the demographics accordion page
-// ---------------------------------------------------------------------------
-
-/**
- * Compact per-age row sent for the demographics accordion page.
- *
- * The server pre-aggregates all 4800 cells (100 ages × 4 occs × 4 edus ×
- * 3 skills) down to one row per living age.  The caller specifies which
- * `groupMode` it wants ('occupation' | 'education') and which skills to
- * include so that the groupValues tuple is already filtered and summed —
- * no further work needed on the client.
- *
- * Each `groupValues` entry is a 4-element tuple parallel to the 4 group
- * keys (OCCUPATIONS or educationLevelKeys):
- *   [population, totalFoodStock, weightedStarvation, weightedWealth]
- *
- * Clients compute weighted means as:
- *   avgStarvation = weightedStarvation / population
- *   avgWealth     = weightedWealth     / population
- *   avgBuffer     = totalFoodStock     / (population * FOOD_TARGET_PER_PERSON)
- */
 type SvcGroupPair = [number, number];
 type SvcBands4 = [SvcGroupPair, SvcGroupPair, SvcGroupPair, SvcGroupPair];
 
@@ -191,26 +169,18 @@ type AggRow = {
     occ: [number, number, number, number];
     /** Population pyramid totals — always over all skills, education-indexed. */
     edu: [number, number, number, number];
-    /**
-     * Pre-filtered group values for the active groupMode + skills.
-     * 4 entries, one per group key; each entry is
-     * [population, totalFoodStock, weightedStarvation, weightedWealth]
-     */
+
     groupValues: [
         [number, number, number, number],
         [number, number, number, number],
         [number, number, number, number],
         [number, number, number, number],
     ];
-    /**
-     * Per-service buffer data for all non-grocery services.
-     * serviceBuffers[svc][gi] = [totalBufferUnits, weightedStarvation]
-     * where gi is the group index (0-3) for the active groupMode.
-     */
+
     serviceBuffers: { [K in Exclude<ServiceName, 'grocery'>]: SvcBands4 };
 };
 
-const nonGroceryDefs = allServices.filter((d) => d.serviceKey !== 'grocery');
+const nonGroceryDefs = allServices.filter((d) => serviceKeyOf(d) !== 'grocery');
 
 function emptyServiceBuffers(): AggRow['serviceBuffers'] {
     return {
@@ -244,7 +214,7 @@ function emptyServiceBuffers(): AggRow['serviceBuffers'] {
             [0, 0],
             [0, 0],
         ],
-        administrative: [
+        administration: [
             [0, 0],
             [0, 0],
             [0, 0],
@@ -270,9 +240,6 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
             continue;
         }
 
-        // Population pyramid totals — filtered to the activeSkills set.
-        // Previously this used ALL skills; now the pyramid matches the
-        // client's skill filtering so charts reflect the same subset.
         const edu: [number, number, number, number] = [0, 0, 0, 0];
         const occ: [number, number, number, number] = [0, 0, 0, 0];
         let total = 0;
@@ -342,7 +309,7 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                         gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                         for (const def of nonGroceryDefs) {
-                            const svcKey = def.serviceKey as Exclude<ServiceName, 'grocery'>;
+                            const svcKey = serviceKeyOf(def) as Exclude<ServiceName, 'grocery'>;
                             const svc = cat.services[svcKey];
                             svcBuffers[svcKey][gi][0] += svc.buffer * def.consumptionRatePerPersonPerTick * cat.total;
                             svcBuffers[svcKey][gi][1] += cat.total * svc.starvationLevel;
@@ -376,7 +343,7 @@ const serviceBuffersSchema = z.object({
     retail: svcBands4,
     construction: svcBands4,
     maintenance: svcBands4,
-    administrative: svcBands4,
+    administration: svcBands4,
     education: svcBands4,
 });
 
@@ -445,10 +412,6 @@ export const getPlanetDemographicsFull = () =>
                 },
             };
         });
-
-// ---------------------------------------------------------------------------
-// Resource Market (generic)
-// ---------------------------------------------------------------------------
 
 type AgentOfferEntry = {
     agentId: string;

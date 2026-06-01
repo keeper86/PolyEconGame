@@ -57,7 +57,7 @@ function mergeIntoManifest(
                 healthcare: { ...sourceCategory.services.healthcare },
                 construction: { ...sourceCategory.services.construction },
                 maintenance: { ...sourceCategory.services.maintenance },
-                administrative: { ...sourceCategory.services.administrative },
+                administration: { ...sourceCategory.services.administration },
                 education: { ...sourceCategory.services.education },
             },
         };
@@ -294,7 +294,7 @@ export function advanceManifestAge(
                 healthcare: { ...category.services.healthcare },
                 construction: { ...category.services.construction },
                 maintenance: { ...category.services.maintenance },
-                administrative: { ...category.services.administrative },
+                administration: { ...category.services.administration },
                 education: { ...category.services.education },
             },
         };
