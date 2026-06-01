@@ -24,6 +24,7 @@ import TransferChart from './_components/TransferChart';
 import { Page } from '@/components/client/Page';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { getCurrencyResourceName } from '@/simulation/market/currencyResources';
+import { useHashAccordion } from '@/hooks/useHashAccordion';
 
 // ─── Skill selector constants ────────────────────────────────────────────────
 
@@ -44,6 +45,8 @@ export default function PlanetDemographicsPage() {
     // ── Controls ─────────────────────────────────────────────────────────────
     const [group, setGroup] = useState<GroupMode>('occupation');
     const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
+
+    const { openItem: accordionItem, onValueChange: handleAccordionChange } = useHashAccordion();
 
     const toggleSkill = (skill: Skill) => {
         setActiveSkills((prev) => {
@@ -352,8 +355,14 @@ export default function PlanetDemographicsPage() {
 
             {/* ── Population ─────────────────────────────────────────── */}
 
-            <Accordion type='single' collapsible className='mt-1'>
-                <AccordionItem value='overview'>
+            <Accordion
+                type='single'
+                collapsible
+                className='mt-1'
+                value={accordionItem}
+                onValueChange={handleAccordionChange}
+            >
+                <AccordionItem value='overview' id='overview'>
                     <AccordionTrigger>
                         <span className='font-semibold flex items-center gap-3'>
                             <ProductIcon productName='demography_overview' size={36} />
@@ -366,7 +375,7 @@ export default function PlanetDemographicsPage() {
                     </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value='wealth'>
+                <AccordionItem value='wealth' id='wealth'>
                     <AccordionTrigger>
                         <span className='font-semibold flex items-center gap-3'>
                             <ProductIcon productName={getCurrencyResourceName(planetId)} size={36} />

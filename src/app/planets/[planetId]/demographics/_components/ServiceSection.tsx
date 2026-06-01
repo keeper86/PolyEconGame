@@ -203,7 +203,7 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
     );
 
     return (
-        <AccordionItem value={serviceKey}>
+        <AccordionItem value={serviceKey} id={serviceKey}>
             <AccordionTrigger>
                 <span className='font-semibold flex items-center gap-3'>
                     <ProductIcon productName={serviceKey} size={36} />

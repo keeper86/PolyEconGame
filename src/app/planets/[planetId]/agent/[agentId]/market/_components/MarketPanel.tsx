@@ -8,6 +8,7 @@ import { useTRPC } from '@/lib/trpc';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { MarketOverviewRow } from '@/server/controller/planet';
+import { useHashAccordion } from '@/hooks/useHashAccordion';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
@@ -60,71 +61,11 @@ export default function MarketPanel({
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
 
-    // Read initial hash on mount (client-only)
-    const [hashResource, setHashResource] = useState<string | undefined>(() => {
-        if (typeof window === 'undefined') {
-            return undefined;
-        }
-        const slug = window.location.hash.slice(1);
-        return slug ? (slugToResourceName(slug) ?? undefined) : undefined;
-    });
-
-    const [openItem, setOpenItem] = useState<string | undefined>(() => {
-        if (typeof window === 'undefined') {
-            return undefined;
-        }
-        const slug = window.location.hash.slice(1);
-        return slug ? (slugToResourceName(slug) ?? undefined) : undefined;
-    });
-
-    // During Next.js soft navigation, window.location.hash may not be set yet when
-    // the useState initializers run synchronously. Read the hash in a useEffect
-    // (which fires after the browser has applied the new URL) and hydrate the states.
-    useEffect(() => {
-        const slug = window.location.hash.slice(1);
-        if (!slug) {
-            return;
-        }
-        const resourceName = slugToResourceName(slug) ?? undefined;
-        if (!resourceName) {
-            return;
-        }
-        setHashResource((prev) => prev ?? resourceName);
-        setOpenItem((prev) => prev ?? resourceName);
-    }, []);
-
-    // Update URL hash when accordion opens/closes
-    const handleOpenChange = (value: string | undefined) => {
-        setOpenItem(value);
-        // Once the user interacts, clear the forced resource so normal filtering applies again
-        setHashResource(undefined);
-        if (value) {
-            window.history.replaceState(null, '', `#${resourceNameToSlug(value)}`);
-        } else {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
-    };
-
-    // Scroll to the element when auto-opened from hash on mount.
-    // Depends on openItem so it also fires when the soft-navigation useEffect above
-    // sets openItem for the first time (it starts as undefined and is then set).
-    const hasScrolled = useRef(false);
-    useEffect(() => {
-        if (!openItem || hasScrolled.current) {
-            return;
-        }
-        const slug = resourceNameToSlug(openItem);
-        const el = document.getElementById(slug);
-        if (el) {
-            hasScrolled.current = true;
-            // Use a small delay to let the accordion finish rendering, then scroll
-            // manually to account for the sticky header height (h-12 sm:h-14 = 48–56px).
-            setTimeout(() => {
-                const top = el.getBoundingClientRect().top + window.scrollY - 72;
-                window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-            }, 50);
-        }
-    }, [openItem]);
+    const {
+        openItem,
+        onValueChange: handleOpenChange,
+        hashItem,
+    } = useHashAccordion({ toSlug: resourceNameToSlug, fromSlug: slugToResourceName });
 
     const trpc = useTRPC();
 
@@ -162,8 +103,8 @@ export default function MarketPanel({
     const sellOffers = market?.sell ?? {};
 
     const resources = useMemo(
-        () => buildResourceList(assets, showAll, hashResource ? [hashResource] : [], availableCurrencies),
-        [showAll, assets, hashResource, availableCurrencies],
+        () => buildResourceList(assets, showAll, hashItem ? [hashItem] : [], availableCurrencies),
+        [showAll, assets, hashItem, availableCurrencies],
     );
 
     // Group resources by level

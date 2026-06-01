@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
-import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, PID_OUT_MAX, updateAgentProductionScale } from './automaticProductionScale';
+import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
 import { agriculturalProductResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
 
