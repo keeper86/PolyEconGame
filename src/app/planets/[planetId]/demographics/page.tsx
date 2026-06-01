@@ -374,9 +374,6 @@ export default function PlanetDemographicsPage() {
                         </span>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <p className='text-xs text-muted-foreground font-normal mb-2'>
-                            {`Total (per capita): ${formatNumberWithUnit(totalWealth, 'currency', planetId)} (${formatNumberWithUnit(totalWealth / populationTotal, 'currency', planetId)})`}
-                        </p>
                         {wealthCards}
                         <WealthDistributionChart rows={rows} groupMode={group} />
                         <p className='py-4 text-sm font-medium'>Population Wealth Transfers</p>

@@ -40,8 +40,8 @@ export const BID_OFFER_MAX_COST_MULTIPLIER = 6;
 
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
-export const INPUT_BUFFER_TARGET_TICKS = 30;
-export const OUTPUT_BUFFER_MAX_TICKS = 20;
+export const INPUT_BUFFER_TARGET_TICKS = 20;
+export const OUTPUT_BUFFER_MAX_TICKS = 10;
 
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 

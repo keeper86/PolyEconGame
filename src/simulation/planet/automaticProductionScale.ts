@@ -15,13 +15,13 @@ export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.02;
+export const PID_KP = 0.1;
 /** Integral gain: eliminates persistent steady-state offset. */
 export const PID_KI = 0.001;
 /** Derivative gain: dampens oscillations by braking when error changes. */
-export const PID_KD = 0.02;
+export const PID_KD = 0.08;
 export const PID_IMAX = 0.05;
-export const PID_OUT_MAX = 0.01;
+export const PID_OUT_MAX = 0.5;
 export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 120;
