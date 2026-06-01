@@ -377,117 +377,27 @@ export default function PlanetDemographicsPage() {
                     </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value='nutrition'>
-                    <AccordionTrigger>
-                        <span className='font-semibold'>Grocery Buffers</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <ServiceSection
-                            serviceKey='grocery'
-                            rows={rows}
-                            groupMode={group}
-                            groupKeys={groupKeys}
-                            groupColors={groupColors}
-                            groupLabels={groupLabels}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value='healthcare'>
-                    <AccordionTrigger>
-                        <span className='font-semibold'>Healthcare Buffers</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <ServiceSection
-                            serviceKey='healthcare'
-                            rows={rows}
-                            groupMode={group}
-                            groupKeys={groupKeys}
-                            groupColors={groupColors}
-                            groupLabels={groupLabels}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value='logistics'>
-                    <AccordionTrigger>
-                        <span className='font-semibold'>Logistics Buffers</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <ServiceSection
-                            serviceKey='logistics'
-                            rows={rows}
-                            groupMode={group}
-                            groupKeys={groupKeys}
-                            groupColors={groupColors}
-                            groupLabels={groupLabels}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value='retail'>
-                    <AccordionTrigger>
-                        <span className='font-semibold'>Retail Buffers</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <ServiceSection
-                            serviceKey='retail'
-                            rows={rows}
-                            groupMode={group}
-                            groupKeys={groupKeys}
-                            groupColors={groupColors}
-                            groupLabels={groupLabels}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value='construction'>
-                    <AccordionTrigger>
-                        <span className='font-semibold'>Construction Buffers</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <ServiceSection
-                            serviceKey='construction'
-                            rows={rows}
-                            groupMode={group}
-                            groupKeys={groupKeys}
-                            groupColors={groupColors}
-                            groupLabels={groupLabels}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value='administrative'>
-                    <AccordionTrigger>
-                        <span className='font-semibold'>Administrative Buffers</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <ServiceSection
-                            serviceKey='administrative'
-                            rows={rows}
-                            groupMode={group}
-                            groupKeys={groupKeys}
-                            groupColors={groupColors}
-                            groupLabels={groupLabels}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value='education-svc'>
-                    <AccordionTrigger>
-                        <span className='font-semibold'>Education Buffers</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <ServiceSection
-                            serviceKey='education'
-                            rows={rows}
-                            groupMode={group}
-                            groupKeys={groupKeys}
-                            groupColors={groupColors}
-                            groupLabels={groupLabels}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
+                {(
+                    [
+                        'grocery',
+                        'healthcare',
+                        'logistics',
+                        'retail',
+                        'construction',
+                        'administrative',
+                        'education',
+                    ] as const
+                ).map((key) => (
+                    <ServiceSection
+                        key={key}
+                        serviceKey={key}
+                        rows={rows}
+                        groupMode={group}
+                        groupKeys={groupKeys}
+                        groupColors={groupColors}
+                        groupLabels={groupLabels}
+                    />
+                ))}
             </Accordion>
         </Page>
     );

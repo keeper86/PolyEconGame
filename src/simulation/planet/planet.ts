@@ -154,6 +154,26 @@ export type Planet = {
     consumedResources: {
         [resourceName in string]: number;
     };
+
+    /**
+     * Total production cost allocated to each output resource this tick (reset each tick).
+     * Costs include inputs + wages, distributed across outputs by market-value share.
+     */
+    productionCosts: Record<string, number>;
+
+    /**
+     * Persistent cost-per-unit floor per output resource.
+     * Only updated when producedResources[r] > 0 in the same tick — never drops to zero
+     * due to a temporary production gap.
+     */
+    lastProductionCostFloors: Record<string, number>;
+
+    /**
+     * Planet-wide average cost per unit for each land-bound resource.
+     * Computed in claimBillingTick across all active tenant claims on this planet.
+     * Renewables: Σ(costPerTick) / Σ(quantity). Non-renewables: Σ(tenantCostInCoins) / Σ(maximumCapacity).
+     */
+    landBoundCostPerUnit: Record<string, number>;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };

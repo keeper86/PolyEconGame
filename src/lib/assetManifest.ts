@@ -186,5 +186,10 @@ export type AssetKey = keyof typeof assetManifest;
 
 export function getAssetPath(key: string): string {
     const normalizedKey = key.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-    return assetManifest[normalizedKey as AssetKey] || '/images/products/question_mark.webp';
+    let assetPath = assetManifest[normalizedKey as AssetKey];
+    if (assetPath === undefined) {
+        console.warn(`Asset not found for key: ${key} (normalized: ${normalizedKey})`);
+        assetPath = '/images/products/question_mark.webp';
+    }
+    return assetPath;
 }

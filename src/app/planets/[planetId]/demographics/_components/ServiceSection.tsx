@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import type { ServiceName } from '@/simulation/population/population';
@@ -8,6 +9,18 @@ import NutritionHeatmapChart from './NutritionHeatmapChart';
 import ServiceBufferChart from './ServiceBufferChart';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
+import { ProductIcon } from '@/components/client/ProductIcon';
+
+const SERVICE_LABELS: Record<ServiceName, string> = {
+    grocery: 'Grocery Buffers',
+    healthcare: 'Healthcare Buffers',
+    logistics: 'Logistics Buffers',
+    retail: 'Retail Buffers',
+    construction: 'Construction Buffers',
+    administrative: 'Administrative Buffers',
+    education: 'Education Buffers',
+    maintenance: 'Maintenance Buffers',
+};
 
 type Props = {
     serviceKey: ServiceName;
@@ -190,12 +203,20 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
     );
 
     return (
-        <>
-            {bufferCards}
-            <ServiceBufferChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />
-            <p className='py-4 text-sm font-medium'>Deprivation map</p>
-            {starvationCards}
-            <NutritionHeatmapChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />
-        </>
+        <AccordionItem value={serviceKey}>
+            <AccordionTrigger>
+                <span className='font-semibold flex items-center gap-3'>
+                    <ProductIcon productName={serviceKey} size={36} />
+                    {SERVICE_LABELS[serviceKey]}
+                </span>
+            </AccordionTrigger>
+            <AccordionContent>
+                {bufferCards}
+                <ServiceBufferChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />
+                <p className='py-4 text-sm font-medium'>Deprivation map</p>
+                {starvationCards}
+                <NutritionHeatmapChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />
+            </AccordionContent>
+        </AccordionItem>
     );
 }

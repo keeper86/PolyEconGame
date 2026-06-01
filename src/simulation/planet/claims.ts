@@ -120,3 +120,30 @@ export const extractFromClaimedResource = (
     }
     return extracted;
 };
+
+/**
+ * Returns the effective cost per unit for a land-bound resource held by an agent.
+ * For renewables: costPerTick / available quantity (rent per unit).
+ * For non-renewables: tenantCostInCoins / maximumCapacity (amortised acquisition cost per unit).
+ */
+export function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: string): number {
+    const entries = planet.resources[resourceName];
+    if (!entries) {
+        return 0;
+    }
+    let totalCost = 0;
+    let totalUnits = 0;
+    for (const entry of entries) {
+        if (entry.tenantAgentId !== agentId) {
+            continue;
+        }
+        if (entry.regenerationRate > 0) {
+            totalCost += entry.costPerTick;
+            totalUnits += entry.quantity;
+        } else {
+            totalCost += entry.tenantCostInCoins;
+            totalUnits += entry.maximumCapacity;
+        }
+    }
+    return totalUnits > 0 ? totalCost / totalUnits : 0;
+}

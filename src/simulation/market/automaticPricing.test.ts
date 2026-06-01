@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-    AUTOMATED_COST_CEILING_FACTOR,
-    COST_SPRING_STRENGTH,
     INPUT_BUFFER_TARGET_TICKS,
-    LAND_CLAIM_COST_PER_UNIT,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -14,17 +11,14 @@ import type { StorageFacility } from '../planet/facility';
 import {
     agriculturalProductResourceType,
     clothingResourceType,
-    crudeOilResourceType,
     fabricResourceType,
     ironOreResourceType,
-    logsResourceType,
     lumberResourceType,
-    naturalGasResourceType,
     waterResourceType,
 } from '../planet/resources';
 import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
-import { automaticPricing, buildPlanetProductionCosts } from './automaticPricing';
+import { automaticPricing } from './automaticPricing';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
@@ -284,11 +278,15 @@ describe('automaticPricing — cost-floor brake zone', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 1 });
         facility.needs = [{ resource: agriculturalProductResourceType, quantity: NEEDS_QTY }];
         facility.produces = [{ resource: clothingResourceType, quantity: PRODUCES_QTY }];
+        facility.lastTickResults.lastProduced = { [clothingResourceType.name]: PRODUCES_QTY };
+        facility.lastTickResults.lastConsumed = { [agriculturalProductResourceType.name]: NEEDS_QTY };
+        facility.lastTickResults.costBalance = PRIOR_PRICE * PRODUCES_QTY - inputCost - wageCost; // = 0
 
         const planet = makePlanetWithPrice({
             [agriculturalProductResourceType.name]: INPUT_PRICE,
             [clothingResourceType.name]: PRIOR_PRICE,
         });
+        planet.lastProductionCostFloors[clothingResourceType.name] = costPerUnit;
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
@@ -327,80 +325,65 @@ describe('automaticPricing — cost-floor brake zone', () => {
 });
 
 // ---------------------------------------------------------------------------
-// buildPlanetProductionCosts
+// adjustBidPrice — profitabilityGap multiplicative dampening (no starvation)
 // ---------------------------------------------------------------------------
 
-describe('buildPlanetProductionCosts — resourceProducerTemplates is populated', () => {
-    it('returns a non-empty map when called with any planet', () => {
-        const planet = makePlanet({ marketPrices: {} });
-        const costs = buildPlanetProductionCosts(planet);
-        expect(costs.size).toBeGreaterThan(0);
+describe('automaticPricing — profitabilityGap multiplicatively dampens but never reverses bid pressure', () => {
+    // Scenario: agent produces water from lumber but is deeply unprofitable
+    // (lumber costs >> water revenue), so profitabilityGap >> 1.
+    // Despite that, when fill rate is low (supply-constrained) the bid must
+    // still increase each tick.
+
+    function makeUnprofitableConsumerAgent(initialBidPrice: number) {
+        // Facility: 1 lumber → 1 water (deeply underwater on price)
+        const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
+        consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
+        consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [consumer];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        // lastBought=0, lastEffectiveQty=5 → fillRate=0 (maximum upward pressure)
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [lumberResourceType.name]: {
+                    resource: lumberResourceType,
+                    bidPrice: initialBidPrice,
+                    lastBought: 0,
+                    lastEffectiveQty: 5,
+                    automated: true,
+                },
+            },
+        };
+        return agent;
+    }
+
+    it('bid price increases even when profitabilityGap is very large and fill rate is 0', () => {
+        // fillRate=0 → factor = PRICE_ADJUST_MAX_UP (no ceiling spring since costFloor keeps bidCeil above bidPrice)
+        const planet = makePlanet({
+            marketPrices: {
+                [lumberResourceType.name]: 100, // expensive input
+                [waterResourceType.name]: 0.1, // cheap output
+            },
+            lastProductionCostFloors: { [lumberResourceType.name]: 20 },
+        });
+        const agent = makeUnprofitableConsumerAgent(50);
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
+        expect(bid.bidPrice).toBeGreaterThan(50);
+        expect(bid.bidPrice).toBeCloseTo(50 * PRICE_ADJUST_MAX_UP, 5);
     });
 
-    it('contains an entry for Lumber (produced by sawmill)', () => {
-        const planet = makePlanet({ marketPrices: {} });
-        const costs = buildPlanetProductionCosts(planet);
-        // sawmill: logs price = 0, workers = 15+20+8+1 = 44, output = 200
-        // cost = (0 + 44) / 200 = 0.22  (> 0 → included)
-        expect(costs.has(lumberResourceType.name)).toBe(true);
-    });
-
-    it('contains an entry for Agricultural Product', () => {
-        const planet = makePlanet({ marketPrices: {} });
-        const costs = buildPlanetProductionCosts(planet);
-        // agricultural facility: water price=0, workers=30+20+10+0=60, output=40
-        // cost = (0 + 60) / 40 = 1.5  (> 0 → included)
-        expect(costs.has(agriculturalProductResourceType.name)).toBe(true);
-    });
-});
-
-describe('buildPlanetProductionCosts — cost formula correctness', () => {
-    it('computes Lumber cost correctly: (logs_qty × logs_price + worker_sum) / output_qty', () => {
-        // sawmill: needs Logs qty=300, workers={none:15,primary:20,secondary:8,tertiary:1}=44, produces Lumber qty=200
-        const LOG_PRICE = 10;
-        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: LOG_PRICE } });
-        const costs = buildPlanetProductionCosts(planet);
-
-        const expected = (300 * LOG_PRICE + 44) / 200; // = 15.22
-        expect(costs.get(lumberResourceType.name)).toBeCloseTo(expected, 6);
-    });
-
-    it('uses 0 for inputs with no market price set', () => {
-        // Override logs price to 0 so the only cost is the worker sum
-        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
-        const costs = buildPlanetProductionCosts(planet);
-
-        // sawmill: logs price = 0, workers = 15+20+8+1 = 44, output = 200 → cost = 44 / 200 = 0.22
-        expect(costs.get(lumberResourceType.name)).toBeCloseTo(44 / 200, 6);
-    });
-
-    it('splits cost proportionally for multi-output facilities (oil well)', () => {
-        // Oil Well: needs oilReservoir (land-bound, qty=0.3 × LAND_CLAIM_COST_PER_UNIT), workers = 10+25+15+2 = 52
-        // produces CrudeOil qty=300 + NaturalGas qty=100, totalOutputQty=400
-        const oilReservoirClaimCost = 0.3 * (LAND_CLAIM_COST_PER_UNIT['Oil Reservoir'] ?? 0);
-        const planet = makePlanet({ marketPrices: {} });
-        const costs = buildPlanetProductionCosts(planet);
-
-        const expected = (oilReservoirClaimCost + 52) / 400;
-        expect(costs.get(crudeOilResourceType.name)).toBeCloseTo(expected, 6);
-        expect(costs.get(naturalGasResourceType.name)).toBeCloseTo(expected, 6);
-    });
-});
-
-// ---------------------------------------------------------------------------
-// adjustBidPrice — ceiling spring
-// ---------------------------------------------------------------------------
-
-describe('automaticPricing — bid ceiling spring (production cost cap)', () => {
-    // Strategy: set up an agent whose facility needs Lumber as input.
-    // Control the lumber production cost via planet.marketPrices[Logs].
-    // Initially set a bid price far above costCeiling, then verify it moves down.
-
-    function makeLumberConsumerAgent(initialBidPrice: number, lastBought: number, lastEffectiveQty: number) {
-        // A facility that needs Lumber as input
-        const consumer = makeProductionFacility({ none: 1 }, { id: 'furn', scale: 1 });
-        consumer.needs = [{ resource: lumberResourceType, quantity: 10 }];
-        consumer.produces = [{ resource: waterResourceType, quantity: 5 }];
+    it('bid price never falls below initial even under extreme profitabilityGap', () => {
+        // Use a partial fill rate (0.5) which gives gapWeight > 0; with a massive gap
+        // dampening → 0 so factor → 1.0, but never < 1.0.
+        const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
+        consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
+        consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [consumer];
@@ -411,106 +394,66 @@ describe('automaticPricing — bid ceiling spring (production cost cap)', () => 
             buy: {
                 [lumberResourceType.name]: {
                     resource: lumberResourceType,
-                    bidPrice: initialBidPrice,
-                    lastBought,
-                    lastEffectiveQty,
+                    bidPrice: 50,
+                    lastBought: 5, // fillRate = 5/10 = 0.5
+                    lastEffectiveQty: 10,
                     automated: true,
                 },
             },
         };
-        return agent;
-    }
 
-    /**
-     * Seeds planet.lastMarketResult with productionCost values computed from the
-     * current marketPrices so that automaticPricing can read them (as it would
-     * after a real marketTick in the engine).
-     */
-    function seedProductionCosts(planet: ReturnType<typeof makePlanet>): void {
-        const costs = buildPlanetProductionCosts(planet);
-        for (const [name, cost] of costs) {
-            planet.lastMarketResult[name] = {
-                resourceName: name,
-                clearingPrice: 0,
-                totalVolume: 0,
-                totalDemand: 0,
-                totalSupply: 0,
-                unfilledDemand: 0,
-                unsoldSupply: 0,
-                productionCost: cost,
-            };
-        }
-    }
-
-    it('ceiling spring reduces bid when price is far above productionCost × AUTOMATED_COST_CEILING_FACTOR', () => {
-        // Lumber prodCost with logs price = 0: (0 + 44) / 200 = 0.22
-        // ceiling = 0.22 × 10 = 2.2
-        // Start bid at 1000 >> 2.2
-        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
-        seedProductionCosts(planet);
-        const agent = makeLumberConsumerAgent(1000, 5, 10);
-
-        automaticPricing(new Map([['co', agent]]), planet);
-
-        const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
-        expect(bid.bidPrice).toBeLessThan(1000);
-    });
-
-    it('ceiling spring is inactive when bid is already below productionCost × AUTOMATED_COST_CEILING_FACTOR', () => {
-        // Lumber prodCost with logs price = 0: 0.22, ceiling = 2.2
-        // Start bid at 1.0 < 2.2 — no ceiling correction should fire
-        // With fill rate = 0 (lastBought=0, lastEffectiveQty=10), factor = PRICE_ADJUST_MAX_UP
-        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0 } });
-        seedProductionCosts(planet);
-        const agent = makeLumberConsumerAgent(1.0, 0, 10);
-
-        automaticPricing(new Map([['co', agent]]), planet);
-
-        const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
-        // Ceiling spring adds 0 → price should rise toward PRICE_ADJUST_MAX_UP
-        expect(bid.bidPrice).toBeCloseTo(1.0 * PRICE_ADJUST_MAX_UP, 5);
-    });
-
-    it('ceiling spring magnitude scales with how far bid exceeds the ceiling', () => {
-        const planet = makePlanet({ marketPrices: { [logsResourceType.name]: 0, [lumberResourceType.name]: 0 } });
-        seedProductionCosts(planet);
-        const agentA = makeLumberConsumerAgent(3, 5, 10);
-        const agentB = makeLumberConsumerAgent(100, 5, 10);
-
-        automaticPricing(new Map([['agentA', agentA]]), planet);
-        automaticPricing(new Map([['agentB', agentB]]), planet);
-
-        const priceA = agentA.assets[PLANET_ID].market!.buy[lumberResourceType.name]!.bidPrice!;
-        const priceB = agentB.assets[PLANET_ID].market!.buy[lumberResourceType.name]!.bidPrice!;
-
-        // Both should be lower than before as both exceed ceiling
-        expect(priceA).toBeLessThan(3);
-        expect(priceB).toBeLessThan(100);
-
-        // AgentA (closer to ceiling) should have a smaller relative reduction
-        const relDropA = (3 - priceA) / 3;
-        const relDropB = (100 - priceB) / 100;
-        expect(relDropB).toBeGreaterThan(relDropA);
-    });
-
-    it('ceiling spring correction uses COST_SPRING_STRENGTH × ceilingDeviation', () => {
         const planet = makePlanet({
             marketPrices: {
-                [logsResourceType.name]: 0, // lumber prodCost = 44/200 = 0.22
-                [lumberResourceType.name]: 0, // pin market price to 0 so ceilingBase = prodCost
-                [waterResourceType.name]: 1000, // water revenue >> lumber cost → profitGap = 0
+                [lumberResourceType.name]: 100,
+                [waterResourceType.name]: 0.1,
             },
+            lastProductionCostFloors: { [lumberResourceType.name]: 20 },
         });
-        seedProductionCosts(planet);
-        const agent = makeLumberConsumerAgent(4.4, 10, 10);
 
         automaticPricing(new Map([['co', agent]]), planet);
 
         const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
-        const lumberCost = 44 / 200; // 0.22 with logs price = 0
-        const ceiling = lumberCost * AUTOMATED_COST_CEILING_FACTOR; // ceilingBase = max(0.22, 0) = 0.22
-        const ceilingDeviation = Math.max(0, 4.4 / ceiling - 1);
-        const expectedFactor = PRICE_ADJUST_MAX_DOWN - COST_SPRING_STRENGTH * ceilingDeviation;
-        expect(bid.bidPrice).toBeCloseTo(4.4 * expectedFactor, 5);
+        // fillRate = 0.5 < TARGET_FILL_RATE → baseFactor > 1 → price rises above initial
+        expect(bid.bidPrice).toBeGreaterThanOrEqual(50);
+    });
+
+    it('oversupplied + unprofitable: downward pressure is unhindered (dampening = 1)', () => {
+        // fillRate > TARGET → baseFactor < 1 → dampening must be 1 regardless of gap.
+        // Price should fall at the full PRICE_ADJUST_MAX_DOWN rate.
+        const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
+        consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
+        consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [consumer];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        // fillRate = 10/10 = 1.0 (fully filled, oversupplied) → baseFactor = PRICE_ADJUST_MAX_DOWN
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [lumberResourceType.name]: {
+                    resource: lumberResourceType,
+                    bidPrice: 50,
+                    lastBought: 10,
+                    lastEffectiveQty: 10,
+                    automated: true,
+                },
+            },
+        };
+
+        const planet = makePlanet({
+            marketPrices: {
+                [lumberResourceType.name]: 100, // deeply unprofitable
+                [waterResourceType.name]: 0.1,
+            },
+            lastProductionCostFloors: { [lumberResourceType.name]: 20 },
+        });
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
+        // fillRate = 1.0 ≥ TARGET_FILL_RATE → factor = PRICE_ADJUST_MAX_DOWN
+        expect(bid.bidPrice).toBeCloseTo(50 * PRICE_ADJUST_MAX_DOWN, 5);
     });
 });

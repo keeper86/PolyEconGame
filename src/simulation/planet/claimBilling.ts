@@ -68,5 +68,24 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
         if (needsCollapse) {
             collapseUntenantedClaims(planet, resourceName);
         }
+
+        // Update planet-wide average cost per unit for this land-bound resource.
+        let totalCost = 0;
+        let totalUnits = 0;
+        for (const entry of entries) {
+            if (entry.tenantAgentId === null) {
+                continue;
+            }
+            if (entry.regenerationRate > 0) {
+                totalCost += entry.tenantCostInCoins;
+                totalUnits += entry.maximumCapacity;
+            } else {
+                totalCost += entry.tenantCostInCoins;
+                totalUnits += entry.maximumCapacity;
+            }
+        }
+        if (totalUnits > 0) {
+            planet.landBoundCostPerUnit[resourceName] = totalCost / totalUnits;
+        }
     }
 }

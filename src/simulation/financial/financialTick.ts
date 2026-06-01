@@ -31,6 +31,23 @@ function getWage(planet: Planet, edu: EducationLevelType): number {
 }
 
 /**
+ * Total wage cost per tick for a facility: Σ(wage[edu] × workerRequirement[edu] × scale).
+ */
+export function computeWageCostPerTick(
+    facility: { workerRequirement: { [edu in EducationLevelType]?: number }; scale: number },
+    planet: Planet,
+): number {
+    let wageCost = 0;
+    for (const edu of educationLevelKeys) {
+        const req = facility.workerRequirement[edu] ?? 0;
+        if (req > 0) {
+            wageCost += getWage(planet, edu) * req * facility.scale;
+        }
+    }
+    return wageCost;
+}
+
+/**
  * Estimate the cost to purchase a full input buffer for all production
  * facilities of an agent on a planet.
  *

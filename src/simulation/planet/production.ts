@@ -1,4 +1,5 @@
-import { SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
+import { PRICE_CEIL, PRICE_FLOOR, SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
+import { DEFAULT_WAGE_PER_EDU, computeWageCostPerTick } from '../financial/financialTick';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
@@ -6,7 +7,7 @@ import { createShip } from '../ships/ships';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
-import { extractFromClaimedResource, queryClaimedResource } from './claims';
+import { extractFromClaimedResource, getLandBoundCostPerUnit, queryClaimedResource } from './claims';
 import type {
     Facility,
     ManagementFacility,
@@ -17,6 +18,7 @@ import type {
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
 import type { Agent, GameState, MonthAccumulator, Planet } from './planet';
 import { hasActiveLicense, pushTickerEvent } from './planet';
+import { ALL_FACILITY_ENTRIES } from './productionFacilities';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
@@ -129,8 +131,6 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
         }
     });
 }
-
-export const MAINTENANCE_COST_MULTIPLIER = 0.1;
 
 // ---- resource consumption/production helpers ----
 
@@ -313,21 +313,120 @@ type StorageParameters = IntermediateResults & {
     facility: StorageFacility;
 };
 
+/**
+ * Compute the theoretical (full-efficiency, scale-independent) cost per unit for each
+ * output of a production facility and accumulate into the provided maps.
+ * Scale cancels between costs and output, so the result is purely a function of the
+ * facility design and current planet prices/wages.
+ */
+function accumulateTheoreticalCostFloor(
+    facility: ProductionFacility,
+    planet: Planet,
+    costAccum: Map<string, number>,
+    outputAccum: Map<string, number>,
+): void {
+    // Input cost per output-unit-equivalent (no scale — it cancels)
+    let inputCostPerUnit = 0;
+    for (const need of facility.needs) {
+        const pricePerUnit =
+            need.resource.form === 'landBoundResource'
+                ? (planet.landBoundCostPerUnit[need.resource.name] ?? 0)
+                : (planet.marketPrices[need.resource.name] ?? 0);
+        inputCostPerUnit += need.quantity * pricePerUnit;
+    }
+    // Wage cost per unit of scale (scale factor cancels with output)
+    let wageCostPerUnit = 0;
+    for (const edu of educationLevelKeys) {
+        const req = facility.workerRequirement[edu] ?? 0;
+        if (req > 0) {
+            wageCostPerUnit += req * (planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU);
+        }
+    }
+    const totalCostPerUnit = inputCostPerUnit + wageCostPerUnit;
+
+    // Allocate cost to each output by proportional share (scale-free)
+    let totalOutputValue = 0;
+    for (const output of facility.produces) {
+        totalOutputValue += output.quantity;
+    }
+    const totalOutputQty = totalOutputValue;
+
+    for (const output of facility.produces) {
+        const qty = output.quantity;
+        if (qty <= 0) {
+            continue;
+        }
+        const costForOutput = totalCostPerUnit * (qty / totalOutputQty);
+
+        costAccum.set(output.resource.name, (costAccum.get(output.resource.name) ?? 0) + costForOutput);
+        outputAccum.set(output.resource.name, (outputAccum.get(output.resource.name) ?? 0) + qty);
+    }
+}
+
+export function updateProductionCostFloors(planet: Planet): void {
+    const costAccum = new Map<string, number>();
+    const outputAccum = new Map<string, number>();
+
+    for (const { template } of ALL_FACILITY_ENTRIES) {
+        if (template.produces.length > 0) {
+            accumulateTheoreticalCostFloor(template, planet, costAccum, outputAccum);
+        }
+    }
+
+    for (const [resource, totalCost] of costAccum) {
+        const totalQty = outputAccum.get(resource) ?? 0;
+        if (totalQty > 0) {
+            planet.lastProductionCostFloors[resource] = Math.min(
+                PRICE_CEIL,
+                Math.max(PRICE_FLOOR, totalCost / totalQty),
+            );
+        }
+    }
+}
+
 function processProductionFacility(params: ProductionParameters): void {
     const actualProduced = produceOutputs(params);
     const actualConsumed = consumeNeeds(params);
-    const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility } = params;
+    const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility, agent } = params;
     let costBalance = 0;
+    let outputRevenue = 0;
     for (const [name, qty] of Object.entries(actualProduced)) {
         const value = qty * (planet.marketPrices[name] ?? 0);
         costBalance += value;
+        outputRevenue += value;
         monthAcc.productionValue += value;
     }
+    const needCostByName = new Map<string, number>();
+    for (const need of facility.needs) {
+        needCostByName.set(
+            need.resource.name,
+            need.resource.form === 'landBoundResource'
+                ? getLandBoundCostPerUnit(planet, agent.id, need.resource.name)
+                : (planet.marketPrices[need.resource.name] ?? 0),
+        );
+    }
     for (const [name, qty] of Object.entries(actualConsumed)) {
-        const value = qty * (planet.marketPrices[name] ?? 0);
+        const value = qty * (needCostByName.get(name) ?? planet.marketPrices[name] ?? 0);
         costBalance -= value;
         monthAcc.consumptionValue += value;
     }
+    // Use actual worker wages (not design-capacity wages) for an accurate cost balance.
+    let actualWageCost = 0;
+    for (const edu of educationLevelKeys) {
+        actualWageCost += (workerResults.totalUsedByEdu[edu] ?? 0) * (planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU);
+    }
+    costBalance -= actualWageCost;
+
+    // Accumulate planet-level production costs allocated to each output by value share.
+    if (outputRevenue > 0) {
+        const totalCostThisFacility = outputRevenue - costBalance;
+        for (const [name, qty] of Object.entries(actualProduced)) {
+            const outValue = qty * (planet.marketPrices[name] ?? 0);
+            const costForOutput = totalCostThisFacility * (outValue / outputRevenue);
+            planet.productionCosts[name] = (planet.productionCosts[name] ?? 0) + costForOutput;
+        }
+    }
+
     facility.lastTickResults = {
         overallEfficiency: overallEfficiency,
         workerEfficiency: workerResults.workerEfficiency,
@@ -343,7 +442,7 @@ function processProductionFacility(params: ProductionParameters): void {
 
 function processManagementFacility(params: ManagementParameters): void {
     const actualConsumed = consumeNeeds(params);
-    const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility } = params;
+    const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility, agent } = params;
 
     let costBalance = 0;
     if (overallEfficiency > 0) {
@@ -352,11 +451,21 @@ function processManagementFacility(params: ManagementParameters): void {
             facility.buffer + facility.bufferPerTickPerScale * facility.scale * overallEfficiency,
         );
     }
+    const needCostByName = new Map<string, number>();
+    for (const need of facility.needs) {
+        needCostByName.set(
+            need.resource.name,
+            need.resource.form === 'landBoundResource'
+                ? getLandBoundCostPerUnit(planet, agent.id, need.resource.name)
+                : (planet.marketPrices[need.resource.name] ?? 0),
+        );
+    }
     for (const [name, qty] of Object.entries(actualConsumed)) {
-        const value = qty * (planet.marketPrices[name] ?? 0);
+        const value = qty * (needCostByName.get(name) ?? planet.marketPrices[name] ?? 0);
         costBalance -= value;
         monthAcc.consumptionValue += value;
     }
+    costBalance -= computeWageCostPerTick(facility, planet);
     facility.lastTickResults = {
         overallEfficiency,
         workerEfficiency: workerResults.workerEfficiency,
@@ -444,6 +553,7 @@ function processStorageFacility(params: StorageParameters): void {
 export function productionTick(gameState: GameState, planet: Planet): void {
     planet.producedResources = {};
     planet.consumedResources = {};
+    planet.productionCosts = {};
 
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];

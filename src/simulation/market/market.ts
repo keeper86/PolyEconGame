@@ -1,4 +1,4 @@
-import { EPSILON, TICKS_PER_MONTH } from '../constants';
+import { EPSILON, PRICE_CEIL, PRICE_FLOOR, PRICE_NO_TRADE_CONVERGENCE_RATE, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/facility';
 import type { BidOrder } from './marketTypes';
@@ -65,7 +65,7 @@ function clearResourceMarket(
     householdBidMap: Map<string, BidOrder[]>,
     planet: Planet,
 ): void {
-    const askOrders = askBooks.get(resourceName) ?? [];
+    const askOrders = (askBooks.get(resourceName) ?? []).sort((a, b) => a.askPrice - b.askPrice);
     const agentBids = agentBidBooks.get(resourceName) ?? [];
 
     const householdBids = (householdBidMap.get(resourceName) ?? []).slice().sort((a, b) => b.bidPrice - a.bidPrice);
@@ -97,9 +97,19 @@ function clearResourceMarket(
                 releaseFromEscrow(assets.storageFacility, ask.resource.name, ask.quantity);
             }
         }
+
+        // When there are sellers but no buyers, converge market price toward the best ask.
+        let noTradePrice = referencePrice;
+        if (askOrders.length > 0) {
+            const bestAsk = askOrders[0].askPrice;
+            noTradePrice = referencePrice + (bestAsk - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
+            noTradePrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, noTradePrice));
+            planet.marketPrices[resourceName] = noTradePrice;
+        }
+
         planet.lastMarketResult[resourceName] = {
             resourceName,
-            clearingPrice: referencePrice,
+            clearingPrice: noTradePrice,
             totalVolume: 0,
             totalDemand,
             totalSupply,
@@ -110,8 +120,6 @@ function clearResourceMarket(
         updateAvgMarketResult(planet, resourceName);
         return;
     }
-
-    askOrders.sort((a, b) => a.askPrice - b.askPrice);
 
     const { householdBidFilled, householdTrades, agentTrades, householdBidCosts } = clearUnifiedBids(
         householdBids,
@@ -126,8 +134,14 @@ function clearResourceMarket(
     const allTrades = [...householdTrades, ...agentTrades];
     const { clearingPrice, totalVolume } = computeMarketSummary(allTrades, referencePrice);
 
+    let price = clearingPrice;
     if (totalVolume > 0) {
         planet.marketPrices[resourceName] = clearingPrice;
+    } else if (askOrders.length > 0) {
+        const bestAsk = askOrders[0].askPrice;
+        price = referencePrice + (bestAsk - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
+        price = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, price));
+        planet.marketPrices[resourceName] = price;
     }
 
     // Clamp to zero: floating-point arithmetic in the matching engine can
@@ -136,7 +150,7 @@ function clearResourceMarket(
 
     planet.lastMarketResult[resourceName] = {
         resourceName,
-        clearingPrice,
+        clearingPrice: price,
         totalVolume,
         totalDemand,
         totalSupply,
@@ -147,12 +161,6 @@ function clearResourceMarket(
     updateAvgMarketResult(planet, resourceName);
 }
 
-/**
- * Update the monthly EMA for one resource after `lastMarketResult` has been
- * written.  Bootstraps from the first tick's result per resource so the
- * initial average is never biased toward zero.
- * `populationBids` is intentionally excluded from the average.
- */
 function updateAvgMarketResult(planet: Planet, resourceName: string): void {
     const latest = planet.lastMarketResult[resourceName];
     if (!latest) {

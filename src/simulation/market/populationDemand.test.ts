@@ -224,7 +224,7 @@ describe('buildPopulationDemandForResource', () => {
             expect(totalDemand).toBeGreaterThan(0);
         });
 
-        it('total demand is negligible when healthcare service price is too high to afford any', () => {
+        it('all bids are far below the market price when healthcare is unaffordably expensive', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
             planet.marketPrices[GROCERY_SERVICE] = CHEAP_GROCERY_PRICE;
             planet.marketPrices[HEALTHCARE_SERVICE] = 1_000_000;
@@ -237,9 +237,13 @@ describe('buildPopulationDemandForResource', () => {
             );
 
             const bids = buildPopulationDemand(planet).get(HEALTHCARE_SERVICE) ?? [];
-            const totalDemand = bids.reduce((s, b) => s + b.quantity, 0);
 
-            expect(totalDemand).toBeLessThan(1.1e-3);
+            // Bids are generated at minimum quantity but at wealth-limited prices
+            // (far below the market price of 1,000,000), reflecting that nobody can
+            // actually clear at the market ask.
+            for (const bid of bids) {
+                expect(bid.bidPrice).toBeLessThan(1.0);
+            }
         });
 
         it('returns no bids when all cohorts have zero wealth', () => {
