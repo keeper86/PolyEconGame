@@ -421,11 +421,41 @@ export function handleCancelConstruction(
         });
         return;
     }
+    // Try productionFacilities first, then shipConstructionFacilities
     const facilityIndex = assets.productionFacilities.findIndex((f) => f.id === facilityId);
-    if (facilityIndex === -1) {
+    const shipyardIndex =
+        facilityIndex === -1 ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId) : -1;
+
+    if (facilityIndex === -1 && shipyardIndex === -1) {
         safePostMessage({ type: 'constructionCancelFailed', requestId, reason: `Facility '${facilityId}' not found` });
         return;
     }
+
+    if (shipyardIndex !== -1) {
+        const facility = assets.shipConstructionFacilities[shipyardIndex];
+        if (!facility.construction) {
+            safePostMessage({
+                type: 'constructionCancelFailed',
+                requestId,
+                reason: 'Facility is not under construction',
+            });
+            return;
+        }
+        if (facility.construction.type === 'new') {
+            assets.shipConstructionFacilities.splice(shipyardIndex, 1);
+            console.log(
+                `[worker] Agent '${agentId}' cancelled new construction of shipyard '${facilityId}' on planet '${planetId}' — facility removed`,
+            );
+        } else {
+            facility.construction = null;
+            console.log(
+                `[worker] Agent '${agentId}' cancelled expansion of shipyard '${facilityId}' on planet '${planetId}'`,
+            );
+        }
+        safePostMessage({ type: 'constructionCancelled', requestId, agentId, facilityId });
+        return;
+    }
+
     const facility = assets.productionFacilities[facilityIndex];
     if (!facility.construction) {
         safePostMessage({

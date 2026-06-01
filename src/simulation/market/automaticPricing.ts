@@ -1,72 +1,18 @@
+import assert from 'assert';
 import {
-    AUTOMATED_COST_CEILING_FACTOR,
+    BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
-    LAND_CLAIM_COST_PER_UNIT,
-    OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
 } from '../constants';
-import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import type { Resource } from '../planet/claims';
-import type { ProductionFacility } from '../planet/facility';
 import { queryStorageFacility } from '../planet/facility';
-import type { Agent, AgentMarketBidState, AgentMarketOfferState, AgentPlanetAssets, Planet } from '../planet/planet';
-import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
+import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
-import { educationLevelKeys } from '../population/education';
-
-// ---------------------------------------------------------------------------
-// Static map from resource name → canonical producer facility template.
-// Built once at module load from the facility catalogue; first producer wins
-// for resources that can be made by multiple facility types.
-// ---------------------------------------------------------------------------
-const resourceProducerTemplates: Map<string, { facility: ProductionFacility; outputQty: number }> = (() => {
-    const map = new Map<string, { facility: ProductionFacility; outputQty: number }>();
-    for (const entry of ALL_FACILITY_ENTRIES) {
-        const facility = entry.factory('', '') as ProductionFacility;
-        for (const { resource, quantity } of facility.produces) {
-            if (!map.has(resource.name)) {
-                map.set(resource.name, { facility, outputQty: quantity });
-            }
-        }
-    }
-    return map;
-})();
-
-export function buildPlanetProductionCosts(planet: Planet): Map<string, number> {
-    const costs = new Map<string, number>();
-    for (const [resourceName, { facility, outputQty }] of resourceProducerTemplates) {
-        if (outputQty <= 0) {
-            continue;
-        }
-        let cost = 0;
-        for (const need of facility.needs) {
-            if (need.resource.form === 'landBoundResource') {
-                cost += need.quantity * (LAND_CLAIM_COST_PER_UNIT[need.resource.name] ?? 0);
-                continue;
-            }
-            cost += need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
-        }
-        // Raw worker counts (same simplified formula as populationDemand.ts)
-        for (const edu of educationLevelKeys) {
-            cost += facility.workerRequirement[edu] ?? 0;
-        }
-        // Divide by total output qty across all outputs so the cost is split
-        // proportionally — avoids inflating per-unit cost when a facility produces
-        // more than one resource.
-        const totalOutputQty = facility.produces.reduce((sum, p) => sum + p.quantity, 0);
-        cost /= totalOutputQty;
-        if (cost > 0) {
-            costs.set(resourceName, cost);
-        }
-    }
-
-    return costs;
-}
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -96,6 +42,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         assets.market.buy = {};
     }
 
+    // SELLING SIDE
     const inputReserve = new Map<string, number>();
     for (const facility of assets.productionFacilities) {
         for (const { resource, quantity } of facility.needs) {
@@ -163,11 +110,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
-    // Pre-compute estimated cost floors for each produced resource.
-    const costFloors = buildCostFloors(assets, planet, agent.id);
-
-    const inputProfitGaps = buildInputProfitGaps(assets, planet, agent.id);
-
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
             // For human-controlled agents only auto-adjust entries explicitly flagged
@@ -187,11 +129,20 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             offer.offerRetainment = reserved; // Keep at least the reserved amount
 
             const initialPrice = planet.marketPrices[resource.name];
+            const costFloor = planet.lastProductionCostFloors[resource.name];
 
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloors.get(resource.name) ?? PRICE_FLOOR);
+            if (costFloor === undefined || costFloor < PRICE_FLOOR) {
+                console.warn(
+                    `Cost floor for resource ${resource.name} on planet ${planet.id} is invalid (${costFloor}). ` +
+                        `This may lead to unstable pricing. Setting to PRICE_FLOOR.`,
+                );
+            }
+
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
         }
     }
 
+    // BUYING SIDE
     const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
 
     for (const facility of [
@@ -214,20 +165,13 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 needs = facility.needs;
             }
 
-            let outputBufferFull = false;
-            if (facility.type === 'production') {
-                outputBufferFull = facility.produces.every(({ resource: out, quantity: outQty }) => {
-                    const outInventory = queryStorageFacility(assets.storageFacility, out.name);
-                    return outInventory >= outQty * facility.scale * OUTPUT_BUFFER_MAX_TICKS;
-                });
-            }
             for (const { resource, quantity } of needs) {
                 if (resource.form === 'landBoundResource') {
                     continue;
                 }
 
                 const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
-                const facilityTarget = outputBufferFull ? 0 : quantity * facility.scale * bufferTarget;
+                const facilityTarget = quantity * facility.scale * bufferTarget;
 
                 const existing = aggregatedBuyTargets.get(resource.name);
                 if (existing) {
@@ -251,6 +195,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             }
         }
     }
+
     for (const ship of agent.ships) {
         if (
             ship.type.type === 'construction' &&
@@ -310,185 +255,31 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             assets.market.buy[resourceName] = { resource, automated: true };
         }
         const bid = assets.market.buy[resourceName];
-        bid.resource = resource;
+        assert(bid.resource.name === resource.name, 'Resource mismatch in buy bid');
 
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
         const marketPrice = planet.marketPrices[resourceName];
-        const profitGap = inputProfitGaps.get(resourceName) ?? 0;
-        adjustBidPrice(
-            bid,
-            shortfall,
-            storageTarget,
-            marketPrice,
-            profitGap,
-            planet.lastMarketResult[resourceName]?.productionCost ?? 0,
-        );
+        const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
+        const bidCeil = Math.min(PRICE_CEIL, costFloor * BID_OFFER_MAX_COST_MULTIPLIER);
+        if (bidCeil < PRICE_FLOOR) {
+            console.warn(
+                `Calculated bid ceiling ${bidCeil} for resource ${resourceName} on planet ${planet.id} is below PRICE_FLOOR. ` +
+                    `This may lead to unstable pricing. Setting bid ceiling to PRICE_FLOOR.`,
+            );
+        }
+        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, bidCeil);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
-            bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) && marketPrice > 0 ? marketPrice : PRICE_FLOOR);
+            console.warn(
+                `Calculated invalid bid price ${bid.bidPrice} for agent ${agent.id} resource ${resourceName}. ` +
+                    `Resetting to market price.`,
+            );
+            bid.bidPrice = Math.max(PRICE_FLOOR, isFinite(marketPrice) ? marketPrice : PRICE_FLOOR);
         }
     }
 }
-
-function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: string): number {
-    const entries = planet.resources[resourceName];
-    if (!entries) {
-        return 0;
-    }
-    let totalCost = 0;
-    let totalUnits = 0;
-    for (const entry of entries) {
-        if (entry.tenantAgentId !== agentId) {
-            continue;
-        }
-        if (entry.regenerationRate > 0) {
-            // Renewable: pay costPerTick each tick for `quantity` units
-            totalCost += entry.costPerTick;
-            totalUnits += entry.quantity;
-        } else {
-            // Non-renewable: upfront purchase of maximumCapacity units
-            totalCost += entry.tenantCostInCoins;
-            totalUnits += entry.maximumCapacity;
-        }
-    }
-    return totalUnits > 0 ? totalCost / totalUnits : 0;
-}
-
-const currentAverageMarketPrice = (planet: Planet, resourceName: string): number => {
-    return planet.avgMarketResult[resourceName]?.clearingPrice ?? planet.marketPrices[resourceName] ?? PRICE_FLOOR;
-};
-
-function buildCostFloors(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
-    const accumulated = new Map<string, { totalCost: number; totalUnits: number }>();
-
-    for (const facility of assets.productionFacilities) {
-        if (facility.produces.length === 0) {
-            continue;
-        }
-
-        // Input cost: Σ(price × qty × scale) for each input (land-bound resources use claim cost)
-        let inputCostPerTick = 0;
-        for (const { resource, quantity } of facility.needs) {
-            const price =
-                resource.form === 'landBoundResource'
-                    ? getLandBoundCostPerUnit(planet, agentId, resource.name)
-                    : currentAverageMarketPrice(planet, resource.name);
-            inputCostPerTick += price * quantity * facility.scale;
-        }
-
-        // Wage cost: Σ(wage × workerRequirement × scale) per education level
-        let wageCostPerTick = 0;
-        for (const edu of educationLevelKeys) {
-            const req = facility.workerRequirement[edu] ?? 0;
-            if (req <= 0) {
-                continue;
-            }
-            const wage = planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
-            wageCostPerTick += wage * req * facility.scale;
-        }
-
-        const totalCostPerTick = inputCostPerTick + wageCostPerTick;
-
-        // Value-weighted output cost split
-        let totalOutputValue = 0;
-        for (const { resource: out, quantity } of facility.produces) {
-            const price = currentAverageMarketPrice(planet, out.name);
-            totalOutputValue += price * quantity * facility.scale;
-        }
-
-        for (const { resource: out, quantity } of facility.produces) {
-            const outPrice = currentAverageMarketPrice(planet, out.name);
-            const costShare =
-                totalOutputValue > 0
-                    ? (outPrice * quantity * facility.scale) / totalOutputValue
-                    : 1 / facility.produces.length;
-            const costForOutput = totalCostPerTick * costShare;
-
-            const existing = accumulated.get(out.name);
-            if (existing) {
-                existing.totalCost += costForOutput;
-                existing.totalUnits += quantity * facility.scale;
-            } else {
-                accumulated.set(out.name, {
-                    totalCost: costForOutput,
-                    totalUnits: quantity * facility.scale,
-                });
-            }
-        }
-    }
-
-    const costFloors = new Map<string, number>();
-    for (const [name, { totalCost, totalUnits }] of accumulated) {
-        if (totalUnits <= 0) {
-            costFloors.set(name, PRICE_FLOOR);
-        } else {
-            const costPerUnit = totalCost / totalUnits;
-            costFloors.set(name, Math.max(PRICE_FLOOR, costPerUnit));
-        }
-    }
-    return costFloors;
-}
-
-function buildInputProfitGaps(assets: AgentPlanetAssets, planet: Planet, agentId: string): Map<string, number> {
-    const weightedGapSum = new Map<string, number>();
-    const weightSum = new Map<string, number>();
-
-    for (const facility of assets.productionFacilities) {
-        if (facility.produces.length === 0) {
-            continue;
-        }
-
-        let outputRevenue = 0;
-        for (const { resource: out, quantity } of facility.produces) {
-            const p = currentAverageMarketPrice(planet, out.name);
-            outputRevenue += p * quantity * facility.scale;
-        }
-        if (outputRevenue <= 0) {
-            continue;
-        }
-
-        let totalCost = 0;
-        for (const { resource, quantity } of facility.needs) {
-            const p =
-                resource.form === 'landBoundResource'
-                    ? getLandBoundCostPerUnit(planet, agentId, resource.name)
-                    : currentAverageMarketPrice(planet, resource.name);
-            totalCost += p * quantity * facility.scale;
-        }
-        for (const edu of educationLevelKeys) {
-            const req = facility.workerRequirement[edu] ?? 0;
-            if (req <= 0) {
-                continue;
-            }
-            const wage = planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
-            totalCost += wage * req * facility.scale;
-        }
-
-        const gap = Math.max(0, totalCost / outputRevenue - 1);
-        if (gap === 0) {
-            continue; // profitable — spring is off
-        }
-
-        for (const { resource, quantity } of facility.needs) {
-            const w = quantity * facility.scale;
-            weightedGapSum.set(resource.name, (weightedGapSum.get(resource.name) ?? 0) + gap * w);
-            weightSum.set(resource.name, (weightSum.get(resource.name) ?? 0) + w);
-        }
-    }
-
-    const result = new Map<string, number>();
-    for (const [name, wgs] of weightedGapSum) {
-        const wt = weightSum.get(name) ?? 1;
-        result.set(name, wt > 0 ? wgs / wt : 0);
-    }
-    return result;
-}
-
-// ---------------------------------------------------------------------------
-// Tâtonnement price adjustment helpers
-// ---------------------------------------------------------------------------
 
 const TARGET_SELL_THROUGH = 0.9;
 const SERVICE_SELL_THROUGH_TARGET = 0.97;
@@ -533,19 +324,23 @@ export function adjustOfferPrice(
     }
 
     const sellThrough = sold / effectiveQuantity;
-    let factor = sellThroughFactor(
+    const factor = sellThroughFactor(
         sellThrough,
         offer.resource.form === 'services' ? SERVICE_SELL_THROUGH_TARGET : TARGET_SELL_THROUGH,
     );
 
     const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER * (offer.resource.form === 'services' ? 0.5 : 1));
 
-    if (brakeZoneTop > PRICE_FLOOR && price > 0) {
-        const deviation = Math.max(0, brakeZoneTop / price - 1);
-        factor += COST_SPRING_STRENGTH * deviation;
-    }
+    // Offer spring kicks in 1 step below the bid ceiling, creating a last-resort trade window
+    // where bids (capped at BID_OFFER_MAX_COST_MULTIPLIER × floor) can still exceed offers.
+    const overPriceGuard = costFloor > PRICE_FLOOR ? costFloor * (BID_OFFER_MAX_COST_MULTIPLIER - 1) : PRICE_CEIL;
 
-    const newPrice = price * factor;
+    // sqrt-scaled spring: force grows with distance so extreme deviations
+    // always overcome the max sell-through/fill-rate factor (±0.05).
+    const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
+    const overDeviation = Math.sqrt(Math.max(0, price / overPriceGuard - 1));
+
+    const newPrice = price * (factor + COST_SPRING_STRENGTH * deviation - COST_SPRING_STRENGTH * overDeviation);
 
     // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
@@ -581,8 +376,7 @@ function adjustBidPrice(
     shortfall: number,
     storageTarget: number,
     marketPrice: number,
-    profitabilityGap: number = 0,
-    productionCost: number,
+    ceilingPrice: number = PRICE_CEIL,
 ): void {
     // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
@@ -618,16 +412,11 @@ function adjustBidPrice(
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
-    const gapWeight = Math.min(1, fillRate / TARGET_FILL_RATE);
-    let factor = fillRateFactor(fillRate) - COST_SPRING_STRENGTH * profitabilityGap * gapWeight;
+    const baseFactor = fillRateFactor(fillRate);
 
-    // Ceiling spring: push bid down if it exceeds the estimated production cost × AUTOMATED_COST_CEILING_FACTOR.
-    // Mirrors the cap populationDemand.ts applies to household bids (currentProductionCost × 5 × RELATIVE_PRICE(=2) = ×10).
-    if (productionCost > 0) {
-        const costCeiling = productionCost * AUTOMATED_COST_CEILING_FACTOR;
-        const ceilingDeviation = Math.max(0, bid.bidPrice / costCeiling - 1);
-        factor -= COST_SPRING_STRENGTH * ceilingDeviation;
-    }
+    const overDeviation = Math.sqrt(Math.max(0, bid.bidPrice / ceilingPrice - 1));
+    const ceilingSpring = COST_SPRING_STRENGTH * overDeviation;
+    const factor = baseFactor - ceilingSpring;
 
     const newPrice = bid.bidPrice * factor;
 

@@ -1,4 +1,4 @@
-import type { Resource } from './claims';
+import type { Resource, ResourceQuantity } from './claims';
 
 export const ironOreResourceType: Resource = {
     name: 'Iron Ore',
@@ -287,3 +287,10 @@ export const packagingResourceType: Resource = {
     volumePerQuantity: 1,
     massPerQuantity: 1,
 };
+
+export const defaultBuildingCost: ResourceQuantity[] = [
+    { resource: steelResourceType, quantity: 100 },
+    { resource: electronicComponentResourceType, quantity: 50 },
+    { resource: machineryResourceType, quantity: 30 },
+    { resource: plasticResourceType, quantity: 20 },
+];

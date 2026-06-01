@@ -14,7 +14,7 @@ import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
 import { accumulatePlanetPrices, resetAgentMetrics } from './planet/planet';
-import { constructionTick, productionTick } from './planet/production';
+import { constructionTick, productionTick, updateProductionCostFloors } from './planet/production';
 import { populationAdvanceYearTick, populationTick } from './population/populationTick';
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
@@ -68,6 +68,7 @@ export function advanceTick(gameState: GameState) {
 
         intergenerationalTransfersForPlanet(planet);
 
+        updateProductionCostFloors(planet);
         automaticPricing(gameState.agents, planet);
 
         marketTick(gameState.agents, planet);

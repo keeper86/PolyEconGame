@@ -106,7 +106,7 @@ export type PopulationCategory = {
         healthcare: ServiceState;
         construction: ServiceState;
         maintenance: ServiceState;
-        administrative: ServiceState;
+        administration: ServiceState;
         education: ServiceState;
     };
 
@@ -137,7 +137,7 @@ export const nullServicesState = () => ({
     healthcare: { buffer: 0, starvationLevel: 0 },
     construction: { buffer: 0, starvationLevel: 0 },
     maintenance: { buffer: 0, starvationLevel: 0 },
-    administrative: { buffer: 0, starvationLevel: 0 },
+    administration: { buffer: 0, starvationLevel: 0 },
     education: { buffer: 0, starvationLevel: 0 },
 });
 export const nullPopulationCategory = (): PopulationCategory => ({

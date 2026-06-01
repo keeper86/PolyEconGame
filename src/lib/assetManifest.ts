@@ -180,11 +180,17 @@ export const assetManifest = {
     form_liquid: '/images/products/liquid.webp',
     form_solid: '/images/products/solid.webp',
     form_pieces: '/images/products/pieces.webp',
+    demography_overview: '/images/misc/demography_overview.webp',
 } as const;
 
 export type AssetKey = keyof typeof assetManifest;
 
 export function getAssetPath(key: string): string {
     const normalizedKey = key.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-    return assetManifest[normalizedKey as AssetKey] || '/images/products/question_mark.webp';
+    let assetPath = assetManifest[normalizedKey as AssetKey];
+    if (assetPath === undefined) {
+        console.warn(`Asset not found for key: ${key} (normalized: ${normalizedKey})`);
+        assetPath = '/images/products/question_mark.webp';
+    }
+    return assetPath;
 }

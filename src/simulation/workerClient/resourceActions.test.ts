@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LAND_CLAIM_COST_PER_UNIT, TICKS_PER_MONTH } from '../constants';
+import { TICKS_PER_MONTH } from '../constants';
 import { arableLandResourceType, ironOreDepositResourceType } from '../planet/landBoundResources';
 import type { GameState } from '../planet/planet';
 import { makeWorld } from '../utils/testHelper';
@@ -80,9 +80,7 @@ describe('handleLeaseClaim', () => {
 
             const claim = planet.resources[arableLandResourceType.name].find((e) => e.tenantAgentId === company.id);
             expect(claim).toBeDefined();
-            expect(claim!.costPerTick).toBe(
-                Math.floor(2000 * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1)),
-            );
+            expect(claim!.costPerTick).toBe(Math.floor(2000 * 1));
         });
 
         it('sets tenantCostInCoins to 0 for renewables', () => {
@@ -200,7 +198,7 @@ describe('handleLeaseClaim', () => {
             const { post } = makeMessages();
             const initialDeposits = company.assets[planet.id].deposits;
             const quantity = 2000;
-            const costPerTick = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1));
+            const costPerTick = Math.floor(quantity * 1);
             const expectedUpfront = costPerTick * TICKS_PER_MONTH;
 
             handleLeaseClaim(
@@ -224,7 +222,7 @@ describe('handleLeaseClaim', () => {
             addRenewablePool(gameState, planet.id, 10_000);
             const { post } = makeMessages();
             const quantity = 2000;
-            const costPerTick = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1));
+            const costPerTick = Math.floor(quantity * 1);
             const expectedUpfront = costPerTick * TICKS_PER_MONTH;
 
             handleLeaseClaim(
@@ -286,9 +284,7 @@ describe('handleLeaseClaim', () => {
             );
 
             const claim = planet.resources[ironOreDepositResourceType.name].find((e) => e.tenantAgentId === company.id);
-            expect(claim!.tenantCostInCoins).toBe(
-                Math.floor(3000 * (LAND_CLAIM_COST_PER_UNIT[ironOreDepositResourceType.name] ?? 1)),
-            );
+            expect(claim!.tenantCostInCoins).toBe(Math.floor(3000 * 1));
         });
 
         it('sets costPerTick to 0 for non-renewables', () => {
@@ -554,9 +550,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
 
         const claim = planet.resources[arableLandResourceType.name].find((e) => e.tenantAgentId === company.id);
         expect(claim!.maximumCapacity).toBe(3000);
-        expect(claim!.costPerTick).toBe(
-            Math.floor(3000 * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1)),
-        );
+        expect(claim!.costPerTick).toBe(Math.floor(3000 * 1));
         expect(claim!.tenantCostInCoins).toBe(0);
     });
 
@@ -571,7 +565,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
                 regenerationRate: 0,
                 maximumCapacity: 3000,
                 tenantAgentId: company.id,
-                tenantCostInCoins: Math.floor(3000 * (LAND_CLAIM_COST_PER_UNIT[ironOreDepositResourceType.name] ?? 1)),
+                tenantCostInCoins: Math.floor(3000 * 1),
                 costPerTick: 0,
                 claimStatus: 'active' as const,
                 noticePeriodEndsAtTick: null,
@@ -607,9 +601,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         );
 
         const claim = planet.resources[ironOreDepositResourceType.name].find((e) => e.tenantAgentId === company.id);
-        expect(claim!.tenantCostInCoins).toBe(
-            Math.floor(5000 * (LAND_CLAIM_COST_PER_UNIT[ironOreDepositResourceType.name] ?? 1)),
-        );
+        expect(claim!.tenantCostInCoins).toBe(Math.floor(5000 * 1));
         expect(claim!.costPerTick).toBe(0);
     });
 
@@ -665,9 +657,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
     it('deducts upfront cost (1 month) for renewable expansion', () => {
         const { gameState, planet, company } = setupWorld();
         const additionalQuantity = 1000;
-        const costPerTick = Math.floor(
-            additionalQuantity * (LAND_CLAIM_COST_PER_UNIT[arableLandResourceType.name] ?? 1),
-        );
+        const costPerTick = Math.floor(additionalQuantity * 1);
         const expectedUpfront = costPerTick * TICKS_PER_MONTH;
         const initialDeposits = company.assets[planet.id].deposits;
         const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;

@@ -1,4 +1,4 @@
-import { LAND_CLAIM_COST_PER_UNIT, TICKS_PER_MONTH } from '../constants';
+import { TICKS_PER_MONTH } from '../constants';
 import type { ResourceClaim, ResourceQuantity } from '../planet/claims';
 import { collapseUntenantedClaims } from '../planet/claims';
 import type { GameState } from '../planet/planet';
@@ -12,7 +12,7 @@ function chargeUpfrontCost(
     quantity: number,
     isRenewable: boolean,
 ): number | null {
-    const costAmount = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1));
+    const costAmount = Math.floor(quantity * 1);
     const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
     const agentAssets = state.agents.get(agentId)?.assets[planetId];
     const planet = state.planets.get(planetId);
@@ -64,7 +64,7 @@ export function handleLeaseClaim(
         const isRenewable = existingClaim.regenerationRate > 0;
         const charged = chargeUpfrontCost(state, agentId, planetId, resourceName, quantity, isRenewable);
         if (charged === null) {
-            const costAmount = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1));
+            const costAmount = Math.floor(quantity * 1);
             const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
             safePostMessage({
                 type: 'claimLeaseFailed',
@@ -77,13 +77,9 @@ export function handleLeaseClaim(
         existingClaim.maximumCapacity += quantity;
         existingClaim.regenerationRate += pool.regenerationRate * ratio;
         if (isRenewable) {
-            existingClaim.costPerTick = Math.floor(
-                existingClaim.maximumCapacity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1),
-            );
+            existingClaim.costPerTick = Math.floor(existingClaim.maximumCapacity * 1);
         } else {
-            existingClaim.tenantCostInCoins = Math.floor(
-                existingClaim.maximumCapacity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1),
-            );
+            existingClaim.tenantCostInCoins = Math.floor(existingClaim.maximumCapacity * 1);
         }
         pool.quantity -= quantity;
         pool.regenerationRate -= pool.regenerationRate * ratio;
@@ -96,7 +92,7 @@ export function handleLeaseClaim(
 
     const ratio = quantity / pool.maximumCapacity;
     const isRenewable = pool.regenerationRate > 0;
-    const costAmount = Math.floor(quantity * (LAND_CLAIM_COST_PER_UNIT[resourceName] ?? 1));
+    const costAmount = Math.floor(quantity * 1);
     const charged = chargeUpfrontCost(state, agentId, planetId, resourceName, quantity, isRenewable);
     if (charged === null) {
         const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;

@@ -1,4 +1,4 @@
-import { defaultBuildingCost } from '../ships/ships';
+import { defaultBuildingCost } from './resources';
 import type { ResourceProcessLevel } from './claims';
 import type { ProductionFacility } from './facility';
 import {
@@ -14,7 +14,7 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from './landBoundResources';
-import { MAINTENANCE_COST_MULTIPLIER } from './production';
+
 import {
     agriculturalProductResourceType,
     beverageResourceType,
@@ -39,7 +39,6 @@ import {
     logsResourceType,
     lumberResourceType,
     machineryResourceType,
-    naturalGasResourceType,
     packagingResourceType,
     paperResourceType,
     pesticideResourceType,
@@ -63,6 +62,8 @@ import {
     maintenanceServiceResourceType,
     retailServiceResourceType,
 } from './services';
+
+const MAINTENANCE_COST_MULTIPLIER = 0.1;
 
 export const zeroLastTicksProductionResults = {
     overallEfficiency: 0,
@@ -130,10 +131,7 @@ export const oilWell = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 2,
     },
     needs: [{ resource: oilReservoirResourceType, quantity: 0.3 }],
-    produces: [
-        { resource: crudeOilResourceType, quantity: 300 },
-        { resource: naturalGasResourceType, quantity: 100 },
-    ],
+    produces: [{ resource: crudeOilResourceType, quantity: 300 }],
 });
 
 export const loggingCamp = (planetId: string, id: string): ProductionFacility => ({
@@ -284,8 +282,8 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
     },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
     produces: [
-        { resource: fuelResourceType, quantity: 80 },
-        { resource: plasticResourceType, quantity: 60 },
+        { resource: fuelResourceType, quantity: 60 },
+        { resource: plasticResourceType, quantity: 80 },
         { resource: chemicalResourceType, quantity: 60 },
     ],
 });
@@ -360,9 +358,8 @@ export const glassFactory = (planetId: string, id: string): ProductionFacility =
         tertiary: 1,
     },
     needs: [
-        { resource: sandResourceType, quantity: 80 },
-        { resource: limestoneResourceType, quantity: 20 },
-        { resource: naturalGasResourceType, quantity: 10 },
+        { resource: sandResourceType, quantity: 150 },
+        { resource: limestoneResourceType, quantity: 40 },
     ],
     produces: [{ resource: glassResourceType, quantity: 100 }],
 });
@@ -558,7 +555,8 @@ export const siliconWaferFactory = (planetId: string, id: string): ProductionFac
     },
     needs: [
         { resource: sandResourceType, quantity: 300 },
-        { resource: naturalGasResourceType, quantity: 20 },
+        { resource: chemicalResourceType, quantity: 40 },
+        { resource: waterResourceType, quantity: 50 },
     ],
     produces: [{ resource: siliconWaferResourceType, quantity: 80 }],
 });
@@ -910,6 +908,7 @@ export type FacilityFactory = (planetId: string, id: string) => ProductionFacili
 
 export type FacilityCatalogEntry = {
     factory: FacilityFactory;
+    template: ProductionFacility;
     primaryOutputLevel: ResourceProcessLevel;
 };
 
@@ -922,7 +921,7 @@ const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
 
     const primaryOutputLevel: ResourceProcessLevel =
         !primaryOutput || primaryOutput === 'source' || primaryOutput === 'currency' ? 'raw' : primaryOutput;
-    return { factory, primaryOutputLevel };
+    return { factory, template: instance, primaryOutputLevel };
 };
 
 export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [

@@ -1,4 +1,3 @@
-import { AUTOMATED_COST_CEILING_FACTOR, RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
 import {
@@ -12,15 +11,15 @@ import {
     retailChain,
 } from '../planet/productionFacilities';
 import { forEachPopulationCohort } from '../population/population';
+import type { ServiceName } from '../population/population';
 import type { BidOrder } from './marketTypes';
-import type { ServiceKey } from './serviceDefinitions';
-import { allServices, householdDemandPriority } from './serviceDefinitions';
+import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
-export type { ServiceDefinition, ServiceKey } from './serviceDefinitions';
+export type { ServiceDefinition } from './serviceDefinitions';
 
 // ---------------------------------------------------------------------------
 // Helper to aggregate population bids for UI display
-// Bins bids by price using logarithmic spacing so the chart can show
+// Bins bids by price using linear spacing so the chart can show
 // quantity on the Y-axis and price on the X-axis.
 // ---------------------------------------------------------------------------
 export function binHouseholdBids(
@@ -77,12 +76,10 @@ export function binHouseholdBids(
         ];
     }
 
-    // Build log-spaced bin edges
-    const logMin = Math.log10(minPrice);
-    const logMax = Math.log10(maxPrice);
+    // Build linearly-spaced bin edges
     const edges: number[] = [];
     for (let i = 0; i <= numBins; i++) {
-        edges.push(Math.pow(10, logMin + (i / numBins) * (logMax - logMin)));
+        edges.push(minPrice + (i / numBins) * (maxPrice - minPrice));
     }
 
     const bins: {
@@ -95,7 +92,7 @@ export function binHouseholdBids(
     }[] = edges.slice(0, -1).map((lo, i) => ({
         priceMin: lo,
         priceMax: edges[i + 1],
-        priceMid: Math.sqrt(lo * edges[i + 1]), // geometric mean of bin edges
+        priceMid: (lo + edges[i + 1]) / 2, // arithmetic mean of bin edges
         quantity: 0,
         filled: 0,
         cost: 0,
@@ -136,7 +133,7 @@ const maintenanceTemplate: ProductionFacility = maintenanceFacility('', '');
 const administrativeTemplate: ProductionFacility = administrativeCenter('', '');
 const logisticsTemplate: ProductionFacility = logisticsHub('', '');
 
-export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionFacility; produced: number }> = {
+export const serviceFacilityTemplate: Record<ServiceName, { template: ProductionFacility; produced: number }> = {
     grocery: {
         template: groceryChainTemplate,
         produced: groceryChainTemplate.produces[0].quantity,
@@ -161,7 +158,7 @@ export const serviceFacilityTemplate: Record<ServiceKey, { template: ProductionF
         template: maintenanceTemplate,
         produced: maintenanceTemplate.produces[0].quantity,
     },
-    administrative: {
+    administration: {
         template: administrativeTemplate,
         produced: administrativeTemplate.produces[0].quantity,
     },
@@ -195,52 +192,44 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     break;
                 }
 
-                if (service.serviceKey === 'education' && occ !== 'education') {
+                if (serviceKeyOf(service) === 'education' && occ !== 'education') {
                     continue; // Only education group buys education services
                 }
 
-                let currentProductionCost = 0;
-                const serviceFacility = serviceFacilityTemplate[service.serviceKey];
-
-                serviceFacility.template.needs.forEach((need) => {
-                    currentProductionCost += need.quantity * (planet.marketPrices[need.resource.name] ?? 0);
-                });
-                currentProductionCost +=
-                    (serviceFacility.template.workerRequirement.none ?? 0) +
-                    (serviceFacility.template.workerRequirement.primary ?? 0) +
-                    (serviceFacility.template.workerRequirement.secondary ?? 0) +
-                    (serviceFacility.template.workerRequirement.tertiary ?? 0);
-                currentProductionCost /= serviceFacility.produced;
-
-                currentProductionCost = currentProductionCost > 0 ? currentProductionCost : Number.MAX_SAFE_INTEGER;
-
                 const referencePrice =
-                    Math.min(
-                        planet.avgMarketResult[service.resource.name]?.clearingPrice ?? Number.MAX_SAFE_INTEGER,
-                        currentProductionCost * AUTOMATED_COST_CEILING_FACTOR * 0.5,
-                    ) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+                    planet.avgMarketResult[service.resource.name]?.clearingPrice ??
+                    planet.marketPrices[service.resource.name] ??
+                    0;
 
                 if (referencePrice <= 0) {
                     continue;
                 }
 
-                const serviceBuffer = category.services[service.serviceKey]?.buffer ?? 0;
+                const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
                 const rate = service.consumptionRatePerPersonPerTick;
-                const bufferFillDeficit = Math.max(0, service.bufferTargetTicks - serviceBuffer);
-                const willingPrice = referencePrice * (bufferFillDeficit / service.bufferTargetTicks);
+                const bufferFillDeficit = (service.bufferTargetTicks - serviceBuffer) / service.bufferTargetTicks;
+
+                if (bufferFillDeficit <= 0) {
+                    continue; // No demand if buffer is full
+                }
+
+                let willingPrice = referencePrice * (1 + bufferFillDeficit);
                 if (willingPrice <= 0) {
                     continue;
                 }
-                const desiredPerPerson = rate * bufferFillDeficit;
 
-                if (desiredPerPerson <= 0) {
-                    continue;
+                let quantityPerPerson = rate * service.bufferTargetTicks * bufferFillDeficit;
+
+                // cannot afford even one day; min quantity 1 for all remaining wealth
+                if (remainingWealth < 1.2 * rate * willingPrice) {
+                    willingPrice = remainingWealth / rate / 1.2;
+                    quantityPerPerson = 1.2 * rate;
+                } else if (remainingWealth < quantityPerPerson * willingPrice) {
+                    const affordableQuantity = remainingWealth / willingPrice;
+                    quantityPerPerson = Math.min(quantityPerPerson, affordableQuantity);
                 }
 
-                const affordable = remainingWealth / willingPrice;
-                const quantityPerPerson = Math.min(desiredPerPerson, affordable);
-
-                if (quantityPerPerson <= 0) {
+                if (willingPrice <= 0 || quantityPerPerson <= 0) {
                     continue;
                 }
 

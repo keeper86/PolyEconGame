@@ -8,7 +8,7 @@ import {
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { nextRandom } from '../utils/stochasticRound';
 import type { Planet } from '../planet/planet';
-import { allServices, SERVICE_DEFINITIONS, SERVICE_TIERS } from './serviceDefinitions';
+import { allServices, SERVICE_DEFINITIONS, SERVICE_TIERS, serviceKeyOf } from './serviceDefinitions';
 import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -78,7 +78,7 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             // Convert per-category service buffers (ticks) to aggregate service units:
             // buffer ticks * consumptionRatePerPersonPerTick * n = total service units
             for (const svc of allServices) {
-                const key = svc.serviceKey;
+                const key = serviceKeyOf(svc);
                 cell.buffers[key] =
                     (cell.buffers[key] ?? 0) + cat.services[key].buffer * svc.consumptionRatePerPersonPerTick * n;
             }

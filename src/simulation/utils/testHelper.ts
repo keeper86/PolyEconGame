@@ -514,6 +514,9 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         monthPriceAcc: {},
         consumedResources: {},
         producedResources: {},
+        productionCosts: {},
+        lastProductionCostFloors: {},
+        landBoundCostPerUnit: {},
         ...restOverrides,
     };
 }

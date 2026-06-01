@@ -71,7 +71,6 @@ function clearForexPair(
             totalSupply: 0,
             unfilledDemand: 0,
             unsoldSupply: 0,
-            productionCost: referencePrice,
         };
         return;
     }
@@ -103,7 +102,6 @@ function clearForexPair(
             totalSupply,
             unfilledDemand: totalDemand,
             unsoldSupply: totalSupply,
-            productionCost: referencePrice,
         };
         return;
     }
@@ -130,7 +128,6 @@ function clearForexPair(
         totalSupply,
         unfilledDemand: Math.max(0, totalDemand - totalVolume),
         unsoldSupply,
-        productionCost: clearingPrice,
     };
 
     // Update monthly EMA (reuse the same helper field used by physical markets)
@@ -161,6 +158,5 @@ function updateAvgForexResult(tradingPlanet: Planet, curName: string): void {
         totalSupply: prior.totalSupply * (1 - alpha) + latest.totalSupply * alpha,
         unfilledDemand: prior.unfilledDemand * (1 - alpha) + latest.unfilledDemand * alpha,
         unsoldSupply: prior.unsoldSupply * (1 - alpha) + latest.unsoldSupply * alpha,
-        productionCost: prior.productionCost * (1 - alpha) + latest.productionCost * alpha,
     };
 }

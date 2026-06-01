@@ -72,7 +72,7 @@ function seedWorkforce(
         healthcare: { buffer: healthcareDef.bufferTargetTicks, starvationLevel: 0 },
         construction: { buffer: 2, starvationLevel: 0 },
         maintenance: { buffer: 2, starvationLevel: 0 },
-        administrative: { buffer: 3, starvationLevel: 0 },
+        administration: { buffer: 3, starvationLevel: 0 },
         education: { buffer: 2, starvationLevel: 0 },
     };
     planet.population.summedPopulation.employed.none.novice.total += count;
@@ -674,7 +674,7 @@ describe('shipTick passenger transporting / arrival', () => {
                         healthcare: { buffer: 0, starvationLevel: 0 },
                         maintenance: { buffer: 0, starvationLevel: 0 },
                         construction: { buffer: 0, starvationLevel: 0 },
-                        administrative: { buffer: 0, starvationLevel: 0 },
+                        administration: { buffer: 0, starvationLevel: 0 },
                         education: { buffer: 0, starvationLevel: 0 },
                     },
                 },

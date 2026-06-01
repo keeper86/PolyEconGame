@@ -67,6 +67,9 @@ describe('automaticPricing — buy side', () => {
     beforeEach(() => {
         planet = makePlanet();
         planet.marketPrices[COAL] = 2.0;
+        // Ensure a sensible production cost floor so the bid ceiling (floor × BID_OFFER_MAX_COST_MULTIPLIER)
+        // is above the market price and the ceiling spring does not suppress bid adjustments in tests.
+        planet.lastProductionCostFloors[COAL] = 1.0;
     });
 
     it('creates a buy order for each non-landBound facility input', () => {
@@ -198,7 +201,7 @@ describe('automaticPricing — buy side', () => {
     it('raises bid price when previous tick was partially filled', () => {
         // Use a coal price below the production-cost ceiling so the ceiling spring doesn't
         // suppress the fill-rate adjustment. The ceiling is coalMine template cost (≈0.1/unit)
-        // × AUTOMATED_COST_CEILING_FACTOR (6) = 0.6. Coal at 0.4 is safely below that.
+        // × BID_OFFER_MAX_COST_MULTIPLIER (6) = 0.6. Coal at 0.4 is safely below that.
         planet.marketPrices[COAL] = 0.4;
         planet.marketPrices[steelResourceType.name] = 8.0;
 
