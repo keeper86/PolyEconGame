@@ -8,23 +8,7 @@ import type { Loan } from './loanTypes';
 import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
 
-/**
- * Default wage per education level per tick (currency units per worker).
- * All levels start at 1.0; can be overridden via `planet.wagePerEdu`.
- */
-export const DEFAULT_WAGE_PER_EDU = 1.0;
-
-/**
- * Marginal propensity to consume out of income (disposable income consumed
- * each tick).  At 1.0 all wages are immediately spent.
- */
-export const C_INC = 1.0;
-
-/**
- * Marginal propensity to consume out of existing wealth.
- * 0.0 means no wealth-based consumption (minimal first implementation).
- */
-export const C_WEALTH = 0.0;
+export const DEFAULT_WAGE_PER_EDU = 10.0;
 
 function getWage(planet: Planet, edu: EducationLevelType): number {
     return planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;

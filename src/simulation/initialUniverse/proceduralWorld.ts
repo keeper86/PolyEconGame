@@ -1365,7 +1365,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             loanRate: 0,
             depositRate: 0,
         },
-        wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
+        wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 },
         marketPrices: { ...initialMarketPrices },
         transportPipeline: {},
         orderBooks: {},

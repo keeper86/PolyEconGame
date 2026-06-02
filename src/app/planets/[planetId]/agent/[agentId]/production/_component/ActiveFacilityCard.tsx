@@ -8,12 +8,12 @@ import { Slider } from '@/components/ui/slider';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { ProductionFacility } from '@/simulation/planet/facility';
-import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
+import { getFacilityType } from '@/simulation/planet/facility';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FacilityCardShell } from './FacilityCardShell';
+import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityProductionIORow } from './FacilityProductionIORow';
-import { ScaleSelector } from './ScaleSelector';
 import { UnderConstructionCompactRow } from './UnderConstructionCard';
 import { WorkerBars } from './WorkerBars';
 
@@ -32,7 +32,7 @@ export function ActiveFacilityCard({
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
-    const [targetScale, setTargetScale] = useState(facility.maxScale + 1);
+    const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
     const [showSetScale, setShowSetScale] = useState(false);
 
@@ -74,12 +74,6 @@ export function ActiveFacilityCard({
     );
 
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
-    const expandCost = useMemo(
-        () => calculateCostsForConstruction(facilityType, facility.maxScale, targetScale),
-        [facilityType, facility.maxScale, targetScale],
-    );
-    const estimatedCredits =
-        constructionServicePrice && constructionServicePrice > 0 ? expandCost * constructionServicePrice : null;
 
     const results = facility.lastTickResults;
     const eff = results?.overallEfficiency ?? 0;
@@ -122,7 +116,7 @@ export function ActiveFacilityCard({
                 <FacilityProductionIORow
                     needs={facility.needs}
                     produces={facility.produces}
-                    scale={!showExpand ? facility.scale : targetScale}
+                    scale={!showExpand ? facility.scale : previewScale}
                     resourceEfficiency={results?.resourceEfficiency ?? {}}
                     overallEfficiency={eff}
                     limitingEfficiency={globalMin}
@@ -133,55 +127,21 @@ export function ActiveFacilityCard({
                 <Separator />
 
                 {showExpand && !facility.construction ? (
-                    <>
-                        <p className='text-xs font-medium'>Expand to scale</p>
-                        <ScaleSelector
-                            value={targetScale}
-                            min={facility.maxScale + 1}
-                            onChange={(v) => setTargetScale(v)}
-                        />
-                        <p className='text-xs text-muted-foreground'>
-                            Cost:{' '}
-                            <span className='tabular-nums font-medium text-foreground'>
-                                {formatNumberWithUnit(expandCost, 'units')}
-                            </span>{' '}
-                            construction
-                            {estimatedCredits !== null && (
-                                <>
-                                    {' '}
-                                    <span className='text-muted-foreground'>≈</span>{' '}
-                                    <span className='tabular-nums font-medium text-foreground'>
-                                        {formatNumberWithUnit(estimatedCredits, 'currency', planetId)}
-                                    </span>
-                                </>
-                            )}
-                        </p>
-                        <div className='flex gap-2'>
-                            <Button
-                                size='sm'
-                                variant='outline'
-                                className='flex-1 text-xs'
-                                onClick={() => setShowExpand(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                size='sm'
-                                className='flex-1 text-xs'
-                                disabled={expandMutation.isPending}
-                                onClick={() =>
-                                    expandMutation.mutate({
-                                        agentId,
-                                        planetId,
-                                        facilityId: facility.id,
-                                        targetScale,
-                                    })
-                                }
-                            >
-                                {expandMutation.isPending ? 'Expanding…' : 'Confirm Expand'}
-                            </Button>
-                        </div>
-                    </>
+                    <FacilityConstructionPanel
+                        facilityType={facilityType}
+                        fromScale={facility.maxScale}
+                        constructionServicePrice={constructionServicePrice}
+                        planetId={planetId}
+                        label='Expand to scale'
+                        confirmLabel='Confirm Expand'
+                        pendingLabel='Expanding…'
+                        isPending={expandMutation.isPending}
+                        onCancel={() => setShowExpand(false)}
+                        onConfirm={(targetScale) =>
+                            expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale })
+                        }
+                        onScaleChange={setPreviewScale}
+                    />
                 ) : (
                     <div className='flex gap-2'>
                         <Button
@@ -190,7 +150,7 @@ export function ActiveFacilityCard({
                             className='flex-1 text-xs gap-1'
                             disabled={facility.construction !== null}
                             onClick={() => {
-                                setTargetScale(facility.maxScale + 1);
+                                setPreviewScale(facility.maxScale + 1);
                                 setShowExpand(true);
                             }}
                         >
