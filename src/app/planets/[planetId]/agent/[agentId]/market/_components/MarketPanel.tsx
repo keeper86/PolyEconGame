@@ -1,17 +1,16 @@
 'use client';
 
 import { Accordion } from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
+import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { MarketOverviewRow } from '@/server/controller/planet';
 import { useHashAccordion } from '@/hooks/useHashAccordion';
+import type { MarketOverviewRow } from '@/server/controller/planet';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
