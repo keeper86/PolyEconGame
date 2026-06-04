@@ -96,6 +96,8 @@ export type LastTickResults = {
         };
     };
 
+    wageCosts: number;
+    inputCosts: number;
     costBalance: number;
 };
 
@@ -104,6 +106,7 @@ export type LastProductionTickResults = LastTickResults & {
 
     lastProduced: { [resourceName: string]: number };
     lastConsumed: { [resourceName: string]: number };
+    revenue: number;
 };
 
 export type LastManagementTickResults = LastTickResults & {

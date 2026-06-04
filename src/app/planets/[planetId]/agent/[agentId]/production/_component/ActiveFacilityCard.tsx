@@ -97,10 +97,6 @@ export function ActiveFacilityCard({
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
                                 Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
                             </Badge>
-                            <div className='text-xs text-muted-foreground'>
-                                revenue/tick{' '}
-                                {formatNumberWithUnit(facility.lastTickResults.costBalance, 'currency', planetId)}
-                            </div>
                         </span>
                     </div>
                     <WorkerBars
@@ -112,6 +108,43 @@ export function ActiveFacilityCard({
                 </span>
             }
         >
+            <div className='flex flex-row justify-between text-xs text-muted-foreground space-y-0.5 text-right'>
+                {'revenue' in facility.lastTickResults && (
+                    <div className='flex flex-col items-center'>
+                        <span className='text-green-600 dark:text-green-400'>
+                            +{formatNumberWithUnit(facility.lastTickResults.revenue, 'currency', planetId)}
+                        </span>
+                        {' revenue'}
+                    </div>
+                )}
+
+                <div className='flex flex-col items-center'>
+                    <span className='text-red-600 dark:text-red-400'>
+                        -{formatNumberWithUnit(facility.lastTickResults.inputCosts, 'currency', planetId)}
+                    </span>
+                    {' input costs'}
+                </div>
+
+                <div className='flex flex-col items-center'>
+                    <span className='text-red-600 dark:text-red-400'>
+                        -{formatNumberWithUnit(facility.lastTickResults.wageCosts, 'currency', planetId)}
+                    </span>
+                    {' wage bill'}
+                </div>
+
+                <div className={`flex flex-col items-center`}>
+                    <span
+                        className={
+                            results.costBalance >= 0
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-red-600 dark:text-red-400'
+                        }
+                    >
+                        {formatNumberWithUnit(facility.lastTickResults.costBalance, 'currency', planetId)}
+                    </span>
+                    {' net/day'}
+                </div>
+            </div>
             <div className='flex-1 space-y-2'>
                 <FacilityProductionIORow
                     needs={facility.needs}

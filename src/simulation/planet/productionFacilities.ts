@@ -74,6 +74,9 @@ export const zeroLastTicksProductionResults = {
     totalUsedByEdu: {},
     lastProduced: {},
     lastConsumed: {},
+    revenue: 0,
+    wageCosts: 0,
+    inputCosts: 0,
     costBalance: 0,
 };
 
