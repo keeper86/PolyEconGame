@@ -131,6 +131,28 @@ function computeMonthlyGhostData(allPts: RawPoint[], live: LiveData): ChartPoint
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
+// ─── Shared Tooltip ──────────────────────────────────────────────────────────
+
+function populationTooltipContent(label: string, value: number | undefined | null): React.ReactElement | null {
+    if (value == null) {
+        return null;
+    }
+    return (
+        <div
+            style={{
+                background: '#1e293b',
+                border: '1px solid #334155',
+                borderRadius: '6px',
+                fontSize: 12,
+                padding: '6px 10px',
+            }}
+        >
+            <div style={{ color: '#94a3b8', marginBottom: 4 }}>{label}</div>
+            <div style={{ color: '#e2e8f0' }}>Population: {formatNumberWithUnit(value, 'persons')}</div>
+        </div>
+    );
+}
+
 // ─── EmptyChart ───────────────────────────────────────────────────────────────
 
 function EmptyChart() {
@@ -373,8 +395,16 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
                         tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
                     />
                     <Tooltip
-                        labelFormatter={(v) => `Year ${Math.floor(v as number)}`}
-                        formatter={(v) => [formatNumberWithUnit(v as number, 'persons'), 'Avg population']}
+                        content={({ active, payload, label }) => {
+                            if (!active || !payload || payload.length === 0) {
+                                return null;
+                            }
+                            const p = payload.find((e) => e.dataKey === 'value');
+                            return populationTooltipContent(
+                                `Year ${Math.floor(label as number)}`,
+                                p?.value as number | undefined,
+                            );
+                        }}
                     />
                     <Area
                         type='monotone'
@@ -440,8 +470,16 @@ function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
                         tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
                     />
                     <Tooltip
-                        labelFormatter={(v) => `Y${Math.round(v as number)}`}
-                        formatter={(v) => [formatNumberWithUnit(v as number, 'persons'), 'Avg population']}
+                        content={({ active, payload, label }) => {
+                            if (!active || !payload || payload.length === 0) {
+                                return null;
+                            }
+                            const p = payload.find((e) => e.dataKey === 'value');
+                            return populationTooltipContent(
+                                `Year ${Math.round(label as number)}`,
+                                p?.value as number | undefined,
+                            );
+                        }}
                     />
                     <Area
                         type='monotone'

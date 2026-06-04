@@ -33,7 +33,7 @@ export const getFacilityType = (facility: Facility): FacilityType => {
 };
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 30;
-const constructionCostFactor = 10000;
+const constructionCostFactor = 3000;
 export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scale: number) => number> = {
     raw: (scale: number) => (constructionCostFactor * Math.pow(scale, 1.1)) / scale + constructionCostFactor,
     refined: (scale: number) =>
@@ -96,6 +96,8 @@ export type LastTickResults = {
         };
     };
 
+    wageCosts: number;
+    inputCosts: number;
     costBalance: number;
 };
 
@@ -104,6 +106,7 @@ export type LastProductionTickResults = LastTickResults & {
 
     lastProduced: { [resourceName: string]: number };
     lastConsumed: { [resourceName: string]: number };
+    revenue: number;
 };
 
 export type LastManagementTickResults = LastTickResults & {

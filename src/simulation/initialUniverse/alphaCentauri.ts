@@ -72,14 +72,14 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
     const govArableId = 'ac-gov-arable';
     const govWaterId = 'ac-gov-water';
     const govClaims: string[] = [govArableId, govWaterId];
-    const govTenancies: string[] = [govArableId, govWaterId];
 
     arableClaims.push(
         makeClaim({
             id: govArableId,
             type: arableLandResourceType,
             quantity: 20000,
-            tenantAgentId: GOV,
+            tenantAgentId: 'ac-utilities',
+            costPerTick: 200,
             renewable: true,
         }),
     );
@@ -88,8 +88,29 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             id: govWaterId,
             type: waterSourceResourceType,
             quantity: 20000,
-            tenantAgentId: GOV,
+            tenantAgentId: 'ac-utilities',
+            costPerTick: 100,
             renewable: true,
+        }),
+    );
+
+    // Public utilities company — holds gov's baseline resource claims and runs
+    // the corresponding extraction/farming facilities, paying rent to the government.
+    const utilWaterFacility = waterExtractionFacility(AC_ID, 'ac-utilities-water');
+    utilWaterFacility.scale = 100;
+    utilWaterFacility.maxScale = 100;
+    const utilAgriFacility = intensiveFarmFacility(AC_ID, 'ac-utilities-agri');
+    utilAgriFacility.scale = 100;
+    utilAgriFacility.maxScale = 100;
+    agents.push(
+        makeAgent({
+            id: 'ac-utilities',
+            name: 'AC Public Utilities',
+            associatedPlanetId: AC_ID,
+            planetId: AC_ID,
+            facilities: [utilWaterFacility, utilAgriFacility],
+            storage: makeStorage({ planetId: AC_ID, id: 'ac-utilities-storage', name: 'AC Public Utilities Storage' }),
+            tenancies: [govArableId, govWaterId],
         }),
     );
 
@@ -346,23 +367,16 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }
     }
 
-    // Government agent
-    const govWaterFacility = waterExtractionFacility(AC_ID, 'ac-gov-water');
-    govWaterFacility.scale = 100;
-    govWaterFacility.maxScale = 100;
-    const govAgriFacility = intensiveFarmFacility(AC_ID, 'ac-gov-agri');
-    govAgriFacility.scale = 100;
-    govAgriFacility.maxScale = 100;
-
+    // Government agent — no production facilities; only owns resource claims and
+    // redistributes lease income as welfare each tick.
     const govAgent = makeAgent({
         id: GOV,
         name: 'Alpha Centauri Government',
         associatedPlanetId: AC_ID,
         planetId: AC_ID,
-        facilities: [govWaterFacility, govAgriFacility],
+        facilities: [],
         storage: makeStorage({ planetId: AC_ID, id: 'ac-gov-storage', name: 'AC Gov. Storage' }),
         claims: govClaims,
-        tenancies: govTenancies,
     });
     agents.unshift(govAgent);
 

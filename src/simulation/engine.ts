@@ -1,4 +1,5 @@
 import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
+import { governmentTick } from './agents/governmentAgent';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { shipbuilderTick } from './agents/shipbuilderTick';
@@ -19,11 +20,12 @@ import { populationAdvanceYearTick, populationTick } from './population/populati
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
-import { automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
+import { automaticAdjustmentWages, automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
+import assert from 'assert';
 
 export { seedRng };
 
@@ -39,6 +41,9 @@ export function advanceTick(gameState: GameState) {
         }
 
         environmentTick(planet);
+        const govAgent = gameState.agents.get(planet.governmentId);
+        assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
+        governmentTick(planet, govAgent);
 
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(
@@ -63,6 +68,7 @@ export function advanceTick(gameState: GameState) {
         }
 
         claimBillingTick(gameState.agents, planet, gameState.tick);
+
         maturesLoans(gameState.agents, planet, gameState.tick);
         preProductionFinancialTick(gameState.agents, planet, gameState.tick);
 
@@ -81,6 +87,7 @@ export function advanceTick(gameState: GameState) {
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);
+            automaticAdjustmentWages(gameState.agents, planet);
         }
 
         if (isYearBoundary(gameState.tick)) {

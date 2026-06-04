@@ -1,19 +1,3 @@
-/**
- * simulation/snapshotCompression.ts
- *
- * Serialization & compression helpers for cold snapshots.
- *
- * Pipeline:
- *   GameStateRecord → GameState → MessagePack → gzip → Buffer
- *
- * Uses Node.js built-in `zlib` for gzip compression — zero external
- * dependencies.  Typical compression ratio on MessagePack game-state
- * blobs is ~3–5× (e.g. 490 KB msgpack → ~100–160 KB gzipped).
- *
- * Note: MessagePack cannot natively serialize JS `Map` objects, so we
- * convert Maps to arrays on the wire and rebuild them on deserialize.
- */
-
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { encode, decode } from '@msgpack/msgpack';
 

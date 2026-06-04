@@ -31,7 +31,7 @@ export const PRICE_ADJUST_MAX_DOWN = 0.95;
 
 export const PRICE_NO_TRADE_CONVERGENCE_RATE = 1 / TICKS_PER_MONTH;
 
-export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.2;
+export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.1;
 
 export const COST_SPRING_STRENGTH = PRICE_ADJUST_MAX_UP - PRICE_ADJUST_MAX_DOWN;
 /** Maximum multiple of the known production cost floor that automated agents will bid/offer.
@@ -41,9 +41,15 @@ export const BID_OFFER_MAX_COST_MULTIPLIER = 6;
 export const RETAINED_EARNINGS_THRESHOLD = 1.5;
 
 export const INPUT_BUFFER_TARGET_TICKS = 20;
+export const INPUT_BUFFER_TARGET_TICKS_SERVICES = 5;
 export const OUTPUT_BUFFER_MAX_TICKS = 10;
 
 export const STARTER_LOAN_AMOUNT = 1_000_000;
+
+/** Minimum wage per worker per tick — automated agents will never go below this. */
+export const MIN_WAGE = 5.0;
+/** Fractional wage adjustment applied each month based on profitability (±2%). */
+export const WAGE_ADJUSTMENT_RATE = 0.02;
 
 export const LOAN_CASH_FLOW_MONTHS = 6;
 export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;

@@ -7,12 +7,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, Planet } from '../planet/planet';
-import {
-    DEFAULT_WAGE_PER_EDU,
-    automaticLoanRepayment,
-    maturesLoans,
-    preProductionFinancialTick,
-} from './financialTick';
+import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financialTick';
 
 import { SKILL } from '../population/population';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
@@ -51,7 +46,8 @@ describe('preProductionFinancialTick', () => {
         agent = makeAgent();
         const result = makePlanetWithPopulation({ none: 1000 });
         planet = result.planet;
-        planet.wagePerEdu = { none: 1.0 };
+        planet.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        agent.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
     });
 
     it('does nothing when agent has no workers', () => {
@@ -101,7 +97,7 @@ describe('preProductionFinancialTick', () => {
             }
         }
         // hired workers each received wage 1.0
-        expect(totalWealthReceived).toBeCloseTo(hired * DEFAULT_WAGE_PER_EDU, 5);
+        expect(totalWealthReceived).toBeCloseTo(hired * 1.0, 5);
     });
 });
 
@@ -117,7 +113,8 @@ describe('postProductionFinancialTick', () => {
         agent = makeAgent();
         const result = makePlanetWithPopulation({ none: 1000 });
         planet = result.planet;
-        planet.wagePerEdu = { none: 1.0 };
+        planet.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        agent.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
         agent.assets[planet.id]!.deposits = 0;
     });
 
@@ -212,7 +209,8 @@ describe('money conservation', () => {
     it('total outstanding loans increase when firm needs working capital', () => {
         const agent = makeAgent();
         const { planet } = makePlanetWithPopulation({ none: 1000 });
-        planet.wagePerEdu = { none: 1.0 };
+        planet.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        agent.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
         agent.assets[planet.id]!.deposits = 0;
 
         const { count: hired, hiredByAge } = hireFromPopulation(planet, 'none', 100);
@@ -233,7 +231,8 @@ describe('money conservation', () => {
     it('full cycle: wages paid and loan repayment only triggers with excess deposits above 1-year threshold', () => {
         const agent = makeAgent();
         const { planet } = makePlanetWithPopulation({ none: 1000 });
-        planet.wagePerEdu = { none: 1.0 };
+        planet.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        agent.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
         agent.assets[planet.id]!.deposits = 0;
         const hired = hireWorkers(planet, agent, 'none', 100);
 
@@ -265,7 +264,8 @@ describe('money conservation', () => {
     it('auto-repayment fires when agent has large deposits relative to 1-year-expense threshold', () => {
         const agent = makeAgent();
         const { planet } = makePlanetWithPopulation({ none: 1000 });
-        planet.wagePerEdu = { none: 1.0 };
+        planet.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        agent.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
         planet.bank!.loanRate = 0.05 / 360;
 
         const hired = hireWorkers(planet, agent, 'none', 10);

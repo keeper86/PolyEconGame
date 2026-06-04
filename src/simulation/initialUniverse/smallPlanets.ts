@@ -69,14 +69,15 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
     const govArableId = `${spec.id}-gov-arable`;
     const govWaterId = `${spec.id}-gov-water`;
     const govClaims: string[] = [govArableId, govWaterId];
-    const govTenancies: string[] = [govArableId, govWaterId];
+    const utilId = `${spec.id}-utilities`;
 
     arableClaims.push(
         makeClaim({
             id: govArableId,
             type: arableLandResourceType,
             quantity: spec.govAgriScale * 1000,
-            tenantAgentId: govId,
+            tenantAgentId: utilId,
+            costPerTick: Math.floor(spec.govAgriScale * 10),
             renewable: true,
         }),
     );
@@ -85,7 +86,8 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             id: govWaterId,
             type: waterSourceResourceType,
             quantity: spec.govAgriScale * 1000,
-            tenantAgentId: govId,
+            tenantAgentId: utilId,
+            costPerTick: Math.floor(spec.govAgriScale * 5),
             renewable: true,
         }),
     );
@@ -168,22 +170,38 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         govClaims.push(waterRemainder.id);
     }
 
-    const govWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-gov-water-fac`);
-    govWaterFacility.scale = spec.govAgriScale;
-    govWaterFacility.maxScale = spec.govAgriScale;
-    const govAgriFacility = intensiveFarmFacility(spec.id, `${spec.id}-gov-agri-fac`);
-    govAgriFacility.scale = spec.govAgriScale;
-    govAgriFacility.maxScale = spec.govAgriScale;
+    // Public utilities company — holds the government's baseline resource claims.
+    const utilWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-util-water-fac`);
+    utilWaterFacility.scale = spec.govAgriScale;
+    utilWaterFacility.maxScale = spec.govAgriScale;
+    const utilAgriFacility = intensiveFarmFacility(spec.id, `${spec.id}-util-agri-fac`);
+    utilAgriFacility.scale = spec.govAgriScale;
+    utilAgriFacility.maxScale = spec.govAgriScale;
+    const utilAgent = makeAgent({
+        id: utilId,
+        name: `${spec.name} Utilities`,
+        associatedPlanetId: spec.id,
+        planetId: spec.id,
+        facilities: [utilWaterFacility, utilAgriFacility],
+        storage: makeStorage({
+            planetId: spec.id,
+            id: `${spec.id}-util-storage`,
+            name: `${spec.name} Utilities Storage`,
+        }),
+        tenancies: [govArableId, govWaterId],
+    });
+    agents.push(utilAgent);
 
+    // Government agent — no production facilities; only owns resource claims and
+    // redistributes lease income as welfare each tick.
     const govAgent = makeAgent({
         id: govId,
         name: `${spec.name} Government`,
         associatedPlanetId: spec.id,
         planetId: spec.id,
-        facilities: [govWaterFacility, govAgriFacility],
+        facilities: [],
         storage: makeStorage({ planetId: spec.id, id: `${spec.id}-gov-storage`, name: `${spec.name} Gov. Storage` }),
         claims: govClaims,
-        tenancies: govTenancies,
     });
     agents.unshift(govAgent);
 

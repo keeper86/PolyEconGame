@@ -1,5 +1,6 @@
+import assert from 'assert';
 import { PRICE_CEIL, PRICE_FLOOR, SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
-import { DEFAULT_WAGE_PER_EDU, computeWageCostPerTick } from '../financial/financialTick';
+import { computeWageCostPerTick } from '../financial/financialTick';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
@@ -339,7 +340,7 @@ function accumulateTheoreticalCostFloor(
     for (const edu of educationLevelKeys) {
         const req = facility.workerRequirement[edu] ?? 0;
         if (req > 0) {
-            wageCostPerUnit += req * (planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU);
+            wageCostPerUnit += req * planet.wagePerEdu[edu];
         }
     }
     const totalCostPerUnit = inputCostPerUnit + wageCostPerUnit;
@@ -405,19 +406,21 @@ function processProductionFacility(params: ProductionParameters): void {
                 : (planet.marketPrices[need.resource.name] ?? 0),
         );
     }
+    let inputCosts = 0;
     for (const [name, qty] of Object.entries(actualConsumed)) {
         const value = qty * (needCostByName.get(name) ?? planet.marketPrices[name] ?? 0);
         costBalance -= value;
+        inputCosts += value;
         monthAcc.consumptionValue += value;
     }
-    // Use actual worker wages (not design-capacity wages) for an accurate cost balance.
     let actualWageCost = 0;
+    const agentAssets = agent.assets[planet.id];
+    assert(agentAssets, 'Agent assets should be defined at this point');
     for (const edu of educationLevelKeys) {
-        actualWageCost += (workerResults.totalUsedByEdu[edu] ?? 0) * (planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU);
+        actualWageCost += (workerResults.totalUsedByEdu[edu] ?? 0) * agentAssets.wagePerEdu[edu];
     }
     costBalance -= actualWageCost;
 
-    // Accumulate planet-level production costs allocated to each output by value share.
     if (outputRevenue > 0) {
         const totalCostThisFacility = outputRevenue - costBalance;
         for (const [name, qty] of Object.entries(actualProduced)) {
@@ -436,6 +439,9 @@ function processProductionFacility(params: ProductionParameters): void {
         exactUsedByEdu: workerResults.exactUsedByEdu,
         lastProduced: actualProduced,
         lastConsumed: actualConsumed,
+        revenue: outputRevenue,
+        wageCosts: actualWageCost,
+        inputCosts,
         costBalance,
     };
 }
@@ -460,12 +466,15 @@ function processManagementFacility(params: ManagementParameters): void {
                 : (planet.marketPrices[need.resource.name] ?? 0),
         );
     }
+    let inputCosts = 0;
     for (const [name, qty] of Object.entries(actualConsumed)) {
         const value = qty * (needCostByName.get(name) ?? planet.marketPrices[name] ?? 0);
         costBalance -= value;
+        inputCosts += value;
         monthAcc.consumptionValue += value;
     }
-    costBalance -= computeWageCostPerTick(facility, planet);
+    const wageCosts = computeWageCostPerTick(facility, planet);
+    costBalance -= wageCosts;
     facility.lastTickResults = {
         overallEfficiency,
         workerEfficiency: workerResults.workerEfficiency,
@@ -474,6 +483,8 @@ function processManagementFacility(params: ManagementParameters): void {
         totalUsedByEdu: workerResults.totalUsedByEdu,
         exactUsedByEdu: workerResults.exactUsedByEdu,
         lastConsumed: actualConsumed,
+        wageCosts,
+        inputCosts,
         costBalance,
     };
 }
@@ -515,10 +526,12 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
     }
 
     let costBalance = 0;
+    let inputCosts = 0;
     for (const [name, qty] of Object.entries(actualConsumed)) {
         const value = qty * (planet.marketPrices[name] ?? 0);
         monthAcc.consumptionValue += value;
         costBalance -= value;
+        inputCosts += value;
         monthAcc.consumedResources[name] = {
             quantity: (monthAcc.consumedResources[name]?.quantity ?? 0) + qty,
             value: (monthAcc.consumedResources[name]?.value ?? 0) + value,
@@ -532,6 +545,8 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
         totalUsedByEdu: workerResults.totalUsedByEdu,
         exactUsedByEdu: workerResults.exactUsedByEdu,
         lastConsumed: actualConsumed,
+        wageCosts: 0,
+        inputCosts,
         costBalance,
     };
 }
@@ -544,6 +559,8 @@ function processStorageFacility(params: StorageParameters): void {
         overqualifiedWorkers: workerResults.overqualifiedWorkers,
         totalUsedByEdu: workerResults.totalUsedByEdu,
         exactUsedByEdu: workerResults.exactUsedByEdu,
+        wageCosts: 0,
+        inputCosts: 0,
         costBalance: 0,
     };
 }

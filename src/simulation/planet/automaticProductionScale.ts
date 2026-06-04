@@ -19,19 +19,19 @@ export const PID_KP = 0.1;
 /** Integral gain: eliminates persistent steady-state offset. */
 export const PID_KI = 0.001;
 /** Derivative gain: dampens oscillations by braking when error changes. */
-export const PID_KD = 0.08;
+export const PID_KD = 0.05;
 export const PID_IMAX = 0.05;
 export const PID_OUT_MAX = 0.5;
 export const PID_D_ALPHA = 0.3;
 
-export const EXPANSION_INTEGRAL_THRESHOLD = 120;
+export const EXPANSION_INTEGRAL_THRESHOLD = 30;
 /** Anti-windup ceiling for the expansion accumulator. */
-export const EXPANSION_INTEGRAL_MAX = 240;
+export const EXPANSION_INTEGRAL_MAX = 60;
 /**
  * Per-call decay applied to the expansion integral when scale < maxScale
  * or signal is not positive — slowly forgets old demand pressure.
  */
-export const EXPANSION_INTEGRAL_DECAY = 1;
+export const EXPANSION_INTEGRAL_DECAY = 0.5;
 
 function getDefaultPidState(): PidState {
     return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
@@ -110,8 +110,7 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
         const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
         const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
-        const balance =
-            (5 * avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, 5 * avg.unfilledDemand + avg.unsoldSupply);
+        const balance = (avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, avg.unfilledDemand + avg.unsoldSupply);
 
         const WEIGHT_UNFILLED = 1.0;
         const WEIGHT_UNSOLD = 0.5;
@@ -275,7 +274,7 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             const delta = computePidDelta(signal, state, facility.maxScale);
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
 
-            if (facility.scale >= facility.maxScale && signal > 0) {
+            if (facility.scale === facility.maxScale && signal > 0) {
                 state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);
             } else {
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);

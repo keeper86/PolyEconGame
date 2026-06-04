@@ -153,7 +153,7 @@ export const getPlanetEconomy = () =>
                 economy: {
                     planetName: planet.name,
                     bank: planet.bank,
-                    wagePerEdu: (planet.wagePerEdu as Record<string, number> | null) ?? null,
+                    wagePerEdu: planet.wagePerEdu as Record<string, number>,
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? null,
                 },
             };

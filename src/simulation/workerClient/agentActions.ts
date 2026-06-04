@@ -3,9 +3,6 @@ import { pushTickerEvent } from '../planet/planet';
 import { makeAgent } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from './messages';
 
-/**
- * Handle 'createAgent' action
- */
 export function handleCreateAgent(
     state: GameState,
     action: Extract<PendingAction, { type: 'createAgent' }>,
@@ -25,11 +22,14 @@ export function handleCreateAgent(
             commercial: { acquiredTick: state.tick, frozen: false },
             workforce: { acquiredTick: state.tick, frozen: false },
         };
+        const homePlanet = state.planets.get(planetId);
+        if (homePlanet) {
+            homeAssets.wagePerEdu = { ...homePlanet.wagePerEdu };
+        }
     }
 
     state.agents.set(agentId, newAgent);
 
-    // Emit ticker event
     const planet = state.planets.get(planetId);
     pushTickerEvent(state, {
         category: 'agentCreated',
@@ -98,9 +98,6 @@ export function handleSetWorkerAllocationTargets(
     safePostMessage({ type: 'workerAllocationSet', requestId, agentId });
 }
 
-/**
- * Dispatch agent-related actions to the appropriate handler
- */
 export function handleAgentAction(
     state: GameState,
     action: PendingAction,
@@ -117,7 +114,6 @@ export function handleAgentAction(
             handleSetWorkerAllocationTargets(state, action, safePostMessage);
             break;
         default:
-            // This function only handles agent actions
             break;
     }
 }

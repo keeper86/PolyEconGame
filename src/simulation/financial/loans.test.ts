@@ -16,7 +16,8 @@ describe('per-agent loan bookkeeping', () => {
     beforeEach(() => {
         agent = makeAgent();
         planet = makePlanetWithPopulation({ none: 1000 }).planet;
-        planet.wagePerEdu = { none: 1.0 };
+        planet.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        agent.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
     });
 
     it('records per-agent loan on issuance', () => {

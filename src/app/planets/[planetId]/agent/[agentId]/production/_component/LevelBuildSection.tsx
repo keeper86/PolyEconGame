@@ -3,16 +3,15 @@
 import React, { useMemo, useState } from 'react';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FacilityCardShell } from './FacilityCardShell';
 import { Separator } from '@/components/ui/separator';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { FacilityIORow } from './FacilityIORow';
-import { ScaleSelector } from './ScaleSelector';
+import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
+import { getFacilityType } from '@/simulation/planet/facility';
 import { PlusCircle, Zap, Users } from 'lucide-react';
 
 const PLACEHOLDER_PLANET = 'catalog';
@@ -39,14 +38,7 @@ function BuildCard({
     const queryClient = useQueryClient();
     const facility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
-    const [targetScale, setTargetScale] = useState(1);
-
-    const buildCost = useMemo(
-        () => calculateCostsForConstruction(facilityType, 0, targetScale),
-        [facilityType, targetScale],
-    );
-    const estimatedCredits =
-        constructionServicePrice && constructionServicePrice > 0 ? buildCost * constructionServicePrice : null;
+    const [previewScale, setPreviewScale] = useState(1);
 
     const totalWorkers = Object.values(facility.workerRequirement).reduce((s, v) => s + (v ?? 0), 0);
 
@@ -89,53 +81,25 @@ function BuildCard({
             }
         >
             <div className='flex-1'>
-                <FacilityIORow needs={facility.needs} produces={facility.produces} scale={targetScale} />
+                <FacilityIORow needs={facility.needs} produces={facility.produces} scale={previewScale} />
             </div>
             <div className='mt-auto space-y-2'>
                 <Separator />
-                <div className='flex items-center justify-between'>
-                    <p className='text-xs font-medium'>Target scale</p>
-                </div>
-                <ScaleSelector value={targetScale} min={1} onChange={setTargetScale} />
-                <p className='text-xs text-muted-foreground'>
-                    Construction cost:{' '}
-                    <span className='tabular-nums font-medium text-foreground'>
-                        {formatNumberWithUnit(buildCost, 'units')}
-                    </span>{' '}
-                    construction services
-                    {estimatedCredits !== null && (
-                        <>
-                            {' '}
-                            <span className='text-muted-foreground'>≈</span>{' '}
-                            <span className='tabular-nums font-medium text-foreground'>
-                                {formatNumberWithUnit(estimatedCredits, 'currency', planetId)}
-                            </span>{' '}
-                            credits
-                        </>
-                    )}
-                </p>
-                <div className='flex gap-2'>
-                    <Button
-                        size='sm'
-                        variant='outline'
-                        className='flex-1 text-xs'
-                        disabled={buildMutation.isPending}
-                        onClick={() =>
-                            buildMutation.mutate({ agentId, planetId, facilityKey: facility.name, targetScale })
-                        }
-                    >
-                        {buildMutation.isPending ? 'Building…' : 'Build'}
-                    </Button>
-                    <Button
-                        size='sm'
-                        variant='ghost'
-                        className='flex-1 text-xs'
-                        disabled={buildMutation.isPending}
-                        onClick={onCancel}
-                    >
-                        Cancel
-                    </Button>
-                </div>
+                <FacilityConstructionPanel
+                    facilityType={facilityType}
+                    fromScale={0}
+                    constructionServicePrice={constructionServicePrice}
+                    planetId={planetId}
+                    label='Build at scale'
+                    confirmLabel='Build'
+                    pendingLabel='Building…'
+                    isPending={buildMutation.isPending}
+                    onCancel={onCancel}
+                    onConfirm={(targetScale) =>
+                        buildMutation.mutate({ agentId, planetId, facilityKey: facility.name, targetScale })
+                    }
+                    onScaleChange={setPreviewScale}
+                />
             </div>
         </FacilityCardShell>
     );

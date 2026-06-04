@@ -1,6 +1,7 @@
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
+import { MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
@@ -58,5 +59,35 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
 
         // 4. Store the target
         assets.allocatedWorkers = newTarget;
+    }
+}
+
+export function automaticAdjustmentWages(agents: Map<string, Agent>, planet: Planet): void {
+    for (const agent of agents.values()) {
+        if (!agent.automated && !agent.automateWorkerAllocation) {
+            continue;
+        }
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            continue;
+        }
+
+        const profitDelta = assets.deposits - assets.monthAcc.depositsAtMonthStart;
+        const netBalance = assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
+
+        if (profitDelta < 0) {
+            // Losing money — cut wages, but never below minimum wage
+            for (const edu of educationLevelKeys) {
+                assets.wagePerEdu[edu as EducationLevelType] = Math.max(
+                    MIN_WAGE,
+                    assets.wagePerEdu[edu as EducationLevelType] * (1 - WAGE_ADJUSTMENT_RATE),
+                );
+            }
+        } else if (profitDelta > 0 && netBalance > 0) {
+            // Profitable — raise wages to attract better workers
+            for (const edu of educationLevelKeys) {
+                assets.wagePerEdu[edu as EducationLevelType] *= 1 + WAGE_ADJUSTMENT_RATE;
+            }
+        }
     }
 }

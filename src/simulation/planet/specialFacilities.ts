@@ -8,6 +8,8 @@ const zeroLastTicksResults: LastManagementTickResults = {
     exactUsedByEdu: {},
     totalUsedByEdu: {},
     lastConsumed: {},
+    wageCosts: 0,
+    inputCosts: 0,
     costBalance: 0,
 };
 

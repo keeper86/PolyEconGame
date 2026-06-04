@@ -8,31 +8,8 @@ import type { Loan } from './loanTypes';
 import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
 
-/**
- * Default wage per education level per tick (currency units per worker).
- * All levels start at 1.0; can be overridden via `planet.wagePerEdu`.
- */
-export const DEFAULT_WAGE_PER_EDU = 1.0;
+export const DEFAULT_WAGE_PER_EDU = 10.0;
 
-/**
- * Marginal propensity to consume out of income (disposable income consumed
- * each tick).  At 1.0 all wages are immediately spent.
- */
-export const C_INC = 1.0;
-
-/**
- * Marginal propensity to consume out of existing wealth.
- * 0.0 means no wealth-based consumption (minimal first implementation).
- */
-export const C_WEALTH = 0.0;
-
-function getWage(planet: Planet, edu: EducationLevelType): number {
-    return planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
-}
-
-/**
- * Total wage cost per tick for a facility: Σ(wage[edu] × workerRequirement[edu] × scale).
- */
 export function computeWageCostPerTick(
     facility: { workerRequirement: { [edu in EducationLevelType]?: number }; scale: number },
     planet: Planet,
@@ -41,21 +18,12 @@ export function computeWageCostPerTick(
     for (const edu of educationLevelKeys) {
         const req = facility.workerRequirement[edu] ?? 0;
         if (req > 0) {
-            wageCost += getWage(planet, edu) * req * facility.scale;
+            wageCost += planet.wagePerEdu[edu] * req * facility.scale;
         }
     }
     return wageCost;
 }
 
-/**
- * Estimate the cost to purchase a full input buffer for all production
- * facilities of an agent on a planet.
- *
- * inputBufferCost = Σ_facility Σ_input  qty × scale × INPUT_BUFFER_TARGET_TICKS × marketPrice
- *
- * Land-bound resources (deposits) are excluded because they are not purchased
- * on the spot market.
- */
 function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): number {
     let cost = 0;
     for (const facility of assets.productionFacilities) {
@@ -70,22 +38,30 @@ function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): num
     return cost;
 }
 
-// ---------------------------------------------------------------------------
-// A) Pre-production financial tick
-// ---------------------------------------------------------------------------
-
 export function preProductionFinancialTick(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
 
+    const wageSumForMean: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    let agentCountOnPlanet = 0;
+
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
-        if (!assets?.workforceDemography) {
+        if (!assets) {
             return;
         }
+
+        agentCountOnPlanet++;
+        for (const edu of educationLevelKeys) {
+            wageSumForMean[edu] += assets.wagePerEdu[edu];
+        }
+
+        if (!assets.workforceDemography) {
+            return;
+        }
+
         const workforce = assets.workforceDemography;
 
-        // 1. Compute wage bill
         let wageBill = 0;
         const totalWorkersForEdu: Record<EducationLevelType, number> = {
             none: 0,
@@ -98,8 +74,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             const departingWorkers = totalDepartingForEdu(workforce, edu);
             const totalWorkers = activeWorkers + departingWorkers;
             totalWorkersForEdu[edu] = totalWorkers;
-            const wage = getWage(planet, edu);
-            wageBill += totalWorkers * wage;
+            wageBill += totalWorkers * assets.wagePerEdu[edu];
         }
 
         if (wageBill <= 0) {
@@ -109,10 +84,8 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         assets.monthAcc.wages += wageBill;
         assets.monthAcc.totalWorkersTicks += Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
 
-        // 2. Working-capital loan if needed (MONEY CREATION)
-        //    bank.loans↑  bank.deposits↑  agent.deposits↑
         if (assets.deposits < wageBill) {
-            const shortfall = 6 * TICKS_PER_MONTH * wageBill - assets.deposits; // loan to cover wage bill for 1 year
+            const shortfall = 6 * TICKS_PER_MONTH * wageBill - assets.deposits;
             grantLoan(assets, bank, shortfall, 'wageCoverage', tick);
         }
 
@@ -136,7 +109,6 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             for (let age = 0; age < demography.length; age++) {
                 for (const edu of educationLevelKeys) {
                     for (const skill of SKILL) {
-                        // Only update cohorts that have workers employed by this agent.
                         const agentWorkers = workforce[age]?.[edu]?.[skill];
                         if (!agentWorkers) {
                             continue;
@@ -159,10 +131,15 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         }
     });
 
+    if (agentCountOnPlanet > 0) {
+        for (const edu of educationLevelKeys) {
+            planet.wagePerEdu[edu] = wageSumForMean[edu] / agentCountOnPlanet;
+        }
+    }
+
     bank.equity = bank.deposits - bank.loans;
 }
 
-/** Fee rate applied when a matured loan is rolled over (e.g. 0.05 = 5%). */
 export const ROLLOVER_FEE_RATE = 0.05;
 
 export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
@@ -177,7 +154,6 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
         const maturedLoans: Loan[] = [];
         const remainingLoans: Loan[] = [];
 
-        // Partition loans into matured (maturityTick > 0 && tick >= maturityTick) and not-yet-matured
         for (const loan of assets.activeLoans) {
             if (loan.maturityTick > 0 && tick >= loan.maturityTick) {
                 maturedLoans.push(loan);
@@ -190,22 +166,17 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
             return;
         }
 
-        // Calculate total amount due from matured loans
         const totalDue = maturedLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
 
-        // Try to repay from deposits
         const canRepay = Math.min(totalDue, assets.deposits);
         const shortfall = totalDue - canRepay;
 
-        // Repay what we can from existing deposits
         if (canRepay > 0) {
             assets.deposits -= canRepay;
             bank.loans -= canRepay;
             bank.deposits -= canRepay;
         }
 
-        // If there's a shortfall, create a rollover loan (with fee) and use it
-        // to fully repay the remaining matured principal.
         if (shortfall > 0) {
             const rolloverPrincipal = shortfall;
 
@@ -219,7 +190,6 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
             remainingLoans.push(rolloverLoan);
         }
 
-        // Replace active loans with the remaining (non-matured + rollover) ones
         assets.activeLoans = remainingLoans;
     });
 
@@ -237,7 +207,6 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         if (!agent.automated) {
             return;
         }
-        // Agents with a dedicated repayment tick handle their own loan management.
         if (agent.agentRole === 'arbitrage_trader' || agent.agentRole === 'shipbuilder') {
             return;
         }
@@ -258,8 +227,6 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
             );
         }
 
-        // Liquidity buffer: keep 12 months of blended total expenses before repaying.
-        // If no history is available yet (expenses === 0) skip repayment entirely.
         const lastMonthExpenses =
             (assets.lastMonthAcc.wages ?? 0) +
             (assets.lastMonthAcc.purchases ?? 0) +

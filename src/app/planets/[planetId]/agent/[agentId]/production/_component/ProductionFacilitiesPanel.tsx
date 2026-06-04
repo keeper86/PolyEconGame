@@ -98,7 +98,7 @@ export default function ProductionFacilitiesPanel({
                             <TabsTrigger
                                 key={level}
                                 value={level}
-                                className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                className='bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                             >
                                 {FACILITY_LEVEL_LABELS[level]}
                                 {ownedTotal > 0 && (
