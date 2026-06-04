@@ -52,6 +52,7 @@ const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services', 'currency'] a
 const MARKET_LEVEL_LABELS: Record<string, string> = {
     ...RESOURCE_LEVEL_LABELS,
     currency: 'Currency',
+    all: 'All',
 };
 
 /** Resolve the level group for any resource name, including dynamic currency resources. */
@@ -121,12 +122,16 @@ export default function MarketPanel({
     // Group resources by level
     const resourceGroups = useMemo(() => {
         const groups = groupResourcesByLevel(resources);
-        // Filter to only include levels that have resources and sort by LEVEL_ORDER
-        return LEVEL_ORDER.filter((level) => groups.has(level)).map((level) => ({
+        // Always include all levels so tabs never vanish when showAll is toggled off.
+        const levelGroups = LEVEL_ORDER.map((level) => ({
             level,
             label: MARKET_LEVEL_LABELS[level] ?? level,
-            resources: groups.get(level)!,
+            resources: groups.get(level) ?? [],
         }));
+        if (resources.length > 0) {
+            return [{ level: 'all', label: 'All', resources }, ...levelGroups];
+        }
+        return levelGroups;
     }, [resources]);
 
     const [activeTab, setActiveTab] = useState<string>(() => {
@@ -136,6 +141,9 @@ export default function MarketPanel({
         const hash = window.location.hash.slice(1);
         if (!hash) {
             return resourceGroups[0]?.level ?? LEVEL_ORDER[0];
+        }
+        if (hash === 'all') {
+            return 'all';
         }
         if ((LEVEL_ORDER as readonly string[]).includes(hash)) {
             return hash;
@@ -151,6 +159,10 @@ export default function MarketPanel({
     useEffect(() => {
         const hash = window.location.hash.slice(1);
         if (!hash) {
+            return;
+        }
+        if (hash === 'all') {
+            setActiveTab('all');
             return;
         }
         if ((LEVEL_ORDER as readonly string[]).includes(hash)) {
@@ -276,9 +288,13 @@ export default function MarketPanel({
     const handleColumnSort = (columnId: string) => {
         setSortConfig((prev) => {
             if (prev.column === columnId) {
-                return { column: columnId, direction: prev.direction === 'desc' ? 'asc' : 'desc' };
+                if (prev.direction === 'desc') {
+                    return { column: columnId, direction: 'asc' };
+                }
+                // asc → no sort
+                return { column: null, direction: 'asc' };
             }
-            return { column: columnId, direction: columnId === 'name' ? 'asc' : 'desc' };
+            return { column: columnId, direction: 'desc' };
         });
     };
 
@@ -295,52 +311,31 @@ export default function MarketPanel({
                     <TabsTrigger
                         key={level}
                         value={level}
-                        className='bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                        disabled={levelResources.length === 0}
+                        className='bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed'
                     >
                         {label}
-                        <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
-                            {levelResources.length}
-                        </Badge>
                     </TabsTrigger>
                 ))}
             </TabsList>
             <Card ref={cardRef}>
                 <CardContent className='p-3'>
-                    {resourceGroups.length === 0 ? (
-                        <p className='text-sm text-muted-foreground'>
-                            No resources to display. Build a facility or enable &quot;Show all resources&quot;.
-                        </p>
-                    ) : (
-                        resourceGroups.map(({ level, resources: levelResources }) => (
-                            <TabsContent key={level} value={level} className='mt-0'>
-                                {/* ── Column header — using column configuration ── */}
-                                <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
-                                    <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
-                                        <div className='w-6 shrink-0' />
-                                        <button
-                                            onClick={() => handleColumnSort('name')}
-                                            className='flex flex-1 min-w-0 items-center gap-0.5 cursor-pointer hover:text-muted-foreground truncate'
-                                        >
-                                            <span className='truncate'>Resource</span>
-                                            {sortConfig.column === 'name' ? (
-                                                sortConfig.direction === 'asc' ? (
-                                                    <ChevronUp className='w-2.5 h-2.5 shrink-0' />
-                                                ) : (
-                                                    <ChevronDown className='w-2.5 h-2.5 shrink-0' />
-                                                )
-                                            ) : (
-                                                <ChevronsUpDown className='w-2.5 h-2.5 shrink-0 opacity-30' />
-                                            )}
-                                        </button>
-                                        {visibleColumns.map((column) => (
+                    {resourceGroups.map(({ level, resources: levelResources }) => (
+                        <TabsContent key={level} value={level} className='mt-0'>
+                            {levelResources.length === 0 ? (
+                                <p className='text-sm text-muted-foreground py-4 text-center'>-empty-</p>
+                            ) : (
+                                <>
+                                    {/* ── Column header — using column configuration ── */}
+                                    <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
+                                        <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
+                                            <div className='w-6 shrink-0' />
                                             <button
-                                                key={column.id}
-                                                onClick={() => handleColumnSort(column.id)}
-                                                className={`${getHeaderColumnClasses(column.id)} flex items-center justify-end gap-0.5 cursor-pointer hover:text-muted-foreground`}
-                                                title={column.title}
+                                                onClick={() => handleColumnSort('name')}
+                                                className='flex flex-1 min-w-0 items-center gap-0.5 cursor-pointer hover:text-muted-foreground truncate'
                                             >
-                                                <span className='truncate'>{column.label}</span>
-                                                {sortConfig.column === column.id ? (
+                                                <span className='truncate'>Resource</span>
+                                                {sortConfig.column === 'name' ? (
                                                     sortConfig.direction === 'asc' ? (
                                                         <ChevronUp className='w-2.5 h-2.5 shrink-0' />
                                                     ) : (
@@ -350,52 +345,70 @@ export default function MarketPanel({
                                                     <ChevronsUpDown className='w-2.5 h-2.5 shrink-0 opacity-30' />
                                                 )}
                                             </button>
-                                        ))}
+                                            {visibleColumns.map((column) => (
+                                                <button
+                                                    key={column.id}
+                                                    onClick={() => handleColumnSort(column.id)}
+                                                    className={`${getHeaderColumnClasses(column.id)} flex items-center justify-end gap-0.5 cursor-pointer hover:text-muted-foreground`}
+                                                    title={column.title}
+                                                >
+                                                    <span className='truncate'>{column.label}</span>
+                                                    {sortConfig.column === column.id ? (
+                                                        sortConfig.direction === 'asc' ? (
+                                                            <ChevronUp className='w-2.5 h-2.5 shrink-0' />
+                                                        ) : (
+                                                            <ChevronDown className='w-2.5 h-2.5 shrink-0' />
+                                                        )
+                                                    ) : (
+                                                        <ChevronsUpDown className='w-2.5 h-2.5 shrink-0 opacity-30' />
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {/* spacer matching ChevronDown w-4 in AccordionTrigger */}
+                                        <div className='w-4 shrink-0' />
                                     </div>
-                                    {/* spacer matching ChevronDown w-4 in AccordionTrigger */}
-                                    <div className='w-4 shrink-0' />
-                                </div>
-
-                                <Accordion
-                                    type='single'
-                                    collapsible
-                                    value={openItem}
-                                    onValueChange={handleOpenChange}
-                                    className='w-full'
-                                >
-                                    {(sortConfig.column === null
-                                        ? levelResources
-                                        : [...levelResources].sort((a, b) => {
-                                              const aVal = getSortValue(a.name, sortConfig.column!);
-                                              const bVal = getSortValue(b.name, sortConfig.column!);
-                                              const cmp =
-                                                  typeof aVal === 'string' && typeof bVal === 'string'
-                                                      ? aVal.localeCompare(bVal)
-                                                      : (aVal as number) - (bVal as number);
-                                              return sortConfig.direction === 'asc' ? cmp : -cmp;
-                                          })
-                                    ).map(({ name }) => (
-                                        <ResourceAccordionItem
-                                            key={name}
-                                            resourceName={name}
-                                            agentId={agentId}
-                                            assets={assets}
-                                            local={
-                                                localStates[name] ??
-                                                buildInitialState([{ name }], buyBids, sellOffers)[name]
-                                            }
-                                            onLocalChange={handleLocalChange}
-                                            _isOpen={openItem === name}
-                                            overviewRow={overviewRows[name]}
-                                            visibleColumns={visibleColumns}
-                                            planetNames={planetNames}
-                                            allPlanetDeposits={allPlanetDeposits}
-                                        />
-                                    ))}
-                                </Accordion>
-                            </TabsContent>
-                        ))
-                    )}
+                                    <Accordion
+                                        type='single'
+                                        collapsible
+                                        value={openItem}
+                                        onValueChange={handleOpenChange}
+                                        className='w-full'
+                                    >
+                                        {(sortConfig.column === null
+                                            ? levelResources
+                                            : [...levelResources].sort((a, b) => {
+                                                  const aVal = getSortValue(a.name, sortConfig.column!);
+                                                  const bVal = getSortValue(b.name, sortConfig.column!);
+                                                  const cmp =
+                                                      typeof aVal === 'string' && typeof bVal === 'string'
+                                                          ? aVal.localeCompare(bVal)
+                                                          : (aVal as number) - (bVal as number);
+                                                  return sortConfig.direction === 'asc' ? cmp : -cmp;
+                                              })
+                                        ).map(({ name }) => (
+                                            <ResourceAccordionItem
+                                                key={name}
+                                                resourceName={name}
+                                                agentId={agentId}
+                                                assets={assets}
+                                                local={
+                                                    localStates[name] ??
+                                                    buildInitialState([{ name }], buyBids, sellOffers)[name]
+                                                }
+                                                onLocalChange={handleLocalChange}
+                                                _isOpen={openItem === name}
+                                                overviewRow={overviewRows[name]}
+                                                visibleColumns={visibleColumns}
+                                                planetNames={planetNames}
+                                                allPlanetDeposits={allPlanetDeposits}
+                                            />
+                                        ))}
+                                    </Accordion>{' '}
+                                </>
+                            )}{' '}
+                        </TabsContent>
+                    ))}
                 </CardContent>
             </Card>
         </Tabs>
