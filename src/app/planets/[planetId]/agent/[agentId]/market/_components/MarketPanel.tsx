@@ -1,7 +1,9 @@
 'use client';
 
 import { Accordion } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -50,6 +52,14 @@ const MARKET_LEVEL_LABELS: Record<string, string> = {
     ...RESOURCE_LEVEL_LABELS,
     currency: 'Currency',
 };
+
+/** Resolve the level group for any resource name, including dynamic currency resources. */
+function getLevelForResource(resourceName: string): string {
+    if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
+        return 'currency';
+    }
+    return getResourceByName(resourceName)?.level ?? 'raw';
+}
 
 export default function MarketPanel({
     agentId,
@@ -117,6 +127,40 @@ export default function MarketPanel({
             resources: groups.get(level)!,
         }));
     }, [resources]);
+
+    const [activeTab, setActiveTab] = useState<string>(() => {
+        if (typeof window === 'undefined') {
+            return resourceGroups[0]?.level ?? LEVEL_ORDER[0];
+        }
+        const hash = window.location.hash.slice(1);
+        if (!hash) {
+            return resourceGroups[0]?.level ?? LEVEL_ORDER[0];
+        }
+        if ((LEVEL_ORDER as readonly string[]).includes(hash)) {
+            return hash;
+        }
+        const resourceName = slugToResourceName(hash);
+        if (resourceName) {
+            return getLevelForResource(resourceName);
+        }
+        return resourceGroups[0]?.level ?? LEVEL_ORDER[0];
+    });
+
+    // Hydrate activeTab after Next.js soft navigation (hash may arrive after useState runs).
+    useEffect(() => {
+        const hash = window.location.hash.slice(1);
+        if (!hash) {
+            return;
+        }
+        if ((LEVEL_ORDER as readonly string[]).includes(hash)) {
+            setActiveTab(hash);
+            return;
+        }
+        const resourceName = slugToResourceName(hash);
+        if (resourceName) {
+            setActiveTab(getLevelForResource(resourceName));
+        }
+    }, []);
 
     const [localStates, setLocalStates] = useState<Record<string, LocalResourceState>>(() =>
         buildInitialState(resources, buyBids, sellOffers),
@@ -196,22 +240,37 @@ export default function MarketPanel({
         });
     };
 
-    return (
-        <Card ref={cardRef}>
-            <CardContent className='p-3 space-y-3'>
-                {resourceGroups.length === 0 ? (
-                    <p className='text-sm text-muted-foreground'>
-                        No resources to display. Build a facility or enable &quot;Show all resources&quot;.
-                    </p>
-                ) : (
-                    <div className='space-y-6'>
-                        {resourceGroups.map(({ level, label, resources: levelResources }) => (
-                            <div key={level} className='space-y-2'>
-                                {/* Level header */}
-                                <div className='px-1'>
-                                    <h3 className='text-sm font-semibold text-foreground'>{label}</h3>
-                                </div>
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        handleOpenChange(undefined);
+        window.history.replaceState(null, '', `#${value}`);
+    };
 
+    return (
+        <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
+            <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
+                {resourceGroups.map(({ level, label, resources: levelResources }) => (
+                    <TabsTrigger
+                        key={level}
+                        value={level}
+                        className='bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                        {label}
+                        <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
+                            {levelResources.length}
+                        </Badge>
+                    </TabsTrigger>
+                ))}
+            </TabsList>
+            <Card ref={cardRef}>
+                <CardContent className='p-3'>
+                    {resourceGroups.length === 0 ? (
+                        <p className='text-sm text-muted-foreground'>
+                            No resources to display. Build a facility or enable &quot;Show all resources&quot;.
+                        </p>
+                    ) : (
+                        resourceGroups.map(({ level, resources: levelResources }) => (
+                            <TabsContent key={level} value={level} className='mt-0'>
                                 {/* ── Column header — using column configuration ── */}
                                 <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
                                     <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
@@ -257,11 +316,11 @@ export default function MarketPanel({
                                         />
                                     ))}
                                 </Accordion>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+                            </TabsContent>
+                        ))
+                    )}
+                </CardContent>
+            </Card>
+        </Tabs>
     );
 }
