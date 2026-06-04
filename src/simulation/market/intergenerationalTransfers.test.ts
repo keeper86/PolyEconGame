@@ -349,8 +349,11 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
 
     it('infants with higher food-stock deficit receive more than those with less deficit', () => {
         const healthcareDef = SERVICE_DEFINITIONS.healthcare;
+        const groceryPrice = planet.marketPrices[groceryDef.resource.name] ?? 0;
+        const healthcarePrice = planet.marketPrices[healthcareDef.resource.name] ?? 0;
         const survivalFloor =
-            (groceryDef.consumptionRatePerPersonPerTick + healthcareDef.consumptionRatePerPersonPerTick) *
+            (groceryDef.consumptionRatePerPersonPerTick * groceryPrice +
+                healthcareDef.consumptionRatePerPersonPerTick * healthcarePrice) *
             RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
         placePeople(planet, PARENT_AGE, 1000, {
             wealthMean: survivalFloor * 2, // surplus above floor, but insufficient to cover all survival needs

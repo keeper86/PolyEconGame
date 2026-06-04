@@ -22,7 +22,6 @@ import {
     logsResourceType,
     lumberResourceType,
     machineryResourceType,
-    naturalGasResourceType,
     packagingResourceType,
     paperResourceType,
     pesticideResourceType,
