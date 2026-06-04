@@ -126,10 +126,7 @@ export type Planet = {
     environment: Environment;
     bank: Bank;
 
-    wagePerEdu?: Partial<Record<EducationLevelType, number>>;
-    /**
-     * TODO: move this to own type in market.
-     */
+    wagePerEdu: Record<EducationLevelType, number>;
     marketPrices: Record<string, number>;
     orderBooks: Record<string, ResourceOrderBook>;
     transportPipeline: {
@@ -291,6 +288,8 @@ export type AgentPlanetAssets = {
     activeLoans: Loan[];
 
     market?: AgentMarketOffers;
+
+    wagePerEdu: Record<EducationLevelType, number>;
 
     allocatedWorkers: PerEducation;
 

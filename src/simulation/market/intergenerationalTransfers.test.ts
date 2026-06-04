@@ -348,11 +348,6 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
     });
 
     it('infants with higher food-stock deficit receive more than those with less deficit', () => {
-        // With unlimited parent wealth the comfort tier fully equalizes per-capita welfare
-        // across all infant groups: survival-tier transfers to age-0 (more needy) are
-        // offset by larger comfort-tier transfers to age-1 (less needy but wealthier gap),
-        // producing identical final wealth. We use constrained parent wealth so the
-        // survival tier exhausts all parent surplus, leaving zero for the comfort tier.
         const healthcareDef = SERVICE_DEFINITIONS.healthcare;
         const survivalFloor =
             (groceryDef.consumptionRatePerPersonPerTick + healthcareDef.consumptionRatePerPersonPerTick) *

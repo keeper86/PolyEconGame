@@ -1,5 +1,6 @@
+import assert from 'assert';
 import { PRICE_CEIL, PRICE_FLOOR, SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
-import { DEFAULT_WAGE_PER_EDU, computeWageCostPerTick } from '../financial/financialTick';
+import { computeWageCostPerTick } from '../financial/financialTick';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
@@ -339,7 +340,7 @@ function accumulateTheoreticalCostFloor(
     for (const edu of educationLevelKeys) {
         const req = facility.workerRequirement[edu] ?? 0;
         if (req > 0) {
-            wageCostPerUnit += req * (planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU);
+            wageCostPerUnit += req * planet.wagePerEdu[edu];
         }
     }
     const totalCostPerUnit = inputCostPerUnit + wageCostPerUnit;
@@ -410,14 +411,14 @@ function processProductionFacility(params: ProductionParameters): void {
         costBalance -= value;
         monthAcc.consumptionValue += value;
     }
-    // Use actual worker wages (not design-capacity wages) for an accurate cost balance.
     let actualWageCost = 0;
+    const agentAssets = agent.assets[planet.id];
+    assert(agentAssets, 'Agent assets should be defined at this point');
     for (const edu of educationLevelKeys) {
-        actualWageCost += (workerResults.totalUsedByEdu[edu] ?? 0) * (planet.wagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU);
+        actualWageCost += (workerResults.totalUsedByEdu[edu] ?? 0) * agentAssets.wagePerEdu[edu];
     }
     costBalance -= actualWageCost;
 
-    // Accumulate planet-level production costs allocated to each output by value share.
     if (outputRevenue > 0) {
         const totalCostThisFacility = outputRevenue - costBalance;
         for (const [name, qty] of Object.entries(actualProduced)) {

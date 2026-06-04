@@ -1,4 +1,5 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createEmptyDemographicEventCounters,
@@ -447,6 +448,12 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         depositHold: 0,
         activeLoans: [],
         storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
+        wagePerEdu: {
+            none: DEFAULT_WAGE_PER_EDU,
+            primary: DEFAULT_WAGE_PER_EDU,
+            secondary: DEFAULT_WAGE_PER_EDU,
+            tertiary: DEFAULT_WAGE_PER_EDU,
+        },
         allocatedWorkers: makeAllocatedWorkers(),
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
@@ -507,6 +514,12 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
         marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
+        wagePerEdu: {
+            none: DEFAULT_WAGE_PER_EDU,
+            primary: DEFAULT_WAGE_PER_EDU,
+            secondary: DEFAULT_WAGE_PER_EDU,
+            tertiary: DEFAULT_WAGE_PER_EDU,
+        },
         transportPipeline: {},
         orderBooks: {},
         lastMarketResult: {},

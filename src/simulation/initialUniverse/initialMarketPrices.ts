@@ -54,7 +54,6 @@ export const initialMarketPrices: Record<string, number> = {
     [ironOreResourceType.name]: 1.0 * baselineFactor,
     [coalResourceType.name]: 1.0 * baselineFactor,
     [crudeOilResourceType.name]: 1.5 * baselineFactor,
-    [naturalGasResourceType.name]: 1.5 * baselineFactor,
     [logsResourceType.name]: 1.0 * baselineFactor,
     [stoneResourceType.name]: 0.5 * baselineFactor,
     [copperOreResourceType.name]: 1.5 * baselineFactor,

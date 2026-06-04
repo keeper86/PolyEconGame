@@ -55,7 +55,8 @@ export default function Footer() {
 
     // Merge server events
     useEffect(() => {
-        const newEvents = data?.tickerEvents;
+        const newEvents =
+            data?.tickerEvents.filter((e) => e.category !== 'shipArrived' && e.category !== 'shipDispatched') ?? [];
         if (!newEvents || newEvents.length === 0) {
             return;
         }
