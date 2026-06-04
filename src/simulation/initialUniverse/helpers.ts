@@ -1,4 +1,5 @@
 import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
 import { intensiveFarmFacility, waterExtractionFacility } from '../planet/productionFacilities';
@@ -120,6 +121,12 @@ export function makeAgentPlanetAssets(
         depositHold: 0,
         activeLoans: [],
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+        wagePerEdu: {
+            none: DEFAULT_WAGE_PER_EDU,
+            primary: DEFAULT_WAGE_PER_EDU,
+            secondary: DEFAULT_WAGE_PER_EDU,
+            tertiary: DEFAULT_WAGE_PER_EDU,
+        },
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),

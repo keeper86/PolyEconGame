@@ -822,7 +822,6 @@ function claimPoolKey(facilityType: string): string {
 export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
     const govClaims: string[] = [];
-    const govTenancies: string[] = [];
 
     // One claim-pool per land-bound facility type
     const claimPools = new Map<string, ResourceClaimEntry[]>();
@@ -831,7 +830,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const govArableId = `${PROC_PLANET_ID}-gov-arable`;
     const govWaterId = `${PROC_PLANET_ID}-gov-water`;
     govClaims.push(govArableId, govWaterId);
-    govTenancies.push(govArableId, govWaterId);
 
     if (!claimPools.has('cottonFarm')) {
         claimPools.set('cottonFarm', []);
@@ -845,7 +843,8 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             id: govArableId,
             type: arableLandResourceType,
             quantity: 100_000_000,
-            tenantAgentId: GOV,
+            tenantAgentId: 'proc-utilities',
+            costPerTick: 1_000_000,
             renewable: true,
         }),
     );
@@ -854,7 +853,8 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             id: govWaterId,
             type: waterSourceResourceType,
             quantity: 100_000_000,
-            tenantAgentId: GOV,
+            tenantAgentId: 'proc-utilities',
+            costPerTick: 500_000,
             renewable: true,
         }),
     );
@@ -1323,25 +1323,37 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     }
 
     // -----------------------------------------------------------------------
-    // Government agent (owns all claims, runs baseline gov services)
+    // Public utilities company — holds the government's baseline resource claims
+    // and runs the corresponding extraction/farming facilities, paying rent to the government.
     // -----------------------------------------------------------------------
+    const utilWaterFac = waterExtractionFacility(PROC_PLANET_ID, 'proc-util-water');
+    utilWaterFac.scale = 200;
+    utilWaterFac.maxScale = 200;
+    const utilAgriFac = intensiveFarmFacility(PROC_PLANET_ID, 'proc-util-agri');
+    utilAgriFac.scale = 800;
+    utilAgriFac.maxScale = 800;
+    const utilAgent = makeAgent({
+        id: 'proc-utilities',
+        name: 'Public Utilities Corp',
+        associatedPlanetId: PROC_PLANET_ID,
+        planetId: PROC_PLANET_ID,
+        facilities: [utilWaterFac, utilAgriFac],
+        storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-util-storage', name: 'Public Utilities Storage' }),
+        tenancies: [govArableId, govWaterId],
+    });
+    agents.push(utilAgent);
 
-    const govWaterFac = waterExtractionFacility(PROC_PLANET_ID, 'proc-gov-water');
-    govWaterFac.scale = 200;
-    govWaterFac.maxScale = 200;
-    const govAgriFac = intensiveFarmFacility(PROC_PLANET_ID, 'proc-gov-agri');
-    govAgriFac.scale = 800;
-    govAgriFac.maxScale = 800;
-
+    // Government agent — no production facilities; only owns resource claims and
+    // redistributes lease income as welfare each tick.
+    // -----------------------------------------------------------------------
     const govAgent = makeAgent({
         id: GOV,
         name: 'Procedural Earth Government',
         associatedPlanetId: PROC_PLANET_ID,
         planetId: PROC_PLANET_ID,
-        facilities: [govWaterFac, govAgriFac],
+        facilities: [],
         storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-gov-storage', name: 'Gov. Central Storage' }),
         claims: govClaims,
-        tenancies: govTenancies,
     });
     agents.unshift(govAgent);
 

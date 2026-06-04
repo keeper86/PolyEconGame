@@ -396,9 +396,14 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
-                            if (!active || !payload || payload.length === 0) return null;
+                            if (!active || !payload || payload.length === 0) {
+                                return null;
+                            }
                             const p = payload.find((e) => e.dataKey === 'value');
-                            return populationTooltipContent(`Year ${Math.floor(label as number)}`, p?.value as number | undefined);
+                            return populationTooltipContent(
+                                `Year ${Math.floor(label as number)}`,
+                                p?.value as number | undefined,
+                            );
                         }}
                     />
                     <Area
@@ -466,9 +471,14 @@ function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
-                            if (!active || !payload || payload.length === 0) return null;
+                            if (!active || !payload || payload.length === 0) {
+                                return null;
+                            }
                             const p = payload.find((e) => e.dataKey === 'value');
-                            return populationTooltipContent(`Year ${Math.round(label as number)}`, p?.value as number | undefined);
+                            return populationTooltipContent(
+                                `Year ${Math.round(label as number)}`,
+                                p?.value as number | undefined,
+                            );
                         }}
                     />
                     <Area

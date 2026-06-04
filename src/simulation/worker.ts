@@ -103,10 +103,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
     const TICK_INTERVAL_MS: number = typeof workerData?.tickIntervalMs === 'number' ? workerData.tickIntervalMs : 0;
 
-    // Seed the stochastic rounding PRNG for reproducibility.
-    // Using a fixed seed ensures identical simulation runs for the same
-    // starting conditions.  A future enhancement could persist and restore
-    // the seed for save/load support.
     seedRng(42);
 
     // -----------------------------------------------------------------
