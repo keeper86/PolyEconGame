@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { MarketOverviewRow } from '@/server/controller/planet';
@@ -240,6 +241,47 @@ export default function MarketPanel({
         });
     };
 
+    const [sortConfig, setSortConfig] = useState<{ column: string | null; direction: 'asc' | 'desc' }>({
+        column: null,
+        direction: 'desc',
+    });
+
+    const getSortValue = (resourceName: string, column: string): number | string => {
+        switch (column) {
+            case 'currentStorage':
+                return resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
+                    ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
+                    : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
+            case 'clearingPrice':
+                return overviewRows[resourceName]?.clearingPrice ?? 0;
+            case 'totalProduction':
+                return overviewRows[resourceName]?.totalProduction ?? 0;
+            case 'totalConsumption':
+                return overviewRows[resourceName]?.totalConsumption ?? 0;
+            case 'totalSupply':
+                return overviewRows[resourceName]?.totalSupply ?? 0;
+            case 'totalDemand':
+                return overviewRows[resourceName]?.totalDemand ?? 0;
+            case 'totalSold':
+                return overviewRows[resourceName]?.totalSold ?? 0;
+            case 'marketFill':
+                return overviewRows[resourceName]?.fillRatio ?? 0;
+            case 'name':
+                return resourceName;
+            default:
+                return 0;
+        }
+    };
+
+    const handleColumnSort = (columnId: string) => {
+        setSortConfig((prev) => {
+            if (prev.column === columnId) {
+                return { column: columnId, direction: prev.direction === 'desc' ? 'asc' : 'desc' };
+            }
+            return { column: columnId, direction: columnId === 'name' ? 'asc' : 'desc' };
+        });
+    };
+
     const handleTabChange = (value: string) => {
         setActiveTab(value);
         handleOpenChange(undefined);
@@ -275,15 +317,39 @@ export default function MarketPanel({
                                 <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
                                     <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
                                         <div className='w-6 shrink-0' />
-                                        <span className='flex-1 min-w-0 truncate'>Resource</span>
+                                        <button
+                                            onClick={() => handleColumnSort('name')}
+                                            className='flex flex-1 min-w-0 items-center gap-0.5 cursor-pointer hover:text-muted-foreground truncate'
+                                        >
+                                            <span className='truncate'>Resource</span>
+                                            {sortConfig.column === 'name' ? (
+                                                sortConfig.direction === 'asc' ? (
+                                                    <ChevronUp className='w-2.5 h-2.5 shrink-0' />
+                                                ) : (
+                                                    <ChevronDown className='w-2.5 h-2.5 shrink-0' />
+                                                )
+                                            ) : (
+                                                <ChevronsUpDown className='w-2.5 h-2.5 shrink-0 opacity-30' />
+                                            )}
+                                        </button>
                                         {visibleColumns.map((column) => (
-                                            <span
+                                            <button
                                                 key={column.id}
-                                                className={getHeaderColumnClasses(column.id)}
+                                                onClick={() => handleColumnSort(column.id)}
+                                                className={`${getHeaderColumnClasses(column.id)} flex items-center justify-end gap-0.5 cursor-pointer hover:text-muted-foreground`}
                                                 title={column.title}
                                             >
-                                                {column.label}
-                                            </span>
+                                                <span className='truncate'>{column.label}</span>
+                                                {sortConfig.column === column.id ? (
+                                                    sortConfig.direction === 'asc' ? (
+                                                        <ChevronUp className='w-2.5 h-2.5 shrink-0' />
+                                                    ) : (
+                                                        <ChevronDown className='w-2.5 h-2.5 shrink-0' />
+                                                    )
+                                                ) : (
+                                                    <ChevronsUpDown className='w-2.5 h-2.5 shrink-0 opacity-30' />
+                                                )}
+                                            </button>
                                         ))}
                                     </div>
                                     {/* spacer matching ChevronDown w-4 in AccordionTrigger */}
@@ -297,7 +363,18 @@ export default function MarketPanel({
                                     onValueChange={handleOpenChange}
                                     className='w-full'
                                 >
-                                    {levelResources.map(({ name }) => (
+                                    {(sortConfig.column === null
+                                        ? levelResources
+                                        : [...levelResources].sort((a, b) => {
+                                              const aVal = getSortValue(a.name, sortConfig.column!);
+                                              const bVal = getSortValue(b.name, sortConfig.column!);
+                                              const cmp =
+                                                  typeof aVal === 'string' && typeof bVal === 'string'
+                                                      ? aVal.localeCompare(bVal)
+                                                      : (aVal as number) - (bVal as number);
+                                              return sortConfig.direction === 'asc' ? cmp : -cmp;
+                                          })
+                                    ).map(({ name }) => (
                                         <ResourceAccordionItem
                                             key={name}
                                             resourceName={name}
