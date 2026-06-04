@@ -46,6 +46,11 @@ export const OUTPUT_BUFFER_MAX_TICKS = 10;
 
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 
+/** Minimum wage per worker per tick — automated agents will never go below this. */
+export const MIN_WAGE = 5.0;
+/** Fractional wage adjustment applied each month based on profitability (±2%). */
+export const WAGE_ADJUSTMENT_RATE = 0.02;
+
 export const LOAN_CASH_FLOW_MONTHS = 6;
 export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;
 

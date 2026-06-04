@@ -9,6 +9,8 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { AgentMetricChart } from '@/components/client/AgentMetricChart';
 import { Page } from '@/components/client/Page';
 import { Card, CardContent } from '@/components/ui/card';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
 import { educationLevelKeys } from '@/simulation/population/education';
@@ -18,6 +20,10 @@ import { Coins } from 'lucide-react';
 export default function WorkforcePage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
 
+    const trpc = useTRPC();
+    const { data: economyData } = useSimulationQuery(trpc.simulation.getPlanetEconomy.queryOptions({ planetId }));
+    const planetWagePerEdu = economyData?.economy?.wagePerEdu ?? null;
+
     return (
         <Page title={`Workforce Management`}>
             <Card className='mt-4'>
@@ -25,11 +31,11 @@ export default function WorkforcePage() {
                     <div>
                         <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
                             <Coins className='h-3 w-3' />
-                            Wage per worker / tick
+                            Planet avg. wage per worker / tick
                         </div>
                         <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5'>
                             {educationLevelKeys.map((edu) => {
-                                const wage = DEFAULT_WAGE_PER_EDU;
+                                const wage = planetWagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU;
                                 return (
                                     <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
                                         <span className='text-muted-foreground capitalize'>{edu}</span>
@@ -48,6 +54,29 @@ export default function WorkforcePage() {
                     <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
                 ) : !isLoading && assets ? (
                     <div className='space-y-6'>
+                        <Card>
+                            <CardContent className='px-3 pb-3 space-y-3'>
+                                <div>
+                                    <div className='flex items-center gap-1 text-xs text-muted-foreground mb-1'>
+                                        <Coins className='h-3 w-3' />
+                                        Your wage per worker / tick
+                                    </div>
+                                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5'>
+                                        {educationLevelKeys.map((edu) => {
+                                            const wage = (assets.wagePerEdu as Record<EducationLevelType, number>)[edu] ?? DEFAULT_WAGE_PER_EDU;
+                                            return (
+                                                <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
+                                                    <span className='text-muted-foreground capitalize'>{edu}</span>
+                                                    <span className='tabular-nums font-medium'>
+                                                        {formatNumberWithUnit(wage, 'currency', planetId)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                         <AutomationPanel
                             agentId={agentId}
                             automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
