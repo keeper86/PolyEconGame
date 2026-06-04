@@ -91,7 +91,7 @@ export function ActiveFacilityCard({
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
             headerContent={
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-auto'>
+                    <div className='flex items-center gap-1 flex-col mb-2'>
                         <h3 className='font-semibold leading-tight '>{facility.name}</h3>
                         <span className='flex flex-col items-center gap-1'>
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
@@ -108,41 +108,48 @@ export function ActiveFacilityCard({
                 </span>
             }
         >
-            <div className='flex flex-row justify-between text-xs text-muted-foreground space-y-0.5 text-right'>
+            <div className='flex flex-row items-center justify-center gap-5 text-xs text-muted-foreground'>
                 {'revenue' in facility.lastTickResults && (
-                    <div className='flex flex-col items-center'>
-                        <span className='text-green-600 dark:text-green-400'>
-                            +{formatNumberWithUnit(facility.lastTickResults.revenue, 'currency', planetId)}
-                        </span>
-                        {' revenue'}
-                    </div>
+                    <>
+                        <div className='flex flex-col items-center'>
+                            revenue
+                            <span className='tabular-nums text-green-600 dark:text-green-400'>
+                                {formatNumberWithUnit(facility.lastTickResults.revenue, 'currency', planetId)}
+                            </span>
+                        </div>
+                        <span className='shrink-0'>−</span>
+                    </>
                 )}
 
                 <div className='flex flex-col items-center'>
-                    <span className='text-red-600 dark:text-red-400'>
-                        -{formatNumberWithUnit(facility.lastTickResults.inputCosts, 'currency', planetId)}
+                    inputs
+                    <span className='tabular-nums text-red-600 dark:text-red-400'>
+                        {formatNumberWithUnit(facility.lastTickResults.inputCosts, 'currency', planetId)}
                     </span>
-                    {' input costs'}
                 </div>
+
+                <span className='shrink-0'>−</span>
 
                 <div className='flex flex-col items-center'>
-                    <span className='text-red-600 dark:text-red-400'>
-                        -{formatNumberWithUnit(facility.lastTickResults.wageCosts, 'currency', planetId)}
+                    wages
+                    <span className='tabular-nums text-red-600 dark:text-red-400'>
+                        {formatNumberWithUnit(facility.lastTickResults.wageCosts, 'currency', planetId)}
                     </span>
-                    {' wage bill'}
                 </div>
 
-                <div className={`flex flex-col items-center`}>
+                <span className='shrink-0'>=</span>
+
+                <div className='flex flex-col items-center'>
+                    net/day
                     <span
-                        className={
+                        className={`tabular-nums text-md ${
                             results.costBalance >= 0
                                 ? 'text-green-600 dark:text-green-400'
                                 : 'text-red-600 dark:text-red-400'
-                        }
+                        }`}
                     >
                         {formatNumberWithUnit(facility.lastTickResults.costBalance, 'currency', planetId)}
                     </span>
-                    {' net/day'}
                 </div>
             </div>
             <div className='flex-1 space-y-2'>

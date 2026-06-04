@@ -4,6 +4,7 @@ import {
     COST_SPRING_STRENGTH,
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
+    INPUT_BUFFER_TARGET_TICKS_SERVICES,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -49,7 +50,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget =
+                resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
             const target = quantity * facility.scale * bufferTarget;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
@@ -59,7 +61,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+            const bufferTarget =
+                resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
             const target = quantity * facility.scale * bufferTarget;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
@@ -103,7 +106,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (facility.produces) {
             const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
-                const bufferTarget = need.resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                const bufferTarget =
+                    need.resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
                 const target = need.quantity * ratePerTick * bufferTarget;
                 inputReserve.set(need.resource.name, (inputReserve.get(need.resource.name) ?? 0) + target);
             }
@@ -170,7 +174,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     continue;
                 }
 
-                const bufferTarget = resource.form === 'services' ? 3 : INPUT_BUFFER_TARGET_TICKS;
+                const bufferTarget =
+                    resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
                 const facilityTarget = quantity * facility.scale * bufferTarget;
 
                 const existing = aggregatedBuyTargets.get(resource.name);
@@ -183,7 +188,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
         if (facility.construction !== null) {
             // Under construction → target construction service input buffer
-            const facilityTarget = facility.construction.maximumConstructionServiceConsumption * 3;
+            const facilityTarget =
+                facility.construction.maximumConstructionServiceConsumption * INPUT_BUFFER_TARGET_TICKS_SERVICES;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;
@@ -204,7 +210,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             ship.state.buildingTarget !== null &&
             ship.state.buildingTarget.construction !== null
         ) {
-            const shipTarget = ship.state.buildingTarget.construction.maximumConstructionServiceConsumption * 3;
+            const shipTarget =
+                ship.state.buildingTarget.construction.maximumConstructionServiceConsumption *
+                INPUT_BUFFER_TARGET_TICKS_SERVICES;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += shipTarget;
