@@ -63,9 +63,14 @@ export default function WorkforcePage() {
                                     </div>
                                     <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5'>
                                         {educationLevelKeys.map((edu) => {
-                                            const wage = (assets.wagePerEdu as Record<EducationLevelType, number>)[edu] ?? DEFAULT_WAGE_PER_EDU;
+                                            const wage =
+                                                (assets.wagePerEdu as Record<EducationLevelType, number>)[edu] ??
+                                                DEFAULT_WAGE_PER_EDU;
                                             return (
-                                                <div key={edu} className='flex items-baseline justify-between text-xs gap-2'>
+                                                <div
+                                                    key={edu}
+                                                    className='flex items-baseline justify-between text-xs gap-2'
+                                                >
                                                     <span className='text-muted-foreground capitalize'>{edu}</span>
                                                     <span className='tabular-nums font-medium'>
                                                         {formatNumberWithUnit(wage, 'currency', planetId)}
