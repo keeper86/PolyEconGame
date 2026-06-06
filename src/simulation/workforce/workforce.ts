@@ -111,6 +111,15 @@ export function subtractProportionalXP(category: WorkforceCategory, n: number, t
     if (totalWorkersBefore <= 0 || n <= 0) {
         return;
     }
+    if (!Number.isFinite(category.workforceExperience)) {
+        if (process.env.SIM_DEBUG === '1') {
+            console.warn(
+                `[subtractProportionalXP] workforceExperience is not finite (${category.workforceExperience}), resetting to 0`,
+            );
+        }
+        category.workforceExperience = 0;
+        return;
+    }
     const fraction = Math.min(n / totalWorkersBefore, 1);
     category.workforceExperience -= fraction * category.workforceExperience;
 }

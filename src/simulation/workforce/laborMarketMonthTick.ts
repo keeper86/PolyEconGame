@@ -53,15 +53,15 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
             if (planet) {
                 for (let age = 0; age < workforce.length; age++) {
                     forEachWorkforceCohort(workforce[age], (category, edu, skill) => {
-                        const totalBefore = totalWorkersInCategory(category);
                         const departingAtAge = category.voluntaryDeparting[0];
                         const firedAtAge = category.departingFired[0];
                         const retiredAtAge = category.departingRetired[0];
-                        const permanentLoss = departingAtAge + firedAtAge + retiredAtAge;
-                        subtractProportionalXP(category, permanentLoss, totalBefore);
 
                         // Non-retired departing → unoccupied
                         if (departingAtAge + firedAtAge > 0) {
+                            const totalBeforeVoluntaryFired = totalWorkersInCategory(category);
+                            subtractProportionalXP(category, departingAtAge + firedAtAge, totalBeforeVoluntaryFired);
+
                             const moved = transferPopulation(
                                 planet,
                                 { age, occ: 'employed', edu, skill },
@@ -78,6 +78,9 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
 
                         // Retired departing → unableToWork
                         if (retiredAtAge > 0) {
+                            const totalBeforeRetired = totalWorkersInCategory(category);
+                            subtractProportionalXP(category, retiredAtAge, totalBeforeRetired);
+
                             const moved = transferPopulation(
                                 planet,
                                 { age, occ: 'employed', edu, skill },

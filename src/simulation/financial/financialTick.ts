@@ -28,18 +28,18 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
     const bank = planet.bank;
     const demography = planet.population.demography;
 
-    const wageSumForMean: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-    let agentCountOnPlanet = 0;
+    const weightedWageSum: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const totalPlanetWorkersForEdu: Record<EducationLevelType, number> = {
+        none: 0,
+        primary: 0,
+        secondary: 0,
+        tertiary: 0,
+    };
 
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
             return;
-        }
-
-        agentCountOnPlanet++;
-        for (const edu of educationLevelKeys) {
-            wageSumForMean[edu] += assets.wagePerEdu[edu];
         }
 
         if (!assets.workforceDemography) {
@@ -61,6 +61,8 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             const totalWorkers = activeWorkers + departingWorkers;
             totalWorkersForEdu[edu] = totalWorkers;
             wageBill += totalWorkers * assets.wagePerEdu[edu];
+            weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;
+            totalPlanetWorkersForEdu[edu] += totalWorkers;
         }
 
         if (wageBill <= 0) {
@@ -117,9 +119,9 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         }
     });
 
-    if (agentCountOnPlanet > 0) {
-        for (const edu of educationLevelKeys) {
-            planet.wagePerEdu[edu] = wageSumForMean[edu] / agentCountOnPlanet;
+    for (const edu of educationLevelKeys) {
+        if (totalPlanetWorkersForEdu[edu] > 0) {
+            planet.wagePerEdu[edu] = weightedWageSum[edu] / totalPlanetWorkersForEdu[edu];
         }
     }
 

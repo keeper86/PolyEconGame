@@ -8,8 +8,7 @@ import {
     queryStorageFacility,
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
-import { constructionServiceResourceType, groceryServiceResourceType } from './services';
-import { PROC_PLANET_ID } from '../initialUniverse';
+import { constructionServiceResourceType } from './services';
 
 export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
 export const INPUT_EFFICIENCY_MIN = 0.5;
@@ -135,29 +134,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                 OVERFILL_PENALTY * overfilled +
                 WEIGHT_BALANCE * balance);
         totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + OVERFILL_PENALTY);
-
-        if (facility.produces[0]?.resource.name === groceryServiceResourceType.name && planet.id === PROC_PLANET_ID) {
-            console.info(
-                'Facility',
-                facility.id,
-                'buffer=',
-                buffer,
-                'unfilledFrac=',
-                unfilledFrac,
-                'unsoldFrac=',
-                unsoldFrac,
-                'balance=',
-                balance,
-                'overfilled=',
-                overfilled,
-                'supply=',
-                totalSupply,
-                'demand=',
-                totalDemand,
-                'price=',
-                price,
-            );
-        }
     }
 
     if (totalWeight === 0) {
@@ -186,27 +162,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     if (signal > 0) {
         const eff = Math.max(0.1, lastTickResults.overallEfficiency);
         signal = eff * signal;
-    }
-
-    if (facility.produces[0]?.resource.name === groceryServiceResourceType.name && planet.id === PROC_PLANET_ID) {
-        console.info(
-            'Facility',
-            facility.id,
-            'profitSignal=',
-            profitSignal,
-            'costs_wage',
-            lastTickResults.wageCosts,
-            'costs_input',
-            lastTickResults.inputCosts,
-            'revenue',
-            lastTickResults.revenue,
-            'maxOutputSignal=',
-            maxOutputSignal,
-            'overallEfficiency=',
-            lastTickResults.overallEfficiency,
-            'final signal=',
-            signal,
-        );
     }
 
     return signal;
