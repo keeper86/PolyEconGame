@@ -1,7 +1,7 @@
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
+import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
@@ -21,15 +21,14 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             ...assets.shipConstructionFacilities,
         ];
 
-        // 1. Compute total raw requirement per education level
-        const totalRequirement: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-        for (const facility of allFacilities) {
-            for (const [edu, req] of Object.entries(facility.workerRequirement)) {
-                if (req && req > 0) {
-                    totalRequirement[edu as EducationLevelType] += req * facility.scale;
-                }
-            }
-        }
+        // 1. Use the total slot body capacity computed by productionTick.
+        //    This is in "raw body" units — the same unit as totalUsed/exactUsed from the waterfill.
+        const totalSlotCapacity: Record<EducationLevelType, number> = assets.totalSlotCapacity ?? {
+            none: 0,
+            primary: 0,
+            secondary: 0,
+            tertiary: 0,
+        };
 
         // 2. Aggregate usage from all facilities' lastTickResults
         const totalUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
@@ -49,8 +48,9 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         // 3. Compute new targets
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         for (const edu of educationLevelKeys) {
-            // Deficit = how many exact‑match workers are missing to fill all slots of this level
-            const deficit = Math.max(0, totalRequirement[edu] - exactUsed[edu]);
+            // Deficit = how many exact‑match workers are missing to fill all slots of this level.
+            // Both slotCapacity and exactUsed are in raw body units.
+            const deficit = Math.max(0, totalSlotCapacity[edu] - exactUsed[edu]);
             // Target = current total usage (including overqualified) + deficit, plus idle buffer
             let target = totalUsed[edu] + deficit;
             target = Math.ceil(target * (1 + ACCEPTABLE_IDLE_FRACTION));
@@ -78,15 +78,12 @@ export function automaticAdjustmentWages(agents: Map<string, Agent>, planet: Pla
         if (profitDelta < 0) {
             // Losing money — cut wages, but never below minimum wage
             for (const edu of educationLevelKeys) {
-                assets.wagePerEdu[edu as EducationLevelType] = Math.max(
-                    MIN_WAGE,
-                    assets.wagePerEdu[edu as EducationLevelType] * (1 - WAGE_ADJUSTMENT_RATE),
-                );
+                assets.wagePerEdu[edu] = Math.max(MIN_WAGE, assets.wagePerEdu[edu] * (1 - WAGE_ADJUSTMENT_RATE));
             }
         } else if (profitDelta > 0 && netBalance > 0) {
             // Profitable — raise wages to attract better workers
             for (const edu of educationLevelKeys) {
-                assets.wagePerEdu[edu as EducationLevelType] *= 1 + WAGE_ADJUSTMENT_RATE;
+                assets.wagePerEdu[edu] = Math.min(MAX_WAGE, assets.wagePerEdu[edu] * (1 + WAGE_ADJUSTMENT_RATE));
             }
         }
     }

@@ -1,10 +1,9 @@
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumberWithUnit } from '@/lib/utils';
 
-import { resourceNameToSlug } from '../../app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
+import type { ResourceQuantity } from '@/simulation/planet/claims';
 import Link from 'next/link';
-
-export type ResourceEntry = { resource: { name: string }; quantity: number };
+import { resourceNameToSlug } from '../../app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 
 export function fillColor(efficiency: number, isLimiting: boolean): string {
     if (isLimiting) {
@@ -34,21 +33,29 @@ export function ProductQuantity({
     planetId,
     agentId,
     quantityLabel,
-}: ResourceEntry & {
+}: ResourceQuantity & {
     efficiency: number;
     isLimiting: boolean;
     planetId: string | null;
     agentId: string | null;
     quantityLabel?: string;
 }): React.ReactElement {
-    const href =
-        planetId && agentId
-            ? `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resource.name)}`
-            : null;
+    const getHref = () => {
+        if (planetId) {
+            if (resource.form === 'landBoundResource') {
+                return `/planets/${planetId}/claims#${resourceNameToSlug(resource.name)}`;
+            }
+            if (agentId) {
+                return `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resource.name)}`;
+            }
+        }
+        return '#';
+    };
+
     const isUnknown = quantityLabel !== undefined;
     return (
         <Link
-            href={(href ?? '#') as never}
+            href={getHref() as never}
             className={`relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all ${borderColor(efficiency, isLimiting)}`}
         >
             {!isUnknown && (

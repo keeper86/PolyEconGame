@@ -18,6 +18,9 @@ export function TickOrderSection() {
                     <code>environmentTick</code> — pollution decay, renewable resource regeneration
                 </li>
                 <li>
+                    <code>governmentTick</code> — water-fill wealth redistribution to the poorest population cohorts
+                </li>
+                <li>
                     <code>workforceDemographicTick</code> — voluntary quits, retirement, mortality &amp; disability of
                     active workers (produces event accumulator)
                 </li>
@@ -26,14 +29,19 @@ export function TickOrderSection() {
                     non-workers; grocery service buffer consumption &amp; starvation update; births
                 </li>
                 <li>
-                    <em>(start of month)</em> <code>automaticWorkerAllocation</code> — recompute demand targets from
-                    last tick results
+                    <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions
                 </li>
                 <li>
-                    <em>(start of month)</em> <code>hireWorkforce</code> — hire / fire to meet targets
+                    <code>automaticWorkerAllocation</code> — recompute demand targets from last tick results
+                </li>
+                <li>
+                    <code>hireWorkforce</code> — hire / fire to meet targets
                 </li>
                 <li>
                     <code>claimBillingTick</code> — charge agents for land and resource claim maintenance
+                </li>
+                <li>
+                    <code>maturesLoans</code> — call in loans that have reached maturity
                 </li>
                 <li>
                     <code>preProductionFinancialTick</code> — working-capital loans &amp; wage payment (firm →
@@ -42,6 +50,9 @@ export function TickOrderSection() {
                 <li>
                     <code>intergenerationalTransfersForPlanet</code> — 5-phase family wealth redistribution (grocery
                     buffer gap driven)
+                </li>
+                <li>
+                    <code>updateProductionCostFloors</code> — recompute per-facility cost floor for break-even pricing
                 </li>
                 <li>
                     <code>automaticPricing</code> — tâtonnement sell-price update per resource per agent; input buy
@@ -64,11 +75,12 @@ export function TickOrderSection() {
                     input consumption, pollution
                 </li>
                 <li>
-                    <code>automaticLoanRepayment</code> — retained-earnings threshold loan repayment (money destruction)
-                </li>
-                <li>
                     <em>(end of month)</em> <code>postProductionLaborMarketTick</code> — advance notice pipelines;
                     release workers to population
+                </li>
+                <li>
+                    <em>(end of month)</em> <code>automaticAdjustmentWages</code> — tâtonnement wage adjustment per
+                    education level (±2 % based on vacancy rate)
                 </li>
                 <li>
                     <em>(end of year)</em> <code>populationAdvanceYearTick</code> — age all cohorts; education
@@ -83,7 +95,7 @@ export function TickOrderSection() {
             <p className='text-sm text-muted-foreground mb-2'>
                 Runs once per tick after all per-planet loops complete.
             </p>
-            <ol className='list-decimal list-inside space-y-1' start={19}>
+            <ol className='list-decimal list-inside space-y-1' start={23}>
                 <li>
                     <code>forexMarketMakerPricing</code> — update MM bid/ask prices based on inventory skew
                 </li>
@@ -97,35 +109,41 @@ export function TickOrderSection() {
                     <code>shipTick</code> — advance ship state machines (loading → transporting → unloading → idle);
                     settle completed contracts
                 </li>
+                <li>
+                    <code>shipbuilderTick</code> — NPC shipbuilder lists completed ships and evaluates new build orders
+                </li>
+                <li>
+                    <code>arbitrageTraderTick</code> — NPC arbitrage traders scan cross-planet price differentials and
+                    dispatch ships
+                </li>
             </ol>
 
             <h3 className='text-xl font-semibold mt-6 mb-2'>Design Rationale</h3>
             <p>Several ordering choices are deliberate:</p>
             <ul className='list-disc list-inside space-y-1 mt-2'>
                 <li>
-                    <strong>Workforce events before population (steps 3–4)</strong>: deaths and disabilities are removed
+                    <strong>Workforce events before population (steps 4–5)</strong>: deaths and disabilities are removed
                     from both the workforce and the demography in the same tick, avoiding double-counting.
                 </li>
                 <li>
-                    <strong>Transfers before pricing (steps 9–10)</strong>: dependents receive family wealth before the
-                    market opens, so their buying power is reflected in demand signals.
+                    <strong>Transfers before pricing (steps 12 &amp; 14)</strong>: dependents receive family wealth
+                    before the market opens, so their buying power is reflected in demand signals.
                 </li>
                 <li>
-                    <strong>Market before production (steps 11–14)</strong>: agents sell last tick&apos;s inventory
+                    <strong>Market before production (steps 15–18)</strong>: agents sell last tick&apos;s inventory
                     first, then produce; this means households receive services the tick after they are produced, and
                     service depreciation acts on unsold inventory between production and the next clearing.
                 </li>
                 <li>
-                    <strong>Construction before production (steps 13–14)</strong>: newly unlocked facility scale becomes
+                    <strong>Construction before production (steps 17–18)</strong>: newly unlocked facility scale becomes
                     available within the same tick that completes the construction, not one tick later.
                 </li>
                 <li>
-                    <strong>Financial bracket (steps 8 &amp; 15)</strong>: wages are paid before production and loan
-                    repayment happens after market revenue is received, ensuring solvency incentives are correctly
-                    timed.
+                    <strong>Wages before production (step 11)</strong>: firms pay wages before producing, ensuring
+                    households have purchasing power in the same tick that goods hit the market.
                 </li>
                 <li>
-                    <strong>Forex and ships after all planets (steps 19–22)</strong>: inter-planet flows depend on final
+                    <strong>Forex and ships after all planets (steps 23–28)</strong>: inter-planet flows depend on final
                     per-planet state; processing them last guarantees consistency.
                 </li>
             </ul>

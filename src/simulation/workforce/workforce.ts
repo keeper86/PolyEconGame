@@ -16,6 +16,7 @@ export type WorkforceCategory = {
     voluntaryDeparting: number[]; // voluntary departing workers
     departingFired: number[]; // fired departing workers
     departingRetired: number[]; // retired departing workers
+    workforceExperience: number; // accumulated XP of workers in this category
 };
 
 export const totalDeparting = (category: WorkforceCategory): number =>
@@ -28,6 +29,7 @@ export const nullWorkforceCategory = (): WorkforceCategory => ({
     voluntaryDeparting: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     departingRetired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+    workforceExperience: 0,
 });
 
 export type WorkforceCohort<T> = {
@@ -76,6 +78,7 @@ export const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory)
     voluntaryDeparting: a.voluntaryDeparting.map((count, i) => count + (b.voluntaryDeparting[i] ?? 0)),
     departingFired: a.departingFired.map((count, i) => count + (b.departingFired[i] ?? 0)),
     departingRetired: a.departingRetired.map((count, i) => count + (b.departingRetired[i] ?? 0)),
+    workforceExperience: a.workforceExperience + b.workforceExperience,
 });
 
 export const reduceWorkforceCohort = (cohort: WorkforceCohort<WorkforceCategory>): WorkforceCategory => {
@@ -97,6 +100,42 @@ export const forEachWorkforceCohort = (
             forEachFunction(cohort[l][s], l, s);
         }
     }
+};
+
+/**
+ * Remove XP proportionally when workers permanently leave a category.
+ * Computes the fraction n / totalWorkersBefore of the XP pool before removal,
+ * and subtracts that amount. Call this BEFORE decrementing the worker counts.
+ */
+export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): void {
+    if (totalWorkersBefore <= 0 || n <= 0) {
+        return;
+    }
+    if (!Number.isFinite(category.workforceExperience)) {
+        if (process.env.SIM_DEBUG === '1') {
+            console.warn(
+                `[subtractProportionalXP] workforceExperience is not finite (${category.workforceExperience}), resetting to 0`,
+            );
+        }
+        category.workforceExperience = 0;
+        return;
+    }
+    const fraction = Math.min(n / totalWorkersBefore, 1);
+    category.workforceExperience -= fraction * category.workforceExperience;
+}
+
+/**
+ * Compute total workers across all sub-pools in a category (active + all pipeline slots).
+ */
+export const totalWorkersInCategory = (category: WorkforceCategory): number =>
+    category.active + totalDeparting(category);
+
+export const productivityFromXP = (xp: number): number => {
+    //f(x)=A*(1-(1-Y)**(x/T))+1
+    const A = 1; // max productivity increase (at infinite XP)
+    const Y = 0.95; // productivity at T XP (relative to baseline)
+    const T = 40; // XP at which productivity is near full
+    return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
 };
 
 export function hireFromPopulation(

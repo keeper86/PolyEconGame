@@ -5,12 +5,13 @@
  * The workforce is stored as `CohortByOccupation<WorkforceCategory>[]`
  * (age-indexed).  Each slot is `{ [edu]: { [skill]: WorkforceCategory } }`
  * where `WorkforceCategory = { active: number, departing: number[],
- * departingFired: number[] }`.
+ * departingFired: number[], departingRetired: number[] }`.
  */
 
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { WorkforceCohort, WorkforceCategory } from '@/simulation/workforce/workforce';
+import { productivityFromXP } from '@/simulation/workforce/workforce';
 import { MAX_AGE, SKILL } from '@/simulation/population/population';
 import { ageProductivityMultiplier } from '@/simulation/planet/production';
 
@@ -32,6 +33,10 @@ export type WorkforceSummary = {
     nextMonthVoluntaryByEdu: Record<EducationLevelType, number>;
     /** Workers leaving next month (pipeline slot 0) per edu — fired. */
     nextMonthFiredByEdu: Record<EducationLevelType, number>;
+    /** Workers in retiring pipeline per education level. */
+    retiredByEdu: Record<EducationLevelType, number>;
+    /** Workers retiring next month (pipeline slot 0) per edu. */
+    nextMonthRetiredByEdu: Record<EducationLevelType, number>;
     totalActive: number;
     totalDeparting: number;
     totalFired: number;
@@ -58,12 +63,13 @@ export type WorkforceSummary = {
 
     // ---- Age distribution (direct from array index) ----
 
-    /** Per-age chart data with status breakdown (active / quitting / fired). */
+    /** Per-age chart data with status breakdown (active / quitting / fired / retired). */
     ageChartByStatus: {
         age: number;
         active: number;
         quitting: number;
         fired: number;
+        retired: number;
     }[];
 
     /** Per-age chart data with education-level breakdown (active + departing per edu). */
@@ -71,7 +77,33 @@ export type WorkforceSummary = {
         age: number;
         byEdu: Record<EducationLevelType, number>;
     }[];
+
+    // ---- Experience (XP) distribution — per-capita (years) ----
+
+    /** Per-age XP-per-capita chart data with status breakdown (active / quitting / fired / retired). Values in years. */
+    experienceChartByStatus: {
+        age: number;
+        active: number;
+        quitting: number;
+        fired: number;
+        retired: number;
+    }[];
+
+    /** Per-age XP-per-capita chart data with education-level breakdown. Values in years. */
+    experienceChartByEdu: {
+        age: number;
+        byEdu: Record<EducationLevelType, number>;
+    }[];
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Sum all values in an array of numbers. */
+function sumArray(arr: number[]): number {
+    return arr.reduce((s, v) => s + v, 0);
+}
 
 // ---------------------------------------------------------------------------
 // Computation
@@ -83,12 +115,16 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     const firedByEdu = {} as Record<EducationLevelType, number>;
     const nextMonthDepartingByEdu = {} as Record<EducationLevelType, number>;
     const nextMonthFiredByEdu = {} as Record<EducationLevelType, number>;
+    const retiredByEdu = {} as Record<EducationLevelType, number>;
+    const nextMonthRetiredByEdu = {} as Record<EducationLevelType, number>;
     for (const edu of educationLevelKeys) {
         activeByEdu[edu] = 0;
         departingByEdu[edu] = 0;
         firedByEdu[edu] = 0;
         nextMonthDepartingByEdu[edu] = 0;
         nextMonthFiredByEdu[edu] = 0;
+        retiredByEdu[edu] = 0;
+        nextMonthRetiredByEdu[edu] = 0;
     }
 
     let totalActive = 0;
@@ -100,9 +136,19 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         ageSumByEdu[edu] = { count: 0, weightedAge: 0 };
     }
 
+    // ---- Accumulators for mean tenure (XP) ----
+    const xpSumByEdu = {} as Record<EducationLevelType, number>;
+    for (const edu of educationLevelKeys) {
+        xpSumByEdu[edu] = 0;
+    }
+
     // ---- Per-age accumulators for chart data ----
     const ageChartByStatus: WorkforceSummary['ageChartByStatus'] = [];
     const ageChartByEdu: WorkforceSummary['ageChartByEdu'] = [];
+
+    // ---- Per-age accumulators for experience chart data ----
+    const experienceChartByStatus: WorkforceSummary['experienceChartByStatus'] = [];
+    const experienceChartByEdu: WorkforceSummary['experienceChartByEdu'] = [];
 
     // ---- Walk age cohorts ----
     for (let age = 0; age <= Math.min(MAX_AGE, workforce.length - 1); age++) {
@@ -114,9 +160,20 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         let ageActive = 0;
         let ageDeparting = 0;
         let ageFired = 0;
+        let ageRetired = 0;
         const ageByEdu = {} as Record<EducationLevelType, number>;
         for (const edu of educationLevelKeys) {
             ageByEdu[edu] = 0;
+        }
+
+        // ---- XP accumulators for this age ----
+        let ageXPActive = 0;
+        let ageXPDeparting = 0;
+        let ageXPFired = 0;
+        let ageXPRetired = 0;
+        const ageXPByEdu = {} as Record<EducationLevelType, number>;
+        for (const edu of educationLevelKeys) {
+            ageXPByEdu[edu] = 0;
         }
 
         for (const edu of educationLevelKeys) {
@@ -135,7 +192,7 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
                     ageSumByEdu[edu].count += act;
                 }
 
-                // Departing pipeline
+                // Voluntary & fired departing pipeline
                 for (let m = 0; m < cat.voluntaryDeparting.length; m++) {
                     const depCount = cat.voluntaryDeparting[m] ?? 0;
                     const firedCount = cat.departingFired[m] ?? 0;
@@ -145,20 +202,88 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
                     ageDeparting += depCount;
                     ageFired += firedCount;
                     ageByEdu[edu] += depCount;
+                    ageByEdu[edu] += firedCount;
 
                     if (m === 0) {
                         nextMonthDepartingByEdu[edu] += depCount;
                         nextMonthFiredByEdu[edu] += firedCount;
                     }
                 }
+
+                // Retired departing pipeline
+                for (let m = 0; m < cat.departingRetired.length; m++) {
+                    const retiredCount = cat.departingRetired[m] ?? 0;
+                    retiredByEdu[edu] += retiredCount;
+                    ageRetired += retiredCount;
+                    ageByEdu[edu] += retiredCount;
+                    if (m === 0) {
+                        nextMonthRetiredByEdu[edu] += retiredCount;
+                    }
+                }
+
+                // ---- XP attribution ----
+                // Attribute workforceExperience proportionally across statuses
+                // within this (edu, skill) cell.
+                const xp = cat.workforceExperience;
+                if (xp > 0) {
+                    const sumVoluntary = sumArray(cat.voluntaryDeparting);
+                    const sumFired = sumArray(cat.departingFired);
+                    const sumRetired = sumArray(cat.departingRetired);
+                    const totalWorkers = act + sumVoluntary + sumFired + sumRetired;
+
+                    if (totalWorkers > 0) {
+                        const xpActive = (xp * act) / totalWorkers;
+                        const xpQuitting = (xp * sumVoluntary) / totalWorkers;
+                        const xpFired = (xp * sumFired) / totalWorkers;
+                        const xpRetired = (xp * sumRetired) / totalWorkers;
+
+                        ageXPActive += xpActive;
+                        ageXPDeparting += xpQuitting;
+                        ageXPFired += xpFired;
+                        ageXPRetired += xpRetired;
+                        ageXPByEdu[edu] += xp;
+                        xpSumByEdu[edu] += xp;
+                    }
+                }
             }
         }
 
         // Only include ages that have at least one worker
-        if (ageActive + ageDeparting > 0) {
-            const quitting = Math.max(0, ageDeparting - ageFired);
-            ageChartByStatus.push({ age, active: ageActive, quitting, fired: ageFired });
+        if (ageActive + ageDeparting + ageFired + ageRetired > 0) {
+            const quitting = ageDeparting;
+            ageChartByStatus.push({ age, active: ageActive, quitting, fired: ageFired, retired: ageRetired });
             ageChartByEdu.push({ age, byEdu: { ...ageByEdu } });
+        }
+
+        // ---- Compute XP per capita (years of experience per worker) ----
+        // XP=1 means 1 year of work. Divide all XP pools by the total
+        // number of workers at this age so the stacked bars sum to
+        // total XP / total workers = per-capita XP in years.
+        // This keeps the total bar height invariant across view modes.
+
+        const totalWorkers = ageActive + ageDeparting + ageFired + ageRetired;
+
+        const xpPerCapitaActive = totalWorkers > 0 ? ageXPActive / totalWorkers : 0;
+        const xpPerCapitaQuitting = totalWorkers > 0 ? ageXPDeparting / totalWorkers : 0;
+        const xpPerCapitaFired = totalWorkers > 0 ? ageXPFired / totalWorkers : 0;
+        const xpPerCapitaRetired = totalWorkers > 0 ? ageXPRetired / totalWorkers : 0;
+
+        const hasXP = ageXPActive + ageXPDeparting + ageXPFired + ageXPRetired > 0 || totalWorkers > 0;
+
+        if (hasXP) {
+            experienceChartByStatus.push({
+                age,
+                active: xpPerCapitaActive,
+                quitting: xpPerCapitaQuitting,
+                fired: xpPerCapitaFired,
+                retired: xpPerCapitaRetired,
+            });
+
+            const xpPerCapitaByEdu = {} as Record<EducationLevelType, number>;
+            for (const edu of educationLevelKeys) {
+                xpPerCapitaByEdu[edu] = totalWorkers > 0 ? (ageXPByEdu[edu] ?? 0) / totalWorkers : 0;
+            }
+            experienceChartByEdu.push({ age, byEdu: xpPerCapitaByEdu });
         }
     }
 
@@ -194,14 +319,26 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     }
     const totalVoluntary = educationLevelKeys.reduce((sum, edu) => sum + voluntaryByEdu[edu], 0);
 
-    // ---- Age-based productivity serves as the overall productivity metric ----
-    // Tenure-based productivity is no longer tracked per-worker; we use age productivity instead.
+    // ---- Tenure (XP) stats ----
+    // Mean tenure = total XP per edu / active worker count per edu
     const meanTenureByEdu = {} as Record<EducationLevelType, number>;
     const tenureProductivityByEdu = {} as Record<EducationLevelType, number>;
+    let overallWeightedTenure = 0;
+
     for (const edu of educationLevelKeys) {
-        meanTenureByEdu[edu] = 0;
-        tenureProductivityByEdu[edu] = 1.0;
+        const cnt = ageSumByEdu[edu].count;
+        if (cnt > 0) {
+            meanTenureByEdu[edu] = xpSumByEdu[edu] / cnt;
+            tenureProductivityByEdu[edu] = productivityFromXP(meanTenureByEdu[edu]);
+            overallWeightedTenure += xpSumByEdu[edu];
+        } else {
+            meanTenureByEdu[edu] = 0;
+            tenureProductivityByEdu[edu] = 1.0;
+        }
     }
+
+    const overallMeanTenure = overallCount > 0 ? overallWeightedTenure / overallCount : 0;
+    const overallTenureProductivity = overallCount > 0 ? productivityFromXP(overallMeanTenure) : 1.0;
 
     return {
         activeByEdu,
@@ -210,6 +347,8 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         voluntaryByEdu,
         nextMonthVoluntaryByEdu,
         nextMonthFiredByEdu,
+        retiredByEdu,
+        nextMonthRetiredByEdu,
         totalActive,
         totalDeparting,
         totalFired,
@@ -221,9 +360,11 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         overallAgeProductivity,
         meanTenureByEdu,
         tenureProductivityByEdu,
-        overallMeanTenure: 0,
-        overallTenureProductivity: 1.0,
+        overallMeanTenure,
+        overallTenureProductivity,
         ageChartByStatus,
         ageChartByEdu,
+        experienceChartByStatus,
+        experienceChartByEdu,
     };
 }

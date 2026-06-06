@@ -14,6 +14,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
+import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 
 function formatDepletion(ticks: number | null): string {
     if (ticks === null) {
@@ -93,7 +94,7 @@ export function ActiveClaimCard({
     const isSustainable = claim.depletionTicksEstimate === null;
 
     return (
-        <Card className='border-emerald-500/30 flex flex-col'>
+        <Card id={resourceNameToSlug(claim.resourceName)} className='border-emerald-500/30 flex flex-col'>
             <ClaimCardHeader resourceName={claim.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>

@@ -14,6 +14,9 @@ const mergeCategories = (destination: WorkforceCategory, source: WorkforceCatego
     destination.active += source.active;
     source.active = 0;
 
+    destination.workforceExperience += source.workforceExperience;
+    source.workforceExperience = 0;
+
     for (const type of ['voluntaryDeparting', 'departingFired', 'departingRetired'] as const) {
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
             destination[type][m] = (destination[type][m] || 0) + (source[type][m] || 0);
@@ -30,6 +33,7 @@ const zeroCohort = (cohort: WorkforceCohort<WorkforceCategory>): void => {
         for (const skill of SKILL) {
             const cat = cohort[edu][skill];
             cat.active = 0;
+            cat.workforceExperience = 0;
             for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
                 cat.voluntaryDeparting[m] = 0;
                 cat.departingFired[m] = 0;

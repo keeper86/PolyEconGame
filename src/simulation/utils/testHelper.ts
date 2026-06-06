@@ -85,6 +85,7 @@ export function makeWorkforceCategory(overrides?: Partial<WorkforceCategory>): W
         voluntaryDeparting: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
         departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
         departingRetired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
+        workforceExperience: 0,
         ...overrides,
     };
 }
@@ -160,7 +161,6 @@ export function makePopulation(): Population {
         demography: makePopulationDemography(),
         summedPopulation: makePopulationCohort(),
         lastTransferMatrix: [],
-        lastConsumption: {},
     };
 }
 
@@ -460,6 +460,9 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
             tertiary: DEFAULT_WAGE_PER_EDU,
         },
         allocatedWorkers: makeAllocatedWorkers(),
+        totalSlotCapacity: makeAllocatedWorkers(),
+        unusedWorkers: makeAllocatedWorkers(),
+        overqualifiedWorkers: {},
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),

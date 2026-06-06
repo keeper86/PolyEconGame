@@ -1,5 +1,6 @@
 import { allServices, serviceKeyOf } from '../market/serviceDefinitions';
-import { forEachPopulationCohort, type Population } from './population';
+import type { Planet } from '../planet/planet';
+import { forEachPopulationCohort } from './population';
 
 export const STARVATION_ADJUST_TICKS = 30;
 export const STARVATION_MAX_LEVEL = 1;
@@ -10,9 +11,8 @@ export interface ConsumptionResult {
     starvationLevel: number;
 }
 
-export function consumeServices(population: Population) {
-    population.lastConsumption = {};
-    population.demography.forEach((cohort) => {
+export function consumeServices(planet: Planet) {
+    planet.population.demography.forEach((cohort) => {
         return forEachPopulationCohort(cohort, (category, occ) => {
             if (category.total === 0) {
                 return;
@@ -32,8 +32,8 @@ export function consumeServices(population: Population) {
                 if (serviceKeyOf(def) === 'education' && occ !== 'education' && consumed > 0) {
                     console.warn(`Non-education occupation consuming education service: ${occ}`);
                 }
-                population.lastConsumption[def.resource.name] =
-                    (population.lastConsumption[def.resource.name] ?? 0) + consumed;
+                planet.consumedResources[def.resource.name] =
+                    (planet.consumedResources[def.resource.name] ?? 0) + consumed;
 
                 const consumptionFactor = consumed / demand;
                 serviceState.starvationLevel = updateStarvationLevel(serviceState.starvationLevel, consumptionFactor);

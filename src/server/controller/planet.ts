@@ -840,38 +840,6 @@ const marketOverviewRowSchema = z.object({
 
 export type MarketOverviewRow = z.infer<typeof marketOverviewRowSchema>;
 
-function computePlanetProduction(agents: Agent[], planetId: string): Record<string, number> {
-    const production: Record<string, number> = {};
-    for (const agent of agents) {
-        const assets = agent.assets[planetId];
-        if (!assets) {
-            continue;
-        }
-        for (const fac of assets.productionFacilities ?? []) {
-            for (const [resourceName, qty] of Object.entries(fac.lastTickResults?.lastProduced ?? {})) {
-                production[resourceName] = (production[resourceName] ?? 0) + qty;
-            }
-        }
-    }
-    return production;
-}
-
-function computePlanetConsumption(agents: Agent[], planetId: string, planet: Planet): Record<string, number> {
-    const consumption: Record<string, number> = { ...planet.population.lastConsumption };
-    for (const agent of agents) {
-        const assets = agent.assets[planetId];
-        if (!assets) {
-            continue;
-        }
-        for (const fac of assets.productionFacilities ?? []) {
-            for (const [resourceName, qty] of Object.entries(fac.lastTickResults?.lastConsumed ?? {})) {
-                consumption[resourceName] = (consumption[resourceName] ?? 0) + qty;
-            }
-        }
-    }
-    return consumption;
-}
-
 export const getPlanetMarketOverview = () =>
     protectedProcedure
         .input(z.object({ planetId: z.string(), average: z.boolean().default(false) }))
@@ -882,14 +850,14 @@ export const getPlanetMarketOverview = () =>
             }),
         )
         .query(async ({ input }) => {
-            const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
+            const { tick, planet } = await workerQueries.getPlanetWithAgents(input.planetId);
 
             if (!planet) {
                 return { tick, rows: [] };
             }
 
-            const production = computePlanetProduction(agents, input.planetId);
-            const consumption = computePlanetConsumption(agents, input.planetId, planet);
+            const production = planet.producedResources;
+            const consumption = planet.consumedResources;
 
             const marketResults = input.average ? planet.avgMarketResult : planet.lastMarketResult;
 

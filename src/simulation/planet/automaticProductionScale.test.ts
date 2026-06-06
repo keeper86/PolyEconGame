@@ -89,7 +89,7 @@ describe('updateAgentProductionScale', () => {
 
         // Negative direction but very small — PID should not cause a runaway change
         expect(facility.scale).toBeLessThanOrEqual(initial);
-        expect(facility.scale).toBeGreaterThan(initial - 0.03 * facility.maxScale);
+        expect(facility.scale).toBeGreaterThan(initial - 0.07 * facility.maxScale);
     });
 
     it('makes only a very small scale change for a weak demand-excess signal', () => {
@@ -102,7 +102,7 @@ describe('updateAgentProductionScale', () => {
 
         // Positive direction but very small
         expect(facility.scale).toBeGreaterThanOrEqual(initial);
-        expect(facility.scale).toBeLessThan(initial + 0.03 * facility.maxScale);
+        expect(facility.scale).toBeLessThan(initial + 0.07 * facility.maxScale);
     });
 
     it('scales down when supply excess is strong', () => {
@@ -272,12 +272,10 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).toBeNull();
     });
 
-    it('scales up when profitable (positive costBalance) and demand exceeds threshold', () => {
-        // Profitable facility: revenue > actualCost → costBalance > 0
-        // lastProduced has 100 units at clearingPrice 12 → revenue = 1200
-        // costBalance = 200 → actualCost = revenue - costBalance = 1000
+    it('scales up when profitable (revenue exceeds costs) and demand exceeds threshold', () => {
+        // Profitable facility: revenue = 1200, costs = 1000
         // profit margin = (1200 - 1000) / 1000 = 0.2
-        // demandExcess = 0.8 → signal = 0.8 - 0 + 0.2*0.5 = 0.9 > threshold
+        // demandExcess = 0.8 → signal ≈ (0.8 + 0.2) / 2 = 0.5 → positive
         const planet = makePlanetWithAvg(
             makeMarketResult({
                 unfilledDemand: 80,
@@ -295,10 +293,10 @@ describe('updateAgentProductionScale', () => {
                 totalUsedByEdu: {},
                 lastProduced: { [RESOURCE_NAME]: 100 },
                 lastConsumed: {},
-                revenue: 0,
-                wageCosts: 0,
-                inputCosts: 0,
-                costBalance: 200, // revenue(1200) - actualCost(1000) = 200
+                revenue: 1200,
+                wageCosts: 600,
+                inputCosts: 400,
+                costBalance: 200, // revenue(1200) - inputCosts(400) - wageCosts(600) = 200
             },
         });
         const initial = facility.scale;

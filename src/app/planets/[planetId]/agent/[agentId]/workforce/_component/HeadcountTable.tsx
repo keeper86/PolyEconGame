@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { eduLabel, sumByEdu, pct, EDU_COLORS } from './workforce-theme';
+import { eduLabel, sumByEdu, pct, EDU_COLORS } from './workforceTheme';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';

@@ -196,10 +196,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue; // Only education group buys education services
                 }
 
-                const referencePrice =
-                    planet.avgMarketResult[service.resource.name]?.clearingPrice ??
-                    planet.marketPrices[service.resource.name] ??
-                    0;
+                const referencePrice = planet.marketPrices[service.resource.name] ?? 0;
 
                 if (referencePrice <= 0) {
                     continue;

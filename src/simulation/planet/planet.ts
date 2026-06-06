@@ -293,6 +293,18 @@ export type AgentPlanetAssets = {
 
     allocatedWorkers: PerEducation;
 
+    /** Total slot body capacity (pre-scaled by age/skill/xp productivity) per education level,
+     *  computed by productionTick from the waterfill slot capacities. */
+    totalSlotCapacity: Record<EducationLevelType, number>;
+
+    unusedWorkers: Record<EducationLevelType, number>;
+
+    overqualifiedWorkers: {
+        [jobEdu in EducationLevelType]?: {
+            [workerEdu in EducationLevelType]?: number;
+        };
+    };
+
     deaths: DemographicEventCounters;
     disabilities: DemographicEventCounters;
 

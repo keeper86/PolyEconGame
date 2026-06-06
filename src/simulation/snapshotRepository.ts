@@ -248,6 +248,7 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
     let efficiencyN = 0;
     const storageTotals: Record<string, number> = {};
     let totalWorkers = 0;
+    let totalUnused = 0;
 
     const facs = assets.productionFacilities ?? [];
     facilityCount = facs.length;
@@ -271,6 +272,15 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         }
     }
 
+    if (assets.unusedWorkers) {
+        for (const v of Object.values(assets.unusedWorkers)) {
+            totalUnused += (v as number) ?? 0;
+        }
+    }
+
+    const totalAllWorkers = totalWorkers + totalUnused;
+    const unusedWorkerFraction = totalAllWorkers > 0 ? totalUnused / totalAllWorkers : 0;
+
     const topResources = Object.entries(storageTotals)
         .filter(([, qty]) => qty > 0)
         .sort(([, x], [, y]) => y - x)
@@ -283,7 +293,7 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         deposits: assets.deposits,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,
-        unusedWorkerFraction: 0,
+        unusedWorkerFraction,
         topResources,
         licenses: assets.licenses ?? {},
     };

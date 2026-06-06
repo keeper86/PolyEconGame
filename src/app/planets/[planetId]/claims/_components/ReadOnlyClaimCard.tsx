@@ -2,10 +2,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
 import { ClaimCardHeader } from './ClaimCardHeader';
+import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 
 export function ReadOnlyClaimCard({ summary }: { summary: ClaimResourceSummary }) {
     return (
-        <Card className='flex flex-col'>
+        <Card id={resourceNameToSlug(summary.resourceName)} className='flex flex-col'>
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>

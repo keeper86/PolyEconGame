@@ -126,6 +126,9 @@ export function makeAgentPlanetAssets(
         depositHold: 0,
         activeLoans: [],
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+        totalSlotCapacity: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+        unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+        overqualifiedWorkers: {},
         wagePerEdu: {
             none: DEFAULT_WAGE_PER_EDU,
             primary: DEFAULT_WAGE_PER_EDU,
@@ -224,7 +227,6 @@ export function createPopulation(total: number, buffer: number = 6): Population 
         demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
         summedPopulation: createEmptyPopulationCohort(),
         lastTransferMatrix: [],
-        lastConsumption: {},
     };
 
     for (let age = 0; age <= MAX_AGE; age++) {

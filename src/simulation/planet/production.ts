@@ -1,13 +1,23 @@
 import assert from 'assert';
-import { PRICE_CEIL, PRICE_FLOOR, SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
-import { computeWageCostPerTick } from '../financial/financialTick';
+import {
+    EXPERT_EFFICIENCY,
+    NOVICE_EFFICIENCY,
+    NOTICE_PERIOD_MONTHS,
+    PRICE_CEIL,
+    PRICE_FLOOR,
+    PROFESSIONAL_EFFICIENCY,
+    SERVICE_DEPRECIATION_RATE_PER_TICK,
+    TICKS_PER_YEAR,
+} from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { SKILL } from '../population/population';
+import { SKILL, type Skill } from '../population/population';
 import { createShip } from '../ships/ships';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
-import { totalActiveForEdu, totalDepartingForEdu } from '../workforce/workforceAggregates';
+import { totalActiveForEduSkill, totalDepartingForEduSkill } from '../workforce/workforceAggregates';
+import { productivityFromXP, totalWorkersInCategory } from '../workforce/workforce';
+import type { ResourceQuantity } from './claims';
 import { extractFromClaimedResource, getLandBoundCostPerUnit, queryClaimedResource } from './claims';
 import type {
     Facility,
@@ -17,12 +27,12 @@ import type {
     StorageFacility,
 } from './facility';
 import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
-import type { Agent, GameState, MonthAccumulator, Planet } from './planet';
+import type { Agent, AgentPlanetAssets, GameState, MonthAccumulator, Planet } from './planet';
 import { hasActiveLicense, pushTickerEvent } from './planet';
-import { ALL_FACILITY_ENTRIES } from './productionFacilities';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
+import { ALL_FACILITY_ENTRIES } from './productionFacilities';
 
 function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
@@ -78,7 +88,11 @@ function emptyEduRecord(): Record<EducationLevelType, number> {
     return { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 }
 
-export function consumeConstructionForFacility(facility: Facility, storage: StorageFacility | null): number {
+export function consumeConstructionForFacility(
+    facility: Facility,
+    storage: StorageFacility | null,
+    tracking: { planet: Planet; monthAcc: MonthAccumulator },
+): number {
     if (!facility.construction || !storage) {
         return 0;
     }
@@ -90,6 +104,19 @@ export function consumeConstructionForFacility(facility: Facility, storage: Stor
     if (toConsume > 0) {
         removeFromStorageFacility(storage, constructionServiceResourceType.name, toConsume);
         cs.progress += toConsume;
+
+        // Track construction service consumption
+        const resourceName = constructionServiceResourceType.name;
+        const price = tracking.planet.marketPrices[resourceName] ?? 0;
+        tracking.planet.consumedResources[resourceName] =
+            (tracking.planet.consumedResources[resourceName] ?? 0) + toConsume;
+        tracking.monthAcc.consumedResources[resourceName] = {
+            quantity: (tracking.monthAcc.consumedResources[resourceName]?.quantity ?? 0) + toConsume,
+            value: (tracking.monthAcc.consumedResources[resourceName]?.value ?? 0) + toConsume * price,
+        };
+        tracking.monthAcc.consumptionValue += toConsume * price;
+        tracking.planet.consumedResources[resourceName] =
+            (tracking.planet.consumedResources[resourceName] ?? 0) + toConsume;
     }
 
     if (cs.progress >= cs.totalConstructionServiceRequired) {
@@ -118,7 +145,10 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
 
         for (const facility of allFacilities) {
             const wasUnderConstruction = facility.construction !== null;
-            consumeConstructionForFacility(facility, assets.storageFacility);
+            consumeConstructionForFacility(facility, assets.storageFacility, {
+                planet,
+                monthAcc: assets.monthAcc,
+            });
             if (wasUnderConstruction && facility.construction === null) {
                 pushTickerEvent(gameState, {
                     category: 'facilityCompleted',
@@ -272,10 +302,8 @@ function computeResourceEfficiencyMap(
     for (const need of facility.needs) {
         const required = need.quantity * facility.scale;
         if (need.resource.form === 'landBoundResource') {
-            resourceEfficiencyMap[need.resource.name] = Math.min(
-                1,
-                queryClaimedResource(planet, agent, need.resource) / required,
-            );
+            resourceEfficiencyMap[need.resource.name] =
+                required > 0 ? Math.min(1, queryClaimedResource(planet, agent, need.resource) / required) : 1;
             continue;
         }
         const available = queryStorageFacility(storage, need.resource.name);
@@ -314,12 +342,6 @@ type StorageParameters = IntermediateResults & {
     facility: StorageFacility;
 };
 
-/**
- * Compute the theoretical (full-efficiency, scale-independent) cost per unit for each
- * output of a production facility and accumulate into the provided maps.
- * Scale cancels between costs and output, so the result is purely a function of the
- * facility design and current planet prices/wages.
- */
 function accumulateTheoreticalCostFloor(
     facility: ProductionFacility,
     planet: Planet,
@@ -389,7 +411,28 @@ function processProductionFacility(params: ProductionParameters): void {
     const actualProduced = produceOutputs(params);
     const actualConsumed = consumeNeeds(params);
     const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility, agent } = params;
+
     let costBalance = 0;
+
+    const needCostByName = (need: ResourceQuantity) =>
+        need.resource.form === 'landBoundResource'
+            ? getLandBoundCostPerUnit(planet, agent.id, need.resource.name)
+            : (planet.marketPrices[need.resource.name] ?? 0);
+
+    let inputCosts = 0;
+    facility.needs.forEach((need) => {
+        const consumedQty = actualConsumed[need.resource.name] ?? 0;
+        const value = consumedQty * needCostByName(need);
+        costBalance -= value;
+        inputCosts += value;
+        monthAcc.consumptionValue += value;
+    });
+
+    const agentAssets = agent.assets[planet.id];
+    assert(agentAssets, 'Agent assets should be defined at this point');
+    const actualWageCost = computeWageCostPerTick(facility, agentAssets.wagePerEdu);
+    costBalance -= actualWageCost;
+
     let outputRevenue = 0;
     for (const [name, qty] of Object.entries(actualProduced)) {
         const value = qty * (planet.marketPrices[name] ?? 0);
@@ -397,32 +440,9 @@ function processProductionFacility(params: ProductionParameters): void {
         outputRevenue += value;
         monthAcc.productionValue += value;
     }
-    const needCostByName = new Map<string, number>();
-    for (const need of facility.needs) {
-        needCostByName.set(
-            need.resource.name,
-            need.resource.form === 'landBoundResource'
-                ? getLandBoundCostPerUnit(planet, agent.id, need.resource.name)
-                : (planet.marketPrices[need.resource.name] ?? 0),
-        );
-    }
-    let inputCosts = 0;
-    for (const [name, qty] of Object.entries(actualConsumed)) {
-        const value = qty * (needCostByName.get(name) ?? planet.marketPrices[name] ?? 0);
-        costBalance -= value;
-        inputCosts += value;
-        monthAcc.consumptionValue += value;
-    }
-    let actualWageCost = 0;
-    const agentAssets = agent.assets[planet.id];
-    assert(agentAssets, 'Agent assets should be defined at this point');
-    for (const edu of educationLevelKeys) {
-        actualWageCost += (workerResults.totalUsedByEdu[edu] ?? 0) * agentAssets.wagePerEdu[edu];
-    }
-    costBalance -= actualWageCost;
 
     if (outputRevenue > 0) {
-        const totalCostThisFacility = outputRevenue - costBalance;
+        const totalCostThisFacility = actualWageCost + inputCosts;
         for (const [name, qty] of Object.entries(actualProduced)) {
             const outValue = qty * (planet.marketPrices[name] ?? 0);
             const costForOutput = totalCostThisFacility * (outValue / outputRevenue);
@@ -473,7 +493,8 @@ function processManagementFacility(params: ManagementParameters): void {
         inputCosts += value;
         monthAcc.consumptionValue += value;
     }
-    const wageCosts = computeWageCostPerTick(facility, planet);
+
+    const wageCosts = computeWageCostPerTick(facility, params.agent.assets[planet.id].wagePerEdu);
     costBalance -= wageCosts;
     facility.lastTickResults = {
         overallEfficiency,
@@ -537,6 +558,12 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
             value: (monthAcc.consumedResources[name]?.value ?? 0) + value,
         };
     }
+
+    const agentAssets = agent.assets[planet.id];
+    assert(agentAssets, 'Agent assets should be defined at this point');
+    const actualWageCost = computeWageCostPerTick(facility, agentAssets.wagePerEdu);
+    costBalance -= actualWageCost;
+
     facility.lastTickResults = {
         overallEfficiency,
         workerEfficiency: workerResults.workerEfficiency,
@@ -545,7 +572,7 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
         totalUsedByEdu: workerResults.totalUsedByEdu,
         exactUsedByEdu: workerResults.exactUsedByEdu,
         lastConsumed: actualConsumed,
-        wageCosts: 0,
+        wageCosts: actualWageCost,
         inputCosts,
         costBalance,
     };
@@ -568,10 +595,6 @@ function processStorageFacility(params: StorageParameters): void {
 // ---- main tick ----
 
 export function productionTick(gameState: GameState, planet: Planet): void {
-    planet.producedResources = {};
-    planet.consumedResources = {};
-    planet.productionCosts = {};
-
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (!assets) {
@@ -583,16 +606,45 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         const workforce = assets.workforceDemography;
 
-        const workerPool = {} as Record<EducationLevelType, number>;
+        const workerPool = {} as Record<EducationLevelType, Record<Skill, number>>;
         for (const edu of educationLevelKeys) {
-            const active = workforce ? totalActiveForEdu(workforce, edu) : 0;
-            const departing = workforce ? totalDepartingForEdu(workforce, edu) : 0;
-            workerPool[edu] = active + stochasticRound(departing * DEPARTING_EFFICIENCY);
+            workerPool[edu] = {} as Record<Skill, number>;
+            for (const skill of SKILL) {
+                const active = workforce ? totalActiveForEduSkill(workforce, edu, skill) : 0;
+                const departing = workforce ? totalDepartingForEduSkill(workforce, edu, skill) : 0;
+                workerPool[edu][skill] = active + stochasticRound(departing * DEPARTING_EFFICIENCY);
+            }
         }
 
         const ageProd = {} as Record<EducationLevelType, number>;
         for (const edu of educationLevelKeys) {
             ageProd[edu] = ageProductivityMultiplier(workforce ? weightedMeanAgeForEdu(workforce, edu) : 30);
+        }
+
+        const skillProd: Record<Skill, number> = {
+            novice: NOVICE_EFFICIENCY,
+            professional: PROFESSIONAL_EFFICIENCY,
+            expert: EXPERT_EFFICIENCY,
+        };
+
+        const xpProdByEduSkill = {} as Record<EducationLevelType, Record<Skill, number>>;
+        for (const edu of educationLevelKeys) {
+            xpProdByEduSkill[edu] = {} as Record<Skill, number>;
+            for (const skill of SKILL) {
+                if (!workforce) {
+                    xpProdByEduSkill[edu][skill] = 1;
+                    continue;
+                }
+                let totalXP = 0;
+                let totalWorkers = 0;
+                for (let age = 0; age < workforce.length; age++) {
+                    const category = workforce[age][edu][skill];
+                    totalXP += category.workforceExperience;
+                    totalWorkers += totalWorkersInCategory(category);
+                }
+                const avgXP = totalWorkers > 0 ? totalXP / totalWorkers : 0;
+                xpProdByEduSkill[edu][skill] = productivityFromXP(avgXP);
+            }
         }
 
         // All active facilities in one flat array.
@@ -624,6 +676,12 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         // Build one flat list of WorkerSlots across all active facilities.
         const allSlots: WorkerSlot[] = [];
         const effectiveDemandBySlot = new Map<WorkerSlot, number>();
+        const totalSlotCapacity: Record<EducationLevelType, number> = {
+            none: 0,
+            primary: 0,
+            secondary: 0,
+            tertiary: 0,
+        };
         for (const { facility } of enrichedFacilities) {
             for (const [eduLevel, req] of Object.entries(facility.workerRequirement)) {
                 if (!req || req <= 0) {
@@ -632,7 +690,12 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 const jobEdu = eduLevel as EducationLevelType;
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
                 const fullTarget = req * facility.scale;
-                const bodies = ageProd[jobEdu] > 0 ? Math.ceil(fullTarget / ageProd[jobEdu]) : 0;
+                // Average XP productivity across all skills for this education level
+                const xpProdValues = Object.values(xpProdByEduSkill[jobEdu] ?? {});
+                const avgXpProd =
+                    xpProdValues.length > 0 ? xpProdValues.reduce((a, b) => a + b, 0) / xpProdValues.length : 1;
+                const combinedProd = ageProd[jobEdu] * avgXpProd;
+                const bodies = combinedProd > 0 ? Math.ceil(fullTarget / combinedProd) : 0;
                 const slot: WorkerSlot = {
                     facilityId: facility.id,
                     facilityType: facility.type,
@@ -642,17 +705,77 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                     assigned: 0,
                     effectiveAssigned: 0,
                     assignedByEdu: {},
+                    assignedBySkill: {},
                     overqualifiedCount: 0,
                 };
                 allSlots.push(slot);
+                totalSlotCapacity[jobEdu] = (totalSlotCapacity[jobEdu] ?? 0) + slot.capacity;
                 effectiveDemandBySlot.set(slot, req * facility.scale);
             }
         }
 
-        const { byFacility } = waterFill(allSlots, workerPool, ageProd, effectiveDemandBySlot);
+        assets.totalSlotCapacity = totalSlotCapacity;
 
-        // We calculated resource constraints with last round's services. We now empty service storage.
-        // This makes services un-storable but allows producing services and using them next tick's production.
+        const { remaining, byFacility } = waterFill(
+            allSlots,
+            workerPool,
+            ageProd,
+            skillProd,
+            xpProdByEduSkill,
+            effectiveDemandBySlot,
+        );
+
+        if (workforce) {
+            for (let age = 0; age < workforce.length; age++) {
+                for (const edu of educationLevelKeys) {
+                    for (const skill of SKILL) {
+                        const cat = workforce[age][edu][skill];
+                        const pool = workerPool[edu][skill];
+                        const unassigned = remaining[edu][skill];
+                        const assignmentRatio = pool > 0 ? (pool - unassigned) / pool / TICKS_PER_YEAR : 0;
+                        cat.workforceExperience += cat.active * assignmentRatio;
+                        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                            cat.workforceExperience +=
+                                (cat.voluntaryDeparting[m] + cat.departingFired[m] + cat.departingRetired[m]) *
+                                DEPARTING_EFFICIENCY *
+                                assignmentRatio;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Flatten the 2D remaining map (edu × skill) into 1D per-education unused counts
+        const unusedWorkers = {} as Record<EducationLevelType, number>;
+        for (const edu of educationLevelKeys) {
+            let sum = 0;
+            for (const skill of SKILL) {
+                sum += remaining[edu][skill];
+            }
+            unusedWorkers[edu] = sum;
+        }
+        assets.unusedWorkers = unusedWorkers;
+
+        // Aggregate overqualified workers across all facilities
+        const overqualifiedWorkers: {
+            [jobEdu in EducationLevelType]?: {
+                [workerEdu in EducationLevelType]?: number;
+            };
+        } = {};
+        for (const facResult of byFacility.values()) {
+            for (const [jobEdu, breakdown] of Object.entries(facResult.overqualifiedWorkers)) {
+                const je = jobEdu as EducationLevelType;
+                if (!overqualifiedWorkers[je]) {
+                    overqualifiedWorkers[je] = {};
+                }
+                for (const [workerEdu, count] of Object.entries(breakdown)) {
+                    const we = workerEdu as EducationLevelType;
+                    overqualifiedWorkers[je]![we] = (overqualifiedWorkers[je]![we] ?? 0) + (count as number);
+                }
+            }
+        }
+        assets.overqualifiedWorkers = overqualifiedWorkers;
+
         depreciateServicesStorage(agent, planet);
 
         for (const { facility, resourceEfficiencyMap } of enrichedFacilities) {
@@ -663,6 +786,8 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 overqualifiedWorkers: {},
                 totalUsedByEdu: emptyEduRecord(),
                 exactUsedByEdu: emptyEduRecord(),
+                totalUsedBySkill: { novice: 0, professional: 0, expert: 0 },
+                exactUsedBySkill: { novice: 0, professional: 0, expert: 0 },
             };
 
             const resourceEfficiencies = Object.values(resourceEfficiencyMap);
@@ -718,3 +843,15 @@ export const ageProductivityMultiplier = (age: number): number => {
     }
     return Math.max(0.7, 0.85 - ((age - 65) * 0.15) / 15);
 };
+
+function computeWageCostPerTick(facility: Facility, agentWages: AgentPlanetAssets['wagePerEdu']): number {
+    let wageCost = 0;
+    for (const edu of educationLevelKeys) {
+        const req = facility.workerRequirement[edu] ?? 0;
+        const limitingEfficiency = facility.lastTickResults?.overallEfficiency ?? 1;
+        if (req > 0) {
+            wageCost += agentWages[edu] * req * facility.scale * limitingEfficiency;
+        }
+    }
+    return wageCost;
+}

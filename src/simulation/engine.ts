@@ -34,6 +34,9 @@ const MAX_TICKER_EVENTS = 200;
 export function advanceTick(gameState: GameState) {
     gameState.planets.forEach((planet) => {
         const planetMap = new Map([[planet.id, planet]]);
+        planet.producedResources = {};
+        planet.consumedResources = {};
+        planet.productionCosts = {};
 
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
@@ -60,7 +63,6 @@ export function advanceTick(gameState: GameState) {
             assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'after');
         }
 
-        updateAgentProductionScale(gameState.agents, planet);
         automaticWorkerAllocation(gameState.agents, planet);
         hireWorkforce(gameState.agents, planet);
         if (process.env.SIM_DEBUG) {
@@ -84,10 +86,11 @@ export function advanceTick(gameState: GameState) {
         constructionTick(gameState, planet);
 
         productionTick(gameState, planet);
+        automaticAdjustmentWages(gameState.agents, planet);
+        updateAgentProductionScale(gameState.agents, planet);
 
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);
-            automaticAdjustmentWages(gameState.agents, planet);
         }
 
         if (isYearBoundary(gameState.tick)) {

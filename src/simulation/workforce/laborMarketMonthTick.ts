@@ -3,7 +3,7 @@ import type { Agent, PerEducation, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import { transferPopulation } from '../population/population';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-import { forEachWorkforceCohort } from './workforce';
+import { forEachWorkforceCohort, subtractProportionalXP, totalWorkersInCategory } from './workforce';
 
 export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -55,9 +55,13 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                     forEachWorkforceCohort(workforce[age], (category, edu, skill) => {
                         const departingAtAge = category.voluntaryDeparting[0];
                         const firedAtAge = category.departingFired[0];
+                        const retiredAtAge = category.departingRetired[0];
 
                         // Non-retired departing → unoccupied
                         if (departingAtAge + firedAtAge > 0) {
+                            const totalBeforeVoluntaryFired = totalWorkersInCategory(category);
+                            subtractProportionalXP(category, departingAtAge + firedAtAge, totalBeforeVoluntaryFired);
+
                             const moved = transferPopulation(
                                 planet,
                                 { age, occ: 'employed', edu, skill },
@@ -72,9 +76,11 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                             }
                         }
 
-                        const retiredAtAge = category.departingRetired[0];
                         // Retired departing → unableToWork
                         if (retiredAtAge > 0) {
+                            const totalBeforeRetired = totalWorkersInCategory(category);
+                            subtractProportionalXP(category, retiredAtAge, totalBeforeRetired);
+
                             const moved = transferPopulation(
                                 planet,
                                 { age, occ: 'employed', edu, skill },

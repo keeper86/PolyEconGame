@@ -29,7 +29,7 @@ export function populationTick(planet: Planet, workforceEvents: WorkforceEventAc
     applyRetirement(planet);
 
     // After applying mortality/disability/retirement so workforceEvents are still consistent with population
-    consumeServices(population);
+    consumeServices(planet);
     populationBirthsTick(population, fertileWomen, planet.environment.pollution);
 }
 

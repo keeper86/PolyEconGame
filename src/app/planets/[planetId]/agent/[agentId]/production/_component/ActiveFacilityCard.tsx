@@ -91,7 +91,7 @@ export function ActiveFacilityCard({
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
             headerContent={
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-2'>
+                    <div className='flex items-center gap-1 flex-col mb-1'>
                         <h3 className='font-semibold leading-tight '>{facility.name}</h3>
                         <span className='flex flex-col items-center gap-1'>
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
@@ -99,20 +99,24 @@ export function ActiveFacilityCard({
                             </Badge>
                         </span>
                     </div>
-                    <WorkerBars
-                        workerRequirement={facility.workerRequirement}
-                        scale={facility.scale}
-                        workerEfficiency={results?.workerEfficiency ?? {}}
-                        globalMin={globalMin}
-                    />
+                    <span className='flex flex-col text-muted-foreground text-xs gap-1'>
+                        Worker efficiency
+                        <WorkerBars
+                            workerRequirement={facility.workerRequirement}
+                            scale={facility.scale}
+                            workerEfficiency={results?.workerEfficiency ?? {}}
+                            globalMin={globalMin}
+                        />
+                    </span>
                 </span>
             }
         >
-            <div className='flex flex-row items-center justify-center gap-5 text-xs text-muted-foreground'>
+            <div className='flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground'>
                 {'revenue' in facility.lastTickResults && (
                     <>
                         <div className='flex flex-col items-center'>
-                            revenue
+                            {' '}
+                            revenue{' '}
                             <span className='tabular-nums text-green-600 dark:text-green-400'>
                                 {formatNumberWithUnit(facility.lastTickResults.revenue, 'currency', planetId)}
                             </span>
@@ -122,7 +126,8 @@ export function ActiveFacilityCard({
                 )}
 
                 <div className='flex flex-col items-center'>
-                    inputs
+                    {' '}
+                    inputs{' '}
                     <span className='tabular-nums text-red-600 dark:text-red-400'>
                         {formatNumberWithUnit(facility.lastTickResults.inputCosts, 'currency', planetId)}
                     </span>
@@ -131,7 +136,8 @@ export function ActiveFacilityCard({
                 <span className='shrink-0'>−</span>
 
                 <div className='flex flex-col items-center'>
-                    wages
+                    {' '}
+                    wages{' '}
                     <span className='tabular-nums text-red-600 dark:text-red-400'>
                         {formatNumberWithUnit(facility.lastTickResults.wageCosts, 'currency', planetId)}
                     </span>
@@ -139,8 +145,9 @@ export function ActiveFacilityCard({
 
                 <span className='shrink-0'>=</span>
 
-                <div className='flex flex-col items-center'>
-                    net/day
+                <div className='flex flex-col items-center text-foreground'>
+                    {' '}
+                    net/day{' '}
                     <span
                         className={`tabular-nums text-md ${
                             results.costBalance >= 0
