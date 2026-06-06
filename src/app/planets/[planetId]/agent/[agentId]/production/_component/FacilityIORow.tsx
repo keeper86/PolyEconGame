@@ -1,19 +1,19 @@
 'use client';
 
-import React from 'react';
-import { RiArrowRightBoxFill } from 'react-icons/ri';
-import type { ResourceEntry } from '@/components/client/ProductQuantity';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { useAgentId } from '@/hooks/useAgentId';
 import { usePlanetId } from '@/hooks/usePlanetId';
+import type { ResourceQuantity } from '@/simulation/planet/claims';
+import React from 'react';
+import { RiArrowRightBoxFill } from 'react-icons/ri';
 
 export function FacilityIORow({
     needs,
     produces,
     scale = 1,
 }: {
-    needs: ResourceEntry[];
-    produces: ResourceEntry[];
+    needs: ResourceQuantity[];
+    produces: ResourceQuantity[];
     scale?: number;
 }): React.ReactElement {
     const planetId = usePlanetId();

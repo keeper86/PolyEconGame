@@ -1367,7 +1367,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         id: PROC_PLANET_ID,
         name: 'Earth',
         position: { x: 10, y: 0, z: 0 },
-        population: createPopulation(8_000_000_000, 1.5),
+        population: createPopulation(8_000_000_000, 2),
         governmentId: GOV,
         bank: {
             loans: 0,

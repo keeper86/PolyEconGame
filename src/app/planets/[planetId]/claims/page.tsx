@@ -5,14 +5,33 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { AgentClaimEntry } from '@/server/controller/planet';
 import { useParams } from 'next/navigation';
+import { useEffect } from 'react';
 import { ActiveClaimCard } from './_components/ActiveClaimCard';
 import { LeaseClaimCard } from './_components/LeaseClaimCard';
 import { ReadOnlyClaimCard } from './_components/ReadOnlyClaimCard';
 import { Page } from '@/components/client/Page';
 
+// Height of the sticky page header (h-12 sm:h-14 = 48–56px; use 72px for safe margin).
+const STICKY_HEADER_OFFSET = 72;
+
 function ClaimsContent({ planetId }: { planetId: string }) {
     const trpc = useTRPC();
     const { agentId } = useAgentId();
+
+    // Scroll to hash-targeted claim card on mount / soft navigation
+    useEffect(() => {
+        const slug = window.location.hash.slice(1);
+        if (!slug) {
+            return;
+        }
+        const el = document.getElementById(slug);
+        if (el) {
+            setTimeout(() => {
+                const top = el.getBoundingClientRect().top + window.scrollY - STICKY_HEADER_OFFSET;
+                window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            }, 50);
+        }
+    }, []);
 
     const { data: planetClaimsData, isLoading: planetClaimsLoading } = useSimulationQuery(
         trpc.simulation.getPlanetClaims.queryOptions({ planetId }),

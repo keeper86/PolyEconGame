@@ -3,10 +3,28 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { eduLabel, EDU_COLORS, sumByEdu } from './workforce-theme';
+import { eduLabel, EDU_COLORS, sumByEdu } from './workforceTheme';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
+import type { WorkforceSummary } from './workforceSummary';
+import type { DemographicEventCounters } from '@/simulation/planet/planet';
+
+// ---------------------------------------------------------------------------
+// Aggregated props (grouped — not flattened)
+// ---------------------------------------------------------------------------
+
+export type EducationLevelCardsProps = {
+    summary: WorkforceSummary;
+    allocatedWorkers: Partial<Record<EducationLevelType, number>>;
+    unusedWorkers?: Partial<Record<EducationLevelType, number>>;
+    overqualified?: {
+        byEdu?: Record<EducationLevelType, number>;
+        breakdown?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
+    };
+    deaths?: DemographicEventCounters;
+    disabilities?: DemographicEventCounters;
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -14,13 +32,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 
 /** Format "next (total)" for on-notice pipeline values. */
 function formatNumbersNextTotal(next: number, total: number): string {
-    if (total <= 0) {
-        return '—';
-    }
-    if (next > 0) {
-        return `${formatNumberWithUnit(next, 'persons')}  (${formatNumberWithUnit(total, 'persons')})`;
-    }
-    return `—  (${formatNumberWithUnit(total, 'persons')})`;
+    return `${formatNumberWithUnit(next, 'persons')}  (${formatNumberWithUnit(total, 'persons')})`;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,64 +76,41 @@ function Rule(): React.ReactElement {
 // ---------------------------------------------------------------------------
 
 function EducationCard({
-    label,
-    badgeClassName,
-    target,
-    active,
-    unused,
-    deaths,
-    deathsPrev,
-    disabilities,
-    disabilitiesPrev,
-    retirements,
-    retirementsPrev,
-    // number of overqualified workers filling slots for this job edu
+    header,
+    headcount,
     overqualified,
-    // breakdown: workerEdu -> count for this job edu
-    overqualifiedBreakdown,
-    // On-notice pipeline
-    voluntaryNext,
-    voluntaryTotal,
-    firedNext,
-    firedTotal,
-    // Demographics & productivity
-    meanAge,
-    ageProd,
-    meanTenure,
-    tenureProd,
-    hasWorkers,
+    onNotice,
+    demographicEvents,
+    productivity,
     isTotal,
 }: {
-    label: string;
-    badgeClassName: string;
-    target: number;
-    active: number;
-    unused: number;
-    deaths?: number;
-    deathsPrev?: number;
-    disabilities?: number;
-    disabilitiesPrev?: number;
-    retirements?: number;
-    retirementsPrev?: number;
-    overqualified?: number;
-    overqualifiedBreakdown?: { [workerEdu in EducationLevelType]?: number };
-    voluntaryNext: number;
-    voluntaryTotal: number;
-    firedNext: number;
-    firedTotal: number;
-    meanAge: number;
-    ageProd: number;
-    meanTenure: number;
-    tenureProd: number;
-    hasWorkers: boolean;
+    header: { label: string; badgeClassName: string };
+    headcount: { target: number; active: number; unused: number };
+    overqualified?: { count?: number; breakdown?: { [workerEdu in EducationLevelType]?: number } };
+    onNotice: {
+        voluntaryNext: number;
+        voluntaryTotal: number;
+        firedNext: number;
+        firedTotal: number;
+        retiredNext: number;
+        retiredTotal: number;
+    };
+    demographicEvents?: { deaths?: number; disabilities?: number };
+    productivity: { meanAge: number; ageProd: number; meanTenure: number; tenureProd: number; hasWorkers: boolean };
     isTotal?: boolean;
 }): React.ReactElement {
-    const totalOnNotice = voluntaryTotal + firedTotal;
+    const { label, badgeClassName } = header;
+    const { target, active, unused } = headcount;
+    const { count: overqualifiedCount, breakdown: overqualifiedBreakdown } = overqualified ?? {};
+    const { voluntaryNext, voluntaryTotal, firedNext, firedTotal, retiredNext, retiredTotal } = onNotice;
+    const { deaths, disabilities } = demographicEvents ?? {};
+    const { meanAge, ageProd, meanTenure, tenureProd, hasWorkers } = productivity;
+    const totalOnNotice = voluntaryTotal + firedTotal + retiredTotal;
     const totalWorkforce = active + totalOnNotice;
     const combinedProd = ageProd * tenureProd;
     // On-notice next-month total and collapsed state
-    const totalNextOnNotice = voluntaryNext + firedNext;
-    const [onNoticeOpen, setOnNoticeOpen] = React.useState(true);
+    const totalNextOnNotice = voluntaryNext + firedNext + retiredNext;
+    const [onNoticeOpen, setOnNoticeOpen] = React.useState(isTotal || totalOnNotice > 0);
     const onNoticeId = React.useId();
 
     return (
@@ -139,19 +128,19 @@ function EducationCard({
                 value={
                     <>
                         {formatNumberWithUnit(target, 'persons')}
-                        {overqualified && overqualified > 0 ? (
+                        {overqualifiedCount && overqualifiedCount > 0 ? (
                             <Tooltip>
                                 <TooltipTrigger>
                                     <span className='text-amber-600 ml-1 tabular-nums'>
-                                        ({formatNumberWithUnit(overqualified, 'persons')})
+                                        ({formatNumberWithUnit(overqualifiedCount, 'persons')})
                                     </span>
                                 </TooltipTrigger>
                                 <TooltipContent sideOffset={6}>
                                     <div className='max-w-xs'>
                                         <div className='font-medium'>Overqualified workers</div>
                                         <div className='text-xs text-muted-foreground mt-1'>
-                                            Facilities filled {formatNumberWithUnit(overqualified, 'persons')} slot
-                                            {overqualified !== 1 ? 's' : ''} with higher-educated workers because
+                                            Facilities filled {formatNumberWithUnit(overqualifiedCount, 'persons')} slot
+                                            {overqualifiedCount !== 1 ? 's' : ''} with higher-educated workers because
                                             lower-education workers were not available.
                                         </div>
                                         {overqualifiedBreakdown && (
@@ -189,46 +178,25 @@ function EducationCard({
             {/* ── Breakdown: Active + On notice = Total ── */}
             <Stat label='Active' value={formatNumberWithUnit(active, 'persons')} />
 
-            {/* Deaths this month (and last month) */}
+            {/* Deaths */}
             {typeof deaths === 'number' && (
                 <Stat
                     label='Deaths'
-                    value={
-                        typeof deathsPrev === 'number'
-                            ? `${formatNumberWithUnit(deaths, 'persons')} (${formatNumberWithUnit(deathsPrev, 'persons')})`
-                            : formatNumberWithUnit(deaths, 'persons')
-                    }
+                    value={formatNumberWithUnit(deaths, 'persons')}
                     valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
                 />
             )}
 
-            {/* Disabilities this month (and last month) */}
+            {/* Disabilities */}
             {typeof disabilities === 'number' && (
                 <Stat
                     label='Disabilities'
-                    value={
-                        typeof disabilitiesPrev === 'number'
-                            ? `${formatNumberWithUnit(disabilities, 'persons')} (${formatNumberWithUnit(disabilitiesPrev, 'persons')})`
-                            : formatNumberWithUnit(disabilities, 'persons')
-                    }
+                    value={formatNumberWithUnit(disabilities, 'persons')}
                     valueClassName={disabilities > 0 ? 'text-orange-700' : 'text-muted-foreground'}
                 />
             )}
 
-            {/* Retirements this month (and last month) */}
-            {typeof retirements === 'number' && (
-                <Stat
-                    label='Retirements'
-                    value={
-                        typeof retirementsPrev === 'number'
-                            ? `${formatNumberWithUnit(retirements, 'persons')} (${formatNumberWithUnit(retirementsPrev, 'persons')})`
-                            : formatNumberWithUnit(retirements, 'persons')
-                    }
-                    valueClassName={retirements > 0 ? 'text-blue-700' : 'text-muted-foreground'}
-                />
-            )}
-
-            {/* On-notice — collapsible breakdown. The total (with next-month counter) stays visible */}
+            {/* On-notice — collapsible breakdown */}
             <div className='flex items-baseline justify-between gap-2'>
                 <button
                     type='button'
@@ -264,7 +232,7 @@ function EducationCard({
             {onNoticeOpen && (
                 <>
                     <div id={onNoticeId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>
-                        next mo · (pipeline)
+                        next month · (pipeline)
                     </div>
                     <Stat
                         label='Voluntary'
@@ -278,6 +246,12 @@ function EducationCard({
                         valueClassName={firedTotal > 0 ? 'text-red-500' : 'text-muted-foreground'}
                         indent
                     />
+                    <Stat
+                        label='Retired'
+                        value={formatNumbersNextTotal(retiredNext, retiredTotal)}
+                        valueClassName={retiredTotal > 0 ? 'text-blue-600' : 'text-muted-foreground'}
+                        indent
+                    />
                 </>
             )}
 
@@ -285,7 +259,7 @@ function EducationCard({
 
             {/* ── Demographics & Productivity ── */}
             <div className='flex items-baseline justify-between gap-2'>
-                <span className='text-muted-foreground'>Age / Tenure</span>
+                <span className='text-muted-foreground'>Age / Tenure (XP)</span>
                 <span className='tabular-nums font-medium'>
                     {hasWorkers ? `${meanAge.toFixed(1)}` : '—'}
                     <span className='text-muted-foreground mx-0.5'>/</span>
@@ -324,112 +298,84 @@ function EducationCard({
 // ---------------------------------------------------------------------------
 
 export function EducationLevelCards({
+    summary,
     allocatedWorkers,
-    activeByEdu,
-    firedByEdu,
-    voluntaryByEdu,
-    nextMonthVoluntaryByEdu,
-    nextMonthFiredByEdu,
     unusedWorkers,
-    overqualifiedByEdu,
-    overqualifiedBreakdown,
-    meanAgeByEdu,
-    ageProductivityByEdu,
-    meanTenureByEdu,
-    tenureProductivityByEdu,
-    overallMeanAge,
-    overallAgeProductivity,
-    overallMeanTenure,
-    overallTenureProductivity,
-    deathsByEdu,
-    deathsPrevByEdu,
-    disabilitiesByEdu,
-    disabilitiesPrevByEdu,
-    retirementsByEdu,
-    retirementsPrevByEdu,
-}: {
-    allocatedWorkers: Record<EducationLevelType, number>;
-    activeByEdu: Record<EducationLevelType, number>;
-    firedByEdu: Record<EducationLevelType, number>;
-    voluntaryByEdu: Record<EducationLevelType, number>;
-    nextMonthVoluntaryByEdu: Record<EducationLevelType, number>;
-    nextMonthFiredByEdu: Record<EducationLevelType, number>;
-    unusedWorkers?: Record<EducationLevelType, number>;
-    meanAgeByEdu: Record<EducationLevelType, number>;
-    ageProductivityByEdu: Record<EducationLevelType, number>;
-    meanTenureByEdu: Record<EducationLevelType, number>;
-    tenureProductivityByEdu: Record<EducationLevelType, number>;
-    overallMeanAge: number;
-    overallAgeProductivity: number;
-    overallMeanTenure: number;
-    overallTenureProductivity: number;
-    overqualifiedByEdu?: Record<EducationLevelType, number>;
-    overqualifiedBreakdown?: { [jobEdu in EducationLevelType]?: { [workerEdu in EducationLevelType]?: number } };
-    deathsByEdu?: Partial<Record<EducationLevelType, number>>;
-    deathsPrevByEdu?: Partial<Record<EducationLevelType, number>>;
-    disabilitiesByEdu?: Partial<Record<EducationLevelType, number>>;
-    disabilitiesPrevByEdu?: Partial<Record<EducationLevelType, number>>;
-    retirementsByEdu?: Partial<Record<EducationLevelType, number>>;
-    retirementsPrevByEdu?: Partial<Record<EducationLevelType, number>>;
-}): React.ReactElement {
-    const totalActive = sumByEdu(activeByEdu);
-    const totalFired = sumByEdu(firedByEdu);
-    const totalVol = sumByEdu(voluntaryByEdu);
+    overqualified,
+    deaths,
+    disabilities,
+}: EducationLevelCardsProps): React.ReactElement {
+    const totalActive = summary.totalActive;
+    const totalFired = summary.totalFired;
+    const totalVol = summary.totalVoluntary;
     const totalUnused = unusedWorkers ? sumByEdu(unusedWorkers) : 0;
-    const totalOverqualified = overqualifiedByEdu ? sumByEdu(overqualifiedByEdu) : 0;
+    const totalOverqualified = overqualified?.byEdu ? sumByEdu(overqualified.byEdu) : 0;
+    const totalRetired = sumByEdu(summary.retiredByEdu);
+    const totalNextRetired = sumByEdu(summary.nextMonthRetiredByEdu);
 
     return (
         <div className='flex flex-wrap gap-3'>
             {educationLevelKeys.map((edu) => (
                 <EducationCard
                     key={edu}
-                    label={eduLabel(edu)}
-                    badgeClassName={EDU_COLORS[edu].badge}
-                    target={allocatedWorkers[edu] ?? 0}
-                    active={activeByEdu[edu]}
-                    unused={unusedWorkers?.[edu] ?? 0}
-                    deaths={deathsByEdu?.[edu]}
-                    deathsPrev={deathsPrevByEdu?.[edu]}
-                    disabilities={disabilitiesByEdu?.[edu]}
-                    disabilitiesPrev={disabilitiesPrevByEdu?.[edu]}
-                    retirements={retirementsByEdu?.[edu]}
-                    retirementsPrev={retirementsPrevByEdu?.[edu]}
-                    overqualified={overqualifiedByEdu?.[edu] ?? 0}
-                    overqualifiedBreakdown={overqualifiedBreakdown?.[edu]}
-                    voluntaryNext={nextMonthVoluntaryByEdu[edu]}
-                    voluntaryTotal={voluntaryByEdu[edu]}
-                    firedNext={nextMonthFiredByEdu[edu]}
-                    firedTotal={firedByEdu[edu]}
-                    meanAge={meanAgeByEdu[edu]}
-                    ageProd={ageProductivityByEdu[edu]}
-                    meanTenure={meanTenureByEdu[edu]}
-                    tenureProd={tenureProductivityByEdu[edu]}
-                    hasWorkers={activeByEdu[edu] > 0}
+                    header={{ label: eduLabel(edu), badgeClassName: EDU_COLORS[edu].badge }}
+                    headcount={{
+                        target: allocatedWorkers[edu] ?? 0,
+                        active: summary.activeByEdu[edu],
+                        unused: unusedWorkers?.[edu] ?? 0,
+                    }}
+                    overqualified={{
+                        count: overqualified?.byEdu?.[edu] ?? 0,
+                        breakdown: overqualified?.breakdown?.[edu],
+                    }}
+                    onNotice={{
+                        voluntaryNext: summary.nextMonthVoluntaryByEdu[edu],
+                        voluntaryTotal: summary.voluntaryByEdu[edu],
+                        firedNext: summary.nextMonthFiredByEdu[edu],
+                        firedTotal: summary.firedByEdu[edu],
+                        retiredNext: summary.nextMonthRetiredByEdu[edu],
+                        retiredTotal: summary.retiredByEdu[edu],
+                    }}
+                    demographicEvents={{
+                        deaths: deaths?.thisMonth?.[edu],
+                        disabilities: disabilities?.thisMonth?.[edu],
+                    }}
+                    productivity={{
+                        meanAge: summary.meanAgeByEdu[edu],
+                        ageProd: summary.ageProductivityByEdu[edu],
+                        meanTenure: summary.meanTenureByEdu[edu],
+                        tenureProd: summary.tenureProductivityByEdu[edu],
+                        hasWorkers: summary.activeByEdu[edu] > 0,
+                    }}
                 />
             ))}
             {/* Total card */}
             <EducationCard
-                label='Total'
-                badgeClassName='border-foreground/30 bg-muted text-foreground font-semibold'
-                target={sumByEdu(allocatedWorkers)}
-                active={totalActive}
-                unused={totalUnused}
-                deaths={deathsByEdu ? sumByEdu(deathsByEdu) : undefined}
-                deathsPrev={deathsPrevByEdu ? sumByEdu(deathsPrevByEdu) : undefined}
-                disabilities={disabilitiesByEdu ? sumByEdu(disabilitiesByEdu) : undefined}
-                disabilitiesPrev={disabilitiesPrevByEdu ? sumByEdu(disabilitiesPrevByEdu) : undefined}
-                retirements={retirementsByEdu ? sumByEdu(retirementsByEdu) : undefined}
-                retirementsPrev={retirementsPrevByEdu ? sumByEdu(retirementsPrevByEdu) : undefined}
-                overqualified={totalOverqualified}
-                voluntaryNext={sumByEdu(nextMonthVoluntaryByEdu)}
-                voluntaryTotal={totalVol}
-                firedNext={sumByEdu(nextMonthFiredByEdu)}
-                firedTotal={totalFired}
-                meanAge={overallMeanAge}
-                ageProd={overallAgeProductivity}
-                meanTenure={overallMeanTenure}
-                tenureProd={overallTenureProductivity}
-                hasWorkers={totalActive > 0}
+                header={{
+                    label: 'Total',
+                    badgeClassName: 'border-foreground/30 bg-muted text-foreground font-semibold',
+                }}
+                headcount={{
+                    target: sumByEdu(allocatedWorkers),
+                    active: totalActive,
+                    unused: totalUnused,
+                }}
+                overqualified={{ count: totalOverqualified }}
+                onNotice={{
+                    voluntaryNext: sumByEdu(summary.nextMonthVoluntaryByEdu),
+                    voluntaryTotal: totalVol,
+                    firedNext: sumByEdu(summary.nextMonthFiredByEdu),
+                    firedTotal: totalFired,
+                    retiredNext: totalNextRetired,
+                    retiredTotal: totalRetired,
+                }}
+                productivity={{
+                    meanAge: summary.overallMeanAge,
+                    ageProd: summary.overallAgeProductivity,
+                    meanTenure: summary.overallMeanTenure,
+                    tenureProd: summary.overallTenureProductivity,
+                    hasWorkers: totalActive > 0,
+                }}
                 isTotal
             />
         </div>

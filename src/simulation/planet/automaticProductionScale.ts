@@ -8,7 +8,8 @@ import {
     queryStorageFacility,
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
-import { constructionServiceResourceType } from './services';
+import { constructionServiceResourceType, groceryServiceResourceType } from './services';
+import { PROC_PLANET_ID } from '../initialUniverse';
 
 export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
 export const INPUT_EFFICIENCY_MIN = 0.5;
@@ -42,7 +43,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
     let weightedOutputSignalSum = 0;
     let totalWeight = 0;
-    let revenue = 0;
     let noData = 0;
 
     const storage = assets.storageFacility;
@@ -79,11 +79,21 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                 ? avg.clearingPrice
                 : (orderBook?.bids[0]?.price ?? planet.marketPrices[output.resource.name] ?? 0);
 
+        assert(isFinite(price) && price > 0, 'Price should be positive and finite, but got' + price);
+
         const totalDemand = avg.totalDemand;
         const totalSupply = avg.totalSupply;
         const ownSupply = queryStorageFacility(storage, output.resource.name);
+
+        assert(
+            isFinite(ownSupply) && ownSupply >= 0,
+            'Own supply should be non-negative and finite, but got' + ownSupply,
+        );
+
         const perTick = output.quantity * Math.max(maxScale, 1);
         const buffer = perTick > 0 ? ownSupply / perTick : 0;
+
+        assert(isFinite(buffer) && buffer >= 0, 'Buffer should be non-negative and finite, but got' + buffer);
 
         const overfilled =
             buffer >= OUTPUT_BUFFER_FULL_TICKS ? (buffer / (buffer + OUTPUT_BUFFER_FULL_TICKS) - 0.5) * 2 : 0;
@@ -100,35 +110,54 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                 perTick,
         );
 
-        const produced = planet.producedResources[output.resource.name] ?? 0;
-        const consumed = planet.consumedResources[output.resource.name] ?? 0;
-        const productionSignal = (produced - consumed) / Math.max(1, produced + consumed);
-        assert(
-            productionSignal >= -1 && productionSignal <= 1,
-            'Production signal should be between -1 and 1, but got' + productionSignal,
-        );
-
         const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
         const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
         const balance = (avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, avg.unfilledDemand + avg.unsoldSupply);
 
+        assert(
+            unfilledFrac >= 0 && unfilledFrac <= 1,
+            'Unfilled fraction should be between 0 and 1, but got' + unfilledFrac,
+        );
+        assert(unsoldFrac >= 0 && unsoldFrac <= 1, 'Unsold fraction should be between 0 and 1, but got' + unsoldFrac);
+        assert(avg.unfilledDemand >= 0, 'Unfilled demand should be non-negative, but got' + avg.unfilledDemand);
+        assert(avg.unsoldSupply >= 0, 'Unsold supply should be non-negative, but got' + JSON.stringify(avg));
+        assert(balance >= -1 && balance <= 1, 'Balance should be between -1 and 1, but got' + balance);
+
         const WEIGHT_UNFILLED = 1.0;
         const WEIGHT_UNSOLD = 0.5;
         const WEIGHT_BALANCE = 2.0;
-        const WEIGHT_PRODUCTION = 1.0;
-        const OVERFILL_PENALTY = 0.5;
+        const OVERFILL_PENALTY = 1.0;
 
         weightedOutputSignalSum +=
             price *
             (WEIGHT_UNFILLED * unfilledFrac -
                 WEIGHT_UNSOLD * unsoldFrac -
                 OVERFILL_PENALTY * overfilled +
-                WEIGHT_BALANCE * balance -
-                WEIGHT_PRODUCTION * productionSignal);
-        revenue += (lastTickResults.lastProduced[output.resource.name] ?? 0) * price;
+                WEIGHT_BALANCE * balance);
+        totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + OVERFILL_PENALTY);
 
-        totalWeight +=
-            price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + WEIGHT_PRODUCTION + OVERFILL_PENALTY);
+        if (facility.produces[0]?.resource.name === groceryServiceResourceType.name && planet.id === PROC_PLANET_ID) {
+            console.info(
+                'Facility',
+                facility.id,
+                'buffer=',
+                buffer,
+                'unfilledFrac=',
+                unfilledFrac,
+                'unsoldFrac=',
+                unsoldFrac,
+                'balance=',
+                balance,
+                'overfilled=',
+                overfilled,
+                'supply=',
+                totalSupply,
+                'demand=',
+                totalDemand,
+                'price=',
+                price,
+            );
+        }
     }
 
     if (totalWeight === 0) {
@@ -138,18 +167,46 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         return 0;
     }
 
-    let profitSignal = 0;
-    const actualCost = revenue - lastTickResults.costBalance; // costBalance = revenue - actualCost
-    if (isFinite(actualCost) && actualCost > 0) {
-        const margin = (revenue - actualCost) / actualCost;
+    let profitSignal: number | undefined = undefined;
+    const costs = lastTickResults.inputCosts + lastTickResults.wageCosts;
+    const hasOperated = costs > 0 || lastTickResults.revenue > 0;
+    if (hasOperated && isFinite(costs)) {
+        const margin = costs > 0 ? (lastTickResults.revenue - costs) / costs : 1;
         profitSignal = Math.max(-1, Math.min(1, margin));
     }
 
     const maxOutputSignal = weightedOutputSignalSum / totalWeight;
 
-    let signal = (maxOutputSignal + profitSignal) / 2;
+    assert(
+        isFinite(maxOutputSignal) && maxOutputSignal >= -1 && maxOutputSignal <= 1,
+        'Max output signal should be between -1 and 1, but got' + maxOutputSignal,
+    );
+
+    let signal = profitSignal !== undefined ? (maxOutputSignal + profitSignal) / 2 : maxOutputSignal;
     if (signal > 0) {
-        signal = Math.max(0, lastTickResults.overallEfficiency * signal);
+        const eff = Math.max(0.1, lastTickResults.overallEfficiency);
+        signal = eff * signal;
+    }
+
+    if (facility.produces[0]?.resource.name === groceryServiceResourceType.name && planet.id === PROC_PLANET_ID) {
+        console.info(
+            'Facility',
+            facility.id,
+            'profitSignal=',
+            profitSignal,
+            'costs_wage',
+            lastTickResults.wageCosts,
+            'costs_input',
+            lastTickResults.inputCosts,
+            'revenue',
+            lastTickResults.revenue,
+            'maxOutputSignal=',
+            maxOutputSignal,
+            'overallEfficiency=',
+            lastTickResults.overallEfficiency,
+            'final signal=',
+            signal,
+        );
     }
 
     return signal;

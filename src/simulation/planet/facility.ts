@@ -177,17 +177,23 @@ export const putIntoStorageFacility = (
 ): number => {
     const current = storage.currentInStorage[resource.name]?.quantity || 0;
 
-    const volumeRestriction = Math.min(
-        1,
-        (storage.capacity.volume * storage.scale - storage.current.volume) / //
-            (additionalQuantity * resource.volumePerQuantity),
-    );
+    const volumeRestriction =
+        resource.volumePerQuantity > 0
+            ? Math.min(
+                  1,
+                  (storage.capacity.volume * storage.scale - storage.current.volume) /
+                      (additionalQuantity * resource.volumePerQuantity),
+              )
+            : 1;
 
-    const massRestriction = Math.min(
-        1,
-        (storage.capacity.mass * storage.scale - storage.current.mass) / //
-            (additionalQuantity * resource.massPerQuantity),
-    );
+    const massRestriction =
+        resource.massPerQuantity > 0
+            ? Math.min(
+                  1,
+                  (storage.capacity.mass * storage.scale - storage.current.mass) /
+                      (additionalQuantity * resource.massPerQuantity),
+              )
+            : 1;
 
     const overallRestriction = Math.min(volumeRestriction, massRestriction);
 

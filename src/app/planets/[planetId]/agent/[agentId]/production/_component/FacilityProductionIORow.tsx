@@ -1,11 +1,11 @@
 'use client';
 
+import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { useAgentId } from '@/hooks/useAgentId';
 import { usePlanetId } from '@/hooks/usePlanetId';
+import type { ResourceQuantity } from '@/simulation/planet/claims';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
-import type { ResourceEntry } from '@/components/client/ProductQuantity';
-import { ProductQuantity } from '@/components/client/ProductQuantity';
 
 export function FacilityProductionIORow({
     needs,
@@ -15,8 +15,8 @@ export function FacilityProductionIORow({
     overallEfficiency,
     limitingEfficiency,
 }: {
-    needs: ResourceEntry[];
-    produces: ResourceEntry[];
+    needs: ResourceQuantity[];
+    produces: ResourceQuantity[];
     scale: number;
     resourceEfficiency: Record<string, number>;
     overallEfficiency: number;

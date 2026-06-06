@@ -47,7 +47,8 @@ export const OUTPUT_BUFFER_MAX_TICKS = 10;
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 
 /** Minimum wage per worker per tick — automated agents will never go below this. */
-export const MIN_WAGE = 5.0;
+export const MIN_WAGE = 1.0;
+export const MAX_WAGE = 20.0;
 /** Fractional wage adjustment applied each month based on profitability (±2%). */
 export const WAGE_ADJUSTMENT_RATE = 0.02;
 
@@ -69,6 +70,13 @@ export const MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE = 0.01;
 export const MAX_DISPATCH_TIMEOUT_TICKS = 60;
 
 export const SHIP_MARKET_EMA_ALPHA = 0.3;
+
+// ---------------------------------------------------------------------------
+// Skill efficiency multipliers for workforce productivity
+// ---------------------------------------------------------------------------
+export const NOVICE_EFFICIENCY = 1.0;
+export const PROFESSIONAL_EFFICIENCY = 1.5;
+export const EXPERT_EFFICIENCY = 2.0;
 
 /** Maximum number of trade records kept per ship-type in the capital market history. */
 export const SHIP_MARKET_MAX_TRADE_HISTORY = 100;

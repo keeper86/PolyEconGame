@@ -949,3 +949,159 @@ describe('productionTick — shipCompleted ticker events', () => {
         expect(agent.ships).toHaveLength(0);
     });
 });
+
+// ============================================================================
+// productionTick — XP boost integrative tests
+// ============================================================================
+
+describe('productionTick — XP boost effect on production', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('workers with high XP produce more effective output from the same headcount', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('xp-company');
+
+        // Facility needs 2 secondary workers at scale 2 → effective demand = 2*2 = 4
+        // Slot capacity = ceil(4 / ageProd(30)≈1.0) = 4 bodies
+        const facility = makeProductionFacility({ secondary: 2 }, { scale: 2 });
+        facility.id = 'xp-fac';
+        facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
+        facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        const wf = agent.assets.p.workforceDemography;
+        // Place 1 secondary novice worker (age 30, so ageProd ≈ 1.0)
+        wf[30].secondary.novice.active = 1;
+        // Grant significant XP → productivityFromXP(40) ≈ 1.95
+        wf[30].secondary.novice.workforceExperience = 40;
+
+        // Deposit available
+        planet.resources[ironOreDepositResourceType.name] = [
+            {
+                id: 'd1',
+                resource: ironOreDepositResourceType,
+                quantity: 10000,
+                regenerationRate: 0,
+                maximumCapacity: 10000,
+                tenantAgentId: agent.id,
+                tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
+            },
+        ];
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        // 1 body × 1.0 ageProd × 1.0 skillProd × ~1.95 xpProd ≈ 1.95 effective
+        // Demand = 4 → workerEfficiency ≈ 1.95/4 = 0.4875
+        // Output: 1000 × scale(2) × 0.4875 ≈ 975
+        const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'xp-fac');
+        expect(recorded).toBeDefined();
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.4875);
+
+        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
+        expect(storedIron).toBeGreaterThan(950);
+        expect(storedIron).toBeLessThan(1000);
+    });
+
+    it('workers with zero XP produce less than those with high XP (same headcount)', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('no-xp-company');
+
+        // Same setup as above but with no XP
+        const facility = makeProductionFacility({ secondary: 2 }, { scale: 2 });
+        facility.id = 'no-xp-fac';
+        facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
+        facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
+        // workforceExperience defaults to 0 → productivityFromXP(0) = 1.0
+
+        planet.resources[ironOreDepositResourceType.name] = [
+            {
+                id: 'd2',
+                resource: ironOreDepositResourceType,
+                quantity: 10000,
+                regenerationRate: 0,
+                maximumCapacity: 10000,
+                tenantAgentId: agent.id,
+                tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
+            },
+        ];
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        // 1 body × 1.0 × 1.0 × 1.0 = 1.0 effective, Demand = 4 → efficiency = 0.25
+        const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'no-xp-fac');
+        expect(recorded).toBeDefined();
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.25);
+
+        // Output: 1000 × scale(2) × 0.25 = 500
+        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
+        expect(storedIron).toBeGreaterThan(450);
+        expect(storedIron).toBeLessThan(550);
+    });
+
+    it('XP is averaged across all workers in the same edu+skill category', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('mixed-xp-company');
+
+        const facility = makeProductionFacility({ secondary: 2 }, { scale: 2 });
+        facility.id = 'mixed-xp-fac';
+        facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
+        facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        const wf = agent.assets.p.workforceDemography;
+        // Two workers at different ages, same edu+skill
+        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.novice.workforceExperience = 0; // XP 0
+        wf[50].secondary.novice.active = 1;
+        wf[50].secondary.novice.workforceExperience = 80; // XP 80
+
+        // avgXP = (0+80)/2 = 40 → xpProd ≈ 1.95
+        // 2 bodies × ageProd(~1.0) × 1.0 × 1.95 ≈ 3.9 effective
+        // Demand = 4 → workerEfficiency ≈ 3.9/4 = 0.975
+        // Output: 1000 × scale(2) × 0.975 = 1950
+
+        planet.resources[ironOreDepositResourceType.name] = [
+            {
+                id: 'd3',
+                resource: ironOreDepositResourceType,
+                quantity: 10000,
+                regenerationRate: 0,
+                maximumCapacity: 10000,
+                tenantAgentId: agent.id,
+                tenantCostInCoins: 0,
+                costPerTick: 0,
+                claimStatus: 'active' as const,
+                noticePeriodEndsAtTick: null,
+                pausedTicksThisYear: 0,
+            },
+        ];
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'mixed-xp-fac');
+        expect(recorded).toBeDefined();
+        // 2 workers with high avg XP partially cover the 4-effective demand
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.975);
+
+        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
+        expect(storedIron).toBeGreaterThan(1900);
+        expect(storedIron).toBeLessThan(2000);
+    });
+});

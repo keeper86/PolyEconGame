@@ -500,7 +500,13 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
     }
 
     const assets = agent.assets[s.planetId];
-    consumeConstructionForFacility(target, assets?.storageFacility);
+    const planet = ctx.planets.get(s.planetId);
+    if (planet && assets) {
+        consumeConstructionForFacility(target, assets.storageFacility, {
+            planet,
+            monthAcc: assets.monthAcc,
+        });
+    }
     s.progress = target.construction?.progress ?? s.progress;
     return STAY;
 }

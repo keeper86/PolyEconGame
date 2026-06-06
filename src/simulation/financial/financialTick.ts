@@ -10,20 +10,6 @@ import { creditWageIncome } from './wealthOps';
 
 export const DEFAULT_WAGE_PER_EDU = 10.0;
 
-export function computeWageCostPerTick(
-    facility: { workerRequirement: { [edu in EducationLevelType]?: number }; scale: number },
-    planet: Planet,
-): number {
-    let wageCost = 0;
-    for (const edu of educationLevelKeys) {
-        const req = facility.workerRequirement[edu] ?? 0;
-        if (req > 0) {
-            wageCost += planet.wagePerEdu[edu] * req * facility.scale;
-        }
-    }
-    return wageCost;
-}
-
 function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): number {
     let cost = 0;
     for (const facility of assets.productionFacilities) {

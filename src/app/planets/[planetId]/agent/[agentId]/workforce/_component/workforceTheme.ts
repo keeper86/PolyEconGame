@@ -37,6 +37,13 @@ export const CHART_COLORS = {
     departing: '#f97316',
 } as const;
 
+/** Colours for the departure-reason breakdown (stacked bar status view). */
+export const DEPARTURE_COLORS = {
+    quitting: '#facc15', // yellow-400
+    fired: '#ef4444', // red-500
+    retired: '#a3e635', // lime-400
+} as const;
+
 /** Tenure-band area-chart colours. */
 export const TENURE_BAND_COLORS = ['#93c5fd', '#60a5fa', '#34d399', '#f59e0b', '#ef4444'];
 

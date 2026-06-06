@@ -1,5 +1,6 @@
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
+import { SKILL, type Skill } from '../population/population';
 import type { FacilityCategory } from './facility';
 
 export type WorkerSlot = {
@@ -13,6 +14,7 @@ export type WorkerSlot = {
     assigned: number;
     effectiveAssigned: number;
     assignedByEdu: Partial<Record<EducationLevelType, number>>;
+    assignedBySkill: Partial<Record<Skill, number>>;
     overqualifiedCount: number;
 };
 
@@ -21,6 +23,8 @@ export type WaterFillFacilityResult = {
     workerEfficiencyOverall: number;
     totalUsedByEdu: Record<EducationLevelType, number>;
     exactUsedByEdu: Record<EducationLevelType, number>;
+    totalUsedBySkill: Record<Skill, number>;
+    exactUsedBySkill: Record<Skill, number>;
     overqualifiedWorkers: {
         [jobEdu in EducationLevelType]?: {
             [workerEdu in EducationLevelType]?: number;
@@ -29,58 +33,74 @@ export type WaterFillFacilityResult = {
 };
 
 export type WaterFillResult = {
-    remaining: Record<EducationLevelType, number>;
+    remaining: Record<EducationLevelType, Record<Skill, number>>;
     byFacility: Map<string, WaterFillFacilityResult>;
 };
 
 export function waterFill(
     slots: WorkerSlot[],
-    supplyByEdu: Record<EducationLevelType, number>,
+    supplyByEduSkill: Record<EducationLevelType, Record<Skill, number>>,
     ageProdByEdu: Record<EducationLevelType, number>,
+    skillProdBySkill: Record<Skill, number>,
+    xpProdByEduSkill: Record<EducationLevelType, Record<Skill, number>>,
     /** Effective demand per facility slot: `workerRequirement[jobEdu] * scale`.
      *  Required to derive `workerEfficiency` inside waterFill. */
     effectiveDemandBySlot: Map<WorkerSlot, number>,
 ): WaterFillResult {
-    const remaining = { ...supplyByEdu };
+    // Deep-copy the supply so we can mutate it
+    const remaining = {} as Record<EducationLevelType, Record<Skill, number>>;
+    for (const edu of educationLevelKeys) {
+        remaining[edu] = { ...supplyByEduSkill[edu] };
+    }
 
     for (let wi = 0; wi < educationLevelKeys.length; wi++) {
         const workerEdu = educationLevelKeys[wi];
-        let supply = remaining[workerEdu];
-        if (supply <= 0) {
-            continue;
-        }
 
-        const reachable = slots.filter((s) => s.jobEduIdx <= wi && s.assigned < s.capacity);
-        if (reachable.length === 0) {
-            continue;
-        }
-
-        reachable.sort((a, b) => a.assigned / a.capacity - b.assigned / b.capacity);
-
-        const equilibrium = findEquilibrium(reachable, supply);
-
-        for (const slot of reachable) {
-            const currentRatio = slot.assigned / slot.capacity;
-            if (currentRatio >= equilibrium) {
+        // Process skills from most productive to least productive:
+        // expert → professional → novice (reverse of the SKILL array)
+        for (let si = SKILL.length - 1; si >= 0; si--) {
+            const workerSkill = SKILL[si];
+            const supply = remaining[workerEdu][workerSkill];
+            if (supply <= 0) {
                 continue;
             }
 
-            const ageProd = ageProdByEdu[workerEdu];
-            const take = Math.min(Math.ceil((equilibrium - currentRatio) * slot.capacity), supply);
-            if (take <= 0) {
+            const reachable = slots.filter((s) => s.jobEduIdx <= wi && s.assigned < s.capacity);
+            if (reachable.length === 0) {
                 continue;
             }
 
-            slot.assigned += take;
-            slot.effectiveAssigned += take * ageProd;
-            slot.assignedByEdu[workerEdu] = (slot.assignedByEdu[workerEdu] ?? 0) + take;
-            if (wi > slot.jobEduIdx) {
-                slot.overqualifiedCount += take;
-            }
-            supply -= take;
-        }
+            reachable.sort((a, b) => a.assigned / a.capacity - b.assigned / b.capacity);
 
-        remaining[workerEdu] = supply;
+            const equilibrium = findEquilibrium(reachable, supply);
+            let remainingSupply = supply;
+
+            for (const slot of reachable) {
+                const currentRatio = slot.assigned / slot.capacity;
+                if (currentRatio >= equilibrium) {
+                    continue;
+                }
+
+                const ageProd = ageProdByEdu[workerEdu];
+                const skillProd = skillProdBySkill[workerSkill];
+                const xpProd = xpProdByEduSkill[workerEdu][workerSkill];
+                const take = Math.min(Math.ceil((equilibrium - currentRatio) * slot.capacity), remainingSupply);
+                if (take <= 0) {
+                    continue;
+                }
+
+                slot.assigned += take;
+                slot.effectiveAssigned += take * ageProd * skillProd * xpProd;
+                slot.assignedByEdu[workerEdu] = (slot.assignedByEdu[workerEdu] ?? 0) + take;
+                slot.assignedBySkill[workerSkill] = (slot.assignedBySkill[workerSkill] ?? 0) + take;
+                if (wi > slot.jobEduIdx) {
+                    slot.overqualifiedCount += take;
+                }
+                remainingSupply -= take;
+            }
+
+            remaining[workerEdu][workerSkill] = remainingSupply;
+        }
     }
 
     // Collect the unique facility ids present in the slot list
@@ -105,8 +125,15 @@ export function waterFill(
             secondary: 0,
             tertiary: 0,
         });
+        const emptySkillRecord = (): Record<Skill, number> => ({
+            novice: 0,
+            professional: 0,
+            expert: 0,
+        });
         const totalUsedByEdu = emptyEduRecord();
         const exactUsedByEdu = emptyEduRecord();
+        const totalUsedBySkill = emptySkillRecord();
+        const exactUsedBySkill = emptySkillRecord();
         for (const slot of facilitySlots) {
             for (const [workerEdu, count] of Object.entries(slot.assignedByEdu)) {
                 const we = workerEdu as EducationLevelType;
@@ -114,6 +141,11 @@ export function waterFill(
                 if (we === slot.jobEdu) {
                     exactUsedByEdu[slot.jobEdu] += count;
                 }
+            }
+            for (const [workerSkill, count] of Object.entries(slot.assignedBySkill)) {
+                const ws = workerSkill as Skill;
+                totalUsedBySkill[ws] += count;
+                exactUsedBySkill[ws] += count;
             }
         }
 
@@ -141,6 +173,8 @@ export function waterFill(
             workerEfficiencyOverall,
             totalUsedByEdu,
             exactUsedByEdu,
+            totalUsedBySkill,
+            exactUsedBySkill,
             overqualifiedWorkers,
         });
     }

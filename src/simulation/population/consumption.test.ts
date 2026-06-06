@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { makePopulation } from '../utils/testHelper';
+import { makePlanet } from '../utils/testHelper';
 import { STARVATION_ADJUST_TICKS, STARVATION_MAX_LEVEL, consumeServices, updateStarvationLevel } from './consumption';
 
 describe('updateStarvationLevel', () => {
@@ -100,7 +100,8 @@ describe('updateStarvationLevel', () => {
 
 describe('consumeServices (per-category model)', () => {
     it('consumes grocery service from category buffer and updates starvation', () => {
-        const pop = makePopulation();
+        const planet = makePlanet();
+        const { population: pop } = planet;
         const populationCount = 360;
 
         // Place people and give them enough grocery service buffer
@@ -108,7 +109,7 @@ describe('consumeServices (per-category model)', () => {
         pop.demography[30].unoccupied.none.novice.services.grocery.buffer = 10; // 10 ticks worth
         pop.demography[30].unoccupied.none.novice.services.grocery.starvationLevel = 0.5;
 
-        consumeServices(pop);
+        consumeServices(planet);
 
         const cat = pop.demography[30].unoccupied.none.novice;
         // buffer should be reduced by 1 tick
@@ -118,14 +119,15 @@ describe('consumeServices (per-category model)', () => {
     });
 
     it('increases starvation when grocery service buffer is insufficient', () => {
-        const pop = makePopulation();
+        const planet = makePlanet();
+        const { population: pop } = planet;
         const populationCount = 360;
 
         pop.demography[30].unoccupied.none.novice.total = populationCount;
         pop.demography[30].unoccupied.none.novice.services.grocery.buffer = 0; // no buffer
         pop.demography[30].unoccupied.none.novice.services.grocery.starvationLevel = 0;
 
-        consumeServices(pop);
+        consumeServices(planet);
 
         const cat = pop.demography[30].unoccupied.none.novice;
         // buffer should remain 0
@@ -135,21 +137,23 @@ describe('consumeServices (per-category model)', () => {
     });
 
     it('handles zero population in a category gracefully', () => {
-        const pop = makePopulation();
+        const planet = makePlanet();
+        const { population: pop } = planet;
         // All categories are zero by default
-        consumeServices(pop);
+        consumeServices(planet);
 
         // Should not throw; starvation should remain 0
         expect(pop.demography[0].education.none.novice.services.grocery.starvationLevel).toBe(0);
     });
 
     it('handles zero service buffer gracefully', () => {
-        const pop = makePopulation();
+        const planet = makePlanet();
+        const { population: pop } = planet;
         pop.demography[20].unoccupied.none.novice.total = 100;
         pop.demography[20].unoccupied.none.novice.services.grocery.buffer = 0;
         pop.demography[20].unoccupied.none.novice.services.grocery.starvationLevel = 0;
 
-        consumeServices(pop);
+        consumeServices(planet);
 
         const cat = pop.demography[20].unoccupied.none.novice;
         expect(cat.services.grocery.buffer).toBe(0);
@@ -158,7 +162,8 @@ describe('consumeServices (per-category model)', () => {
     });
 
     it('consumes all services, not just grocery', () => {
-        const pop = makePopulation();
+        const planet = makePlanet();
+        const { population: pop } = planet;
         const populationCount = 100;
 
         pop.demography[25].employed.tertiary.expert.total = populationCount;
@@ -169,7 +174,7 @@ describe('consumeServices (per-category model)', () => {
         pop.demography[25].employed.tertiary.expert.services.logistics.buffer = 4;
         pop.demography[25].employed.tertiary.expert.services.construction.buffer = 2;
 
-        consumeServices(pop);
+        consumeServices(planet);
 
         const cat = pop.demography[25].employed.tertiary.expert;
         // All service buffers should be reduced by 1 tick

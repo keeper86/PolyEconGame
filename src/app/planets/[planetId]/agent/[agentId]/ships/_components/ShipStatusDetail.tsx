@@ -275,7 +275,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
                         </div>
                         <div className='flex gap-2 flex-wrap'>
                             <ProductQuantity
-                                resource={{ name: groceryServiceResourceType.name }}
+                                resource={groceryServiceResourceType}
                                 quantity={grocery.currently}
                                 efficiency={groceryEff}
                                 isLimiting={groceryEff === minEff}
@@ -284,7 +284,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
                                 quantityLabel={`${formatNumberWithUnit(grocery.currently, 'units')} (${formatNumberWithUnit(grocery.goal, 'units')})`}
                             />
                             <ProductQuantity
-                                resource={{ name: healthcareServiceResourceType.name }}
+                                resource={healthcareServiceResourceType}
                                 quantity={healthcare.currently}
                                 efficiency={healthcareEff}
                                 isLimiting={healthcareEff === minEff}
@@ -294,7 +294,7 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
                             />
                             {education.goal > 0 && (
                                 <ProductQuantity
-                                    resource={{ name: educationServiceResourceType.name }}
+                                    resource={educationServiceResourceType}
                                     quantity={education.currently}
                                     efficiency={educationEff}
                                     isLimiting={educationEff === minEff}

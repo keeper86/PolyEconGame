@@ -8,7 +8,7 @@
 
 import type { EducationLevelType } from '../population/education';
 import type { WorkforceCohort, WorkforceCategory } from './workforce';
-import { SKILL } from '../population/population';
+import { SKILL, type Skill } from '../population/population';
 
 /** Sum active workers across all ages and skill levels for a given edu. */
 export function totalActiveForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
@@ -17,6 +17,19 @@ export function totalActiveForEdu(workforce: WorkforceCohort<WorkforceCategory>[
         for (const skill of SKILL) {
             total += workforce[age][edu][skill].active;
         }
+    }
+    return total;
+}
+
+/** Sum active workers across all ages for a given edu + skill combination. */
+export function totalActiveForEduSkill(
+    workforce: WorkforceCohort<WorkforceCategory>[],
+    edu: EducationLevelType,
+    skill: Skill,
+): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        total += workforce[age][edu][skill].active;
     }
     return total;
 }
@@ -35,6 +48,27 @@ export function totalDepartingForEdu(workforce: WorkforceCohort<WorkforceCategor
             for (const d of workforce[age][edu][skill].departingRetired) {
                 total += d;
             }
+        }
+    }
+    return total;
+}
+
+/** Sum all departing workers across all ages and pipeline slots for a given edu + skill combination. */
+export function totalDepartingForEduSkill(
+    workforce: WorkforceCohort<WorkforceCategory>[],
+    edu: EducationLevelType,
+    skill: Skill,
+): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const d of workforce[age][edu][skill].voluntaryDeparting) {
+            total += d;
+        }
+        for (const d of workforce[age][edu][skill].departingFired) {
+            total += d;
+        }
+        for (const d of workforce[age][edu][skill].departingRetired) {
+            total += d;
         }
     }
     return total;

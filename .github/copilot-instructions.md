@@ -1,5 +1,10 @@
 # PolyEconGame Codebase Summary
 
+## Rules:
+
+- Avoid comments! If comment is necessary, can we re-structure or name better?
+- Avoid optional properties. We are in dev only right now, no need for backwards-compatibility.
+
 ## Overview
 
 PolyEconGame is a complex economic simulation game built with Next.js 15, TypeScript, and a sophisticated simulation engine. The game simulates planetary economies with detailed population dynamics, market systems, production chains, and financial systems.
@@ -38,27 +43,19 @@ src/
 │   ├── db.ts            # Database connection
 │   └── router.ts        # tRPC router definitions
 ├── simulation/           # Core simulation engine
-│   ├── engine.ts        # Main simulation tick loop
-│   ├── planet/          # Planet data models and logic
-    |      production.ts, facilities.ts, planet.ts
-│   ├── market/          # Market simulation
-│   │   ├── orderBook.ts # Order book implementation
-│   │   ├── matchingEngine.ts # Matching engine implementation
-│   │   └── priceDiscovery.ts # Price discovery algorithms
-│   ├── population/      # Population dynamics
-│   │   ├── demographics.ts # Demographic calculations
-│   │   ├── mortality.ts    # Mortality calculations
-│   │   └── wealth.ts       # Wealth distribution calculations
-│   ├── financial/       # Financial systems
-│   │   ├── banking.ts    # Banking operations
-│   │   ├── loans.ts      # Loan management
-│   │   └── wages.ts      # Wage calculations
-│   ├── workforce/       # Workforce management
-│   │   ├── allocation.ts # Worker allocation algorithms
-│   │   ├── training.ts   # Workforce training and education
-│   │   └── productivity.ts # Productivity calculations
-│   ├── worker.ts        # Worker thread implementation
-│   └── workerClient/    # Worker communication
+│   ├── engine.ts        # Main tick loop (advanceTick)
+│   ├── constants.ts     # All simulation constants
+│   ├── immutableTypes.ts # Snapshot types (Immutable.js)
+│   ├── agents/          # NPC agents: ForexMarketMaker, ArbitrageTrader, GovernmentAgent, Shipbuilder
+│   ├── financial/       # Loans, wages, wealth operations (financialTick, loanConditions, wealthOps)
+│   ├── initialUniverse/ # World generation (alphaCentauri, proceduralWorld, resourceClaimFactory)
+│   ├── market/          # Order books, tâtonnement pricing, forex, settlement, population demand
+│   ├── planet/          # Planet/Agent types, production, facilities, claims, environment
+│   ├── population/      # Demographics, mortality, fertility, education, aging
+│   ├── ships/           # Ship types, ship market, transport contracts
+│   ├── workforce/       # Worker allocation, hire/fire, demographic transitions
+│   ├── worker.ts        # Worker thread entry point
+│   └── workerClient/    # Worker communication (commands, queries, actions)
 └── types/               # TypeScript type definitions
 ```
 

@@ -179,10 +179,10 @@ birthsPerTick = stochasticRound(birthsPerYear / 360)`}
             {/* 4. HIRE / FIRE (monthly)                                          */}
             {/* ---------------------------------------------------------------- */}
             <section id='workforce-hire'>
-                <h2 className='text-2xl font-bold mt-8 mb-3'>4. Worker Allocation &amp; Hire/Fire (monthly)</h2>
+                <h2 className='text-2xl font-bold mt-8 mb-3'>4. Worker Allocation &amp; Hire/Fire (every tick)</h2>
                 <p>
-                    Hiring and firing happen only at month boundaries (<code>tick % 30 === 1</code>) to prevent
-                    excessive workforce churn from tick-level noise.
+                    Worker allocation targets are recomputed and hiring/firing is executed every tick, giving agents
+                    fine-grained control over their workforce without the latency of monthly batching.
                 </p>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>4.1 Allocation Target</h3>

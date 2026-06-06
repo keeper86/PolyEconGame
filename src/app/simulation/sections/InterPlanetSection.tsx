@@ -7,10 +7,11 @@ export function InterPlanetSection() {
             <section id='interplanet'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>14. Inter-Planet Tick (every tick)</h2>
                 <p>
-                    After all per-planet loops have run, three global systems execute in sequence:{' '}
-                    <strong>forex market clearing</strong>, <strong>forex market-maker repayment</strong>, and{' '}
-                    <strong>ship state transitions</strong>. These systems operate across planet boundaries and cannot
-                    run inside the per-planet loop.
+                    After all per-planet loops have run, six global systems execute in sequence:{' '}
+                    <strong>forex market-maker pricing</strong>, <strong>forex clearing</strong>,{' '}
+                    <strong>forex market-maker repayment</strong>, <strong>ship state transitions</strong>,{' '}
+                    <strong>shipbuilder NPC</strong>, and <strong>arbitrage trader NPC</strong>. These systems operate
+                    across planet boundaries and cannot run inside the per-planet loop.
                 </p>
 
                 {/* ---- 14.1 CURRENCIES ---------------------------------------- */}
@@ -200,6 +201,39 @@ SHIP_MARKET_MAX_TRADE_HISTORY = 100
 
 effectiveValue = baseValue × qualityFactor − maintenanceCostPenalty
 trades matched by: max(offer − ask) first`}
+                </pre>
+
+                {/* ---- 14.4 NPC AGENTS --------------------------------------- */}
+                <h3 className='text-xl font-semibold mt-6 mb-2'>14.4 NPC Agents</h3>
+                <p>Two automated NPC agents run after the ship tick each global loop.</p>
+
+                <h4 className='text-lg font-semibold mt-4 mb-2'>Shipbuilder</h4>
+                <p>
+                    A single global shipbuilder agent operates a shipyard on the designated production planet. Each tick
+                    it auto-lists completed idle ships for sale at cost-plus markup and evaluates whether to start new
+                    builds based on market price vs estimated build cost:
+                </p>
+                <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                    {`listingPrice   = max(EMA_marketPrice, estimatedCost) × (1 + SHIPBUILDER_LISTING_MARKUP)
+build decision = estimatedCost × SHIPBUILDER_PROFIT_THRESHOLD < EMA_marketPrice
+
+SHIPBUILDER_LISTING_MARKUP  = 0.20   (20 % above cost or market)
+SHIPBUILDER_PROFIT_THRESHOLD = 1.20  (only build if market > 1.2 × cost)`}
+                </pre>
+
+                <h4 className='text-lg font-semibold mt-4 mb-2'>Arbitrage Traders</h4>
+                <p>
+                    Two arbitrage trader agents are seeded per planet. Each tick they scan price differentials across
+                    all planet pairs for every tradeable resource and dispatch ships on the most profitable route,
+                    accounting for travel time and capital depreciation:
+                </p>
+                <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
+                    {`expectedProfit = (priceDest − priceOrigin) × qty
+               − travelCost − shipDepreciation
+
+ARBITRAGE_SEED_DEPOSIT              = 1,000,000  (per planet)
+ARBITRAGE_MIN_CAPITAL_RESERVE       = 100,000
+ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS = 3,600  (10 years)`}
                 </pre>
             </section>
         </>

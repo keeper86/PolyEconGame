@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
+import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 
 export function LeaseClaimCard({
     summary,
@@ -43,7 +44,7 @@ export function LeaseClaimCard({
     );
 
     return (
-        <Card className='flex flex-col'>
+        <Card id={resourceNameToSlug(summary.resourceName)} className='flex flex-col'>
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>

@@ -135,10 +135,10 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             const initialPrice = planet.marketPrices[resource.name];
             const costFloor = planet.lastProductionCostFloors[resource.name];
 
-            if (costFloor === undefined || costFloor < PRICE_FLOOR) {
+            if (costFloor !== undefined && costFloor < PRICE_FLOOR) {
                 console.warn(
-                    `Cost floor for resource ${resource.name} on planet ${planet.id} is invalid (${costFloor}). ` +
-                        `This may lead to unstable pricing. Setting to PRICE_FLOOR.`,
+                    `Cost floor for resource ${resource.name} on planet ${planet.id} is below PRICE_FLOOR (${costFloor}). ` +
+                        `This may lead to unstable pricing. Clamping to PRICE_FLOOR.`,
                 );
             }
 

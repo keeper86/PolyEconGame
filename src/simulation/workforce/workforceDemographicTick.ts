@@ -11,7 +11,7 @@ import { MAX_AGE, SKILL } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
-import { forEachWorkforceCohort, totalDeparting } from './workforce';
+import { forEachWorkforceCohort, subtractProportionalXP, totalDeparting, totalWorkersInCategory } from './workforce';
 
 export const VOLUNTARY_QUIT_RATE_PER_TICK = 0.0003;
 
@@ -104,18 +104,28 @@ export function workforceDemographicTick(agents: Map<string, Agent>, planet: Pla
                         }
                     }
 
+                    const totalBeforeActive = totalWorkersInCategory(category);
+
                     if (mortalityProbabilityPerTick > 0) {
                         const dead = stochasticRound(category.active * mortalityProbabilityPerTick);
-                        category.active -= dead;
-                        deaths += dead;
+                        if (dead > 0) {
+                            subtractProportionalXP(category, dead, totalBeforeActive);
+                            category.active -= dead;
+                            deaths += dead;
+                        }
                     }
 
                     if (disabilityProbabilityPerTick > 0) {
                         const disabled = stochasticRound(category.active * disabilityProbabilityPerTick);
-                        category.active -= disabled;
-                        disabilities += disabled;
+                        if (disabled > 0) {
+                            subtractProportionalXP(category, disabled, totalBeforeActive);
+                            category.active -= disabled;
+                            disabilities += disabled;
+                        }
                     }
                 }
+
+                const totalBeforePipeline = totalWorkersInCategory(category);
 
                 const applyEventsToPipelineSlot = (
                     month: number,
@@ -131,14 +141,20 @@ export function workforceDemographicTick(agents: Map<string, Agent>, planet: Pla
 
                         if (mortalityProbabilityPerTick > 0) {
                             const dead = stochasticRound(departing[month] * mortalityProbabilityPerTick);
-                            departing[month] -= dead;
-                            deaths += dead;
+                            if (dead > 0) {
+                                subtractProportionalXP(category, dead, totalBeforePipeline);
+                                departing[month] -= dead;
+                                deaths += dead;
+                            }
                         }
 
                         if (disabilityProbabilityPerTick > 0) {
                             const disabled = stochasticRound(departing[month] * disabilityProbabilityPerTick);
-                            departing[month] -= disabled;
-                            disabilities += disabled;
+                            if (disabled > 0) {
+                                subtractProportionalXP(category, disabled, totalBeforePipeline);
+                                departing[month] -= disabled;
+                                disabilities += disabled;
+                            }
                         }
                     }
                 };
