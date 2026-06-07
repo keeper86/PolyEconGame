@@ -5,6 +5,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TickerEvent } from '@/server/controller/simulation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 
@@ -45,6 +46,31 @@ function textColor(category: string): string {
 }
 
 export default function Footer() {
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const toggleFullscreen = useCallback(async () => {
+        try {
+            if (!document.fullscreenElement) {
+                await document.documentElement.requestFullscreen();
+                setIsFullscreen(true);
+            } else {
+                await document.exitFullscreen();
+                setIsFullscreen(false);
+            }
+        } catch (err) {
+            console.error('Fullscreen failed:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleChange);
+        return () => document.removeEventListener('fullscreenchange', handleChange);
+    }, []);
+
     const trpc = useTRPC();
     const [lastSeenId, setLastSeenId] = useState<number | undefined>(undefined);
     const [events, setEvents] = useState<TickerEvent[]>([]); // master list (latest 60)
@@ -215,51 +241,66 @@ export default function Footer() {
 
     return (
         <footer className='shrink-0 w-full border-t border-border bg-background h-12'>
-            <div
-                ref={containerRef}
-                className='relative h-full overflow-hidden bg-muted/50'
-                style={{ '--ticker-play-state': isPaused ? 'paused' : 'running' } as React.CSSProperties}
-                aria-label='Simulation event ticker'
-                onMouseEnter={pause}
-                onMouseLeave={resume}
-            >
-                {/* hidden measurement span – same styling as ticker items */}
-                <span ref={measureRef} className='invisible absolute whitespace-nowrap text-md' aria-hidden='true' />
-
-                {/* Gradient fade on edges */}
+            <div className='flex h-full'>
                 <div
-                    className={cn(
-                        'pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-background to-transparent z-10',
-                        isSmallScreen ? 'w-32' : 'w-64',
-                    )}
-                />
-                <div
-                    className={cn(
-                        'pointer-events-none absolute inset-y-0 right-0 bg-gradient-to-l from-background to-transparent z-10',
-                        isSmallScreen ? 'w-32' : 'w-64',
-                    )}
-                />
+                    ref={containerRef}
+                    className='relative flex-1 min-w-0 overflow-hidden bg-muted/50'
+                    style={{ '--ticker-play-state': isPaused ? 'paused' : 'running' } as React.CSSProperties}
+                    aria-label='Simulation event ticker'
+                    onMouseEnter={pause}
+                    onMouseLeave={resume}
+                >
+                    {/* hidden measurement span – same styling as ticker items */}
+                    <span
+                        ref={measureRef}
+                        className='invisible absolute whitespace-nowrap text-md'
+                        aria-hidden='true'
+                    />
 
-                {displayedEvents.map(({ id, event, duration, startX }) => (
+                    {/* Gradient fade on edges */}
                     <div
-                        key={id}
-                        className='ticker-item absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
-                        style={
-                            {
-                                '--ticker-start': `${startX}px`,
-                                'animationDuration': `${duration}s`,
-                            } as React.CSSProperties
-                        }
-                        onAnimationEnd={() => setDisplayedEvents((prev) => prev.filter((e) => e.id !== id))}
-                    >
-                        <span className='inline-flex items-center gap-1.5 text-md select-none'>
-                            <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
-                                {mapTickToDate(event.tick)}
+                        className={cn(
+                            'pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-background to-transparent z-10',
+                            isSmallScreen ? 'w-32' : 'w-64',
+                        )}
+                    />
+                    <div
+                        className={cn(
+                            'pointer-events-none absolute inset-y-0 right-0 bg-gradient-to-l from-background to-transparent z-10',
+                            isSmallScreen ? 'w-32' : 'w-64',
+                        )}
+                    />
+
+                    {displayedEvents.map(({ id, event, duration, startX }) => (
+                        <div
+                            key={id}
+                            className='ticker-item absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
+                            style={
+                                {
+                                    '--ticker-start': `${startX}px`,
+                                    'animationDuration': `${duration}s`,
+                                } as React.CSSProperties
+                            }
+                            onAnimationEnd={() => setDisplayedEvents((prev) => prev.filter((e) => e.id !== id))}
+                        >
+                            <span className='inline-flex items-center gap-1.5 text-md select-none'>
+                                <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
+                                    {mapTickToDate(event.tick)}
+                                </span>
+                                <span className='text-foreground/90'>{event.message}</span>
                             </span>
-                            <span className='text-foreground/90'>{event.message}</span>
-                        </span>
-                    </div>
-                ))}
+                        </div>
+                    ))}
+                </div>
+
+                <button
+                    onClick={toggleFullscreen}
+                    className='shrink-0 h-full px-3 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border-l border-border z-20'
+                    aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                >
+                    {isFullscreen ? <Minimize className='h-4 w-4' /> : <Maximize className='h-4 w-4' />}
+                </button>
             </div>
         </footer>
     );
