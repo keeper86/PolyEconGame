@@ -36,7 +36,7 @@ export function InterPlanetSection() {
                                 ['Earth', 'Eartho', '€'],
                                 ['Gune', 'Wüsten-Dollar', '₩'],
                                 ['Icedonia', 'Liquido', '₤'],
-                                ['Paradies', 'Paradies-Pesete', '₽'],
+                                ['Paradies', 'Paraseto', '₽'],
                                 ['Suerte', 'Scheine', '$'],
                                 ['Pandara', 'Naaavi', '₦'],
                                 ['Alpha-Centauri', 'Alphas', '₳'],

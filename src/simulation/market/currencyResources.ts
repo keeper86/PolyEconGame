@@ -30,7 +30,7 @@ const currencyIcedonia: Resource = {
 
 const currencyParadies: Resource = {
     ...currencyResourceDefault,
-    name: 'Paradies-Pesete',
+    name: 'Paraseto',
 };
 
 const currencySuerte: Resource = {
@@ -40,12 +40,12 @@ const currencySuerte: Resource = {
 
 const currencyPandara: Resource = {
     ...currencyResourceDefault,
-    name: 'Naaavi',
+    name: 'Tinar',
 };
 
 const currencyAlphaCentauri: Resource = {
     ...currencyResourceDefault,
-    name: 'Alphas',
+    name: 'Centas',
 };
 
 export const currencyMapping: Record<string, CurrencyResource> = {
@@ -74,7 +74,7 @@ export const currencyMapping: Record<string, CurrencyResource> = {
         resource: currencyPandara,
     },
     'alpha-centauri': {
-        symbol: '₳',
+        symbol: '₡',
         resource: currencyAlphaCentauri,
     },
 };
