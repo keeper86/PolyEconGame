@@ -123,3 +123,21 @@ export const SERVICE_TIERS: ServiceTier[] = [
         mandatoryForOwnConsumption: false,
     },
 ];
+
+export function computeTierCost(marketPrices: Record<string, number>, tier: ServiceTier): number {
+    return tier.services.reduce((sum, key) => {
+        const def = SERVICE_DEFINITIONS[key];
+        const price = marketPrices[def.resource.name] ?? 0;
+        return sum + def.consumptionRatePerPersonPerTick * price;
+    }, 0);
+}
+
+export function computeCostOfLiving(marketPrices: Record<string, number>, whenRich: boolean): number {
+    let total = 0;
+    for (const tier of SERVICE_TIERS) {
+        if (tier.mandatoryForOwnConsumption || whenRich) {
+            total += computeTierCost(marketPrices, tier);
+        }
+    }
+    return total;
+}

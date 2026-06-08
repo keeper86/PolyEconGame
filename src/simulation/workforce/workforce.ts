@@ -138,6 +138,33 @@ export const productivityFromXP = (xp: number): number => {
     return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
 };
 
+export const minimumWage = (planet: Planet, age: number, edu: EducationLevelType, skill: Skill): number => {
+    // Base minimum wage by education level
+    const baseWageByEdu: Record<EducationLevelType, number> = {
+        none: 10,
+        primary: 15,
+        secondary: 25,
+        tertiary: 40,
+    };
+
+    // Skill multiplier
+    const skillMultiplier: Record<Skill, number> = {
+        novice: 0.8,
+        professional: 1.0,
+        expert: 1.2,
+    };
+
+    // Age multiplier (e.g., younger workers might have a lower minimum wage)
+    let ageMultiplier = 1.0;
+    if (age < 25) {
+        ageMultiplier = 0.9;
+    } else if (age > 60) {
+        ageMultiplier = 0.95;
+    }
+
+    return baseWageByEdu[edu] * skillMultiplier[skill] * ageMultiplier;
+};
+
 export function hireFromPopulation(
     planet: Planet,
     edu: EducationLevelType,

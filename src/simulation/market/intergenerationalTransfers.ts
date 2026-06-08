@@ -6,10 +6,7 @@ import {
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
-import { nextRandom } from '../utils/stochasticRound';
 import type { Planet } from '../planet/planet';
-import { allServices, SERVICE_DEFINITIONS, SERVICE_TIERS, serviceKeyOf } from './serviceDefinitions';
-import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
@@ -22,6 +19,9 @@ import type {
     ServiceName,
 } from '../population/population';
 import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../population/population';
+import { nextRandom } from '../utils/stochasticRound';
+import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
+import { allServices, computeTierCost, SERVICE_DEFINITIONS, SERVICE_TIERS, serviceKeyOf } from './serviceDefinitions';
 
 /** Per-age aggregated dependent need. */
 interface DependentNeed {
@@ -245,14 +245,9 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
     for (let tierIdx = 0; tierIdx < SERVICE_TIERS.length; tierIdx++) {
         const tier = SERVICE_TIERS[tierIdx];
-
         // Cost per tick to consume all services in this tier (at urgency price).
-        const tierCostPerTick = tier.services.reduce((sum, key) => {
-            const def = SERVICE_DEFINITIONS[key];
-            const price =
-                (planet.marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
-            return sum + def.consumptionRatePerPersonPerTick * price;
-        }, 0);
+        const tierCostPerTick =
+            computeTierCost(planet.marketPrices, tier) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
 
         // Supporters must keep enough for all previous mandatory tiers (and this one if mandatory).
         const tierFloor = cumulativeMandatoryCost + (tier.mandatoryForOwnConsumption ? tierCostPerTick : 0);
