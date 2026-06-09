@@ -7,10 +7,6 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 
-// ---------------------------------------------------------------------------
-// Headcount table — one row per education level
-// ---------------------------------------------------------------------------
-
 export function HeadcountTable({
     allocatedWorkers,
     activeByEdu,
@@ -117,7 +113,7 @@ export function HeadcountTable({
                             </tr>
                         );
                     })}
-                    {/* Totals row */}
+
                     <tr className='font-medium bg-muted/20'>
                         <td className='py-1.5 px-2'>Total</td>
                         <td className='py-1.5 px-2 text-right tabular-nums'>

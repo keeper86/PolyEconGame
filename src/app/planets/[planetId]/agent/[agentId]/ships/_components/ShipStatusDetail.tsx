@@ -31,7 +31,7 @@ function planetName(planetSummaries: PlanetSummary[], id: string): string {
 
 export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props) {
     const [manifestOpen, setManifestOpen] = useState(false);
-    // Transport ship states
+
     if (ship.type.type === 'transport') {
         const ts = ship as TransportShip;
         const s = ts.state;
@@ -114,7 +114,6 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
         return null;
     }
 
-    // Construction ship states
     if (ship.type.type === 'construction') {
         const cs = ship as ConstructionShip;
         const s = cs.state;
@@ -200,7 +199,6 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
         return null;
     }
 
-    // Passenger ship states
     if (ship.type.type === 'passenger') {
         const ps = ship as PassengerShip;
         const shipState = ps.state;

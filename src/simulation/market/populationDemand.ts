@@ -17,11 +17,6 @@ import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDef
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
 export type { ServiceDefinition } from './serviceDefinitions';
 
-// ---------------------------------------------------------------------------
-// Helper to aggregate population bids for UI display
-// Bins bids by price using linear spacing so the chart can show
-// quantity on the Y-axis and price on the X-axis.
-// ---------------------------------------------------------------------------
 export function binHouseholdBids(
     bids: BidOrder[],
     filled: number[],
@@ -51,7 +46,6 @@ export function binHouseholdBids(
         return [];
     }
 
-    // Single-price case: one bin
     if (minPrice >= maxPrice) {
         let totalQty = 0;
         let totalFilled = 0;
@@ -76,7 +70,6 @@ export function binHouseholdBids(
         ];
     }
 
-    // Build linearly-spaced bin edges
     const edges: number[] = [];
     for (let i = 0; i <= numBins; i++) {
         edges.push(minPrice + (i / numBins) * (maxPrice - minPrice));
@@ -92,7 +85,7 @@ export function binHouseholdBids(
     }[] = edges.slice(0, -1).map((lo, i) => ({
         priceMin: lo,
         priceMax: edges[i + 1],
-        priceMid: (lo + edges[i + 1]) / 2, // arithmetic mean of bin edges
+        priceMid: (lo + edges[i + 1]) / 2,
         quantity: 0,
         filled: 0,
         cost: 0,
@@ -105,7 +98,6 @@ export function binHouseholdBids(
         }
         const price = Math.max(eps, b.bidPrice);
 
-        // Find the bin whose range contains this price (last bin with priceMin <= price)
         let lo = 0;
         let hi = bins.length - 1;
         while (lo < hi) {
@@ -193,7 +185,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 }
 
                 if (serviceKeyOf(service) === 'education' && occ !== 'education') {
-                    continue; // Only education group buys education services
+                    continue;
                 }
 
                 const referencePrice = planet.marketPrices[service.resource.name] ?? 0;
@@ -207,7 +199,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 const bufferFillDeficit = (service.bufferTargetTicks - serviceBuffer) / service.bufferTargetTicks;
 
                 if (bufferFillDeficit <= 0) {
-                    continue; // No demand if buffer is full
+                    continue;
                 }
 
                 let willingPrice = referencePrice * (1 + bufferFillDeficit);
@@ -217,7 +209,6 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 let quantityPerPerson = rate * service.bufferTargetTicks * bufferFillDeficit;
 
-                // cannot afford even one day; min quantity 1 for all remaining wealth
                 if (remainingWealth < 1.2 * rate * willingPrice) {
                     willingPrice = remainingWealth / rate / 1.2;
                     quantityPerPerson = 1.2 * rate;

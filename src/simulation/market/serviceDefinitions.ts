@@ -18,7 +18,6 @@ export type ServiceDefinition = {
     readonly consumptionRatePerPersonPerTick: number;
 };
 
-/** Derives the ServiceName key from a ServiceDefinition by lowercasing the resource name. */
 export const serviceKeyOf = (def: ServiceDefinition): ServiceName => def.resource.name.toLowerCase() as ServiceName;
 
 const groceryDefinition: ServiceDefinition = {
@@ -86,7 +85,6 @@ export const getServiceDefinitionByResourceName = (resourceName: string): Servic
 
 export const allServices = Object.values(SERVICE_DEFINITIONS);
 
-// Priority order derived from the definition array order.
 export const householdDemandPriority: string[] = allServices.map((d) => d.resource.name);
 
 export type ServiceTierSupportWeightOverride = {

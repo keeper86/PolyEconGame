@@ -9,8 +9,6 @@ import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/consta
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-// ── Public types ──────────────────────────────────────────────────────────────
-
 export type AgentMetric =
     | 'netBalance'
     | 'monthlyNetIncome'
@@ -20,8 +18,6 @@ export type AgentMetric =
     | 'totalWorkers';
 
 export type Granularity = 'monthly' | 'yearly' | 'decade';
-
-// ── Internal types ────────────────────────────────────────────────────────────
 
 type HistoryPoint = {
     bucket: number;
@@ -60,8 +56,6 @@ const CHART_CONFIGS: Record<AgentMetric, ChartConfig> = {
 };
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
-
-// ── Monthly chart helpers ─────────────────────────────────────────────────────
 
 type MonthlyMergedPoint = {
     monthIdx: number;
@@ -165,8 +159,6 @@ function yDomainForBuckets(pts: { value: number }[]): [number, number] | ['auto'
     const pad = (hi - lo) * 0.08;
     return [lo - pad, hi + pad];
 }
-
-// ── Sub-chart components ──────────────────────────────────────────────────────
 
 function MonthlyMetricChart({
     mergedData,
@@ -385,8 +377,6 @@ function NonMonthlyMetricChart({
         </Card>
     );
 }
-
-// ── Public component ──────────────────────────────────────────────────────────
 
 export interface AgentMetricChartProps {
     agentId: string;

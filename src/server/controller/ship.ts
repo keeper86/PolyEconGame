@@ -28,8 +28,6 @@ async function assertAgentOwnership(userId: string, agentId: string): Promise<vo
     }
 }
 
-// --- Queries ---
-
 export const listAgentShips = () =>
     protectedProcedure.input(z.object({ agentId: z.string().min(1) })).query(async ({ input, ctx }) => {
         const userId = getUserIdFromContext(ctx);
@@ -60,8 +58,6 @@ export const listShipBuyingOffers = () =>
         });
         return { offers };
     });
-
-// --- Mutations ---
 
 export const postTransportContract = () =>
     protectedProcedure

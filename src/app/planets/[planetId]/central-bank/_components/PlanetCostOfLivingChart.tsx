@@ -35,7 +35,7 @@ type ChartPoint = {
     wageEdu1: number | null;
     wageEdu2: number | null;
     wageEdu3: number | null;
-    /** Ghost-prefixed fields for last-year comparison */
+
     ghostCostOfLiving?: number | null;
     ghostCostOfLivingRich?: number | null;
     ghostCostOfLivingRichDiff?: number | null;
@@ -87,7 +87,6 @@ function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): Cha
         };
     }
 
-    // Current year points with monthIdx
     const current: ChartPoint[] = [];
     for (const p of sorted) {
         if (tickToDate(p.bucket).year === latestYear) {
@@ -95,7 +94,6 @@ function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): Cha
         }
     }
 
-    // Anchor at monthIdx=0 (previous December)
     const prevDecPoint = sorted.find((p) => {
         const { year, monthIndex } = tickToDate(p.bucket);
         return year === latestYear - 1 && monthIndex === 11;
@@ -109,7 +107,6 @@ function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): Cha
         }
     }
 
-    // Ghost data: same months from last year not yet reached
     const { monthIndex: currentMonthIndex } = tickToDate(currentTick);
     const currentMonthIdx = currentMonthIndex + 1;
     const ghostPoints = sorted
@@ -119,7 +116,6 @@ function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): Cha
         })
         .map((p) => toCP(p, tickToDate(p.bucket).monthIndex + 1, true));
 
-    // Merge
     const currentByMonth = new Map(current.map((p) => [p.monthIdx!, p]));
     const ghostByMonth = new Map(ghostPoints.map((p) => [p.monthIdx!, p]));
     const allIdxs = new Set([...currentByMonth.keys(), ...ghostByMonth.keys()]);
@@ -183,7 +179,7 @@ export function PlanetCostOfLivingChart({
                 };
             });
         }
-        // decade
+
         return data.map((p) => {
             const { year } = tickToDate(p.bucket);
             return {
@@ -206,7 +202,9 @@ export function PlanetCostOfLivingChart({
             for (const v of [
                 p.costOfLiving,
                 p.costOfLivingRich,
-                'costOfLivingRichDiff' in p ? (p as { costOfLivingRichDiff: number | null }).costOfLivingRichDiff : null,
+                'costOfLivingRichDiff' in p
+                    ? (p as { costOfLivingRichDiff: number | null }).costOfLivingRichDiff
+                    : null,
                 p.wageEdu0,
                 p.wageEdu1,
                 p.wageEdu2,
@@ -325,7 +323,7 @@ export function PlanetCostOfLivingChart({
                             content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} planetId={planetId} />}
                         />
                         <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
-                        {/* Ghost lines */}
+
                         <Area
                             type='monotone'
                             dataKey='ghostCostOfLiving'
@@ -412,7 +410,7 @@ export function PlanetCostOfLivingChart({
                             isAnimationActive={false}
                             connectNulls={false}
                         />
-                        {/* Main series */}
+
                         <Area
                             type='monotone'
                             dataKey='costOfLiving'

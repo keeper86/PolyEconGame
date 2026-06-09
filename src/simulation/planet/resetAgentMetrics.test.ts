@@ -51,7 +51,7 @@ describe('resetAgentMetrics', () => {
         expect(last.revenue).toBeCloseTo(600);
         expect(last.purchases).toBeCloseTo(50);
         expect(last.claimPayments).toBeCloseTo(30);
-        // Per-resource maps are snapshotted correctly
+
         expect(last.producedResources).toEqual({ iron: { quantity: 10, value: 500 } });
         expect(last.consumedResources).toEqual({ coal: { quantity: 5, value: 100 } });
         expect(last.boughtResources).toEqual({ machinery: { quantity: 1, value: 2000 } });

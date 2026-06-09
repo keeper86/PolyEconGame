@@ -16,7 +16,6 @@ export default function TransportForm({
     const [energy, setEnergy] = useState<number>(0);
     const [eta, setEta] = useState<number>(5);
 
-    // Update defaults when planets change
     React.useEffect(() => {
         if (!from && planets[0]) {
             setFrom(planets[0].id);

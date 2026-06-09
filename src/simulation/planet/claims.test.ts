@@ -102,15 +102,12 @@ describe('claimed resource helpers', () => {
     });
 
     it('extractFromClaimedResource extracts up to requested quantity and reduces quantities on entries', () => {
-        // tenantA has r1=100 and r2=50 -> total 150
         const extracted = extractFromClaimedResource(planet, tenantA, arableLandResourceType as Resource, 120);
         expect(extracted).toBe(120);
 
-        // remaining should be 30 (100+50-120)
         const remaining = queryClaimedResource(planet, tenantA, arableLandResourceType as Resource);
         expect(remaining).toBe(30);
 
-        // check that entries were reduced in order: r1 first (becomes 0), r2 becomes 30
         const entries = planet.resources[arableLandResourceType.name];
         const r1 = entries.find((e) => e.id === 'r1');
         const r2 = entries.find((e) => e.id === 'r2');
@@ -119,7 +116,6 @@ describe('claimed resource helpers', () => {
     });
 
     it('extractFromClaimedResource extracts all available if requested exceeds available', () => {
-        // tenantB has r3=200
         const extracted = extractFromClaimedResource(planet, tenantB, arableLandResourceType as Resource, 300);
         expect(extracted).toBe(200);
 

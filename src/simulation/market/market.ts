@@ -19,8 +19,6 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
 
     const agentBidBooks = collectAgentBids(agents, planet);
 
-    // Build all household demand once with sequential budget allocation so that
-    // higher-priority services consume wealth before lower-priority ones.
     const householdBidMap = buildPopulationDemand(planet);
 
     const resourceOrder = buildResourceOrder(askBooks, agentBidBooks);
@@ -33,10 +31,6 @@ export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     buildPlanetOrderBook(planet, askBooks, agentBidBooks);
 }
 
-/**
- * After all resource markets are cleared, release any deposit hold that was
- * not consumed during settlement (bids that got zero fill).
- */
 function releaseRemainingHolds(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -81,7 +75,6 @@ function clearResourceMarket(
     }
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
-        // No trades possible: release any escrowed goods back to free stock
         for (const ask of askOrders) {
             const assets = ask.agent.assets[planet.id];
             if (assets) {
@@ -98,7 +91,6 @@ function clearResourceMarket(
             }
         }
 
-        // When there are sellers but no buyers, converge market price toward the best ask.
         let noTradePrice = referencePrice;
         if (askOrders.length > 0) {
             const bestAsk = askOrders[0].askPrice;
@@ -144,8 +136,6 @@ function clearResourceMarket(
         planet.marketPrices[resourceName] = price;
     }
 
-    // Clamp to zero: floating-point arithmetic in the matching engine can
-    // produce a volume marginally above totalSupply (≈ 1e-13 noise).
     const unsoldSupply = Math.max(0, totalSupply - totalVolume);
 
     planet.lastMarketResult[resourceName] = {
@@ -168,7 +158,6 @@ function updateAvgMarketResult(planet: Planet, resourceName: string): void {
     }
     const prior = planet.avgMarketResult[resourceName];
     if (!prior) {
-        // Bootstrap: copy scalar fields, omit populationBids
         planet.avgMarketResult[resourceName] = {
             resourceName: latest.resourceName,
             clearingPrice: latest.clearingPrice,

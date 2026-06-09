@@ -37,7 +37,6 @@ export const mapTickToDate = (tick: number): string => {
     return `${day.toString().padStart(2, '0')}. ${MONTH_NAMES[monthIndex]} ${year}`;
 };
 
-/** Client wrapper that fetches the current tick from the simulation and displays it. */
 export default function TickDisplay() {
     const trpc = useTRPC();
     const loggedIn = useSession().status === 'authenticated';

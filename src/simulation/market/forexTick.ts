@@ -7,17 +7,13 @@ import { getCurrencyResourceName, DEFAULT_EXCHANGE_RATE } from './currencyResour
 export function forexTick(gameState: GameState): void {
     const planets = Array.from(gameState.planets.values());
 
-    // Build a reverse map: currency resource name → issuing planet id.
     const curToIssuer = new Map<string, string>();
     for (const planet of planets) {
         curToIssuer.set(getCurrencyResourceName(planet.id), planet.id);
     }
 
-    // All forex participants: regular agents + market-makers
     const allParticipants = [...gameState.agents.values(), ...gameState.forexMarketMakers.values()];
 
-    // Pre-scan participants to find planet pairs that actually have live forex orders,
-    // avoiding the full O(n²) work for pairs with no activity.
     const activePairs = new Set<string>();
     for (const participant of allParticipants) {
         for (const [tradingPlanetId, assets] of Object.entries(participant.assets)) {
@@ -130,14 +126,9 @@ function clearForexPair(
         unsoldSupply,
     };
 
-    // Update monthly EMA (reuse the same helper field used by physical markets)
     updateAvgForexResult(tradingPlanet, curName);
 }
 
-/**
- * Update the monthly EMA for forex results, mirroring the logic used for
- * physical-goods markets in market.ts / updateAvgMarketResult.
- */
 function updateAvgForexResult(tradingPlanet: Planet, curName: string): void {
     const latest = tradingPlanet.lastMarketResult[curName];
     if (!latest) {
@@ -148,7 +139,7 @@ function updateAvgForexResult(tradingPlanet: Planet, curName: string): void {
         tradingPlanet.avgMarketResult[curName] = { ...latest };
         return;
     }
-    // EMA alpha = 1/30 (one month half-life)
+
     const alpha = 1 / 30;
     tradingPlanet.avgMarketResult[curName] = {
         resourceName: curName,

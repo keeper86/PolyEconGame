@@ -1,9 +1,9 @@
 export function PricingMarketSection() {
     return (
         <>
-            {/* ---------------------------------------------------------------- */}
-            {/* 7. AGENT PRICING (TÂTONNEMENT)                                   */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='pricing'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>7. Agent Pricing — Tâtonnement (every tick)</h2>
                 <p>
@@ -44,9 +44,9 @@ offerRetainment = reserved amount for production inputs (calculated from facilit
                 </p>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 7b. AGENT INPUT BUYING                                            */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='buying'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>7b. Agent Input Buying (every tick)</h2>
                 <p>
@@ -104,9 +104,9 @@ sellableQty     = max(0, inventory[r] − inputReserve[r])`}
                 </pre>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 8. MARKET CLEARING                                                */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='market'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>8. Market Clearing (every tick)</h2>
                 <p>
@@ -173,9 +173,9 @@ Agent settlement:
                 </pre>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 8b. CONSTRUCTION TICK                                             */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='construction'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>8b. Construction Tick (every tick)</h2>
                 <p>

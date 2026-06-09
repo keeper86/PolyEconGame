@@ -11,18 +11,14 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { EducationLevelType } from '@/simulation/population/education';
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
 type AllocationTargets = Record<EducationLevelType, number>;
 
 type Props = {
     agentId: string;
     planetId: string;
-    /** Current allocated workers from the live snapshot. */
+
     allocatedWorkers: Partial<AllocationTargets>;
-    /** Whether automatic worker allocation is enabled. When true this panel is advisory only. */
+
     automateWorkerAllocation: boolean;
 };
 
@@ -32,10 +28,6 @@ const EDU_LEVELS: { key: EducationLevelType; label: string; description: string 
     { key: 'secondary', label: 'Secondary', description: 'Workers with secondary / high-school education' },
     { key: 'tertiary', label: 'Tertiary', description: 'Workers with a university degree' },
 ];
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
 
 export default function WorkerAllocationPanel({
     agentId,
@@ -56,7 +48,6 @@ export default function WorkerAllocationPanel({
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // Keep local state in sync when the parent re-renders with a fresh snapshot
     useEffect(() => {
         setTargets({
             none: allocatedWorkers.none ?? 0,
@@ -97,7 +88,6 @@ export default function WorkerAllocationPanel({
 
     return (
         <div className='border rounded-md p-3 space-y-3'>
-            {/* Header */}
             <button
                 type='button'
                 className='w-full flex items-center justify-between gap-2 cursor-pointer'
@@ -134,7 +124,6 @@ export default function WorkerAllocationPanel({
                         </p>
                     )}
 
-                    {/* Input grid */}
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                         {EDU_LEVELS.map(({ key, label, description }) => (
                             <div key={key} className='space-y-1'>

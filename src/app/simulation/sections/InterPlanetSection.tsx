@@ -1,9 +1,9 @@
 export function InterPlanetSection() {
     return (
         <>
-            {/* ---------------------------------------------------------------- */}
-            {/* 14. INTER-PLANET TICK                                             */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='interplanet'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>14. Inter-Planet Tick (every tick)</h2>
                 <p>
@@ -14,7 +14,7 @@ export function InterPlanetSection() {
                     across planet boundaries and cannot run inside the per-planet loop.
                 </p>
 
-                {/* ---- 14.1 CURRENCIES ---------------------------------------- */}
+                {}
                 <h3 className='text-xl font-semibold mt-6 mb-2'>14.1 Multiple Currencies</h3>
                 <p>
                     Each of the seven inhabited planets issues its own currency. Currencies are modelled as a special
@@ -38,8 +38,8 @@ export function InterPlanetSection() {
                                 ['Icedonia', 'Liquido', '₤'],
                                 ['Paradies', 'Paraseto', '₽'],
                                 ['Suerte', 'Scheine', '$'],
-                                ['Pandara', 'Naaavi', '₦'],
-                                ['Alpha-Centauri', 'Alphas', '₳'],
+                                ['Pandara', 'Tinar', '₦'],
+                                ['Alpha-Centauri', 'Centas', '₡'],
                             ].map(([planet, currency, symbol]) => (
                                 <tr key={planet}>
                                     <td className='p-2 border'>{planet}</td>
@@ -51,7 +51,7 @@ export function InterPlanetSection() {
                     </table>
                 </div>
 
-                {/* ---- 14.2 FOREX --------------------------------------------- */}
+                {}
                 <h3 className='text-xl font-semibold mt-6 mb-2'>14.2 Foreign Exchange Market</h3>
                 <p>
                     Each planet hosts a forex market where its residents can buy and sell foreign currencies. The forex
@@ -122,7 +122,7 @@ For each MM on each planet:
   loans       −= repayment   (symmetric bank update → money destruction)`}
                 </pre>
 
-                {/* ---- 14.3 SHIPPING ------------------------------------------ */}
+                {}
                 <h3 className='text-xl font-semibold mt-6 mb-2'>14.3 Shipping</h3>
                 <p>
                     Physical goods move between planets via ships operating on <strong>transport contracts</strong>.
@@ -203,7 +203,7 @@ effectiveValue = baseValue × qualityFactor − maintenanceCostPenalty
 trades matched by: max(offer − ask) first`}
                 </pre>
 
-                {/* ---- 14.4 NPC AGENTS --------------------------------------- */}
+                {}
                 <h3 className='text-xl font-semibold mt-6 mb-2'>14.4 NPC Agents</h3>
                 <p>Two automated NPC agents run after the ship tick each global loop.</p>
 

@@ -170,7 +170,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         govClaims.push(waterRemainder.id);
     }
 
-    // Public utilities company — holds the government's baseline resource claims.
     const utilWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-util-water-fac`);
     utilWaterFacility.scale = spec.govAgriScale;
     utilWaterFacility.maxScale = spec.govAgriScale;
@@ -192,8 +191,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
     });
     agents.push(utilAgent);
 
-    // Government agent — no production facilities; only owns resource claims and
-    // redistributes lease income as welfare each tick.
     const govAgent = makeAgent({
         id: govId,
         name: `${spec.name} Government`,
@@ -242,10 +239,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
 
     return { planet, agents };
 }
-
-// ============================================================================
-// Gune — forest & timber world
-// ============================================================================
 
 const guneForestClaims: ResourceClaimEntry[] = [];
 
@@ -376,10 +369,6 @@ function buildGuneIndustrialAgents(): Agent[] {
     ];
 }
 
-// ============================================================================
-// Icedonia — mineral & energy world
-// ============================================================================
-
 const icedoniaCoalClaims: ResourceClaimEntry[] = [];
 
 function buildIcedoniaIndustrialAgents(): Agent[] {
@@ -506,10 +495,6 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
 
     return [energyAgent, consumerAgent, adminAgent, logisticsAgent, groceryAgent, retailAgent, hospitalAgent];
 }
-
-// ============================================================================
-// Pandara — agricultural & steel hub
-// ============================================================================
 
 const pandaraIronClaims: ResourceClaimEntry[] = [];
 
@@ -651,10 +636,6 @@ function buildPandaraIndustrialAgents(): Agent[] {
         hospitalAgent,
     ];
 }
-
-// ============================================================================
-// Paradies — refinery & glass
-// ============================================================================
 
 const paradiesOilClaims: ResourceClaimEntry[] = [];
 const paradiesSandClaims: ResourceClaimEntry[] = [];
@@ -821,10 +802,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
     ];
 }
 
-// ============================================================================
-// Suerte — copper & cement world
-// ============================================================================
-
 const suerteCopperClaims: ResourceClaimEntry[] = [];
 
 function buildSuerteIndustrialAgents(): Agent[] {
@@ -960,10 +937,6 @@ function buildSuerteIndustrialAgents(): Agent[] {
         hospitalAgent,
     ];
 }
-
-// ============================================================================
-// Planet spec definitions
-// ============================================================================
 
 export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
     return [

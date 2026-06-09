@@ -7,8 +7,6 @@ import { getPending } from './pendingRequests';
 import { logger } from '../../server/logger';
 export { rejectAllPending } from './pendingRequests';
 
-// globalThis-backed singletons prevent duplicate state when Turbopack
-// re-evaluates this module in development.
 const GLOBAL_KEY_LISTENER = Symbol.for('__polyecon_workerQueries_listener__');
 const GLOBAL_KEY_LOG_LISTENER = Symbol.for('__polyecon_workerLog_listener__');
 

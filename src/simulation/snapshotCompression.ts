@@ -6,12 +6,6 @@ import type { GameStateRecord } from './immutableTypes';
 import type { Planet, Agent, GameState } from './planet/planet';
 import type { ShipCapitalMarket } from './ships/ships';
 
-// ---------------------------------------------------------------------------
-// Wire format (MessagePack-safe — uses arrays instead of Maps)
-// ---------------------------------------------------------------------------
-
-/** MessagePack-safe representation used only on the wire.
- *  Maps are converted to arrays for serialization. */
 interface WireGameState {
     tick: number;
     planets: Planet[];
@@ -43,7 +37,6 @@ function wireToGameState(wire: WireGameState): GameState {
     }
     const agents = new Map<string, Agent>();
     for (const a of wire.agents) {
-        // Backward-compat: older snapshots may lack new ship fields
         for (const ship of a.ships) {
             if ((ship as { maxMaintenance?: number }).maxMaintenance === undefined) {
                 ship.maxMaintenance = ship.maintainanceStatus;
@@ -52,7 +45,7 @@ function wireToGameState(wire: WireGameState): GameState {
                 ship.cumulativeRepairAcc = 0;
             }
         }
-        // Backward-compat: older snapshots may lack shipListings in assets
+
         for (const assets of Object.values(a.assets)) {
             if (!assets.shipListings) {
                 assets.shipListings = [];
@@ -66,8 +59,6 @@ function wireToGameState(wire: WireGameState): GameState {
     }
     const shipbuilderAgents = new Map<string, Agent>();
     for (const sb of wire.shipbuilderAgents ?? []) {
-        // Prefer the canonical agent object from the agents map so all role-indexed
-        // maps share the same object instances and mutations stay consistent.
         const canonical = agents.get(sb.id);
         if (canonical) {
             shipbuilderAgents.set(sb.id, canonical);
@@ -93,15 +84,6 @@ function wireToGameState(wire: WireGameState): GameState {
     };
 }
 
-// ---------------------------------------------------------------------------
-// Serialize / Deserialize
-// ---------------------------------------------------------------------------
-
-/**
- * Serialize a GameStateRecord to a compressed Buffer.
- *
- *   GameStateRecord → GameState → wire format → MessagePack → gzip → Buffer
- */
 export function serializeSnapshot(record: GameStateRecord): Buffer {
     const gs = fromImmutableGameState(record);
     const wire = gameStateToWire(gs);
@@ -109,22 +91,12 @@ export function serializeSnapshot(record: GameStateRecord): Buffer {
     return gzipSync(Buffer.from(packed.buffer, packed.byteOffset, packed.byteLength));
 }
 
-/**
- * Serialize a GameState (already converted from a GameStateRecord) to a
- * compressed Buffer.  Useful when the caller has already extracted the
- * plain GameState from the immutable snapshot (e.g. off the tick loop).
- */
 export function serializeGameState(gs: GameState): Buffer {
     const wire = gameStateToWire(gs);
     const packed = encode(wire);
     return gzipSync(Buffer.from(packed.buffer, packed.byteOffset, packed.byteLength));
 }
 
-/**
- * Deserialize a compressed Buffer back to a GameStateRecord.
- *
- *   Buffer → gunzip → MessagePack → wire format → GameState → GameStateRecord
- */
 export function deserializeSnapshot(data: Buffer): GameStateRecord {
     const decompressed = gunzipSync(data);
     const wire = decode(decompressed) as WireGameState;

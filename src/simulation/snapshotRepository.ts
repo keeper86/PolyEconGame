@@ -1,24 +1,8 @@
-/**
- * snapshotRepository.ts
- *
- * Repository layer for reading and writing simulation snapshots to the database.
- * Planet and agent state is persisted each tick so the frontend can query
- * only the data it needs rather than receiving the full GameState over SSE.
- */
-
 import type { Planet, Agent } from './planet/planet';
 import { OCCUPATIONS, SKILL } from './population/population';
 import { educationLevelKeys } from './population/education';
 import { totalOutstandingLoans } from './financial/loanTypes';
 
-// ---------------------------------------------------------------------------
-// Serialisation helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Compute the total population for a planet (sum of all cohort occupant counts).
- * New model: demography[age][occ][edu][skill] → PopulationCategory with `.total`.
- */
 export const computePopulationTotal = (planet: Planet): number => {
     let total = 0;
     for (const cohort of planet.population.demography) {
@@ -33,10 +17,6 @@ export const computePopulationTotal = (planet: Planet): number => {
     return total;
 };
 
-/**
- * Compute a weighted-average starvation level across all population categories.
- * Returns 0 when population is empty.
- */
 export const computeGlobalStarvation = (planet: Planet): number => {
     let totalStarvation = 0;
     let totalPop = 0;
@@ -59,9 +39,6 @@ export const computeGlobalStarvation = (planet: Planet): number => {
     return totalPop > 0 ? totalStarvation / totalPop : 0;
 };
 
-/**
- * Compute aggregate resource storage totals for an agent across all planets.
- */
 export const computeAgentStorage = (agent: Agent): Record<string, number> => {
     const storage: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
@@ -75,9 +52,6 @@ export const computeAgentStorage = (agent: Agent): Record<string, number> => {
     return storage;
 };
 
-/**
- * Compute per-tick production totals for an agent (scaled by efficiency).
- */
 export const computeAgentProduction = (agent: Agent): Record<string, number> => {
     const production: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
@@ -90,9 +64,6 @@ export const computeAgentProduction = (agent: Agent): Record<string, number> => 
     return production;
 };
 
-/**
- * Compute per-tick consumption totals for an agent (scaled by efficiency).
- */
 export const computeAgentConsumption = (agent: Agent): Record<string, number> => {
     const consumption: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
@@ -107,15 +78,6 @@ export const computeAgentConsumption = (agent: Agent): Record<string, number> =>
     return consumption;
 };
 
-// Note: snapshot persistence (writing and reading historical planet/agent
-// snapshots) has been removed. The remaining functions are pure helpers used
-// by runtime controller endpoints that rely on the live worker state.
-
-// ---------------------------------------------------------------------------
-// Agent list summary (lightweight — no full agent_summary blob)
-// ---------------------------------------------------------------------------
-
-/** Shape returned by getAgentListSummaries for each agent. */
 export type AgentListSummary = {
     agentId: string;
     name: string;
@@ -129,12 +91,7 @@ export type AgentListSummary = {
     shipCount: number;
 };
 
-/**
- * Compute card-level summary data from a full Agent JSONB blob.
- * Runs server-side so only the small summary is sent to the client.
- */
 export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSummary => {
-    // blob is the Agent object stored as JSONB
     const a = blob as Agent;
 
     let facilityCount = 0;
@@ -196,23 +153,6 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
     };
 };
 
-/**
- * Return lightweight summary data for every agent (latest tick only).
- * Fetches the full agent_summary JSONB but computes the summary server-side
- * so only a small payload is sent to the client.
- */
-// getAgentListSummaries/read helpers removed — compute summaries from live
-// Agent objects instead of DB snapshots. Keep summariseAgentBlob for use by
-// controller code that operates on live agent objects.
-
-// Single-agent DB detail helper removed — callers should use the live worker
-// Agent object instead of querying historical snapshots.
-
-// ---------------------------------------------------------------------------
-// Agent overview (top-level stats + per-planet summaries)
-// ---------------------------------------------------------------------------
-
-/** Per-planet summary returned by getAgentOverview. */
 export type AgentPlanetSummary = {
     planetId: string;
     deposits: number;
@@ -227,21 +167,17 @@ export type AgentPlanetSummary = {
     };
 };
 
-/** Shape returned by getAgentOverview. */
 export type AgentOverviewData = {
     agentId: string;
     name: string;
     associatedPlanetId: string;
     wealth: number;
-    /** Firm deposit balance (currency units). 0 when not yet set by the financial tick. */
+
     deposits: number;
     shipCount: number;
     planets: AgentPlanetSummary[];
 };
 
-/**
- * Summarise a single planet's assets from the Agent JSONB blob.
- */
 export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][string]): AgentPlanetSummary => {
     let facilityCount = 0;
     let efficiencySum = 0;

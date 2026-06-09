@@ -15,7 +15,6 @@ type Props = {
     viewMode: GroupMode;
 };
 
-// Stable module-level key lists (used as merge keys)
 const OCC_MERGE_KEYS = [...OCCUPATIONS.map((occ) => OCC_LABELS[occ]), '_total'];
 const EDU_MERGE_KEYS = [...educationLevelKeys.map((edu) => EDU_LABELS[edu]), '_total'];
 
@@ -94,7 +93,6 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
         }
     }, [occData, eduData]);
 
-    // Down-sample on small screens by merging adjacent age pairs
     const displayOccData = useMemo(
         () => (isSmallScreen ? mergePairs(occData, OCC_MERGE_KEYS) : occData),
         [occData, isSmallScreen],

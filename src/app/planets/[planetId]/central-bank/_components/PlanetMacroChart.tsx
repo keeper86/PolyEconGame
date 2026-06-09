@@ -63,7 +63,6 @@ function computeMonthlyChartData(data: EconomyPoint[], currentTick: number): Cha
     const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
     const latestYear = tickToDate(currentTick).year;
 
-    // Current year points with monthIdx
     const current: ChartPoint[] = [];
     for (const p of sorted) {
         if (tickToDate(p.bucket).year === latestYear) {
@@ -71,7 +70,6 @@ function computeMonthlyChartData(data: EconomyPoint[], currentTick: number): Cha
         }
     }
 
-    // Anchor at monthIdx=0 (previous December or nearest predecessor)
     const prevDecPoint = sorted.find((p) => {
         const { year, monthIndex } = tickToDate(p.bucket);
         return year === latestYear - 1 && monthIndex === 11;
@@ -85,7 +83,6 @@ function computeMonthlyChartData(data: EconomyPoint[], currentTick: number): Cha
         }
     }
 
-    // Ghost data: same months from last year not yet reached in the current year
     const { monthIndex: currentMonthIndex } = tickToDate(currentTick);
     const currentMonthIdx = currentMonthIndex + 1;
     const ghostPoints: ChartPoint[] = sorted
@@ -106,7 +103,6 @@ function computeMonthlyChartData(data: EconomyPoint[], currentTick: number): Cha
             };
         });
 
-    // Merge: sort all points by monthIdx
     const merged = [...current, ...ghostPoints].sort((a, b) => (a.monthIdx ?? 0) - (b.monthIdx ?? 0));
     return merged;
 }
@@ -140,7 +136,7 @@ export function PlanetMacroChart({
                 };
             });
         }
-        // decade
+
         return data.map((p) => {
             const { year } = tickToDate(p.bucket);
             return {
@@ -296,7 +292,7 @@ export function PlanetMacroChart({
                             strokeDasharray='3 3'
                         />
                         <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
-                        {/* Ghost lines */}
+                        {}
                         <Area
                             yAxisId='left'
                             type='monotone'
@@ -342,7 +338,7 @@ export function PlanetMacroChart({
                             isAnimationActive={false}
                             connectNulls={false}
                         />
-                        {/* Main series */}
+                        {}
                         <Area
                             yAxisId='left'
                             type='monotone'

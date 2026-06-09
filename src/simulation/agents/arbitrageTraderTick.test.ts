@@ -17,16 +17,8 @@ import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../
 import { seedArbitrageTraderAgents } from './arbitrageTrader';
 import { arbitrageTraderTick } from './arbitrageTraderTick';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const SHIP_TYPE = shiptypes.solid.bulkCarrier1;
 
-/**
- * Create a minimal two-planet game state with one arbitrage trader that has
- * assets on both planets and one idle BulkCarrier on planetOrigin.
- */
 function makeTwoPlanetState(opts?: {
     originPrice?: number;
     destPrice?: number;
@@ -43,7 +35,7 @@ function makeTwoPlanetState(opts?: {
         name: 'Origin',
         marketPrices: { Steel: originPrice },
     });
-    // Populate order book so depth-aware price queries work
+
     if (originPrice > 0) {
         pOrigin.orderBooks = { Steel: { asks: [{ price: originPrice, quantity: 1_000_000 }], bids: [] } };
     }
@@ -52,7 +44,7 @@ function makeTwoPlanetState(opts?: {
         name: 'Destination',
         marketPrices: {
             Steel: destPrice,
-            // forex: 1 p-dest currency = 1 p-origin currency (parity)
+
             [getCurrencyResourceName('p-dest')]: 1.0,
         },
     });
@@ -79,7 +71,6 @@ function makeTwoPlanetState(opts?: {
         },
     });
 
-    // Bootstrap ship: idle at p-origin
     const ship = createShip(SHIP_TYPE, 0, 'Trader Ship', pOrigin) as TransportShip;
     agent.ships.push(ship);
 
@@ -89,17 +80,13 @@ function makeTwoPlanetState(opts?: {
     return { state, pOrigin, pDest, agent, ship };
 }
 
-// ---------------------------------------------------------------------------
-// assignRoutesToIdleShips
-// ---------------------------------------------------------------------------
-
 describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
     it('sets idle ship to loading state when a profitable route exists', () => {
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 500,
             agentDeposits: 50_000_000,
-            tick: 5, // any tick — assignment runs every tick now
+            tick: 5,
         });
 
         arbitrageTraderTick(state);
@@ -111,10 +98,6 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
     });
 
     it('does not assign a route when there is no price spread', () => {
-        // With pBuy == pSell the gross profit is zero and profitPerTick is negative
-        // (depreciation with no earnings), which is below ARBITRAGE_MIN_PROFIT_PER_TICK.
-        // Note: a tiny spread like $1 on 150k units IS profitable under the new metric
-        // (profitPerTick ≈ 381 >> 100), so the operative guard is strictly no-gap / negative-gap.
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 100,
@@ -134,7 +117,6 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
             tick: 5,
         });
 
-        // Ship is already loading
         ship.state = {
             type: 'loading',
             planetId: 'p-origin',
@@ -155,7 +137,6 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
         const originalState = ship.state;
         arbitrageTraderTick(state);
 
-        // State object should not have been replaced
         expect(ship.state).toBe(originalState);
     });
 
@@ -183,13 +164,12 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 500,
-            agentDeposits: 1, // nearly zero, but order book depth is used now
+            agentDeposits: 1,
             tick: 5,
         });
 
         arbitrageTraderTick(state);
 
-        // Capital is no longer checked during route evaluation — depth-aware pricing handles this
         expect(ship.state.type).toBe('loading');
     });
 
@@ -198,19 +178,15 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
             originPrice: 100,
             destPrice: 500,
             agentDeposits: 50_000_000,
-            tick: 7, // mid-month
+            tick: 7,
         });
 
         arbitrageTraderTick(state);
 
-        // Should still assign — no longer monthly
         expect(ship.state.type).toBe('loading');
     });
 
     it('dispatches ship as empty ferry when idle at destination and profit route requires repositioning', () => {
-        // Best route: buy Steel at p-origin (100) → sell at p-dest (300).
-        // Ship is already at p-dest, so it needs to reposition to p-origin first.
-        // profitPerTick = ((300-100)×150k - depr_561) / 561 ≈ 53,476 >> threshold
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 300,
@@ -222,7 +198,6 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
 
         arbitrageTraderTick(state);
 
-        // Ship must be sent as an empty ferry from p-dest to p-origin
         expect(ship.state.type).toBe('loading');
         const s = ship.state as unknown as {
             type: 'loading';
@@ -243,7 +218,7 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
             name: 'Origin',
             marketPrices: {
                 Steel: 100,
-                [getCurrencyResourceName('p-dest')]: 0.3, // 1 p-dest unit = 0.3 origin currency
+                [getCurrencyResourceName('p-dest')]: 0.3,
             },
         });
         const pDest = makePlanet({
@@ -276,12 +251,10 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
 
         arbitrageTraderTick(state);
 
-        // With forex=0.3 the net = (300*0.3 - 100 - cost)/100 = (90-100-cost)/100 → negative
         expect(ship.state.type).toBe('idle');
     });
 
     it('rejects route when there is no gross profit (sell price equals buy price)', () => {
-        // profitPerTick = ((100-100)×qty - depr) / totalTicks < 0 < ARBITRAGE_MIN_PROFIT_PER_TICK
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 100,
@@ -295,11 +268,6 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
     });
 
     it('finds route when destination bid depth is less than ship cargo capacity', () => {
-        // Mirrors the Earth→Alpha Centauri scenario: a seller at origin lists 2Mt of Steel
-        // at 20.5/t, but the buyer at destination bids on only 1,000t at 1,000/t.
-        // BulkCarrier1 can carry 150,000t, so without bid-depth capping the effective
-        // quantity could exceed the destination bid depth, diluting the apparent sell price.
-        // After the fix, effectiveQty = min(cargoCapacity, unbalanced × 30) = 30,000 and the route is found.
         const BID_DEPTH = 1_000;
         const pOrigin = makePlanet({
             id: 'p-origin',
@@ -347,7 +315,6 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
 
         arbitrageTraderTick(state);
 
-        // Route must be found and ship dispatched — quantity capped to bid depth, not cargo capacity
         expect(ship.state.type).toBe('loading');
         const s = ship.state as {
             type: 'loading';
@@ -361,15 +328,10 @@ describe('arbitrageTraderTick – assignRoutesToIdleShips', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// postSellOffers
-// ---------------------------------------------------------------------------
-
 describe('arbitrageTraderTick – postSellOffers', () => {
     it('posts a sell offer for goods in storage when no loading ship needs them', () => {
         const { state, agent } = makeTwoPlanetState({ tick: 5, originPrice: 100, destPrice: 100 });
 
-        // Put Steel in dest storage
         const steelResource = {
             name: 'Steel',
             form: 'solid' as const,
@@ -402,7 +364,6 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             massPerQuantity: 1,
         };
 
-        // Ship is loading Steel at p-origin
         ship.state = {
             type: 'loading',
             planetId: 'p-origin',
@@ -411,7 +372,6 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             currentCargo: { resource: steelResource, quantity: 0 },
         };
 
-        // Put Steel in origin storage
         agent.assets['p-origin']!.storageFacility.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
@@ -420,7 +380,6 @@ describe('arbitrageTraderTick – postSellOffers', () => {
 
         arbitrageTraderTick(state);
 
-        // No sell offer because ship is loading that resource
         expect(agent.assets['p-origin']!.market!.sell.Steel).toBeUndefined();
     });
 
@@ -440,7 +399,6 @@ describe('arbitrageTraderTick – postSellOffers', () => {
         };
         state.planets.get('p-dest')!.marketPrices.Steel = 200;
 
-        // Pre-existing automated sell entry with stale price
         agent.assets['p-dest']!.market!.sell.Steel = {
             resource: steelResource,
             offerPrice: 50,
@@ -450,7 +408,6 @@ describe('arbitrageTraderTick – postSellOffers', () => {
 
         arbitrageTraderTick(state);
 
-        // postSellOffers only creates new entries; existing ones are left as-is
         expect(agent.assets['p-dest']!.market!.sell.Steel!.offerPrice).toBe(50);
     });
 
@@ -483,18 +440,12 @@ describe('arbitrageTraderTick – postSellOffers', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// manageFleet – fleet expansion
-// ---------------------------------------------------------------------------
-
 describe('arbitrageTraderTick – manageFleet: fleet expansion', () => {
     it('does not buy ships (manageFleet was removed from arbitrageTraderTick)', () => {
-        const { state, agent } = makeTwoPlanetState({ tick: 1 }); // tick=1 → first tick of month
+        const { state, agent } = makeTwoPlanetState({ tick: 1 });
 
-        // Give the agent no ships first (so we can clearly detect purchase)
         agent.ships = [];
 
-        // Post a ship listing via the shipbuilder
         const listingShipType = shiptypes.solid.bulkCarrier1;
         const emaPrice = 200_000;
         state.shipCapitalMarket.emaPrice[listingShipType.name] = emaPrice;
@@ -514,12 +465,10 @@ describe('arbitrageTraderTick – manageFleet: fleet expansion', () => {
         });
         state.agents.set('seller', seller);
 
-        // Ensure agent has plenty of home deposits
         agent.assets['p-origin']!.deposits = ARBITRAGE_MIN_CAPITAL_RESERVE + emaPrice * 2;
 
         arbitrageTraderTick(state);
 
-        // manageFleet was removed from arbitrageTraderTick — no ship purchases happen
         expect(agent.ships).toHaveLength(0);
         expect(seller.ships).toHaveLength(1);
     });
@@ -546,7 +495,6 @@ describe('arbitrageTraderTick – manageFleet: fleet expansion', () => {
         });
         state.agents.set('seller', seller);
 
-        // Deposits exactly at reserve limit
         agent.assets['p-origin']!.deposits = ARBITRAGE_MIN_CAPITAL_RESERVE;
 
         arbitrageTraderTick(state);
@@ -555,21 +503,14 @@ describe('arbitrageTraderTick – manageFleet: fleet expansion', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// manageFleet – ship trimming / listing
-// ---------------------------------------------------------------------------
-
 describe('arbitrageTraderTick – manageFleet: trim idle ships', () => {
     it('BUG B5 – should not list a ship that just became idle regardless of its total age', () => {
-        const currentTick = 1; // first tick of month
+        const currentTick = 1;
         const { state, agent, ship } = makeTwoPlanetState({ tick: currentTick });
 
-        // Ship is very old but just became idle this tick
         ship.builtAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = 10_000_000;
-        // No idleAtTick set → defaults to builtAtTick, making idleSince < threshold when idleAtTick not set
 
-        // For B5 to apply, we need idleAtTick to be recent (ship just went idle)
         ship.idleAtTick = currentTick;
 
         arbitrageTraderTick(state);
@@ -612,7 +553,6 @@ describe('arbitrageTraderTick – manageFleet: trim idle ships', () => {
         ship.builtAtTick = 0;
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = 10_000_000;
 
-        // Pre-existing listing
         const planetId = (ship.state as { planetId: string }).planetId;
         agent.assets[planetId]!.shipListings.push({
             id: 'existing',
@@ -628,17 +568,16 @@ describe('arbitrageTraderTick – manageFleet: trim idle ships', () => {
         arbitrageTraderTick(state);
 
         const allListings = Object.values(agent.assets).flatMap((a) => a.shipListings);
-        expect(allListings).toHaveLength(1); // no duplicate
+        expect(allListings).toHaveLength(1);
     });
 
     it('manageFleet removed – no ship listing happens in arbitrageTraderTick', () => {
         const currentTick = 1;
-        // manageFleet was removed from arbitrageTraderTick, so no ships are listed.
-        // Use equal prices so no profitable route exists and the ship stays idle.
+
         const { state, agent, ship } = makeTwoPlanetState({
             tick: currentTick,
             originPrice: 100,
-            destPrice: 100, // no spread → ship stays idle
+            destPrice: 100,
         });
 
         ship.builtAtTick = currentTick - ARBITRAGE_IDLE_SHIP_SELL_THRESHOLD - 1;
@@ -647,16 +586,11 @@ describe('arbitrageTraderTick – manageFleet: trim idle ships', () => {
 
         arbitrageTraderTick(state);
 
-        // manageFleet (which handled ship listing) was removed from the tick
         const allListings = Object.values(agent.assets).flatMap((a) => a.shipListings);
         expect(allListings).toHaveLength(0);
-        expect(ship.state.type).toBe('idle'); // stays idle, not listed
+        expect(ship.state.type).toBe('idle');
     });
 });
-
-// ---------------------------------------------------------------------------
-// executeShipPurchase – cross-planet teleport
-// ---------------------------------------------------------------------------
 
 describe('executeShipPurchase – cross-planet behaviour (BUG B3)', () => {
     it('BUG B3 – ship should stay at the listing planet after purchase, not teleport to buyer planet', async () => {
@@ -679,7 +613,7 @@ describe('executeShipPurchase – cross-planet behaviour (BUG B3)', () => {
             shipName: ship.name,
             shipTypeName: SHIP_TYPE.name,
             askPrice: 500_000,
-            planetId: 'p-origin', // listed at p-origin
+            planetId: 'p-origin',
             postedAtTick: 0,
         };
         seller.assets['p-origin']!.shipListings.push(listing);
@@ -694,10 +628,6 @@ describe('executeShipPurchase – cross-planet behaviour (BUG B3)', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// General robustness
-// ---------------------------------------------------------------------------
-
 describe('arbitrageTraderTick – robustness', () => {
     it('processes agents only in arbitrageTraders map, not all agents', () => {
         const { state, agent, ship } = makeTwoPlanetState({
@@ -707,12 +637,10 @@ describe('arbitrageTraderTick – robustness', () => {
             tick: 5,
         });
 
-        // Remove from arbitrageTraders map
         state.arbitrageTraders.delete(agent.id);
 
         arbitrageTraderTick(state);
 
-        // No route should be assigned — not in arbitrageTraders
         expect(ship.state.type).toBe('idle');
     });
 
@@ -732,12 +660,9 @@ describe('arbitrageTraderTick – robustness', () => {
 });
 
 describe('arbitrageTraderTick – capital barrier', () => {
-    // Capital is no longer checked during route scanning — the implementation uses order book depth
-    // to determine effective quantity. The ship is dispatched based on available market liquidity.
     const BOOTSTRAP_DEPOSITS = 250_000;
 
     it('assigns route based on order book depth regardless of deposits (capital check removed)', () => {
-        // originPrice=500_000, order book has depth, so route is found regardless of deposits
         const { state, ship } = makeTwoPlanetState({
             originPrice: 500_000,
             destPrice: 10_000_000,
@@ -747,12 +672,10 @@ describe('arbitrageTraderTick – capital barrier', () => {
 
         arbitrageTraderTick(state);
 
-        // Route assigned — capital is no longer a barrier
         expect(ship.state.type).toBe('loading');
     });
 
     it('permits route assignment with full cargo capacity regardless of deposits', () => {
-        // pBuy=2, order depth=1M so qty is capped to maxQty=150k (not deposit-limited)
         const { state, ship } = makeTwoPlanetState({
             originPrice: 2,
             destPrice: 200,
@@ -766,7 +689,6 @@ describe('arbitrageTraderTick – capital barrier', () => {
     });
 
     it('blocks route only when there is no profitable price spread (not based on capital)', () => {
-        // Equal prices → no gross profit → no route assigned
         const { state: stateOk, ship: shipOk } = makeTwoPlanetState({
             originPrice: BOOTSTRAP_DEPOSITS,
             destPrice: BOOTSTRAP_DEPOSITS * 100,
@@ -776,7 +698,6 @@ describe('arbitrageTraderTick – capital barrier', () => {
         arbitrageTraderTick(stateOk);
         expect(shipOk.state.type).toBe('loading');
 
-        // No spread → blocked (gross profit = 0 after forex haircut or negative)
         const { state: stateBlocked, ship: shipBlocked } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 100,
@@ -802,30 +723,12 @@ describe('arbitrageTraderTick – capital barrier', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Transport cost formula — confirming it is negligible vs price margin
-// ---------------------------------------------------------------------------
-
 describe('arbitrageTraderTick – transport cost formula', () => {
-    // For Bulk Carrier 1 (speed=6, scale='small' → scaleMapping=1) with fresh condition
-    // (maintainanceStatus=1, maxMaintenance=1, no maintenance service market price):
-    //
-    //   effectiveShipValue       = scaleMapping(1) × speed(6) × qualityFactor(1) × maxMaintenance(1) = 6
-    //   oneWayTicks              = ceil(1000 / 6) = 167
-    //   roundTripTicks           = 2×167 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS(60) = 394
-    //   depreciationRatePerTick  = 6 / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS = 6/3600 ≈ 0.001667
-    //   depreciation (local)     = 0.001667 × 394 ≈ 0.657
-    //   depreciation (reposition)= 0.001667 × (167 + 394) = 0.001667 × 561 ≈ 0.935
-    //
-    // Threshold: profitPerTick = (grossProfit - depreciation) / totalTicks > ARBITRAGE_MIN_PROFIT_PER_TICK (100)
-    // For Steel maxQty=150k and a $1 gap: profitPerTick ≈ 150,000/394 ≈ 381 >> 100.
-    // The threshold only bites when quantity is very small (capital-constrained) or there is no real spread.
-
     it('computes the expected local and reposition depreciation for a new Bulk Carrier 1', () => {
         const { pOrigin, ship } = makeTwoPlanetState({ tick: 5 });
         const shipAsTransport = ship as TransportShip;
 
-        const shipValue = effectiveShipValue(shipAsTransport); // no gameState → no maintenance penalty
+        const shipValue = effectiveShipValue(shipAsTransport);
         const oneWayTicks = travelTime(shipAsTransport);
         const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
         const depreciationRatePerTick = shipValue / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS;
@@ -834,7 +737,7 @@ describe('arbitrageTraderTick – transport cost formula', () => {
         const depreciationReposition = depreciationRatePerTick * totalTicksReposition;
 
         expect(shipValue).toBe(6);
-        // travelTime has ±10% jitter; speed=6 → range [ceil(900/6), ceil(1100/6)] = [150, 184]
+
         expect(oneWayTicks).toBeGreaterThanOrEqual(Math.ceil(900 / SHIP_TYPE.speed));
         expect(oneWayTicks).toBeLessThanOrEqual(Math.ceil(1100 / SHIP_TYPE.speed));
         expect(roundTripTicks).toBe(oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS);
@@ -845,9 +748,6 @@ describe('arbitrageTraderTick – transport cost formula', () => {
     });
 
     it('assigns route when price gap produces profitPerTick above ARBITRAGE_MIN_PROFIT_PER_TICK', () => {
-        // With ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT=0.9:
-        //   pSellOrigin = destPrice * 0.9; grossProfit = (pSellOrigin - originPrice) * qty
-        //   destPrice=200: pSellOrigin=180, grossProfit=(180-100)*150k=12M, profitPerTick≈30k >> 0
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 200,
@@ -861,8 +761,6 @@ describe('arbitrageTraderTick – transport cost formula', () => {
     });
 
     it('rejects route when forex haircut eliminates the price spread', () => {
-        // With ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT=0.9:
-        //   destPrice=106: pSellOrigin=95.4 < originPrice=100 → grossProfit negative → no route
         const { state, ship } = makeTwoPlanetState({
             originPrice: 100,
             destPrice: 106,
@@ -876,14 +774,6 @@ describe('arbitrageTraderTick – transport cost formula', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Cross-planet repositioning
-// ---------------------------------------------------------------------------
-
-/**
- * Three-planet state: ship starts idle at p-current; routes available on p-origin and p-dest.
- * Setting currentSteelPrice=0 removes p-current as a viable origin (no buy opportunity).
- */
 function makeThreePlanetState(opts: {
     currentSteelPrice?: number;
     originSteelPrice?: number;
@@ -942,9 +832,6 @@ function makeThreePlanetState(opts: {
 
 describe('arbitrageTraderTick – cross-planet repositioning', () => {
     it('dispatches ship as empty ferry when the only profitable route starts on a different planet', () => {
-        // p-current has Steel=0 → no buy opportunity there.
-        // Only viable route: p-origin(100) → p-dest(2000)
-        // profitPerTick ≈ ((2000-100)×150k) / 561 ≈ 508k >> threshold
         const { state, ship } = makeThreePlanetState({
             currentSteelPrice: 0,
             originSteelPrice: 100,
@@ -968,16 +855,6 @@ describe('arbitrageTraderTick – cross-planet repositioning', () => {
     });
 
     it('prefers cross-planet route over local when cross-planet profitPerTick is higher', () => {
-        // With ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT=0.9 and no capital constraint:
-        // Local route  (p-current=500 → p-dest=10000): qty=150k
-        //   pSellOrigin = 10000*0.9 = 9000
-        //   profitPerTick = (9000-500)*150k / 394 ≈ 3,223k
-        // Remote route (p-origin=10 → p-dest=10000, +reposition): qty=150k
-        //   pSellOrigin = 10000*0.9 = 9000
-        //   profitPerTick = (9000-10)*150k / 561 ≈ 2,401k
-        // Remote wins only when its grossProfit/totalTicks > local:
-        //   (9000-rBuy)*150k/561 > (9000-lBuy)*150k/394
-        //   Use lBuy=5000, rBuy=10: (8990)/561 vs (4000)/394 → 16.02 vs 10.15 → remote wins
         const { state, ship } = makeThreePlanetState({
             currentSteelPrice: 5_000,
             originSteelPrice: 10,
@@ -986,7 +863,6 @@ describe('arbitrageTraderTick – cross-planet repositioning', () => {
 
         arbitrageTraderTick(state);
 
-        // Remote route wins → ship sent as empty ferry to p-origin
         expect(ship.state.type).toBe('loading');
         const s = ship.state as { type: 'loading'; planetId: string; to: string; cargoGoal: unknown };
         expect(s.cargoGoal).toBeNull();
@@ -995,10 +871,6 @@ describe('arbitrageTraderTick – cross-planet repositioning', () => {
     });
 
     it('stays on the local route when local profitPerTick beats the repositioning route', () => {
-        // Local route  (p-current=100 → p-dest=200): qty=150k
-        //   profitPerTick = (100×150k) / 394 ≈ 38,071
-        // Remote route (p-origin=96 → p-dest=200, +reposition): qty=150k
-        //   profitPerTick = (104×150k) / 561 ≈ 27,807  ← local wins
         const { state, ship } = makeThreePlanetState({
             currentSteelPrice: 100,
             originSteelPrice: 96,
@@ -1007,7 +879,6 @@ describe('arbitrageTraderTick – cross-planet repositioning', () => {
 
         arbitrageTraderTick(state);
 
-        // Local route wins → ship loads directly
         expect(ship.state.type).toBe('loading');
         const s = ship.state as {
             type: 'loading';
@@ -1022,16 +893,13 @@ describe('arbitrageTraderTick – cross-planet repositioning', () => {
     });
 
     it('repositioning ticks increase totalTicks and decrease profitPerTick for the same gross profit', () => {
-        // For BulkCarrier1: oneWayTicks=167, roundTripTicks=394, totalTicksWithReposition=561
-        // The reposition leg adds a full oneWayTicks overhead, penalising the profit-per-tick
-        // metric and making the agent prefer routes that start at the ship's current location.
         const { ship } = makeTwoPlanetState({ originPrice: 100, destPrice: 500, agentDeposits: 50_000_000, tick: 5 });
         const shipAsTransport = ship as TransportShip;
 
         const qty = 150_000;
-        const oneWayTicks = travelTime(shipAsTransport); // 167
-        const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS; // 394
-        const totalTicksReposition = oneWayTicks + roundTripTicks; // 561
+        const oneWayTicks = travelTime(shipAsTransport);
+        const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
+        const totalTicksReposition = oneWayTicks + roundTripTicks;
         const depRatePerTick = effectiveShipValue(shipAsTransport) / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS;
         const grossProfit = (500 - 100) * qty;
 
@@ -1039,27 +907,12 @@ describe('arbitrageTraderTick – cross-planet repositioning', () => {
         const profitPerTickReposition = (grossProfit - depRatePerTick * totalTicksReposition) / totalTicksReposition;
 
         expect(profitPerTickLocal).toBeGreaterThan(profitPerTickReposition);
-        // Even with the reposition penalty the route still clears the minimum threshold
+
         expect(profitPerTickReposition).toBeGreaterThan(ARBITRAGE_MIN_PROFIT_PER_TICK);
     });
 });
 
-// ---------------------------------------------------------------------------
-// Seeding — initial active workforce is zero (the "196 workers" explained)
-// ---------------------------------------------------------------------------
-
 describe('seedArbitrageTraderAgents – initial active workforce', () => {
-    // Arbitrage agents are initialised with a workforceDemography array of
-    // MAX_AGE+1 (= 101) empty age-cohort slots.  This is a structural skeleton
-    // required by the demographic engine — it does NOT represent real workers.
-    //
-    // The "196 workers" figure sometimes visible in the UI is NOT active worker
-    // count.  Active worker count at seeding time is 0 for every arbitrage agent.
-    //
-    // Arbitrage agents hold only a commercial license (no workforce license), so
-    // hireWorkforce will never populate their demography, and automaticWorkerAllocation
-    // derives a zero target (no facilities with workerRequirement).
-
     function totalActiveWorkers(agent: Agent): number {
         let total = 0;
         for (const assets of Object.values(agent.assets)) {
@@ -1088,11 +941,9 @@ describe('seedArbitrageTraderAgents – initial active workforce', () => {
         expect(state.arbitrageTraders.size).toBeGreaterThan(0);
 
         for (const agent of state.arbitrageTraders.values()) {
-            // The demography skeleton has MAX_AGE+1 = 101 age slots
             const homePlanetDemography = agent.assets[agent.associatedPlanetId]?.workforceDemography;
             expect(homePlanetDemography?.length).toBe(MAX_AGE + 1);
 
-            // But zero workers are actually employed anywhere
             expect(totalActiveWorkers(agent)).toBe(0);
         }
     });

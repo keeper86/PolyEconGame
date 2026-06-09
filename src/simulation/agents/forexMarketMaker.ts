@@ -22,7 +22,6 @@ export function seedForexMarketMakers(gameState: GameState): void {
                 assets: {},
             };
 
-            // --- Home planet: large working-capital loan ---
             const homeStorage = makeStorage({
                 planetId: homePlanet.id,
                 id: `${mmId}_store_${homePlanet.id}`,
@@ -34,7 +33,6 @@ export function seedForexMarketMakers(gameState: GameState): void {
             grantLoan(homeAssets, homePlanet.bank, FOREX_MM_WORKING_CAPITAL, 'forexWorkingCapital', 0);
             mm.assets[homePlanet.id] = homeAssets;
 
-            // --- Foreign planets: smaller inventory seed loans ---
             for (const foreignPlanet of planets) {
                 if (foreignPlanet.id === homePlanet.id) {
                     continue;

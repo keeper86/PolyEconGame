@@ -33,11 +33,6 @@ function makeStorageWith(
     return makeStorageFacility({ planetId: PLANET_ID, currentInStorage: contents });
 }
 
-/**
- * Sets up an agent that produces Water and has a prior offerPrice + lastSold
- * already written into the market state.  Calling automaticPricing on it will
- * exercise adjustOfferPrice with full control over the sell-through signal.
- */
 function makeWaterProducerWithPriorOffer(priorPrice: number, lastSold: number, offerQty: number) {
     const facility = makeProductionFacility({ none: 1 }, { id: 'well', scale: 1 });
     facility.needs = [];
@@ -81,12 +76,11 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // buffer = 200 * scale(10) * INPUT_BUFFER_TARGET_TICKS > 5 000 available → retainment = full buffer target
+
         expect(offer?.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
 
     it('offers surplus above the reserved buffer', () => {
-        // Same setup but storage holds 65 000 units → 5 000 above the 60 000 buffer.
         const producer = makeProductionFacility({ none: 1 }, { id: 'proc', scale: 10 });
         producer.needs = [];
         producer.produces = [{ resource: agriculturalProductResourceType, quantity: 1000 }];
@@ -106,7 +100,7 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
-        // 65 000 − (200 * 10 * INPUT_BUFFER_TARGET_TICKS) reserved = sellable, retainment = full buffer target
+
         expect(offer?.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
 
@@ -126,14 +120,12 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offer = agent.assets[PLANET_ID].market?.sell[waterResourceType.name];
-        // No facility needs water as input, so retainment should be 0
+
         expect(offer?.offerRetainment).toBe(0);
     });
 });
 
 describe('automaticPricing — offer price tâtonnement', () => {
-    // Each test that exercises adjustOfferPrice must start from the same PRNG
-    // state so that the (1 + 0.01 * nextRandom()) noise term is deterministic.
     beforeEach(() => seedRng(42));
 
     it('sets initial offer price from marketPrices when no prior price exists', () => {
@@ -185,7 +177,7 @@ describe('automaticPricing — offer price tâtonnement', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
-        // sellThroughFactor(TARGET) == 1.0 exactly, so price is unchanged
+
         expect(newPrice).toBeCloseTo(PRICE, 5);
     });
 
@@ -206,7 +198,6 @@ describe('automaticPricing — offer price tâtonnement', () => {
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        // stock=0, sold=0 → supply-constrained with no prior sales → price unchanged
         expect(agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice).toBeCloseTo(PRICE);
     });
 
@@ -239,7 +230,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
         automaticPricing(new Map([['co', agent]]), planet);
 
         const offerRetainment = agent.assets[PLANET_ID].market?.sell[clothingResourceType.name]?.offerRetainment ?? -1;
-        // No facility needs clothing as input, so retainment should be 0
+
         expect(offerRetainment).toBe(0);
     });
 
@@ -271,7 +262,7 @@ describe('automaticPricing — cost-floor brake zone', () => {
         const NEEDS_QTY = 10;
         const PRODUCES_QTY = 5;
         const inputCost = NEEDS_QTY * INPUT_PRICE;
-        const wageCost = DEFAULT_WAGE_PER_EDU; // 1 worker, scale 1
+        const wageCost = DEFAULT_WAGE_PER_EDU;
         const costPerUnit = (inputCost + wageCost) / PRODUCES_QTY;
         const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit);
 
@@ -280,7 +271,7 @@ describe('automaticPricing — cost-floor brake zone', () => {
         facility.produces = [{ resource: clothingResourceType, quantity: PRODUCES_QTY }];
         facility.lastTickResults.lastProduced = { [clothingResourceType.name]: PRODUCES_QTY };
         facility.lastTickResults.lastConsumed = { [agriculturalProductResourceType.name]: NEEDS_QTY };
-        facility.lastTickResults.costBalance = PRIOR_PRICE * PRODUCES_QTY - inputCost - wageCost; // = 0
+        facility.lastTickResults.costBalance = PRIOR_PRICE * PRODUCES_QTY - inputCost - wageCost;
 
         const planet = makePlanetWithPrice({
             [agriculturalProductResourceType.name]: INPUT_PRICE,
@@ -298,7 +289,7 @@ describe('automaticPricing — cost-floor brake zone', () => {
                 [clothingResourceType.name]: {
                     resource: clothingResourceType,
                     offerPrice: PRIOR_PRICE,
-                    lastSold: 0, // zero sell-through → maximum downward pressure
+                    lastSold: 0,
                 },
             },
             buy: {},
@@ -307,13 +298,11 @@ describe('automaticPricing — cost-floor brake zone', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.offerPrice!;
-        // The cost spring attenuates the downward pressure: the full 5% drop must NOT happen
+
         expect(newPrice).toBeGreaterThan(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN);
     });
 
     it('does not activate the brake zone for facilities with negligible costs (costFloor = PRICE_FLOOR)', () => {
-        // A facility with no inputs and minimal workers has costFloor ≈ PRICE_FLOOR.
-        // The brake zone should be inactive and full PRICE_ADJUST_MAX_DOWN should apply.
         const STOCK = 1000;
         const { agent, planet } = makeWaterProducerWithPriorOffer(10, 0, STOCK);
 
@@ -324,18 +313,8 @@ describe('automaticPricing — cost-floor brake zone', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// adjustBidPrice — profitabilityGap multiplicative dampening (no starvation)
-// ---------------------------------------------------------------------------
-
 describe('automaticPricing — profitabilityGap multiplicatively dampens but never reverses bid pressure', () => {
-    // Scenario: agent produces water from lumber but is deeply unprofitable
-    // (lumber costs >> water revenue), so profitabilityGap >> 1.
-    // Despite that, when fill rate is low (supply-constrained) the bid must
-    // still increase each tick.
-
     function makeUnprofitableConsumerAgent(initialBidPrice: number) {
-        // Facility: 1 lumber → 1 water (deeply underwater on price)
         const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
         consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
         consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
@@ -344,7 +323,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
         agent.assets[PLANET_ID].productionFacilities = [consumer];
         agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].deposits = 1_000_000;
-        // lastBought=0, lastEffectiveQty=5 → fillRate=0 (maximum upward pressure)
+
         agent.assets[PLANET_ID].market = {
             sell: {},
             buy: {
@@ -361,11 +340,10 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
     }
 
     it('bid price increases even when profitabilityGap is very large and fill rate is 0', () => {
-        // fillRate=0 → factor = PRICE_ADJUST_MAX_UP (no ceiling spring since costFloor keeps bidCeil above bidPrice)
         const planet = makePlanet({
             marketPrices: {
-                [lumberResourceType.name]: 100, // expensive input
-                [waterResourceType.name]: 0.1, // cheap output
+                [lumberResourceType.name]: 100,
+                [waterResourceType.name]: 0.1,
             },
             lastProductionCostFloors: { [lumberResourceType.name]: 20 },
         });
@@ -379,8 +357,6 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
     });
 
     it('bid price never falls below initial even under extreme profitabilityGap', () => {
-        // Use a partial fill rate (0.5) which gives gapWeight > 0; with a massive gap
-        // dampening → 0 so factor → 1.0, but never < 1.0.
         const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
         consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
         consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
@@ -395,7 +371,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
                 [lumberResourceType.name]: {
                     resource: lumberResourceType,
                     bidPrice: 50,
-                    lastBought: 5, // fillRate = 5/10 = 0.5
+                    lastBought: 5,
                     lastEffectiveQty: 10,
                     automated: true,
                 },
@@ -413,13 +389,11 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
         automaticPricing(new Map([['co', agent]]), planet);
 
         const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
-        // fillRate = 0.5 < TARGET_FILL_RATE → baseFactor > 1 → price rises above initial
+
         expect(bid.bidPrice).toBeGreaterThanOrEqual(50);
     });
 
     it('oversupplied + unprofitable: downward pressure is unhindered (dampening = 1)', () => {
-        // fillRate > TARGET → baseFactor < 1 → dampening must be 1 regardless of gap.
-        // Price should fall at the full PRICE_ADJUST_MAX_DOWN rate.
         const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
         consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
         consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
@@ -428,7 +402,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
         agent.assets[PLANET_ID].productionFacilities = [consumer];
         agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].deposits = 1_000_000;
-        // fillRate = 10/10 = 1.0 (fully filled, oversupplied) → baseFactor = PRICE_ADJUST_MAX_DOWN
+
         agent.assets[PLANET_ID].market = {
             sell: {},
             buy: {
@@ -444,7 +418,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
 
         const planet = makePlanet({
             marketPrices: {
-                [lumberResourceType.name]: 100, // deeply unprofitable
+                [lumberResourceType.name]: 100,
                 [waterResourceType.name]: 0.1,
             },
             lastProductionCostFloors: { [lumberResourceType.name]: 20 },
@@ -453,7 +427,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
         automaticPricing(new Map([['co', agent]]), planet);
 
         const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
-        // fillRate = 1.0 ≥ TARGET_FILL_RATE → factor = PRICE_ADJUST_MAX_DOWN
+
         expect(bid.bidPrice).toBeCloseTo(50 * PRICE_ADJUST_MAX_DOWN, 5);
     });
 });

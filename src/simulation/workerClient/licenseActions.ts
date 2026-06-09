@@ -28,7 +28,6 @@ export function handleAcquireLicense(
         return;
     }
 
-    // Ensure assets entry exists for this planet
     let assets = agent.assets[planetId];
     const isNewPlanet = !assets;
 
@@ -37,7 +36,6 @@ export function handleAcquireLicense(
         agent.assets[planetId] = assets;
     }
 
-    // Enforce commercial license must be acquired before workforce
     if (licenseType === 'workforce' && !assets.licenses?.commercial) {
         safePostMessage({
             type: 'licenseAcquisitionFailed',
@@ -47,7 +45,6 @@ export function handleAcquireLicense(
         return;
     }
 
-    // Check for duplicate
     if (assets.licenses?.[licenseType]) {
         safePostMessage({
             type: 'licenseAcquisitionFailed',
@@ -60,12 +57,9 @@ export function handleAcquireLicense(
     const cost = licenseType === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST;
 
     if (isNewPlanet) {
-        // Bootstrap: initial loan funds the license fee.
-        // The loan money goes to the agent's deposits, then immediately to the government.
         grantLoan(assets, planet.bank, cost, 'licenseBootstrap', state.tick);
         assets.deposits -= cost;
     } else {
-        // Agent already has assets on this planet — deduct from deposits
         if (assets.deposits < cost) {
             safePostMessage({
                 type: 'licenseAcquisitionFailed',
@@ -75,26 +69,20 @@ export function handleAcquireLicense(
             return;
         }
         assets.deposits -= cost;
-        // No change to planet.bank.deposits: money moves from this agent to the government,
-        // keeping aggregate bank deposits (Σ agent deposits) constant.
     }
 
-    // Grant the license
     assets.licenses = assets.licenses ?? {};
     assets.licenses[licenseType] = { acquiredTick: state.tick, frozen: false };
 
-    // Credit the government agent
     const govAssets = state.agents.get(planet.governmentId)?.assets[planetId];
     if (govAssets) {
         govAssets.deposits += cost;
     } else {
-        // This should never happen since government should always have assets on its own planet
         console.warn(
             `Government agent '${planet.governmentId}' has no assets on its own planet '${planetId}' to receive license fee`,
         );
     }
 
-    // Emit ticker event
     pushTickerEvent(state, {
         category: 'licenseAcquired',
         planetId,

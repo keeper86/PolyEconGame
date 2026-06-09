@@ -1,15 +1,3 @@
-/**
- * Per-state handler functions for shipTick.
- *
- * Each handler encapsulates the logic for a single ship state type and returns
- * a TransitionResult describing whether the state should change. The main
- * shipTick loop applies the result.
- *
- * Shared helpers (applyMaintenance, travelTime, settleTransportContract,
- * settleConstructionContract) are also exported so they can be tested in
- * isolation.
- */
-
 import {
     EPSILON,
     MAX_DISPATCH_TIMEOUT_TICKS,
@@ -77,7 +65,6 @@ export function travelTime(ship: Ship): number {
 }
 
 export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState): boolean {
-    // Degradation rate depends on ship activity
     let maintenanceDecreasePerYear = 0.05;
     if (
         ship.state.type === 'transporting' ||
@@ -91,7 +78,6 @@ export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState)
     }
     ship.maintainanceStatus = Math.max(0, ship.maintainanceStatus - maintenanceDecreasePerYear / TICKS_PER_YEAR);
 
-    // Repair is only possible when the ship is sitting at a planet with storage
     if (ship.state.type !== 'idle' && ship.state.type !== 'listed') {
         return false;
     }
@@ -114,7 +100,6 @@ export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState)
     assets.monthAcc.consumptionValue +=
         consumed * (gameState.planets.get(planetId)?.marketPrices[maintenanceServiceResourceType.name] ?? 0);
 
-    // Aging: accumulate repair; degrade maxMaintenance after each full cycle
     ship.cumulativeRepairAcc += consumed;
     while (ship.cumulativeRepairAcc >= 1.0) {
         ship.cumulativeRepairAcc -= 1.0;
@@ -125,7 +110,6 @@ export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState)
         return false;
     }
 
-    // Transition to derelict
     ship.maintainanceStatus = 0;
     if (ship.state.type === 'listed') {
         const listingAssets = agent.assets[planetId];
@@ -214,7 +198,6 @@ export function settleConstructionContract(
         }
     }
 
-    // Place the facility into the receiving agent's assets
     const receivingAgent = gameState.agents.get(receivingAgentId);
     if (receivingAgent) {
         const destAssets = receivingAgent.assets[arrivedPlanetId];
@@ -225,12 +208,7 @@ export function settleConstructionContract(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Transport ship handlers
-// ---------------------------------------------------------------------------
-
 function handleIdle(_ship: Ship, _ctx: GameState, _agent: Agent): TransitionResult {
-    // Maintenance is applied before dispatch; nothing further to do.
     return STAY;
 }
 
@@ -241,7 +219,6 @@ function handleListed(_ship: Ship, _ctx: GameState, _agent: Agent): TransitionRe
 function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as TransportShipStatusLoading;
 
-    // Dispatch timeout — return any loaded cargo to escrow and reset contract to open, then go idle
     if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
         if (s.contractId) {
             const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
@@ -393,19 +370,14 @@ function handleTransportUnloading(ship: TransportShip, ctx: GameState, agent: Ag
     }
 
     const arrivedPlanetId = s.planetId;
-    // Settle any matching transport contract
+
     settleTransportContract(ship.id, agent.id, arrivedPlanetId, ctx);
     return { action: 'transition', newState: { type: 'idle', planetId: arrivedPlanetId } };
 }
 
-// ---------------------------------------------------------------------------
-// Construction ship handlers
-// ---------------------------------------------------------------------------
-
 function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as ConstructionShipStatusLoading;
 
-    // Dispatch timeout — reset construction contract to open (with 10% penalty fee), then go idle
     if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
         if (s.contractId) {
             const contractId = s.contractId;
@@ -431,7 +403,7 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
                             expiresAtTick: contract.expiresAtTick,
                             status: 'open',
                         };
-                        // Charge carrier 10% penalty fee (create working-capital loan if needed)
+
                         const carrierAssets = agent.assets[s.planetId];
                         const bank = ctx.planets.get(s.planetId)?.bank;
                         if (carrierAssets && bank) {
@@ -558,7 +530,6 @@ function handleReconstruction(ship: ConstructionShip, ctx: GameState, agent: Age
     if (s.contractId) {
         settleConstructionContract(s.contractId, s.buildingTarget, agent.id, arrivedPlanetId, ctx);
     } else {
-        // No contract — place facility directly for the carrying agent
         const destAssets = agent.assets[arrivedPlanetId];
         if (destAssets) {
             const placedFacility = structuredClone({ ...s.buildingTarget, planetId: arrivedPlanetId });
@@ -569,15 +540,9 @@ function handleReconstruction(ship: ConstructionShip, ctx: GameState, agent: Age
     return { action: 'transition', newState: { type: 'idle', planetId: arrivedPlanetId } };
 }
 
-// ---------------------------------------------------------------------------
-// Passenger ship handlers
-// ---------------------------------------------------------------------------
-
 function handlePassengerBoarding(ship: PassengerShip, gameState: GameState, agent: Agent): TransitionResult {
     const shipState = ship.state as PassengerShipStatusLoading;
 
-    // Dispatch timeout — de-board any passengers already on the manifest back
-    // to the source planet and restore agent workforce, then go idle.
     if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
         const sourcePlanet = gameState.planets.get(shipState.planetId);
         if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
@@ -612,7 +577,6 @@ function handlePassengerBoarding(ship: PassengerShip, gameState: GameState, agen
         return STAY;
     }
 
-    // Boarding complete — hand off to provisioning phase.
     const provisionsTracker = calculateProvisions(shipState.manifest, travelTime(ship));
     return {
         action: 'transition',
@@ -658,7 +622,6 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
         };
     }
 
-    // Provisioning timeout — refund passengers and go idle.
     if (shipState.deadlineTick !== undefined && gameState.tick > shipState.deadlineTick) {
         const sourcePlanet = gameState.planets.get(shipState.planetId);
         if (sourcePlanet && Object.keys(shipState.manifest).length > 0) {
@@ -699,7 +662,7 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
 
     if (!provisionsLoaded) {
         return STAY;
-    } // Wait for production to catch up
+    }
 
     const flightTicks = travelTime(ship);
 
@@ -742,7 +705,6 @@ function handlePassengerTransporting(ship: PassengerShip, ctx: GameState, agent:
         );
     }
 
-    // Unload immediately on arrival — no separate unloading tick needed
     const unloadAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
     unloadPassengersToWorkforce(unloadAgent, destPlanet, s.to, s.manifest);
 
@@ -775,10 +737,6 @@ function handlePassengerUnloading(ship: PassengerShip, ctx: GameState, agent: Ag
     return { action: 'transition', newState: { type: 'idle', planetId: s.planetId } };
 }
 
-// ---------------------------------------------------------------------------
-// Dispatch tables
-// ---------------------------------------------------------------------------
-
 export const transportHandlers: Record<
     TransportShipStatusType,
     (ship: TransportShip, ctx: GameState, agent: Agent) => TransitionResult
@@ -788,8 +746,8 @@ export const transportHandlers: Record<
     loading: handleTransportLoading,
     transporting: handleTransporting,
     unloading: handleTransportUnloading,
-    derelict: () => STAY, // Never reached — derelict is skipped before dispatch
-    lost: () => STAY, // Never reached — lost is skipped before dispatch
+    derelict: () => STAY,
+    lost: () => STAY,
 };
 
 export const constructionHandlers: Record<

@@ -8,17 +8,9 @@ const MESSAGE = 'You have unsaved changes.';
 const ACTION_LABEL = 'Leave anyway';
 const TOAST_DURATION_MS = 8_000;
 
-/**
- * Warns the user before leaving the current page when `isActive` is true.
- * Covers three navigation paths in the Next.js App Router:
- *  1. Hard reload / tab close  → native browser "Leave site?" dialog via beforeunload
- *  2. <Link> / anchor clicks   → capture-phase document click listener → Sonner warning
- *  3. Browser back / forward   → dummy pushState + popstate listener → Sonner warning
- */
 export function useNavigationGuard(isActive: boolean): void {
     const router = useRouter();
-    // Track whether we have an extra history entry from this guard so we don't
-    // push it repeatedly if the effect re-runs while already active.
+
     const dummyStatePushedRef = useRef(false);
 
     useEffect(() => {
@@ -28,23 +20,18 @@ export function useNavigationGuard(isActive: boolean): void {
             return;
         }
 
-        // ── 1. Hard reload / tab close ─────────────────────────────────────────
-        // Only the native browser dialog works here; Sonner cannot intercept this.
         const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
             e.preventDefault();
-            // Required by many browsers to trigger the native "Leave site?" dialog.
+
             e.returnValue = '';
         };
         window.addEventListener('beforeunload', beforeUnloadHandler);
 
-        // ── 2. <Link> / anchor click navigation ───────────────────────────────
         const clickHandler = (e: MouseEvent) => {
-            // Let through: non-primary button, modifier keys (open in new tab/window), etc.
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
                 return;
             }
 
-            // Walk up from the click target to find the nearest <a> element.
             let el = e.target as HTMLElement | null;
             while (el && el.tagName !== 'A') {
                 el = el.parentElement;
@@ -54,7 +41,7 @@ export function useNavigationGuard(isActive: boolean): void {
             }
 
             const anchor = el as HTMLAnchorElement;
-            // Let through: new-tab links, download links, or non-href anchors.
+
             if (anchor.target === '_blank' || anchor.hasAttribute('download') || !anchor.href) {
                 return;
             }
@@ -64,7 +51,7 @@ export function useNavigationGuard(isActive: boolean): void {
             try {
                 const target = new URL(href);
                 const current = new URL(window.location.href);
-                // Block only real page navigations, not same-page hash changes.
+
                 const isPageNavigation =
                     target.origin !== current.origin ||
                     target.pathname !== current.pathname ||
@@ -94,22 +81,18 @@ export function useNavigationGuard(isActive: boolean): void {
                     });
                 }
             } catch {
-                // Unparseable href (e.g. javascript:) — let it through.
+                // In case of an invalid URL, we don't want to block navigation. So we simply do nothing here.
             }
         };
-        // Must use capture phase so we intercept before Next.js's own handler.
+
         document.addEventListener('click', clickHandler, true);
 
-        // ── 3. Back / forward button (popstate) ────────────────────────────────
-        // Push a dummy state so the next "back" press is caught here rather than
-        // leaving the page immediately.
         if (!dummyStatePushedRef.current) {
             window.history.pushState(null, '', window.location.href);
             dummyStatePushedRef.current = true;
         }
 
         const popStateHandler = () => {
-            // Re-push to keep the guard in place while the toast is visible.
             window.history.pushState(null, '', window.location.href);
             toast.warning(MESSAGE, {
                 id: TOAST_ID,

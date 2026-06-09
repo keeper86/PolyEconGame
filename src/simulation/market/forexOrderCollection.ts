@@ -71,7 +71,6 @@ export function collectForexBids(
     const curName = getCurrencyResourceName(issuingPlanetId);
     const curResource = getCurrencyResource(issuingPlanetId);
 
-    // First pass: gather valid bids and total deposit demand
     type PendingBid = {
         participant: Agent;
         quantity: number;
@@ -116,7 +115,6 @@ export function collectForexBids(
         totalMaxCost += maxCost;
     }
 
-    // Second pass: apply deposit scaling if total cost exceeds all buyers' budgets
     const availableDepositsTotal = pending.reduce((sum, p) => {
         const localAssets = p.participant.assets[tradingPlanet.id]!;
         return sum + Math.max(0, localAssets.deposits - localAssets.depositHold);
@@ -133,7 +131,6 @@ export function collectForexBids(
         const availableDeposits = Math.max(0, localAssets.deposits - localAssets.depositHold);
         const bid = localAssets.market!.buy[curName]!;
 
-        // If the globally-scaled hold still exceeds this bidder's individual budget, cap it.
         const actualHold = Math.min(holdAmount, availableDeposits);
         const actualQty = p.bidPrice > 0 ? actualHold / p.bidPrice : 0;
 
@@ -145,7 +142,6 @@ export function collectForexBids(
             continue;
         }
 
-        // Deduct deposit hold
         localAssets.deposits -= actualHold;
         localAssets.depositHold += actualHold;
 
@@ -159,11 +155,7 @@ export function collectForexBids(
             quantity: actualQty,
             filled: 0,
             cost: 0,
-            // actualHold is the pre-committed deposit budget for this bid.
-            // Unlike physical-goods orders (where deposits are debited at settlement),
-            // forex bids pre-debit deposits at collection time, so remainingDeposits
-            // must equal actualHold — not (availableDeposits - actualHold) — to give
-            // the matching engine the correct spending capacity.
+
             remainingDeposits: actualHold,
         });
     }

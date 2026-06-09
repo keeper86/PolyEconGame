@@ -8,12 +8,6 @@ interface SyncStatusIndicatorProps {
     status: SyncStatus;
 }
 
-/**
- * Displays a sync status indicator in a fixed position (top-right corner).
- *
- * Note: This component uses fixed positioning (fixed right-4 top-4 z-10)
- * and will always appear in the top-right corner of the viewport.
- */
 export function SyncStatusIndicator({ status }: SyncStatusIndicatorProps) {
     let icon = <CheckCircle2 className='w-5 h-5 text-green-500' />;
 

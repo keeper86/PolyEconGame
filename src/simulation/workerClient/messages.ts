@@ -99,7 +99,7 @@ export type InboundMessage =
           type: 'postTransportContract';
           requestId: string;
           agentId: string;
-          planetId: string; // fromPlanetId — contract lives in poster's assets on this planet
+          planetId: string;
           toPlanetId: string;
           cargo: ResourceQuantity;
           maxDurationInTicks: number;
@@ -110,7 +110,7 @@ export type InboundMessage =
           type: 'acceptTransportContract';
           requestId: string;
           agentId: string;
-          planetId: string; // planet where contract was posted
+          planetId: string;
           posterAgentId: string;
           contractId: string;
           shipId: string;
@@ -144,10 +144,10 @@ export type InboundMessage =
           type: 'postConstructionContract';
           requestId: string;
           agentId: string;
-          planetId: string; // fromPlanetId — contract lives in poster's assets on this planet
+          planetId: string;
           toPlanetId: string;
-          facilityName: string; // name of the facility to construct
-          commissioningAgentId: string; // agent who will receive the completed facility
+          facilityName: string;
+          commissioningAgentId: string;
           offeredReward: number;
           expiresAtTick: number;
       }
@@ -155,10 +155,10 @@ export type InboundMessage =
           type: 'acceptConstructionContract';
           requestId: string;
           agentId: string;
-          planetId: string; // planet where contract was posted
+          planetId: string;
           posterAgentId: string;
           contractId: string;
-          shipId: string; // idle construction ship to assign
+          shipId: string;
       }
     | {
           type: 'cancelConstructionContract';
@@ -181,17 +181,17 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          shipType: string; // ShipTypeKey
+          shipType: string;
           price: number;
       }
     | {
           type: 'acceptShipBuyingOffer';
           requestId: string;
           agentId: string;
-          planetId: string; // planet where offer was posted
+          planetId: string;
           posterAgentId: string;
           offerId: string;
-          shipId: string; // idle ship to transfer
+          shipId: string;
       }
     | {
           type: 'buildShipConstructionFacility';

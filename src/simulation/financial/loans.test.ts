@@ -21,10 +21,8 @@ describe('per-agent loan bookkeeping', () => {
     });
 
     it('records per-agent loan on issuance', () => {
-        // Hire 10 workers → wage bill = 10 * default wage (1.0)
         const { count, hiredByAge } = hireFromPopulation(planet, 'none', 10);
 
-        // Reflect hires in agent workforce demography
         const wf = agent.assets[planet.id].workforceDemography!;
         for (let age = 0; age < hiredByAge.length; age++) {
             if (hiredByAge[age].novice > 0) {
@@ -40,14 +38,12 @@ describe('per-agent loan bookkeeping', () => {
     });
 
     it('agent repays only their own loan', () => {
-        // Set up an outstanding loan owned by the agent and matching deposits
         planet.bank!.loans = 50;
         planet.bank!.deposits = 10_050;
         agent.assets[planet.id]!.deposits = 10_050;
         agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 50, 0, 1, 361, true)];
         agent.assets[planet.id]!.lastMonthAcc.wages = 1;
 
-        // postProduction should trigger repayment even when cNom == 0
         automaticLoanRepayment(agentMap(agent), planet);
 
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);

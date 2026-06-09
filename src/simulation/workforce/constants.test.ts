@@ -2,10 +2,6 @@ import { describe, it, expect } from 'vitest';
 
 import { TICKS_PER_MONTH, MONTHS_PER_YEAR, TICKS_PER_YEAR, isMonthBoundary, isYearBoundary } from '../constants';
 
-// ---------------------------------------------------------------------------
-// Time hierarchy constants
-// ---------------------------------------------------------------------------
-
 describe('time hierarchy constants', () => {
     it('TICKS_PER_YEAR is derived as TICKS_PER_MONTH * MONTHS_PER_YEAR', () => {
         expect(TICKS_PER_YEAR).toBe(TICKS_PER_MONTH * MONTHS_PER_YEAR);
@@ -23,10 +19,6 @@ describe('time hierarchy constants', () => {
         expect(MONTHS_PER_YEAR).toBe(12);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Boundary functions
-// ---------------------------------------------------------------------------
 
 describe('isMonthBoundary', () => {
     it('returns false for tick 0', () => {

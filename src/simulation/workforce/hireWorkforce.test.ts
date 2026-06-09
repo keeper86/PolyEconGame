@@ -20,7 +20,6 @@ import {
 import { hireWorkforce } from './hireWorkforce';
 import { VOLUNTARY_QUIT_RATE_PER_TICK, workforceDemographicTick } from './workforceDemographicTick';
 
-/** Sum active workers across all ages and skill levels for a given edu. */
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
@@ -48,19 +47,18 @@ describe('hireWorkforce', () => {
     it('does not apply voluntary quits (those are handled by workforceDemographicTick)', () => {
         const workforce = agent.assets.p.workforceDemography!;
         workforce[30].none.novice.active = 10000;
-        agent.assets.p.allocatedWorkers.none = 10000; // match target so firing doesn't trigger
+        agent.assets.p.allocatedWorkers.none = 10000;
 
         hireWorkforce(agentMap(agent), planet);
 
-        // hireToTagetTick no longer applies voluntary quits — that's in workforceDemographicTick
         expect(workforce[30].none.novice.active).toBe(10000);
         expect(workforce[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
     });
 
     it('does not move workers when count is too small to yield floor > 0', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[30].none.novice.active = 1; // floor(1 * 0.0001) = 0
-        agent.assets.p.allocatedWorkers.none = 1; // match target so firing doesn't trigger
+        workforce[30].none.novice.active = 1;
+        agent.assets.p.allocatedWorkers.none = 1;
 
         hireWorkforce(agentMap(agent), planet);
 
@@ -158,10 +156,6 @@ describe('hireWorkforce', () => {
     });
 
     it('skips agents with only a commercial license — arbitrage trader pattern', () => {
-        // Arbitrage agents hold a commercial license but NOT a workforce license.
-        // hireWorkforce gates hiring behind hasActiveLicense(assets, 'workforce').
-        // Even with non-zero allocatedWorkers targets and available population,
-        // no workers should be hired for such an agent.
         const { planet: p } = makePlanetWithPopulation({ none: 10_000 });
 
         const arbAgent = makeAgent('arb-0', 'p', 'Arbitrage Trader', {
@@ -169,7 +163,7 @@ describe('hireWorkforce', () => {
             assets: {
                 p: makeAgentPlanetAssets('p', {
                     deposits: 250_000,
-                    // commercial only — workforce key is absent
+
                     licenses: { commercial: { acquiredTick: 0, frozen: false } },
                     allocatedWorkers: makeAllocatedWorkers({ none: 500 }),
                 }),
@@ -181,15 +175,12 @@ describe('hireWorkforce', () => {
         const hired = totalActiveForEdu(arbAgent.assets.p.workforceDemography!, 'none');
         expect(hired).toBe(0);
 
-        // Population should be completely untouched
         expect(sumPopOcc(p, 'none', 'unoccupied')).toBe(10_000);
     });
 
     it('contrast: agent WITH a workforce license does hire workers', () => {
-        // Confirm that the commercial-only restriction is the discriminating factor.
         const { planet: p } = makePlanetWithPopulation({ none: 10_000 });
 
-        // makeAgent() creates an agent with BOTH commercial AND workforce licenses by default
         const regularAgent = makeAgent();
         regularAgent.assets.p.allocatedWorkers.none = 500;
 
@@ -199,10 +190,6 @@ describe('hireWorkforce', () => {
         expect(hired).toBe(500);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Population conservation
-// ---------------------------------------------------------------------------
 
 describe('preProductionLaborMarketTick — population conservation', () => {
     let agent: Agent;
@@ -294,10 +281,6 @@ describe('preProductionLaborMarketTick — population conservation', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Per-education level isolation
-// ---------------------------------------------------------------------------
-
 describe('per-education level isolation', () => {
     it('hiring one education level does not affect another', () => {
         const { planet } = makePlanetWithPopulation({ none: 5000, primary: 3000, secondary: 2000 });
@@ -330,13 +313,8 @@ describe('per-education level isolation', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Voluntary quit rate
-// ---------------------------------------------------------------------------
-
 describe('voluntary quit rate', () => {
     it('produces correct numbers with large workforce', () => {
-        // Use a clean environment so that mortality/disability are minimal
         const planet = makePlanet();
         const agent = makeAgent();
 
@@ -347,13 +325,10 @@ describe('voluntary quit rate', () => {
         const wf = agent.assets.p.workforceDemography!;
         const activeAfterHire = totalActiveForEdu(wf, 'none');
 
-        // Voluntary quits are now applied by workforceDemographicTick
         workforceDemographicTick(agentMap(agent), planet);
 
         const expectedQuits = Math.floor(activeAfterHire * VOLUNTARY_QUIT_RATE_PER_TICK);
-        // After the demographic tick, some voluntary departing workers may
-        // have died. The departing count should be approximately the expected
-        // quits — allow for a small margin of loss due to mortality.
+
         let allDeparting = 0;
         for (let age = 0; age < wf.length; age++) {
             for (const skill of SKILL) {
@@ -365,7 +340,6 @@ describe('voluntary quit rate', () => {
             }
         }
 
-        // Allow loss from mortality on the same tick
         expect(Math.abs(allDeparting - expectedQuits)).toBeLessThanOrEqual(1);
     });
 
@@ -376,7 +350,6 @@ describe('voluntary quit rate', () => {
         wf[30].none.novice.active = 1;
         agent.assets.p.allocatedWorkers.none = 1;
 
-        // Voluntary quits are applied by workforceDemographicTick
         workforceDemographicTick(agentMap(agent), planet);
 
         expect(wf[30].none.novice.active).toBe(1);

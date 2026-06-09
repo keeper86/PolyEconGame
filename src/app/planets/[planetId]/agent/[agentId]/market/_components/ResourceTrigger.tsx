@@ -24,7 +24,6 @@ export default function ResourceTrigger({
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
-    // Helper to get value for a column
     const getColumnValue = (columnId: string) => {
         const resource = getResourceByName(name);
         const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
@@ -60,7 +59,6 @@ export default function ResourceTrigger({
         }
     };
 
-    // Helper to get text color class based on value
     const getTextColorClass = (columnId: string, value: number) => {
         if (value === 0) {
             return 'text-muted-foreground/30';
@@ -82,7 +80,6 @@ export default function ResourceTrigger({
         }
     };
 
-    // Get numeric value for a column
     const getNumericValue = (columnId: string): number => {
         switch (columnId) {
             case 'currentStorage':
@@ -106,10 +103,8 @@ export default function ResourceTrigger({
 
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0 overflow-hidden'>
-            {/* Icon */}
             <ProductIcon productName={name} label={displayName ?? name} />
 
-            {/* Name + market link + order indicators */}
             <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>
                 <span className='text-sm font-medium truncate'>{displayName ?? name}</span>
                 {(hasActiveBid ||
@@ -157,7 +152,6 @@ export default function ResourceTrigger({
                 )}
             </div>
 
-            {/* ── Market stats — using dynamic column configuration ── */}
             {visibleColumns.map((column) => {
                 const value = getColumnValue(column.id);
                 const isMarketFillColumn = column.id === 'marketFill';

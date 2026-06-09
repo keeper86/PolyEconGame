@@ -10,7 +10,7 @@ import { ProductIcon } from './ProductIcon';
 type Props = {
     agentId: string;
     planetId: string;
-    /** If provided, only resources whose form matches one of these types will be shown */
+
     allowedTypes?: TransportableResourceType[];
     value: string;
     onValueChange: (value: string) => void;

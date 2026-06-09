@@ -1,48 +1,14 @@
-/**
- * population/inheritance.ts
- *
- * Redistributes monetary wealth from deceased people to younger generations
- * using a Gaussian kernel centred GENERATION_GAP years below the deceased's
- * age.  This is a zero-sum transfer within household wealth: no money is
- * created or destroyed, and `bank.householdDeposits` is unchanged.
- *
- * The Gaussian kernel uses the same SUPPORT_WEIGHT_SIGMA as the
- * intergenerational transfer system for consistency.
- *
- * Food stock of the deceased is destroyed (perishable).
- */
-
 import { GENERATION_GAP, SUPPORT_WEIGHT_SIGMA } from '../constants';
 import type { Cohort, PopulationCategory } from './population';
 import { forEachPopulationCohort } from './population';
 import { creditWealth } from '../financial/wealthOps';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * A record of inherited wealth to be redistributed after mortality.
- * One entry per source age that had deaths with positive wealth.
- */
 export interface InheritanceRecord {
-    /** Age of the deceased cohort. */
     sourceAge: number;
-    /** Total monetary wealth orphaned (count × perCapitaMean). */
+
     amount: number;
 }
 
-// ---------------------------------------------------------------------------
-// Gaussian kernel
-// ---------------------------------------------------------------------------
-
-/**
- * Unnormalised Gaussian weight for an heir at `heirAge` inheriting from
- * a deceased at `sourceAge`.
- *
- * The kernel peaks at `sourceAge − GENERATION_GAP` (i.e. one generation
- * younger) and falls off with σ = SUPPORT_WEIGHT_SIGMA.
- */
 function inheritanceWeight(sourceAge: number, heirAge: number): number {
     const target = sourceAge - GENERATION_GAP;
     const delta = heirAge - target;
@@ -50,25 +16,6 @@ function inheritanceWeight(sourceAge: number, heirAge: number): number {
     return Math.exp(-(delta * delta) / (2 * sigma * sigma));
 }
 
-// ---------------------------------------------------------------------------
-// Redistribution
-// ---------------------------------------------------------------------------
-
-/**
- * Redistribute inherited wealth from deceased people to living population
- * cohorts using a Gaussian kernel.
- *
- * For each `InheritanceRecord`, the wealth is spread across all
- * population categories at ages near `sourceAge − GENERATION_GAP`,
- * weighted by the Gaussian kernel and by each cell's population count.
- *
- * This is a **zero-sum** operation: the total monetary wealth across
- * all population categories remains unchanged.  `bank.householdDeposits`
- * is not modified.
- *
- * @param demography   The population demography array (mutated in place).
- * @param records      Inheritance records from mortality (one per source age).
- */
 export function redistributeInheritance(demography: Cohort<PopulationCategory>[], records: InheritanceRecord[]): void {
     if (records.length === 0) {
         return;
@@ -79,7 +26,6 @@ export function redistributeInheritance(demography: Cohort<PopulationCategory>[]
             continue;
         }
 
-        // Compute weights for each age based on Gaussian kernel × population
         const weightedPop: { age: number; weight: number; pop: number }[] = [];
         let totalWeight = 0;
 
@@ -89,7 +35,6 @@ export function redistributeInheritance(demography: Cohort<PopulationCategory>[]
                 continue;
             }
 
-            // Sum population at this age across all occupations/edu/skill
             let agePop = 0;
             forEachPopulationCohort(demography[age], (cat) => {
                 agePop += cat.total;
@@ -105,10 +50,6 @@ export function redistributeInheritance(demography: Cohort<PopulationCategory>[]
         }
 
         if (totalWeight <= 0) {
-            // No heirs found in the Gaussian kernel range (e.g. deceased
-            // was very young and their expected heirs are at negative ages).
-            // Fall back to uniform population-proportional distribution
-            // across ALL living people so no wealth is destroyed.
             let totalPop = 0;
             for (let age = 0; age < demography.length; age++) {
                 forEachPopulationCohort(demography[age], (cat) => {
@@ -116,7 +57,6 @@ export function redistributeInheritance(demography: Cohort<PopulationCategory>[]
                 });
             }
             if (totalPop <= 0) {
-                // Genuine near-extinction: no one alive to inherit.
                 continue;
             }
             const perCapita = record.amount / totalPop;
@@ -131,12 +71,10 @@ export function redistributeInheritance(demography: Cohort<PopulationCategory>[]
             continue;
         }
 
-        // Distribute wealth proportionally to each age's weight
         for (const entry of weightedPop) {
             const share = (entry.weight / totalWeight) * record.amount;
             const perCapita = share / entry.pop;
 
-            // Credit each cell at this age proportionally by its population
             forEachPopulationCohort(demography[entry.age], (cat) => {
                 if (cat.total <= 0) {
                     return;

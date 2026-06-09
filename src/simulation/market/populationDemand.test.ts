@@ -11,10 +11,8 @@ import type { BidOrder } from './marketTypes';
 const initialPrice = 1.0;
 
 test('buildPopulationDemand produces finite reservation prices for empty buffers', () => {
-    // Minimal planet stub for the test
     const planet: Planet = makePlanet();
 
-    // create two age cohorts: newborns (age 0) and adults (age 30)
     const newbornCohort = createEmptyPopulationCohort({
         total: 100,
         wealth: { mean: 50, variance: 1 },
@@ -44,7 +42,6 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
         },
     });
 
-    // demography is an array indexed by age
     planet.population.demography[0] = newbornCohort;
     planet.population.demography[30] = adultCohort;
 
@@ -183,8 +180,6 @@ describe('buildPopulationDemandForResource', () => {
     });
 
     describe('healthcare service demand', () => {
-        // Set grocery price very cheap so grocery does not consume all budget,
-        // leaving wealth available for healthcare.
         const CHEAP_GROCERY_PRICE = 0.0001;
 
         it('produces positive quantities per cohort', () => {
@@ -238,9 +233,6 @@ describe('buildPopulationDemandForResource', () => {
 
             const bids = buildPopulationDemand(planet).get(HEALTHCARE_SERVICE) ?? [];
 
-            // Bids are generated at minimum quantity but at wealth-limited prices
-            // (far below the market price of 1,000,000), reflecting that nobody can
-            // actually clear at the market ask.
             for (const bid of bids) {
                 expect(bid.bidPrice).toBeLessThan(1.0);
             }
@@ -274,7 +266,7 @@ describe('buildPopulationDemandForResource', () => {
 describe('buildPopulationDemand', () => {
     it('grocery consumes budget before healthcare', () => {
         const { planet } = makePlanetWithPopulation({ none: 1_000 });
-        // Grocery is expensive — should consume most/all of the wealth
+
         const groceryPrice = 10;
         const healthcarePrice = 0.01;
         planet.marketPrices[GROCERY_SERVICE] = groceryPrice;
@@ -285,7 +277,6 @@ describe('buildPopulationDemand', () => {
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
                 if (cat.total > 0) {
-                    // Wealth just enough for a fraction of grocery — nothing left for healthcare
                     cat.wealth = { mean: groceryPrice * (groceryTarget / 2), variance: 0 };
                     cat.services.grocery.buffer = 0;
                     cat.services.healthcare.buffer = 0;
@@ -298,7 +289,7 @@ describe('buildPopulationDemand', () => {
         const healthcareDemand = (allBids.get(HEALTHCARE_SERVICE) ?? []).reduce((s, b) => s + b.quantity, 0);
 
         expect(groceryDemand).toBeGreaterThan(0);
-        // Healthcare budget is zero since grocery consumed all wealth
+
         expect(healthcareDemand).toBe(0);
     });
 
@@ -311,7 +302,7 @@ describe('buildPopulationDemand', () => {
             forEachPopulationCohort(cohort, (cat) => {
                 if (cat.total > 0) {
                     cat.wealth = { mean: 100, variance: 0 };
-                    // Grocery buffer full — no grocery demand, all wealth goes to healthcare
+
                     cat.services.grocery.buffer = groceryDef.bufferTargetTicks;
                     cat.services.healthcare.buffer = 0;
                 }

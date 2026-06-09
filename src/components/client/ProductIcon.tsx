@@ -11,7 +11,7 @@ export function ProductIcon({
 }: {
     productName: string;
     size?: number;
-    /** Optional display label for the tooltip. Defaults to `productName`. */
+
     label?: string;
 }) {
     const src = getAssetPath(productName);

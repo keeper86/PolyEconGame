@@ -18,7 +18,7 @@ import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
 
 export type RouteMetadata = {
-    path: Exclude<Route['pathname'], `/api/${string}`>; // Exclude API routes
+    path: Exclude<Route['pathname'], `/api/${string}`>;
     label: string;
     icon?: LucideIcon | IconType;
     isPublic?: boolean;

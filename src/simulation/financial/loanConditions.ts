@@ -31,8 +31,6 @@ export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditi
         }
     }
 
-    // TODO: ships and facilities
-
     let maxLoanAmount: number;
     if (isNewAgent) {
         maxLoanAmount = STARTER_LOAN_AMOUNT;

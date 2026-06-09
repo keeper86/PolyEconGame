@@ -22,14 +22,12 @@ export function JoinGameDialog() {
     const [planetId, setPlanetId] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch available planets to populate the selector
     const planetsQuery = useQuery(
         trpc.simulation.getLatestPlanetSummaries.queryOptions(undefined, {
             enabled: open,
         }),
     );
 
-    // Auto-select the first planet once data is available
     useEffect(() => {
         if (!planetId && planetsQuery.data?.planets.length) {
             setPlanetId(planetsQuery.data.planets[0].planetId);
@@ -39,7 +37,6 @@ export function JoinGameDialog() {
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
             onSuccess: (data) => {
-                // Invalidate the current user query so nav re-reads updated agentId
                 void queryClient.invalidateQueries({ queryKey: trpc.getUser.queryKey() });
                 setOpen(false);
                 router.push(

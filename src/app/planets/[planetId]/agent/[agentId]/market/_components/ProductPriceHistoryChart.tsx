@@ -16,11 +16,9 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 type Props = {
     planetId: string;
     productName: string;
-    /** Live price stats from the already-fetched market data (current tick). */
+
     live?: LiveData;
 };
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function yDomainFor(points: ChartPoint[]): [number, number] {
     if (points.length === 0) {
@@ -48,8 +46,6 @@ function logTicksFor(points: ChartPoint[]): number[] | undefined {
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     if (minP === maxP) {
-        // Return power-of-10 ticks bracketing the single price to avoid
-        // recharts adding the data value as an extra tick (causing duplicates).
         const e = Math.floor(Math.log10(minP));
         const lower = Math.pow(10, e);
         const upper = Math.pow(10, e + 1);
@@ -63,8 +59,6 @@ function logTicksFor(points: ChartPoint[]): number[] | undefined {
 }
 
 function logDomainFor(ticks: number[]): [number, number] {
-    // Use the tick range as the domain so recharts does not auto-add domain
-    // boundary ticks that duplicate values already in the ticks array.
     const min = Math.min(...ticks);
     const max = Math.max(...ticks);
     return [min, max];
@@ -84,8 +78,6 @@ const tooltipFormatter = (value: number, name: string): [string, string] => {
     const labels: Record<string, string> = { avgPrice: 'Avg price', minPrice: 'Min price', maxPrice: 'Max price' };
     return [formatNumberWithUnit(value, 'currency'), labels[name] ?? name];
 };
-
-// ─── SimplePriceAreaChart ─────────────────────────────────────────────────────
 
 type MergedPoint = {
     monthIdx?: number;
@@ -135,8 +127,6 @@ function SimplePriceAreaChart({
         const allIdxs = new Set([...currentByMonth.keys(), ...ghostByMonth.keys()]);
         return Array.from(allIdxs)
             .sort((a, b) => {
-                // Current-data entries (including the live fractional point) sort first so that
-                // ghost-only entries are never interleaved between current entries.
                 const aIsCurrent = currentByMonth.has(a);
                 const bIsCurrent = currentByMonth.has(b);
                 if (aIsCurrent === bIsCurrent) {
@@ -324,8 +314,6 @@ function SimplePriceAreaChart({
     );
 }
 
-// ─── MonthlyChart ─────────────────────────────────────────────────────────────
-
 function MonthlyChart({
     monthlyPoints,
     live,
@@ -348,8 +336,6 @@ function MonthlyChart({
     const yDomain = useMemo(() => yDomainFor([...data, ...ghostData]), [data, ghostData]);
     const gradId = `grad_mon_${productName.replace(/\s+/g, '_')}`;
 
-    // monthIdx 0 = previous December anchor; 1–12 = Jan–Dec of current year.
-    // Ticks are placed at 0.5, 1.5, … (midpoints of each month interval).
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
 
     const monthTooltipLabel = (monthIdx: number): string => {
@@ -380,8 +366,6 @@ function MonthlyChart({
         </div>
     );
 }
-
-// ─── YearlyChart ──────────────────────────────────────────────────────────────
 
 function YearlyChart({
     yearlyPoints,
@@ -438,8 +422,6 @@ function YearlyChart({
     );
 }
 
-// ─── DecadesChart ─────────────────────────────────────────────────────────────
-
 function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[]; productName: string }) {
     const data = useMemo((): ChartPoint[] => {
         return [...decadePoints]
@@ -488,8 +470,6 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
         </div>
     );
 }
-
-// ─── Parent Component ─────────────────────────────────────────────────────────
 
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();

@@ -311,10 +311,6 @@ describe('handleLeaseClaim', () => {
     });
 });
 
-// ============================================================================
-// handleQuitClaim
-// ============================================================================
-
 describe('handleQuitClaim', () => {
     describe('renewable claim', () => {
         it('sets noticePeriodEndsAtTick and does not release immediately', () => {
@@ -496,10 +492,6 @@ describe('handleQuitClaim', () => {
         expect(messages.find((m) => m.type === 'claimQuitFailed')).toBeDefined();
     });
 });
-
-// ============================================================================
-// handleLeaseClaim — auto-expand when claim already exists
-// ============================================================================
 
 describe('handleLeaseClaim auto-expand (claim already exists)', () => {
     it('recalculates costPerTick for renewable expansion', () => {

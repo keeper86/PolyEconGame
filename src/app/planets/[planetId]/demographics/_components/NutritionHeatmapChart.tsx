@@ -13,15 +13,13 @@ import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 
-// ─── Nutrition bands ──────────────────────────────────────────────────────────
-
 const BANDS = [
-    { key: 'fatalStarvation', label: 'Fatal', color: '#7f1d1d' }, // darkest red
-    { key: 'severeStarvation', label: 'Severe', color: '#b91c1c' }, // strong red
-    { key: 'seriousStarvation', label: 'Serious', color: '#ea580c' }, // orange
-    { key: 'moderateStarvation', label: 'Moderate', color: '#f59e0b' }, // amber
-    { key: 'lightStarvation', label: 'Light', color: '#d9e70eff' }, // yellow
-    { key: 'noStarvation', label: 'None', color: '#16a34a' }, // green
+    { key: 'fatalStarvation', label: 'Fatal', color: '#7f1d1d' },
+    { key: 'severeStarvation', label: 'Severe', color: '#b91c1c' },
+    { key: 'seriousStarvation', label: 'Serious', color: '#ea580c' },
+    { key: 'moderateStarvation', label: 'Moderate', color: '#f59e0b' },
+    { key: 'lightStarvation', label: 'Light', color: '#d9e70eff' },
+    { key: 'noStarvation', label: 'None', color: '#16a34a' },
 ] as const;
 
 function classifyBand(starvationLevel: number): number {
@@ -45,11 +43,7 @@ function classifyBand(starvationLevel: number): number {
 
 const formatPct = (n: number): string => `${(n * 100).toFixed(0)}%`;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type ChartRow = Record<string, number>;
-
-// ─── SegmentedBar — renders band segments inside a single Recharts Bar ────────
 
 interface SegmentedBarProps {
     x?: number;
@@ -59,8 +53,6 @@ interface SegmentedBarProps {
     payload?: ChartRow;
     groupKey: string;
 }
-
-// ─── mergePairs ─────────────────────────────────────────────────────────────
 
 function mergePairs(rows: ChartRow[], groupKeys: readonly string[]): ChartRow[] {
     const result: ChartRow[] = [];
@@ -87,7 +79,6 @@ function mergePairs(rows: ChartRow[], groupKeys: readonly string[]): ChartRow[] 
             const bAvgBuffer = b[`${gk}_avgBuffer`] ?? 0;
             merged[`${gk}_avgBuffer`] = total > 0 ? (aAvgBuffer * aTotal + bAvgBuffer * bTotal) / total : 0;
 
-            // Sum band counts and any _edge counts if present
             for (const band of BANDS) {
                 const key = band.key;
                 merged[`${gk}_${key}`] = (a[`${gk}_${key}`] ?? 0) + (b[`${gk}_${key}`] ?? 0);
@@ -133,8 +124,6 @@ function SegmentedBar({ x = 0, y = 0, width = 0, height = 0, payload, groupKey }
 
     return <g>{elements}</g>;
 }
-
-// ─── Tooltip ──────────────────────────────────────────────────────────────────
 
 function makeTooltip(
     groupKeys: readonly string[],
@@ -200,8 +189,6 @@ function makeTooltip(
     };
 }
 
-// ─── Legends ─────────────────────────────────────────────────────────────────
-
 export function BandLegend() {
     return (
         <div className='flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground mt-1'>
@@ -217,15 +204,11 @@ export function BandLegend() {
     );
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 type Props = {
     rows: AggRow[];
     groupMode: GroupMode;
     serviceKey?: ServiceName;
 };
-
-// ─── Empty placeholder ────────────────────────────────────────────────────────
 
 function EmptyChart({ height = 200 }: { height?: number }) {
     return (
@@ -237,8 +220,6 @@ function EmptyChart({ height = 200 }: { height?: number }) {
         </div>
     );
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'grocery' }: Props): React.ReactElement {
     const isVerySmall = useIsSmallScreen();
@@ -294,7 +275,6 @@ export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'g
             builtData.push(row);
         }
 
-        // Down-sample by merging adjacent age rows when on very small screens
         const finalData = isVerySmall ? mergePairs(builtData, groupKeys) : builtData;
 
         let maxY = 0;
@@ -311,7 +291,7 @@ export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'g
                 rowTotal += pop;
                 wStarv += pop * (row[`${gk}_avgStarvation`] ?? 0);
                 wBuffer += pop * (row[`${gk}_avgBuffer`] ?? 0);
-                // Starving = bands 0–4 (fatal, severe, serious, moderate, light)
+
                 for (let bi = 0; bi <= 4; bi++) {
                     ts += row[`${gk}_${BANDS[bi].key}`] ?? 0;
                 }

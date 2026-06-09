@@ -81,24 +81,14 @@ export const currencyMapping: Record<string, CurrencyResource> = {
 
 export const CURRENCY_RESOURCE_PREFIX = 'CUR_';
 
-/** Default exchange rate used when no prior clearing price exists (1:1 parity). */
 export const DEFAULT_EXCHANGE_RATE = 1.0;
 
-/** Minimum legal forex price — same floor as all other resources. */
 export const FOREX_PRICE_FLOOR = PRICE_FLOOR;
 
-/**
- * Returns the resource name used to represent one unit of a planet's currency
- * when it is traded on another planet's forex market.
- */
 export function getCurrencyResourceName(planetId: string): string {
     return `${CURRENCY_RESOURCE_PREFIX}${planetId}`;
 }
 
-/**
- * Returns a Resource descriptor for the currency issued by `planetId`.
- * Volume and mass are zero — currency resources bypass storage accounting.
- */
 export function getCurrencyResource(planetId: string): Resource {
     return {
         name: getCurrencyResourceName(planetId),
@@ -109,15 +99,10 @@ export function getCurrencyResource(planetId: string): Resource {
     };
 }
 
-/** Returns true if the given resource represents a currency. */
 export function isCurrencyResource(resource: Resource): boolean {
     return resource.form === 'currency';
 }
 
-/**
- * Extracts the issuing planet id from a currency resource name.
- * Returns null if the resource is not a currency.
- */
 export function getCurrencyIssuingPlanetId(resource: Resource): string | null {
     if (!isCurrencyResource(resource)) {
         return null;

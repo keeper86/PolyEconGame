@@ -11,7 +11,7 @@ export type EducationLevel = {
     nextEducation: () => EducationLevel | null;
     description: string;
     graduationAge: number;
-    graduationPreAgeProbability: number; // probability of a year earlier graduation. two years  => probability**2 ...
+    graduationPreAgeProbability: number;
     graduationProbability: number;
     genericDropoutProbability: number;
     transitionProbability: number;
@@ -23,8 +23,8 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         nextEducation: () => educationLevels.primary,
         description: 'No formal education. Attending Elementary school.',
         graduationAge: 9,
-        graduationPreAgeProbability: 0.1, // graduation = starting primary school at age 5,6,7
-        graduationProbability: 0.65, // ~35% still in elementary past age 9 each year; some reach 14 without graduating
+        graduationPreAgeProbability: 0.1,
+        graduationProbability: 0.65,
         genericDropoutProbability: 0,
         transitionProbability: 0.9,
     },
@@ -34,7 +34,7 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         nextEducation: () => educationLevels.secondary,
         description: 'Primary education. Attending High School.',
         graduationAge: 17,
-        graduationPreAgeProbability: 0.1, // graduation can occur between 16 and 18
+        graduationPreAgeProbability: 0.1,
         graduationProbability: 0.75,
         genericDropoutProbability: 0,
         transitionProbability: 0.4,
@@ -45,7 +45,7 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         nextEducation: () => educationLevels.tertiary,
         description: 'Secondary education. Attending University.',
         graduationAge: 22,
-        graduationPreAgeProbability: 0.15, // graduation can occur between 18 and 26
+        graduationPreAgeProbability: 0.15,
         graduationProbability: 0.5,
         genericDropoutProbability: 0.06,
         transitionProbability: 0.3,
@@ -56,7 +56,7 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         nextEducation: () => null,
         description: 'Tertiary education. Finished all education levels.',
         graduationAge: 27,
-        graduationPreAgeProbability: 0.1, // graduation can occur between 27 and 33
+        graduationPreAgeProbability: 0.1,
         graduationProbability: 0.1,
         genericDropoutProbability: 0.1,
         transitionProbability: 0,
@@ -74,7 +74,6 @@ export const educationGraduationProbabilityForAge = (age: number, level: Educati
     return graduationProbability * Math.pow(1 - graduationPreAgeProbability, yearsOverdue);
 };
 
-// at which age will education dropouts occur?
 export const ageDropoutProbabilityForEducation = (age: number, level: EducationLevelType): number => {
     if (age < MIN_EMPLOYABLE_AGE) {
         return 0;
@@ -85,12 +84,12 @@ export const ageDropoutProbabilityForEducation = (age: number, level: EducationL
         genericDropoutProbability,
     } = educationLevels[level];
     if (age < graduationAge + graduationAgeSpread) {
-        return genericDropoutProbability; // very low dropout chance before graduation age + spread
+        return genericDropoutProbability;
     }
     if (age == graduationAge + graduationAgeSpread) {
-        return 0.5; // dropout chance spikes at graduation age + spread (e.g. 9 for primary)
+        return 0.5;
     }
-    return 0.95; // high dropout chance after graduation age + spread (e.g. 9 for primary)
+    return 0.95;
 };
 
 export function applyEducationTransition(
@@ -112,14 +111,12 @@ export function applyEducationTransition(
     const educationLevel = educationLevels[edu];
     const nextEducation = educationLevel.nextEducation();
 
-    // --- Graduates ---
     if (graduates > 0 && nextEducation) {
         const nextEdu = nextEducation.type;
         const transitionProbability = educationLevel.transitionProbability;
         const transitioners = stochasticRound(graduates * transitionProbability);
         const voluntaryDropouts = graduates - transitioners;
 
-        // Transitioners continue education at the next level.
         if (transitioners > 0) {
             transferPopulation(
                 planet,
@@ -128,7 +125,7 @@ export function applyEducationTransition(
                 transitioners,
             );
         }
-        // Voluntary dropouts enter the unoccupied pool at the graduated level.
+
         if (voluntaryDropouts > 0) {
             transferPopulation(
                 planet,
@@ -139,7 +136,6 @@ export function applyEducationTransition(
         }
     }
 
-    // --- Non-graduates (stayers and dropouts) ---
     if (stay > 0) {
         const dropOutProb = ageDropoutProbabilityForEducation(sourceAge, edu);
         const dropouts = sourceAge < MIN_EMPLOYABLE_AGE ? 0 : stochasticRound(stay * dropOutProb);

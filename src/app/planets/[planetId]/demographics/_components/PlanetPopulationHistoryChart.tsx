@@ -25,8 +25,6 @@ type LiveData = {
     population: number;
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function yDomainFor(points: { value: number }[]): [number, number] | ['auto', 'auto'] {
     if (points.length === 0) {
         return ['auto', 'auto'];
@@ -65,7 +63,6 @@ function computeMonthlyData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
             };
         });
 
-    // Anchor at monthIdx=0 (previous December)
     const prevDecPoint = pts.find((p) => {
         const { year, monthIndex } = tickToDate(p.bucket);
         return year === latestYear - 1 && monthIndex === 11;
@@ -89,7 +86,6 @@ function computeMonthlyData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
         }
     }
 
-    // Live fractional point
     if (live.tick > 0) {
         const { year: liveYear, monthIndex: liveMi, day: liveDay } = tickToDate(live.tick);
         if (liveYear === latestYear) {
@@ -130,8 +126,6 @@ function computeMonthlyGhostData(allPts: RawPoint[], live: LiveData): ChartPoint
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
-// ─── Shared Tooltip ──────────────────────────────────────────────────────────
-
 function populationTooltipContent(label: string, value: number | undefined | null): React.ReactElement | null {
     if (value == null) {
         return null;
@@ -152,8 +146,6 @@ function populationTooltipContent(label: string, value: number | undefined | nul
     );
 }
 
-// ─── EmptyChart ───────────────────────────────────────────────────────────────
-
 function EmptyChart() {
     return (
         <div
@@ -164,8 +156,6 @@ function EmptyChart() {
         </div>
     );
 }
-
-// ─── MonthlyChart ─────────────────────────────────────────────────────────────
 
 function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live?: LiveData }) {
     const data = useMemo(
@@ -180,7 +170,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
     const mergedData = useMemo(() => {
         const ghostByMonth = new Map(ghostData.map((p) => [p.monthIdx!, p]));
         const result = data.map((p) => ({ ...p, ghostValue: ghostByMonth.get(p.monthIdx!)?.value ?? null }));
-        // Append ghost-only points (months not yet reached in current year)
+
         for (const g of ghostData) {
             if (!data.some((d) => d.monthIdx === g.monthIdx)) {
                 result.push({ ...g, value: null as unknown as number, ghostValue: g.value });
@@ -304,8 +294,6 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
     );
 }
 
-// ─── YearlyChart ──────────────────────────────────────────────────────────────
-
 function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
     const data = useMemo(
         (): ChartPoint[] =>
@@ -391,8 +379,6 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
     );
 }
 
-// ─── DecadesChart ─────────────────────────────────────────────────────────────
-
 function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
     const data = useMemo(
         (): ChartPoint[] =>
@@ -465,8 +451,6 @@ function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
         </div>
     );
 }
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 type Props = {
     planetId: string;

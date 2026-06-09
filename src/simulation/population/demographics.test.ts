@@ -1,9 +1,3 @@
-/**
- * population/demographics.test.ts
- *
- * Unit tests for demographic statistics calculation.
- */
-
 import { describe, it, expect } from 'vitest';
 import { MAX_AGE } from './population';
 import { calculateDemographicStats } from './demographics';
@@ -39,9 +33,9 @@ describe('calculateDemographicStats', () => {
 
     it('counts fertile women only in fertile age range (50% of cohort)', () => {
         const pop = makePopulation();
-        // age 20 (fertile): 100 people → 50 fertile women
+
         pop.demography[20].unoccupied.none.novice.total = 100;
-        // age 10 (not fertile): 200 people → 0 fertile women
+
         pop.demography[10].education.none.novice.total = 200;
         const stats = calculateDemographicStats(pop);
         expect(stats.fertileWomen).toBe(50);
@@ -52,7 +46,7 @@ describe('calculateDemographicStats', () => {
         pop.demography[START_FERTILE_AGE].unoccupied.none.novice.total = 100;
         pop.demography[END_FERTILE_AGE].unoccupied.none.novice.total = 100;
         const stats = calculateDemographicStats(pop);
-        // Each 100 people → 50 fertile women, both boundaries included
+
         expect(stats.fertileWomen).toBe(100);
     });
 

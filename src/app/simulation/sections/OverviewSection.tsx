@@ -1,9 +1,9 @@
 export function OverviewSection() {
     return (
         <>
-            {/* ---------------------------------------------------------------- */}
-            {/* 0. OVERVIEW                                                       */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='overview'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>0. Overview &amp; Time Units</h2>
                 <p>
@@ -37,9 +37,9 @@ SERVICE_PER_PERSON_PER_TICK = 1 / 30   (1 unit grocery / person / month)`}
                 </p>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 0b. SERVICES PRODUCT TIER                                         */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='services'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>0b. Services — The Fourth Product Tier</h2>
                 <p>

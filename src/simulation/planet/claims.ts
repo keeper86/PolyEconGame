@@ -5,15 +5,15 @@ export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'service
 export type Resource = {
     name: string;
     form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'landBoundResource' | 'services' | 'currency';
-    level: ResourceProcessLevel | 'source' | 'currency'; // raw, refined, manufactured, consumerGood, or currency
-    volumePerQuantity: number; //  in cubic meters per ton or piece, used for cargo capacity calculations
-    massPerQuantity: number; // in tons per ton or piece, used for mass capacity calculations, if not provided we assume 1:1 with volume-based quantity (e.g. 1 ton of water takes up 1 cubic meter, so massPerQuantity = 1)
+    level: ResourceProcessLevel | 'source' | 'currency';
+    volumePerQuantity: number;
+    massPerQuantity: number;
 };
 export type ResourceType = Resource['form'];
 export type TransportableResourceType = Exclude<ResourceType, 'services' | 'landBoundResource' | 'currency'>;
 export type ResourceQuantity = {
     resource: Resource;
-    quantity: number; // in tons or pieces, depending on the phase
+    quantity: number;
 };
 
 export type ClaimStatus = 'active' | 'paused';
@@ -45,18 +45,14 @@ export function collapseUntenantedClaims(
         return null;
     }
 
-    // Sum all untenanted quantities
     const totalQuantity = untenanted.reduce((s, e) => s + e.quantity, 0);
     const totalRegen = untenanted.reduce((s, e) => s + e.regenerationRate, 0);
     const totalCap = untenanted.reduce((s, e) => s + e.maximumCapacity, 0);
 
-    // Use the id of the first untenanted entry (or the provided collapsedId)
     const survivorId = collapsedId ?? untenanted[0].id;
 
-    // Remove ALL untenanted entries
     const filtered = entries.filter((e) => e.tenantAgentId !== null);
 
-    // Push back the single collapsed entry
     const collapsed = {
         ...untenanted[0],
         id: survivorId,
@@ -121,11 +117,6 @@ export const extractFromClaimedResource = (
     return extracted;
 };
 
-/**
- * Returns the effective cost per unit for a land-bound resource held by an agent.
- * For renewables: costPerTick / available quantity (rent per unit).
- * For non-renewables: tenantCostInCoins / maximumCapacity (amortised acquisition cost per unit).
- */
 export function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: string): number {
     const entries = planet.resources[resourceName];
     if (!entries) {

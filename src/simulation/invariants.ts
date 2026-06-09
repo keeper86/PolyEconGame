@@ -1,23 +1,7 @@
-/**
- * simulation/invariants.ts
- *
- * Invariant checks for the simulation engine.
- * Each function returns an array of discrepancy messages (empty = healthy).
- */
-
 import type { Agent, GameState, Planet } from './planet/planet';
 import { educationLevelKeys } from './population/education';
 import { SKILL, forEachPopulationCohort } from './population/population';
 
-// ---------------------------------------------------------------------------
-// Population ↔ Workforce consistency
-// ---------------------------------------------------------------------------
-
-/**
- * Verify that the total number of 'employed' people in each planet's
- * population demography matches the sum of workforce (active + departing)
- * across all agents on that planet, for every education level.
- */
 export function checkPopulationWorkforceConsistency(
     agents: Map<string, Agent>,
     planets: Map<string, Planet>,
@@ -26,7 +10,6 @@ export function checkPopulationWorkforceConsistency(
 
     for (const [planetId, planet] of planets) {
         for (const edu of educationLevelKeys) {
-            // Sum employed in population
             let popEmployed = 0;
             for (const cohort of planet.population.demography) {
                 for (const skill of SKILL) {
@@ -34,10 +17,6 @@ export function checkPopulationWorkforceConsistency(
                 }
             }
 
-            // Sum workforce across all agents on this planet.
-            // NOTE: departingFired is a *subset tag* on departing (tracks
-            // which departing workers were fired vs voluntary quits) — it
-            // is NOT an additional pool.  Only active + departing count.
             let wfTotal = 0;
             for (const agent of agents.values()) {
                 const wf = agent.assets[planetId]?.workforceDemography;
@@ -66,14 +45,6 @@ export function checkPopulationWorkforceConsistency(
     return discrepancies;
 }
 
-// ---------------------------------------------------------------------------
-// Age-moment consistency
-// ---------------------------------------------------------------------------
-
-/**
- * Verify that no population category has negative total or nonsensical
- * Gaussian moments (negative variance, NaN values).
- */
 export function checkAgeMomentConsistency(agents: Map<string, Agent>, planets: Map<string, Planet>): string[] {
     const discrepancies: string[] = [];
 
@@ -102,28 +73,6 @@ export function checkAgeMomentConsistency(agents: Map<string, Agent>, planets: M
     return discrepancies;
 }
 
-// ---------------------------------------------------------------------------
-// Monetary conservation: householdDeposits + Σ(agent.deposits) − bank.loans === 0
-// ---------------------------------------------------------------------------
-
-/**
- * Verify the fundamental monetary conservation invariant for each planet.
- *
- * All money is created via bank loans and destroyed via repayment.
- * At any point in time:
- *
- *   bank.loans === bank.deposits                         (balance sheet)
- *   bank.deposits === Σ(agent.deposits) + householdDeposits  (deposit decomposition)
- *
- * Combining these:
- *   householdDeposits + Σ(agent.deposits) − bank.loans === 0
- *
- * A non-zero residual indicates a monetary leak (money created or
- * destroyed outside of the loan/repayment mechanism).
- *
- * @param tolerance  Relative tolerance for floating-point comparison
- *                   (default 0.01 = 1%).
- */
 export function checkMonetaryConservation(
     agents: Map<string, Agent>,
     planets: Map<string, Planet>,
@@ -158,7 +107,6 @@ export function checkMonetaryConservation(
             }
         }
 
-        // Invariant 1: bank.deposits === firmDeposits + householdDeposits
         const depositSum = firmDeposits + bank.householdDeposits;
         const depositDiff =
             bank.deposits === 0 && depositSum === 0
@@ -177,7 +125,6 @@ export function checkMonetaryConservation(
             );
         }
 
-        // Invariant 2: householdDeposits + firmDeposits - bank.loans === 0
         const residual = bank.householdDeposits + firmDeposits - bank.loans;
         const residualRel =
             bank.loans === 0 && residual === 0
@@ -198,20 +145,6 @@ export function checkMonetaryConservation(
     return discrepancies;
 }
 
-// ---------------------------------------------------------------------------
-// Wealth ↔ householdDeposits consistency
-// ---------------------------------------------------------------------------
-
-/**
- * Verify that the sum of population wealth matches `bank.householdDeposits`.
- *
- *   bank.householdDeposits ≈ Σ (category.total × category.wealth.mean)
- *
- * A divergence means that wealth moments are being mutated without a
- * corresponding change to the bank's householdDeposits (or vice versa).
- *
- * @param tolerance  Absolute tolerance (default 1.0 monetary units).
- */
 export type WealthBankDiscrepancy = {
     planetId: string;
     planetName: string;
@@ -219,13 +152,10 @@ export type WealthBankDiscrepancy = {
     populationWealth: number;
     diff: number;
     totalPopulation: number;
-    /** diff per capita — convenient for comparing across planet sizes */
+
     diffPerCapita: number;
 };
 
-/**
- * @param tolerance  Relative tolerance to total of householdDeposits, tolerance = 0.0001 means 0.01% of householdDeposits (or absolute 0 if householdDeposits=0).
- */
 export function checkWealthBankConsistency(planets: Map<string, Planet>, tolerance?: number): WealthBankDiscrepancy[];
 export function checkWealthBankConsistency(
     planets: Map<string, Planet>,
@@ -268,7 +198,6 @@ export function checkWealthBankConsistency(
             continue;
         }
 
-        // Sum total population wealth: Σ (category.total × category.wealth.mean)
         let totalWealth = 0;
         let totalPopulation = 0;
         for (const cohort of demography) {
@@ -317,13 +246,11 @@ export function checkWealthBankConsistency(
             continue;
         }
 
-        // Guard against division by zero: householdDeposits === 0 would yield NaN.
         if (bank.householdDeposits === 0) {
             if (totalWealth === 0) {
-                // Both are zero — consistent, nothing to report.
                 continue;
             }
-            // Deposits are zero but wealth is non-zero — always a discrepancy.
+
             discrepancies.push({
                 planetId,
                 planetName: planet.name,
@@ -353,25 +280,10 @@ export function checkWealthBankConsistency(
     return discrepancies;
 }
 
-// ---------------------------------------------------------------------------
-// Transport pipeline ↔ in-transit ships consistency
-// ---------------------------------------------------------------------------
-
-/**
- * Verify that planet.transportPipeline is consistent with the cargo
- * currently carried by ships in the 'transporting' state.
- *
- * For each destination planet and resource:
- *   transportPipeline[resource] ≈ Σ cargo.quantity for all in-transit ships
- *
- * This invariant should hold at all times after shipTick runs, because the
- * pipeline is updated incrementally at state transition boundaries.
- */
 export function checkTransportPipeline(gameState: GameState): string[] {
     const discrepancies: string[] = [];
     const PIPELINE_EPSILON = 1e-9;
 
-    // Build the expected pipeline by scanning all agents' ships
     const expected = new Map<string, Map<string, number>>();
     for (const agent of gameState.agents.values()) {
         for (const ship of agent.ships) {
@@ -391,12 +303,10 @@ export function checkTransportPipeline(gameState: GameState): string[] {
         }
     }
 
-    // Compare against the stored transportPipeline for every planet
     for (const [planetId, planet] of gameState.planets) {
         const byResource = expected.get(planetId);
         const pipeline = planet.transportPipeline;
 
-        // Check that every expected quantity is present and correct
         if (byResource) {
             for (const [resourceName, expectedQty] of byResource) {
                 const stored = pipeline[resourceName]?.quantity ?? 0;
@@ -409,7 +319,6 @@ export function checkTransportPipeline(gameState: GameState): string[] {
             }
         }
 
-        // Check for phantom entries (pipeline has a quantity but no ship is carrying it)
         for (const [resourceName, entry] of Object.entries(pipeline)) {
             if (!entry || entry.quantity <= PIPELINE_EPSILON) {
                 continue;

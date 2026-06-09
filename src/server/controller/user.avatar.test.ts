@@ -49,7 +49,7 @@ describe('user avatar update/get', () => {
 
     describe('PNG cases', () => {
         it('accepts base64 PNG < 1MB and returns it on getUser', async () => {
-            const pngSmall = makePngBuffer(10_000); // ~10 KB
+            const pngSmall = makePngBuffer(10_000);
             const b64 = toBase64(pngSmall);
 
             await caller.updateUser({ avatar: b64 });
@@ -91,7 +91,7 @@ describe('user avatar update/get', () => {
             let got = await caller.getUser({ userId });
             expect(got.avatar).toBe(b64);
 
-            await caller.updateUser({ avatar: '   ' }); // whitespace becomes empty after trim
+            await caller.updateUser({ avatar: '   ' });
             got = await caller.getUser({ userId });
             expect(got.avatar).toBeUndefined();
         });
@@ -140,7 +140,7 @@ describe('user avatar update/get', () => {
         it('rejects non-PNG data URL > 1MB by size (even if MIME says png)', async () => {
             const big = makeNonPngBuffer(ONE_MIB + 400_000);
             const b64 = toBase64(big);
-            // pretend it's png in the data URL
+
             const dataUrl = `data:image/png;base64,${b64}`;
 
             await expect(caller.updateUser({ avatar: dataUrl })).rejects.toThrow(/too large/i);
@@ -150,7 +150,6 @@ describe('user avatar update/get', () => {
             const small = makeNonPngBuffer(400_000);
             const b64 = toBase64(small);
 
-            // make the regex a bit looser so wording changes don’t break the test
             await expect(caller.updateUser({ avatar: b64 })).rejects.toThrow(/png images? are supported/i);
         });
 

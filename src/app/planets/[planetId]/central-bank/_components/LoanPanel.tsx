@@ -13,10 +13,6 @@ import CreditButton from './CreditButton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
-
 type Props = {
     agentId: string;
     planetId: string;
@@ -128,7 +124,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                 toast.success(
                     `Loan request successful: ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId)} will be credited after this tick.`,
                 );
-                // Invalidate the loan-conditions query so the panel refreshes
+
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
@@ -141,7 +137,6 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
 
     return (
         <div className='space-y-3'>
-            {/* Credit conditions */}
             {isLoading && <p className='text-xs text-muted-foreground'>Loading credit conditions…</p>}
 
             {!isLoading && conditions === null && (

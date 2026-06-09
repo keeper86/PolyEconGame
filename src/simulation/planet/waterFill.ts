@@ -4,9 +4,8 @@ import { SKILL, type Skill } from '../population/population';
 import type { FacilityCategory } from './facility';
 
 export type WorkerSlot = {
-    /** Facility id so callers can group results back to their source. */
     facilityId: string;
-    /** Discriminates which facility array this slot belongs to. */
+
     facilityType: FacilityCategory;
     jobEdu: EducationLevelType;
     jobEduIdx: number;
@@ -43,11 +42,9 @@ export function waterFill(
     ageProdByEdu: Record<EducationLevelType, number>,
     skillProdBySkill: Record<Skill, number>,
     xpProdByEduSkill: Record<EducationLevelType, Record<Skill, number>>,
-    /** Effective demand per facility slot: `workerRequirement[jobEdu] * scale`.
-     *  Required to derive `workerEfficiency` inside waterFill. */
+
     effectiveDemandBySlot: Map<WorkerSlot, number>,
 ): WaterFillResult {
-    // Deep-copy the supply so we can mutate it
     const remaining = {} as Record<EducationLevelType, Record<Skill, number>>;
     for (const edu of educationLevelKeys) {
         remaining[edu] = { ...supplyByEduSkill[edu] };
@@ -56,8 +53,6 @@ export function waterFill(
     for (let wi = 0; wi < educationLevelKeys.length; wi++) {
         const workerEdu = educationLevelKeys[wi];
 
-        // Process skills from most productive to least productive:
-        // expert → professional → novice (reverse of the SKILL array)
         for (let si = SKILL.length - 1; si >= 0; si--) {
             const workerSkill = SKILL[si];
             const supply = remaining[workerEdu][workerSkill];
@@ -103,7 +98,6 @@ export function waterFill(
         }
     }
 
-    // Collect the unique facility ids present in the slot list
     const facilityIds = new Set(slots.map((s) => s.facilityId));
     const byFacility = new Map<string, WaterFillFacilityResult>();
 
@@ -182,10 +176,6 @@ export function waterFill(
     return { remaining, byFacility };
 }
 
-/**
- * Finds the equilibrium fill ratio reachable with `supply` workers across
- * the given slots (pre-sorted by ascending fill ratio).
- */
 function findEquilibrium(sortedSlots: WorkerSlot[], supply: number): number {
     let supplyLeft = supply;
     let totalWidth = 0;

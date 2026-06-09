@@ -10,25 +10,15 @@ import { agentMap, makeAgent, makeEnvironment, makePlanet, sumPopOcc, sumWorkfor
 import { postProductionLaborMarketTick } from './laborMarketMonthTick';
 import { workforceDemographicTick } from './workforceDemographicTick';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Run one full simulation tick (demographic events + population application). */
 function runOneTick(agents: Map<string, Agent>, planet: Planet): void {
     const workforceEvents = workforceDemographicTick(agents, planet);
     populationTick(planet, workforceEvents);
 }
 
-/** Run one month boundary: drain pipeline slot 0 and shift pipelines. */
 function runMonthBoundary(agents: Map<string, Agent>, planet: Planet): void {
     postProductionLaborMarketTick(agents, planet);
 }
 
-/**
- * Place `count` employed workers at a given age for one agent.
- * Sets both the workforce (active) and the population (employed) in sync.
- */
 function placeEmployedWorkers(
     agent: Agent,
     planet: Planet,
@@ -40,10 +30,6 @@ function placeEmployedWorkers(
     agent.assets[planet.id].workforceDemography![age][edu][skill].active = count;
     planet.population.demography[age].employed[edu][skill].total = count;
 }
-
-// ---------------------------------------------------------------------------
-// Single-tick consistency: workforce demographic tick + population tick
-// ---------------------------------------------------------------------------
 
 describe('workforceDemographicTick + populationTick — single tick consistency', () => {
     let agent: Agent;
@@ -100,10 +86,6 @@ describe('workforceDemographicTick + populationTick — single tick consistency'
     });
 });
 
-// ---------------------------------------------------------------------------
-// Multi-tick consistency with month boundaries
-// ---------------------------------------------------------------------------
-
 describe('workforceDemographicTick + populationTick + postProductionLaborMarketTick — month boundary', () => {
     let agent: Agent;
     let planet: Planet;
@@ -119,13 +101,11 @@ describe('workforceDemographicTick + populationTick + postProductionLaborMarketT
     it('maintains consistency through one full month + boundary for age 83 workers', () => {
         placeEmployedWorkers(agent, planet, 83, 10000);
 
-        // Run TICKS_PER_MONTH ticks
         for (let t = 0; t < TICKS_PER_MONTH; t++) {
             runOneTick(agents, planet);
             assertWorkforcePopulationConsistency(planet, [agent], `tick ${t + 1} before month boundary`);
         }
 
-        // Month boundary
         runMonthBoundary(agents, planet);
         assertWorkforcePopulationConsistency(planet, [agent], 'after 1st month boundary');
         assertAllNonNegative(planet, [agent]);
@@ -146,8 +126,6 @@ describe('workforceDemographicTick + populationTick + postProductionLaborMarketT
     });
 
     it('maintains consistency through NOTICE_PERIOD_MONTHS+1 months for age 83 workers', () => {
-        // This is critical: departingRetired[2] workers need to drain
-        // through slot 0 after NOTICE_PERIOD_MONTHS shifts.
         placeEmployedWorkers(agent, planet, 83, 10000);
 
         for (let month = 0; month < NOTICE_PERIOD_MONTHS + 1; month++) {
@@ -161,7 +139,6 @@ describe('workforceDemographicTick + populationTick + postProductionLaborMarketT
     });
 
     it('departingRetired[0] drains correctly for age 80 workers with high pollution', () => {
-        // High pollution → more deaths/disabilities → more chance of mismatch
         planet = makePlanet({
             environment: makeEnvironment({
                 pollution: { air: 80, water: 80, soil: 80 },
@@ -211,7 +188,6 @@ describe('workforceDemographicTick + populationTick + postProductionLaborMarketT
             [agent2.id, agent2],
         ]);
 
-        // Both agents have workers at age 83
         agent.assets.p.workforceDemography![83].secondary.novice.active = 5000;
         agent2.assets.p.workforceDemography![83].secondary.novice.active = 5000;
         planet.population.demography[83].employed.secondary.novice.total = 10000;
@@ -231,10 +207,6 @@ describe('workforceDemographicTick + populationTick + postProductionLaborMarketT
     });
 });
 
-// ---------------------------------------------------------------------------
-// Targeted retirement pipeline drain test
-// ---------------------------------------------------------------------------
-
 describe('workforceDemographicTick — retirement pipeline drain verification', () => {
     it('departingRetired[0] never exceeds population employed at drain time', () => {
         seedRng(42);
@@ -252,7 +224,6 @@ describe('workforceDemographicTick — retirement pipeline drain verification', 
             const popEmployed = sumPopOcc(planet, 'none', 'employed');
             const wfTotal = sumWorkforceForEdu(agent, 'p', 'none');
 
-            // Workforce should match population before drain
             expect(wfTotal).toBe(popEmployed);
 
             runMonthBoundary(agents, planet);

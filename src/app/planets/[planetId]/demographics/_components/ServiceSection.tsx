@@ -37,7 +37,6 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
         SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
         SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
 
-    // ── Aggregate buffer and starvation per group ─────────────────────────
     const groupPop = [0, 0, 0, 0];
     const bufferSum = [0, 0, 0, 0];
     const starvSum = [0, 0, 0, 0];
@@ -66,7 +65,6 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
     );
     const avgStarv = groupPop.map((pop, i) => (pop > 0 ? starvSum[i] / pop : 0));
 
-    // ── Buffer cards ──────────────────────────────────────────────────────
     const bufferCards = isSmallScreen ? (
         <div className='flex gap-1 mb-2'>
             {groupKeys.map((key, i) => {
@@ -147,7 +145,6 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
         </div>
     );
 
-    // ── Starvation cards ──────────────────────────────────────────────────
     const starvationCards = isSmallScreen ? (
         <div className='flex gap-1 mb-2'>
             {groupKeys.map((key, i) => {

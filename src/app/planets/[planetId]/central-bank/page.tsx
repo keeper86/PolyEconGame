@@ -16,9 +16,7 @@ export default function CentralBankPage() {
     const trpc = useTRPC();
     const myAgentId = useAgentId();
 
-    const { data, isLoading } = useSimulationQuery(
-        trpc.simulation.getPlanetEconomy.queryOptions({ planetId }),
-    );
+    const { data, isLoading } = useSimulationQuery(trpc.simulation.getPlanetEconomy.queryOptions({ planetId }));
 
     const { data: agentDetail } = useSimulationQuery(
         trpc.simulation.getAgentPlanetDetail.queryOptions(

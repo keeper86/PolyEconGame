@@ -31,7 +31,6 @@ export default function BuySection({
     const consumedPerTick = consumptionPerTick(assets.productionFacilities, resourceName);
     const deposits = assets.deposits;
 
-    // Currency resources (CUR_<planetId>) are denominated in foreign deposits, not local storage.
     const isCurrency = resourceName.startsWith('CUR_');
 
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
@@ -39,12 +38,10 @@ export default function BuySection({
 
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
 
-    // Buffer calculator: translate ticks → storage target
     const targetBuffer = parseFloat(local.targetBufferTicks);
     const suggestedStorageTarget =
         isFacilityInput && !isNaN(targetBuffer) && targetBuffer >= 0 ? Math.ceil(targetBuffer * consumedPerTick) : null;
 
-    // Effective quantities derived from retainment / storage-target settings
     const effectiveBuyQty =
         bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : undefined;
 
@@ -53,13 +50,10 @@ export default function BuySection({
         (bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : 0);
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
 
-    // Check if buy section has any dirty fields
     const hasDirtyBuyFields = local.dirtyFields.bidPrice || local.dirtyFields.bidStorageTarget;
 
-    // Check if there are any validation errors
     const hasValidationErrors = local.validationErrors.bidPrice || local.validationErrors.bidStorageTarget;
 
-    // Helper function to get field styling based on dirty state and validation
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
         const baseClass = 'h-8 text-sm tabular-nums';
         if (isDisabled) {
@@ -87,7 +81,7 @@ export default function BuySection({
                 <AccordionPrimitive.Trigger className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold hover:underline text-left'>
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                 </AccordionPrimitive.Trigger>
-                {/* Controls are outside the trigger button to avoid nested buttons */}
+                {}
                 <div className='flex items-center gap-2 pl-2'>
                     {hasActiveBid && (
                         <Button
@@ -132,7 +126,6 @@ export default function BuySection({
                     )}
 
                     <div className='grid grid-cols-2 gap-3'>
-                        {/* Max price box */}
                         <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                             <Label htmlFor={`bid-price-${resourceName}`} className='text-[11px] text-muted-foreground'>
                                 Max price / unit
@@ -171,7 +164,6 @@ export default function BuySection({
                             )}
                         </div>
 
-                        {/* Storage-target box + buffer calculator */}
                         <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                             <Label htmlFor={`bid-target-${resourceName}`} className='text-[11px] text-muted-foreground'>
                                 {isCurrency ? 'Deposit target' : 'Storage target'}
@@ -191,7 +183,7 @@ export default function BuySection({
                                 onChange={(e) => onLocalChange(resourceName, { bidStorageTarget: e.target.value })}
                                 className={getFieldClassName('bidStorageTarget', local.bidAutomated || buySaving)}
                             />
-                            {/* Effective buy qty with fulfillment colour */}
+
                             {bid?.bidStorageTarget !== undefined && effectiveBuyQty !== undefined && (
                                 <div
                                     className={`text-[11px] tabular-nums font-medium ${buyFulfillmentClass(inventoryQty, bid.bidStorageTarget)}`}
@@ -311,7 +303,6 @@ export default function BuySection({
                         </Alert>
                     )}
 
-                    {/* Validation error messages */}
                     {(local.validationErrors.bidPrice || local.validationErrors.bidStorageTarget) && (
                         <div className='space-y-1'>
                             {local.validationErrors.bidPrice && (
@@ -329,7 +320,6 @@ export default function BuySection({
                         </div>
                     )}
 
-                    {/* Buy section save button and feedback */}
                     <div className='flex items-center justify-between gap-3 pt-2'>
                         <div className='flex items-center gap-3'>
                             {buySuccessMsg && (

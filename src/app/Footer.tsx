@@ -9,9 +9,8 @@ import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 
-/* ---------- constants ---------- */
 const MAX_LOCAL_EVENTS = 60;
-const GAP_PX = 48; // minimum horizontal gap between events (steric interaction)
+const GAP_PX = 48;
 const BASE_SPEED_PX_PER_SEC = 80;
 
 const RENDER_LAG_ESTIMATE_MS = 16;
@@ -20,7 +19,6 @@ const MAX_SPEED_PX_PER_SEC = 500;
 
 type DisplayedEvent = { id: number; event: TickerEvent; duration: number; startX: number };
 
-/* ---------- helpers ---------- */
 function textColor(category: string): string {
     switch (category) {
         case 'agentCreated':
@@ -73,13 +71,12 @@ export default function Footer() {
 
     const trpc = useTRPC();
     const [lastSeenId, setLastSeenId] = useState<number | undefined>(undefined);
-    const [events, setEvents] = useState<TickerEvent[]>([]); // master list (latest 60)
+    const [events, setEvents] = useState<TickerEvent[]>([]);
 
     const { data } = useSimulationQuery({
         ...trpc.simulation.getTickerEvents.queryOptions({ lastSeenId }),
     });
 
-    // Merge server events
     useEffect(() => {
         const newEvents =
             data?.tickerEvents.filter((e) => e.category !== 'shipArrived' && e.category !== 'shipDispatched') ?? [];
@@ -92,7 +89,6 @@ export default function Footer() {
 
     const isSmallScreen = useIsSmallScreen();
 
-    /* ---- DOM refs ---- */
     const containerRef = useRef<HTMLDivElement>(null);
     const measureRef = useRef<HTMLSpanElement>(null);
     const eventsRef = useRef<TickerEvent[]>(events);
@@ -108,12 +104,11 @@ export default function Footer() {
     const containerWidthRef = useRef<number>(0);
     const speedRef = useRef<number>(BASE_SPEED_PX_PER_SEC);
 
-    // Steric state: time-based, accounts for paused duration since last spawn
     const lastSpawnTimeRef = useRef<number>(-Infinity);
     const lastSpawnWidthRef = useRef<number>(0);
     const lastSpawnSpeedRef = useRef<number>(BASE_SPEED_PX_PER_SEC);
     const pauseStartRef = useRef<number>(0);
-    const totalPausedDurationRef = useRef<number>(0); // ms paused since last spawn
+    const totalPausedDurationRef = useRef<number>(0);
 
     useLayoutEffect(() => {
         const el = containerRef.current;
@@ -137,7 +132,7 @@ export default function Footer() {
             return 100;
         }
         span.textContent = `${dateStr} ${message}`;
-        // +6px accounts for the gap-1.5 between the date and message spans in the actual element
+
         return span.offsetWidth + 6;
     }, []);
 
@@ -152,7 +147,6 @@ export default function Footer() {
         return all.find((e) => e.id > lastDisplayedIdRef.current!);
     }, []);
 
-    /* ---- speed = f(pending) ---- */
     const computeSpeed = useCallback((pending: number) => {
         const factor = 0.15;
         return Math.min(
@@ -161,7 +155,6 @@ export default function Footer() {
         );
     }, []);
 
-    /* ---- spawn a new event if space allows ---- */
     const trySpawn = useCallback(() => {
         if (isPausedRef.current) {
             return;
@@ -203,13 +196,10 @@ export default function Footer() {
 
         const duration = (containerWidth + width) / speed;
 
-        // Bias the recorded spawn time forward by one render frame so that effectiveElapsed
-        // isn't overestimated: the CSS animation starts ~RENDER_LAG_ESTIMATE_MS after
-        // setDisplayedEvents() is called, but the steric check runs immediately after.
         lastSpawnTimeRef.current = now + RENDER_LAG_ESTIMATE_MS;
         lastSpawnWidthRef.current = width;
         lastSpawnSpeedRef.current = speed;
-        totalPausedDurationRef.current = 0; // reset: track pauses from this spawn onward
+        totalPausedDurationRef.current = 0;
         lastDisplayedIdRef.current = nextEvent.id;
 
         setDisplayedEvents((prev) => [
@@ -250,14 +240,14 @@ export default function Footer() {
                     onMouseEnter={pause}
                     onMouseLeave={resume}
                 >
-                    {/* hidden measurement span – same styling as ticker items */}
+                    {}
                     <span
                         ref={measureRef}
                         className='invisible absolute whitespace-nowrap text-md'
                         aria-hidden='true'
                     />
 
-                    {/* Gradient fade on edges */}
+                    {}
                     <div
                         className={cn(
                             'pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-background to-transparent z-10',

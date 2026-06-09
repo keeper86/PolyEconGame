@@ -31,7 +31,6 @@ export interface WorkerQueryResult {
 
 export type WorkerQueryMessage = WorkerQuery & { requestId: string };
 
-/** Successful response sent from worker to main thread. */
 export type WorkerSuccessResponse<T extends WorkerQuery['type'] = WorkerQuery['type']> = {
     type: 'queryResponse';
     requestId: string;
@@ -39,12 +38,10 @@ export type WorkerSuccessResponse<T extends WorkerQuery['type'] = WorkerQuery['t
     data: WorkerQueryResult[T];
 };
 
-/** Error response sent from worker when a query fails. */
 export type WorkerErrorResponse = {
     type: 'queryError';
     requestId: string;
     error: string;
 };
 
-/** Union of all possible response messages from the worker related to queries. */
 export type WorkerResponseMessage = WorkerSuccessResponse | WorkerErrorResponse;

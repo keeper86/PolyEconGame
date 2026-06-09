@@ -1,6 +1,3 @@
-// The TypeScript definitions below are automatically generated.
-// Do not touch them, or risk, your modifications being lost.
-
 export enum Table {
     AgentDecadeSummary = 'agent_decade_summary',
     AgentMonthlyHistory = 'agent_monthly_history',

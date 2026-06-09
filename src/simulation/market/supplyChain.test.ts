@@ -17,17 +17,9 @@ const STEEL_PRICE = 3.0;
 const ELECTRONIC_COMPONENT_PRICE = 15.0;
 const PLASTIC_PRICE = 2.0;
 
-/**
- * ironSmelter recipe: 150 iron ore + 30 coal → 100 steel
- * Break-even ceiling for iron ore = (100 × steelPrice) / 150
- */
 const IRON_SMELTER_IRON_ORE_QTY = 150;
 const IRON_SMELTER_OUTPUT_QTY = 100;
 
-/**
- * machineryFactory recipe: 80 steel + 10 electronic components + 20 plastic → 50 machinery
- * Break-even ceiling for steel = (50 × machineryPrice) / 80
- */
 const MACHINERY_FACTORY_STEEL_QTY = 80;
 const MACHINERY_FACTORY_ELEC_QTY = 10;
 const MACHINERY_FACTORY_PLASTIC_QTY = 20;
@@ -81,8 +73,6 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
         expect(bid).toBeDefined();
         expect(bid!.bidStorageTarget).toBeGreaterThan(0);
 
-        // Break-even ceiling = (100 steel × 3.0) / 150 iron ore = 2.0
-        // Bid price must not exceed ceiling (2.0) but must be ≥ market price (1.0)
         const expectedCeiling = (IRON_SMELTER_OUTPUT_QTY * STEEL_PRICE) / IRON_SMELTER_IRON_ORE_QTY;
         expect(bid!.bidPrice).toBeGreaterThanOrEqual(IRON_ORE_PRICE);
         expect(bid!.bidPrice).toBeLessThanOrEqual(expectedCeiling);
@@ -104,9 +94,6 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
         expect(steelBid).toBeDefined();
         expect(steelBid!.bidStorageTarget).toBeGreaterThan(0);
 
-        // With no machinery price, fallback = total input cost per output unit:
-        // (80 × 3.0 + 10 × 15.0 + 20 × 2.0) / 50 = (240 + 150 + 40) / 50 = 430 / 50 = 8.6
-        // ceiling for steel = (50 × 8.6) / 80 = 5.375 > steelPrice 3.0 → bid must be ≥ 3.0
         expect(steelBid!.bidPrice).toBeGreaterThanOrEqual(STEEL_PRICE);
     });
 
@@ -124,8 +111,6 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
 
-        // Initial bid price is min(marketPrice, ceiling). Since ceiling > marketPrice,
-        // the bid must equal the market price on the first tick.
         expect(steelBid!.bidPrice).toBe(STEEL_PRICE);
     });
 
@@ -143,7 +128,6 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
 
-        // Full buffer target = MACHINERY_FACTORY_STEEL_QTY × scale(1) × INPUT_BUFFER_TARGET_TICKS
         const expectedStorageTarget = MACHINERY_FACTORY_STEEL_QTY * 1 * INPUT_BUFFER_TARGET_TICKS;
         expect(steelBid!.bidStorageTarget).toBe(expectedStorageTarget);
     });

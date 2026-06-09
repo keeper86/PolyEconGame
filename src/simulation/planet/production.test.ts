@@ -21,26 +21,20 @@ import {
 } from './resources';
 import { constructionServiceResourceType } from './services';
 
-// test helpers create fresh objects; no deep clone needed
-
 describe('productionTick (basic)', () => {
     beforeEach(() => {
-        // deterministic rounding
         seedRng(12345);
     });
 
     it('produces iron into storage when a matching worker is available', () => {
-        // create minimal planet and agent via helpers
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        // create an iron extraction facility that needs an iron ore deposit and produces iron ore
         const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
         facility.id = 'iron-extract';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
-        // attach facility to agent and ensure workforce has one secondary worker
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
@@ -66,10 +60,9 @@ describe('productionTick (basic)', () => {
         productionTick(gameState, planet);
 
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
-        // ironExtractionFacility produces 1000 * scale(1) * overallEfficiency (should be 1)
+
         expect(storedIron).toBeGreaterThanOrEqual(1000);
 
-        // Resource deposit should have been reduced by consumed amount (1000)
         const ironEntries = planet.resources['Iron Ore Deposit'];
         expect(ironEntries && ironEntries[0].quantity).toBeLessThan(5000);
     });
@@ -87,7 +80,6 @@ describe('productionTick (basic)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        // create a depleted deposit (quantity 0) but tenanted by agent
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'iron-deposit-1',
@@ -110,7 +102,6 @@ describe('productionTick (basic)', () => {
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
         expect(storedIron).toBe(0);
 
-        // The facility should have recorded 0% efficiency
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'iron-extract');
         expect(recorded).toBeDefined();
         expect(recorded!.lastTickResults?.overallEfficiency).toBe(0);
@@ -120,7 +111,6 @@ describe('productionTick (basic)', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        // facility needs 1 'none' worker but agent only has a primary worker
         const facility = makeProductionFacility({ none: 1 }, { scale: 1 });
         facility.id = 'oq-fac';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1 }];
@@ -128,9 +118,8 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].primary.novice.active = 1; // overqualified
+        wf[30].primary.novice.active = 1;
 
-        // deposit available
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'd1',
@@ -150,7 +139,6 @@ describe('productionTick (basic)', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        // facility should record overqualified usage for jobEdu 'none'
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'oq-fac');
         expect(recorded).toBeDefined();
         const oq = recorded!.lastTickResults?.overqualifiedWorkers;
@@ -164,7 +152,7 @@ describe('productionTick (basic)', () => {
 
         const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
         facility.id = 'scale-fac';
-        // two needs: one abundant, one scarce
+
         const resA = ironOreDepositResourceType;
         const resB = { ...ironOreDepositResourceType, name: 'Other Deposit' };
         facility.needs = [
@@ -177,7 +165,6 @@ describe('productionTick (basic)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        // resA abundant, resB scarce (only 100 available)
         planet.resources[resA.name] = [
             {
                 id: 'a1',
@@ -217,7 +204,7 @@ describe('productionTick (basic)', () => {
         const overall = recorded!.lastTickResults?.overallEfficiency ?? 0;
         expect(overall).toBeGreaterThan(0);
         expect(overall).toBeLessThan(1);
-        // produced amount should be scaled down accordingly
+
         const stored = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
         expect(stored).toBeLessThan(1000);
     });
@@ -233,7 +220,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 2; // one extra worker
+        wf[30].secondary.novice.active = 2;
 
         planet.resources[ironOreDepositResourceType.name] = [
             {
@@ -254,10 +241,9 @@ describe('productionTick (basic)', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        // Only 1 slot needed — totalUsedByEdu.secondary should be ≤ 1 (the slot capacity)
         const used = facility.lastTickResults?.totalUsedByEdu?.secondary ?? 0;
         expect(used).toBeLessThanOrEqual(1);
-        // Efficiency should still be 1 (slot was filled)
+
         expect(facility.lastTickResults?.overallEfficiency).toBe(1);
     });
 });
@@ -271,21 +257,17 @@ describe('productionTick — shared stored-resource allocation', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('company');
 
-        // facility A: needs 800 water, produces beverages  (scale 400 → needs 320 000 water at full)
         const facilityA = makeProductionFacility({ none: 1 }, { id: 'fac-a', scale: 400 });
         facilityA.needs = [{ resource: waterResourceType, quantity: 800 }];
         facilityA.produces = [{ resource: agriculturalProductResourceType, quantity: 1000 }];
 
-        // facility B: needs 500 water, produces something else  (scale 800 → needs 400 000 water at full)
         const facilityB = makeProductionFacility({ none: 1 }, { id: 'fac-b', scale: 800 });
         facilityB.needs = [{ resource: waterResourceType, quantity: 500 }];
         facilityB.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
-        // give each facility one worker so efficiency is not zero
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.novice.active = 2;
 
-        // stock the shared storage with a small amount of water — less than either facility needs alone
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 720,
@@ -298,16 +280,12 @@ describe('productionTick — shared stored-resource allocation', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        // Both facilities must have run (efficiency > 0)
         expect(facilityA.lastTickResults.overallEfficiency).toBeGreaterThan(0);
         expect(facilityB.lastTickResults.overallEfficiency).toBeGreaterThan(0);
 
-        // No water should remain (all consumed, within rounding tolerance)
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeLessThanOrEqual(1);
 
-        // Both facilities must have equal water efficiency — proportional allocation means
-        // available / totalDemand is the same for each.
         expect(facilityA.lastTickResults.resourceEfficiency[waterResourceType.name]).toBeCloseTo(
             facilityB.lastTickResults.resourceEfficiency[waterResourceType.name]!,
             5,
@@ -344,7 +322,7 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeGreaterThanOrEqual(0);
-        // Total consumed must not exceed what was available
+
         expect(remaining).toBeLessThanOrEqual(initialWater);
     });
 });
@@ -370,7 +348,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        // Stock storage with enough construction service
+
         agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 80,
@@ -430,7 +408,6 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        // No construction service in storage
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -544,7 +521,6 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('builder');
 
-        // Two facilities completing in the same tick
         const f1 = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
         f1.id = 'f1';
         f1.name = 'Facility One';
@@ -594,7 +570,6 @@ describe('productionTick — storage facility', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        // Override the default storage facility with one that has a worker requirement
         agent.assets.p.storageFacility = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
@@ -603,7 +578,7 @@ describe('productionTick — storage facility', () => {
         });
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 2; // 2 workers, 1 for storage
+        wf[30].none.novice.active = 2;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -641,14 +616,9 @@ describe('productionTick — storage facility', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        // lastTickResults should not have been updated (still 0 from initialization)
         expect(agent.assets.p.storageFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
     });
 });
-
-// ============================================================================
-// productionTick — management facility participation
-// ============================================================================
 
 describe('productionTick — management facility', () => {
     beforeEach(() => {
@@ -698,7 +668,7 @@ describe('productionTick — management facility', () => {
         const agent = makeAgent('test-company');
 
         const mgmtFacility = makeManagementFacility(
-            { none: 1 }, // needs 1 worker
+            { none: 1 },
             {
                 id: 'mgmt-noworker',
                 scale: 1,
@@ -710,7 +680,6 @@ describe('productionTick — management facility', () => {
         );
 
         agent.assets.p.managementFacilities = [mgmtFacility];
-        // No workers → efficiency = 0
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -755,11 +724,6 @@ describe('productionTick — management facility', () => {
     });
 });
 
-// ============================================================================
-// productionTick — shipyard facility
-// ============================================================================
-
-/** Minimal ship type with 100 steel building cost over 90 ticks. */
 function makeTestShipType(): TransportShipType {
     return {
         name: 'Freighter',
@@ -783,8 +747,6 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const agent = makeAgent('builder');
         const shipType = makeTestShipType();
 
-        // scale=9 → proportionPerTick = sqrt(9)/90 = 3/90 = 1/30
-        // required steel = 900 * (1/30) = 30 per tick at full efficiency
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
 
         agent.assets.p.shipConstructionFacilities = [shipyard];
@@ -796,7 +758,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         agent.assets.p.storageFacility.current.mass = 60 * steelResourceType.massPerQuantity;
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 9; // scale=9 needs 9 effective workers
+        wf[30].secondary.novice.active = 9;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -820,14 +782,13 @@ describe('productionTick — shipyard facility (building mode)', () => {
             resource: steelResourceType,
             quantity: 100,
         };
-        // No workers added
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBe(0);
         expect(shipyard.lastTickResults.lastConsumed[steelResourceType.name]).toBe(0);
-        // Storage must be untouched
+
         const remaining = agent.assets.p.storageFacility.currentInStorage[steelResourceType.name]?.quantity ?? 0;
         expect(remaining).toBe(100);
     });
@@ -867,10 +828,6 @@ describe('productionTick — shipyard facility (building mode)', () => {
     });
 });
 
-// ============================================================================
-// productionTick — shipCompleted ticker events
-// ============================================================================
-
 describe('productionTick — shipCompleted ticker events', () => {
     beforeEach(() => {
         seedRng(12345);
@@ -880,7 +837,6 @@ describe('productionTick — shipCompleted ticker events', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('shipbuilder');
 
-        // Use buildingTime=1 so a single tick at full efficiency completes progress (0 → 1)
         const shipType = {
             type: 'transport' as const,
             name: 'Quick Freighter',
@@ -913,7 +869,7 @@ describe('productionTick — shipCompleted ticker events', () => {
         expect(ev.tick).toBe(10);
         expect(ev.message).toContain('SS Test');
         expect(ev.id).toBeTypeOf('number');
-        // Ship should be in the agent's fleet
+
         expect(agent.ships).toHaveLength(1);
     });
 
@@ -929,7 +885,7 @@ describe('productionTick — shipCompleted ticker events', () => {
             cargoSpecification: { type: 'solid' as const, volume: 1000, mass: 1000 },
             requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
             buildingCost: [],
-            buildingTime: 9000, // takes many ticks
+            buildingTime: 9000,
         };
 
         const shipyard = makeShipConstructionFacility(
@@ -950,10 +906,6 @@ describe('productionTick — shipCompleted ticker events', () => {
     });
 });
 
-// ============================================================================
-// productionTick — XP boost integrative tests
-// ============================================================================
-
 describe('productionTick — XP boost effect on production', () => {
     beforeEach(() => {
         seedRng(12345);
@@ -963,8 +915,6 @@ describe('productionTick — XP boost effect on production', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('xp-company');
 
-        // Facility needs 2 secondary workers at scale 2 → effective demand = 2*2 = 4
-        // Slot capacity = ceil(4 / ageProd(30)≈1.0) = 4 bodies
         const facility = makeProductionFacility({ secondary: 2 }, { scale: 2 });
         facility.id = 'xp-fac';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
@@ -972,12 +922,11 @@ describe('productionTick — XP boost effect on production', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        // Place 1 secondary novice worker (age 30, so ageProd ≈ 1.0)
+
         wf[30].secondary.novice.active = 1;
-        // Grant significant XP → productivityFromXP(40) ≈ 1.95
+
         wf[30].secondary.novice.workforceExperience = 40;
 
-        // Deposit available
         planet.resources[ironOreDepositResourceType.name] = [
             {
                 id: 'd1',
@@ -997,9 +946,6 @@ describe('productionTick — XP boost effect on production', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        // 1 body × 1.0 ageProd × 1.0 skillProd × ~1.95 xpProd ≈ 1.95 effective
-        // Demand = 4 → workerEfficiency ≈ 1.95/4 = 0.4875
-        // Output: 1000 × scale(2) × 0.4875 ≈ 975
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'xp-fac');
         expect(recorded).toBeDefined();
         expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.4875);
@@ -1013,7 +959,6 @@ describe('productionTick — XP boost effect on production', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('no-xp-company');
 
-        // Same setup as above but with no XP
         const facility = makeProductionFacility({ secondary: 2 }, { scale: 2 });
         facility.id = 'no-xp-fac';
         facility.needs = [{ resource: ironOreDepositResourceType, quantity: 1000 }];
@@ -1022,7 +967,6 @@ describe('productionTick — XP boost effect on production', () => {
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
-        // workforceExperience defaults to 0 → productivityFromXP(0) = 1.0
 
         planet.resources[ironOreDepositResourceType.name] = [
             {
@@ -1043,12 +987,10 @@ describe('productionTick — XP boost effect on production', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        // 1 body × 1.0 × 1.0 × 1.0 = 1.0 effective, Demand = 4 → efficiency = 0.25
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'no-xp-fac');
         expect(recorded).toBeDefined();
         expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.25);
 
-        // Output: 1000 × scale(2) × 0.25 = 500
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
         expect(storedIron).toBeGreaterThan(450);
         expect(storedIron).toBeLessThan(550);
@@ -1065,16 +1007,11 @@ describe('productionTick — XP boost effect on production', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        // Two workers at different ages, same edu+skill
-        wf[30].secondary.novice.active = 1;
-        wf[30].secondary.novice.workforceExperience = 0; // XP 0
-        wf[50].secondary.novice.active = 1;
-        wf[50].secondary.novice.workforceExperience = 80; // XP 80
 
-        // avgXP = (0+80)/2 = 40 → xpProd ≈ 1.95
-        // 2 bodies × ageProd(~1.0) × 1.0 × 1.95 ≈ 3.9 effective
-        // Demand = 4 → workerEfficiency ≈ 3.9/4 = 0.975
-        // Output: 1000 × scale(2) × 0.975 = 1950
+        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.novice.workforceExperience = 0;
+        wf[50].secondary.novice.active = 1;
+        wf[50].secondary.novice.workforceExperience = 80;
 
         planet.resources[ironOreDepositResourceType.name] = [
             {
@@ -1097,7 +1034,7 @@ describe('productionTick — XP boost effect on production', () => {
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'mixed-xp-fac');
         expect(recorded).toBeDefined();
-        // 2 workers with high avg XP partially cover the 4-effective demand
+
         expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.975);
 
         const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;

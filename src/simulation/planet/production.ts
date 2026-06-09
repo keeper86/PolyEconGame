@@ -77,8 +77,6 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
     });
 };
 
-// ---- module-level types ----
-
 type EnrichedFacility = {
     facility: Facility;
     resourceEfficiencyMap: Record<string, number>;
@@ -105,7 +103,6 @@ export function consumeConstructionForFacility(
         removeFromStorageFacility(storage, constructionServiceResourceType.name, toConsume);
         cs.progress += toConsume;
 
-        // Track construction service consumption
         const resourceName = constructionServiceResourceType.name;
         const price = tracking.planet.marketPrices[resourceName] ?? 0;
         tracking.planet.consumedResources[resourceName] =
@@ -162,8 +159,6 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
         }
     });
 }
-
-// ---- resource consumption/production helpers ----
 
 function consumeNeeds(params: ProductionParameters | ManagementParameters): Record<string, number> {
     const { facility, storage, overallEfficiency, planet, agent } = params;
@@ -231,15 +226,12 @@ function produceOutputs(params: ProductionParameters): Record<string, number> {
         if (produced > 0) {
             const stored = putIntoStorageFacility(storage, output.resource, produced);
             if (Math.abs(stored / produced - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
-                // produced > 0 already guards division
                 console.warn(`Unexpected: stored ${stored} of ${output.resource.name}, expected ${produced}.`);
             }
         }
     }
     return actualProduced;
 }
-
-// ---- demand and efficiency helpers ----
 
 function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<string, number> {
     const totalStorageDemand = new Map<string, number>();
@@ -314,8 +306,6 @@ function computeResourceEfficiencyMap(
     return resourceEfficiencyMap;
 }
 
-// ---- per-facility tick processors ----
-
 type IntermediateResults = {
     storage: StorageFacility;
     overallEfficiency: number;
@@ -348,7 +338,6 @@ function accumulateTheoreticalCostFloor(
     costAccum: Map<string, number>,
     outputAccum: Map<string, number>,
 ): void {
-    // Input cost per output-unit-equivalent (no scale — it cancels)
     let inputCostPerUnit = 0;
     for (const need of facility.needs) {
         const pricePerUnit =
@@ -357,7 +346,7 @@ function accumulateTheoreticalCostFloor(
                 : (planet.marketPrices[need.resource.name] ?? 0);
         inputCostPerUnit += need.quantity * pricePerUnit;
     }
-    // Wage cost per unit of scale (scale factor cancels with output)
+
     let wageCostPerUnit = 0;
     for (const edu of educationLevelKeys) {
         const req = facility.workerRequirement[edu] ?? 0;
@@ -367,7 +356,6 @@ function accumulateTheoreticalCostFloor(
     }
     const totalCostPerUnit = inputCostPerUnit + wageCostPerUnit;
 
-    // Allocate cost to each output by proportional share (scale-free)
     let totalOutputValue = 0;
     for (const output of facility.produces) {
         totalOutputValue += output.quantity;
@@ -592,8 +580,6 @@ function processStorageFacility(params: StorageParameters): void {
     };
 }
 
-// ---- main tick ----
-
 export function productionTick(gameState: GameState, planet: Planet): void {
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -647,8 +633,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             }
         }
 
-        // All active facilities in one flat array.
-        // Facilities with construction.type === 'expansion' can still produce while expanding.
         const activeFacilities: Array<Facility> = [
             ...assets.productionFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
             ...(assets.storageFacility.construction === null || assets.storageFacility.construction.type === 'expansion'
@@ -673,7 +657,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             );
         }
 
-        // Build one flat list of WorkerSlots across all active facilities.
         const allSlots: WorkerSlot[] = [];
         const effectiveDemandBySlot = new Map<WorkerSlot, number>();
         const totalSlotCapacity: Record<EducationLevelType, number> = {
@@ -690,7 +673,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 const jobEdu = eduLevel as EducationLevelType;
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
                 const fullTarget = req * facility.scale;
-                // Average XP productivity across all skills for this education level
+
                 const xpProdValues = Object.values(xpProdByEduSkill[jobEdu] ?? {});
                 const avgXpProd =
                     xpProdValues.length > 0 ? xpProdValues.reduce((a, b) => a + b, 0) / xpProdValues.length : 1;
@@ -745,7 +728,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             }
         }
 
-        // Flatten the 2D remaining map (edu × skill) into 1D per-education unused counts
         const unusedWorkers = {} as Record<EducationLevelType, number>;
         for (const edu of educationLevelKeys) {
             let sum = 0;
@@ -756,7 +738,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         }
         assets.unusedWorkers = unusedWorkers;
 
-        // Aggregate overqualified workers across all facilities
         const overqualifiedWorkers: {
             [jobEdu in EducationLevelType]?: {
                 [workerEdu in EducationLevelType]?: number;
@@ -779,7 +760,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         depreciateServicesStorage(agent, planet);
 
         for (const { facility, resourceEfficiencyMap } of enrichedFacilities) {
-            // A facility with no worker slots won't appear in byFacility — treat it as fully efficient.
             const workerResults: WaterFillFacilityResult = byFacility.get(facility.id) ?? {
                 workerEfficiency: {},
                 workerEfficiencyOverall: 1,

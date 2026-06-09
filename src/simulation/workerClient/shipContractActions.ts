@@ -48,7 +48,6 @@ export function handlePostTransportContract(
         return;
     }
 
-    // Resolve resource type from the planet's storage catalog
     const storageEntry = assets.storageFacility.currentInStorage[cargo.resource.name];
     if (!storageEntry) {
         safePostMessage({
@@ -69,11 +68,9 @@ export function handlePostTransportContract(
         return;
     }
 
-    // Escrow the reward
     assets.deposits -= offeredReward;
     assets.depositHold += offeredReward;
 
-    // Escrow the cargo so it cannot be sold after posting
     lockIntoEscrow(assets.storageFacility, cargo.resource.name, cargo.quantity);
 
     const contractId = generateId('tc');
@@ -135,7 +132,6 @@ export function handleAcceptTransportContract(
         return;
     }
 
-    // Validate the ship is idle and currently on fromPlanetId
     const ship = carrierAgent.ships.find((s) => s.id === shipId);
     if (!ship) {
         safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: `Ship '${shipId}' not found` });
@@ -164,7 +160,6 @@ export function handleAcceptTransportContract(
 
     const fulfillmentDueAtTick = state.tick + contract.maxDurationInTicks;
 
-    // Mutate contract in-place
     posterAssets.transportContracts[contractIndex] = {
         ...contract,
         status: 'accepted',
@@ -173,7 +168,6 @@ export function handleAcceptTransportContract(
         fulfillmentDueAtTick,
     };
 
-    // Transition ship to loading state; cargo is pulled from the poster's storage
     ship.state = {
         type: 'loading',
         planetId: contract.fromPlanetId,
@@ -223,11 +217,9 @@ export function handleCancelTransportContract(
         return;
     }
 
-    // Release escrowed reward
     assets.depositHold -= contract.offeredReward;
     assets.deposits += contract.offeredReward;
 
-    // Release escrowed cargo
     releaseFromEscrow(assets.storageFacility, contract.cargo.resource.name, contract.cargo.quantity);
 
     assets.transportContracts.splice(contractIndex, 1);
@@ -375,7 +367,6 @@ export function handleAcceptConstructionContract(
         return;
     }
 
-    // Create the facility blueprint for pre-fabrication (starts in 'under construction' state)
     const PLACEHOLDER = 'catalog';
     const facilityEntry = ALL_FACILITY_ENTRIES.find(
         (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === contract.facilityName,
@@ -391,7 +382,7 @@ export function handleAcceptConstructionContract(
 
     const facilityId = generateId('cf');
     const facilityBlueprint = facilityEntry.factory(contract.fromPlanetId, facilityId);
-    // Put it under construction
+
     facilityBlueprint.construction = {
         type: 'new',
         constructionTargetMaxScale: 1,
@@ -470,7 +461,6 @@ export function handlePostShipBuyingOffer(
 ): void {
     const { requestId, agentId, planetId, shipType, price } = action;
 
-    // Validate shipType
     const allShipTypeNames = Object.values(shiptypes).flatMap((category) => Object.keys(category));
     if (!allShipTypeNames.includes(shipType)) {
         safePostMessage({ type: 'shipBuyingOfferPostFailed', requestId, reason: `Unknown ship type '${shipType}'` });
@@ -498,7 +488,6 @@ export function handlePostShipBuyingOffer(
         return;
     }
 
-    // Escrow the price
     assets.deposits -= price;
     assets.depositHold += price;
 
@@ -552,7 +541,6 @@ export function handleAcceptShipBuyingOffer(
         return;
     }
 
-    // Validate the ship is idle
     const shipIndex = sellerAgent.ships.findIndex((s) => s.id === shipId);
     if (shipIndex === -1) {
         safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: `Ship '${shipId}' not found` });
@@ -571,7 +559,7 @@ export function handleAcceptShipBuyingOffer(
         });
         return;
     }
-    // offer.shipType is a ShipTypeKey; resolve to display name for comparison
+
     const shipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
         string,
         { name: string }
@@ -594,7 +582,6 @@ export function handleAcceptShipBuyingOffer(
         return;
     }
 
-    // Resolve seller's assets before mutating state so we can fail cleanly
     const sellerAssets = sellerAgent.assets[planetId] ?? sellerAgent.assets[sellerAgent.associatedPlanetId];
     if (!sellerAssets) {
         safePostMessage({
@@ -605,17 +592,14 @@ export function handleAcceptShipBuyingOffer(
         return;
     }
 
-    // Transfer ship from seller to buyer
     sellerAgent.ships.splice(shipIndex, 1);
     buyerAgent.ships.push(ship);
 
-    // Transfer escrowed payment from buyer's hold to seller's deposits
     buyerAssets.depositHold -= offer.price;
     sellerAssets.deposits += offer.price;
 
     buyerAssets.shipBuyingOffers.splice(offerIndex, 1);
 
-    // Record trade in ship capital market
     const ev = effectiveShipValue(ship, state);
     updateShipEma(state.shipCapitalMarket, ship.type.name, offer.price);
     appendTradeRecord(state.shipCapitalMarket, {
@@ -722,7 +706,6 @@ export function handleCancelShipListing(
         return;
     }
 
-    // Restore ship state to idle
     const ship = agent.ships.find((s) => s.id === listing.shipId);
     if (ship && ship.state.type === 'listed') {
         ship.state = { type: 'idle', planetId };
@@ -761,7 +744,6 @@ export function handleAcceptShipListing(
         return;
     }
 
-    // Find the listing in seller's assets
     let listing: ShipListing | undefined;
     let sellerAssets: (typeof sellerAgent.assets)[string] | undefined;
     for (const [, assets] of Object.entries(sellerAgent.assets)) {
@@ -797,21 +779,16 @@ export function handleAcceptShipListing(
         return;
     }
 
-    // Atomic settlement
-    // Transfer ship
     sellerAgent.ships.splice(shipIndex, 1);
     ship.state = { type: 'idle', planetId: listing.planetId };
     buyerAgent.ships.push(ship);
 
-    // Transfer funds
     buyerAssets.deposits -= listing.askPrice;
     sellerAssets.deposits += listing.askPrice;
 
-    // Remove listing
     const listingIndex = sellerAssets.shipListings.indexOf(listing);
     sellerAssets.shipListings.splice(listingIndex, 1);
 
-    // Record trade
     const ev = effectiveShipValue(ship, state);
     updateShipEma(state.shipCapitalMarket, ship.type.name, listing.askPrice);
     appendTradeRecord(state.shipCapitalMarket, {
@@ -909,7 +886,6 @@ export function handleDispatchShip(
         cargoGoal,
         currentCargo: cargoGoal ? { resource: cargoGoal.resource, quantity: 0 } : null,
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
-        // No contractId or posterAgentId — cargo is loaded from own storage
     };
 
     safePostMessage({ type: 'shipDispatched', requestId, agentId, shipId: ship.id });

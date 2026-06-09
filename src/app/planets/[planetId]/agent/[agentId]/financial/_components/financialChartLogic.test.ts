@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { alignedYDomains } from './financialChartLogic';
 
-/** Zero fraction: position of 0 within [lo, hi], measured from the bottom. */
 function zeroFraction([lo, hi]: [number, number]): number {
     return Math.abs(lo) / (hi - lo);
 }

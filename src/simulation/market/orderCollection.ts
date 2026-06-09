@@ -20,18 +20,15 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
-            // Currency resources are handled by forexTick, not the local market
             if (isCurrencyResource(offer.resource)) {
                 continue;
             }
 
             const free = queryStorageFacility(assets.storageFacility, resourceName);
 
-            // Use the new validation function
             const validatedOffer = validateAndPrepareSellOffer(offer, free);
 
             if (!validatedOffer) {
-                // Update counters for invalid/zero quantity offers
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
                 offer.lastPlacedQty = 0;
@@ -74,7 +71,7 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         if (!hasActiveLicense(assets, 'commercial')) {
             return;
         }
-        // Gather all valid bids and their maximum possible cost.
+
         const pendingBids: {
             resourceName: string;
             qty: number;
@@ -87,7 +84,6 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         let totalRequiredMass = 0;
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
-            // Currency resources are handled by forexTick, not the local market
             if (isCurrencyResource(bid.resource)) {
                 continue;
             }
@@ -103,7 +99,6 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             pendingBids.push({ resourceName, qty, price, maxCost, resource: bid.resource });
             totalMaxCost += maxCost;
 
-            // Calculate volume and mass requirements for storage scaling
             totalRequiredVolume += qty * bid.resource.volumePerQuantity;
             totalRequiredMass += qty * bid.resource.massPerQuantity;
         }
@@ -112,8 +107,6 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             return;
         }
 
-        // ----- STORAGE SCALING -----
-        // Calculate available storage capacity
         const storage = assets.storageFacility;
         const freeVolume = storage.capacity.volume * storage.scale - storage.current.volume;
         const freeMass = storage.capacity.mass * storage.scale - storage.current.mass;
@@ -122,13 +115,10 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         const isMassLimited = totalRequiredMass > freeMass;
         const isStorageLimited = isVolumeLimited || isMassLimited;
 
-        // Compute scale factors for volume and mass
         const volumeScaleFactor = isVolumeLimited ? (freeVolume > 0 ? freeVolume / totalRequiredVolume : 0) : 1;
         const massScaleFactor = isMassLimited ? (freeMass > 0 ? freeMass / totalRequiredMass : 0) : 1;
         const storageScaleFactor = Math.min(volumeScaleFactor, massScaleFactor);
 
-        // ----- DEPOSIT SCALING -----
-        // Scale all bids proportionally if the agent cannot afford the full set.
         const availableDeposits = assets.deposits;
         const isDepositLimited = totalMaxCost > availableDeposits;
         const depositScaleFactor = isDepositLimited
@@ -142,28 +132,21 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         for (const { resourceName, qty, price } of pendingBids) {
             const bid = assets.market.buy[resourceName]!;
 
-            // Apply storage scaling first (physical constraint)
             const storageScaledQty = Math.max(0, qty * storageScaleFactor);
 
-            // Then apply deposit scaling (financial constraint)
-            // Apply a 0.99 safety margin only when deposit-scaling is active to avoid
-            // rounding-induced overspend. Unrestrained bids are placed at full quantity.
             const safeDepositScale = isDepositLimited ? 0.99 * depositScaleFactor : depositScaleFactor;
             let scaledQty = Math.max(0, storageScaledQty * safeDepositScale);
 
-            // Snap quantities smaller than EPSILON to 0 to prevent "quantity too small" warnings
             if (scaledQty > 0 && scaledQty < EPSILON) {
                 scaledQty = 0;
             }
 
-            // Determine warning states
             const isStorageDropped = storageScaledQty <= 0;
             const isStorageScaled = !isStorageDropped && isStorageLimited && storageScaledQty < qty;
             const isDepositDropped = scaledQty <= 0 && !isStorageDropped;
             const isDepositScaled = !isDepositDropped && isDepositLimited && scaledQty < storageScaledQty;
 
             if (scaledQty <= 0) {
-                // Bid dropped entirely — warn human players
                 if (!agent.automated) {
                     if (isStorageDropped) {
                         bid.storageScaleWarning = 'dropped';
@@ -179,7 +162,6 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             const cost = scaledQty * price;
             holdAmount += cost;
 
-            // Record scaling feedback for human players
             if (!agent.automated) {
                 if (isStorageScaled) {
                     bid.storageScaleWarning = 'scaled';

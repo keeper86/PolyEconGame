@@ -17,21 +17,19 @@ export function FinancialTooltip({ active, payload, label, labelFormatter, plane
         return null;
     }
 
-    // If both costOfLiving and costOfLivingRichDiff are present, combine them into one row
     const colEntry = visible.find((e) => e.dataKey === 'costOfLiving');
     const diffEntry = visible.find((e) => e.dataKey === 'costOfLivingRichDiff');
-    const combinedEntry = colEntry && diffEntry
-        ? {
-              color: colEntry.color,
-              name: colEntry.name,
-              low: colEntry.value as number,
-              high: (colEntry.value as number) + (diffEntry.value as number),
-          }
-        : null;
+    const combinedEntry =
+        colEntry && diffEntry
+            ? {
+                  color: colEntry.color,
+                  name: colEntry.name,
+                  low: colEntry.value as number,
+                  high: (colEntry.value as number) + (diffEntry.value as number),
+              }
+            : null;
 
-    const otherEntries = visible.filter(
-        (e) => e.dataKey !== 'costOfLiving' && e.dataKey !== 'costOfLivingRichDiff'
-    );
+    const otherEntries = visible.filter((e) => e.dataKey !== 'costOfLiving' && e.dataKey !== 'costOfLivingRichDiff');
 
     return (
         <div

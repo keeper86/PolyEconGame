@@ -1,9 +1,3 @@
-/**
- * simulation/utils/testHelper.test.ts
- *
- * Smoke tests for centralized test fixture factories.
- */
-
 import { describe, expect, it } from 'vitest';
 import { educationLevelKeys } from '../population/education';
 import { MAX_AGE, OCCUPATIONS, SKILL } from '../population/population';
@@ -32,10 +26,6 @@ import {
 } from './testHelper';
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 
-// ============================================================================
-// Leaf factories
-// ============================================================================
-
 describe('makePopulationCategory', () => {
     it('returns zeroed category', () => {
         const cat = makePopulationCategory();
@@ -62,10 +52,6 @@ describe('makeWorkforceCategory', () => {
     });
 });
 
-// ============================================================================
-// Cohort factories
-// ============================================================================
-
 describe('makePopulationCohort', () => {
     it('has the correct shape: [occ][edu][skill]', () => {
         const cohort = makePopulationCohort();
@@ -91,10 +77,6 @@ describe('makeWorkforceCohort', () => {
     });
 });
 
-// ============================================================================
-// Demography arrays
-// ============================================================================
-
 describe('makePopulationDemography', () => {
     it('has MAX_AGE + 1 entries', () => {
         const dem = makePopulationDemography();
@@ -108,10 +90,6 @@ describe('makeWorkforceDemography', () => {
         expect(dem).toHaveLength(MAX_AGE + 1);
     });
 });
-
-// ============================================================================
-// Population
-// ============================================================================
 
 describe('makePopulation', () => {
     it('creates empty population', () => {
@@ -164,10 +142,6 @@ describe('makePopulationByEducation', () => {
     });
 });
 
-// ============================================================================
-// Planet, Agent, GameState
-// ============================================================================
-
 describe('makePlanet', () => {
     it('creates planet with defaults', () => {
         const planet = makePlanet();
@@ -217,15 +191,11 @@ describe('makeWorld', () => {
             populationByEdu: { none: 1000 },
             companyIds: ['co-1', 'co-2'],
         });
-        expect(gameState.agents.size).toBe(3); // gov + 2 companies
+        expect(gameState.agents.size).toBe(3);
         expect(planet.governmentId).toBe(gov.id);
         expect(agents).toHaveLength(3);
     });
 });
-
-// ============================================================================
-// Counting helpers
-// ============================================================================
 
 describe('totalPopulation', () => {
     it('counts all people across all dimensions', () => {
@@ -251,7 +221,7 @@ describe('sumWorkforceForEdu / sumActiveForEdu', () => {
 
     it('counts active workers', () => {
         const agent = makeAgent();
-        // Put 10 active workers at age 25, edu=none, skill=novice
+
         agent.assets.p.workforceDemography[25].none.novice.active = 10;
         expect(sumActiveForEdu(agent, 'p', 'none')).toBe(10);
         expect(sumWorkforceForEdu(agent, 'p', 'none')).toBe(10);
@@ -264,10 +234,6 @@ describe('sumWorkforceForEdu / sumActiveForEdu', () => {
         expect(sumActiveForEdu(agent, 'p', 'primary')).toBe(0);
     });
 });
-
-// ============================================================================
-// Facilities
-// ============================================================================
 
 describe('makeStorageFacility', () => {
     it('creates empty storage', () => {

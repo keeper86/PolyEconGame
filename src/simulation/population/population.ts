@@ -49,12 +49,6 @@ export type GaussianMoments = {
     variance: number;
 };
 
-/**
- * Merge two Gaussian moment groups using the parallel-axis (pooled-variance) formula.
- *
- *   pooledMean = (nA * mA + nB * mB) / (nA + nB)
- *   pooledVar  = (nA*(vA + (mA−pooledMean)²) + nB*(vB + (mB−pooledMean)²)) / (nA+nB)
- */
 export function mergeGaussianMoments(
     nA: number,
     wA: GaussianMoments,
@@ -96,7 +90,7 @@ export type ServiceState = {
 
 export type PopulationCategory = {
     total: number;
-    // Gaussian moments of per-capita monetary wealth for this category
+
     wealth: GaussianMoments;
 
     services: {
@@ -125,9 +119,6 @@ export type Population = {
     lastTransferMatrix: PopulationTransferMatrix;
 };
 
-// ---------------------------------------------------------------------------
-// Population utilities
-// ---------------------------------------------------------------------------
 export const nullServicesState = () => ({
     grocery: { buffer: 0, starvationLevel: 0 },
     retail: { buffer: 0, starvationLevel: 0 },
@@ -185,7 +176,6 @@ export function forEachServiceState(
 }
 
 export type TransferResult = {
-    /** Number of people actually moved (capped at source total). */
     count: number;
     inheritedWealth: number;
 };
@@ -210,7 +200,6 @@ export const transferPopulation = (
 
     let inheritedWealth = 0;
     if (toCategory && to) {
-        // Zero-sum wealth transfer between cells — householdDeposits unchanged.
         mergeWealthInto(toCategory, fromCategory, transferMaximum);
 
         const toCurrentTotal = toCategory.total;
@@ -220,9 +209,9 @@ export const transferPopulation = (
             const toService = toCategory.services[serviceName];
 
             if (serviceName === 'education' && to.occ !== 'education') {
-                continue; // Education service is only relevant for the 'education' occupation category
+                continue;
             }
-            // Weighted average: each arriving person carries fromService.buffer ticks.
+
             toCategory.services[serviceName] = {
                 buffer:
                     toNewTotal > 0
@@ -240,7 +229,6 @@ export const transferPopulation = (
         fromCategory.total -= transferMaximum;
 
         if (fromCategory.total === 0) {
-            // Reset all service states when category becomes empty
             for (const serviceName of Object.keys(fromCategory.services) as ServiceName[]) {
                 fromCategory.services[serviceName] = {
                     buffer: 0,
@@ -252,13 +240,9 @@ export const transferPopulation = (
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
         population.summedPopulation[to.occ][to.edu][to.skill].total += transferMaximum;
     } else {
-        // Death: decrement source and remove the wealth from this category,
-        // returning the positive wealth available for inheritance redistribution
-        // (handling negative-wealth cases inside destroyWealthOnDeath).
         inheritedWealth = destroyWealthOnDeath(fromCategory, transferMaximum);
         fromCategory.total -= transferMaximum;
         population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
-        // Service buffers of the dead are lost (not transferred to neighbors)
     }
 
     return { count: transferMaximum, inheritedWealth };
@@ -277,7 +261,6 @@ export const reducePopulationCohort = (cohort: Cohort<PopulationCategory>): Popu
 };
 
 export const populationSumFunction = (a: PopulationCategory, b: PopulationCategory): PopulationCategory => {
-    // Merge services: sum buffers and compute weighted average of starvation levels
     const services = { ...a.services };
 
     for (const serviceName of Object.keys(services) as ServiceName[]) {
@@ -286,10 +269,8 @@ export const populationSumFunction = (a: PopulationCategory, b: PopulationCatego
         const totalPeople = a.total + b.total;
 
         if (totalPeople > 0) {
-            // `buffer` is per-capita coverage ticks — use a population-weighted average.
             const weightedBuffer = (serviceA.buffer * a.total + serviceB.buffer * b.total) / totalPeople;
 
-            // Weighted average of starvation levels
             const weightedStarvation =
                 (a.total * serviceA.starvationLevel + b.total * serviceB.starvationLevel) / totalPeople;
 

@@ -12,7 +12,6 @@ interface DependencyGraphProps {
     balanceByName: Record<string, ResourceBalance>;
 }
 
-// x-column for resource nodes, indexed by resource level
 const RESOURCE_LEVEL_COL: Record<string, number> = {
     source: 0,
     raw: 2,
@@ -21,7 +20,6 @@ const RESOURCE_LEVEL_COL: Record<string, number> = {
     services: 8,
 };
 
-// x-column for facility nodes (between their typical input and output level columns)
 const FACILITY_LEVEL_COL: Record<string, number> = {
     raw: 1,
     refined: 3,
@@ -64,7 +62,6 @@ export default function DependencyGraph({ scales, facilities, balanceByName }: D
             return { nodes: [], edges: [] };
         }
 
-        // Collect resources referenced by active facilities
         const activeResourceNames = new Set<string>();
         for (const f of activeFacilities) {
             for (const p of f.produces) {
@@ -75,7 +72,6 @@ export default function DependencyGraph({ scales, facilities, balanceByName }: D
             }
         }
 
-        // Group resources and facilities by their level column
         const resourcesByCol = new Map<number, string[]>();
         for (const name of activeResourceNames) {
             const bal = balanceByName[name];
@@ -107,7 +103,6 @@ export default function DependencyGraph({ scales, facilities, balanceByName }: D
         const nodes: Node[] = [];
         const edges: Edge[] = [];
 
-        // Resource nodes
         for (const [col, names] of resourcesByCol) {
             const x = col * COL_WIDTH;
             names.forEach((name, i) => {
@@ -116,7 +111,6 @@ export default function DependencyGraph({ scales, facilities, balanceByName }: D
                 const balance = bal?.balance ?? 0;
                 const isSource = bal?.isExternalSource ?? false;
 
-                // Balance indicator colour overrides border for non-source nodes
                 const borderColor = isSource
                     ? colors.border
                     : balance < -0.001
@@ -158,7 +152,6 @@ export default function DependencyGraph({ scales, facilities, balanceByName }: D
             });
         }
 
-        // Facility nodes
         for (const [col, facs] of facilitiesByCol) {
             const x = col * COL_WIDTH;
             const colors =
@@ -191,7 +184,6 @@ export default function DependencyGraph({ scales, facilities, balanceByName }: D
             });
         }
 
-        // Edges
         for (const f of activeFacilities) {
             const scale = scales[f.name] ?? 0;
 

@@ -32,7 +32,7 @@ export function formatNumbers(n: number | null | undefined): string {
 
     const leadingWithZero = Math.trunc(currentNumber) === 0;
     const formatted = currentNumber.toPrecision(leadingWithZero ? 2 : 3);
-    // Strip trailing zeros: "1.230" → "1.23", "1.00" → "1", "110." → "110"
+
     return (
         formatted
             .replace(/(\.\d*?[1-9])0+$/u, '$1')
@@ -41,7 +41,6 @@ export function formatNumbers(n: number | null | undefined): string {
     );
 }
 
-/** Format a cargo quantity with the appropriate unit suffix based on resource form. */
 export function formatCargoQty(n: number, form: string): string {
     const s = formatNumbers(n);
     return form === 'liquid' ? `${s}ℓ` : `${s}t`;

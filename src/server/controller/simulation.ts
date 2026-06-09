@@ -87,7 +87,6 @@ const planetSummarySchema = z.object({
 
 export type PlanetSummary = z.infer<typeof planetSummarySchema>;
 
-/** Latest snapshot for every planet (one row per planet). */
 export const getLatestPlanetSummaries = () =>
     protectedProcedure
         .input(z.void())
@@ -115,7 +114,6 @@ export const getLatestPlanetSummaries = () =>
             };
         });
 
-/** Latest snapshot for every agent (one row per agent). */
 export const getLatestAgents = () =>
     protectedProcedure
         .input(z.void())
@@ -166,7 +164,7 @@ export const getAgentListSummaries = () =>
                         name: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
-                        /** Balance normalised into the requested planet's local currency. */
+
                         normalizedBalance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),
@@ -181,8 +179,6 @@ export const getAgentListSummaries = () =>
         .query(async ({ input }) => {
             const { tick, agents } = await workerQueries.getAllAgents();
 
-            // If a planetId is given, fetch the planet's avgMarketResult to
-            // build a forex rate lookup: currency resource name → clearing price.
             let forexRates: Record<string, number> | undefined;
             if (input.planetId) {
                 const { planet } = await workerQueries.getPlanet(input.planetId);
@@ -209,10 +205,6 @@ export const getAgentListSummaries = () =>
             };
         });
 
-/**
- * Full agent detail for a single agent (by ID).
- * Used on the /agents/[agentId] detail page.
- */
 export const getAgentDetail = () =>
     protectedProcedure
         .input(
@@ -263,10 +255,6 @@ export const getAgentDetail = () =>
             };
         });
 
-/**
- * Agent overview: top-level stats + per-planet summaries.
- * Used on the /agents/[agentId] page to show planet cards.
- */
 export const getAgentOverview = () =>
     protectedProcedure
         .input(z.object({ agentId: z.string() }))
@@ -330,12 +318,6 @@ export const getAgentOverview = () =>
             };
         });
 
-/**
- * Full planet detail for a single planet (by ID).
- * Used on the /planets/[planetId] detail page.
- * Returns the full planet snapshot plus pre-computed aggregates for
- * wealth distribution, food buffers, and demographics.
- */
 export const getPlanetDetail = () =>
     protectedProcedure
         .input(
@@ -374,10 +356,7 @@ const agentPlanetDetail = z.object({
     allPlanetDeposits: z.record(z.string(), z.number()),
 });
 export type AgentPlanetDetail = z.infer<typeof agentPlanetDetail>;
-/**
- * Full per-planet assets for one agent on one planet.
- * Used on the /agents/[agentId]/[planetId] detail page.
- */
+
 export const getAgentPlanetDetail = () =>
     protectedProcedure
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
@@ -419,11 +398,6 @@ export const getAgentPlanetDetail = () =>
             };
         });
 
-/**
- * Population history time-series for a single planet.
- * Queries the appropriate continuous aggregate view (monthly / yearly / decade).
- * Returns buckets ordered ascending, ready for chart consumption.
- */
 export const getPlanetPopulationHistory = () =>
     protectedProcedure
         .input(
@@ -459,11 +433,6 @@ export const getPlanetPopulationHistory = () =>
             };
         });
 
-/**
- * Product price history time-series for a single product on a single planet.
- * Queries the appropriate continuous aggregate view (monthly / yearly / decade)
- * and returns buckets ordered ascending, ready for chart consumption.
- */
 export const getProductPriceHistory = () =>
     protectedProcedure
         .input(
@@ -679,10 +648,6 @@ export const getAgentFinancials = () =>
             return { deposits, monthlyNetCashFlow };
         });
 
-/**
- * Return the credit conditions the planet bank would offer the requesting
- * agent right now.  Read-only — does not modify any state.
- */
 export const getLoanConditions = () =>
     protectedProcedure
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
@@ -732,11 +697,6 @@ export const getTickerEvents = () =>
             return { tickerEvents: filtered };
         });
 
-// ---------------------------------------------------------------------------
-// Trade Route Scanner — dev-only endpoint used by the supply-chain analyser.
-// Replicates the arbitrageur's scan logic against live planet order books.
-// ---------------------------------------------------------------------------
-
 const ALL_TRANSPORT_SHIP_TYPES = [
     ...Object.values(shiptypes.solid),
     ...Object.values(shiptypes.liquid),
@@ -777,7 +737,6 @@ function computeArbitrageRoutesForShip(
     const { cargoSpecification } = shipType;
 
     for (const resource of ALL_RESOURCES) {
-        // Skip resource types this ship can't carry
         const form = resource.form;
         if (form === 'services' || form === 'landBoundResource' || form === 'currency') {
             continue;

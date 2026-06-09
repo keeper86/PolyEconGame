@@ -1,14 +1,3 @@
-/**
- * workforce/workforceDemographicTick.test.ts
- *
- * Tests for the workforce demographic event system:
- * - Voluntary quits
- * - Deaths / disabilities for active workers and departing pipelines
- * - Retirement for active workers and all departing pipelines
- * - WorkforceEventAccumulator creation and aggregation
- * - Per-agent demographic event counter updates
- */
-
 import { describe, expect, it, beforeEach } from 'vitest';
 
 import { NOTICE_PERIOD_MONTHS } from '../constants';
@@ -23,11 +12,6 @@ import {
 } from './workforceDemographicTick';
 import { agentMap, makeAgent, makeEnvironment, makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Sum all workers (active + all departing) for a given edu. */
 function totalWorkforce(agent: Agent, planetId: string, edu: EducationLevelType): number {
     const wf = agent.assets[planetId]?.workforceDemography;
     if (!wf) {
@@ -46,15 +30,11 @@ function totalWorkforce(agent: Agent, planetId: string, edu: EducationLevelType)
     return total;
 }
 
-// ---------------------------------------------------------------------------
-// createWorkforceEventAccumulator
-// ---------------------------------------------------------------------------
-
 describe('createWorkforceEventAccumulator', () => {
     it('creates an accumulator with default length (MAX_AGE + 1)', () => {
         const acc = createWorkforceEventAccumulator();
         expect(acc.length).toBeGreaterThan(0);
-        // Every cell should have zero counts
+
         for (const cohort of acc) {
             for (const edu of educationLevelKeys) {
                 for (const skill of SKILL) {
@@ -70,10 +50,6 @@ describe('createWorkforceEventAccumulator', () => {
         expect(acc.length).toBe(10);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Voluntary quits
-// ---------------------------------------------------------------------------
 
 describe('workforceDemographicTick — voluntary quits', () => {
     let agent: Agent;
@@ -105,7 +81,6 @@ describe('workforceDemographicTick — voluntary quits', () => {
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        // floor(1 * 0.0003) = 0, so no voluntary quits
         expect(wf[30].none.novice.active).toBeLessThanOrEqual(1);
     });
 
@@ -118,15 +93,10 @@ describe('workforceDemographicTick — voluntary quits', () => {
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        // Both should have some quitters
         expect(wf[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
         expect(wf[40].primary.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Mortality and disability
-// ---------------------------------------------------------------------------
 
 describe('workforceDemographicTick — mortality and disability', () => {
     let agent: Agent;
@@ -211,7 +181,6 @@ describe('workforceDemographicTick — mortality and disability', () => {
         ]);
         const acc = workforceDemographicTick(agents, planet);
 
-        // Combined deaths should be more than from a single agent
         expect(acc[70].none.novice.deaths).toBeGreaterThan(0);
     });
 
@@ -240,10 +209,6 @@ describe('workforceDemographicTick — mortality and disability', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Retirement
-// ---------------------------------------------------------------------------
-
 describe('workforceDemographicTick — retirement', () => {
     let agent: Agent;
     let planet: Planet;
@@ -260,12 +225,9 @@ describe('workforceDemographicTick — retirement', () => {
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        // Some workers should have moved to departingRetired
         const retired = wf[RETIREMENT_AGE].none.novice.departingRetired[NOTICE_PERIOD_MONTHS - 1];
         expect(retired).toBeGreaterThan(0);
 
-        // departingRetired is an independent pipeline — retired active workers
-        // should NOT be in voluntaryDeparting (only voluntary quits go there)
         const activeAfter = wf[RETIREMENT_AGE].none.novice.active;
         expect(activeAfter).toBeLessThan(100000);
     });
@@ -287,9 +249,8 @@ describe('workforceDemographicTick — retirement', () => {
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        // Some should have been tagged as departingRetired
         expect(wf[75].none.novice.departingRetired[1]).toBeGreaterThan(0);
-        // And removed from voluntaryDeparting
+
         expect(wf[75].none.novice.voluntaryDeparting[1]).toBeLessThan(100000);
     });
 
@@ -300,9 +261,8 @@ describe('workforceDemographicTick — retirement', () => {
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        // Some should have been moved to departingRetired
         expect(wf[75].none.novice.departingRetired[1]).toBeGreaterThan(0);
-        // And removed from departingFired
+
         expect(wf[75].none.novice.departingFired[1]).toBeLessThan(100000);
     });
 
@@ -327,10 +287,6 @@ describe('workforceDemographicTick — retirement', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Workforce conservation (deaths/disabilities remove from workforce, not from population)
-// ---------------------------------------------------------------------------
-
 describe('workforceDemographicTick — conservation', () => {
     it('total workforce decreases only by deaths and disabilities', () => {
         const agent = makeAgent();
@@ -351,8 +307,6 @@ describe('workforceDemographicTick — conservation', () => {
         const totalDeaths = acc[70].none.novice.deaths;
         const totalDisabilities = acc[70].none.novice.disabilities;
 
-        // Workforce should decrease exactly by deaths + disabilities
-        // (retirement is a pipeline shift, not a removal)
         expect(before - after).toBe(totalDeaths + totalDisabilities);
     });
 
@@ -371,7 +325,6 @@ describe('workforceDemographicTick — conservation', () => {
         const deathsAndDisabilities =
             acc[RETIREMENT_AGE].none.novice.deaths + acc[RETIREMENT_AGE].none.novice.disabilities;
 
-        // Workforce should only decrease by deaths + disabilities, not by retirements
         expect(before - after).toBe(deathsAndDisabilities);
     });
 
@@ -383,7 +336,7 @@ describe('workforceDemographicTick — conservation', () => {
             }),
         });
         const wf = agent.assets.p.workforceDemography!;
-        // Spread workers across many ages
+
         for (let age = 20; age <= 80; age++) {
             wf[age].none.novice.active = 1000;
             planet.population.demography[age].employed.none.novice.total = 1000;
@@ -398,10 +351,6 @@ describe('workforceDemographicTick — conservation', () => {
         expect(after).toBeLessThanOrEqual(before);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Edge cases
-// ---------------------------------------------------------------------------
 
 describe('workforceDemographicTick — edge cases', () => {
     it('skips agents without workforceDemography', () => {
@@ -418,7 +367,6 @@ describe('workforceDemographicTick — edge cases', () => {
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
-        // Should return an empty accumulator
         expect(acc).toBeDefined();
         expect(acc.length).toBeGreaterThan(0);
     });
@@ -433,7 +381,6 @@ describe('workforceDemographicTick — edge cases', () => {
         });
         const wf = agent.assets.p.workforceDemography!;
 
-        // Place workers at various ages and pipelines
         wf[30].none.novice.active = 500;
         wf[30].none.novice.voluntaryDeparting[1] = 200;
         wf[30].none.novice.departingFired[0] = 100;

@@ -78,7 +78,6 @@ export default function ProductResolutionPanel({
     planetId,
     agentId,
 }: Props): React.ReactElement {
-    // Merge all product names from both current and last month accumulators
     const allNames = new Set<string>();
     for (const acc of [monthAcc, lastMonthAcc]) {
         for (const name of Object.keys(acc.boughtResources)) {
@@ -104,7 +103,6 @@ export default function ProductResolutionPanel({
 
     const sortedNames = Array.from(allNames).sort();
 
-    // Build entries: [name, currentEntry, lastEntry] for each KPI
     const boughtEntries: [string, { quantity: number; value: number }, { quantity: number; value: number }][] = [];
     const soldEntries: [string, { quantity: number; value: number }, { quantity: number; value: number }][] = [];
     const depreciatedEntries: [string, { quantity: number; value: number }, { quantity: number; value: number }][] = [];

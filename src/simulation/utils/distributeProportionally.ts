@@ -1,7 +1,3 @@
-/**
- * Distribute `total` items across `weights` proportionally to `weights`,
- * using Hamilton's largest-remainder method to ensure sum === total.
- */
 export function distributeProportionally(total: number, weights: number[]): number[] {
     const sum = weights.reduce((a, b) => a + b, 0);
     if (sum === 0) {
@@ -17,7 +13,7 @@ export function distributeProportionally(total: number, weights: number[]): numb
         if (b.frac !== a.frac) {
             return b.frac - a.frac;
         }
-        return a.i - b.i; // deterministic tie-breaker by index ascending
+        return a.i - b.i;
     });
 
     for (let j = 0; j < remainder; j++) {

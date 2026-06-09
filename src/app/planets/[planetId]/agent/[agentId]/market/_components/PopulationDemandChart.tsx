@@ -21,11 +21,11 @@ type Props = {
 function fillRatioColor(fillRatio: number): string {
     if (fillRatio >= 0.99) {
         return '#22c55e';
-    } // green (fully filled)
+    }
     if (fillRatio >= 0.01) {
         return '#f59e0b';
-    } // amber (partial)
-    return '#94a3b8'; // slate (unfilled)
+    }
+    return '#94a3b8';
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payload: PopulationBidEntry }[] }) {
@@ -62,12 +62,11 @@ export default function PopulationDemandChart({ bids }: Props) {
         return <div className='text-xs text-muted-foreground py-4'>No population demand this tick.</div>;
     }
 
-    // Sort by ascending priceMid so bars go left-to-right (lowest price first)
     const data = [...bids]
         .sort((a, b) => a.priceMid - b.priceMid)
         .map((b) => ({
             ...b,
-            // recharts needs a string key for categorical X axis; use formatted price mid
+
             name: formatNumberWithUnit(b.priceMid, 'currency'),
             displayQuantity: b.demandedQuantity,
         }));

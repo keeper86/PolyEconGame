@@ -1,9 +1,3 @@
-/**
- * utils/stochasticRound.test.ts
- *
- * Tests for the stochastic rounding utility and its PRNG.
- */
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { stochasticRound, seedRng, nextRandom } from './stochasticRound';
 
@@ -67,13 +61,13 @@ describe('stochasticRound', () => {
             sum += stochasticRound(x);
         }
         const mean = sum / N;
-        // Within 1% of the expected value
+
         expect(mean).toBeCloseTo(x, 1);
     });
 
     it('correctly handles small fractional values (the core use-case)', () => {
         seedRng(42);
-        const x = 0.3; // e.g. births per tick on a small planet
+        const x = 0.3;
         const N = 100_000;
         let ones = 0;
         for (let i = 0; i < N; i++) {
@@ -83,7 +77,7 @@ describe('stochasticRound', () => {
                 ones++;
             }
         }
-        // Should be ≈ 30% ones
+
         expect(ones / N).toBeCloseTo(0.3, 1);
     });
 

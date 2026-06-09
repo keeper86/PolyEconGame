@@ -57,7 +57,6 @@ export function handleLeaseClaim(
     }
     const claimId = `${planetId}-${resourceName}-${agentId}`;
 
-    // If the agent already has an active claim for this resource, expand it instead of creating a duplicate.
     const existingClaim = planet.resources[resourceName].find((e) => e.id === claimId && e.tenantAgentId === agentId);
     if (existingClaim) {
         const ratio = quantity / pool.maximumCapacity;
@@ -165,9 +164,6 @@ export function handleQuitClaim(
     safePostMessage({ type: 'claimQuit', requestId, agentId, claimId });
 }
 
-/**
- * Dispatch resource-related actions to the appropriate handler
- */
 export function handleResourceAction(
     state: GameState,
     action: PendingAction,

@@ -13,10 +13,6 @@ import { marketTick } from './market';
 import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers } from './orderCollection';
 
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
 const COAL = coalResourceType.name;
 const MACHINERY = machineryResourceType.name;
 
@@ -55,10 +51,6 @@ function makeBuyerWithDeposits(
     };
     return agent;
 }
-
-// ---------------------------------------------------------------------------
-// Escrow: seller goods are locked at offer time
-// ---------------------------------------------------------------------------
 
 describe('market escrow — seller-side', () => {
     let planet: Planet;
@@ -151,10 +143,6 @@ describe('market escrow — seller-side', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Escrow: deposit hold prevents over-commitment across multiple bids
-// ---------------------------------------------------------------------------
-
 describe('market escrow — buyer-side deposit hold', () => {
     let planet: Planet;
 
@@ -177,8 +165,6 @@ describe('market escrow — buyer-side deposit hold', () => {
 
         collectAgentBids(agentMap(agent), planet);
 
-        // The 0.99 safeguard is applied when deposit-limited to prevent rounding overspend.
-        // Hold must not exceed available deposits; conservation of deposits + hold must hold.
         expect(agent.assets.p.depositHold).toBeLessThanOrEqual(50);
         expect(agent.assets.p.deposits + agent.assets.p.depositHold).toBeCloseTo(50, 6);
     });
@@ -223,10 +209,6 @@ describe('market escrow — buyer-side deposit hold', () => {
         expect(totalAfter).toBeCloseTo(totalBefore, 6);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Equal-share: small orders are not starved by large orders
-// ---------------------------------------------------------------------------
 
 describe('clearUnifiedBids — starvation prevention', () => {
     it('a 1-unit seller is not starved by a 1-billion-unit seller at the same price', () => {
@@ -307,9 +289,6 @@ describe('clearUnifiedBids — starvation prevention', () => {
         const hugeBuyer = makeAgent('huge');
         const tinyBuyer = makeAgent('tiny');
 
-        // Supply=10, huge wants 1000, tiny wants 3 → equal share = 5 each.
-        // tiny absorbs 3 (< 5), huge absorbs 5.  Remainder = 10-3-5 = 2 goes to huge.
-        // Final: tiny=3, huge=7.
         const ask = {
             agent: seller,
             resource: coalResourceType,

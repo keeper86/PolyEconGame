@@ -15,7 +15,6 @@ export function handleCreateAgent(
     newAgent.automateWorkerAllocation = false;
     newAgent.foundedTick = state.tick;
 
-    // Grant both licenses on the home planet at no cost
     const homeAssets = newAgent.assets[planetId];
     if (homeAssets) {
         homeAssets.licenses = {
@@ -44,9 +43,6 @@ export function handleCreateAgent(
     safePostMessage({ type: 'agentCreated', requestId, agentId });
 }
 
-/**
- * Handle 'setAutomation' action
- */
 export function handleSetAutomation(
     state: GameState,
     action: Extract<PendingAction, { type: 'setAutomation' }>,
@@ -65,9 +61,6 @@ export function handleSetAutomation(
     safePostMessage({ type: 'automationSet', requestId, agentId });
 }
 
-/**
- * Handle 'setWorkerAllocationTargets' action
- */
 export function handleSetWorkerAllocationTargets(
     state: GameState,
     action: Extract<PendingAction, { type: 'setWorkerAllocationTargets' }>,
@@ -88,7 +81,7 @@ export function handleSetWorkerAllocationTargets(
         });
         return;
     }
-    // Merge provided targets into allocatedWorkers (missing levels stay unchanged)
+
     for (const [edu, count] of Object.entries(targets)) {
         if (typeof count === 'number' && count >= 0) {
             (assets.allocatedWorkers as Record<string, number>)[edu] = count;

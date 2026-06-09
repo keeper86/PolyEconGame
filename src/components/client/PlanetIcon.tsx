@@ -6,7 +6,6 @@ import { getAssetPath } from '@/lib/assetManifest';
 export function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: number }) {
     const src = getAssetPath(planetId);
 
-    // Special handling for AC_ID (Alpha Centauri)
     if (planetId === AC_ID) {
         return (
             <span
@@ -18,7 +17,6 @@ export function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: n
         );
     }
 
-    // Check if we got the question mark (asset not found)
     if (src === '/images/products/question_mark.webp') {
         return <Globe width={size} height={size} />;
     }

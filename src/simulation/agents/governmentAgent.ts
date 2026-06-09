@@ -13,7 +13,6 @@ export const governmentTick = (planet: Planet, agent: Agent) => {
         return;
     }
 
-    // Collect all unableToWork cohort cells that have population.
     const cells: PopulationCategory[] = [];
     for (let age = 0; age <= MAX_AGE; age++) {
         const ageCohort = planet.population.demography[age];
@@ -35,11 +34,8 @@ export const governmentTick = (planet: Planet, agent: Agent) => {
         return;
     }
 
-    // Sort ascending by wealth mean so the water-fill works poorest-first.
     cells.sort((a, b) => a.wealth.mean - b.wealth.mean);
 
-    // --- Water-fill equilibrium ---
-    // Find level T such that the budget exactly raises all cells below T up to T.
     let remainingBudget = assets.deposits;
     let cumulativePop = 0;
     let T = cells[cells.length - 1].wealth.mean;
@@ -50,7 +46,6 @@ export const governmentTick = (planet: Planet, agent: Agent) => {
         const nextLevel = i + 1 < cells.length ? cells[i + 1].wealth.mean : Infinity;
 
         if (nextLevel === Infinity) {
-            // Last distinct level: distribute remainder flat.
             T = currentLevel + remainingBudget / cumulativePop;
             break;
         }
@@ -64,10 +59,8 @@ export const governmentTick = (planet: Planet, agent: Agent) => {
         }
 
         remainingBudget -= cost;
-        // All cells 0..i are now conceptually at nextLevel; continue to next step.
     }
 
-    // Apply transfers to all cells below T.
     let totalDistributed = 0;
     for (const cat of cells) {
         if (cat.wealth.mean < T) {
@@ -77,7 +70,6 @@ export const governmentTick = (planet: Planet, agent: Agent) => {
         }
     }
 
-    // Keep bank householdDeposits in sync with the new household wealth.
     planet.bank.householdDeposits += totalDistributed;
     assets.deposits -= totalDistributed;
 };

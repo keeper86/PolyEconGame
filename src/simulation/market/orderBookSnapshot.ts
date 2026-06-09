@@ -11,7 +11,6 @@ export function buildPlanetOrderBook(
     const allResources = new Set<string>([...askBooks.keys(), ...agentBidBooks.keys()]);
 
     for (const resourceName of allResources) {
-        // --- Asks (sell side): aggregate remaining qty per price level, sort ascending ---
         const askMap = new Map<number, number>();
         for (const order of askBooks.get(resourceName) ?? []) {
             const remaining = order.quantity - order.filled;
@@ -24,7 +23,6 @@ export function buildPlanetOrderBook(
             .map(([price, quantity]) => ({ price, quantity }))
             .sort((a, b) => a.price - b.price);
 
-        // --- Bids (buy side): aggregate remaining qty per price level, sort descending ---
         const bidMap = new Map<number, number>();
         for (const order of agentBidBooks.get(resourceName) ?? []) {
             const remaining = order.quantity - order.filled;

@@ -16,11 +16,7 @@ import { OCCUPATIONS } from '@/simulation/population/population';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 type ChartRow = Record<string, number>;
-
-// ─── Tooltip factory ─────────────────────────────────────────────────────────
 
 function makeTooltip(keys: readonly string[], labels: Record<string, string>, colors: Record<string, string>) {
     return function TooltipContent({
@@ -65,8 +61,6 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
     };
 }
 
-// ─── mergePairs (condense adjacent age rows on very small screens) ─────────────
-
 function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
     const result: ChartRow[] = [];
     for (let i = 0; i < rows.length; i += 2) {
@@ -93,14 +87,10 @@ function mergePairs(rows: ChartRow[], rowKeys: readonly string[]): ChartRow[] {
     return result;
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 type Props = {
     rows: AggRow[];
     groupMode: GroupMode;
 };
-
-// ─── Empty placeholder ────────────────────────────────────────────────────────
 
 function EmptyChart({ height = 180 }: { height?: number }) {
     return (
@@ -112,8 +102,6 @@ function EmptyChart({ height = 180 }: { height?: number }) {
         </div>
     );
 }
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function WealthDistributionChart({ rows, groupMode }: Props): React.ReactElement {
     const isVerySmall = useIsSmallScreen();

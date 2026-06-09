@@ -6,26 +6,15 @@ import type {
     ProductPriceHistory,
 } from '../types/db_schemas';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export type GameSnapshotRow = GameSnapshots;
 
 export interface InsertGameSnapshot {
     tick: number;
-    /** Optional game id for multi-game setups. Defaults to 1. */
+
     game_id?: number;
     snapshot_data: Buffer;
 }
 
-// ---------------------------------------------------------------------------
-// Write
-// ---------------------------------------------------------------------------
-
-/**
- * Insert a new cold snapshot row.
- */
 export async function insertGameSnapshot(db: Knex, snapshot: InsertGameSnapshot): Promise<void> {
     await db('game_snapshots').insert({
         tick: String(snapshot.tick),
@@ -51,11 +40,9 @@ export async function pruneGameSnapshots(db: Knex, keepCount: number): Promise<n
         return 0;
     }
 
-    // Get the tick of the Nth most recent snapshot
     const rows = await db('game_snapshots').orderBy('tick', 'desc').limit(keepCount).select('tick');
 
     if (rows.length < keepCount) {
-        // Fewer snapshots than keepCount — nothing to prune.
         return 0;
     }
 
@@ -65,20 +52,12 @@ export async function pruneGameSnapshots(db: Knex, keepCount: number): Promise<n
     return deleted;
 }
 
-// ---------------------------------------------------------------------------
-// Planet population history
-// ---------------------------------------------------------------------------
-
 export interface InsertPlanetPopulation {
     tick: number;
     planet_id: string;
     population: number;
 }
 
-/**
- * Insert one population-history row per planet for a given tick.
- * Uses a single multi-row insert for efficiency.
- */
 export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanetPopulation[]): Promise<void> {
     if (rows.length === 0) {
         return;
@@ -92,11 +71,7 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
     );
 }
 
-/**
- * Get the most recent population row for every planet (latest tick).
- */
 export async function getLatestPlanetPopulations(db: Knex) {
-    // Use a DISTINCT ON query to efficiently fetch the latest row per planet.
     return db
         .raw(
             `SELECT DISTINCT ON (planet_id) *
@@ -105,10 +80,6 @@ export async function getLatestPlanetPopulations(db: Knex) {
         )
         .then((res: { rows: PlanetPopulationHistory[] }) => res.rows);
 }
-
-// ---------------------------------------------------------------------------
-// Agent monthly history
-// ---------------------------------------------------------------------------
 
 export type AgentMonthlyHistoryRow = AgentMonthlyHistory;
 
@@ -128,10 +99,6 @@ export interface InsertAgentMonthlyHistory {
     claim_payments: number;
 }
 
-/**
- * Insert agent monthly history rows.
- * Records per-agent metrics at month boundaries (every 30 ticks).
- */
 export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonthlyHistory[]): Promise<void> {
     if (rows.length === 0) {
         return;
@@ -155,14 +122,10 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
     );
 }
 
-/**
- * Get the most recent monthly history row for every agent on a planet (latest tick).
- */
 export async function getLatestAgentMonthlyHistoryByPlanet(
     db: Knex,
     planetId: string,
 ): Promise<AgentMonthlyHistoryRow[]> {
-    // Use a DISTINCT ON query to efficiently fetch the latest row per agent
     return db
         .raw(
             `SELECT DISTINCT ON (agent_id) *
@@ -204,7 +167,7 @@ export async function insertProductPriceHistory(db: Knex, rows: InsertProductPri
 export type HistoryGranularity = 'monthly' | 'yearly' | 'decade';
 
 export interface ProductPriceBucket {
-    bucket: string; // tick bucket start, as string
+    bucket: string;
     planet_id: string;
     product_name: string;
     avg_price: number;
@@ -263,9 +226,6 @@ export interface PopulationBucket {
     avg_population: number;
 }
 
-/**
- * Query planet population history from the appropriate continuous aggregate.
- */
 export async function getPlanetPopulationHistoryAggregated(
     db: Knex,
     planetId: string,
@@ -307,9 +267,6 @@ export interface AgentFinancialBucket {
     sum_claim_payments: number;
 }
 
-/**
- * Query agent history from the appropriate continuous aggregate.
- */
 export async function getAgentHistoryAggregated(
     db: Knex,
     agentId: string,
@@ -369,10 +326,6 @@ export async function getAgentFinancialHistoryAggregated(
         );
 }
 
-// ---------------------------------------------------------------------------
-// Planet economy history
-// ---------------------------------------------------------------------------
-
 export interface InsertPlanetEconomy {
     tick: number;
     planet_id: string;
@@ -403,9 +356,6 @@ export interface PlanetEconomyBucket {
     avg_money_supply: number;
 }
 
-/**
- * Insert one economy-history row per planet for a given tick.
- */
 export async function insertPlanetEconomyHistory(db: Knex, rows: InsertPlanetEconomy[]): Promise<void> {
     if (rows.length === 0) {
         return;
@@ -428,9 +378,6 @@ export async function insertPlanetEconomyHistory(db: Knex, rows: InsertPlanetEco
     );
 }
 
-/**
- * Query planet economy history from the appropriate continuous aggregate.
- */
 export async function getPlanetEconomyHistoryAggregated(
     db: Knex,
     planetId: string,

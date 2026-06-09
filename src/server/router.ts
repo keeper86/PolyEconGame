@@ -102,7 +102,6 @@ const simulationRouter = trpcRoot.router({
     getAgentClaims: getAgentClaims(),
     getTickerEvents: getTickerEvents(),
     getArbitrageForResources: getArbitrageForResources(),
-    // historical endpoints removed
 });
 
 const protectedAppRouter = trpcRoot.router({

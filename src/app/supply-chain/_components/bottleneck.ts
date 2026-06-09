@@ -1,13 +1,3 @@
-/**
- * First-order bottleneck detection for the supply-chain tool.
- *
- * For each population-demanded service, identifies which direct inputs are
- * most limiting the service's ability to meet demand.
- *
- * "First-order" means we look at the direct inputs of the service-producing
- * facilities only, not at their upstream inputs recursively.
- */
-
 import { getServiceDefinitionByResourceName } from '@/simulation/market/serviceDefinitions';
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import {
@@ -20,15 +10,13 @@ import {
 } from '@/simulation/planet/services';
 import type { SupplyChainBalance } from './computeBalance';
 
-// ─── Public types ─────────────────────────────────────────────────────────────
-
 export interface LimitingInput {
     resourceName: string;
-    /** How much of this input is required per tick by all service-producing facilities at current scale. */
+
     requiredPerTick: number;
-    /** How much of this input is available (produced) per tick. External sources report Infinity. */
+
     availablePerTick: number;
-    /** availablePerTick / requiredPerTick — lower is more limiting. */
+
     coverageRatio: number;
 }
 
@@ -36,13 +24,11 @@ export interface BottleneckReport {
     serviceResource: string;
     supplyPerTick: number;
     demandPerTick: number;
-    /** supplyPerTick / demandPerTick — lower is more constrained. */
+
     coverageRatio: number;
-    /** Direct inputs sorted worst-first (ascending coverageRatio). */
+
     limitingInputs: LimitingInput[];
 }
-
-// ─── Demanded services ────────────────────────────────────────────────────────
 
 const DEMANDED_SERVICES = [
     groceryServiceResourceType,
@@ -56,14 +42,11 @@ const DEMANDED_SERVICES = [
 const TOOL_PLANET = 'tool';
 const TOOL_ID = 'preview';
 
-// ─── Main function ────────────────────────────────────────────────────────────
-
 export function computeBottlenecks(
     balance: SupplyChainBalance,
     scales: Record<string, number>,
     population: number,
 ): BottleneckReport[] {
-    // Build a lookup from resource name → ResourceBalance for quick access
     const balanceByName = new Map(balance.resources.map((r) => [r.resourceName, r]));
 
     const reports: BottleneckReport[] = [];
@@ -71,7 +54,7 @@ export function computeBottlenecks(
     for (const svc of DEMANDED_SERVICES) {
         const svcDef = getServiceDefinitionByResourceName(svc.name);
         const demandPerTick = population * (svcDef?.consumptionRatePerPersonPerTick ?? 0);
-        // ── Collect all facilities that produce this service ──────────────────
+
         type ServiceProducer = { facilityName: string; outputQuantity: number; scale: number };
         const producers: ServiceProducer[] = [];
 
@@ -85,12 +68,10 @@ export function computeBottlenecks(
             }
         }
 
-        // ── Total supply/tick at current scales ───────────────────────────────
         const supplyPerTick = producers.reduce((sum, p) => sum + p.outputQuantity * p.scale, 0);
         const coverageRatio = demandPerTick > 0 ? supplyPerTick / demandPerTick : 1;
 
-        // ── Aggregate direct input requirements across all producers ──────────
-        const inputRequired = new Map<string, number>(); // resource name → total required/tick
+        const inputRequired = new Map<string, number>();
         const inputIsExternal = new Set<string>();
 
         for (const entry of ALL_FACILITY_ENTRIES) {
@@ -100,7 +81,6 @@ export function computeBottlenecks(
                 continue;
             }
 
-            // Only look at facilities that produce this service
             const producesService = f.produces.some((p) => p.resource.name === svc.name);
             if (!producesService) {
                 continue;
@@ -116,7 +96,6 @@ export function computeBottlenecks(
             }
         }
 
-        // ── Compute limiting inputs ────────────────────────────────────────────
         const limitingInputs: LimitingInput[] = [];
 
         for (const [resourceName, requiredPerTick] of inputRequired) {
@@ -139,7 +118,6 @@ export function computeBottlenecks(
             });
         }
 
-        // Sort: most limiting (lowest ratio) first; external sources (Infinity) last
         limitingInputs.sort((a, b) => a.coverageRatio - b.coverageRatio);
 
         reports.push({
@@ -151,7 +129,6 @@ export function computeBottlenecks(
         });
     }
 
-    // Sort: most under-supplied services first
     reports.sort((a, b) => a.coverageRatio - b.coverageRatio);
 
     return reports;

@@ -22,9 +22,9 @@ export function forexMarketMakerPricing(gameState: GameState): void {
     }
 }
 function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void {
-    const TARGET = FOREX_MM_TARGET_DEPOSIT; // 10_000_000
-    const SPREAD = FOREX_MM_BASE_SPREAD; // 0.03
-    const MIN_FOREIGN = 1e-6; // prevents division by zero
+    const TARGET = FOREX_MM_TARGET_DEPOSIT;
+    const SPREAD = FOREX_MM_BASE_SPREAD;
+    const MIN_FOREIGN = 1e-6;
 
     for (const tradingPlanet of planets) {
         const tradingAssets = mm.assets[tradingPlanet.id];
@@ -50,29 +50,19 @@ function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void 
             const localBalance = tradingAssets.deposits;
             const foreignBalance = foreignAssets.deposits;
 
-            // ---- constant-product mid-price ----
-            // price = DEFAULT * (localBalance / foreignBalance)
-            // With identical targets, anchoring is automatic.
             let fairMid: number;
             if (foreignBalance <= 0) {
-                // No foreign currency left – price “infinite” (set to ceiling)
                 fairMid = PRICE_CEIL;
             } else {
                 fairMid = DEFAULT_EXCHANGE_RATE * (localBalance / Math.max(foreignBalance, MIN_FOREIGN));
                 fairMid = Math.max(FOREX_PRICE_FLOOR, Math.min(PRICE_CEIL, fairMid));
             }
 
-            // Ask price: sell foreign
             const askPrice = Math.min(PRICE_CEIL, fairMid * (1 + SPREAD));
 
-            // Bid price: buy foreign (must be < askPrice)
             const rawBid = fairMid * (1 - SPREAD);
             const bidPrice = Math.max(FOREX_PRICE_FLOOR, Math.min(askPrice * 0.999, rawBid));
 
-            // ---- Ask order ----
-            // Only offer if we actually possess foreign currency.
-            // Cap per-tick sell volume to 1/10 of holdings (min FOREX_MM_MIN_TRADE_AMOUNT)
-            // to prevent a single large buyer from draining the MM and manipulating the price.
             if (foreignBalance > 0) {
                 if (!tradingAssets.market.sell[curName]) {
                     tradingAssets.market.sell[curName] = { resource: curResource };
@@ -83,14 +73,9 @@ function priceMM(mm: Agent, planets: Planet[], numTradingPlanets: number): void 
                 const offerQty = Math.max(FOREX_MM_MIN_TRADE_AMOUNT, foreignBalance * FOREX_MM_MAX_TRADE_FRACTION);
                 offer.offerRetainment = Math.max(0, foreignBalance - offerQty);
             } else {
-                // Remove any stale ask
                 delete tradingAssets.market.sell[curName];
             }
 
-            // ---- Bid order ----
-            // Split desired purchase amount across trading planets.
-            // Cap per-tick buy volume to 1/10 of the desired target (min FOREX_MM_MIN_TRADE_AMOUNT)
-            // so that the MM cannot accumulate currency at an unbounded rate per tick.
             const deficit = Math.max(0, TARGET - foreignBalance);
             const splitTarget = foreignBalance + deficit / numTradingPlanets;
             const maxBidQty = Math.max(FOREX_MM_MIN_TRADE_AMOUNT, splitTarget * FOREX_MM_MAX_TRADE_FRACTION);

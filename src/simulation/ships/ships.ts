@@ -61,15 +61,14 @@ export type PassengerShipType = BaseShipType & {
 export type TransportShipType = BaseShipType & {
     type: 'transport';
     cargoSpecification: {
-        type: TransportableResourceType; // type of resource this ship can carry
-        volume: number; // in cubic meters
-        mass: number; // in tons
+        type: TransportableResourceType;
+        volume: number;
+        mass: number;
     };
 };
 
 export type ShipType = ConstructionShipType | TransportShipType | PassengerShipType;
 
-// ship status types
 export type ShipStatusIdle = {
     type: 'idle';
     planetId: string;
@@ -109,7 +108,7 @@ export type TransportShipStatusLoading = BaseShipStatusLoading & {
 export type ConstructionShipStatusLoading = BaseShipStatusLoading & {
     type: 'pre-fabrication';
     buildingTarget: Facility | null;
-    progress: number; // if buildingTarget is not null, this should be filled up to 1 over time
+    progress: number;
 };
 
 export type PassengerShipStatusLoading = BaseShipStatusLoading & {
@@ -132,9 +131,9 @@ export type PassengerShipStatusProvisioning = BaseShipStatusLoading &
     };
 
 export type BaseShipStatusTransporting = {
-    from: string; // planet id
-    to: string; // planet id
-    arrivalTick: number; // tick when the ship will arrive at destination
+    from: string;
+    to: string;
+    arrivalTick: number;
     contractId?: string;
     posterAgentId?: string;
 };
@@ -173,7 +172,7 @@ export type TransportShipStatusUnloading = BaseShipStatusUnloading & {
 export type ConstructionShipStatusUnloading = BaseShipStatusUnloading & {
     type: 'reconstruction';
     buildingTarget: Facility;
-    progress: number; // should decrease from 1 to 0 over time
+    progress: number;
 };
 
 export type TransportShipStatus =
@@ -207,10 +206,10 @@ export type BaseShip = {
     id: string;
     name: string;
     builtAtTick: number;
-    idleAtTick?: number; // tick at which the ship last became idle; undefined for legacy deserialized ships
-    maintainanceStatus: number; // 0..1, degrades over time and with use, can be restored by consuming maintenance services up to maxMaintenance
-    maxMaintenance: number; // degrades after each full repair cycle, when it reaches 0 the ship becomes derelict
-    cumulativeRepairAcc: number; // accumulates repair consumed; triggers maxMaintenance degradation when >= 1
+    idleAtTick?: number;
+    maintainanceStatus: number;
+    maxMaintenance: number;
+    cumulativeRepairAcc: number;
 };
 
 export type TransportShip = BaseShip & {
@@ -220,15 +219,15 @@ export type TransportShip = BaseShip & {
 
 export type ConstructionShip = BaseShip & {
     type: ConstructionShipType;
-    state: ConstructionShipStatus; // uses same status types as transport ships for simplicity, but only idle, loading (construction), unloading (deconstruction) and derelict are relevant
+    state: ConstructionShipStatus;
 };
 
 export type ConstructionContractBase = {
     id: string;
     fromPlanetId: string;
     toPlanetId: string;
-    facilityName: string; // name matching a FacilityFactory (used for display / validation)
-    commissioningAgentId: string; // agent who will receive the completed facility
+    facilityName: string;
+    commissioningAgentId: string;
     offeredReward: number;
     postedByAgentId: string;
     expiresAtTick: number;
@@ -247,10 +246,6 @@ export type PassengerShip = BaseShip & {
 };
 
 export type Ship = TransportShip | ConstructionShip | PassengerShip;
-
-// ---------------------------------------------------------------------------
-// Transport pipeline helpers
-// ---------------------------------------------------------------------------
 
 function addPipelineEntry(planets: Map<string, Planet>, toPlanetId: string, cargo: ResourceQuantity): void {
     const planet = planets.get(toPlanetId);
@@ -548,11 +543,6 @@ export type ShipCapitalMarket = {
     emaPrice: Record<string, number>;
 };
 
-/**
- * Returns true if the given transport ship can carry the given resource.
- * Solid/liquid/gas/pieces resources are matched against the ship's cargo spec type.
- * Services, land-bound resources, and currencies cannot be transported.
- */
 export function canCarryResource(ship: Ship, resource: Resource): boolean {
     if (ship.type.type !== 'transport') {
         return false;

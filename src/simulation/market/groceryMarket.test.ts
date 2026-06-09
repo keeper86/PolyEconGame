@@ -19,10 +19,6 @@ import { marketTick } from './market';
 const groceryDef = SERVICE_DEFINITIONS.grocery;
 const retailDef = SERVICE_DEFINITIONS.retail;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const GROCERY_SERVICE = groceryDef.resource.name;
 const RETAIL_SERVICE = retailDef.resource.name;
 
@@ -32,7 +28,7 @@ function makeGameState(planet: Planet, ...agents: Agent[]): GameState {
 
 function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
     const agent = makeAgent(id);
-    // Add a grocery service-producing facility
+
     agent.assets.p.productionFacilities = [
         {
             planetId: 'p',
@@ -66,7 +62,6 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
     return agent;
 }
 
-/** Give all unoccupied/none/novice population cells some wealth. */
 function giveHouseholdsWealth(planet: Planet, wealthPerPerson: number): number {
     const demography = planet.population.demography;
     let totalPop = 0;
@@ -82,7 +77,6 @@ function giveHouseholdsWealth(planet: Planet, wealthPerPerson: number): number {
     return totalPop;
 }
 
-/** Helper: set a food offer on an agent for the agricultural product resource. */
 function setGroceryOffer(agent: Agent, offerPrice: number, lastSold?: number): void {
     agent.assets.p.market = {
         sell: {
@@ -97,10 +91,6 @@ function setGroceryOffer(agent: Agent, offerPrice: number, lastSold?: number): v
     };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe('groceryMarketTick', () => {
     let planet: Planet;
     let groceryAgent: Agent;
@@ -112,26 +102,21 @@ describe('groceryMarketTick', () => {
 
     it('runs without error on fresh planet', () => {
         marketTick(agentMap(groceryAgent), planet);
-        // After running, marketPrices may or may not be set depending on offers
-        // The key assertion is that it doesn't throw
     });
 
     it('collects per-agent ask orders from storage and sells food', () => {
-        // Put food in the food agent's storage
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 500);
-        // Set up agent pricing (bootstrap)
+
         automaticPricing(agentMap(groceryAgent), planet);
 
-        // Give households wealth so they can buy
         const totalPop = giveHouseholdsWealth(planet, 100);
         planet.bank.householdDeposits = totalPop * 100;
         planet.bank.deposits = totalPop * 100;
 
         marketTick(agentMap(groceryAgent), planet);
 
-        // Food agent should have recorded lastSold
         expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.lastSold).toBeDefined();
-        // Storage should be reduced (food was sold)
+
         const remaining = groceryAgent.assets.p.storageFacility.currentInStorage[GROCERY_SERVICE]?.quantity ?? 0;
         expect(remaining).toBeLessThan(500);
     });
@@ -139,31 +124,25 @@ describe('groceryMarketTick', () => {
     it('households with wealth purchase food from the market', () => {
         const totalPop = giveHouseholdsWealth(planet, 100);
 
-        // Provide household deposits
         planet.bank.householdDeposits = totalPop * 100;
         planet.bank.deposits = totalPop * 100;
 
-        // Put food in the food agent's storage and set pricing
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 10000);
         automaticPricing(agentMap(groceryAgent), planet);
 
         marketTick(agentMap(groceryAgent), planet);
 
-        // Household deposits should have decreased (spent on food)
         expect(planet.bank.householdDeposits).toBeLessThan(totalPop * 100);
     });
 
     it('does not target more than the buffer target per person', () => {
-        // set up scenario with one person and no initial food stock
         const pop = giveHouseholdsWealth(planet, 1000);
         planet.bank.householdDeposits = pop * 1000;
         planet.bank.deposits = pop * 1000;
 
-        // Put huge amount of food in the market to ensure supply is unconstrained
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1e6);
         automaticPricing(agentMap(groceryAgent), planet);
 
-        // zero out existing food buffer explicitly (should already be zero)
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
                 cat.services.grocery.buffer = 0;
@@ -172,22 +151,16 @@ describe('groceryMarketTick', () => {
 
         marketTick(agentMap(groceryAgent), planet);
 
-        // after tick, avg buffer per person should equal the single buffer target
         const expected = groceryDef.bufferTargetTicks;
-        // Population lives at ages 14–64 (MIN_EMPLOYABLE_AGE upwards); age 0 is empty.
+
         const cat = planet.population.demography[14].unoccupied.none.novice;
-        expect(cat.total).toBeGreaterThan(0); // sanity: cell is populated
+        expect(cat.total).toBeGreaterThan(0);
         expect(cat.services.grocery.buffer).toBeCloseTo(expected, 5);
     });
 
     it('price-priority: highest-bid cohort buys before lower-bid cohort', () => {
-        // Two wealth levels: rich and poor cohorts
-        // Rich (age 14, novice): wealth = 200 → high reservation price
-        // Poor (age 20, novice): wealth = 1 → low reservation price
-        // Supply is severely constrained so only the rich can be served
         const demography = planet.population.demography;
 
-        // Clear all population wealth first
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
                 cat.wealth = { mean: 0, variance: 0 };
@@ -198,14 +171,12 @@ describe('groceryMarketTick', () => {
         const richCat = demography[14].unoccupied.none.novice;
         const poorCat = demography[20].unoccupied.none.novice;
 
-        // Both need food (buffer target not met)
         richCat.wealth = { mean: 200, variance: 0 };
         poorCat.wealth = { mean: 1, variance: 0 };
 
         planet.bank.householdDeposits = richCat.total * 200 + poorCat.total * 1;
         planet.bank.deposits = planet.bank.householdDeposits;
 
-        // Supply: only enough for the rich cohort (small supply)
         const supplyQty = groceryDef.bufferTargetTicks * richCat.total * 0.5;
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, supplyQty);
         setGroceryOffer(groceryAgent, 0.5);
@@ -215,17 +186,14 @@ describe('groceryMarketTick', () => {
 
         marketTick(agentMap(groceryAgent), planet);
 
-        // Rich cohort should have received food (higher bid wins priority)
         expect(richCat.services.grocery.buffer).toBeGreaterThan(richFoodBefore);
-        // Poor cohort may receive nothing (shortage → price priority excludes them)
-        // At least rich received at least as much as poor
+
         expect(richCat.services.grocery.buffer - richFoodBefore).toBeGreaterThanOrEqual(
             poorCat.services.grocery.buffer - poorFoodBefore,
         );
     });
 
     it('ask-price priority: cheapest agent sells first', () => {
-        // Create two food agents with different prices
         const cheapAgent = makeAgentWithGroceryServiceFacility('cheap');
         const expensiveAgent = makeAgentWithGroceryServiceFacility('expensive');
 
@@ -235,29 +203,24 @@ describe('groceryMarketTick', () => {
         setGroceryOffer(cheapAgent, 1.0);
         setGroceryOffer(expensiveAgent, 5.0);
 
-        // Households need bid prices ≥ cheap ask (1.0).
-        // bidPrice = wealth / desiredPerPerson = wealth / groceryDef.bufferTargetTicks
-        // Use wealth = 150 → bidPrice = 150/90 ≈ 1.67 → can afford cheap (ask=1.0) but not expensive (ask=5.0)
         const totalPop = giveHouseholdsWealth(planet, 150);
         planet.bank.householdDeposits = totalPop * 150;
         planet.bank.deposits = totalPop * 150;
 
         marketTick(agentMap(cheapAgent, expensiveAgent), planet);
 
-        // Cheap agent should have sold some food (bid ≥ cheap ask)
         expect(cheapAgent.assets.p.market?.sell[GROCERY_SERVICE]?.lastSold).toBeGreaterThan(0);
-        // Cheap agent sells more than (or at least as much as) expensive agent
+
         const cheapSold = cheapAgent.assets.p.market?.sell[GROCERY_SERVICE]?.lastSold ?? 0;
         const expensiveSold = expensiveAgent.assets.p.market?.sell[GROCERY_SERVICE]?.lastSold ?? 0;
         expect(cheapSold).toBeGreaterThanOrEqual(expensiveSold);
     });
 
     it('bid below ask price → no trade occurs', () => {
-        // Agent asks very high; households cannot afford
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 500);
         setGroceryOffer(groceryAgent, 1_000_000);
 
-        const totalPop = giveHouseholdsWealth(planet, 0.001); // tiny wealth
+        const totalPop = giveHouseholdsWealth(planet, 0.001);
         planet.bank.householdDeposits = totalPop * 0.001;
         planet.bank.deposits = totalPop * 0.001;
 
@@ -265,9 +228,8 @@ describe('groceryMarketTick', () => {
 
         marketTick(agentMap(groceryAgent), planet);
 
-        // No food should have been sold — bid prices are all below the ask
         expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.lastSold ?? 0).toBe(0);
-        // Household deposits unchanged
+
         expect(planet.bank.householdDeposits).toBeCloseTo(depositsBefore, 6);
     });
 
@@ -277,14 +239,12 @@ describe('groceryMarketTick', () => {
         groceryAgent.assets[planet.id].deposits = 0;
         automaticPricing(agentMap(groceryAgent), planet);
 
-        // Give households wealth
         const totalPop = giveHouseholdsWealth(planet, 100);
         planet.bank.householdDeposits = totalPop * 100;
         planet.bank.deposits = totalPop * 100;
 
         marketTick(agentMap(groceryAgent), planet);
 
-        // Food agent should have received revenue
         expect(groceryAgent.assets.p.deposits).toBeGreaterThan(0);
     });
 
@@ -305,7 +265,6 @@ describe('groceryMarketTick', () => {
         const householdDelta = householdBefore - planet.bank.householdDeposits;
         const agentDelta = groceryAgent.assets.p.deposits - agentBefore;
 
-        // Money transferred out of households equals money credited to agents
         expect(agentDelta).toBeCloseTo(householdDelta, 6);
     });
 
@@ -326,9 +285,6 @@ describe('groceryMarketTick', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1000);
         setGroceryOffer(groceryAgent, 2.5);
 
-        // Household bid price = marketPrices[grocery] * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY (1.25).
-        // Seed a reference price above the ask so willingPrice (5.0 * 1.25 = 6.25) ≥ ask (2.5) and trades clear.
-        // After clearing at ask=2.5 the market price should be updated from 5.0 → 2.5.
         planet.marketPrices[GROCERY_SERVICE] = 5.0;
 
         const totalPop = giveHouseholdsWealth(planet, 300);
@@ -337,7 +293,6 @@ describe('groceryMarketTick', () => {
 
         marketTick(agentMap(groceryAgent), planet);
 
-        // Price should reflect the agent's ask price (2.5)
         expect(planet.marketPrices[GROCERY_SERVICE]).toBeCloseTo(2.5, 1);
     });
 
@@ -359,13 +314,12 @@ describe('groceryMarketTick', () => {
         expect(result!.totalSupply).toBe(500);
         expect(result!.unfilledDemand).toBeGreaterThanOrEqual(0);
         expect(result!.unsoldSupply).toBeGreaterThanOrEqual(0);
-        // Volume ≤ min(demand, supply)
+
         expect(result!.totalVolume).toBeLessThanOrEqual(result!.totalDemand + 1e-9);
         expect(result!.totalVolume).toBeLessThanOrEqual(result!.totalSupply + 1e-9);
     });
 
     it('lastMarketResult.unfilledDemand is positive when supply is scarce', () => {
-        // Tiny supply relative to population demand
         const tinySupply = 0.001;
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, tinySupply);
         setGroceryOffer(groceryAgent, 1.0);
@@ -380,11 +334,10 @@ describe('groceryMarketTick', () => {
     });
 
     it('lastMarketResult.unsoldSupply is positive when demand is insufficient', () => {
-        // Massive supply, households have almost no wealth → little demand
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1e6);
         setGroceryOffer(groceryAgent, 1.0);
 
-        const totalPop = giveHouseholdsWealth(planet, 0.00001); // near-zero wealth
+        const totalPop = giveHouseholdsWealth(planet, 0.00001);
         planet.bank.householdDeposits = totalPop * 0.00001;
         planet.bank.deposits = totalPop * 0.00001;
 
@@ -413,13 +366,11 @@ describe('updateAgentPricing', () => {
         expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.offerPrice).toBe(
             planet.marketPrices[GROCERY_SERVICE],
         );
-        // With retainment 0, effective quantity should be 100
-        // The actual quantity is calculated from retainment, not stored
     });
 
     it('lowers price when excess supply (produced > sold)', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 100);
-        setGroceryOffer(groceryAgent, 2.0, 20); // only 20% sold → price too high
+        setGroceryOffer(groceryAgent, 2.0, 20);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
@@ -428,7 +379,7 @@ describe('updateAgentPricing', () => {
 
     it('raises price when excess demand (produced < sold)', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 0);
-        setGroceryOffer(groceryAgent, 1.0, 50); // sold more than produced (from buffer)
+        setGroceryOffer(groceryAgent, 1.0, 50);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
@@ -446,12 +397,11 @@ describe('updateAgentPricing', () => {
 
     it('does not raise price when agent has nothing to offer and last sold is from a prior tick', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 0);
-        // Simulate: previously sold 1550 units, but current stock is empty → supply-constrained
+
         setGroceryOffer(groceryAgent, 0.73, 1550);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
-        // supply = 0 → treated as full shortage → price rises by PRICE_ADJUST_MAX_UP
         expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(
             0.73 * PRICE_ADJUST_MAX_UP,
         );
@@ -463,27 +413,13 @@ describe('updateAgentPricing', () => {
 
         automaticPricing(agentMap(groceryAgent), planet);
 
-        // stock=0, sold=0 → supply-constrained with no prior sales → price unchanged
         expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(2.0);
     });
 });
 
-// ---------------------------------------------------------------------------
-// Food-scarcity suppression of discretionary demand
-// ---------------------------------------------------------------------------
-
 describe('sequential settlement: food is settled before discretionary goods', () => {
-    // Under the budget-constrained sequential model, buildPopulationDemand
-    // allocates wealth in householdDemandPriority order.  Grocery is always
-    // first, so a cohort that spends all remaining wealth on groceries has
-    // nothing left for downstream services like retail.
-    //
-    // Wealth calibration: all service prices are set to SERVICE_PRICE = 0.01
-    // so that no single intermediate service (healthcare, logistics, admin)
-    // consumes the full budget before retail is reached.
-    // WEALTH_PER_PERSON = 2.0 gives enough headroom to buy all services.
     const WEALTH_PER_PERSON = 200.0;
-    const SERVICE_PRICE = 0.01; // = GROCERY_PRICE_FLOOR
+    const SERVICE_PRICE = 0.01;
 
     function makeRetailServiceAgent(id = 'retail-agent'): Agent {
         const agent = makeAgent(id);
@@ -521,7 +457,6 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         let total = 0;
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
-                // buffer is in ticks; convert to units: buffer * consumptionRatePerPersonPerTick * population
                 total += cat.services.retail.buffer * retailDef.consumptionRatePerPersonPerTick * cat.total;
             }),
         );
@@ -556,9 +491,6 @@ describe('sequential settlement: food is settled before discretionary goods', ()
     }
 
     it('empty grocery buffer + food available → grocery spending reduces retail budget', () => {
-        // Verify that grocery is settled (wealth debited) before retail bids are
-        // generated by checking that total household wealth is lower when both
-        // grocery and retail are available vs. only retail.
         const planet = setupPlanet(0);
         const planetRetailOnly = setupPlanet(0);
 
@@ -583,7 +515,6 @@ describe('sequential settlement: food is settled before discretionary goods', ()
             return w;
         };
 
-        // Grocery purchase drains more total wealth than retail purchase alone
         expect(totalWealth(planet)).toBeLessThan(totalWealth(planetRetailOnly));
     });
 
@@ -595,7 +526,6 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         marketTick(agentMap(makeRetailServiceAgent('r1')), planetWithFullFood);
         marketTick(agentMap(makeRetailServiceAgent('r2')), planetWithNoFood);
 
-        // No grocery to buy → no wealth debited → retail demand should still be non-zero
         expect(totalRetailServiceBought(planetWithNoFood)).toBeGreaterThan(0);
         expect(totalRetailServiceBought(planetWithFullFood)).toBeGreaterThan(0);
     });

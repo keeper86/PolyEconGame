@@ -9,8 +9,6 @@ import { rejectAllPending } from './pendingRequests';
 
 export type MessageHandler = (msg: OutboundMessage) => void;
 
-// globalThis-backed singletons prevent duplicate pools when Turbopack
-// re-evaluates this module in development.
 const GLOBAL_KEY_POOL = Symbol.for('__polyecon_worker_pool__');
 const GLOBAL_KEY_PORT = Symbol.for('__polyecon_worker_port__');
 const GLOBAL_KEY_HANDLERS = Symbol.for('__polyecon_message_handlers__');
@@ -44,8 +42,6 @@ function getMessageHandlers(): Set<MessageHandler> {
     return g[GLOBAL_KEY_HANDLERS];
 }
 
-// Walks up from cwd to find tsx in node_modules, because Next.js/Turbopack
-// shims require() in a way that makes require.resolve() unreliable.
 function resolveTsxExecArgv(): string[] | undefined {
     const tsxCandidates = ['tsx/dist/cjs/index.cjs', 'tsx/dist/cjs/index.js', 'tsx/cjs'];
 
@@ -108,8 +104,6 @@ function createPool(): { pool: Piscina; port: MessagePort } {
         }
     }
 
-    // Piscina owns parentPort for its task protocol, so we use a dedicated
-    // MessageChannel for all custom communication with the worker.
     const { port1, port2 } = new MessageChannel();
 
     const tickIntervalMs = process.env.TICK_INTERVAL_MS ? parseInt(process.env.TICK_INTERVAL_MS, 10) : 0;
@@ -143,7 +137,7 @@ function createPool(): { pool: Piscina; port: MessagePort } {
                     stack: err instanceof Error ? err.stack : undefined,
                 });
             } catch (_e) {
-                // swallow logging failures
+                // do nothing
             }
         }
     });

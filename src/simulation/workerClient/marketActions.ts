@@ -4,9 +4,6 @@ import { PRICE_FLOOR } from '../constants';
 import { ALL_RESOURCES } from '../planet/resourceCatalog';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '../market/currencyResources';
 
-/**
- * Handle 'setSellOffers' action
- */
 export function handleSetSellOffers(
     state: GameState,
     action: Extract<PendingAction, { type: 'setSellOffers' }>,
@@ -67,9 +64,6 @@ export function handleSetSellOffers(
     safePostMessage({ type: 'sellOffersSet', requestId, agentId });
 }
 
-/**
- * Handle 'cancelSellOffer' action
- */
 export function handleCancelSellOffer(
     state: GameState,
     action: Extract<PendingAction, { type: 'cancelSellOffer' }>,
@@ -97,9 +91,6 @@ export function handleCancelSellOffer(
     safePostMessage({ type: 'sellOfferCancelled', requestId, agentId });
 }
 
-/**
- * Handle 'cancelBuyBid' action
- */
 export function handleCancelBuyBid(
     state: GameState,
     action: Extract<PendingAction, { type: 'cancelBuyBid' }>,
@@ -133,9 +124,6 @@ export function handleCancelBuyBid(
     safePostMessage({ type: 'buyBidCancelled', requestId, agentId });
 }
 
-/**
- * Handle 'setBuyBids' action
- */
 export function handleSetBuyBids(
     state: GameState,
     action: Extract<PendingAction, { type: 'setBuyBids' }>,
@@ -171,7 +159,6 @@ export function handleSetBuyBids(
                 }
             }
             if (!resource) {
-                // Fall back to the global resource catalog for free-trading bids
                 resource = ALL_RESOURCES.find((r) => r.name === resourceName) ?? null;
             }
             if (!resource && resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
@@ -197,9 +184,6 @@ export function handleSetBuyBids(
     safePostMessage({ type: 'buyBidsSet', requestId, agentId });
 }
 
-/**
- * Dispatch market-related actions to the appropriate handler
- */
 export function handleMarketAction(
     state: GameState,
     action: PendingAction,
@@ -219,7 +203,6 @@ export function handleMarketAction(
             handleSetBuyBids(state, action, safePostMessage);
             break;
         default:
-            // This function only handles market actions
             break;
     }
 }

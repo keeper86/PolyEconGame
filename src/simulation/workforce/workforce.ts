@@ -13,10 +13,10 @@ import { distributeProportionally } from '../utils/distributeProportionally';
 
 export type WorkforceCategory = {
     active: number;
-    voluntaryDeparting: number[]; // voluntary departing workers
-    departingFired: number[]; // fired departing workers
-    departingRetired: number[]; // retired departing workers
-    workforceExperience: number; // accumulated XP of workers in this category
+    voluntaryDeparting: number[];
+    departingFired: number[];
+    departingRetired: number[];
+    workforceExperience: number;
 };
 
 export const totalDeparting = (category: WorkforceCategory): number =>
@@ -102,11 +102,6 @@ export const forEachWorkforceCohort = (
     }
 };
 
-/**
- * Remove XP proportionally when workers permanently leave a category.
- * Computes the fraction n / totalWorkersBefore of the XP pool before removal,
- * and subtracts that amount. Call this BEFORE decrementing the worker counts.
- */
 export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): void {
     if (totalWorkersBefore <= 0 || n <= 0) {
         return;
@@ -124,22 +119,17 @@ export function subtractProportionalXP(category: WorkforceCategory, n: number, t
     category.workforceExperience -= fraction * category.workforceExperience;
 }
 
-/**
- * Compute total workers across all sub-pools in a category (active + all pipeline slots).
- */
 export const totalWorkersInCategory = (category: WorkforceCategory): number =>
     category.active + totalDeparting(category);
 
 export const productivityFromXP = (xp: number): number => {
-    //f(x)=A*(1-(1-Y)**(x/T))+1
-    const A = 1; // max productivity increase (at infinite XP)
-    const Y = 0.95; // productivity at T XP (relative to baseline)
-    const T = 40; // XP at which productivity is near full
+    const A = 1;
+    const Y = 0.95;
+    const T = 40;
     return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
 };
 
 export const minimumWage = (planet: Planet, age: number, edu: EducationLevelType, skill: Skill): number => {
-    // Base minimum wage by education level
     const baseWageByEdu: Record<EducationLevelType, number> = {
         none: 10,
         primary: 15,
@@ -147,14 +137,12 @@ export const minimumWage = (planet: Planet, age: number, edu: EducationLevelType
         tertiary: 40,
     };
 
-    // Skill multiplier
     const skillMultiplier: Record<Skill, number> = {
         novice: 0.8,
         professional: 1.0,
         expert: 1.2,
     };
 
-    // Age multiplier (e.g., younger workers might have a lower minimum wage)
     let ageMultiplier = 1.0;
     if (age < 25) {
         ageMultiplier = 0.9;
@@ -204,7 +192,6 @@ export function hireFromPopulation(
         buckets.map((b) => b.avail),
     );
 
-    // Apply moves and collect per-age hire counts
     const hiredByAge: {
         [S in Skill]: number;
     }[] = new Array(demography.length).fill(0).map(() => ({
