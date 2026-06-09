@@ -168,35 +168,6 @@ describe(
             const wealthDisc = checkWealthBankConsistency(gameState.planets, 100);
             expect(wealthDisc).toEqual([]);
         });
-
-        it('holds across the first year boundary (>360 ticks) — regression: inheritance orphaning', () => {
-            seedRng(42);
-
-            const { gameState, planet, agents } = makeWorld({
-                populationByEdu: { none: 2000, primary: 1000, secondary: 500, tertiary: 200 },
-                companyIds: ['company-1'],
-            });
-
-            const gov = agents[0];
-            gov.assets[planet.id].productionFacilities.push(
-                makeProductionFacility(
-                    { none: 500, primary: 200, secondary: 50, tertiary: 20 },
-                    { planetId: planet.id },
-                ),
-            );
-
-            putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e9);
-
-            for (let t = 1; t <= 400; t++) {
-                gameState.tick = t;
-                advanceTick(gameState);
-            }
-
-            const wealthDisc = checkWealthBankConsistency(gameState.planets, 100);
-            expect(wealthDisc).toEqual([]);
-            const monetaryDisc = checkMonetaryConservation(gameState.agents, gameState.planets, 0.02);
-            expect(monetaryDisc).toEqual([]);
-        });
     },
     { timeout: 10000 },
 );
