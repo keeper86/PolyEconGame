@@ -196,7 +196,8 @@ export function PlanetMacroChart({
         }
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-            const xMin = sorted.length > 0 ? tickToDate(sorted[0].bucket).year + 1 : 0;
+            const displayData = sorted.slice(-11);
+            const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year + 1 : 0;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,

@@ -30,6 +30,7 @@ type ChartPoint = {
     label?: string;
     costOfLiving: number | null;
     costOfLivingRich: number | null;
+    costOfLivingRichDiff: number | null;
     wageEdu0: number | null;
     wageEdu1: number | null;
     wageEdu2: number | null;
@@ -37,6 +38,7 @@ type ChartPoint = {
     /** Ghost-prefixed fields for last-year comparison */
     ghostCostOfLiving?: number | null;
     ghostCostOfLivingRich?: number | null;
+    ghostCostOfLivingRichDiff?: number | null;
     ghostWageEdu0?: number | null;
     ghostWageEdu1?: number | null;
     ghostWageEdu2?: number | null;
@@ -53,12 +55,14 @@ function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): Cha
     function toCP(p: CostOfLivingPoint, idx: number, ghost: boolean): ChartPoint {
         const base = ghost ? null : p.avgCostOfLiving;
         const baseRich = ghost ? null : p.avgCostOfLivingRich;
+        const diff = ghost ? null : p.avgCostOfLivingRich - p.avgCostOfLiving;
         const w0 = ghost ? null : p.avgWageEdu0;
         const w1 = ghost ? null : p.avgWageEdu1;
         const w2 = ghost ? null : p.avgWageEdu2;
         const w3 = ghost ? null : p.avgWageEdu3;
         const gBase = ghost ? p.avgCostOfLiving : null;
         const gBaseRich = ghost ? p.avgCostOfLivingRich : null;
+        const gDiff = ghost ? p.avgCostOfLivingRich - p.avgCostOfLiving : null;
         const gw0 = ghost ? p.avgWageEdu0 : null;
         const gw1 = ghost ? p.avgWageEdu1 : null;
         const gw2 = ghost ? p.avgWageEdu2 : null;
@@ -68,12 +72,14 @@ function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): Cha
             year: tickToDate(p.bucket).year,
             costOfLiving: base,
             costOfLivingRich: baseRich,
+            costOfLivingRichDiff: diff,
             wageEdu0: w0,
             wageEdu1: w1,
             wageEdu2: w2,
             wageEdu3: w3,
             ghostCostOfLiving: gBase,
             ghostCostOfLivingRich: gBaseRich,
+            ghostCostOfLivingRichDiff: gDiff,
             ghostWageEdu0: gw0,
             ghostWageEdu1: gw1,
             ghostWageEdu2: gw2,
@@ -169,6 +175,7 @@ export function PlanetCostOfLivingChart({
                     monthIndex,
                     costOfLiving: p.avgCostOfLiving,
                     costOfLivingRich: p.avgCostOfLivingRich,
+                    costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
                     wageEdu0: p.avgWageEdu0,
                     wageEdu1: p.avgWageEdu1,
                     wageEdu2: p.avgWageEdu2,
@@ -184,6 +191,7 @@ export function PlanetCostOfLivingChart({
                 year,
                 costOfLiving: p.avgCostOfLiving,
                 costOfLivingRich: p.avgCostOfLivingRich,
+                costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
                 wageEdu0: p.avgWageEdu0,
                 wageEdu1: p.avgWageEdu1,
                 wageEdu2: p.avgWageEdu2,
@@ -198,12 +206,14 @@ export function PlanetCostOfLivingChart({
             for (const v of [
                 p.costOfLiving,
                 p.costOfLivingRich,
+                'costOfLivingRichDiff' in p ? (p as { costOfLivingRichDiff: number | null }).costOfLivingRichDiff : null,
                 p.wageEdu0,
                 p.wageEdu1,
                 p.wageEdu2,
                 p.wageEdu3,
                 'ghostCostOfLiving' in p ? (p as ChartPoint).ghostCostOfLiving : null,
                 'ghostCostOfLivingRich' in p ? (p as ChartPoint).ghostCostOfLivingRich : null,
+                'ghostCostOfLivingRichDiff' in p ? (p as ChartPoint).ghostCostOfLivingRichDiff : null,
                 'ghostWageEdu0' in p ? (p as ChartPoint).ghostWageEdu0 : null,
                 'ghostWageEdu1' in p ? (p as ChartPoint).ghostWageEdu1 : null,
                 'ghostWageEdu2' in p ? (p as ChartPoint).ghostWageEdu2 : null,
@@ -231,7 +241,8 @@ export function PlanetCostOfLivingChart({
         }
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-            const xMin = sorted.length > 0 ? tickToDate(sorted[0].bucket).year + 1 : 0;
+            const displayData = sorted.slice(-11);
+            const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year + 1 : 0;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
@@ -278,10 +289,6 @@ export function PlanetCostOfLivingChart({
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                         <defs>
-                            <linearGradient id='colGrad' x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#ef4444' stopOpacity={0.45} />
-                                <stop offset='95%' stopColor='#ef4444' stopOpacity={0.08} />
-                            </linearGradient>
                             <linearGradient id='colRichGrad' x1='0' x2='0' y1='0' y2='1'>
                                 <stop offset='5%' stopColor='#f97316' stopOpacity={0.35} />
                                 <stop offset='95%' stopColor='#f97316' stopOpacity={0.05} />
@@ -327,23 +334,25 @@ export function PlanetCostOfLivingChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
+                            stackId='ghostColStack'
+                            legendType='none'
                             dot={{ r: 2, fill: '#ef4444', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
-                            legendType='none'
                             isAnimationActive={false}
                             connectNulls={false}
                         />
                         <Area
                             type='monotone'
-                            dataKey='ghostCostOfLivingRich'
-                            stroke='#f97316'
+                            dataKey='ghostCostOfLivingRichDiff'
+                            stroke='#ef4444'
                             strokeWidth={1}
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={{ r: 2, fill: '#f97316', fillOpacity: 0.4, stroke: 'none' }}
-                            activeDot={false}
+                            stackId='ghostColStack'
                             legendType='none'
+                            dot={{ r: 2, fill: '#ef4444', fillOpacity: 0.4, stroke: 'none' }}
+                            activeDot={false}
                             isAnimationActive={false}
                             connectNulls={false}
                         />
@@ -410,7 +419,10 @@ export function PlanetCostOfLivingChart({
                             name='Cost of Living'
                             stroke='#ef4444'
                             strokeWidth={2}
-                            fill='url(#colGrad)'
+                            fill='#ef4444'
+                            fillOpacity={0.08}
+                            stackId='colStack'
+                            legendType='none'
                             dot={{ r: 2.5, fill: '#ef4444' }}
                             activeDot={{ r: 3 }}
                             isAnimationActive={false}
@@ -418,13 +430,13 @@ export function PlanetCostOfLivingChart({
                         />
                         <Area
                             type='monotone'
-                            dataKey='costOfLivingRich'
-                            name='Cost of Living (Rich)'
-                            stroke='#f97316'
-                            strokeWidth={1.5}
-                            strokeDasharray='4 2'
+                            dataKey='costOfLivingRichDiff'
+                            name='Cost of Living'
+                            stroke='#ef4444'
+                            strokeWidth={2}
                             fill='url(#colRichGrad)'
-                            dot={{ r: 2, fill: '#f97316' }}
+                            stackId='colStack'
+                            dot={{ r: 2.5, fill: '#ef4444' }}
                             activeDot={{ r: 3 }}
                             isAnimationActive={false}
                             connectNulls={false}
@@ -432,7 +444,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu0'
-                            name='Wage (None)'
+                            name='Wage None'
                             stroke={WAGE_COLORS[0]}
                             strokeWidth={1.5}
                             fill='none'
@@ -444,7 +456,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu1'
-                            name='Wage (Primary)'
+                            name='Wage Primary'
                             stroke={WAGE_COLORS[1]}
                             strokeWidth={1.5}
                             fill='none'
@@ -456,7 +468,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu2'
-                            name='Wage (Secondary)'
+                            name='Wage Secondary'
                             stroke={WAGE_COLORS[2]}
                             strokeWidth={1.5}
                             fill='none'
@@ -468,7 +480,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu3'
-                            name='Wage (Tertiary)'
+                            name='Wage Tertiary'
                             stroke={WAGE_COLORS[3]}
                             strokeWidth={1.5}
                             fill='none'
