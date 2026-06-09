@@ -5,7 +5,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { Building2, ChevronRight, Globe, Users } from 'lucide-react';
+import { Building2, ChevronRight, Globe, Landmark, Users } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ import { PlanetIcon } from '../client/PlanetIcon';
 
 const PLANET_SUB_PAGES = [
     { segment: 'demographics', label: 'Demographics', icon: Users },
+    { segment: 'central-bank', label: 'Central Bank', icon: Landmark },
     { segment: 'claims', label: 'Resources', icon: GiAxeInStump },
     { segment: 'companies', label: 'Companies', icon: Building2 },
 ] as const;
