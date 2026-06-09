@@ -309,7 +309,6 @@ export default function MarketPanel({
                                 <p className='text-sm text-muted-foreground py-4 text-center'>-empty-</p>
                             ) : (
                                 <>
-                                    {}
                                     <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
                                         <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
                                             <div className='w-6 shrink-0' />
@@ -348,7 +347,6 @@ export default function MarketPanel({
                                                 </button>
                                             ))}
                                         </div>
-                                        {}
                                         <div className='w-4 shrink-0' />
                                     </div>
                                     <Accordion

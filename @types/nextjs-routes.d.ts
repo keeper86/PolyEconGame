@@ -28,6 +28,7 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/ships", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/storage", { "planetId": string; "agentId": string }>
     | DynamicRoute<"/planets/[planetId]/agent/[agentId]/workforce", { "planetId": string; "agentId": string }>
+    | DynamicRoute<"/planets/[planetId]/central-bank", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/claims", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/companies", { "planetId": string }>
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>

@@ -81,7 +81,6 @@ export default function BuySection({
                 <AccordionPrimitive.Trigger className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold hover:underline text-left'>
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                 </AccordionPrimitive.Trigger>
-                {}
                 <div className='flex items-center gap-2 pl-2'>
                     {hasActiveBid && (
                         <Button
