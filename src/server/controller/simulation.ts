@@ -13,6 +13,7 @@ import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
     getAgentFinancialHistoryAggregated as dbGetAgentFinancialHistory,
     getAgentHistoryAggregated as dbGetAgentHistory,
+    getPlanetEconomyHistoryAggregated as dbGetPlanetEconomyHistory,
     getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
 } from '../../simulation/gameSnapshotRepository';
@@ -606,6 +607,59 @@ export const getAgentFinancialHistory = () =>
                         avgWages: r.avg_wages ?? 0,
                         sumPurchases: r.sum_purchases ?? 0,
                         sumClaimPayments: r.sum_claim_payments ?? 0,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
+            };
+        });
+
+export const getPlanetEconomyHistory = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(100),
+            }),
+        )
+        .output(
+            z.object({
+                planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
+                history: z.array(
+                    z.object({
+                        bucket: z.number(),
+                        avgGdp: z.number(),
+                        avgCostOfLiving: z.number(),
+                        avgCostOfLivingRich: z.number(),
+                        avgWageEdu0: z.number(),
+                        avgWageEdu1: z.number(),
+                        avgWageEdu2: z.number(),
+                        avgWageEdu3: z.number(),
+                        avgPolicyRate: z.number(),
+                        avgBankEquity: z.number(),
+                        avgMoneySupply: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input }) => {
+            const rows = await dbGetPlanetEconomyHistory(db, input.planetId, input.granularity, input.limit);
+            return {
+                planetId: input.planetId,
+                granularity: input.granularity,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgGdp: r.avg_gdp ?? 0,
+                        avgCostOfLiving: r.avg_cost_of_living ?? 0,
+                        avgCostOfLivingRich: r.avg_cost_of_living_rich ?? 0,
+                        avgWageEdu0: r.avg_wage_edu0 ?? 0,
+                        avgWageEdu1: r.avg_wage_edu1 ?? 0,
+                        avgWageEdu2: r.avg_wage_edu2 ?? 0,
+                        avgWageEdu3: r.avg_wage_edu3 ?? 0,
+                        avgPolicyRate: r.avg_policy_rate ?? 0,
+                        avgBankEquity: r.avg_bank_equity ?? 0,
+                        avgMoneySupply: r.avg_money_supply ?? 0,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };

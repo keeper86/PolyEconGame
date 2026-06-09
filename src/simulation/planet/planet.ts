@@ -152,24 +152,10 @@ export type Planet = {
         [resourceName in string]: number;
     };
 
-    /**
-     * Total production cost allocated to each output resource this tick (reset each tick).
-     * Costs include inputs + wages, distributed across outputs by market-value share.
-     */
     productionCosts: Record<string, number>;
 
-    /**
-     * Persistent cost-per-unit floor per output resource.
-     * Only updated when producedResources[r] > 0 in the same tick — never drops to zero
-     * due to a temporary production gap.
-     */
     lastProductionCostFloors: Record<string, number>;
 
-    /**
-     * Planet-wide average cost per unit for each land-bound resource.
-     * Computed in claimBillingTick across all active tenant claims on this planet.
-     * Renewables: Σ(costPerTick) / Σ(quantity). Non-renewables: Σ(tenantCostInCoins) / Σ(maximumCapacity).
-     */
     landBoundCostPerUnit: Record<string, number>;
 };
 
@@ -411,11 +397,12 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
 }
 
 export function accumulatePlanetPrices(planet: Planet, tick: number): void {
-    // Reset at the start of each new month so the accumulator always reflects
+    // Reset at the start of each new month so the accumulators always reflect
     // only the current month's trades — no separate flush step needed.
     if (tick % TICKS_PER_MONTH === 1) {
         planet.monthPriceAcc = {};
     }
+
     for (const result of Object.values(planet.lastMarketResult)) {
         if (!result || result.totalVolume <= 0) {
             continue;
@@ -424,6 +411,7 @@ export function accumulatePlanetPrices(planet: Planet, tick: number): void {
         if (!isFinite(price) || price <= 0) {
             continue;
         }
+
         const acc = planet.monthPriceAcc[result.resourceName];
         if (acc) {
             acc.min = Math.min(acc.min, price);

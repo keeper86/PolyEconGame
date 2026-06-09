@@ -5,9 +5,10 @@ import type { TooltipProps } from 'recharts';
 
 type Props = TooltipProps<number, string> & {
     labelFormatter?: (label: number) => string;
+    planetId?: string;
 };
 
-export function FinancialTooltip({ active, payload, label, labelFormatter }: Props) {
+export function FinancialTooltip({ active, payload, label, labelFormatter, planetId }: Props) {
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -29,12 +30,23 @@ export function FinancialTooltip({ active, payload, label, labelFormatter }: Pro
                 {labelFormatter ? labelFormatter(label as number) : label}
             </p>
             {visible.map((entry) => (
-                <p key={entry.dataKey} style={{ color: '#e2e8f0', margin: '1px 0' }}>
-                    <span style={{ color: entry.color }}>{entry.name}</span>:{' '}
-                    {entry.value !== null && entry.value !== undefined
-                        ? formatNumberWithUnit(entry.value, 'currency')
-                        : ''}
-                </p>
+                <div
+                    key={entry.dataKey}
+                    style={{
+                        color: '#e2e8f0',
+                        margin: '1px 0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                    }}
+                >
+                    <span style={{ color: entry.color }}>{entry.name}</span>
+                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {entry.value !== null && entry.value !== undefined
+                            ? formatNumberWithUnit(entry.value, 'currency', planetId)
+                            : ''}
+                    </span>
+                </div>
             ))}
         </div>
     );

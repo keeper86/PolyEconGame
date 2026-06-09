@@ -9,6 +9,10 @@ export enum Table {
     GameSnapshots = 'game_snapshots',
     KnexMigrations = 'knex_migrations',
     KnexMigrationsLock = 'knex_migrations_lock',
+    PlanetEconomyDecade = 'planet_economy_decade',
+    PlanetEconomyHistory = 'planet_economy_history',
+    PlanetEconomyMonthly = 'planet_economy_monthly',
+    PlanetEconomyYearly = 'planet_economy_yearly',
     PlanetPopulationDecade = 'planet_population_decade',
     PlanetPopulationHistory = 'planet_population_history',
     PlanetPopulationMonthly = 'planet_population_monthly',
@@ -28,6 +32,10 @@ export type Tables = {
     game_snapshots: GameSnapshots;
     knex_migrations: KnexMigrations;
     knex_migrations_lock: KnexMigrationsLock;
+    planet_economy_decade: PlanetEconomyDecade;
+    planet_economy_history: PlanetEconomyHistory;
+    planet_economy_monthly: PlanetEconomyMonthly;
+    planet_economy_yearly: PlanetEconomyYearly;
     planet_population_decade: PlanetPopulationDecade;
     planet_population_history: PlanetPopulationHistory;
     planet_population_monthly: PlanetPopulationMonthly;
@@ -118,6 +126,67 @@ export type KnexMigrations = {
 export type KnexMigrationsLock = {
     index: number;
     is_locked: number | null;
+};
+
+export type PlanetEconomyDecade = {
+    bucket: string | null;
+    planet_id: string | null;
+    avg_gdp: number | null;
+    avg_cost_of_living: number | null;
+    avg_cost_of_living_rich: number | null;
+    avg_wage_edu0: number | null;
+    avg_wage_edu1: number | null;
+    avg_wage_edu2: number | null;
+    avg_wage_edu3: number | null;
+    avg_policy_rate: number | null;
+    avg_bank_equity: number | null;
+    avg_money_supply: number | null;
+};
+
+export type PlanetEconomyHistory = {
+    tick: string;
+    planet_id: string;
+    gdp: number;
+    cost_of_living: number;
+    cost_of_living_rich: number;
+    wage_edu0: number;
+    wage_edu1: number;
+    wage_edu2: number;
+    wage_edu3: number;
+    policy_rate: number;
+    bank_equity: number;
+    money_supply: number;
+    created_at: Date;
+};
+
+export type PlanetEconomyMonthly = {
+    bucket: string | null;
+    planet_id: string | null;
+    avg_gdp: number | null;
+    avg_cost_of_living: number | null;
+    avg_cost_of_living_rich: number | null;
+    avg_wage_edu0: number | null;
+    avg_wage_edu1: number | null;
+    avg_wage_edu2: number | null;
+    avg_wage_edu3: number | null;
+    avg_policy_rate: number | null;
+    avg_bank_equity: number | null;
+    avg_money_supply: number | null;
+};
+
+export type PlanetEconomyYearly = {
+    bucket: string | null;
+    planet_id: string | null;
+    avg_gdp: number | null;
+    avg_cost_of_living: number | null;
+    avg_cost_of_living_rich: number | null;
+    avg_wage_edu0: number | null;
+    avg_wage_edu1: number | null;
+    avg_wage_edu2: number | null;
+    avg_wage_edu3: number | null;
+    avg_policy_rate: number | null;
+    avg_bank_equity: number | null;
+    avg_money_supply: number | null;
 };
 
 export type PlanetPopulationDecade = {

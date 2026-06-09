@@ -1,5 +1,6 @@
 'use client';
 
+import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -18,8 +19,6 @@ type Props = {
     /** Live price stats from the already-fetched market data (current tick). */
     live?: LiveData;
 };
-
-type Granularity = 'monthly' | 'yearly' | 'decades';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -490,42 +489,11 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
     );
 }
 
-// ─── Toggle Button ────────────────────────────────────────────────────────────
-
-function GranularityButton({
-    active,
-    disabled,
-    onClick,
-    children,
-}: {
-    active: boolean;
-    disabled?: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={[
-                'px-2 py-0.5 rounded text-[11px] transition-colors',
-                active
-                    ? 'bg-slate-600 text-slate-100'
-                    : disabled
-                      ? 'text-slate-600 cursor-not-allowed'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700',
-            ].join(' ')}
-        >
-            {children}
-        </button>
-    );
-}
-
 // ─── Parent Component ─────────────────────────────────────────────────────────
 
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
@@ -552,14 +520,14 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
             { planetId, productName, granularity: 'decade' },
-            { enabled: granularity === 'decades' },
+            { enabled: granularity === 'decade' },
         ),
     );
 
     const isLoading =
         (granularity === 'monthly' && (loadingMonthly || !monthly)) ||
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
-        (granularity === 'decades' && (loadingDecade || !decade));
+        (granularity === 'decade' && (loadingDecade || !decade));
 
     const monthlyPoints = useMemo(
         () =>
@@ -594,31 +562,12 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     );
 
     const currentTick = live?.tick ?? 0;
-    const yearsElapsed = currentTick / TICKS_PER_YEAR;
-    const showYearly = yearsElapsed >= 2;
-    const showDecades = yearsElapsed >= 10;
 
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
             <div className='flex gap-1'>
                 Price:
-                <GranularityButton active={granularity === 'monthly'} onClick={() => setGranularity('monthly')}>
-                    Monthly
-                </GranularityButton>
-                <GranularityButton
-                    active={granularity === 'yearly'}
-                    disabled={!showYearly}
-                    onClick={() => setGranularity('yearly')}
-                >
-                    Yearly
-                </GranularityButton>
-                <GranularityButton
-                    active={granularity === 'decades'}
-                    disabled={!showDecades}
-                    onClick={() => setGranularity('decades')}
-                >
-                    Decades
-                </GranularityButton>
+                <GranularityButtonGroup granularity={granularity} onChange={setGranularity} currentTick={currentTick} />
             </div>
             {granularity === 'monthly' && (
                 <MonthlyChart
@@ -627,12 +576,8 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                     productName={productName}
                 />
             )}
-            {granularity === 'yearly' && (showYearly || isLoading) && (
-                <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />
-            )}
-            {granularity === 'decades' && (showDecades || isLoading) && (
-                <DecadesChart decadePoints={decadePoints} productName={productName} />
-            )}
+            {granularity === 'yearly' && <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />}
+            {granularity === 'decade' && <DecadesChart decadePoints={decadePoints} productName={productName} />}
         </div>
     );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -8,8 +9,6 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-
-type Granularity = 'monthly' | 'yearly' | 'decades';
 
 type RawPoint = { bucket: number; avgPopulation: number };
 
@@ -163,37 +162,6 @@ function EmptyChart() {
         >
             No data
         </div>
-    );
-}
-
-// ─── GranularityButton ────────────────────────────────────────────────────────
-
-function GranularityButton({
-    active,
-    disabled,
-    onClick,
-    children,
-}: {
-    active: boolean;
-    disabled?: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={[
-                'px-2 py-0.5 rounded text-[11px] transition-colors',
-                active
-                    ? 'bg-slate-600 text-slate-100'
-                    : disabled
-                      ? 'text-slate-600 cursor-not-allowed'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700',
-            ].join(' ')}
-        >
-            {children}
-        </button>
     );
 }
 
@@ -507,7 +475,7 @@ type Props = {
 
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetPopulationHistory.queryOptions(
@@ -524,19 +492,16 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getPlanetPopulationHistory.queryOptions(
             { planetId, granularity: 'decade' },
-            { enabled: granularity === 'decades' },
+            { enabled: granularity === 'decade' },
         ),
     );
 
     const isLoading =
         (granularity === 'monthly' && (loadingMonthly || !monthly)) ||
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
-        (granularity === 'decades' && (loadingDecade || !decade));
+        (granularity === 'decade' && (loadingDecade || !decade));
 
     const currentTick = live?.tick ?? 0;
-    const yearsElapsed = currentTick / TICKS_PER_YEAR;
-    const showYearly = yearsElapsed >= 2;
-    const showDecades = yearsElapsed >= 10;
 
     const monthlyPoints = useMemo(
         () => (monthly?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
@@ -557,30 +522,16 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
                     <div className='flex gap-1 mb-1'>
                         Population:
-                        <GranularityButton active={granularity === 'monthly'} onClick={() => setGranularity('monthly')}>
-                            Monthly
-                        </GranularityButton>
-                        <GranularityButton
-                            active={granularity === 'yearly'}
-                            disabled={!showYearly}
-                            onClick={() => setGranularity('yearly')}
-                        >
-                            Yearly
-                        </GranularityButton>
-                        <GranularityButton
-                            active={granularity === 'decades'}
-                            disabled={!showDecades}
-                            onClick={() => setGranularity('decades')}
-                        >
-                            Decades
-                        </GranularityButton>
+                        <GranularityButtonGroup
+                            granularity={granularity}
+                            onChange={setGranularity}
+                            currentTick={currentTick}
+                        />
                     </div>
                     {granularity === 'monthly' && <MonthlyChart monthlyPoints={monthlyPoints} live={live} />}
                     {granularity === 'yearly' &&
-                        (showYearly || isLoading) &&
                         (yearlyPoints.length > 0 ? <YearlyChart yearlyPoints={yearlyPoints} /> : <EmptyChart />)}
-                    {granularity === 'decades' &&
-                        (showDecades || isLoading) &&
+                    {granularity === 'decade' &&
                         (decadePoints.length > 0 ? <DecadesChart decadePoints={decadePoints} /> : <EmptyChart />)}
                 </div>
             </CardContent>

@@ -748,7 +748,11 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
         secondary: 50,
         tertiary: 10,
     },
-    needs: [],
+    needs: [
+        { resource: paperResourceType, quantity: 5 },
+        { resource: furnitureResourceType, quantity: 2 },
+        { resource: consumerElectronicsResourceType, quantity: 1 },
+    ],
     produces: [{ resource: administrativeServiceResourceType, quantity: 100 }],
 });
 

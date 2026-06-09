@@ -240,10 +240,15 @@ export async function refreshContinuousAggregates(
 ): Promise<void> {
     const views =
         granularity === 'decade'
-            ? ['product_price_decade', 'planet_population_decade', 'agent_decade_summary']
+            ? ['product_price_decade', 'planet_population_decade', 'agent_decade_summary', 'planet_economy_decade']
             : granularity === 'yearly'
-              ? ['product_price_yearly', 'planet_population_yearly', 'agent_yearly_summary']
-              : ['product_price_monthly', 'planet_population_monthly', 'agent_monthly_summary'];
+              ? ['product_price_yearly', 'planet_population_yearly', 'agent_yearly_summary', 'planet_economy_yearly']
+              : [
+                    'product_price_monthly',
+                    'planet_population_monthly',
+                    'agent_monthly_summary',
+                    'planet_economy_monthly',
+                ];
 
     const ticksPerBucket = granularity === 'decade' ? 3600 : granularity === 'yearly' ? 360 : 30;
     const refreshStartTick = Math.max(0, upToTick - ticksPerBucket * 2);
@@ -361,5 +366,100 @@ export async function getAgentFinancialHistoryAggregated(
             'avg_wages',
             'sum_purchases',
             'sum_claim_payments',
+        );
+}
+
+// ---------------------------------------------------------------------------
+// Planet economy history
+// ---------------------------------------------------------------------------
+
+export interface InsertPlanetEconomy {
+    tick: number;
+    planet_id: string;
+    gdp: number;
+    cost_of_living: number;
+    cost_of_living_rich: number;
+    wage_edu0: number;
+    wage_edu1: number;
+    wage_edu2: number;
+    wage_edu3: number;
+    policy_rate: number;
+    bank_equity: number;
+    money_supply: number;
+}
+
+export interface PlanetEconomyBucket {
+    bucket: string;
+    planet_id: string;
+    avg_gdp: number;
+    avg_cost_of_living: number;
+    avg_cost_of_living_rich: number;
+    avg_wage_edu0: number;
+    avg_wage_edu1: number;
+    avg_wage_edu2: number;
+    avg_wage_edu3: number;
+    avg_policy_rate: number;
+    avg_bank_equity: number;
+    avg_money_supply: number;
+}
+
+/**
+ * Insert one economy-history row per planet for a given tick.
+ */
+export async function insertPlanetEconomyHistory(db: Knex, rows: InsertPlanetEconomy[]): Promise<void> {
+    if (rows.length === 0) {
+        return;
+    }
+    await db('planet_economy_history').insert(
+        rows.map((r) => ({
+            tick: String(r.tick),
+            planet_id: r.planet_id,
+            gdp: r.gdp,
+            cost_of_living: r.cost_of_living,
+            cost_of_living_rich: r.cost_of_living_rich,
+            wage_edu0: r.wage_edu0,
+            wage_edu1: r.wage_edu1,
+            wage_edu2: r.wage_edu2,
+            wage_edu3: r.wage_edu3,
+            policy_rate: r.policy_rate,
+            bank_equity: r.bank_equity,
+            money_supply: r.money_supply,
+        })),
+    );
+}
+
+/**
+ * Query planet economy history from the appropriate continuous aggregate.
+ */
+export async function getPlanetEconomyHistoryAggregated(
+    db: Knex,
+    planetId: string,
+    granularity: HistoryGranularity = 'monthly',
+    limit: number = 100,
+): Promise<PlanetEconomyBucket[]> {
+    const view =
+        granularity === 'decade'
+            ? 'planet_economy_decade'
+            : granularity === 'yearly'
+              ? 'planet_economy_yearly'
+              : 'planet_economy_monthly';
+
+    return db(view)
+        .where({ planet_id: planetId })
+        .orderBy('bucket', 'desc')
+        .limit(limit)
+        .select(
+            'bucket',
+            'planet_id',
+            'avg_gdp',
+            'avg_cost_of_living',
+            'avg_cost_of_living_rich',
+            'avg_wage_edu0',
+            'avg_wage_edu1',
+            'avg_wage_edu2',
+            'avg_wage_edu3',
+            'avg_policy_rate',
+            'avg_bank_equity',
+            'avg_money_supply',
         );
 }

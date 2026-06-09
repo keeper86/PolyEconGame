@@ -7,43 +7,45 @@ import {
     getLatestGameSnapshot,
     insertAgentMonthlyHistory,
     insertGameSnapshot,
+    insertPlanetEconomyHistory,
     insertPlanetPopulationHistory,
     insertProductPriceHistory,
     pruneGameSnapshots,
     refreshContinuousAggregates,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
+import { computeCostOfLiving } from './market/serviceDefinitions';
 import type { GameState } from './planet/planet';
 
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
+import { createInitialGameState } from './initialUniverse';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { computePopulationTotal } from './snapshotRepository';
-import { createInitialGameState } from './initialUniverse';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
-import {
-    handlePostTransportContract,
-    handleAcceptTransportContract,
-    handleCancelTransportContract,
-    handleDispatchShip,
-    handleDispatchPassengerShip,
-    handleDispatchConstructionShip,
-    handlePostConstructionContract,
-    handleAcceptConstructionContract,
-    handleCancelConstructionContract,
-    handlePostShipBuyingOffer,
-    handleAcceptShipBuyingOffer,
-    handlePostShipListing,
-    handleCancelShipListing,
-    handleAcceptShipListing,
-} from './workerClient/shipContractActions';
-import { handleAcquireLicense } from './workerClient/licenseActions';
 import { handleFinancialAction } from './workerClient/financialActions';
+import { handleAcquireLicense } from './workerClient/licenseActions';
 import { handleMarketAction } from './workerClient/marketActions';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import { handleResourceAction } from './workerClient/resourceActions';
+import {
+    handleAcceptConstructionContract,
+    handleAcceptShipBuyingOffer,
+    handleAcceptShipListing,
+    handleAcceptTransportContract,
+    handleCancelConstructionContract,
+    handleCancelShipListing,
+    handleCancelTransportContract,
+    handleDispatchConstructionShip,
+    handleDispatchPassengerShip,
+    handleDispatchShip,
+    handlePostConstructionContract,
+    handlePostShipBuyingOffer,
+    handlePostShipListing,
+    handlePostTransportContract,
+} from './workerClient/shipContractActions';
 export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 
 interface TaskPayload {
@@ -375,6 +377,57 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
      * then reset the accumulator for the next month.
      * Falls back to the current spot price when no trades occurred this month.
      */
+    function flushPlanetEconomyHistory(gs: GameStateRecord, tick: number): Promise<void> {
+        const db = snapshotDb;
+        if (!db) {
+            return Promise.resolve();
+        }
+        const rows = [...gs.planets.values()].map((planet) => {
+            const p = planet.data;
+            const bank = p.bank;
+            // GDP: sum of (clearingPrice * totalVolume) from the EMA-smoothed avgMarketResult.
+            // GDP: annualised rate — EMA of (clearingPrice × totalVolume) gives the average
+            // per-tick trade value. Multiplying by TICKS_PER_YEAR (360) yields "what the yearly
+            // GDP would be if this tick's activity persisted for a full year".
+            // This keeps the materialised views simple — plain avg() is correct at all timescales.
+            const gdp =
+                Object.values(p.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                TICKS_PER_YEAR;
+            // Cost of living from service definitions
+            const costOfLiving = computeCostOfLiving(p.marketPrices, false);
+            const costOfLivingRich = computeCostOfLiving(p.marketPrices, true);
+            const wageEdu0 = p.wagePerEdu.none ?? 0;
+            const wageEdu1 = p.wagePerEdu.primary ?? 0;
+            const wageEdu2 = p.wagePerEdu.secondary ?? 0;
+            const wageEdu3 = p.wagePerEdu.tertiary ?? 0;
+            // Policy rate: use the bank's loan rate (Leitzins equivalent)
+            const policyRate = bank.loanRate;
+            const bankEquity = bank.equity;
+            const moneySupply = bank.deposits;
+
+            return {
+                tick,
+                planet_id: planet.id,
+                gdp,
+                cost_of_living: costOfLiving,
+                cost_of_living_rich: costOfLivingRich,
+                wage_edu0: wageEdu0,
+                wage_edu1: wageEdu1,
+                wage_edu2: wageEdu2,
+                wage_edu3: wageEdu3,
+                policy_rate: policyRate,
+                bank_equity: bankEquity,
+                money_supply: moneySupply,
+            };
+        });
+        if (rows.length === 0) {
+            return Promise.resolve();
+        }
+        return insertPlanetEconomyHistory(db, rows).catch((err) => {
+            console.error(`[worker] Failed to save planet economy history rows at tick ${tick}:`, err);
+        });
+    }
+
     function flushProductPrices(gs: GameStateRecord, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
@@ -514,6 +567,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     flushProductPrices(currentSnapshot, tickAtFlush),
                     flushPopulationHistory(currentSnapshot, tickAtFlush),
                     flushAgentMonthlyHistory(currentSnapshot, tickAtFlush),
+                    flushPlanetEconomyHistory(currentSnapshot, tickAtFlush),
                 ])
                     .then(() => {
                         if (snapshotDb) {
