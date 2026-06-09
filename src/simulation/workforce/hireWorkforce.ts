@@ -1,9 +1,3 @@
-/**
- * workforce/laborMarketTick.ts
- *
- * Monthly pre-production labor-market
- */
-
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
@@ -36,11 +30,8 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                 const gap = target - currentActive;
 
                 if (gap > 0) {
-                    // --- Hire the gap, spread across skill levels proportionally ---
-
                     const result = hireFromPopulation(planet, edu, gap);
                     if (result.count > 0) {
-                        // Place hired workers at their exact age in the workforce
                         for (let age = 0; age < result.hiredByAge.length; age++) {
                             for (const skill of SKILL) {
                                 const count = result.hiredByAge[age][skill];
@@ -51,7 +42,6 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                         }
                     }
                 } else if (gap < -currentActive * ACCEPTABLE_IDLE_FRACTION) {
-                    // --- Fire excess workers (youngest ages first as proxy for lowest tenure) ---
                     let toFire = -gap;
 
                     for (let age = 0; age < workforce.length && toFire > 0; age++) {

@@ -1,15 +1,7 @@
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
 
-/** Time-to-live for feedback messages in milliseconds */
-export const TTL_FEEDBACK = 5_000; // 5 seconds
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+export const TTL_FEEDBACK = 5_000;
 
 export type MarketBidEntry = {
     bidPrice?: number;
@@ -33,17 +25,16 @@ export type MarketOfferEntry = {
 
 export type LocalResourceState = {
     offerPrice: string;
-    /** Retainment: keep at least this many units; sell qty = max(0, inventory - retainment). */
+
     offerRetainment: string;
     offerAutomated: boolean;
     bidPrice: string;
-    /** Storage target: fill up to this; buy qty = max(0, target - inventory). */
+
     bidStorageTarget: string;
     bidAutomated: boolean;
-    // UI-only helpers — not sent to server
+
     targetBufferTicks: string;
 
-    // Dirty state tracking
     dirtyFields: {
         offerPrice: boolean;
         offerRetainment: boolean;
@@ -51,7 +42,6 @@ export type LocalResourceState = {
         bidStorageTarget: boolean;
     };
 
-    // Validation errors
     validationErrors: {
         offerPrice?: string;
         offerRetainment?: string;
@@ -59,7 +49,6 @@ export type LocalResourceState = {
         bidStorageTarget?: string;
     };
 
-    // Saved state snapshots for comparison
     savedOfferPrice: string;
     savedOfferRetainment: string;
     savedOfferAutomated: boolean;
@@ -75,10 +64,6 @@ export type Props = {
     showAll: boolean;
     allPlanetDeposits?: Record<string, number>;
 };
-
-/* ------------------------------------------------------------------ */
-/*  Market status classification                                       */
-/* ------------------------------------------------------------------ */
 
 export type MarketStatus = 'balanced' | 'mostly' | 'partial-shortage' | 'shortage' | 'oversupply' | 'no-demand';
 
@@ -123,9 +108,9 @@ export type ResourceAccordionItemProps = {
     _isOpen: boolean;
     overviewRow?: MarketOverviewRow;
     visibleColumns: import('./columnConfig').ColumnConfig[];
-    /** Map of planetId → planetName, used to derive display names for currency resources. */
+
     planetNames?: Map<string, string>;
-    /** Deposits held on each planet; used to show the correct balance for forex resources. */
+
     allPlanetDeposits?: Record<string, number>;
 };
 
@@ -143,7 +128,7 @@ export type BuySectionProps = {
     buySaving: boolean;
     buySuccessMsg: string | null;
     buyErrorMsg: string | null;
-    /** Planet ID of the market — used for currency symbol formatting. */
+
     planetId: string;
 };
 
@@ -161,6 +146,6 @@ export type SellSectionProps = {
     sellSaving: boolean;
     sellSuccessMsg: string | null;
     sellErrorMsg: string | null;
-    /** Planet ID of the market — used for currency symbol formatting. */
+
     planetId: string;
 };

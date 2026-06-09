@@ -12,13 +12,8 @@ import type { ShipConstructionFacility } from '../planet/facility';
 import { shipbuilderTick } from './shipbuilderTick';
 import { handleAcceptShipListing } from '../workerClient/shipContractActions';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const SHIP_TYPE = shiptypes.solid.bulkCarrier1;
 
-/** Resource names used in the default building cost. */
 const RESOURCE_PRICES: Record<string, number> = {
     'Steel': 50,
     'Electronic Component': 200,
@@ -26,7 +21,6 @@ const RESOURCE_PRICES: Record<string, number> = {
     'Plastic': 20,
 };
 
-/** Expected raw material cost for SHIP_TYPE at RESOURCE_PRICES. */
 const ESTIMATED_COST =
     100 * RESOURCE_PRICES.Steel +
     50 * RESOURCE_PRICES['Electronic Component'] +
@@ -89,22 +83,15 @@ function makeStateWithShipbuilder(planetId = 'p1', tick = 0) {
     return { state, planet, builder };
 }
 
-// Returns the first tick of month N (0-indexed months).
-// isFirstTickInMonth(tick) = tick % TICKS_PER_MONTH === 1, so month 0 starts at tick 1,
-// month 1 at tick 31, etc.
 function firstTickOfMonth(month: number): number {
     return month * TICKS_PER_MONTH + 1;
 }
-
-// ---------------------------------------------------------------------------
-// autoListIdleShips
-// ---------------------------------------------------------------------------
 
 describe('shipbuilderTick – autoListIdleShips', () => {
     it('lists an idle transport ship that is not yet listed', () => {
         const { state, planet, builder } = makeStateWithShipbuilder('p1');
         const ship = createShip(SHIP_TYPE, 0, 'Carrier 1', planet);
-        // ship starts idle at planet
+
         builder.ships.push(ship);
 
         shipbuilderTick(state);
@@ -122,7 +109,6 @@ describe('shipbuilderTick – autoListIdleShips', () => {
         builder.ships.push(ship);
         const assets = builder.assets.p1!;
 
-        // Pre-add a listing
         assets.shipListings.push({
             id: 'existing-id',
             sellerAgentId: builder.id,
@@ -136,7 +122,6 @@ describe('shipbuilderTick – autoListIdleShips', () => {
 
         shipbuilderTick(state);
 
-        // Still only one listing
         expect(assets.shipListings).toHaveLength(1);
     });
 
@@ -203,7 +188,7 @@ describe('shipbuilderTick – autoListIdleShips', () => {
 
         expect(state.shipCapitalMarket.emaPrice[SHIP_TYPE.name]).toBeUndefined();
         shipbuilderTick(state);
-        // EMA should be initialised from the listing ask price
+
         expect(state.shipCapitalMarket.emaPrice[SHIP_TYPE.name]).toBeGreaterThan(0);
     });
 
@@ -227,7 +212,6 @@ describe('shipbuilderTick – autoListIdleShips', () => {
         const listing = builder.assets.p1!.shipListings[0];
         expect(listing).toBeDefined();
 
-        // Set up a buyer with enough deposits
         const buyer = makeAgent('buyer', 'p1');
         buyer.assets.p1!.deposits = listing.askPrice * 2;
         state.agents.set(buyer.id, buyer);
@@ -248,19 +232,14 @@ describe('shipbuilderTick – autoListIdleShips', () => {
 
         expect(messages).toHaveBeenCalledOnce();
         expect(messages.mock.calls[0][0]).toMatchObject({ type: 'shipListingAccepted' });
-        // The ship transferred to the buyer
+
         expect(buyer.ships).toHaveLength(1);
         expect(buyer.ships[0].id).toBe(ship.id);
     });
 });
 
-// ---------------------------------------------------------------------------
-// decideBuild – monthly logic
-// ---------------------------------------------------------------------------
-
 describe('shipbuilderTick – decideBuild', () => {
     it('skips decideBuild on non-first tick of month', () => {
-        // tick 2: isFirstTickInMonth(2) = 2 % TICKS_PER_MONTH === 1 → false
         const { state, builder } = makeStateWithShipbuilder('p1', 2);
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
 
@@ -271,22 +250,21 @@ describe('shipbuilderTick – decideBuild', () => {
 
     it('skips build if facility is already building', () => {
         const { state, builder } = makeStateWithShipbuilder('p1', firstTickOfMonth(1));
-        // Set EMA high above threshold
+
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = ESTIMATED_COST * (SHIPBUILDER_SPECULATIVE_THRESHOLD + 0.5);
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
-        facility.produces = SHIP_TYPE; // already building
+        facility.produces = SHIP_TYPE;
         facility.progress = 0.5;
 
         shipbuilderTick(state);
 
-        // produces unchanged
         expect(facility.produces).toBe(SHIP_TYPE);
         expect(facility.progress).toBe(0.5);
     });
 
     it('starts speculative build when EMA margin exceeds SPECULATIVE_THRESHOLD (monthly)', () => {
         const { state, builder } = makeStateWithShipbuilder('p1', firstTickOfMonth(1));
-        // EMA well above threshold
+
         const targetEma = ESTIMATED_COST * (SHIPBUILDER_SPECULATIVE_THRESHOLD + 0.5);
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = targetEma;
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
@@ -299,7 +277,7 @@ describe('shipbuilderTick – decideBuild', () => {
 
     it('does NOT speculatively build when EMA margin is below threshold', () => {
         const { state, builder } = makeStateWithShipbuilder('p1', firstTickOfMonth(1));
-        // EMA just below threshold
+
         const targetEma = ESTIMATED_COST * (SHIPBUILDER_SPECULATIVE_THRESHOLD - 0.1);
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = targetEma;
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
@@ -316,7 +294,6 @@ describe('shipbuilderTick – decideBuild', () => {
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
         const assets = builder.assets.p1!;
 
-        // Add ship + listing
         const ship = createShip(SHIP_TYPE, 0, 'Carrier', planet);
         builder.ships.push(ship);
         assets.shipListings.push({
@@ -332,25 +309,20 @@ describe('shipbuilderTick – decideBuild', () => {
 
         shipbuilderTick(state);
 
-        // Speculative build should be suppressed
         expect(facility.produces).toBeNull();
     });
 
     it('skips speculative build if market prices for inputs are missing', () => {
-        // Planet has no prices for build materials.
-        // Note: makePlanet merges overrides on top of initialMarketPrices, so we must
-        // zero the prices after construction to truly remove them.
         const planet = makePlanet({ id: 'p1', name: 'TestPlanet' });
         const builder = makeShipbuilder('p1');
         const state = makeGameState([planet], [builder], firstTickOfMonth(1));
-        planet.marketPrices = {}; // clear all prices so estimateShipCost returns 0
+        planet.marketPrices = {};
         state.shipbuilderAgents.set(builder.id, builder);
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = 999_999_999;
 
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
         shipbuilderTick(state);
 
-        // estimateShipCost returns 0 when prices missing → no build
         expect(facility.produces).toBeNull();
     });
 
@@ -358,7 +330,6 @@ describe('shipbuilderTick – decideBuild', () => {
         const { state, builder } = makeStateWithShipbuilder('p1', firstTickOfMonth(1));
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
 
-        // Another agent posts a buy offer above threshold
         const buyerAgent = makeAgent('buyer', 'p1');
         buyerAgent.assets.p1!.shipBuyingOffers.push({
             id: 'offer-1',
@@ -393,33 +364,21 @@ describe('shipbuilderTick – decideBuild', () => {
 
         expect(facility.produces).toBeNull();
     });
-    // -------------------------------------------------------------------
-    // BUG B2: Arbitrage traders never post shipBuyingOffers,
-    // so Priority 1 will NEVER fire from arbitrage demand.
-    // This test documents the current behaviour (arbitrage buys via
-    // executeShipPurchase, not via offers) so a regression can be caught
-    // if the mechanism is changed.
-    // -------------------------------------------------------------------
+
     it('BUG B2 – arbitrage agent with no buy offer does NOT trigger Priority 1 build', () => {
         const { state, builder } = makeStateWithShipbuilder('p1', firstTickOfMonth(1));
         const facility = builder.assets.p1!.shipConstructionFacilities[0];
 
-        // Arbitrage trader: assets on p1, but NO ship buying offer
         const arbAgent = makeAgent('arb-1', 'p1');
         arbAgent.agentRole = 'arbitrage_trader';
         state.agents.set('arb-1', arbAgent);
         state.arbitrageTraders.set('arb-1', arbAgent);
 
-        // No EMA → no speculative build either
         shipbuilderTick(state);
 
         expect(facility.produces).toBeNull();
     });
 });
-
-// ---------------------------------------------------------------------------
-// updateInputBids
-// ---------------------------------------------------------------------------
 
 describe('shipbuilderTick – updateInputBids', () => {
     it('posts buy bids for non-service build inputs when facility is actively building', () => {
@@ -430,7 +389,7 @@ describe('shipbuilderTick – updateInputBids', () => {
         shipbuilderTick(state);
 
         const market = builder.assets.p1!.market!;
-        // At least steel should have a bid
+
         expect(market.buy.Steel).toBeDefined();
         expect(market.buy.Steel!.bidPrice).toBeGreaterThan(0);
     });
@@ -443,7 +402,7 @@ describe('shipbuilderTick – updateInputBids', () => {
         shipbuilderTick(state);
 
         const market = builder.assets.p1!.market!;
-        // No bids should be posted for input resources
+
         expect(Object.keys(market.buy)).toHaveLength(0);
     });
 
@@ -460,13 +419,9 @@ describe('shipbuilderTick – updateInputBids', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// Full tick orchestration
-// ---------------------------------------------------------------------------
-
 describe('shipbuilderTick – orchestration', () => {
     it('runs autoListIdleShips on every tick (not just monthly)', () => {
-        const { state, planet, builder } = makeStateWithShipbuilder('p1', 5); // mid-month
+        const { state, planet, builder } = makeStateWithShipbuilder('p1', 5);
         const ship = createShip(SHIP_TYPE, 0, 'Carrier', planet);
         builder.ships.push(ship);
 
@@ -480,10 +435,8 @@ describe('shipbuilderTick – orchestration', () => {
         const ship = createShip(SHIP_TYPE, 0, 'Carrier', planet);
         builder.ships.push(ship);
 
-        // Remove assets
         delete (builder.assets as Record<string, unknown>).p1;
 
-        // Should not throw; just skip
         expect(() => shipbuilderTick(state)).not.toThrow();
     });
 
@@ -494,13 +447,12 @@ describe('shipbuilderTick – orchestration', () => {
         const state = makeGameState([planet], [builder]);
         state.shipbuilderAgents.set(builder.id, builder);
 
-        // Should not throw
         expect(() => shipbuilderTick(state)).not.toThrow();
     });
 
     it('shipbuilderTick does not process agents not in shipbuilderAgents map', () => {
         const { state, planet, builder } = makeStateWithShipbuilder('p1', firstTickOfMonth(1));
-        // Remove from shipbuilder map but keep in agents
+
         state.shipbuilderAgents.delete(builder.id);
         state.shipCapitalMarket.emaPrice[SHIP_TYPE.name] = ESTIMATED_COST * (SHIPBUILDER_SPECULATIVE_THRESHOLD + 1);
 
@@ -509,7 +461,6 @@ describe('shipbuilderTick – orchestration', () => {
 
         shipbuilderTick(state);
 
-        // Should produce no listings and no builds
         expect(builder.assets.p1!.shipListings).toHaveLength(0);
         expect(builder.assets.p1!.shipConstructionFacilities[0].produces).toBeNull();
     });

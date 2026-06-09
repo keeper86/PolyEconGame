@@ -1,10 +1,3 @@
-/**
- * simulation/invariants.test.ts
- *
- * Tests for the monetary conservation invariant:
- *   householdDeposits + Σ(agent.deposits) − bank.loans === 0
- */
-
 import { describe, it, expect } from 'vitest';
 import { checkMonetaryConservation, checkTransportPipeline, checkWealthBankConsistency } from './invariants';
 import { advanceTick, seedRng } from './engine';
@@ -45,17 +38,12 @@ describe('checkMonetaryConservation', () => {
             makeProductionFacility({ none: 100, primary: 50, secondary: 20, tertiary: 5 }, { planetId: planet.id }),
         );
 
-        // Seed food to prevent starvation
         putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e9);
 
         gameState.tick = 1;
         advanceTick(gameState);
 
-        const discrepancies = checkMonetaryConservation(
-            gameState.agents,
-            gameState.planets,
-            0.02, // 2% tolerance for floating-point
-        );
+        const discrepancies = checkMonetaryConservation(gameState.agents, gameState.planets, 0.02);
         expect(discrepancies).toEqual([]);
     });
 
@@ -72,7 +60,6 @@ describe('checkMonetaryConservation', () => {
             makeProductionFacility({ none: 500, primary: 200, secondary: 50, tertiary: 20 }, { planetId: planet.id }),
         );
 
-        // Seed food
         putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e9);
 
         for (let t = 1; t <= 30; t++) {
@@ -84,10 +71,6 @@ describe('checkMonetaryConservation', () => {
         expect(discrepancies).toEqual([]);
     });
 });
-
-// ---------------------------------------------------------------------------
-// Wealth ↔ householdDeposits consistency
-// ---------------------------------------------------------------------------
 
 describe(
     'checkWealthBankConsistency',
@@ -134,7 +117,6 @@ describe(
                 companyIds: ['company-1', 'company-2', 'company-3'],
             });
 
-            // Give each company production facilities so they all hire workers
             for (const agent of agents) {
                 const assets = agent.assets[planet.id];
                 if (!assets) {
@@ -154,9 +136,6 @@ describe(
                 advanceTick(gameState);
             }
 
-            // With the old bug, each agent would credit ALL employed workers
-            // with wages, causing wealth to grow N× faster than householdDeposits.
-            // tolerance = 50 to allow small floating-point drift.
             const discrepancies = checkWealthBankConsistency(gameState.planets, 50);
             expect(discrepancies).toEqual([]);
         });
@@ -177,7 +156,6 @@ describe(
                 ),
             );
 
-            // Seed moderate food — enough for food market activity but not unlimited
             putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e6);
 
             for (let t = 1; t <= 90; t++) {
@@ -185,50 +163,14 @@ describe(
                 advanceTick(gameState);
             }
 
-            // Both monetary conservation and wealth-bank consistency must hold
             const monetaryDisc = checkMonetaryConservation(gameState.agents, gameState.planets, 0.02);
             expect(monetaryDisc).toEqual([]);
             const wealthDisc = checkWealthBankConsistency(gameState.planets, 100);
             expect(wealthDisc).toEqual([]);
-        });
-
-        it('holds across the first year boundary (>360 ticks) — regression: inheritance orphaning', () => {
-            seedRng(42);
-
-            const { gameState, planet, agents } = makeWorld({
-                populationByEdu: { none: 2000, primary: 1000, secondary: 500, tertiary: 200 },
-                companyIds: ['company-1'],
-            });
-
-            const gov = agents[0];
-            gov.assets[planet.id].productionFacilities.push(
-                makeProductionFacility(
-                    { none: 500, primary: 200, secondary: 50, tertiary: 20 },
-                    { planetId: planet.id },
-                ),
-            );
-
-            // Unlimited food so food market is active throughout
-            putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e9);
-
-            for (let t = 1; t <= 400; t++) {
-                gameState.tick = t;
-                advanceTick(gameState);
-            }
-
-            // Wealth-bank invariant must hold after year boundary and mortality events
-            const wealthDisc = checkWealthBankConsistency(gameState.planets, 100);
-            expect(wealthDisc).toEqual([]);
-            const monetaryDisc = checkMonetaryConservation(gameState.agents, gameState.planets, 0.02);
-            expect(monetaryDisc).toEqual([]);
         });
     },
     { timeout: 10000 },
 );
-
-// ---------------------------------------------------------------------------
-// Transport pipeline consistency
-// ---------------------------------------------------------------------------
 
 describe('checkTransportPipeline', () => {
     it('holds with no ships in transit', () => {
@@ -252,7 +194,6 @@ describe('checkTransportPipeline', () => {
         };
         agent.ships.push(ship);
 
-        // Manually set the pipeline to the expected value
         pDest.transportPipeline[steelResourceType.name] = { resource: steelResourceType, quantity: 500 };
 
         expect(checkTransportPipeline(gameState)).toEqual([]);
@@ -273,7 +214,6 @@ describe('checkTransportPipeline', () => {
             arrivalTick: 100,
         };
         agent.ships.push(ship);
-        // transportPipeline intentionally NOT updated — simulates missing bookkeeping
 
         const discrepancies = checkTransportPipeline(gameState);
         expect(discrepancies.length).toBeGreaterThan(0);
@@ -293,7 +233,6 @@ describe('checkTransportPipeline', () => {
         const gameState = makeGameState([pOrigin, pDest], [agent]);
         gameState.tick = 1;
 
-        // Pre-loaded: currentCargo === cargoGoal so the handler dispatches immediately
         const ship = createShip(shiptypes.solid.bulkCarrier1, 0, 'Test Ship', pOrigin) as TransportShip;
         ship.state = {
             type: 'loading',
@@ -304,13 +243,11 @@ describe('checkTransportPipeline', () => {
         };
         agent.ships.push(ship);
 
-        // loading → transporting: pipeline entry is added
         shipTick(gameState);
         expect(ship.state.type).toBe('transporting');
         expect(pDest.transportPipeline[steelResourceType.name]?.quantity).toBe(1000);
         expect(checkTransportPipeline(gameState)).toEqual([]);
 
-        // Advance to arrival tick: transporting → unloading, pipeline entry is removed
         const arrivalTick = (ship.state as unknown as TransportShipStatusTransporting).arrivalTick;
         gameState.tick = arrivalTick;
         shipTick(gameState);

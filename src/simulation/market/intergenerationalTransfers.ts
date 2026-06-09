@@ -6,10 +6,7 @@ import {
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
-import { nextRandom } from '../utils/stochasticRound';
 import type { Planet } from '../planet/planet';
-import { allServices, SERVICE_DEFINITIONS, SERVICE_TIERS, serviceKeyOf } from './serviceDefinitions';
-import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
 import { educationLevelKeys } from '../population/education';
 import type {
     Cohort,
@@ -22,38 +19,25 @@ import type {
     ServiceName,
 } from '../population/population';
 import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../population/population';
+import { nextRandom } from '../utils/stochasticRound';
+import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
+import { allServices, computeTierCost, SERVICE_DEFINITIONS, SERVICE_TIERS, serviceKeyOf } from './serviceDefinitions';
 
-/** Per-age aggregated dependent need. */
 interface DependentNeed {
-    /** Total currency needed to fill grocery service buffer to the target level. */
     totalNeed: number;
-    /** Total dependent population at this age. */
+
     totalPop: number;
 }
 
-/**
- * Pre-aggregated statistics for a single (age, occ, edu) cell.
- * Built once per tick and reused across all transfer computations.
- */
 interface CellAggregate {
     pop: number;
     wealth: GaussianMoments;
-    /** Total service buffer (in service units) per service key, across all skill sub-cells. */
+
     buffers: Partial<Record<ServiceName, number>>;
 }
 
-/**
- * Cache of pre-aggregated cell statistics indexed as
- * `cache[age][occ][edu]`. Built once per tick by `buildAggregateCache`.
- */
 type AggregateCache = Array<{ [O in Occupation]: { [L in EducationLevelType]: CellAggregate } }>;
 
-/**
- * Iterate over all skill levels once per (age, occ, edu) cell and store the
- * aggregated population, wealth moments and food stock.  The result is reused
- * by every subsequent loop in the same tick, eliminating redundant inner-SKILL
- * iterations.
- */
 function buildAggregateCache(demography: Cohort<PopulationCategory>[]): AggregateCache {
     const numAges = demography.length;
     const cache = new Array(numAges) as AggregateCache;
@@ -75,8 +59,7 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             const cell = ageCells[occ][edu];
             cell.wealth = mergeGaussianMoments(cell.pop, cell.wealth, n, cat.wealth);
             cell.pop += n;
-            // Convert per-category service buffers (ticks) to aggregate service units:
-            // buffer ticks * consumptionRatePerPersonPerTick * n = total service units
+
             for (const svc of allServices) {
                 const key = serviceKeyOf(svc);
                 cell.buffers[key] =
@@ -98,9 +81,9 @@ export function supportWeight(ageDifference: number, override?: ServiceTierSuppo
 
     const amplitude = (n: number): number => {
         if (n < 0) {
-            return Math.exp(-0.5 * (Math.abs(n) + 1)); // parents and older relatives
+            return Math.exp(-0.5 * (Math.abs(n) + 1));
         } else {
-            return Math.exp(-0.5 * (n - 1)); // children and younger relatives
+            return Math.exp(-0.5 * (n - 1));
         }
     };
     for (let n = -kernelN; n <= kernelN; n++) {
@@ -126,7 +109,6 @@ export function effectiveSurplus(mean: number, variance: number, floor: number, 
     return alpha * naiveSurplus * population;
 }
 
-/** Compute per-age total supporter surplus given a wealth floor. Only ages >= MIN_EMPLOYABLE_AGE contribute. */
 function computeSurplusSnapshot(cache: AggregateCache, floor: number): number[] {
     const numAges = cache.length;
     const snapshot: number[] = new Array(numAges);
@@ -148,11 +130,6 @@ function computeSurplusSnapshot(cache: AggregateCache, floor: number): number[] 
     return snapshot;
 }
 
-/**
- * Compute per-age dependent need for a set of tier services.
- * Need = cost to fill buffers to coverageFraction of target, minus wealth available after
- * covering higher-priority (alreadyCommittedCost) spending.
- */
 function computeDependentNeedsForTier(
     cache: AggregateCache,
     tierServices: ServiceName[],
@@ -183,11 +160,11 @@ function computeDependentNeedsForTier(
                 for (const { key, price, targetPerPerson } of serviceParams) {
                     const perCapitaBuffer = (buffers[key] ?? 0) / pop;
                     const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
-                    // Apply a fill-fraction discount so urgency tapers as the buffer fills.
+
                     const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
                     totalCostGap += gap * price * (1 - fillFraction);
                 }
-                // Wealth available for this tier = total wealth minus what is reserved for higher tiers.
+
                 const availableWealth = Math.max(0, wealth.mean - alreadyCommittedCost);
                 const netNeed = Math.max(0, totalCostGap - availableWealth);
                 totalNeed += netNeed * pop;
@@ -199,11 +176,6 @@ function computeDependentNeedsForTier(
     return needs;
 }
 
-// ---------------------------------------------------------------------------
-// Transfer matrix helpers
-// ---------------------------------------------------------------------------
-
-/** Create a zero-initialised transfer matrix for `numAges` age slots. */
 export function createZeroTransferMatrix(numAges: number): PopulationTransferMatrix {
     const matrix: PopulationTransferMatrix = new Array(numAges);
     for (let age = 0; age < numAges; age++) {
@@ -219,10 +191,9 @@ export function createZeroTransferMatrix(numAges: number): PopulationTransferMat
     return matrix;
 }
 
-/** Sum all cells of a transfer matrix (should be ~0 for a balanced system). */
 export function sumTransferMatrix(matrix: PopulationTransferMatrix): number {
     let total = 0;
-    let maxValue = 1e-10; // small value to prevent division by zero in case of an all-zero matrix
+    let maxValue = 1e-10;
     for (let age = 0; age < matrix.length; age++) {
         for (const edu of educationLevelKeys) {
             for (const occ of OCCUPATIONS) {
@@ -246,18 +217,11 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
     for (let tierIdx = 0; tierIdx < SERVICE_TIERS.length; tierIdx++) {
         const tier = SERVICE_TIERS[tierIdx];
 
-        // Cost per tick to consume all services in this tier (at urgency price).
-        const tierCostPerTick = tier.services.reduce((sum, key) => {
-            const def = SERVICE_DEFINITIONS[key];
-            const price =
-                (planet.marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
-            return sum + def.consumptionRatePerPersonPerTick * price;
-        }, 0);
+        const tierCostPerTick =
+            computeTierCost(planet.marketPrices, tier) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
 
-        // Supporters must keep enough for all previous mandatory tiers (and this one if mandatory).
         const tierFloor = cumulativeMandatoryCost + (tier.mandatoryForOwnConsumption ? tierCostPerTick : 0);
 
-        // Rebuild cache after the first tier because debit/credit calls mutate demography wealth.
         if (tierIdx > 0) {
             activeCache = buildAggregateCache(demography);
         }
@@ -271,13 +235,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
             cumulativeMandatoryCost,
         );
 
-        // Compute global scarcity factor so all cohorts share shortages proportionally.
         const totalSupply = remaining.reduce((sum, s) => sum + s, 0);
         const totalDemand = tierNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
         const scarcityFactor = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 1;
 
-        // Shuffle age indices to eliminate systematic processing-order bias over contested
-        // supplier pools. Statistically correct in expectation across ticks.
         const ageOrder = Array.from({ length: numAges }, (_, i) => i);
         for (let i = ageOrder.length - 1; i > 0; i--) {
             const j = Math.floor(nextRandom() * (i + 1));
@@ -290,7 +251,6 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 continue;
             }
 
-            // Compute support weights from all ages with remaining surplus.
             const weightedSuppliers: { supAge: number; weight: number }[] = [];
             let totalWeight = 0;
 
@@ -298,7 +258,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 if (remaining[supAge] <= 0) {
                     continue;
                 }
-                // Signed age difference: positive = supporter is older than dependent
+
                 const ageDiff = supAge - age;
                 const w = supportWeight(ageDiff, tier.supportWeightOverride);
                 if (w < 1e-10) {
@@ -312,7 +272,6 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 continue;
             }
 
-            // Proportional allocation pass.
             let totalTransfer = 0;
             const transfers: { supAge: number; amount: number }[] = [];
 
@@ -330,7 +289,6 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 continue;
             }
 
-            // Debit each supporter age; track actual debits so credit matches exactly.
             let actualTotalDebited = 0;
             for (const { supAge, amount } of transfers) {
                 const debited = debitSupporters(activeCache, demography, supAge, amount, tierFloor, transferMatrix);
@@ -417,17 +375,16 @@ function debitSupporters(
     for (const cell of cells) {
         const share = (cell.effSurplus / totalEffSurplus) * actualDebit;
         const perCapita = share / cell.pop;
-        // distributeWealthChangeTracked returns a negative aggregate for a debit
+
         const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, -perCapita, floor);
 
-        // Record debit in transfer matrix (negative = given away)
         if (transferMatrix) {
-            transferMatrix[age][cell.edu][cell.occ] += actualAggregate; // actualAggregate is negative ✓
+            transferMatrix[age][cell.edu][cell.occ] += actualAggregate;
         }
-        actuallyDebited += -actualAggregate; // convert to positive amount removed
+        actuallyDebited += -actualAggregate;
     }
 
-    return actuallyDebited; // always non-negative
+    return actuallyDebited;
 }
 
 function creditDependents(
@@ -452,11 +409,6 @@ function creditDependents(
         need: number;
     }
 
-    // Must use urgency-adjusted prices and the same fill-fraction discount as
-    // computeDependentNeedsForTier so that per-cell need proportions are consistent
-    // with the global need calculation. Using raw prices here would let cells appear
-    // need-free when the global calculation (at urgency price) found a shortfall,
-    // causing creditDependents to return early without distributing — destroying wealth.
     const serviceParams = tierServices.map((key) => {
         const def = SERVICE_DEFINITIONS[key];
         const price = (marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
@@ -481,7 +433,7 @@ function creditDependents(
                 const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
                 totalCostGap += gap * price * (1 - fillFraction);
             }
-            // Wealth available for this tier after covering higher-priority spending.
+
             const availableWealth = Math.max(0, wealth.mean - alreadyCommittedCost);
             const need = Math.max(0, totalCostGap - availableWealth) * pop;
             cells.push({ occ, edu, pop, need });
@@ -494,8 +446,6 @@ function creditDependents(
         return;
     }
 
-    // Only distribute to cells that actually have a funding gap.
-    // If totalNeed == 0 everyone can self-fund; nothing to credit.
     if (totalNeed <= 0) {
         return;
     }

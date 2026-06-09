@@ -16,21 +16,18 @@ export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
 export const PID_KP = 0.1;
-/** Integral gain: eliminates persistent steady-state offset. */
+
 export const PID_KI = 0.001;
-/** Derivative gain: dampens oscillations by braking when error changes. */
+
 export const PID_KD = 0.05;
 export const PID_IMAX = 0.05;
 export const PID_OUT_MAX = 0.5;
 export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
-/** Anti-windup ceiling for the expansion accumulator. */
+
 export const EXPANSION_INTEGRAL_MAX = 60;
-/**
- * Per-call decay applied to the expansion integral when scale < maxScale
- * or signal is not positive — slowly forgets old demand pressure.
- */
+
 export const EXPANSION_INTEGRAL_DECAY = 0.5;
 
 function getDefaultPidState(): PidState {
@@ -55,8 +52,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
             continue;
         }
 
-        // When there is no market history yet but open bids exist, synthesise a
-        // MarketResult so the agent can ramp up towards observed demand.
         const avg =
             lastResult ??
             (() => {
@@ -167,13 +162,7 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     return signal;
 }
 
-/**
- * Compute a scale delta using a PID controller.
- * Mutates `state` in-place (integral, prevError, filteredError).
- * Returns an absolute scale delta (already multiplied by maxScale).
- */
 function computePidDelta(signal: number, state: PidState, maxScale: number): number {
-    // Low-pass filter on error to reduce noise in the derivative term.
     state.filteredError = PID_D_ALPHA * signal + (1 - PID_D_ALPHA) * state.filteredError;
 
     const P = PID_KP * signal;
@@ -184,9 +173,6 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
         state.integral = 0;
     }
 
-    // Conditional integration anti-windup (industry-standard clamping):
-    // Integrate only when the output is NOT saturated, OR when the error is opposing
-    // the saturated output (which would naturally unwind it).
     const tentativeOutput = P + state.integral + D;
     const outSat = Math.max(-PID_OUT_MAX, Math.min(PID_OUT_MAX, tentativeOutput));
     const saturated = Math.abs(outSat) >= PID_OUT_MAX;
@@ -199,10 +185,6 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
     return output * maxScale;
 }
 
-/**
- * Returns true if the agent has enough deposits to cover at least
- * `EXPANSION_DEPOSIT_THRESHOLD` of the estimated construction cost.
- */
 function hasSufficientFundsForExpansion(
     assets: AgentPlanetAssets,
     planet: Planet,
@@ -210,18 +192,12 @@ function hasSufficientFundsForExpansion(
 ): boolean {
     const constructionPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
     if (constructionPrice <= 0) {
-        // No price data — cannot estimate cost, skip expansion.
         return false;
     }
     const estimatedCost = totalConstructionServiceRequired * constructionPrice;
     return assets.deposits >= EXPANSION_DEPOSIT_THRESHOLD * estimatedCost;
 }
 
-/**
- * Initiate a construction project to expand maxScale.
- * Uses the existing `construction` field and `calculateCostsForConstruction`.
- * Returns true if the expansion was initiated, false if the agent lacks funds.
- */
 function initiateCapacityExpansion(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): boolean {
     const currentMax = facility.maxScale;
     const targetMax = Math.max(Math.ceil(currentMax * (1 + MAX_SCALE_EXPAND_FRACTION)), currentMax + 1);
@@ -243,10 +219,6 @@ function initiateCapacityExpansion(facility: ProductionFacility, assets: AgentPl
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// Main entry point
-// ---------------------------------------------------------------------------
-
 export function updateAgentProductionScale(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
         if (!agent.automated) {
@@ -259,13 +231,10 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
         }
 
         for (const facility of assets.productionFacilities) {
-            // Skip facilities under construction (type === 'new') — they cannot produce yet.
-            // Facilities with construction.type === 'expansion' can still produce while expanding.
             if (facility.construction !== null && facility.construction.type === 'new') {
                 continue;
             }
 
-            // No market data at all — skip unless there are open bid orders in the order book.
             const hasAnyMarketData = facility.produces.some(
                 (o) =>
                     planet.lastMarketResult[o.resource.name] !== undefined ||
@@ -279,10 +248,8 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             assert(signal >= -1, 'Signal should be positive due to earlier check for market data, but got' + signal);
             assert(signal <= 1, 'Signal should be capped at 1, but got' + signal);
 
-            // Retrieve or initialise PID state (undefined/null → fresh state).
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
 
-            // Compute PID output and apply to scale.
             const delta = computePidDelta(signal, state, facility.maxScale);
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
 
@@ -292,7 +259,6 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            // ---- Capacity expansion trigger ----
             if (
                 facility.scale >= facility.maxScale &&
                 facility.construction === null &&
@@ -305,7 +271,6 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 }
             }
 
-            // Persist updated PID state back onto the facility (survives snapshot).
             facility.pidState = state;
         }
     });

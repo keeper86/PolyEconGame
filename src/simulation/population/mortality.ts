@@ -20,13 +20,13 @@ export const mortalityProbability = (age: number) => {
         return 1.0;
     }
     if (age >= mortalityByThousands.length) {
-        return 1.0; // cap at 100% for ages beyond the table
+        return 1.0;
     }
     return mortalityByThousands[age] / 1000.0;
 };
 
 const expectedLifeExpectancy = () => {
-    let remaining = 1.0; // start with 100% alive at birth
+    let remaining = 1.0;
     let expectancy = 0;
     for (let age = 0; age < 100; age++) {
         expectancy += remaining;
@@ -35,33 +35,12 @@ const expectedLifeExpectancy = () => {
     return expectancy;
 };
 
-console.log('Current life expectancy', expectedLifeExpectancy()); //72 years
+console.log('Current life expectancy', expectedLifeExpectancy());
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/**
- * Cap total per-tick mortality to 95 % to avoid complete population
- * wipe-outs in a single tick.
- */
 export const MAX_MORTALITY_PER_TICK = 0.8;
 
-/**
- * Acute starvation mapping — an age-independent annual mortality component
- * representing direct deaths from severe malnutrition.  This is capped so
- * that even at S=1 we don't exceed realistic per-year probabilities.
- *
- * The exponent makes the curve strongly convex so moderate shortages have
- * limited acute lethality while severe, sustained famine causes large
- * annual death rates.
- */
 export const STARVATION_ACUTE_POWER = 4;
 
-/**
- * Compute the annual mortality contributions from pollution and natural
- * disasters.  These are additive on top of the base age-dependent rate.
- */
 export function computeEnvironmentalMortality(environment: Environment): number {
     const { pollution, naturalDisasters } = environment;
 
@@ -92,14 +71,13 @@ export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAc
     const environmentalMortality = computeEnvironmentalMortality(planet.environment);
     const population = planet.population;
 
-    // Collect inheritance records per source age
     const inheritanceByAge = new Map<number, number>();
 
     population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
             if (category.total === 0) {
                 category.deaths.countThisTick = 0;
-                return; // skip empty cells
+                return;
             }
 
             let dead = 0;
@@ -129,14 +107,12 @@ export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAc
             category.deaths.countThisMonth += result.count;
             category.deaths.countThisTick = result.count;
 
-            // Accumulate inherited wealth for this source age
             if (result.inheritedWealth > 0) {
                 inheritanceByAge.set(age, (inheritanceByAge.get(age) ?? 0) + result.inheritedWealth);
             }
         });
     });
 
-    // Redistribute accumulated inherited wealth to younger generations
     const records: InheritanceRecord[] = [];
     for (const [sourceAge, amount] of inheritanceByAge) {
         records.push({ sourceAge, amount });

@@ -19,7 +19,7 @@ type RouteCandidate = {
     destPlanetId: string;
     resourceName: string;
     quantity: number;
-    /** Net profit per tick in currency units (includes repositioning leg if any). */
+
     profitPerTick: number;
 };
 
@@ -48,7 +48,7 @@ function scanBestRoute(
     const candidatesFromOrigin: RouteCandidate[] = [];
 
     let bestProfitPerTick = ARBITRAGE_MIN_PROFIT_PER_TICK;
-    const debug = false; //process.env.SIM_DEBUG === '2';
+    const debug = false;
     const monthly = isFirstTickInMonth(gameState.tick);
 
     const oneWayTicks = travelTime(ship);
@@ -85,7 +85,6 @@ function scanBestRoute(
                 continue;
             }
 
-            // Repositioning leg: ticks to travel from current planet to origin (0 if already there)
             const fromOrigin = origin.id === shipPlanetId;
             const repositionTicks = fromOrigin ? 0 : oneWayTicks;
             const totalTicks = repositionTicks + roundTripTicks;
@@ -183,12 +182,8 @@ function scanBestRoute(
     return best;
 }
 
-// ---------------------------------------------------------------------------
-// Assign routes to idle ships (every tick)
-// ---------------------------------------------------------------------------
-
 function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
-    const debug = false; // process.env.SIM_DEBUG === '1';
+    const debug = false;
     const monthly = isFirstTickInMonth(gameState.tick);
 
     for (const ship of agent.ships) {
@@ -212,7 +207,6 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
         }
 
         if (candidate.originPlanetId !== shipPlanetId) {
-            // Ship needs to reposition to the origin planet first — send it empty
             if (debug) {
                 console.debug(
                     `[arb] ${agent.id} ship '${ship.name}': REPOSITIONING ${shipPlanetId}→${candidate.originPlanetId} for ${candidate.resourceName} route (profitPerTick=${candidate.profitPerTick.toFixed(2)})`,
@@ -252,7 +246,6 @@ function assignRoutesToIdleShips(agent: Agent, gameState: GameState): void {
 }
 
 function postSellOffers(agent: Agent, gameState: GameState): void {
-    // Collect resources actively being loaded per planet — we don't want to sell those
     const loadingByPlanet = new Map<string, Set<string>>();
     for (const ship of agent.ships) {
         if (ship.type.type !== 'transport' || ship.state.type !== 'loading') {

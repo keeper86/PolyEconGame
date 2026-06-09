@@ -158,7 +158,7 @@ export function makeAgent(opts: {
     tenancies?: string[];
 }): Agent {
     const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage);
-    // All procedural/government agents start with full licenses on their home planet
+
     assets.licenses = {
         commercial: { acquiredTick: 0, frozen: false },
         workforce: { acquiredTick: 0, frozen: false },
@@ -176,19 +176,6 @@ export function makeAgent(opts: {
     };
 }
 
-/**
- * Pre-fills each agent's storage with INPUT_BUFFER_TARGET_TICKS worth of every
- * material input across all their production facilities.
- *
- * This eliminates the artificial startup shortage that causes price spikes at
- * the beginning of a simulation run (agents start with full procurement buffers
- * instead of having to buy everything from scratch).
- *
- * Skipped resource forms:
- *   - 'services'        — 20 % depreciation / tick; pre-filled stock would vanish within ~5 ticks
- *   - 'landBoundResource' — cannot be placed in a storage facility
- *   - 'currency'        — not a consumable production input
- */
 export function prefillAgentStorageFromFacilities(gameState: { agents: Map<string, Agent> }): void {
     for (const agent of gameState.agents.values()) {
         for (const [, assets] of Object.entries(agent.assets)) {
@@ -236,7 +223,7 @@ export function createPopulation(total: number, buffer: number = 6): Population 
         }
 
         if (age === 0) {
-            // newborns added during first tick's births step
+            // do nothing
         } else if (age < 15) {
             const noneEdu = Math.floor(ageCount * 0.8);
             addTo(pop, age, 'education', 'none', noneEdu);

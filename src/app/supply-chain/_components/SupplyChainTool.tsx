@@ -18,8 +18,6 @@ import { solveSupplyChain, type SolverObjective, type SolverResult } from './sol
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
         return `${(n / 1_000_000).toFixed(1)}M`;
@@ -37,8 +35,6 @@ const LEVEL_BADGE: Record<string, string> = {
     manufactured: 'bg-purple-600 text-white',
     services: 'bg-emerald-600 text-white',
 };
-
-// ─── FacilityCard ────────────────────────────────────────────────────────────
 
 interface FacilityCardProps {
     facility: FacilityInfo;
@@ -75,7 +71,7 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
             </CardHeader>
 
             <CardContent className='px-4 pb-3 space-y-3'>
-                {/* Scale controls */}
+                {}
                 <div className='flex items-center gap-2'>
                     <Slider
                         min={0}
@@ -95,7 +91,7 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
                     />
                 </div>
 
-                {/* Worker requirements (shown only when active) */}
+                {}
                 {scale > 0 && (
                     <div className='text-[11px] text-muted-foreground'>
                         Workers: {fmt(facility.workerRequirement.none * scale)} unskilled ·{' '}
@@ -105,7 +101,7 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
                     </div>
                 )}
 
-                {/* Inputs & outputs per tick */}
+                {}
                 <div className='grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]'>
                     {facility.needs.length > 0 && (
                         <div>
@@ -151,8 +147,6 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
         </Card>
     );
 }
-
-// ─── BottleneckPanel ─────────────────────────────────────────────────────────
 
 function CoverageBar({ ratio }: { ratio: number }) {
     const pct = Math.min(100, ratio * 100);
@@ -264,8 +258,6 @@ function BottleneckPanel({
     );
 }
 
-// ─── SolverTab ────────────────────────────────────────────────────────────────
-
 const OBJECTIVE_LABELS: Record<SolverObjective, string> = {
     scale: 'Minimise Total Scale',
     labor: 'Minimise Total Workers',
@@ -279,14 +271,12 @@ function SolverTab({
     population: number;
     onApplyScales: (scales: Record<string, number>) => void;
 }) {
-    // Build initial allowed-facilities set (all enabled by default)
     const allFacilityNames = useMemo(() => ALL_FACILITY_ENTRIES.map((e) => e.factory('tool', 'preview').name), []);
     const [allowed, setAllowed] = useState<Set<string>>(() => new Set(allFacilityNames));
     const [objective, setObjective] = useState<SolverObjective>('scale');
     const [solving, setSolving] = useState(false);
     const [result, setResult] = useState<SolverResult | null>(null);
 
-    // Group facilities by primary output level for the checkbox UI
     const facilitiesByLevel = useMemo(() => {
         const grouped: Record<string, string[]> = {};
         for (const entry of ALL_FACILITY_ENTRIES) {
@@ -329,7 +319,7 @@ function SolverTab({
     function handleSolve() {
         setSolving(true);
         setResult(null);
-        // Defer to next tick so React re-renders the loading state first
+
         setTimeout(() => {
             try {
                 const res = solveSupplyChain({ population, allowedFacilities: allowed, objective });
@@ -349,7 +339,7 @@ function SolverTab({
 
     return (
         <div className='space-y-6'>
-            {/* Objective selector */}
+            {}
             <div className='space-y-2'>
                 <Label className='font-semibold'>Objective</Label>
                 <div className='flex flex-wrap gap-2'>
@@ -369,7 +359,7 @@ function SolverTab({
                 </div>
             </div>
 
-            {/* Allowed facilities */}
+            {}
             <div className='space-y-3'>
                 <Label className='font-semibold'>Allowed Facilities</Label>
                 {([...FACILITY_LEVELS, 'source'] as const).map((level) => {
@@ -420,13 +410,13 @@ function SolverTab({
                 })}
             </div>
 
-            {/* Solve button */}
+            {}
             <Button onClick={handleSolve} disabled={solving || population <= 0}>
                 {solving ? 'Solving…' : 'Solve'}
             </Button>
             {population <= 0 && <p className='text-sm text-muted-foreground'>Set a population above 0 to solve.</p>}
 
-            {/* Results */}
+            {}
             {result && (
                 <div className='space-y-4'>
                     {result.status === 'infeasible' ? (
@@ -447,7 +437,7 @@ function SolverTab({
                                         <CardTitle className='text-sm'>Infeasibility Diagnostics</CardTitle>
                                     </CardHeader>
                                     <CardContent className='px-4 pb-3 space-y-4 text-sm'>
-                                        {/* Power constraint check */}
+                                        {}
                                         <div>
                                             <p className='font-medium mb-1'>Power constraint</p>
                                             {result.diagnostic.feasibleWithoutPower ? (
@@ -465,7 +455,7 @@ function SolverTab({
                                             )}
                                         </div>
 
-                                        {/* Per-service breakdown */}
+                                        {}
                                         <div>
                                             <p className='font-medium mb-1'>Service constraints</p>
                                             <div className='space-y-1'>
@@ -517,7 +507,7 @@ function SolverTab({
                                             </div>
                                         </div>
 
-                                        {/* Unproducable resources */}
+                                        {}
                                         {result.diagnostic.unproducableResources.length > 0 && (
                                             <div>
                                                 <p className='font-medium mb-1 text-red-700'>
@@ -541,7 +531,7 @@ function SolverTab({
                         </div>
                     ) : (
                         <>
-                            {/* Service coverage summary */}
+                            {}
                             <Card>
                                 <CardHeader className='pb-2 pt-3 px-4'>
                                     <CardTitle className='text-sm'>Service Coverage</CardTitle>
@@ -558,7 +548,7 @@ function SolverTab({
                                 </CardContent>
                             </Card>
 
-                            {/* Facility scale table */}
+                            {}
                             <div className='space-y-2'>
                                 <div className='flex items-center justify-between'>
                                     <Label className='font-semibold'>
@@ -658,8 +648,6 @@ function SolverTab({
     );
 }
 
-// ─── SupplyChainTool ─────────────────────────────────────────────────────────
-
 export default function SupplyChainTool() {
     const [scales, setScales] = useState<Record<string, number>>({});
     const [population, setPopulation] = useState<number>(100_000);
@@ -721,7 +709,7 @@ export default function SupplyChainTool() {
 
     return (
         <div className='space-y-4'>
-            {/* Top controls */}
+            {}
             <div className='flex flex-wrap items-center gap-4 p-4 bg-muted/40 rounded-lg border'>
                 <div className='flex items-center gap-2'>
                     <Label htmlFor='population' className='whitespace-nowrap font-semibold'>
@@ -762,9 +750,9 @@ export default function SupplyChainTool() {
                     <TabsTrigger value='live'>Live State</TabsTrigger>
                 </TabsList>
 
-                {/* ── DASHBOARD ── */}
+                {}
                 <TabsContent value='dashboard' className='space-y-4 mt-4'>
-                    {/* Summary cards */}
+                    {}
                     <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
                         <Card>
                             <CardHeader className='pb-1 pt-3 px-4'>
@@ -832,10 +820,10 @@ export default function SupplyChainTool() {
                         </Card>
                     </div>
 
-                    {/* Bottleneck detection */}
+                    {}
                     <BottleneckPanel balance={balance} scales={scales} population={population} />
 
-                    {/* Deficit alerts */}
+                    {}
                     {deficits.length > 0 && (
                         <Card className='border-red-300'>
                             <CardHeader className='pb-2 pt-3 px-4'>
@@ -857,7 +845,7 @@ export default function SupplyChainTool() {
                         </Card>
                     )}
 
-                    {/* Level filter pills */}
+                    {}
                     <div className='flex flex-wrap gap-2'>
                         {allFilterLevels.map((level) => (
                             <button
@@ -876,7 +864,7 @@ export default function SupplyChainTool() {
                         ))}
                     </div>
 
-                    {/* Resource balance table */}
+                    {}
                     <div className='border rounded-lg overflow-auto'>
                         <Table>
                             <TableHeader>
@@ -954,7 +942,7 @@ export default function SupplyChainTool() {
                     </div>
                 </TabsContent>
 
-                {/* ── FACILITIES ── */}
+                {}
                 <TabsContent value='facilities' className='mt-4 space-y-8'>
                     {(['raw', 'refined', 'manufactured', 'services'] as const).map((level) => (
                         <div key={level}>
@@ -980,17 +968,17 @@ export default function SupplyChainTool() {
                     ))}
                 </TabsContent>
 
-                {/* ── GRAPH ── */}
+                {}
                 <TabsContent value='graph' className='mt-4'>
                     <DependencyGraph scales={scales} facilities={balance.facilities} balanceByName={balanceByName} />
                 </TabsContent>
 
-                {/* ── SOLVER ── */}
+                {}
                 <TabsContent value='solver' className='mt-4'>
                     <SolverTab population={population} onApplyScales={(newScales) => setScales(newScales)} />
                 </TabsContent>
 
-                {/* ── LIVE STATE ── */}
+                {}
                 <TabsContent value='live' className='mt-4'>
                     <LiveStateTab onApplyScales={(newScales) => setScales(newScales)} />
                 </TabsContent>
@@ -998,8 +986,6 @@ export default function SupplyChainTool() {
         </div>
     );
 }
-
-// ─── FacilityListTooltip ──────────────────────────────────────────────────────
 
 function FacilityListTooltip({ names, label }: { names: string[]; label: string }) {
     if (names.length === 0) {

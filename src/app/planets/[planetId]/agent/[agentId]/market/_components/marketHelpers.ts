@@ -7,10 +7,6 @@ import { transportShipBuildResources } from '@/simulation/ships/ships';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
 export function priceArrow(dir?: number): { label: string; className: string } {
     if (dir === undefined) {
         return { label: '', className: '' };
@@ -24,10 +20,6 @@ export function priceArrow(dir?: number): { label: string; className: string } {
     return { label: '→', className: 'text-muted-foreground' };
 }
 
-/**
- * Color class for the effective buy quantity.
- * Green = target met (order inactive), yellow = partially stocked, red = far below target.
- */
 export function buyFulfillmentClass(inventory: number, storageTarget: number): string {
     if (storageTarget <= 0) {
         return '';
@@ -42,10 +34,6 @@ export function buyFulfillmentClass(inventory: number, storageTarget: number): s
     return 'text-red-500 dark:text-red-400';
 }
 
-/**
- * Color class for the effective sell quantity.
- * Green = plenty above retainment (active sell), yellow = small surplus, red = nothing to sell (inactive).
- */
 export function sellFulfillmentClass(inventory: number, retainment: number): string {
     const effective = Math.max(0, inventory - retainment);
     if (effective <= 0) {
@@ -57,7 +45,6 @@ export function sellFulfillmentClass(inventory: number, retainment: number): str
     return 'text-yellow-600 dark:text-yellow-400';
 }
 
-/** Sum of consumption per tick (across all facilities) for a given input resource. */
 export function consumptionPerTick(facilities: ProductionFacility[], resourceName: string): number {
     return facilities.reduce((sum, f) => {
         const need = f.needs.find((n) => n.resource.name === resourceName);
@@ -65,7 +52,6 @@ export function consumptionPerTick(facilities: ProductionFacility[], resourceNam
     }, 0);
 }
 
-/** Sum of production per tick (across all facilities) for a given output resource. */
 export function productionPerTick(facilities: ProductionFacility[], resourceName: string): number {
     return facilities.reduce((sum, f) => {
         const prod = f.produces.find((p) => p.resource.name === resourceName);
@@ -73,7 +59,6 @@ export function productionPerTick(facilities: ProductionFacility[], resourceName
     }, 0);
 }
 
-/** Get resource object by name — also handles dynamic currency resources (CUR_<planetId>). */
 export function getResourceByName(resourceName: string) {
     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
         return getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
@@ -81,24 +66,16 @@ export function getResourceByName(resourceName: string) {
     return ALL_RESOURCES.find((r) => r.name === resourceName);
 }
 
-/** Convert resource name to URL slug (inverse of slugToResourceName) */
 export function resourceNameToSlug(resourceName: string): string {
     return resourceName.toLowerCase().replace(/\s+/g, '-');
 }
 
-/** Convert URL slug back to resource name by looking up ALL_RESOURCES or reversing the CUR_ prefix. */
 export function slugToResourceName(slug: string): string | undefined {
-    // CUR_<planetId> slugifies to cur_<planetId> (lowercase, no spaces to replace).
-    // Planet IDs are always lowercase so the round-trip is exact.
     if (slug.startsWith(CURRENCY_RESOURCE_PREFIX.toLowerCase())) {
         return CURRENCY_RESOURCE_PREFIX + slug.slice(CURRENCY_RESOURCE_PREFIX.length);
     }
     return ALL_RESOURCES.find((r) => resourceNameToSlug(r.name) === slug)?.name;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Market status classification                                       */
-/* ------------------------------------------------------------------ */
 
 const OVERSUPPLY_RATIO_THRESHOLD = 2;
 
@@ -122,7 +99,6 @@ export function classifyMarket(row: MarketOverviewRow): MarketStatus {
     return 'shortage';
 }
 
-/** Build the deduplicated list of resources to show. */
 export function buildResourceList(
     assets: AgentPlanetAssets,
     showAll: boolean,
@@ -156,7 +132,6 @@ export function buildResourceList(
 
     add(constructionServiceResourceType.name);
 
-    // Facility inputs and outputs
     for (const f of facilities) {
         for (const { resource } of f.needs) {
             if (resource.form !== 'landBoundResource') {
@@ -187,21 +162,19 @@ export function buildResourceList(
         });
     }
 
-    // Existing bids / offers
     for (const name of Object.keys(buyBids)) {
         add(name);
     }
     for (const name of Object.keys(sellOffers)) {
         add(name);
     }
-    // Stuff already in storage
+
     for (const [name, entry] of Object.entries(storageFacility.currentInStorage)) {
         if ((entry?.quantity ?? 0) > 0) {
             add(name);
         }
     }
 
-    // Force-include specific resources (e.g. from URL hash) regardless of filters
     for (const name of forceInclude) {
         add(name);
     }
@@ -235,7 +208,6 @@ export function buildInitialState(
             bidAutomated,
             targetBufferTicks: '',
 
-            // Dirty state tracking - all false initially
             dirtyFields: {
                 offerPrice: false,
                 offerRetainment: false,
@@ -243,10 +215,8 @@ export function buildInitialState(
                 bidStorageTarget: false,
             },
 
-            // Validation errors - empty initially
             validationErrors: {},
 
-            // Saved state snapshots
             savedOfferPrice: offerPrice,
             savedOfferRetainment: offerRetainment,
             savedOfferAutomated: offerAutomated,

@@ -59,7 +59,6 @@ export function ActiveShipyardCard({
           )
         : 1;
 
-    // Compute per-tick input quantities when building
     let activeShipType: BaseShipType | null = null;
 
     let proportionPerTick: number | null = null;
@@ -110,7 +109,6 @@ export function ActiveShipyardCard({
                 }
             >
                 <div className='grid w-full items-center gap-x-2 py-1' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
-                    {/* Inputs */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>
                         {facility.produces !== null && activeShipType !== null && proportionPerTick !== null
                             ? activeShipType.buildingCost.map((costEntry) => {
@@ -144,7 +142,6 @@ export function ActiveShipyardCard({
 
                     <RiArrowRightBoxFill className='shrink-0 h-8 w-8 text-muted-foreground' />
 
-                    {/* Output */}
                     <div className='flex flex-wrap gap-1.5 justify-center'>
                         {facility.produces !== null ? (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>

@@ -20,10 +20,6 @@ import { reduceWorkforceCohort } from '../workforce/workforce';
 import { nullWorkforceCohort, nullWorkforceCategory } from '../workforce/workforce';
 import { educationLevelKeys } from './education';
 
-// ============================================================================
-// createEmptyPopulationCohort
-// ============================================================================
-
 describe('createEmptyPopulationCohort', () => {
     it('creates a cohort with all 4 occupations', () => {
         const cohort = createEmptyPopulationCohort();
@@ -48,7 +44,6 @@ describe('createEmptyPopulationCohort', () => {
         const cohort = createEmptyPopulationCohort();
         cohort.employed.none.novice.total = 42;
 
-        // Other cells should still be zero
         expect(cohort.employed.none.professional.total).toBe(0);
         expect(cohort.employed.primary.novice.total).toBe(0);
         expect(cohort.unoccupied.none.novice.total).toBe(0);
@@ -65,22 +60,15 @@ describe('createEmptyPopulationCohort', () => {
             }
         }
 
-        // Should have 4 occupations × 4 edu × 3 skill = 48 cells
         expect(cells.length).toBe(OCCUPATIONS.length * educationLevelKeys.length * SKILL.length);
 
-        // All cells should be unique references
         const unique = new Set(cells);
         expect(unique.size).toBe(cells.length);
 
-        // Verify reference independence
         cells[0].total = 100;
         expect(cells[1].total).toBe(0);
     });
 });
-
-// ============================================================================
-// createEmptyWorkforceCohort
-// ============================================================================
 
 describe('createEmptyWorkforceCohort', () => {
     it('returns a CohortByOccupation with zeroed WorkforceCategory values', () => {
@@ -96,15 +84,11 @@ describe('createEmptyWorkforceCohort', () => {
     });
 });
 
-// ============================================================================
-// nullPopulationCategory / nullWorkforceCategory
-// ============================================================================
-
 describe('nullPopulationCategory', () => {
     it('returns a fresh zeroed PopulationCategory each call', () => {
         const a = nullPopulationCategory();
         const b = nullPopulationCategory();
-        expect(a).not.toBe(b); // distinct objects
+        expect(a).not.toBe(b);
         expect(a.total).toBe(0);
         expect(a.deaths.type).toBe('death');
         expect(a.disabilities.type).toBe('disability');
@@ -127,10 +111,6 @@ describe('nullWorkforceCategory', () => {
         expect(a.departingFired).toEqual([0, 0, 0]);
     });
 });
-
-// ============================================================================
-// transferPopulation
-// ============================================================================
 
 describe('transferPopulation', () => {
     it('moves population from source to destination', () => {
@@ -219,9 +199,9 @@ describe('transferPopulation', () => {
         );
 
         expect(result.count).toBe(30);
-        // 30 people × 50 mean wealth = 1500 inherited
+
         expect(result.inheritedWealth).toBeCloseTo(1500, 5);
-        // Remaining population still has same per-capita wealth
+
         expect(planet.population.demography[50].employed.secondary.expert.wealth.mean).toBeCloseTo(50, 5);
     });
 
@@ -255,12 +235,10 @@ describe('transferPopulation', () => {
         );
 
         const dst = planet.population.demography[30].unoccupied.none.novice;
-        // Source wealth moments are unchanged (same distribution, fewer people)
+
         expect(src.wealth.mean).toBeCloseTo(1000, 0);
         expect(src.wealth.variance).toBeCloseTo(100, 0);
-        // Destination receives the transferred wealth:
-        //   mergeGaussianMoments(0, {0,0}, 50, {1000,100})
-        //   nA=0 branch → returns B = {1000, 100}
+
         expect(dst.wealth.mean).toBeCloseTo(1000, 0);
         expect(dst.wealth.variance).toBeCloseTo(100, 0);
     });
@@ -269,7 +247,7 @@ describe('transferPopulation', () => {
         const planet = makePlanet();
         const src = planet.population.demography[25].unoccupied.primary.novice;
         src.total = 200;
-        src.services.grocery.buffer = 10; // 10 ticks of coverage for the whole group
+        src.services.grocery.buffer = 10;
 
         transferPopulation(
             planet,
@@ -278,10 +256,6 @@ describe('transferPopulation', () => {
             100,
         );
 
-        // `buffer` is per-capita coverage ticks (analogous to wealth.mean).
-        // FROM keeps its buffer unchanged — physical food per person is conserved.
-        // TO (empty before) gets the same buffer as FROM via weighted average:
-        //   (0 * 0 + 10 * 100) / (0 + 100) = 10
         expect(src.services.grocery.buffer).toBeCloseTo(10, 5);
         expect(planet.population.demography[25].employed.primary.novice.services.grocery.buffer).toBeCloseTo(10, 5);
     });
@@ -302,10 +276,6 @@ describe('transferPopulation', () => {
         expect(srcTotal + dstTotal).toBe(500);
     });
 });
-
-// ============================================================================
-// reducePopulationCohort
-// ============================================================================
 
 describe('reducePopulationCohort', () => {
     it('sums totals across all cells in a cohort', () => {
@@ -336,10 +306,6 @@ describe('reducePopulationCohort', () => {
     });
 });
 
-// ============================================================================
-// reduceWorkforceCohort
-// ============================================================================
-
 describe('reduceWorkforceCohort', () => {
     it('sums active across all edu×skill cells', () => {
         const cohort = makeWorkforceCohort();
@@ -356,10 +322,6 @@ describe('reduceWorkforceCohort', () => {
         expect(result.active).toBe(0);
     });
 });
-
-// ============================================================================
-// forEachPopulationCohort
-// ============================================================================
 
 describe('forEachPopulationCohort', () => {
     it('iterates over all occupation × education × skill cells', () => {
@@ -397,10 +359,6 @@ describe('forEachWorkforceCohort', () => {
     });
 });
 
-// ============================================================================
-// mergeGaussianMoments
-// ============================================================================
-
 describe('mergeGaussianMoments', () => {
     it('returns B when nA is 0', () => {
         const result = mergeGaussianMoments(0, { mean: 0, variance: 0 }, 100, { mean: 50, variance: 10 });
@@ -420,12 +378,8 @@ describe('mergeGaussianMoments', () => {
     });
 
     it('computes correct pooled variance (parallel-axis theorem)', () => {
-        // Two groups with same variance but different means
         const result = mergeGaussianMoments(100, { mean: 40, variance: 4 }, 100, { mean: 60, variance: 4 });
-        // pooledMean = 50
-        // pooledVar = (100*(4 + (40-50)²) + 100*(4 + (60-50)²)) / 200
-        //           = (100*(4+100) + 100*(4+100)) / 200
-        //           = (10400 + 10400) / 200 = 104
+
         expect(result.mean).toBeCloseTo(50, 10);
         expect(result.variance).toBeCloseTo(104, 10);
     });
@@ -438,14 +392,10 @@ describe('mergeGaussianMoments', () => {
 
     it('handles unequal group sizes', () => {
         const result = mergeGaussianMoments(300, { mean: 10, variance: 0 }, 100, { mean: 30, variance: 0 });
-        // pooledMean = (300*10 + 100*30) / 400 = 6000/400 = 15
+
         expect(result.mean).toBeCloseTo(15, 10);
     });
 });
-
-// ============================================================================
-// convertAnnualToPerTick
-// ============================================================================
 
 describe('convertAnnualToPerTick', () => {
     it('returns 0 for annual rate of 0', () => {
@@ -464,7 +414,6 @@ describe('convertAnnualToPerTick', () => {
         const annualRate = 0.05;
         const perTick = convertAnnualToPerTick(annualRate);
 
-        // (1 - perTick)^TICKS_PER_YEAR should ≈ (1 - annualRate)
         const survivedYear = Math.pow(1 - perTick, TICKS_PER_YEAR);
         expect(survivedYear).toBeCloseTo(1 - annualRate, 8);
     });

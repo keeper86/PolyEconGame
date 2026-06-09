@@ -5,9 +5,6 @@ import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TI
 import { shipConstructionFacilityType } from '../planet/specialFacilities';
 import { shiptypes, constructionShipType } from '../ships/ships';
 
-/**
- * Handle 'buildFacility' action
- */
 export function handleBuildFacility(
     state: GameState,
     action: Extract<PendingAction, { type: 'buildFacility' }>,
@@ -65,9 +62,6 @@ export function handleBuildFacility(
     safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId });
 }
 
-/**
- * Handle 'expandFacility' action — increase scale of an existing active facility
- */
 export function handleExpandFacility(
     state: GameState,
     action: Extract<PendingAction, { type: 'expandFacility' }>,
@@ -125,9 +119,6 @@ export function handleExpandFacility(
     safePostMessage({ type: 'facilityExpanded', requestId, agentId, facilityId });
 }
 
-/**
- * Handle 'setFacilityScale' action — set operating scale of an active facility
- */
 export function handleSetFacilityScale(
     state: GameState,
     action: Extract<PendingAction, { type: 'setFacilityScale' }>,
@@ -174,9 +165,6 @@ export function handleSetFacilityScale(
     safePostMessage({ type: 'facilityScaleSet', requestId, agentId, facilityId });
 }
 
-/**
- * Dispatch facility-related actions to the appropriate handler
- */
 export function handleFacilityAction(
     state: GameState,
     action: PendingAction,
@@ -205,14 +193,10 @@ export function handleFacilityAction(
             handleCancelConstruction(state, action, safePostMessage);
             break;
         default:
-            // This function only handles facility actions
             break;
     }
 }
 
-/**
- * Handle 'buildShipConstructionFacility' action
- */
 export function handleBuildShipConstructionFacility(
     state: GameState,
     action: Extract<PendingAction, { type: 'buildShipConstructionFacility' }>,
@@ -263,9 +247,6 @@ export function handleBuildShipConstructionFacility(
     safePostMessage({ type: 'shipConstructionFacilityBuilt', requestId, agentId, facilityId });
 }
 
-/**
- * Handle 'expandShipConstructionFacility' action
- */
 export function handleExpandShipConstructionFacility(
     state: GameState,
     action: Extract<PendingAction, { type: 'expandShipConstructionFacility' }>,
@@ -326,9 +307,6 @@ export function handleExpandShipConstructionFacility(
     safePostMessage({ type: 'shipConstructionFacilityExpanded', requestId, agentId, facilityId });
 }
 
-/**
- * Handle 'setShipConstructionTarget' action — set or clear the ship being built
- */
 export function handleSetShipConstructionTarget(
     state: GameState,
     action: Extract<PendingAction, { type: 'setShipConstructionTarget' }>,
@@ -396,11 +374,6 @@ export function handleSetShipConstructionTarget(
     safePostMessage({ type: 'shipConstructionTargetSet', requestId, agentId, facilityId });
 }
 
-/**
- * Handle 'cancelConstruction' action — cancel an in-progress build or expansion.
- * For 'new' constructions the facility is removed entirely.
- * For 'expansion' constructions the construction field is cleared.
- */
 export function handleCancelConstruction(
     state: GameState,
     action: Extract<PendingAction, { type: 'cancelConstruction' }>,
@@ -421,7 +394,7 @@ export function handleCancelConstruction(
         });
         return;
     }
-    // Try productionFacilities first, then shipConstructionFacilities
+
     const facilityIndex = assets.productionFacilities.findIndex((f) => f.id === facilityId);
     const shipyardIndex =
         facilityIndex === -1 ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId) : -1;

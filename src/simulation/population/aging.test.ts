@@ -1,16 +1,9 @@
-/**
- * population/aging.test.ts
- *
- * Unit tests for the aging / education-progression sub-system.
- */
-
 import { describe, it, expect } from 'vitest';
 import { populationAdvanceYear } from './aging';
 import { MAX_AGE, reducePopulationCohort } from './population';
 import { makePlanet } from '../utils/testHelper';
 import type { Cohort, PopulationCategory } from './population';
 
-/** Sum total people in a single cohort across all occupations/education/skill. */
 function sumCohort(cohort: Cohort<PopulationCategory>): number {
     return reducePopulationCohort(cohort).total;
 }
@@ -22,7 +15,6 @@ describe('populationAdvanceYear', () => {
 
         populationAdvanceYear(planet);
 
-        // Age 10 should be empty, age 11 should hold (roughly) 100
         expect(sumCohort(planet.population.demography[10])).toBe(0);
         expect(sumCohort(planet.population.demography[11])).toBe(100);
     });
@@ -52,8 +44,6 @@ describe('populationAdvanceYear', () => {
     });
 
     it('preserves total population for education cohorts (graduates + stayers)', () => {
-        // Put a bunch of 8-year-olds in "none" education (about to graduate
-        // from elementary school).
         const planet = makePlanet();
         planet.population.demography[8].education.none.novice.total = 1000;
         const totalBefore = 1000;
@@ -64,7 +54,7 @@ describe('populationAdvanceYear', () => {
         for (const c of planet.population.demography) {
             totalAfter += sumCohort(c);
         }
-        // Education transitions redistribute but never destroy people
+
         expect(totalAfter).toBe(totalBefore);
     });
 
@@ -93,7 +83,6 @@ describe('populationAdvanceYear', () => {
 
         populationAdvanceYear(planet);
 
-        // maxAge people remain — mortality handles killing them per-tick.
         expect(sumCohort(planet.population.demography[MAX_AGE])).toBe(5);
     });
 
@@ -104,23 +93,21 @@ describe('populationAdvanceYear', () => {
 
         populationAdvanceYear(planet);
 
-        // 3 existing + 7 aged up = 10
         expect(sumCohort(planet.population.demography[MAX_AGE])).toBe(10);
     });
 
     it('householdDeposits stays consistent with population wealth after aging', () => {
         const planet = makePlanet();
-        // Place people with non-zero wealth across several ages
+
         planet.population.demography[20].unoccupied.none.novice.total = 500;
         planet.population.demography[20].unoccupied.none.novice.wealth = { mean: 100, variance: 10 };
         planet.population.demography[50].employed.primary.novice.total = 200;
         planet.population.demography[50].employed.primary.novice.wealth = { mean: 300, variance: 20 };
-        // Sync householdDeposits to match initial population wealth
+
         planet.bank.householdDeposits = 500 * 100 + 200 * 300;
 
         populationAdvanceYear(planet);
 
-        // Recompute expected wealth sum from demography
         let populationWealth = 0;
         for (const cohort of planet.population.demography) {
             for (const occ of ['education', 'employed', 'unoccupied', 'unableToWork'] as const) {

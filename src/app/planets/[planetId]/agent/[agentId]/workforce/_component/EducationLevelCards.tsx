@@ -10,10 +10,6 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import type { WorkforceSummary } from './workforceSummary';
 import type { DemographicEventCounters } from '@/simulation/planet/planet';
 
-// ---------------------------------------------------------------------------
-// Aggregated props (grouped — not flattened)
-// ---------------------------------------------------------------------------
-
 export type EducationLevelCardsProps = {
     summary: WorkforceSummary;
     allocatedWorkers: Partial<Record<EducationLevelType, number>>;
@@ -26,18 +22,9 @@ export type EducationLevelCardsProps = {
     disabilities?: DemographicEventCounters;
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Format "next (total)" for on-notice pipeline values. */
 function formatNumbersNextTotal(next: number, total: number): string {
     return `${formatNumberWithUnit(next, 'persons')}  (${formatNumberWithUnit(total, 'persons')})`;
 }
-
-// ---------------------------------------------------------------------------
-// Stat row — a label/value pair with optional indent level
-// ---------------------------------------------------------------------------
 
 function Stat({
     label,
@@ -66,14 +53,9 @@ function Stat({
     );
 }
 
-/** Thin horizontal rule between sections. */
 function Rule(): React.ReactElement {
     return <div className='border-t border-dashed my-1.5' />;
 }
-
-// ---------------------------------------------------------------------------
-// Per-education card (also used for the "Total" summary card)
-// ---------------------------------------------------------------------------
 
 function EducationCard({
     header,
@@ -108,7 +90,7 @@ function EducationCard({
     const totalOnNotice = voluntaryTotal + firedTotal + retiredTotal;
     const totalWorkforce = active + totalOnNotice;
     const combinedProd = ageProd * tenureProd;
-    // On-notice next-month total and collapsed state
+
     const totalNextOnNotice = voluntaryNext + firedNext + retiredNext;
     const [onNoticeOpen, setOnNoticeOpen] = React.useState(isTotal || totalOnNotice > 0);
     const onNoticeId = React.useId();
@@ -117,12 +99,10 @@ function EducationCard({
         <div
             className={`min-w-[240px] max-w-[260px] flex-1 rounded-lg border p-3 space-y-0.5 text-xs ${isTotal ? 'border-2 bg-muted/10' : ''} ${hasWorkers || isTotal ? '' : 'opacity-60'}`}
         >
-            {/* Header */}
             <Badge variant='outline' className={`text-xs px-1.5 py-0.5 mb-1 ${badgeClassName}`}>
                 {label}
             </Badge>
 
-            {/* ── Headcount ── */}
             <Stat
                 label='Target'
                 value={
@@ -175,10 +155,8 @@ function EducationCard({
 
             <Rule />
 
-            {/* ── Breakdown: Active + On notice = Total ── */}
             <Stat label='Active' value={formatNumberWithUnit(active, 'persons')} />
 
-            {/* Deaths */}
             {typeof deaths === 'number' && (
                 <Stat
                     label='Deaths'
@@ -187,7 +165,6 @@ function EducationCard({
                 />
             )}
 
-            {/* Disabilities */}
             {typeof disabilities === 'number' && (
                 <Stat
                     label='Disabilities'
@@ -196,7 +173,6 @@ function EducationCard({
                 />
             )}
 
-            {/* On-notice — collapsible breakdown */}
             <div className='flex items-baseline justify-between gap-2'>
                 <button
                     type='button'
@@ -257,7 +233,6 @@ function EducationCard({
 
             <Rule />
 
-            {/* ── Demographics & Productivity ── */}
             <div className='flex items-baseline justify-between gap-2'>
                 <span className='text-muted-foreground'>Age / Tenure (XP)</span>
                 <span className='tabular-nums font-medium'>
@@ -292,10 +267,6 @@ function EducationCard({
         </div>
     );
 }
-
-// ---------------------------------------------------------------------------
-// Grid of education cards + totals summary
-// ---------------------------------------------------------------------------
 
 export function EducationLevelCards({
     summary,
@@ -349,7 +320,7 @@ export function EducationLevelCards({
                     }}
                 />
             ))}
-            {/* Total card */}
+
             <EducationCard
                 header={{
                     label: 'Total',

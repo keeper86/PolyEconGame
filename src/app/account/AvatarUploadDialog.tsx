@@ -59,7 +59,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
     };
 
     const validateFile = (file: File): string | null => {
-        const maxSize = 1024 * 1024; // 1MB
+        const maxSize = 1024 * 1024;
 
         if (file.type !== 'image/png') {
             return 'Please upload a PNG image file';

@@ -380,7 +380,7 @@ export const pesticidePlant = (planetId: string, id: string): ProductionFacility
         tertiary: 2,
     },
     needs: [
-        { resource: chemicalResourceType, quantity: 50 }, // we don't have generic chemicals; maybe add later
+        { resource: chemicalResourceType, quantity: 50 },
         { resource: waterResourceType, quantity: 80 },
     ],
     produces: [{ resource: pesticideResourceType, quantity: 30 }],
@@ -577,7 +577,7 @@ export const electronicComponentFactory = (planetId: string, id: string): Produc
         tertiary: 8,
     },
     needs: [
-        { resource: siliconWaferResourceType, quantity: 40 }, // for silicon
+        { resource: siliconWaferResourceType, quantity: 40 },
         { resource: copperResourceType, quantity: 40 },
         { resource: plasticResourceType, quantity: 20 },
     ],
@@ -706,7 +706,7 @@ export const coalPowerPlant = (planetId: string, id: string): ProductionFacility
     planetId,
     id,
     name: 'Coal Power Plant' as const,
-    powerConsumptionPerTick: -200, // produces power for ~ 200 facilities
+    powerConsumptionPerTick: -200,
     workerRequirement: {
         none: 0,
         primary: 10,
@@ -748,7 +748,11 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
         secondary: 50,
         tertiary: 10,
     },
-    needs: [],
+    needs: [
+        { resource: paperResourceType, quantity: 5 },
+        { resource: furnitureResourceType, quantity: 2 },
+        { resource: consumerElectronicsResourceType, quantity: 1 },
+    ],
     produces: [{ resource: administrativeServiceResourceType, quantity: 100 }],
 });
 

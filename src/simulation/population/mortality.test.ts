@@ -1,14 +1,3 @@
-/**
- * population/mortality.test.ts
- *
- * Unit tests for the mortality sub-system: annual-to-per-tick conversion,
- * environmental mortality, and combined per-tick mortality calculations.
- *
- * NOTE: `convertAnnualToPerTick` has moved to `population.ts`.
- * `perTickMortality` now takes (age, extraAnnualMortality) — starvation
- * is handled per-category inside `applyMortality`, not in the rate function.
- */
-
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_YEAR } from '../constants';
 import { computeEnvironmentalMortality } from './mortality';

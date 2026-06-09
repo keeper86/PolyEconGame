@@ -1,19 +1,8 @@
-/**
- * population/retirement.test.ts
- *
- * Unit tests for the population-driven retirement sub-system:
- * age-dependent probability, and population-level retirement orchestration.
- */
-
 import { describe, expect, it } from 'vitest';
 import { RETIREMENT_AGE } from './retirement';
 import { forEachPopulationCohort } from './population';
 import { makePlanet } from '../utils/testHelper';
 import { applyRetirement, perTickRetirement } from './retirement';
-
-// ---------------------------------------------------------------------------
-// perTickRetirement
-// ---------------------------------------------------------------------------
 
 describe('perTickRetirement', () => {
     it('returns 0 for ages below RETIREMENT_AGE', () => {
@@ -24,7 +13,7 @@ describe('perTickRetirement', () => {
     it('returns a small positive per-tick rate at RETIREMENT_AGE', () => {
         const rate = perTickRetirement(RETIREMENT_AGE);
         expect(rate).toBeGreaterThan(0);
-        // 30% annual → small per-tick rate
+
         expect(rate).toBeLessThan(0.01);
     });
 
@@ -33,10 +22,6 @@ describe('perTickRetirement', () => {
         expect(perTickRetirement(70)).toBeGreaterThan(perTickRetirement(68));
     });
 });
-
-// ---------------------------------------------------------------------------
-// applyRetirement — population-level
-// ---------------------------------------------------------------------------
 
 describe('applyRetirement', () => {
     it('does nothing for ages below RETIREMENT_AGE', () => {
@@ -55,7 +40,6 @@ describe('applyRetirement', () => {
         const planet = makePlanet();
         planet.population.demography[RETIREMENT_AGE].employed.primary.novice.total = 1000;
 
-        // Run many ticks to see nothing happen to employed population
         let totalRetired = 0;
         for (let tick = 0; tick < 360; tick++) {
             const before = planet.population.demography[RETIREMENT_AGE].employed.primary.novice.total;
@@ -99,7 +83,6 @@ describe('applyRetirement', () => {
             applyRetirement(planet);
         }
 
-        // At 100% annual rate, 2 years of ticks should retire everyone
         expect(planet.population.demography[82].unoccupied.tertiary.novice.total).toBe(0);
         expect(planet.population.demography[82].unableToWork.tertiary.novice.total).toBe(100);
     });
@@ -110,14 +93,13 @@ describe('applyRetirement', () => {
 
         applyRetirement(planet);
 
-        // At age 70, retirement probability is high, so there should be some retirements
         expect(planet.population.demography[70].unoccupied.none.novice.retirements.countThisMonth).toBeGreaterThan(0);
     });
 
     it('conserves population across all ages', () => {
         const planet = makePlanet();
         const pop = planet.population;
-        // Use unoccupied and education — applyRetirement no longer touches employed
+
         pop.demography[30].unoccupied.none.novice.total = 5000;
         pop.demography[RETIREMENT_AGE].unoccupied.none.novice.total = 1000;
         pop.demography[70].unoccupied.primary.novice.total = 500;

@@ -13,8 +13,6 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                 continue;
             }
 
-            // --- Rotate demographic event counters ---
-            // Helper: create zero-filled per-edu record.
             const fresh = (): PerEducation => {
                 const r = {} as PerEducation;
                 for (const e of educationLevelKeys) {
@@ -23,14 +21,12 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                 return r;
             };
 
-            // Deaths
             if (!assets.deaths) {
                 assets.deaths = { thisMonth: fresh(), prevMonth: fresh() };
             }
             assets.deaths.prevMonth = assets.deaths.thisMonth;
             assets.deaths.thisMonth = fresh();
 
-            // Disabilities
             if (!assets.disabilities) {
                 assets.disabilities = { thisMonth: fresh(), prevMonth: fresh() };
             }
@@ -57,7 +53,6 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                         const firedAtAge = category.departingFired[0];
                         const retiredAtAge = category.departingRetired[0];
 
-                        // Non-retired departing → unoccupied
                         if (departingAtAge + firedAtAge > 0) {
                             const totalBeforeVoluntaryFired = totalWorkersInCategory(category);
                             subtractProportionalXP(category, departingAtAge + firedAtAge, totalBeforeVoluntaryFired);
@@ -76,7 +71,6 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                             }
                         }
 
-                        // Retired departing → unableToWork
                         if (retiredAtAge > 0) {
                             const totalBeforeRetired = totalWorkersInCategory(category);
                             subtractProportionalXP(category, retiredAtAge, totalBeforeRetired);
@@ -98,7 +92,6 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
                 }
             }
 
-            // --- Shift all departing pipelines down by one slot ---
             for (let age = 0; age < workforce.length; age++) {
                 forEachWorkforceCohort(workforce[age], (category) => {
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {
@@ -114,7 +107,6 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
         }
     }
 
-    // Verify population↔workforce consistency after pipeline advancement
     if (process.env.SIM_DEBUG === '1') {
         assertPopulationWorkforceConsistency(agents, planet, 'postProductionLaborMarketTick');
     }

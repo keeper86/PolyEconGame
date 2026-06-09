@@ -1,16 +1,7 @@
-/**
- * workforce/workforceAggregates.ts
- *
- * Shared workforce aggregation helpers used by production, financial, and
- * labor-market subsystems.  Centralised here to avoid duplication and
- * ensure consistent aggregation logic.
- */
-
 import type { EducationLevelType } from '../population/education';
 import type { WorkforceCohort, WorkforceCategory } from './workforce';
 import { SKILL, type Skill } from '../population/population';
 
-/** Sum active workers across all ages and skill levels for a given edu. */
 export function totalActiveForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
@@ -21,7 +12,6 @@ export function totalActiveForEdu(workforce: WorkforceCohort<WorkforceCategory>[
     return total;
 }
 
-/** Sum active workers across all ages for a given edu + skill combination. */
 export function totalActiveForEduSkill(
     workforce: WorkforceCohort<WorkforceCategory>[],
     edu: EducationLevelType,
@@ -34,7 +24,6 @@ export function totalActiveForEduSkill(
     return total;
 }
 
-/** Sum all departing workers across all ages, skill levels, and pipeline slots for a given edu. */
 export function totalDepartingForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
@@ -53,7 +42,6 @@ export function totalDepartingForEdu(workforce: WorkforceCohort<WorkforceCategor
     return total;
 }
 
-/** Sum all departing workers across all ages and pipeline slots for a given edu + skill combination. */
 export function totalDepartingForEduSkill(
     workforce: WorkforceCohort<WorkforceCategory>[],
     edu: EducationLevelType,

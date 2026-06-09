@@ -26,8 +26,6 @@ import { ProductIcon } from '@/components/client/ProductIcon';
 import { getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { useHashAccordion } from '@/hooks/useHashAccordion';
 
-// ─── Skill selector constants ────────────────────────────────────────────────
-
 const SKILL_LABELS: Record<Skill, string> = { novice: 'Novice', professional: 'Pro', expert: 'Expert' };
 const SKILL_COLORS: Record<Skill, string> = {
     novice: '#94a3b8',
@@ -42,7 +40,6 @@ export default function PlanetDemographicsPage() {
 
     const isSmallScreen = useIsSmallScreen();
 
-    // ── Controls ─────────────────────────────────────────────────────────────
     const [group, setGroup] = useState<GroupMode>('occupation');
     const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
 
@@ -81,14 +78,10 @@ export default function PlanetDemographicsPage() {
 
     const { rows } = data.data;
 
-    // Per-group wealth: summed across all ages from groupValues
-    // groupValues[i] = [pop, foodStock, weightedStarvation, weightedWealth]
     const groupKeys = group === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const groupColors: Record<string, string> = group === 'occupation' ? OCC_COLORS : EDU_COLORS;
     const groupLabels: Record<string, string> = group === 'occupation' ? OCC_LABELS : EDU_LABELS;
 
-    // Group-aware population counts and mean age — derived from groupValues so
-    // they reflect the active groupMode (occupation or education) and skill filter.
     const groupPop = [0, 0, 0, 0];
     const groupAgeWeightedSum = [0, 0, 0, 0];
     const wealthWeightedSum = [0, 0, 0, 0];
@@ -106,7 +99,6 @@ export default function PlanetDemographicsPage() {
     const wealthMean = groupPop.map((pop, i) => (pop > 0 ? wealthWeightedSum[i] / pop : 0));
     const wealthShare = wealthWeightedSum.map((w) => (totalWealth > 0 ? (w / totalWealth) * 100 : 0));
 
-    // ── Wealth transfer totals — summed from lastTransferMatrix ─────────────
     const transferMatrix = data.data.lastTransferMatrix ?? [];
     const transferTotals = [0, 0, 0, 0];
     if (group === 'occupation') {
@@ -130,7 +122,6 @@ export default function PlanetDemographicsPage() {
     }
     const totalAbsoluteTransfer = transferTotals.reduce((s, v) => s + Math.abs(v), 0);
 
-    // ── Shared controls ──────────────────────────────────────────────────────
     const allSkillsSelected = SKILL.every((s) => activeSkills.has(s));
 
     const groupTabs = (
@@ -179,7 +170,6 @@ export default function PlanetDemographicsPage() {
         </div>
     );
 
-    // ── Occupation summary cards ─────────────────────────────────────────────
     const occupationCards = isSmallScreen ? (
         <div className='flex gap-1 mb-2'>
             {groupKeys.map((key, i) => (
@@ -223,7 +213,6 @@ export default function PlanetDemographicsPage() {
         </div>
     );
 
-    // ── Wealth summary cards ─────────────────────────────────────────────
     const wealthCards = isSmallScreen ? (
         <div className='flex gap-1 mb-2'>
             {groupKeys.map((key, i) => (
@@ -266,7 +255,6 @@ export default function PlanetDemographicsPage() {
         </div>
     );
 
-    // ── Transfer summary cards ─────────────────────────────────────────────
     const transferCards = isSmallScreen ? (
         <div className='flex gap-1 mb-2'>
             {groupKeys.map((key, i) => {
@@ -347,13 +335,13 @@ export default function PlanetDemographicsPage() {
 
             <h4 className='text-sm font-semibold mb-2'>Detailed Demographics</h4>
 
-            {/* ── Hoisted controls (shared across all sections) ──────────── */}
+            {}
             <div className='flex flex-wrap items-center gap-2 mb-3'>
                 {groupTabs}
                 {skillFilter}
             </div>
 
-            {/* ── Population ─────────────────────────────────────────── */}
+            {}
 
             <Accordion
                 type='single'

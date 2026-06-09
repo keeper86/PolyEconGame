@@ -1,5 +1,6 @@
 'use client';
 
+import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -15,13 +16,9 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 type Props = {
     planetId: string;
     productName: string;
-    /** Live price stats from the already-fetched market data (current tick). */
+
     live?: LiveData;
 };
-
-type Granularity = 'monthly' | 'yearly' | 'decades';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function yDomainFor(points: ChartPoint[]): [number, number] {
     if (points.length === 0) {
@@ -49,8 +46,6 @@ function logTicksFor(points: ChartPoint[]): number[] | undefined {
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
     if (minP === maxP) {
-        // Return power-of-10 ticks bracketing the single price to avoid
-        // recharts adding the data value as an extra tick (causing duplicates).
         const e = Math.floor(Math.log10(minP));
         const lower = Math.pow(10, e);
         const upper = Math.pow(10, e + 1);
@@ -64,8 +59,6 @@ function logTicksFor(points: ChartPoint[]): number[] | undefined {
 }
 
 function logDomainFor(ticks: number[]): [number, number] {
-    // Use the tick range as the domain so recharts does not auto-add domain
-    // boundary ticks that duplicate values already in the ticks array.
     const min = Math.min(...ticks);
     const max = Math.max(...ticks);
     return [min, max];
@@ -85,8 +78,6 @@ const tooltipFormatter = (value: number, name: string): [string, string] => {
     const labels: Record<string, string> = { avgPrice: 'Avg price', minPrice: 'Min price', maxPrice: 'Max price' };
     return [formatNumberWithUnit(value, 'currency'), labels[name] ?? name];
 };
-
-// ─── SimplePriceAreaChart ─────────────────────────────────────────────────────
 
 type MergedPoint = {
     monthIdx?: number;
@@ -136,8 +127,6 @@ function SimplePriceAreaChart({
         const allIdxs = new Set([...currentByMonth.keys(), ...ghostByMonth.keys()]);
         return Array.from(allIdxs)
             .sort((a, b) => {
-                // Current-data entries (including the live fractional point) sort first so that
-                // ghost-only entries are never interleaved between current entries.
                 const aIsCurrent = currentByMonth.has(a);
                 const bIsCurrent = currentByMonth.has(b);
                 if (aIsCurrent === bIsCurrent) {
@@ -325,8 +314,6 @@ function SimplePriceAreaChart({
     );
 }
 
-// ─── MonthlyChart ─────────────────────────────────────────────────────────────
-
 function MonthlyChart({
     monthlyPoints,
     live,
@@ -349,8 +336,6 @@ function MonthlyChart({
     const yDomain = useMemo(() => yDomainFor([...data, ...ghostData]), [data, ghostData]);
     const gradId = `grad_mon_${productName.replace(/\s+/g, '_')}`;
 
-    // monthIdx 0 = previous December anchor; 1–12 = Jan–Dec of current year.
-    // Ticks are placed at 0.5, 1.5, … (midpoints of each month interval).
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
 
     const monthTooltipLabel = (monthIdx: number): string => {
@@ -381,8 +366,6 @@ function MonthlyChart({
         </div>
     );
 }
-
-// ─── YearlyChart ──────────────────────────────────────────────────────────────
 
 function YearlyChart({
     yearlyPoints,
@@ -439,8 +422,6 @@ function YearlyChart({
     );
 }
 
-// ─── DecadesChart ─────────────────────────────────────────────────────────────
-
 function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[]; productName: string }) {
     const data = useMemo((): ChartPoint[] => {
         return [...decadePoints]
@@ -490,42 +471,9 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
     );
 }
 
-// ─── Toggle Button ────────────────────────────────────────────────────────────
-
-function GranularityButton({
-    active,
-    disabled,
-    onClick,
-    children,
-}: {
-    active: boolean;
-    disabled?: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={[
-                'px-2 py-0.5 rounded text-[11px] transition-colors',
-                active
-                    ? 'bg-slate-600 text-slate-100'
-                    : disabled
-                      ? 'text-slate-600 cursor-not-allowed'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700',
-            ].join(' ')}
-        >
-            {children}
-        </button>
-    );
-}
-
-// ─── Parent Component ─────────────────────────────────────────────────────────
-
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
@@ -552,14 +500,14 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
             { planetId, productName, granularity: 'decade' },
-            { enabled: granularity === 'decades' },
+            { enabled: granularity === 'decade' },
         ),
     );
 
     const isLoading =
         (granularity === 'monthly' && (loadingMonthly || !monthly)) ||
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
-        (granularity === 'decades' && (loadingDecade || !decade));
+        (granularity === 'decade' && (loadingDecade || !decade));
 
     const monthlyPoints = useMemo(
         () =>
@@ -594,31 +542,12 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     );
 
     const currentTick = live?.tick ?? 0;
-    const yearsElapsed = currentTick / TICKS_PER_YEAR;
-    const showYearly = yearsElapsed >= 2;
-    const showDecades = yearsElapsed >= 10;
 
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
             <div className='flex gap-1'>
                 Price:
-                <GranularityButton active={granularity === 'monthly'} onClick={() => setGranularity('monthly')}>
-                    Monthly
-                </GranularityButton>
-                <GranularityButton
-                    active={granularity === 'yearly'}
-                    disabled={!showYearly}
-                    onClick={() => setGranularity('yearly')}
-                >
-                    Yearly
-                </GranularityButton>
-                <GranularityButton
-                    active={granularity === 'decades'}
-                    disabled={!showDecades}
-                    onClick={() => setGranularity('decades')}
-                >
-                    Decades
-                </GranularityButton>
+                <GranularityButtonGroup granularity={granularity} onChange={setGranularity} currentTick={currentTick} />
             </div>
             {granularity === 'monthly' && (
                 <MonthlyChart
@@ -627,12 +556,8 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                     productName={productName}
                 />
             )}
-            {granularity === 'yearly' && (showYearly || isLoading) && (
-                <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />
-            )}
-            {granularity === 'decades' && (showDecades || isLoading) && (
-                <DecadesChart decadePoints={decadePoints} productName={productName} />
-            )}
+            {granularity === 'yearly' && <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />}
+            {granularity === 'decade' && <DecadesChart decadePoints={decadePoints} productName={productName} />}
         </div>
     );
 }

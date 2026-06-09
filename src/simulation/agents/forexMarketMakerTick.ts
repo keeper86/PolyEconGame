@@ -31,33 +31,22 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
             const canRepay = Math.min(totalDue, assets.deposits);
             const shortfall = totalDue - canRepay;
 
-            // Repay what we can from existing deposits
             if (canRepay > 0) {
                 assets.deposits -= canRepay;
                 planet.bank.loans -= canRepay;
                 planet.bank.deposits -= canRepay;
             }
 
-            // If there's a shortfall, create a rollover loan (with fee) and use it
-            // to fully repay the remaining matured principal.
             if (shortfall > 0) {
                 const fee = Math.round(shortfall * ROLLOVER_FEE_RATE);
                 const rolloverPrincipal = shortfall + fee;
 
-                // Issue a new rollover loan — this creates money (deposits↑, loans↑)
                 grantLoan(assets, planet.bank, rolloverPrincipal, 'forexWorkingCapital', gameState.tick);
 
-                // Immediately use the new deposits to repay the shortfall portion
-                // of the matured loans.  This destroys money (deposits↓, loans↓).
                 assets.deposits -= shortfall;
                 planet.bank.loans -= shortfall;
                 planet.bank.deposits -= shortfall;
 
-                // The fee stays in the agent's deposits (it was created as part of
-                // the rollover loan but not spent on repayment).
-
-                // Move the rollover loan from activeLoans (where grantLoan pushed it)
-                // into remainingLoans.
                 const rolloverLoan = assets.activeLoans.pop()!;
                 remainingLoans.push(rolloverLoan);
             }
@@ -69,10 +58,8 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
 }
 
 export function forexMMRepaymentTick(gameState: GameState): void {
-    // First enforce maturities
     enforceForexMMLoanMaturities(gameState);
 
-    // Then do voluntary repayment from excess deposits
     for (const mm of gameState.forexMarketMakers.values()) {
         for (const [planetId, assets] of Object.entries(mm.assets)) {
             const agentLoanTotal = totalOutstandingLoans(assets.activeLoans);

@@ -9,21 +9,9 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 
-// ---------------------------------------------------------------------------
-// View mode (owned by parent)
-// ---------------------------------------------------------------------------
-
 export type ViewMode = 'status' | 'education';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type ChartRow = Record<string, number>;
-
-// ---------------------------------------------------------------------------
-// mergePairs — halves the number of bars by merging adjacent age pairs
-// ---------------------------------------------------------------------------
 
 function mergePairs(rows: ChartRow[]): ChartRow[] {
     const result: ChartRow[] = [];
@@ -46,10 +34,6 @@ function mergePairs(rows: ChartRow[]): ChartRow[] {
     return result;
 }
 
-// ---------------------------------------------------------------------------
-// Empty placeholder
-// ---------------------------------------------------------------------------
-
 function EmptyChart({ height = 180 }: { height?: number }) {
     return (
         <div
@@ -62,10 +46,6 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 }
 
 type PayloadEntry = NonNullable<TooltipProps<number, string>['payload']>[number];
-
-// ---------------------------------------------------------------------------
-// Status-tooltip
-// ---------------------------------------------------------------------------
 
 function StatusTooltip({ active, payload, label }: TooltipProps<number, string>) {
     if (!active || !payload || payload.length === 0) {
@@ -94,10 +74,6 @@ function StatusTooltip({ active, payload, label }: TooltipProps<number, string>)
     );
 }
 
-// ---------------------------------------------------------------------------
-// Education-tooltip
-// ---------------------------------------------------------------------------
-
 function EduTooltip({ active, payload, label }: TooltipProps<number, string>) {
     if (!active || !payload || payload.length === 0) {
         return null;
@@ -118,10 +94,6 @@ function EduTooltip({ active, payload, label }: TooltipProps<number, string>) {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Age distribution stacked bar chart — by status or by education
-// ---------------------------------------------------------------------------
-
 export function AgeDistributionChart({
     ageChartByStatus,
     ageChartByEdu,
@@ -133,7 +105,6 @@ export function AgeDistributionChart({
 }): React.ReactElement {
     const isVerySmall = useIsSmallScreen();
 
-    // ---- Status view data (active / quitting / fired / retired) ----
     const statusData = useMemo(() => {
         const raw: ChartRow[] = ageChartByStatus.map((d) => ({
             age: d.age,
@@ -145,7 +116,6 @@ export function AgeDistributionChart({
         return isVerySmall ? mergePairs(raw) : raw;
     }, [ageChartByStatus, isVerySmall]);
 
-    // ---- Education view data (per-edu totals including departing) ----
     const eduData = useMemo(() => {
         const raw: ChartRow[] = ageChartByEdu.map((d) => {
             const row: ChartRow = { age: d.age };
@@ -157,7 +127,6 @@ export function AgeDistributionChart({
         return isVerySmall ? mergePairs(raw) : raw;
     }, [ageChartByEdu, isVerySmall]);
 
-    // ---- Tooltips ----
     const statusTooltip = useMemo(() => StatusTooltip, []);
     const eduTooltip = useMemo(() => EduTooltip, []);
 

@@ -7,8 +7,6 @@ import { describe, expect, it } from 'vitest';
 const groceryDef = SERVICE_DEFINITIONS.grocery;
 const SERVICE_TARGET_PER_PERSON = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
 
-// ---- Replicate component structure ----
-
 const BANDS = [
     { key: 'fatalStarvation', label: 'Fatal' },
     { key: 'severeStarvation', label: 'Severe' },
@@ -20,7 +18,6 @@ const BANDS = [
 
 type BandKey = (typeof BANDS)[number]['key'];
 
-/** Replicate the component's single-arg classifyBand (starvation level → band index). */
 function classifyBand(starvationLevel: number): number {
     if (starvationLevel > 0.9) {
         return 0;
@@ -42,7 +39,6 @@ function classifyBand(starvationLevel: number): number {
 
 type ChartRow = Record<string, number>;
 
-/** Replicate the component's useMemo logic using AggRow[] input. */
 function computeChartData(rows: AggRow[], groupKeys: readonly string[]): ChartRow[] {
     const result: ChartRow[] = [];
     for (const r of rows) {
@@ -77,7 +73,6 @@ function computeChartData(rows: AggRow[], groupKeys: readonly string[]): ChartRo
     return result;
 }
 
-/** Compute global stats aggregated across all chart rows. */
 function computeGlobalStats(chartData: ChartRow[], groupKeys: readonly string[]) {
     let totalPop = 0;
     let totalStarving = 0;
@@ -100,7 +95,7 @@ function computeGlobalStats(chartData: ChartRow[], groupKeys: readonly string[])
                 const cnt = row[`${gk}_${b.key}`] ?? 0;
                 (bandTotals as Record<string, number>)[b.key] += cnt;
             }
-            // bands 0-4 = starving (all except noStarvation which is index 5)
+
             const starvingInRow = BANDS.slice(0, 5).reduce((s, b) => s + (row[`${gk}_${b.key}`] ?? 0), 0);
             totalStarving += starvingInRow;
             wStarv += gPop * (row[`${gk}_avgStarvation`] ?? 0);
@@ -118,11 +113,8 @@ function computeGlobalStats(chartData: ChartRow[], groupKeys: readonly string[])
     };
 }
 
-// --- Test data helpers ---
-
 const TEST_GROUP_KEYS = [...OCCUPATIONS] as string[];
 
-/** Create an AggRow with all population in the first group (education). */
 function makeAggRow(age: number, pop: number, totalFoodStock: number, weightedStarvation: number): AggRow {
     const emptyEntry: [[number, number], [number, number], [number, number], [number, number]] = [
         [0, 0],
@@ -185,14 +177,14 @@ describe('NutritionHeatmapChart — classifyBand (starvation-only, single arg)',
     });
 
     it('all thresholds are exclusive on the upper end', () => {
-        expect(classifyBand(0.9)).not.toBe(0); // exactly 0.9 is NOT fatal
-        expect(classifyBand(0.75)).not.toBe(1); // exactly 0.75 is NOT severe
+        expect(classifyBand(0.9)).not.toBe(0);
+        expect(classifyBand(0.75)).not.toBe(1);
     });
 });
 
 describe('NutritionHeatmapChart — computeChartData', () => {
     it('no starvation + full buffer → noStarvation band', () => {
-        const foodStock = SERVICE_TARGET_PER_PERSON * 1000; // full buffer for 1000 people
+        const foodStock = SERVICE_TARGET_PER_PERSON * 1000;
         const row = makeAggRow(30, 1000, foodStock, 0);
         const data = computeChartData([row], TEST_GROUP_KEYS);
         const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
@@ -204,7 +196,7 @@ describe('NutritionHeatmapChart — computeChartData', () => {
     });
 
     it('S = 0.95 → fatalStarvation regardless of buffer', () => {
-        const foodStock = SERVICE_TARGET_PER_PERSON * 1000; // full buffer
+        const foodStock = SERVICE_TARGET_PER_PERSON * 1000;
         const weightedStarv = 0.95 * 1000;
         const row = makeAggRow(30, 1000, foodStock, weightedStarv);
         const data = computeChartData([row], TEST_GROUP_KEYS);
@@ -213,7 +205,7 @@ describe('NutritionHeatmapChart — computeChartData', () => {
         expect(stats.bandTotals.fatalStarvation).toBe(1000);
         expect(stats.totalStarving).toBe(1000);
         expect(stats.globalAvgStarvation).toBeCloseTo(0.95, 3);
-        expect(stats.globalAvgBuffer).toBeCloseTo(1.0, 3); // high buffer but still fatal
+        expect(stats.globalAvgBuffer).toBeCloseTo(1.0, 3);
     });
 
     it('S = 0.8 → severeStarvation', () => {
@@ -257,7 +249,7 @@ describe('NutritionHeatmapChart — computeChartData', () => {
 
     it('avgBuffer correctly reflects grocery stock ratio', () => {
         const pop = 1000;
-        const foodStock = SERVICE_TARGET_PER_PERSON * pop * 0.5; // 50% of target
+        const foodStock = SERVICE_TARGET_PER_PERSON * pop * 0.5;
         const row = makeAggRow(30, pop, foodStock, 0);
         const data = computeChartData([row], TEST_GROUP_KEYS);
         const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
@@ -273,8 +265,8 @@ describe('NutritionHeatmapChart — computeChartData', () => {
     });
 
     it('mixed ages: each age classified independently', () => {
-        const age30 = makeAggRow(30, 500, SERVICE_TARGET_PER_PERSON * 500, 0); // no starvation
-        const age50 = makeAggRow(50, 300, 0, 0.95 * 300); // fatal starvation
+        const age30 = makeAggRow(30, 500, SERVICE_TARGET_PER_PERSON * 500, 0);
+        const age50 = makeAggRow(50, 300, 0, 0.95 * 300);
         const data = computeChartData([age30, age50], TEST_GROUP_KEYS);
         const stats = computeGlobalStats(data, TEST_GROUP_KEYS);
 

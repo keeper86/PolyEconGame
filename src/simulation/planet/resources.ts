@@ -4,31 +4,31 @@ export const ironOreResourceType: Resource = {
     name: 'Iron Ore',
     form: 'solid',
     level: 'raw',
-    volumePerQuantity: 0.3, // 1 ton of iron takes up 0.3 cubic meters
-    massPerQuantity: 1, // 1 ton of iron has a mass of 1 ton
+    volumePerQuantity: 0.3,
+    massPerQuantity: 1,
 };
 
 export const waterResourceType: Resource = {
     name: 'Water',
     form: 'liquid',
     level: 'raw',
-    volumePerQuantity: 1, // 1 ton of water takes up 1 cubic meters
-    massPerQuantity: 1, // 1 ton of water takes up 1 cubic meters
+    volumePerQuantity: 1,
+    massPerQuantity: 1,
 };
 
 export const agriculturalProductResourceType: Resource = {
     name: 'Agricultural Product',
     form: 'solid',
     level: 'raw',
-    volumePerQuantity: 0.5, // 1 ton of agricultural product takes up 0.5 cubic meters
-    massPerQuantity: 1, // 1 ton of agricultural product has a mass of 1 ton
+    volumePerQuantity: 0.5,
+    massPerQuantity: 1,
 };
 
 export const coalResourceType: Resource = {
     name: 'Coal',
     form: 'solid',
     level: 'raw',
-    volumePerQuantity: 0.7, // m³ per ton (approx)
+    volumePerQuantity: 0.7,
     massPerQuantity: 1,
 };
 
@@ -36,7 +36,7 @@ export const crudeOilResourceType: Resource = {
     name: 'Crude Oil',
     form: 'liquid',
     level: 'raw',
-    volumePerQuantity: 1.2, // m³ per ton (approx)
+    volumePerQuantity: 1.2,
     massPerQuantity: 1,
 };
 
@@ -44,7 +44,7 @@ export const naturalGasResourceType: Resource = {
     name: 'Natural Gas',
     form: 'liquid',
     level: 'raw',
-    volumePerQuantity: 1.5, // m³ per ton at STP (very rough)
+    volumePerQuantity: 1.5,
     massPerQuantity: 1,
 };
 
@@ -52,7 +52,7 @@ export const logsResourceType: Resource = {
     name: 'Logs',
     form: 'solid',
     level: 'raw',
-    volumePerQuantity: 2.0, // m³ per ton (wood)
+    volumePerQuantity: 2.0,
     massPerQuantity: 1,
 };
 
@@ -60,7 +60,7 @@ export const stoneResourceType: Resource = {
     name: 'Stone',
     form: 'solid',
     level: 'raw',
-    volumePerQuantity: 0.4, // m³ per ton
+    volumePerQuantity: 0.4,
     massPerQuantity: 1,
 };
 

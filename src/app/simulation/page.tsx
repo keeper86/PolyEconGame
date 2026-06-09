@@ -44,7 +44,6 @@ export default function SimulationPage() {
 
                 <hr className='my-6' />
 
-                {/* Table of Contents */}
                 <nav className='mb-8 rounded-md border p-4'>
                     <h2 className='text-lg font-semibold mb-2'>Contents</h2>
                     <ul className='columns-2 gap-x-8 list-none pl-0 text-sm space-y-1'>

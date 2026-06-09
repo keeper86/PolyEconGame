@@ -13,17 +13,9 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
 export type WorkforceDemographyPanelProps = {
     assets: AgentPlanetAssets;
 };
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 
 export default function WorkforceDemographyPanel({ assets }: WorkforceDemographyPanelProps): React.ReactElement {
     const [view, setView] = useState<ViewMode>('status');
@@ -34,7 +26,6 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
         [workforceDemography],
     );
 
-    // Flatten overqualified matrix (jobEdu -> workerEdu -> count) into jobEdu -> total count
     const overqualifiedByEdu = (() => {
         if (!overqualifiedWorkers) {
             return undefined;
@@ -68,7 +59,6 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                     <WorkforceSkeleton />
                 ) : (
                     <>
-                        {/* Headcount by education — card grid */}
                         <div>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
                                 Headcount by education
@@ -86,7 +76,6 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                             />
                         </div>
 
-                        {/* Shared view toggle */}
                         <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
                             <TabsList className='h-7 mb-2'>
                                 <TabsTrigger value='status' className='text-[10px] px-2 py-0.5'>
@@ -98,7 +87,6 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                             </TabsList>
                         </Tabs>
 
-                        {/* Age distribution chart */}
                         <div>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
                                 Age distribution
@@ -110,7 +98,6 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                             />
                         </div>
 
-                        {/* Experience distribution chart */}
                         <div>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
                                 Tenure per capita (in years)

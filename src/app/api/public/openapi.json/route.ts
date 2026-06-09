@@ -2,7 +2,6 @@ import { publicAccessibleRouter } from '@/server/router';
 import { NextResponse } from 'next/server';
 import { generateOpenApiDocument } from 'trpc-to-openapi';
 
-// Cannot be rpc because it depends on the router itself
 export const GET = () => {
     const apiSpec = generateOpenApiDocument(publicAccessibleRouter, {
         title: 'Game API',

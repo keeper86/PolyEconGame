@@ -40,7 +40,6 @@ const userId = z.object({
     userId: z.string(),
 });
 
-// Base64 encodes each 3 bytes into 4 characters
 const bytesToBase64Chars = (bytes: number) => 4 * Math.ceil(bytes / 3);
 const MAX_SIZE_BYTES_AVATAR = 1 * 1024 * 1024;
 
@@ -79,7 +78,7 @@ export const getUsers = () => {
 
             const totalResult = await query.clone().count<{ count: string }>('* as count').first();
             const total = totalResult ? Number(totalResult.count) : 0;
-            // Execute paginated query
+
             const users: UserData[] = await query.orderBy('user_id').offset(offset).limit(limit);
 
             logger.debug({ component: 'user-list' }, `Fetched users: ${JSON.stringify(users)}`);
@@ -167,8 +166,6 @@ export const updateUser = () => {
                         });
                     }
 
-                    // PNG files must start with the following fixed 8 bytes. Ref: https://www.w3.org/TR/PNG-Rationale.html#R.PNG-file-signature
-                    // By checking these first 8 bytes, we ensure the uploaded avatar is a real PNG before storing it.
                     const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
                     if (buffer.length < 8 || !buffer.subarray(0, 8).equals(pngSignature)) {
                         throw new TRPCError({
@@ -226,7 +223,6 @@ function createAgentSlug(name: string): string {
         }
     }
 
-    // remove trailing dash
     if (chars[chars.length - 1] === '-') {
         chars.pop();
     }
@@ -246,7 +242,6 @@ export const createAgent = () => {
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
-            // Check if user already has an agent
             const existing = await db('user_data').where({ user_id: userId }).first();
             if (!existing) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
@@ -277,14 +272,12 @@ export const createAgent = () => {
                 `Creating agent '${input.agentName}' (${agentId}) on planet '${input.planetId}' for user ${userId}`,
             );
 
-            // Create the agent in the live simulation worker
             const createdId = await workerCreateAgent({
                 agentId,
                 agentName,
                 planetId: input.planetId,
             });
 
-            // Persist the association in the database
             await db('user_data').where({ user_id: userId }).update({ agent_id: createdId });
 
             logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
@@ -293,13 +286,6 @@ export const createAgent = () => {
         });
 };
 
-/**
- * Request a discretionary loan from the planet's bank.
- *
- * The amount is validated against the credit conditions computed by the
- * worker.  On success the loan is applied within the next tick via the
- * pending-action queue.
- */
 export const requestLoan = () => {
     return protectedProcedure
         .input(
@@ -313,7 +299,6 @@ export const requestLoan = () => {
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
-            // Verify the requesting user actually owns this agent
             const row = await db('user_data').where({ user_id: userId }).first();
             if (!row) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
@@ -342,13 +327,6 @@ export const requestLoan = () => {
         });
 };
 
-/**
- * Repay a specific loan (partially or fully) for the requesting agent.
- *
- * The fraction parameter controls what share of remainingPrincipal is repaid.
- * The operation is only possible for loans with earlyRepaymentAllowed=true and
- * when the agent has sufficient deposits to cover the chosen amount.
- */
 export const repayLoan = () => {
     return protectedProcedure
         .input(
@@ -387,11 +365,6 @@ export const repayLoan = () => {
         });
 };
 
-/**
- * Toggle automatic worker allocation and/or automatic pricing for the
- * user's agent.  Both flags are applied atomically on the next simulation
- * tick via the pending-action queue.
- */
 export const setAutomation = () => {
     return protectedProcedure
         .input(
@@ -404,7 +377,6 @@ export const setAutomation = () => {
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
-            // Verify the requesting user actually owns this agent
             const row = await db('user_data').where({ user_id: userId }).first();
             if (!row) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
@@ -426,20 +398,13 @@ export const setAutomation = () => {
         });
 };
 
-/**
- * Set manual workforce allocation targets for the user's agent on a specific
- * planet.  Only meaningful when `automateWorkerAllocation` is false.
- *
- * The targets are written directly into `assets.allocatedWorkers` so that
- * the next `hireWorkforce` tick will hire/fire to match them.
- */
 export const setWorkerAllocationTargets = () => {
     return protectedProcedure
         .input(
             z.object({
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
-                /** Desired headcount per education level. */
+
                 targets: z.object({
                     none: z.number().int().min(0),
                     primary: z.number().int().min(0),
@@ -483,11 +448,6 @@ export const setWorkerAllocationTargets = () => {
         });
 };
 
-/**
- * Set manual sell-offer price and/or quantity for one or more resources
- * produced by the user's agent on a specific planet.
- * Only meaningful when `automatePricing` is false.
- */
 export const setSellOffers = () => {
     return protectedProcedure
         .input(
@@ -497,11 +457,10 @@ export const setSellOffers = () => {
                 offers: z.record(
                     z.string(),
                     z.object({
-                        /** Price per unit (currency). Must be > 0. */
                         offerPrice: z.number().positive().optional(),
-                        /** Keep at least this many units — sell qty = max(0, inventory − retainment). */
+
                         offerRetainment: z.number().min(0).optional(),
-                        /** When true, the auto-pricing engine manages this offer each tick. */
+
                         automated: z.boolean().optional(),
                     }),
                 ),
@@ -519,7 +478,6 @@ export const setSellOffers = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
-            // Fetch agent once before the loop to avoid N× worker round-trips
             const { agent: sellAgent } = await workerQueries.getAgent(input.agentId);
             if (!sellAgent) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
@@ -535,7 +493,6 @@ export const setSellOffers = () => {
                 });
             }
 
-            // Validate each offer using the shared validation module
             for (const [resourceName, offer] of Object.entries(input.offers)) {
                 let resource = ALL_RESOURCES.find((r) => r.name === resourceName);
                 if (!resource) {
@@ -549,13 +506,10 @@ export const setSellOffers = () => {
                     }
                 }
 
-                // For currency resources, sell quantity comes from foreign deposits, not storage.
-                // validateSellOffer ignores the inventory argument, so pass 0 for currencies.
                 const inventoryQty = isCurrencyResource(resource)
                     ? 0
                     : queryStorageFacility(sellAssets.storageFacility, resourceName);
 
-                // Validate price (quantity is computed dynamically from retainment)
                 const validation = validateSellOffer(offer.offerPrice, inventoryQty);
 
                 if (!validation.isValid) {
@@ -579,9 +533,6 @@ export const setSellOffers = () => {
         });
 };
 
-/**
- * Cancel (remove) a sell offer for a specific resource on said planet.
- */
 export const cancelSellOffer = () => {
     return protectedProcedure
         .input(
@@ -616,9 +567,6 @@ export const cancelSellOffer = () => {
         });
 };
 
-/**
- * Cancel (remove) a buy bid for a specific resource on said planet.
- */
 export const cancelBuyBid = () => {
     return protectedProcedure
         .input(
@@ -653,9 +601,6 @@ export const cancelBuyBid = () => {
         });
 };
 
-/**
- * Cancel an in-progress facility construction or expansion.
- */
 export const cancelConstruction = () => {
     return protectedProcedure
         .input(
@@ -719,7 +664,6 @@ export const setBuyBids = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
-            // Fetch agent once before the loop to avoid N× worker round-trips
             const { agent: bidAgent } = await workerQueries.getAgent(input.agentId);
             if (!bidAgent) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
@@ -735,7 +679,6 @@ export const setBuyBids = () => {
                 });
             }
 
-            // Validate each bid using the shared validation module
             for (const [resourceName, bid] of Object.entries(input.bids)) {
                 let resource = ALL_RESOURCES.find((r) => r.name === resourceName);
                 if (!resource) {
@@ -747,8 +690,7 @@ export const setBuyBids = () => {
                                 message: `No account on the issuing planet. Visit that planet first to open an account.`,
                             });
                         }
-                        // Currency resources have volumePerQuantity: 0 so storage capacity is Infinity;
-                        // the deposit affordability check in validateBuyBid correctly uses local deposits.
+
                         resource = getCurrencyResource(issuingPlanetId);
                     } else {
                         throw new TRPCError({

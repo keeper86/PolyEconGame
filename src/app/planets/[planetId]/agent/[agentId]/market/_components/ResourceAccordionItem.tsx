@@ -43,20 +43,16 @@ export default function ResourceAccordionItem({
         : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
     const trpc = useTRPC();
     const queryClient = useQueryClient();
-    // useParams returns route params; cast to access the dynamic segment
+
     const { planetId } = useParams() as { planetId: string };
 
-    // Fetch market data for the price history chart live prop (shared cache with MarketDetailsSection)
-    // Only fetch when the accordion item is open to avoid batching 43 requests on initial render
     const { data: marketData } = useSimulationQuery({
         ...trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName }),
         enabled: isOpen,
     });
 
-    // Compute dropped columns (columns not currently visible in the table row)
     const droppedColumns = MARKET_COLUMNS.filter((col) => col.enabled && !visibleColumns.some((v) => v.id === col.id));
 
-    // Get display value for a dropped column
     const getDroppedColumnValue = (columnId: string): React.ReactNode => {
         const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
         const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
@@ -130,13 +126,11 @@ export default function ResourceAccordionItem({
 
     const resource = getResourceByName(resourceName);
 
-    // Derive a human-readable display name for currency resources (e.g. "Gaia Credits" for CUR_planet-1).
     const issuingPlanetId = resourceName.startsWith('CUR_') ? resourceName.slice(4) : null;
     const displayName = issuingPlanetId
         ? currencyMapping[issuingPlanetId]?.resource.name + ' (' + planetNames?.get(issuingPlanetId) + ')'
         : undefined;
 
-    // Clear timeouts on unmount
     useEffect(() => {
         return () => {
             if (buySuccessTimeoutRef.current) {
@@ -154,7 +148,6 @@ export default function ResourceAccordionItem({
         };
     }, []);
 
-    // Set up timeouts for clearing messages
     useEffect(() => {
         if (buySuccessMsg) {
             if (buySuccessTimeoutRef.current) {
@@ -219,7 +212,6 @@ export default function ResourceAccordionItem({
         };
     }, [sellErrorMsg]);
 
-    // ── Real-time validation ──────────────────────────────────────────
     useEffect(() => {
         if (!resource) {
             return;
@@ -227,7 +219,6 @@ export default function ResourceAccordionItem({
 
         const validationErrors: typeof local.validationErrors = {};
 
-        // Validate sell offer price
         if (local.offerPrice !== '') {
             const offerPrice = parseFloat(local.offerPrice);
             if (!isNaN(offerPrice)) {
@@ -238,7 +229,6 @@ export default function ResourceAccordionItem({
             }
         }
 
-        // Validate sell retainment (must be non-negative)
         if (local.offerRetainment !== '') {
             const offerRetainment = parseFloat(local.offerRetainment);
             if (!isNaN(offerRetainment) && offerRetainment < 0) {
@@ -246,11 +236,9 @@ export default function ResourceAccordionItem({
             }
         }
 
-        // Validate buy bid price
         if (local.bidPrice !== '') {
             const bidPrice = parseFloat(local.bidPrice);
             if (!isNaN(bidPrice)) {
-                // Use validateBidFields indirectly through validateBuyBid
                 const validation = validateBuyBid({ bidPrice, bidStorageTarget: undefined }, resource, assets);
                 if (!validation.isValid) {
                     validationErrors.bidPrice = validation.error;
@@ -258,7 +246,6 @@ export default function ResourceAccordionItem({
             }
         }
 
-        // Validate buy storage target (must be non-negative)
         if (local.bidStorageTarget !== '') {
             const bidStorageTarget = parseFloat(local.bidStorageTarget);
             if (!isNaN(bidStorageTarget) && bidStorageTarget < 0) {
@@ -266,7 +253,6 @@ export default function ResourceAccordionItem({
             }
         }
 
-        // Update validation errors if they changed
         if (JSON.stringify(validationErrors) !== JSON.stringify(local.validationErrors)) {
             onLocalChange(resourceName, { validationErrors });
         }
@@ -284,7 +270,6 @@ export default function ResourceAccordionItem({
         local.validationErrors,
     ]);
 
-    // ── Mutations ──────────────────────────────────────────────────────
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
             onSuccess: () => {
@@ -352,7 +337,6 @@ export default function ResourceAccordionItem({
     const buySaving = buyMutation.isPending || cancelBuyBidMutation.isPending;
     const sellSaving = sellMutation.isPending || cancelSellOfferMutation.isPending;
 
-    // ── Buy save handler ──────────────────────────────────────────────
     const handleSaveBuy = () => {
         setBuySuccessMsg(null);
         setBuyErrorMsg(null);
@@ -365,7 +349,6 @@ export default function ResourceAccordionItem({
         const bidPrice = parseFloat(local.bidPrice);
         const bidStorageTarget = parseFloat(local.bidStorageTarget);
 
-        // Validate bid price and effective quantity against deposits and storage capacity.
         if (!isNaN(bidPrice) || !isNaN(bidStorageTarget)) {
             const validation = validateBuyBid(
                 {
@@ -395,7 +378,6 @@ export default function ResourceAccordionItem({
         buyMutation.mutate({ agentId, planetId, bids: buyPayload });
     };
 
-    // ── Sell save handler ──────────────────────────────────────────────
     const handleSaveSell = () => {
         setSellSuccessMsg(null);
         setSellErrorMsg(null);
@@ -408,7 +390,6 @@ export default function ResourceAccordionItem({
         const offerPrice = parseFloat(local.offerPrice);
         const offerRetainment = parseFloat(local.offerRetainment);
 
-        // Validate sell price only (retainment just needs to be ≥ 0)
         if (!isNaN(offerPrice)) {
             const validation = validateSellOffer(!isNaN(offerPrice) ? offerPrice : undefined, inventoryQty);
             if (!validation.isValid) {
@@ -427,7 +408,6 @@ export default function ResourceAccordionItem({
         sellMutation.mutate({ agentId, planetId, offers: sellPayload });
     };
 
-    // ── Reset handlers ────────────────────────────────────────────────
     const handleResetBuy = () => {
         onLocalChange(resourceName, {
             bidPrice: local.savedBidPrice,
@@ -446,7 +426,6 @@ export default function ResourceAccordionItem({
         setSellErrorMsg(null);
     };
 
-    // ── Automation change handlers ────────────────────────────────────
     const handleBuyAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { bidAutomated: automated, savedBidAutomated: automated });
         if (automated) {
@@ -485,7 +464,7 @@ export default function ResourceAccordionItem({
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-4'>
-                    {/* ── Dropped columns summary grid ── */}
+                    {}
                     {droppedColumns.length > 0 && (
                         <div className='flex flex-wrap gap-1.5'>
                             {droppedColumns.map((col) => (
@@ -504,7 +483,7 @@ export default function ResourceAccordionItem({
                         </div>
                     )}
 
-                    {/* ── Price history chart ── */}
+                    {}
                     <ProductPriceHistoryChart
                         planetId={planetId}
                         productName={resourceName}
@@ -521,7 +500,7 @@ export default function ResourceAccordionItem({
                         }
                     />
 
-                    {/* ── Buy / Sell inner accordion ── */}
+                    {}
                     <Accordion
                         type='single'
                         collapsible
@@ -564,7 +543,7 @@ export default function ResourceAccordionItem({
                         />
                     </Accordion>
 
-                    {/* ── Market details toggle ── */}
+                    {}
                     <div className='flex items-center justify-between gap-3 pt-2'>
                         <button
                             onClick={() => setShowMarketDetails(!showMarketDetails)}
@@ -579,7 +558,7 @@ export default function ResourceAccordionItem({
                         </button>
                     </div>
 
-                    {/* ── Market details content ── */}
+                    {}
                     {showMarketDetails && <MarketDetailsSection planetId={planetId} resourceName={resourceName} />}
                 </div>
             </AccordionContent>

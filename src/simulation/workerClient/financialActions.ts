@@ -3,9 +3,6 @@ import type { OutboundMessage, PendingAction } from './messages';
 import { computeLoanConditions } from '../financial/loanConditions';
 import { grantLoan } from '../financial/loanTypes';
 
-/**
- * Handle 'requestLoan' action
- */
 export function handleRequestLoan(
     state: GameState,
     action: Extract<PendingAction, { type: 'requestLoan' }>,
@@ -50,9 +47,6 @@ export function handleRequestLoan(
     safePostMessage({ type: 'loanGranted', requestId, agentId, amount });
 }
 
-/**
- * Handle 'repayLoan' action — explicit per-loan repayment initiated by a player.
- */
 export function handleRepayLoan(
     state: GameState,
     action: Extract<PendingAction, { type: 'repayLoan' }>,
@@ -97,7 +91,6 @@ export function handleRepayLoan(
         return;
     }
 
-    // Apply repayment directly to the loan
     const actualRepayment = Math.min(loan.remainingPrincipal, amount);
     loan.remainingPrincipal -= actualRepayment;
     if (loan.remainingPrincipal <= 0) {
@@ -113,9 +106,6 @@ export function handleRepayLoan(
     safePostMessage({ type: 'loanRepaid', requestId, agentId, loanId, amount: actualRepayment });
 }
 
-/**
- * Dispatch financial-related actions to the appropriate handler
- */
 export function handleFinancialAction(
     state: GameState,
     action: PendingAction,
@@ -129,7 +119,6 @@ export function handleFinancialAction(
             handleRepayLoan(state, action, safePostMessage);
             break;
         default:
-            // This function only handles financial actions
             break;
     }
 }

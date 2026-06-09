@@ -1,32 +1,22 @@
-/**
- * Column configuration for the market table.
- * This provides a single source of truth for column widths, visibility, and other properties.
- */
-
-/** Fixed pixel width for the resource label column */
 export const LABEL_COLUMN_WIDTH = 145;
 
-/**
- * Get the Tailwind width class for the label column
- */
 export function getLabelColumnWidthClass(): string {
     return `w-[${LABEL_COLUMN_WIDTH}px]`;
 }
 
 export interface ColumnConfig {
-    /** Unique identifier for the column */
     id: string;
-    /** Display label for the header */
+
     label: string;
-    /** Tailwind width class (e.g., 'w-[72px]') */
+
     widthClass: string;
-    /** Title attribute for tooltip */
+
     title: string;
-    /** Text alignment ('text-left', 'text-center', 'text-right') */
+
     align: 'text-left' | 'text-center' | 'text-right';
-    /** Whether this column should be included in the table */
+
     enabled: boolean;
-    /** Priority for responsive dropping (1 = highest, 7 = lowest) */
+
     priority: number;
 }
 
@@ -105,54 +95,33 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     },
 ];
 
-/**
- * Get the width class for a column by ID
- */
 export function getColumnWidthClass(columnId: string): string {
     const column = MARKET_COLUMNS.find((col) => col.id === columnId);
     return column?.widthClass || 'w-auto';
 }
 
-/**
- * Get the priority for a column by ID
- */
 export function getColumnPriority(columnId: string): number {
     const column = MARKET_COLUMNS.find((col) => col.id === columnId);
     return column?.priority || 999;
 }
 
-/**
- * Get the alignment class for a column by ID
- */
 export function getColumnAlignClass(columnId: string): string {
     const column = MARKET_COLUMNS.find((col) => col.id === columnId);
     return column?.align || 'text-left';
 }
 
-/**
- * Get all enabled columns
- */
 export function getEnabledColumns(): ColumnConfig[] {
     return MARKET_COLUMNS.filter((col) => col.enabled);
 }
 
-/**
- * Get all enabled columns sorted by priority (highest first)
- */
 export function getEnabledColumnsByPriority(): ColumnConfig[] {
     return getEnabledColumns().sort((a, b) => a.priority - b.priority);
 }
 
-/**
- * Get all enabled columns in display order (as defined in MARKET_COLUMNS)
- */
 export function getEnabledColumnsInDisplayOrder(): ColumnConfig[] {
     return MARKET_COLUMNS.filter((col) => col.enabled);
 }
 
-/**
- * Helper to generate column classes for a cell
- */
 export function getColumnClasses(columnId: string): string {
     const widthClass = getColumnWidthClass(columnId);
     const alignClass = getColumnAlignClass(columnId);
@@ -160,22 +129,15 @@ export function getColumnClasses(columnId: string): string {
     return `${widthClass} ${alignClass} shrink-0`.trim();
 }
 
-/**
- * Helper to generate column classes for a header cell
- */
 export function getHeaderColumnClasses(columnId: string): string {
     const baseClasses = getColumnClasses(columnId);
     return `${baseClasses} text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none`.trim();
 }
 
-/**
- * Calculate total width in pixels for a set of columns
- */
 export function calculateTotalWidth(columns: ColumnConfig[]): number {
-    // Map width classes to pixel values
     const widthMap: Record<string, number> = {
         'w-[72px]': 72,
-        'w-[4.5rem]': 72, // 4.5rem = 72px at 16px base
+        'w-[4.5rem]': 72,
         'w-auto': 0,
     };
 
@@ -184,29 +146,23 @@ export function calculateTotalWidth(columns: ColumnConfig[]): number {
     }, 0);
 }
 
-/**
- * Get visible columns based on available width.
- * Each column is 72px wide with gap-2 (8px) between them.
- */
 export function getVisibleColumns(availableWidth: number): ColumnConfig[] {
-    const allColumns = getEnabledColumnsByPriority(); // Sorted by priority (highest first)
+    const allColumns = getEnabledColumnsByPriority();
     const COLUMN_WIDTH = 72;
-    const GAP = 8; // gap-2 = 8px between each column
+    const GAP = 8;
 
     const visible: ColumnConfig[] = [];
     let currentWidth = 0;
 
     for (const column of allColumns) {
-        // First column needs no leading gap; subsequent columns add a gap
         const needed = visible.length === 0 ? COLUMN_WIDTH : COLUMN_WIDTH + GAP;
         if (currentWidth + needed <= availableWidth) {
             visible.push(column);
             currentWidth += needed;
         } else {
-            break; // Can't fit more columns
+            break;
         }
     }
 
-    // Return in display order, not priority order
     return getEnabledColumnsInDisplayOrder().filter((col) => visible.some((v) => v.id === col.id));
 }

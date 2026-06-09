@@ -33,10 +33,6 @@ export function bucketDecadeLabel(bucket: number): string {
     return `${year}s`;
 }
 
-/**
- * Compute two y-axis domains such that the zero line sits at the same
- * vertical fraction on both axes, making them directly comparable.
- */
 export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
     const computeNatural = (vals: number[]): [number, number] => {
         const finite = vals.filter(Number.isFinite);
@@ -57,13 +53,11 @@ export function alignedYDomains(valsA: number[], valsB: number[]): [[number, num
     const spanA = hiA - loA;
     const spanB = hiB - loB;
 
-    // Zero fraction: how far from the bottom is zero, for each axis
     const pA = spanA > 0 ? Math.abs(loA) / spanA : 0.5;
     const pB = spanB > 0 ? Math.abs(loB) / spanB : 0.5;
-    // Use the larger zero-fraction so neither series clips
+
     const p = Math.max(pA, pB);
 
-    // Expand each axis so that zero sits at fraction p from the bottom
     const totalA = Math.max(spanA, Math.abs(hiA) / (1 - p + 0.0001), Math.abs(loA) / (p + 0.0001));
     const totalB = Math.max(spanB, Math.abs(hiB) / (1 - p + 0.0001), Math.abs(loB) / (p + 0.0001));
 
@@ -73,7 +67,6 @@ export function alignedYDomains(valsA: number[], valsB: number[]): [[number, num
     ];
 }
 
-/** @deprecated Use FinancialPoint */
 export type FinancialRawPoint = FinancialPoint;
 
 export type FinancialChartPoint = FinancialPoint & {
@@ -95,7 +88,6 @@ export function computeFinancialMonthlyData(allPts: FinancialRawPoint[], current
             monthIdx: tickToDate(p.bucket).monthIndex + 1,
         }));
 
-    // ── Anchor at monthIdx=0 (previous December or nearest predecessor) ──────
     const prevDecPoint = pts.find((p) => {
         const { year, monthIndex } = tickToDate(p.bucket);
         return year === latestYear - 1 && monthIndex === 11;

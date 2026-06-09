@@ -4,7 +4,7 @@ const serviceResourceDefault = {
     form: 'services' as const,
     level: 'services' as const,
     volumePerQuantity: 0,
-    massPerQuantity: 0, // services hold 1 tick, but do not consume physical storage space or mass
+    massPerQuantity: 0,
 };
 
 export const logisticsServiceResourceType: Resource = {

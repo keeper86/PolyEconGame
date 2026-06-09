@@ -20,7 +20,7 @@ type Props = {
     agentId: string;
     planetId: string;
     offer: Offer;
-    /** Seller's idle ships on this planet whose type matches the offer. */
+
     idleMatchingShips: TransportShip[];
     open: boolean;
     onClose: () => void;

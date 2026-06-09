@@ -43,7 +43,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         assets.market.buy = {};
     }
 
-    // SELLING SIDE
     const inputReserve = new Map<string, number>();
     for (const facility of assets.productionFacilities) {
         for (const { resource, quantity } of facility.needs) {
@@ -116,7 +115,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const facility of assets.productionFacilities) {
         for (const { resource } of facility.produces) {
-            // For human-controlled agents only auto-adjust entries explicitly flagged
             if (!agent.automated && assets.market.sell[resource.name]?.automated !== true) {
                 continue;
             }
@@ -130,7 +128,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             const offer = assets.market.sell[resource.name];
             offer.resource = resource;
-            offer.offerRetainment = reserved; // Keep at least the reserved amount
+            offer.offerRetainment = reserved;
 
             const initialPrice = planet.marketPrices[resource.name];
             const costFloor = planet.lastProductionCostFloors[resource.name];
@@ -146,7 +144,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
-    // BUYING SIDE
     const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
 
     for (const facility of [
@@ -155,8 +152,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null || facility.construction.type === 'expansion') {
-            // Facilities with construction.type === 'expansion' still produce while expanding,
-            // so they need their normal input buffer in addition to construction services.
             let needs = [];
             if (facility.type === 'ship_construction') {
                 needs = (facility.produces?.buildingCost ?? []).map((resource) => {
@@ -187,7 +182,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             }
         }
         if (facility.construction !== null) {
-            // Under construction → target construction service input buffer
             const facilityTarget =
                 facility.construction.maximumConstructionServiceConsumption * INPUT_BUFFER_TARGET_TICKS_SERVICES;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
@@ -223,8 +217,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 });
             }
         }
-        // Transport ships in loading state need their cargoGoal quantity; this surfaces the
-        // demand as an automated buy entry so the market bid is always visible and price-adjusted.
+
         if (
             ship.type.type === 'transport' &&
             ship.state.type === 'loading' &&
@@ -245,8 +238,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
-    // Set automated buy entries that are no longer needed to 0 (e.g. construction finished)
-    // but keep in object as it can be confusing if it just vanishes.
     for (const resourceName of Object.keys(assets.market.buy)) {
         if (assets.market.buy[resourceName].automated && !aggregatedBuyTargets.has(resourceName)) {
             assets.market.buy[resourceName].bidStorageTarget = 0;
@@ -254,7 +245,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     for (const [resourceName, { resource, storageTarget }] of aggregatedBuyTargets) {
-        // For human-controlled agents only auto-adjust entries explicitly flagged
         if (!agent.automated && assets.market.buy[resourceName]?.automated !== true) {
             continue;
         }
@@ -318,13 +308,12 @@ export function adjustOfferPrice(
         return;
     }
 
-    // Calculate effective sell quantity based on retainment
     const retainment = offer.offerRetainment ?? 0;
     const effectiveQuantity = Math.max(0, inventoryQty - retainment);
 
     if (effectiveQuantity === 0) {
         if (sold > 0 && price > 0) {
-            const factor = sellThroughFactor(1); // Full sell-through
+            const factor = sellThroughFactor(1);
             const newPrice = price * factor;
             offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
         }
@@ -339,18 +328,13 @@ export function adjustOfferPrice(
 
     const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER * (offer.resource.form === 'services' ? 0.5 : 1));
 
-    // Offer spring kicks in 1 step below the bid ceiling, creating a last-resort trade window
-    // where bids (capped at BID_OFFER_MAX_COST_MULTIPLIER × floor) can still exceed offers.
     const overPriceGuard = costFloor > PRICE_FLOOR ? costFloor * (BID_OFFER_MAX_COST_MULTIPLIER - 1) : PRICE_CEIL;
 
-    // sqrt-scaled spring: force grows with distance so extreme deviations
-    // always overcome the max sell-through/fill-rate factor (±0.05).
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
     const overDeviation = Math.sqrt(Math.max(0, price / overPriceGuard - 1));
 
     const newPrice = price * (factor + COST_SPRING_STRENGTH * deviation - COST_SPRING_STRENGTH * overDeviation);
 
-    // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
         offer.offerPrice = PRICE_FLOOR;
     } else {
@@ -358,14 +342,6 @@ export function adjustOfferPrice(
     }
 }
 
-/**
- * Map fill rate ∈ [0, 1] onto a price-adjustment factor using two linear
- * segments symmetric to sellThroughFactor:
- *
- *   fillRate = 0              → PRICE_ADJUST_MAX_UP   (max price rise — can't get anything)
- *   fillRate = TARGET         → 1.0                   (no change)
- *   fillRate = 1              → PRICE_ADJUST_MAX_DOWN (max price cut — always fully filled)
- */
 const TARGET_FILL_RATE = 0.9;
 
 function fillRateFactor(fillRate: number): number {
@@ -386,10 +362,9 @@ function adjustBidPrice(
     marketPrice: number,
     ceilingPrice: number = PRICE_CEIL,
 ): void {
-    // Handle extremely small shortfalls - treat as no demand
     if (shortfall > 0 && shortfall < EPSILON) {
-        bid.bidStorageTarget = storageTarget - shortfall < EPSILON ? 0 : storageTarget - shortfall; // Effectively current inventory
-        // Keep existing price or initialize it from market price
+        bid.bidStorageTarget = storageTarget - shortfall < EPSILON ? 0 : storageTarget - shortfall;
+
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
@@ -400,7 +375,6 @@ function adjustBidPrice(
     bid.bidStorageTarget = storageTarget < EPSILON ? 0 : storageTarget;
 
     if (shortfall <= 0) {
-        // No demand. Keep existing price or initialize it from market price.
         if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
@@ -408,7 +382,6 @@ function adjustBidPrice(
         return;
     }
 
-    // If bid price is undefined, 0, or negative, initialize it
     if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
         bid.bidPrice = marketPrice;
         bid.bidPrice = Math.max(PRICE_FLOOR, bid.bidPrice);
@@ -428,7 +401,6 @@ function adjustBidPrice(
 
     const newPrice = bid.bidPrice * factor;
 
-    // Ensure price is always at least PRICE_FLOOR and not NaN/Infinity
     if (!isFinite(newPrice) || newPrice <= 0) {
         bid.bidPrice = PRICE_FLOOR;
     } else {

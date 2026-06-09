@@ -8,19 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
 
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
-
 type Props = {
     agentId: string;
-    /** Current server-side state (from the last getAgentPlanetDetail query). */
+
     automateWorkerAllocation: boolean;
 };
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                         */
-/* ------------------------------------------------------------------ */
 
 export default function AutomationPanel({
     agentId,
@@ -34,20 +26,16 @@ export default function AutomationPanel({
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // Keep local state in sync when the parent re-renders with a fresh snapshot
     useEffect(() => {
         setWorkerAuto(initialWorker);
     }, [initialWorker]);
 
-    // ------------------------------------------------------------------
-    // Mutation
-    // ------------------------------------------------------------------
     const setAutomationMutation = useMutation(
         trpc.setAutomation.mutationOptions({
             onSuccess: () => {
                 setSuccessMsg('Automation settings saved. Changes take effect on the next tick.');
                 setErrorMsg(null);
-                // Invalidate agent detail queries so the parent re-fetches
+
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getAgentPlanetDetail.queryKey(),
                 });
@@ -70,12 +58,8 @@ export default function AutomationPanel({
         });
     };
 
-    // ------------------------------------------------------------------
-    // Render
-    // ------------------------------------------------------------------
     return (
         <div className='border rounded-md p-3 space-y-3'>
-            {/* Header / toggle */}
             <button
                 type='button'
                 className='w-full flex items-center justify-between gap-2 cursor-pointer'
@@ -99,7 +83,6 @@ export default function AutomationPanel({
                         tick.
                     </p>
 
-                    {/* Worker allocation toggle */}
                     <div className='flex items-center justify-between gap-3'>
                         <div className='space-y-0.5'>
                             <Label htmlFor='worker-auto-toggle' className='text-xs font-medium cursor-pointer'>
@@ -119,7 +102,6 @@ export default function AutomationPanel({
                         />
                     </div>
 
-                    {/* Feedback */}
                     {successMsg && (
                         <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
                             <CheckCircle2 className='h-4 w-4 text-green-600' />

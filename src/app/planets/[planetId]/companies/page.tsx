@@ -12,7 +12,6 @@ import type { AgentListSummary } from '@/simulation/snapshotRepository';
 import Link from 'next/link';
 import { useState } from 'react';
 
-/** Agent row returned by the server — extends AgentListSummary with a normalised balance. */
 type AgentRow = AgentListSummary & { normalizedBalance: number };
 
 type SortKey = 'normalizedBalance' | 'totalWorkers' | 'facilityCount' | 'shipCount';

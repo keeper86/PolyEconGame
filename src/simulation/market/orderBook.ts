@@ -43,7 +43,6 @@ function equalShareAllocate(participants: number[], supply: number, minUnit: num
         const perParticipant = leftover / activeIndices.length;
 
         if (activeIndices.length > 1 && perParticipant < minUnit - EPSILON) {
-            // Integer remainder phase — assign one unit each in random order.
             const order = shuffledIndices(activeIndices.length);
             for (const pos of order) {
                 if (leftover < minUnit - EPSILON) {
@@ -75,12 +74,6 @@ function equalShareAllocate(participants: number[], supply: number, minUnit: num
     return allocations;
 }
 
-/**
- * Deposit-aware effective demand for an agent bid at a given ask price.
- *
- * No rounding is applied: even a budget of 0.005 credits at an ask price of
- * 0.01 per ton allows a 0.5-ton purchase.
- */
 function effectiveBidCapacity(bid: MergedBid, remaining: number, askPrice: number): number {
     if (bid.kind === 'agent' && askPrice > 0) {
         const maxAffordable = bid.order.remainingDeposits / askPrice;
@@ -144,7 +137,6 @@ export function clearUnifiedBids(
                 continue;
             }
 
-            // Compute effective bid demands at this ask price.
             const bidIndices = bidTier.map((b) => mergedIndexOf.get(b)!);
             const effectiveDemands = bidIndices.map((i) =>
                 effectiveBidCapacity(merged[i], bidRemaining[i], tradePrice),
@@ -168,9 +160,6 @@ export function clearUnifiedBids(
                 const ask = askTier[ai];
                 const askIdx = askIndexOf.get(ask)!;
 
-                // Recompute effective demands from the current bidRemaining so that buyers
-                // already satisfied by earlier sellers in this tier don't steal quota from
-                // others (stale values would cause over-allocation beyond a buyer's demand).
                 const currentEffectiveDemands = bidIndices.map((i) =>
                     effectiveBidCapacity(merged[i], bidRemaining[i], tradePrice),
                 );

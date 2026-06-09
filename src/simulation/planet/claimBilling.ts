@@ -25,13 +25,12 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
                 continue;
             }
 
-            // Auto-terminate if paused for >= 31 accumulated days in a year
             if (
                 entry.claimStatus === 'paused' &&
                 entry.pausedTicksThisYear >= PAUSED_DAYS_TERMINATION_THRESHOLD &&
                 entry.noticePeriodEndsAtTick === null
             ) {
-                entry.noticePeriodEndsAtTick = tick + TICKS_PER_MONTH; // Set notice period to 1 month from now
+                entry.noticePeriodEndsAtTick = tick + TICKS_PER_MONTH;
             }
 
             const isTerminating = entry.noticePeriodEndsAtTick !== null;
@@ -69,7 +68,6 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
             collapseUntenantedClaims(planet, resourceName);
         }
 
-        // Update planet-wide average cost per unit for this land-bound resource.
         let totalCost = 0;
         let totalUnits = 0;
         for (const entry of entries) {

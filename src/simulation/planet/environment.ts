@@ -1,7 +1,6 @@
 import type { Planet } from './planet';
 
 export function environmentTick(planet: Planet) {
-    // Apply natural regeneration to pollution indices (decrease pollution by regenerationRates)
     planet.environment.pollution.air = Math.max(
         0,
         planet.environment.pollution.air -

@@ -6,26 +6,15 @@ import type {
     ProductPriceHistory,
 } from '../types/db_schemas';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export type GameSnapshotRow = GameSnapshots;
 
 export interface InsertGameSnapshot {
     tick: number;
-    /** Optional game id for multi-game setups. Defaults to 1. */
+
     game_id?: number;
     snapshot_data: Buffer;
 }
 
-// ---------------------------------------------------------------------------
-// Write
-// ---------------------------------------------------------------------------
-
-/**
- * Insert a new cold snapshot row.
- */
 export async function insertGameSnapshot(db: Knex, snapshot: InsertGameSnapshot): Promise<void> {
     await db('game_snapshots').insert({
         tick: String(snapshot.tick),
@@ -51,11 +40,9 @@ export async function pruneGameSnapshots(db: Knex, keepCount: number): Promise<n
         return 0;
     }
 
-    // Get the tick of the Nth most recent snapshot
     const rows = await db('game_snapshots').orderBy('tick', 'desc').limit(keepCount).select('tick');
 
     if (rows.length < keepCount) {
-        // Fewer snapshots than keepCount — nothing to prune.
         return 0;
     }
 
@@ -65,20 +52,12 @@ export async function pruneGameSnapshots(db: Knex, keepCount: number): Promise<n
     return deleted;
 }
 
-// ---------------------------------------------------------------------------
-// Planet population history
-// ---------------------------------------------------------------------------
-
 export interface InsertPlanetPopulation {
     tick: number;
     planet_id: string;
     population: number;
 }
 
-/**
- * Insert one population-history row per planet for a given tick.
- * Uses a single multi-row insert for efficiency.
- */
 export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanetPopulation[]): Promise<void> {
     if (rows.length === 0) {
         return;
@@ -92,11 +71,7 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
     );
 }
 
-/**
- * Get the most recent population row for every planet (latest tick).
- */
 export async function getLatestPlanetPopulations(db: Knex) {
-    // Use a DISTINCT ON query to efficiently fetch the latest row per planet.
     return db
         .raw(
             `SELECT DISTINCT ON (planet_id) *
@@ -105,10 +80,6 @@ export async function getLatestPlanetPopulations(db: Knex) {
         )
         .then((res: { rows: PlanetPopulationHistory[] }) => res.rows);
 }
-
-// ---------------------------------------------------------------------------
-// Agent monthly history
-// ---------------------------------------------------------------------------
 
 export type AgentMonthlyHistoryRow = AgentMonthlyHistory;
 
@@ -128,10 +99,6 @@ export interface InsertAgentMonthlyHistory {
     claim_payments: number;
 }
 
-/**
- * Insert agent monthly history rows.
- * Records per-agent metrics at month boundaries (every 30 ticks).
- */
 export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonthlyHistory[]): Promise<void> {
     if (rows.length === 0) {
         return;
@@ -155,14 +122,10 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
     );
 }
 
-/**
- * Get the most recent monthly history row for every agent on a planet (latest tick).
- */
 export async function getLatestAgentMonthlyHistoryByPlanet(
     db: Knex,
     planetId: string,
 ): Promise<AgentMonthlyHistoryRow[]> {
-    // Use a DISTINCT ON query to efficiently fetch the latest row per agent
     return db
         .raw(
             `SELECT DISTINCT ON (agent_id) *
@@ -204,7 +167,7 @@ export async function insertProductPriceHistory(db: Knex, rows: InsertProductPri
 export type HistoryGranularity = 'monthly' | 'yearly' | 'decade';
 
 export interface ProductPriceBucket {
-    bucket: string; // tick bucket start, as string
+    bucket: string;
     planet_id: string;
     product_name: string;
     avg_price: number;
@@ -240,10 +203,15 @@ export async function refreshContinuousAggregates(
 ): Promise<void> {
     const views =
         granularity === 'decade'
-            ? ['product_price_decade', 'planet_population_decade', 'agent_decade_summary']
+            ? ['product_price_decade', 'planet_population_decade', 'agent_decade_summary', 'planet_economy_decade']
             : granularity === 'yearly'
-              ? ['product_price_yearly', 'planet_population_yearly', 'agent_yearly_summary']
-              : ['product_price_monthly', 'planet_population_monthly', 'agent_monthly_summary'];
+              ? ['product_price_yearly', 'planet_population_yearly', 'agent_yearly_summary', 'planet_economy_yearly']
+              : [
+                    'product_price_monthly',
+                    'planet_population_monthly',
+                    'agent_monthly_summary',
+                    'planet_economy_monthly',
+                ];
 
     const ticksPerBucket = granularity === 'decade' ? 3600 : granularity === 'yearly' ? 360 : 30;
     const refreshStartTick = Math.max(0, upToTick - ticksPerBucket * 2);
@@ -258,9 +226,6 @@ export interface PopulationBucket {
     avg_population: number;
 }
 
-/**
- * Query planet population history from the appropriate continuous aggregate.
- */
 export async function getPlanetPopulationHistoryAggregated(
     db: Knex,
     planetId: string,
@@ -302,9 +267,6 @@ export interface AgentFinancialBucket {
     sum_claim_payments: number;
 }
 
-/**
- * Query agent history from the appropriate continuous aggregate.
- */
 export async function getAgentHistoryAggregated(
     db: Knex,
     agentId: string,
@@ -361,5 +323,90 @@ export async function getAgentFinancialHistoryAggregated(
             'avg_wages',
             'sum_purchases',
             'sum_claim_payments',
+        );
+}
+
+export interface InsertPlanetEconomy {
+    tick: number;
+    planet_id: string;
+    gdp: number;
+    cost_of_living: number;
+    cost_of_living_rich: number;
+    wage_edu0: number;
+    wage_edu1: number;
+    wage_edu2: number;
+    wage_edu3: number;
+    policy_rate: number;
+    bank_equity: number;
+    money_supply: number;
+}
+
+export interface PlanetEconomyBucket {
+    bucket: string;
+    planet_id: string;
+    avg_gdp: number;
+    avg_cost_of_living: number;
+    avg_cost_of_living_rich: number;
+    avg_wage_edu0: number;
+    avg_wage_edu1: number;
+    avg_wage_edu2: number;
+    avg_wage_edu3: number;
+    avg_policy_rate: number;
+    avg_bank_equity: number;
+    avg_money_supply: number;
+}
+
+export async function insertPlanetEconomyHistory(db: Knex, rows: InsertPlanetEconomy[]): Promise<void> {
+    if (rows.length === 0) {
+        return;
+    }
+    await db('planet_economy_history').insert(
+        rows.map((r) => ({
+            tick: String(r.tick),
+            planet_id: r.planet_id,
+            gdp: r.gdp,
+            cost_of_living: r.cost_of_living,
+            cost_of_living_rich: r.cost_of_living_rich,
+            wage_edu0: r.wage_edu0,
+            wage_edu1: r.wage_edu1,
+            wage_edu2: r.wage_edu2,
+            wage_edu3: r.wage_edu3,
+            policy_rate: r.policy_rate,
+            bank_equity: r.bank_equity,
+            money_supply: r.money_supply,
+        })),
+    );
+}
+
+export async function getPlanetEconomyHistoryAggregated(
+    db: Knex,
+    planetId: string,
+    granularity: HistoryGranularity = 'monthly',
+    limit: number = 100,
+): Promise<PlanetEconomyBucket[]> {
+    const view =
+        granularity === 'decade'
+            ? 'planet_economy_decade'
+            : granularity === 'yearly'
+              ? 'planet_economy_yearly'
+              : 'planet_economy_monthly';
+
+    return db(view)
+        .where({ planet_id: planetId })
+        .orderBy('bucket', 'desc')
+        .limit(limit)
+        .select(
+            'bucket',
+            'planet_id',
+            'avg_gdp',
+            'avg_cost_of_living',
+            'avg_cost_of_living_rich',
+            'avg_wage_edu0',
+            'avg_wage_edu1',
+            'avg_wage_edu2',
+            'avg_wage_edu3',
+            'avg_policy_rate',
+            'avg_bank_equity',
+            'avg_money_supply',
         );
 }

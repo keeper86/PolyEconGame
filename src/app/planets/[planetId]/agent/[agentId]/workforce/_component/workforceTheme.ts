@@ -1,19 +1,6 @@
-/**
- * Shared constants, helpers, and types for the Workforce Demography panel family.
- */
-
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys, educationLevels } from '@/simulation/population/education';
 
-// ---------------------------------------------------------------------------
-// Education-level colour palette
-// ---------------------------------------------------------------------------
-
-/**
- * Consistent colour tokens per education level.
- * Each entry provides a Tailwind-friendly set of classes for badges,
- * table cells, and chart strokes / fills.
- */
 export const EDU_COLORS: Record<EducationLevelType, { badge: string; text: string; chart: string }> = {
     none: { badge: 'border-slate-300 bg-slate-50 text-slate-700', text: 'text-slate-600', chart: '#94a3b8' },
     primary: { badge: 'border-blue-300 bg-blue-50 text-blue-700', text: 'text-blue-600', chart: '#60a5fa' },
@@ -25,49 +12,30 @@ export const EDU_COLORS: Record<EducationLevelType, { badge: string; text: strin
     tertiary: { badge: 'border-amber-300 bg-amber-50 text-amber-700', text: 'text-amber-600', chart: '#f59e0b' },
 };
 
-/** Ordered chart fill colours matching the education level order. */
 export const EDU_CHART_COLORS: string[] = educationLevelKeys.map((edu) => EDU_COLORS[edu].chart);
-
-// ---------------------------------------------------------------------------
-// Chart colour constants (non-education)
-// ---------------------------------------------------------------------------
 
 export const CHART_COLORS = {
     active: '#60a5fa',
     departing: '#f97316',
 } as const;
 
-/** Colours for the departure-reason breakdown (stacked bar status view). */
 export const DEPARTURE_COLORS = {
-    quitting: '#facc15', // yellow-400
-    fired: '#ef4444', // red-500
-    retired: '#a3e635', // lime-400
+    quitting: '#facc15',
+    fired: '#ef4444',
+    retired: '#a3e635',
 } as const;
 
-/** Tenure-band area-chart colours. */
 export const TENURE_BAND_COLORS = ['#93c5fd', '#60a5fa', '#34d399', '#f59e0b', '#ef4444'];
 
-/**
- * Generate a smooth colour for a tenure year index.
- * Maps `t ∈ [0, maxYears]` through an HSL gradient:
- *   hue 210 (blue) → 0 (red), saturation 75%, lightness 55%.
- */
 export function tenureYearColor(index: number, total: number): string {
     const t = total > 1 ? index / (total - 1) : 0;
-    const hue = 210 - t * 210; // 210 (blue) → 0 (red)
+    const hue = 210 - t * 210;
     return `hsl(${Math.round(hue)}, 75%, 55%)`;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Human-readable label for an education level key. */
 export const eduLabel = (edu: EducationLevelType): string => educationLevels[edu].name;
 
-/** Sum a Record<EducationLevelType, number> across all education levels. */
 export const sumByEdu = (rec: Partial<Record<EducationLevelType, number>>): number =>
     educationLevelKeys.reduce((sum, edu) => sum + (rec[edu] ?? 0), 0);
 
-/** Format a percentage, safe for zero denominators. */
 export const pct = (num: number, den: number): string => (den > 0 ? ((num / den) * 100).toFixed(0) : '0');

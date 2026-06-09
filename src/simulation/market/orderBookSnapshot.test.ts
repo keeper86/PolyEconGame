@@ -5,10 +5,6 @@ import { makePlanet } from '../utils/testHelper';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { buildPlanetOrderBook } from './orderBookSnapshot';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeAsk(price: number, quantity: number, filled = 0): AskOrder {
     return {
         agent: {} as never,
@@ -78,7 +74,7 @@ describe('buildPlanetOrderBook', () => {
         const askBooks = new Map<string, AskOrder[]>([['Coal', [makeAsk(10, 30), makeAsk(10, 20), makeAsk(20, 50)]]]);
         buildPlanetOrderBook(planet, askBooks, new Map());
         const asks = planet.orderBooks?.Coal?.asks ?? [];
-        // Two entries at price 10 should be merged
+
         expect(asks).toEqual([
             { price: 10, quantity: 50 },
             { price: 20, quantity: 50 },
@@ -87,7 +83,7 @@ describe('buildPlanetOrderBook', () => {
 
     it('uses remaining quantity (quantity - filled), not initial quantity', () => {
         const planet = makePlanet();
-        // Order placed for 100, but 60 already filled → 40 remaining
+
         const askBooks = new Map<string, AskOrder[]>([['Coal', [makeAsk(10, 100, 60)]]]);
         buildPlanetOrderBook(planet, askBooks, new Map());
         expect(planet.orderBooks?.Coal?.asks).toEqual([{ price: 10, quantity: 40 }]);
@@ -95,15 +91,7 @@ describe('buildPlanetOrderBook', () => {
 
     it('skips fully-filled orders', () => {
         const planet = makePlanet();
-        const askBooks = new Map<string, AskOrder[]>([
-            [
-                'Coal',
-                [
-                    makeAsk(10, 50, 50), // fully filled
-                    makeAsk(20, 30, 0), // still open
-                ],
-            ],
-        ]);
+        const askBooks = new Map<string, AskOrder[]>([['Coal', [makeAsk(10, 50, 50), makeAsk(20, 30, 0)]]]);
         buildPlanetOrderBook(planet, askBooks, new Map());
         const asks = planet.orderBooks?.Coal?.asks ?? [];
         expect(asks).toEqual([{ price: 20, quantity: 30 }]);

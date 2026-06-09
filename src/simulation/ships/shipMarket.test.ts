@@ -5,10 +5,6 @@ import { effectiveShipValue, findCompatibleTrades, updateShipEma } from './shipM
 import type { ShipCapitalMarket } from './ships';
 import { createShip, shiptypes } from './ships';
 
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
 function makeMarket(): ShipCapitalMarket {
     return { tradeHistory: [], emaPrice: {} };
 }
@@ -18,10 +14,6 @@ function makeTransportShipIdle(planetId: string) {
     const ship = createShip(shiptypes.solid.bulkCarrier1, 0, 'S1', planet);
     return ship;
 }
-
-// ---------------------------------------------------------------------------
-// effectiveShipValue
-// ---------------------------------------------------------------------------
 
 describe('effectiveShipValue', () => {
     it('returns a positive value for a healthy idle ship without gameState', () => {
@@ -55,7 +47,7 @@ describe('effectiveShipValue', () => {
         const ship = makeTransportShipIdle('p1');
         const withPenalty = effectiveShipValue(ship, state);
         const withoutPenalty = effectiveShipValue(ship);
-        // Penalty reduces value
+
         expect(withPenalty).toBeLessThan(withoutPenalty);
     });
 
@@ -74,7 +66,7 @@ describe('effectiveShipValue', () => {
             arrivalTick: 999,
         };
         const val = effectiveShipValue(ship, state);
-        // No planet lookup possible for transporting state → no penalty
+
         const valNoPenalty = effectiveShipValue(ship);
         expect(val).toBe(valNoPenalty);
     });
@@ -99,10 +91,6 @@ describe('effectiveShipValue', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// findCompatibleTrades
-// ---------------------------------------------------------------------------
-
 describe('findCompatibleTrades', () => {
     it('returns empty when there are no listings', () => {
         const state = makeGameState([makePlanet({ id: 'p1' })], [makeAgent('a1', 'p1')]);
@@ -125,7 +113,7 @@ describe('findCompatibleTrades', () => {
         buyer.assets.p1!.shipBuyingOffers.push({
             id: 'o1',
             buyerAgentId: 'buyer',
-            shipType: 'tanker1', // different type key
+            shipType: 'tanker1',
             price: 2000,
             status: 'open',
         });
@@ -150,7 +138,7 @@ describe('findCompatibleTrades', () => {
             id: 'o1',
             buyerAgentId: 'buyer',
             shipType: 'bulkCarrier1',
-            price: 3000, // below ask
+            price: 3000,
             status: 'open',
         });
         const state = makeGameState([makePlanet({ id: 'p1' })], [seller, buyer]);
@@ -177,7 +165,7 @@ describe('findCompatibleTrades', () => {
             shipId: 'S1',
             price: 2000,
             sellerAgentId: 'seller',
-            status: 'accepted', // not open
+            status: 'accepted',
         });
         const state = makeGameState([makePlanet({ id: 'p1' })], [seller, buyer]);
         expect(findCompatibleTrades(state)).toHaveLength(0);
@@ -260,18 +248,14 @@ describe('findCompatibleTrades', () => {
         );
         const state = makeGameState([planet], [seller, buyer]);
         const trades = findCompatibleTrades(state);
-        // 4 combinations (2 listings × 2 offers), sorted by surplus desc → max surplus first
+
         const surpluses = trades.map((t) => t.surplus);
         for (let i = 0; i < surpluses.length - 1; i++) {
             expect(surpluses[i]).toBeGreaterThanOrEqual(surpluses[i + 1]!);
         }
-        expect(surpluses[0]).toBe(2000); // offer 3000 - ask 1000
+        expect(surpluses[0]).toBe(2000);
     });
 });
-
-// ---------------------------------------------------------------------------
-// updateShipEma
-// ---------------------------------------------------------------------------
 
 describe('updateShipEma', () => {
     it('sets price directly on first trade (no prior EMA)', () => {

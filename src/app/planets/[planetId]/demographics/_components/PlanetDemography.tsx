@@ -55,7 +55,6 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
         return { ...base, ...eduEntries, ...occEntries };
     });
 
-    // Merge adjacent age rows when on very small screens to reduce visual clutter.
     function mergePairs(rowsArr: Record<string, number>[], rowKeys: readonly string[]) {
         const result: Record<string, number>[] = [];
         for (let i = 0; i < rowsArr.length; i += 2) {

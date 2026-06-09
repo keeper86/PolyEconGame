@@ -11,7 +11,6 @@ import { formatNumbers } from '@/simulation/utils/numberFormat';
 
 export type Units = 'currency' | 'tonnes' | 'litres' | 'units' | 'persons' | 'percent' | 'm3' | 'days' | 'none';
 
-/** Maps a resource form to its appropriate display unit. */
 export function resourceFormToUnit(form: ResourceType): Exclude<Units, 'currency'> {
     switch (form) {
         case 'solid':
@@ -57,6 +56,6 @@ export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, 
     if (unit === 'days') {
         return `${formattedNumber} days`;
     }
-    // 'units', 'persons', and 'none' — no suffix
+
     return formattedNumber;
 };

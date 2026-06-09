@@ -5,7 +5,6 @@ import { nextRandom } from '../utils/stochasticRound';
 
 const LOAN_LIMIT = 1000;
 
-/** Generate a deterministic loan ID from the seeded PRNG. */
 function nextLoanId(): string {
     const hex = (n: number) => ((n * 0x100000000) >>> 0).toString(16).padStart(8, '0');
     return `${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}`;
@@ -41,11 +40,10 @@ export const LOAN_TERM_TICKS: Record<LoanType, number> = {
     claimCoverage: TICKS_PER_YEAR,
     shipPenaltyCoverage: TICKS_PER_YEAR,
     licenseBootstrap: TICKS_PER_YEAR,
-    forexWorkingCapital: TICKS_PER_YEAR * 1000, // effectively no maturity
-    shipbuilderBootstrap: TICKS_PER_YEAR * 1000, // effectively no maturity
+    forexWorkingCapital: TICKS_PER_YEAR * 1000,
+    shipbuilderBootstrap: TICKS_PER_YEAR * 1000,
 } as const;
 
-/** Whether early (UI-initiated) repayment is allowed for this loan type. */
 const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
     starter: true,
     discretionary: true,
@@ -113,7 +111,6 @@ export function repayLoansOldestFirst(activeLoans: Loan[], maxRepayment: number)
     let remaining = maxRepayment;
     let totalRepaid = 0;
 
-    // Sort oldest-first so FIFO ordering is preserved
     activeLoans.sort((a, b) => a.takenAtTick - b.takenAtTick);
 
     let i = 0;
@@ -125,7 +122,6 @@ export function repayLoansOldestFirst(activeLoans: Loan[], maxRepayment: number)
         totalRepaid += repayAmount;
         if (loan.remainingPrincipal <= 0) {
             activeLoans.splice(i, 1);
-            // do not increment i — next loan is now at index i
         } else {
             i++;
         }

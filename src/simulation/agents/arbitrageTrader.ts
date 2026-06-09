@@ -29,7 +29,6 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 assets: {},
             };
 
-            // Create assets + seed deposit on every planet
             for (const planet of planets) {
                 const storage = makeStorage({
                     planetId: planet.id,
@@ -47,7 +46,6 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
             }
 
             for (let i = 0; i < 6; i++) {
-                // Bootstrap ship: one Bulk Carrier idle at home planet
                 const bootstrapShip = createShip(
                     BOOTSTRAP_SHIP_TYPES[count % BOOTSTRAP_SHIP_TYPES.length],
                     0,

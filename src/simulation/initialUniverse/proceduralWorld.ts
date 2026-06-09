@@ -61,16 +61,8 @@ import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from
 import { initialMarketPrices } from './initialMarketPrices';
 import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 
-// ---------------------------------------------------------------------------
-// Planet ID and government ID
-// ---------------------------------------------------------------------------
-
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
-
-// ---------------------------------------------------------------------------
-// Total natural-resource pools (same proportions as earth.ts)
-// ---------------------------------------------------------------------------
 
 const TOTAL_ARABLE = 2_500_000_000;
 const TOTAL_WATER = 2_000_000_000;
@@ -84,17 +76,7 @@ const TOTAL_LIMESTONE = 3_000_000_000_000;
 const TOTAL_CLAY = 2_000_000_000_000;
 const TOTAL_STONE = 4_000_000_000_000;
 
-// ---------------------------------------------------------------------------
-// Deterministic pseudo-random splitter
-// ---------------------------------------------------------------------------
-
-/**
- * Returns `count` positive integers that sum to `total`, with a slight
- * variation so agents are not all identical. Uses a simple LCG seeded by
- * the facility name so results are stable across runs.
- */
 function splitScale(total: number, count: number, seed: string): number[] {
-    // LCG parameters (Numerical Recipes)
     let s = 0;
     for (let i = 0; i < seed.length; i++) {
         s = (s * 31 + seed.charCodeAt(i)) >>> 0;
@@ -104,11 +86,9 @@ function splitScale(total: number, count: number, seed: string): number[] {
         return s / 0x1_0000_0000;
     };
 
-    // Generate raw weights in [0.5, 1.5]
     const weights = Array.from({ length: count }, () => 0.5 + rand());
     const wSum = weights.reduce((a, b) => a + b, 0);
 
-    // Convert to integer shares that sum exactly to Math.round(total)
     const intTotal = Math.round(total);
     let remaining = intTotal;
     const shares: number[] = [];
@@ -123,12 +103,6 @@ function splitScale(total: number, count: number, seed: string): number[] {
     }
     return shares;
 }
-
-// ---------------------------------------------------------------------------
-// Target table  (totalScale, agentCount)
-// Derived directly from the user-provided numbers; for land-bound
-// extractors the totalScale is already the target facility scale.
-// ---------------------------------------------------------------------------
 
 interface FacilityTarget {
     totalScale: number;
@@ -177,10 +151,6 @@ const TARGETS: Record<string, FacilityTarget> = {
     hospital: { totalScale: 1_488_889, agentCount: 4 },
     siliconWaferFactory: { totalScale: 222_982, agentCount: 4 },
 };
-
-// ---------------------------------------------------------------------------
-// Company-name banks (one per facility category)
-// ---------------------------------------------------------------------------
 
 const NAMES: Record<string, string[]> = {
     tankerTransport: [],
@@ -651,47 +621,36 @@ const NAMES: Record<string, string[]> = {
     ],
 };
 
-// ---------------------------------------------------------------------------
-// Land-bound resource assignment
-// Each land-bound extractor needs deposit claims proportional to its scale.
-// The deposit quantity per scale unit mirrors the facility `needs` quantity.
-// ---------------------------------------------------------------------------
-
-/** Returns the deposit quantity needed for a given scale unit. */
 function depositPerScale(facilityType: string): number {
     switch (facilityType) {
         case 'coalMine':
-            return 500000; // coalDepositResourceType
+            return 500000;
         case 'oilWell':
-            return 300000; // oilReservoirResourceType
+            return 300000;
         case 'loggingCamp':
-            return 400000; // forestResourceType
+            return 400000;
         case 'stoneQuarry':
-            return 400000; // stoneQuarryResourceType
+            return 400000;
         case 'copperMine':
-            return 400000; // copperDepositResourceType
+            return 400000;
         case 'sandMine':
-            return 300000; // sandDepositResourceType
+            return 300000;
         case 'limestoneQuarry':
-            return 300000; // limestoneDepositResourceType
+            return 300000;
         case 'clayMine':
-            return 400000; // clayDepositResourceType
+            return 400000;
         case 'cottonFarm':
-            return 200000; // arableLandResourceType
+            return 200000;
         case 'intensiveFarmFacility':
-            return 30000; // arableLandResourceType
+            return 30000;
         case 'waterExtractionFacility':
-            return 800000; // waterSourceResourceType
+            return 800000;
         case 'ironExtractionFacility':
-            return 400000; // ironOreDepositResourceType
+            return 400000;
         default:
             return 0;
     }
 }
-
-// ---------------------------------------------------------------------------
-// Facility factory lookup
-// ---------------------------------------------------------------------------
 
 type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
 
@@ -745,10 +704,6 @@ function getFacilityFactory(type: string): FacilityFactory {
     return f;
 }
 
-// ---------------------------------------------------------------------------
-// Resource claim pool helper
-// ---------------------------------------------------------------------------
-
 interface ClaimPool {
     type:
         | typeof arableLandResourceType
@@ -787,8 +742,6 @@ function resourceType(facilityType: string): ClaimPool['type'] | null {
 }
 
 function renewableForResource(facilityType: string): boolean {
-    // Forest, sand, limestone, clay, stone, water, arable land are renewable;
-    // coal, oil, gas, copper, iron ore are not.
     const NON_RENEWABLE = new Set([
         'coalMine',
         'oilWell',
@@ -802,12 +755,6 @@ function renewableForResource(facilityType: string): boolean {
     return !NON_RENEWABLE.has(facilityType);
 }
 
-/**
- * Returns the canonical claim-pool key for a facility type.
- * Multiple facility types that share the same land-bound resource
- * (e.g. cottonFarm and intensiveFarmFacility both consume arableLand)
- * must write into the same pool so the planet resource map is consistent.
- */
 function claimPoolKey(facilityType: string): string {
     if (facilityType === 'intensiveFarmFacility') {
         return 'cottonFarm';
@@ -815,18 +762,12 @@ function claimPoolKey(facilityType: string): string {
     return facilityType;
 }
 
-// ---------------------------------------------------------------------------
-// Main builder
-// ---------------------------------------------------------------------------
-
 export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
     const govClaims: string[] = [];
 
-    // One claim-pool per land-bound facility type
     const claimPools = new Map<string, ResourceClaimEntry[]>();
 
-    // Government's own arable + water baseline
     const govArableId = `${PROC_PLANET_ID}-gov-arable`;
     const govWaterId = `${PROC_PLANET_ID}-gov-water`;
     govClaims.push(govArableId, govWaterId);
@@ -859,10 +800,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // -----------------------------------------------------------------------
-    // Generate agents for every facility type
-    // -----------------------------------------------------------------------
-
     for (const [facilityType, target] of Object.entries(TARGETS)) {
         const names = NAMES[facilityType] ?? [];
         const count = Math.min(target.agentCount, names.length);
@@ -882,27 +819,21 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             const facilities: ProductionFacility[] = [];
             const tenancies: string[] = [];
 
-            // Main facility
             const factory = getFacilityFactory(facilityType);
             const fac = factory(PROC_PLANET_ID, `${id}-${facilityType}`);
             fac.scale = scale;
             fac.maxScale = scale;
             facilities.push(fac);
 
-            // Land-bound extractors also get a water extractor added
-            // (cotton farms and intensive farms need water extraction)
             if (facilityType === 'cottonFarm' || facilityType === 'intensiveFarmFacility') {
-                // water extractor scaled to supply: cottonFarm needs 80 water/tick/scale
-                // intensiveFarm needs 100 water/tick/scale
                 const waterNeeded = facilityType === 'cottonFarm' ? 80 : 100;
-                const waterExtractPerUnit = 800; // waterExtractionFacility produces 800/scale
+                const waterExtractPerUnit = 800;
                 const waterScale = Math.max(1, Math.ceil((scale * waterNeeded) / waterExtractPerUnit));
                 const wFac = waterExtractionFacility(PROC_PLANET_ID, `${id}-water`);
                 wFac.scale = waterScale;
                 wFac.maxScale = waterScale;
                 facilities.push(wFac);
 
-                // Assign water claim for the integrated extractor
                 const waterPool = claimPools.get('waterExtractionFacility') ?? [];
                 claimPools.set('waterExtractionFacility', waterPool);
                 const waterClaimQty = waterScale * 800;
@@ -920,7 +851,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 tenancies.push(waterClaimId);
             }
 
-            // Assign deposit claim for extractors
             if (rType !== null && dpScale > 0) {
                 const poolKey = claimPoolKey(facilityType);
                 const pool = claimPools.get(poolKey) ?? [];
@@ -954,13 +884,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Add integrated supply-chain agents (vertical integration examples)
-    // Each combines two steps in a chain so that not every agent is a pure
-    // single-product company — improves market diversity.
-    // -----------------------------------------------------------------------
-
-    // Fertilizer + Pesticide integrated agrochem
     {
         const pestScale = Math.round(TARGETS.pesticidePlant.totalScale * 0.1);
         const f2 = pesticidePlant(PROC_PLANET_ID, 'agrochemplus-pest');
@@ -982,7 +905,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Paper + Packaging integrated
     {
         const paperScale = Math.round(TARGETS.paperMill.totalScale * 0.1);
         const packScale = Math.round(TARGETS.packagingPlant.totalScale * 0.05);
@@ -1004,7 +926,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Textile + Clothing integrated
     {
         const texScale = Math.round(TARGETS.textileMill.totalScale * 0.08);
         const cloScale = Math.round(TARGETS.clothingFactory.totalScale * 0.08);
@@ -1030,7 +951,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Silicon Wafers + Electronic Components integrated
     {
         const waferScale = Math.round(TARGETS.siliconWaferFactory.totalScale * 0.1);
         const compScale = Math.round(TARGETS.electronicComponentFactory.totalScale * 0.08);
@@ -1052,7 +972,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Consumer Electronics + Retail integrated
     {
         const ceScale = Math.round(TARGETS.consumerElectronicsFactory.totalScale * 0.08);
         const retScale = Math.round(TARGETS.retailChain.totalScale * 0.06);
@@ -1078,7 +997,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Food Processing + Grocery integrated
     {
         const fpScale = Math.round(TARGETS.foodProcessingPlant.totalScale * 0.08);
         const grScale = Math.round(TARGETS.groceryChain.totalScale * 0.06);
@@ -1104,7 +1022,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Machinery + Vehicle integrated
     {
         const machScale = Math.round(TARGETS.machineryFactory.totalScale * 0.15);
         const vehScale = Math.round(TARGETS.vehicleFactory.totalScale * 0.15);
@@ -1130,7 +1047,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Concrete + Construction integrated
     {
         const concScale = Math.round(TARGETS.concretePlant.totalScale * 0.08);
         const cstScale = Math.round(TARGETS.constructionService.totalScale * 0.08);
@@ -1156,7 +1072,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Admin + Logistics integrated (large conglomerate)
     {
         const admScale = Math.round(TARGETS.administrativeCenter.totalScale * 0.06);
         const logScale = Math.round(TARGETS.logisticsHub.totalScale * 0.06);
@@ -1182,7 +1097,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Education (school + university)
     const educationSpecs = [
         { id: 'edu-network-corp', name: 'Edu Network Corp' },
         { id: 'knowledge-global', name: 'Knowledge Global Ltd' },
@@ -1208,10 +1122,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             }),
         );
     }
-
-    // -----------------------------------------------------------------------
-    // Add unclaimed remainders for each resource pool
-    // -----------------------------------------------------------------------
 
     const poolConfigs: Array<{
         facilityType: string;
@@ -1299,7 +1209,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         },
     ];
 
-    // Ensure all pools exist before adding remainders
     for (const cfg of poolConfigs) {
         if (!claimPools.has(cfg.facilityType)) {
             claimPools.set(cfg.facilityType, []);
@@ -1322,10 +1231,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Public utilities company — holds the government's baseline resource claims
-    // and runs the corresponding extraction/farming facilities, paying rent to the government.
-    // -----------------------------------------------------------------------
     const utilWaterFac = waterExtractionFacility(PROC_PLANET_ID, 'proc-util-water');
     utilWaterFac.scale = 200;
     utilWaterFac.maxScale = 200;
@@ -1343,9 +1248,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     });
     agents.push(utilAgent);
 
-    // Government agent — no production facilities; only owns resource claims and
-    // redistributes lease income as welfare each tick.
-    // -----------------------------------------------------------------------
     const govAgent = makeAgent({
         id: GOV,
         name: 'Procedural Earth Government',
@@ -1356,10 +1258,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         claims: govClaims,
     });
     agents.unshift(govAgent);
-
-    // -----------------------------------------------------------------------
-    // Assemble resource map
-    // -----------------------------------------------------------------------
 
     const getPool = (k: string): ResourceClaimEntry[] => claimPools.get(k) ?? [];
 
@@ -1423,13 +1321,8 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         }),
     };
 
-    // -----------------------------------------------------------------------
-    // Build summary: deposits and depletion times
-    // -----------------------------------------------------------------------
+    const TICKS_PER_YEAR = 30 * 12;
 
-    const TICKS_PER_YEAR = 30 * 12; // 360
-
-    // Extraction rate (needs.quantity) per scale per tick for each extractor
     const extractionRatePerScale: Record<string, number> = {
         coalMine: 0.5,
         oilWell: 0.3,
@@ -1446,19 +1339,16 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         depletionYears: number | null;
     }> = poolConfigs.map((cfg) => {
         const pool = claimPools.get(cfg.facilityType) ?? [];
-        // Only count claims actively tenanted by a non-gov agent
+
         const assigned = pool
             .filter((c) => c.tenantAgentId !== null && c.tenantAgentId !== GOV)
             .reduce((s, c) => s + c.quantity, 0);
         const unclaimedQty = pool.filter((c) => c.tenantAgentId === null).reduce((s, c) => s + c.quantity, 0);
 
         const rate = extractionRatePerScale[cfg.facilityType] ?? null;
-        // Depletion is based only on the assigned (actively extracted) deposit
+
         let depletionYears: number | null = null;
         if (rate !== null && assigned > 0 && !renewableForResource(cfg.facilityType)) {
-            // assigned deposit / (extraction rate per scale * total assigned scale)
-            // But simpler: each agent's claim = scale * depositPerScale, and extracts rate/tick
-            // So depletion = depositPerScale / (rate * TICKS_PER_YEAR)
             const dpScale = depositPerScale(cfg.facilityType);
             depletionYears = Math.round(dpScale / rate / TICKS_PER_YEAR);
         }

@@ -94,8 +94,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Public utilities company — holds gov's baseline resource claims and runs
-    // the corresponding extraction/farming facilities, paying rent to the government.
     const utilWaterFacility = waterExtractionFacility(AC_ID, 'ac-utilities-water');
     utilWaterFacility.scale = 100;
     utilWaterFacility.maxScale = 100;
@@ -164,7 +162,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    // Iron mining + smelting
     const [colonyIron, energyCorp, foodProc] = industrialSpecs;
 
     const ironId = 'ac-iron-colony-iron';
@@ -197,7 +194,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Coal power & energy
     const coalId = 'ac-coal-energy-corp';
     govClaims.push(coalId);
     coalClaims.push(
@@ -228,7 +224,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Pesticides production
     const pest1 = pesticidePlant(AC_ID, 'ac-pesticides');
     pest1.scale = 20;
     pest1.maxScale = 20;
@@ -243,7 +238,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Food processing
     const fp1 = foodProcessingPlant(AC_ID, 'ac-food-proc-plant');
     fp1.scale = 30;
     fp1.maxScale = 30;
@@ -258,7 +252,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Beverage plant (needed for grocery chains)
     const bev1 = beveragePlant(AC_ID, 'ac-beverage-plant');
     bev1.scale = 20;
     bev1.maxScale = 20;
@@ -273,7 +266,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Packaging plant (needed for grocery chains and food processing)
     const pkg1 = packagingPlant(AC_ID, 'ac-packaging-plant');
     pkg1.scale = 10;
     pkg1.maxScale = 10;
@@ -288,7 +280,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Administrative center
     const adm1 = administrativeCenter(AC_ID, 'ac-admin-center');
     adm1.scale = 100;
     adm1.maxScale = 100;
@@ -303,7 +294,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Logistics hub
     const log1 = logisticsHub(AC_ID, 'ac-logistics-hub');
     log1.scale = 50;
     log1.maxScale = 50;
@@ -318,7 +308,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Grocery chain
     const groc1 = groceryChain(AC_ID, 'ac-grocery-chain');
     groc1.scale = 1000;
     groc1.maxScale = 1000;
@@ -333,7 +322,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    // Unclaimed remainders
     const remainders = [
         {
             claims: arableClaims,
@@ -367,8 +355,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }
     }
 
-    // Government agent — no production facilities; only owns resource claims and
-    // redistributes lease income as welfare each tick.
     const govAgent = makeAgent({
         id: GOV,
         name: 'Alpha Centauri Government',

@@ -10,15 +10,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type ChartRow = Record<string, number>;
-
-// ---------------------------------------------------------------------------
-// mergePairs — halves the number of bars by merging adjacent age pairs
-// ---------------------------------------------------------------------------
 
 function mergePairs(rows: ChartRow[]): ChartRow[] {
     const result: ChartRow[] = [];
@@ -41,10 +33,6 @@ function mergePairs(rows: ChartRow[]): ChartRow[] {
     return result;
 }
 
-// ---------------------------------------------------------------------------
-// Empty placeholder
-// ---------------------------------------------------------------------------
-
 function EmptyChart({ height = 180 }: { height?: number }) {
     return (
         <div
@@ -57,10 +45,6 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 }
 
 type PayloadEntry = NonNullable<TooltipProps<number, string>['payload']>[number];
-
-// ---------------------------------------------------------------------------
-// Status-tooltip (XP)
-// ---------------------------------------------------------------------------
 
 function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string>) {
     if (!active || !payload || payload.length === 0) {
@@ -87,10 +71,6 @@ function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string
     );
 }
 
-// ---------------------------------------------------------------------------
-// Education-tooltip (XP)
-// ---------------------------------------------------------------------------
-
 function XPEduTooltip({ active, payload, label }: TooltipProps<number, string>) {
     if (!active || !payload || payload.length === 0) {
         return null;
@@ -109,10 +89,6 @@ function XPEduTooltip({ active, payload, label }: TooltipProps<number, string>) 
     );
 }
 
-// ---------------------------------------------------------------------------
-// Experience distribution stacked bar chart — by status or by education
-// ---------------------------------------------------------------------------
-
 export function ExperienceDistributionChart({
     experienceChartByStatus,
     experienceChartByEdu,
@@ -124,7 +100,6 @@ export function ExperienceDistributionChart({
 }): React.ReactElement {
     const isVerySmall = useIsSmallScreen();
 
-    // ---- Status view data (active / quitting / fired / retired) XP ----
     const statusData = useMemo(() => {
         const raw: ChartRow[] = experienceChartByStatus.map((d) => ({
             age: d.age,
@@ -136,7 +111,6 @@ export function ExperienceDistributionChart({
         return isVerySmall ? mergePairs(raw) : raw;
     }, [experienceChartByStatus, isVerySmall]);
 
-    // ---- Education view data (per-edu XP totals) ----
     const eduData = useMemo(() => {
         const raw: ChartRow[] = experienceChartByEdu.map((d) => {
             const row: ChartRow = { age: d.age };
@@ -148,7 +122,6 @@ export function ExperienceDistributionChart({
         return isVerySmall ? mergePairs(raw) : raw;
     }, [experienceChartByEdu, isVerySmall]);
 
-    // ---- Tooltips ----
     const statusTooltip = useMemo(() => XPStatusTooltip, []);
     const eduTooltip = useMemo(() => XPEduTooltip, []);
 

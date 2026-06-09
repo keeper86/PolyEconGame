@@ -1,28 +1,9 @@
-/**
- * simulation/utils/testAssertions.ts
- *
- * Test assertion helpers that depend on vitest's `expect`.
- *
- * Separated from testHelper.ts so that testHelper (pure data factories)
- * can be imported by runtime code (e.g. entities.ts → worker.ts) without
- * pulling vitest into the worker bundle.
- */
-
 import { expect } from 'vitest';
 import { educationLevelKeys } from '../population/education';
 import type { Agent, Planet } from '../planet/planet';
 import { OCCUPATIONS, SKILL } from '../population/population';
 import { totalPopulation, sumPopOcc, sumWorkforceForEdu } from './testHelper';
 
-// ============================================================================
-// Invariant / assertion helpers
-// ============================================================================
-
-/**
- * Assert workforce counts match population counts for each education level.
- * "company" occupation workforce should match all non-government agent workforces;
- * "employed" occupation population should match total workforce across all agents.
- */
 export function assertWorkforcePopulationConsistency(planet: Planet, agents: Agent[], label = ''): void {
     for (const edu of educationLevelKeys) {
         const popEmployed = sumPopOcc(planet, edu, 'employed');
@@ -37,17 +18,11 @@ export function assertWorkforcePopulationConsistency(planet: Planet, agents: Age
     }
 }
 
-/**
- * Assert that total population count has not changed (conservation).
- */
 export function assertTotalPopulationConserved(planet: Planet, expectedTotal: number, label = ''): void {
     const actual = totalPopulation(planet);
     expect(actual, `${label} total population changed: expected=${expectedTotal}, got=${actual}`).toBe(expectedTotal);
 }
 
-/**
- * Assert all population slots and workforce slots are non-negative.
- */
 export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
     for (let age = 0; age < planet.population.demography.length; age++) {
         const cohort = planet.population.demography[age];
@@ -92,11 +67,6 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
     }
 }
 
-/**
- * Assert workforce counts match population counts for each (age, edu, skill) cell.
- * This is a more granular version of assertWorkforcePopulationConsistency that catches
- * per-cell mismatches that would cancel out in aggregates.
- */
 export function assertPerCellWorkforcePopulationConsistency(planet: Planet, agents: Agent[], label = ''): void {
     for (let age = 0; age < planet.population.demography.length; age++) {
         for (const edu of educationLevelKeys) {
@@ -116,7 +86,6 @@ export function assertPerCellWorkforcePopulationConsistency(planet: Planet, agen
                     wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
                 }
 
-                // Only check cells where at least one side is non-zero
                 if (popEmployed !== 0 || wfTotal !== 0) {
                     expect(
                         wfTotal,

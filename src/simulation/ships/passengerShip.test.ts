@@ -30,10 +30,6 @@ import type {
 } from './ships';
 import { passengerLiner, shipTick } from './ships';
 
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
 function makePassengerShip(name: string, planetId: string, capacity = 50_000): PassengerShip {
     return {
         id: 'ship-1',
@@ -47,7 +43,6 @@ function makePassengerShip(name: string, planetId: string, capacity = 50_000): P
     };
 }
 
-/** Put `count` employed workers at `age` into agent workforce + planet demography. */
 function seedWorkforce(
     agent: Agent,
     planet: Planet,
@@ -112,10 +107,6 @@ function dispatch(
         post,
     );
 }
-
-// ---------------------------------------------------------------------------
-// handleDispatchPassengerShip — validation
-// ---------------------------------------------------------------------------
 
 describe('handleDispatchPassengerShip validation', () => {
     let messages: OutboundMessage[];
@@ -182,7 +173,7 @@ describe('handleDispatchPassengerShip validation', () => {
     it('fails when ship is not a passenger ship', () => {
         const { messages: msgs, post: p } = makeMessages();
         const agent = makeAgent('a1', 'p1');
-        // Use a transport ship
+
         const ship = {
             id: 'ship-t1',
             name: 'T1',
@@ -293,10 +284,6 @@ describe('handleDispatchPassengerShip validation', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// shipTick — boarding phase
-// ---------------------------------------------------------------------------
-
 describe('shipTick passenger boarding', () => {
     it('boards workers from agent workforce into the manifest', () => {
         const agent = makeAgent('a1', 'p1');
@@ -322,19 +309,18 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // boarding → passenger_provisioning
+        shipTick(state);
         expect(ship.state.type).toBe('passenger_provisioning');
-        shipTick(state); // provisioning → passenger_transporting
+        shipTick(state);
 
         expect(ship.state.type).toBe('passenger_transporting');
 
-        // shipTick changed the type
         const shipState = ship.state as unknown as PassengerShipStatusTransporting;
         if (shipState.type === 'passenger_transporting') {
             const keys = Object.keys(shipState.manifest);
             expect(keys.length).toBeGreaterThan(0);
             const total = Object.values(shipState.manifest).reduce((s, c) => s + c.total, 0);
-            // Allow a few deaths from stochastic mortality during boarding
+
             expect(total).toBeCloseTo(200, -1);
         }
     });
@@ -375,7 +361,7 @@ describe('shipTick passenger boarding', () => {
         const planet2 = makePlanet({ id: 'p2' });
 
         seedWorkforce(agent, planet, 30, 500);
-        // Provide no provisions — provisioning phase will wait
+
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
@@ -391,9 +377,8 @@ describe('shipTick passenger boarding', () => {
 
         shipTick(state);
 
-        // Boarding succeeded; now waiting for provisions
         expect(ship.state.type).toBe('passenger_provisioning');
-        // Workers have left the planet (in manifest)
+
         expect(planet.population.summedPopulation.employed.none.novice.total).toBe(0);
     });
 
@@ -418,10 +403,10 @@ describe('shipTick passenger boarding', () => {
         );
         expect(messages[0]).toMatchObject({ type: 'passengerShipDispatched', shipId: ship.id });
 
-        shipTick(state); // boarding -> passenger_provisioning
+        shipTick(state);
         expect(ship.state.type).toBe('passenger_provisioning');
 
-        shipTick(state); // provisioning -> passenger_transporting without storage
+        shipTick(state);
         expect(ship.state.type).toBe('passenger_transporting');
         if (ship.state.type === 'passenger_transporting') {
             expect(ship.state.manifest).toEqual({});
@@ -435,7 +420,7 @@ describe('shipTick passenger boarding', () => {
         const planet2 = makePlanet({ id: 'p2' });
 
         seedWorkforce(agent, planet, 30, 500);
-        // Board workers first
+
         const ship = makePassengerShip('S1', 'p1');
         ship.state = {
             type: 'passenger_boarding',
@@ -449,19 +434,18 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // tick 0: boarding → passenger_provisioning with deadline
+        shipTick(state);
         expect(ship.state.type).toBe('passenger_provisioning');
 
-        // Advance past the deadline (no provisions provided)
         const shipState = ship.state as unknown as PassengerShipStatusProvisioning;
         if (shipState.type === 'passenger_provisioning') {
             ship.state = { ...ship.state, deadlineTick: 0 };
         }
-        state.tick = 1; // past deadline
+        state.tick = 1;
         shipTick(state);
 
         expect(ship.state.type).toBe('idle');
-        // Workers refunded back to planet
+
         expect(planet.population.demography[30].employed.none.novice.total).toBe(500);
         expect(planet.population.summedPopulation.employed.none.novice.total).toBe(500);
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(500);
@@ -487,7 +471,6 @@ describe('shipTick passenger boarding', () => {
 
         shipTick(state);
 
-        // No workers available — ship waits in boarding state until deadline
         expect(ship.state.type).toBe('passenger_boarding');
     });
 
@@ -516,26 +499,24 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // boarding → passenger_provisioning
-        shipTick(state); // provisioning → passenger_transporting
+        shipTick(state);
+        shipTick(state);
 
-        // After boarding + provisioning the manifest is already age-advanced
         expect(ship.state.type).toBe('passenger_transporting');
 
         const shipState = ship.state as unknown as PassengerShipStatusTransporting;
         if (shipState.type === 'passenger_transporting') {
-            // departureTick is 0 (initial state.tick); flight starts at tick 0
             const departureTick = 0;
             const yearBoundariesCrossed =
                 Math.floor((departureTick + flightTicks) / TICKS_PER_YEAR) - Math.floor(departureTick / TICKS_PER_YEAR);
-            // All passengers were age 30; after yearBoundariesCrossed years they should be 30+yearBoundariesCrossed
+
             const keys = Object.keys(ship.state.manifest);
             for (const key of keys) {
                 const [ageStr] = key.split(':');
                 const age = parseInt(ageStr!);
                 expect(age).toBe(30 + yearBoundariesCrossed);
             }
-            // Some passengers should have died during transit (mortality > 0 for age 30)
+
             const shipState = ship.state as unknown as PassengerShipStatusTransporting;
             const totalPassengers = keys.reduce((sum, k) => sum + shipState.manifest[k]!.total, 0);
             expect(totalPassengers).toBeLessThan(count);
@@ -549,13 +530,13 @@ describe('shipTick passenger boarding', () => {
 
         const count = 100;
         seedWorkforce(agent, planet, 30, count);
-        // Provide enough for the maximum possible flight time (base ±10% jitter)
+
         const maxFlightTicks = Math.ceil((1.1 * 1000) / passengerLiner.speed);
         const groceryProvided =
             count * groceryDef.consumptionRatePerPersonPerTick * (maxFlightTicks + groceryDef.bufferTargetTicks);
         const healthcareProvided =
             count * healthcareDef.consumptionRatePerPersonPerTick * (maxFlightTicks + healthcareDef.bufferTargetTicks);
-        // Provide exactly enough for the maximum possible travel time
+
         putProvisions(agent, 'p1', groceryProvided, healthcareProvided);
 
         const ship = makePassengerShip('S1', 'p1');
@@ -571,14 +552,14 @@ describe('shipTick passenger boarding', () => {
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent]);
 
-        shipTick(state); // boarding → passenger_provisioning
-        shipTick(state); // provisioning → passenger_transporting
+        shipTick(state);
+        shipTick(state);
 
         expect(ship.state.type).toBe('passenger_transporting');
         const storage = agent.assets.p1!.storageFacility;
         const groceryLeft = storage.currentInStorage[groceryServiceResourceType.name]?.quantity ?? 0;
         const healthcareLeft = storage.currentInStorage[healthcareServiceResourceType.name]?.quantity ?? 0;
-        // Most provisions consumed; at most the jitter range (~25 ticks) worth can remain
+
         const maxJitterTicks = maxFlightTicks - Math.ceil((0.9 * 1000) / passengerLiner.speed);
         expect(groceryLeft).toBeLessThanOrEqual(
             count * groceryDef.consumptionRatePerPersonPerTick * (maxJitterTicks + 1),
@@ -590,10 +571,6 @@ describe('shipTick passenger boarding', () => {
         expect(healthcareLeft).toBeGreaterThanOrEqual(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// shipTick — transporting → arrival
-// ---------------------------------------------------------------------------
 
 describe('shipTick passenger transporting / arrival', () => {
     it('does not unload before arrivalTick', () => {
@@ -704,16 +681,12 @@ describe('shipTick passenger transporting / arrival', () => {
             manifest: { '30:employed:none:novice': { ...nullPopulationCategory(), total: 5 } },
         };
         agent.ships.push(ship);
-        // No p2 in gameState — unrecoverable
+
         const state = makeGameState([planet], [agent], 10);
 
         expect(() => shipTick(state)).toThrow(/Destination planet 'p2' is missing at passenger arrival/);
     });
 });
-
-// ---------------------------------------------------------------------------
-// boardPassengersFromWorkforce — direct unit test
-// ---------------------------------------------------------------------------
 
 describe('boardPassengersFromWorkforce', () => {
     it('removes workers from agent workforce and planet demography, adds to manifest', () => {
@@ -725,12 +698,12 @@ describe('boardPassengersFromWorkforce', () => {
         const boarded = boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 100);
 
         expect(boarded).toBe(100);
-        // Workforce reduced
+
         expect(agent.assets.p1!.workforceDemography[35].none.novice.active).toBe(100);
-        // Planet demography reduced
+
         expect(planet.population.demography[35].employed.none.novice.total).toBe(100);
         expect(planet.population.summedPopulation.employed.none.novice.total).toBe(100);
-        // Manifest populated
+
         const keys = Object.keys(manifest);
         expect(keys.length).toBeGreaterThan(0);
         const total = Object.values(manifest).reduce((s, c) => s + c.total, 0);
@@ -739,16 +712,12 @@ describe('boardPassengersFromWorkforce', () => {
 
     it('returns 0 when agent has no assets for the planet', () => {
         const agent = makeAgent('a1', 'p1');
-        const planet = makePlanet({ id: 'p2' }); // different planet
+        const planet = makePlanet({ id: 'p2' });
         const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
         const boarded = boardPassengersFromWorkforce(agent, planet, 'p2', manifest, 100);
         expect(boarded).toBe(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// refundBoardedPassengers — direct unit test
-// ---------------------------------------------------------------------------
 
 describe('refundBoardedPassengers', () => {
     it('restores workers to agent workforce and planet demography', () => {
@@ -759,23 +728,17 @@ describe('refundBoardedPassengers', () => {
         const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
         boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 300);
 
-        // All workers are in the manifest now
         expect(agent.assets.p1!.workforceDemography[40].none.novice.active).toBe(0);
 
         refundBoardedPassengers(agent, planet, 'p1', manifest);
 
-        // Workers restored
         expect(agent.assets.p1!.workforceDemography[40].none.novice.active).toBe(300);
         expect(planet.population.demography[40].employed.none.novice.total).toBe(300);
         expect(planet.population.summedPopulation.employed.none.novice.total).toBe(300);
-        // Manifest cleared
+
         expect(Object.keys(manifest)).toHaveLength(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// calculateProvisions — direct unit test
-// ---------------------------------------------------------------------------
 
 describe('calculateProvisions', () => {
     it('computes correct grocery and healthcare goals for a manifest', () => {
@@ -792,7 +755,7 @@ describe('calculateProvisions', () => {
 
         expect(provisions.groceryProvisioned.goal).toBeCloseTo(expectedGrocery, 5);
         expect(provisions.healthcareProvisioned.goal).toBeCloseTo(expectedHealthcare, 5);
-        // No education passengers
+
         expect(provisions.educationProvisioned.goal).toBe(0);
     });
 
@@ -816,14 +779,9 @@ describe('calculateProvisions', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// advanceManifestAge — disability phase
-// ---------------------------------------------------------------------------
-
 describe('advanceManifestAge disability phase', () => {
     it('moves some passengers to unableToWork over a long flight', () => {
-        // Use a long flight time to make disability observable (many years)
-        const flightTicks = TICKS_PER_YEAR * 10; // 10 years
+        const flightTicks = TICKS_PER_YEAR * 10;
         const manifest = {
             '50:employed:none:novice': {
                 ...nullPopulationCategory(),
@@ -840,10 +798,6 @@ describe('advanceManifestAge disability phase', () => {
         expect(unableTotal).toBeGreaterThan(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// unloadPassengersToWorkforce — direct unit test
-// ---------------------------------------------------------------------------
 
 describe('unloadPassengersToWorkforce', () => {
     it('adds employed manifest entries to agent workforce and planet demography', () => {
@@ -881,16 +835,11 @@ describe('unloadPassengersToWorkforce', () => {
 
         unloadPassengersToWorkforce(agent, planet, 'p2', manifest);
 
-        // Planet demography should have them
         expect(planet.population.demography[30].unableToWork.none.novice.total).toBe(20);
-        // Workforce should NOT have them
+
         expect(agent.assets.p2!.workforceDemography[30].none.novice.active).toBe(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// boardPassengersFromWorkforce — wealth snapshot before cohort exhaustion
-// ---------------------------------------------------------------------------
 
 describe('boardPassengersFromWorkforce wealth snapshot', () => {
     it('boarded passengers inherit correct wealth when the cohort is fully exhausted', () => {
@@ -900,11 +849,9 @@ describe('boardPassengersFromWorkforce wealth snapshot', () => {
         seedWorkforce(agent, planet, 35, 100, originalWealth);
 
         const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
-        // Board exactly all 100 workers — cohort is fully exhausted
+
         boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 100);
 
-        // After exhaustion planetCell.wealth is zeroed; manifest should still
-        // carry the original wealth that passengers had when they boarded.
         const keys = Object.keys(manifest);
         expect(keys.length).toBeGreaterThan(0);
         for (const key of keys) {
@@ -920,10 +867,9 @@ describe('boardPassengersFromWorkforce wealth snapshot', () => {
         const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
         boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 50);
 
-        // Planet cell should be zeroed
         expect(planet.population.demography[40].employed.none.novice.total).toBe(0);
         expect(planet.population.demography[40].employed.none.novice.wealth.mean).toBe(0);
-        // Manifest should carry original wealth
+
         const total = Object.values(manifest).reduce((s, c) => s + c.total, 0);
         expect(total).toBe(50);
         const manifestMean = Object.values(manifest).find((c) => c.total > 0)?.wealth.mean ?? 0;
@@ -931,14 +877,8 @@ describe('boardPassengersFromWorkforce wealth snapshot', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// advanceManifestAge — orphaned wealth uses deterministic selection
-// ---------------------------------------------------------------------------
-
 describe('advanceManifestAge orphaned wealth redistribution', () => {
     it('redistributes to the largest surviving cohort deterministically', () => {
-        // Age 90 has very high mortality — all passengers die, producing orphaned wealth.
-        // Age 20 has near-zero mortality — survives intact and should receive the wealth.
         const flightTicks = TICKS_PER_YEAR * 5;
         const manifest = {
             '90:employed:none:novice': {
@@ -958,7 +898,6 @@ describe('advanceManifestAge orphaned wealth redistribution', () => {
         seedRng(42);
         const result2 = advanceManifestAge(structuredClone(manifest), 0, flightTicks);
 
-        // The two runs must produce identical results (deterministic given same seed)
         const keys = new Set([...Object.keys(result1), ...Object.keys(result2)]);
         for (const k of keys) {
             expect(result1[k]?.total ?? 0).toBe(result2[k]?.total ?? 0);
@@ -967,33 +906,28 @@ describe('advanceManifestAge orphaned wealth redistribution', () => {
     });
 
     it('always assigns orphaned wealth to the highest-total survivor', () => {
-        // Provide two survivors with known sizes and confirm the larger one receives
-        // the orphaned wealth from a fully-dead cohort.
         const flightTicks = TICKS_PER_YEAR * 5;
         const manifest = {
             '90:employed:none:novice': {
                 ...nullPopulationCategory(),
                 total: 10,
-                wealth: { mean: 10_000, variance: 0 }, // will die and produce orphaned wealth
+                wealth: { mean: 10_000, variance: 0 },
             },
             '20:employed:none:novice': {
                 ...nullPopulationCategory(),
                 total: 5_000,
-                wealth: { mean: 1, variance: 0 }, // larger cohort
+                wealth: { mean: 1, variance: 0 },
             },
             '21:employed:none:novice': {
                 ...nullPopulationCategory(),
                 total: 100,
-                wealth: { mean: 1, variance: 0 }, // smaller cohort
+                wealth: { mean: 1, variance: 0 },
             },
         };
 
         seedRng(99);
         const result = advanceManifestAge(structuredClone(manifest), 0, flightTicks);
 
-        // The age-90 cohort might survive partially due to the short-flight approximation;
-        // what matters is reproducibility and that wealth went to a survivor.
-        // Verify that running twice with same seed always yields identical wealth distributions.
         seedRng(99);
         const result2 = advanceManifestAge(structuredClone(manifest), 0, flightTicks);
         const allKeys = new Set([...Object.keys(result), ...Object.keys(result2)]);
@@ -1003,14 +937,10 @@ describe('advanceManifestAge orphaned wealth redistribution', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// advanceManifestAge — integer population invariant
-// ---------------------------------------------------------------------------
-
 describe('advanceManifestAge integer population invariant', () => {
     it('all category totals remain integers after mortality and disability', () => {
         const manifest: PassengerManifest = {};
-        // Seed a variety of ages so both mortality and disability are exercised
+
         for (const age of [20, 35, 50, 65, 80]) {
             const key = manifestKey(age, 'employed', 'none', 'novice');
             manifest[key] = {
@@ -1019,7 +949,7 @@ describe('advanceManifestAge integer population invariant', () => {
                 wealth: { mean: 100, variance: 10 },
             };
         }
-        // ~1 year flight
+
         const flightTicks = TICKS_PER_YEAR;
         const result = advanceManifestAge(manifest, 0, flightTicks);
         for (const [key, category] of Object.entries(result)) {
@@ -1028,18 +958,12 @@ describe('advanceManifestAge integer population invariant', () => {
     });
 });
 
-// ---------------------------------------------------------------------------
-// shipTick boarding deadline — restores agent workforce
-// ---------------------------------------------------------------------------
-
 describe('shipTick passenger_boarding deadline — refunds agent workforce', () => {
     it('restores agent workforceDemography when boarding deadline expires with partial manifest', () => {
         const agent = makeAgent('a1', 'p1');
         const planet = makePlanet({ id: 'p1' });
         const planet2 = makePlanet({ id: 'p2' });
 
-        // Seed 200 workers but set goal to 500 so tick 0 boards only 200 and
-        // the ship remains in boarding state waiting for more.
         seedWorkforce(agent, planet, 30, 200);
 
         const ship = makePassengerShip('S1', 'p1');
@@ -1051,12 +975,10 @@ describe('shipTick passenger_boarding deadline — refunds agent workforce', () 
             passengerGoal: 500,
             currentPassengers: 0,
             manifest: {},
-            deadlineTick: 0, // already expired
+            deadlineTick: 0,
         };
         agent.ships.push(ship);
 
-        // Pre-populate manifest with 200 already-boarded passengers so the
-        // deadline handler has something to refund.
         const manifest = ship.state.manifest as Record<string, ReturnType<typeof nullPopulationCategory>>;
         boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 200);
         ship.state = { ...ship.state, currentPassengers: 200 };
@@ -1064,12 +986,11 @@ describe('shipTick passenger_boarding deadline — refunds agent workforce', () 
         const state = makeGameState([planet, planet2], [agent], 1);
         shipTick(state);
 
-        // Ship goes idle
         expect(ship.state.type).toBe('idle');
-        // Planet demography restored
+
         expect(planet.population.demography[30].employed.none.novice.total).toBe(200);
         expect(planet.population.summedPopulation.employed.none.novice.total).toBe(200);
-        // Agent workforce restored — this is what unloadPassengersToPlanet missed
+
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(200);
     });
 

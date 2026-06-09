@@ -8,10 +8,6 @@ const RETIREMENT_SOURCE_OCCUPATIONS: Occupation[] = ['unoccupied', 'education'] 
 
 export const RETIREMENT_AGE = 67;
 
-/**
- * Per-tick retirement probability for a given age.
- * Converts the annual rate to a per-tick rate via geometric compounding.
- */
 export function perTickRetirement(age: number): number {
     if (age < RETIREMENT_AGE) {
         return 0;

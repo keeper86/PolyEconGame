@@ -1,16 +1,5 @@
 'use client';
 
-/**
- * SimulationOfflineBanner
- *
- * Subscribes to the global QueryCache and shows a dismissible banner
- * whenever one or more queries have stopped polling due to repeated failures
- * (fetchFailureCount > SIMULATION_MAX_RETRIES).
- *
- * The "Retry" button calls queryClient.resetQueries() on all failed queries,
- * which resets their failure counters and re-enables polling.
- */
-
 import { useQueryClient } from '@tanstack/react-query';
 import { WifiOff, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -19,15 +8,13 @@ import { Button } from '@/components/ui/button';
 
 export function SimulationOfflineBanner() {
     const queryClient = useQueryClient();
-    // Track failed query keys in a Set so cache subscription updates are O(1)
-    // rather than re-scanning the full cache on every event.
+
     const failedKeys = useRef(new Set<string>());
     const [failedCount, setFailedCount] = useState(0);
 
     useEffect(() => {
         const cache = queryClient.getQueryCache();
 
-        // Seed from current cache state on mount.
         for (const query of cache.getAll()) {
             const key = query.queryHash;
             if (query.state.fetchFailureCount > SIMULATION_MAX_RETRIES) {
@@ -38,7 +25,6 @@ export function SimulationOfflineBanner() {
         }
         setFailedCount(failedKeys.current.size);
 
-        // Incrementally update via the subscribe event payload.
         const unsubscribe = cache.subscribe((event) => {
             const query = event.query;
             const key = query.queryHash;
@@ -46,7 +32,7 @@ export function SimulationOfflineBanner() {
             const isFailed = query.state.fetchFailureCount > SIMULATION_MAX_RETRIES;
 
             if (isFailed === wasFailed) {
-                return; // no change — skip re-render
+                return;
             }
 
             if (isFailed) {
@@ -65,8 +51,6 @@ export function SimulationOfflineBanner() {
     }, [queryClient]);
 
     const handleRetry = useCallback(() => {
-        // Reset all queries that have exhausted their retries.
-        // resetQueries clears error state + failure counters and re-fetches.
         const failedQueries = queryClient
             .getQueryCache()
             .getAll()

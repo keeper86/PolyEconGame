@@ -1,10 +1,3 @@
-/**
- * population/disability.test.ts
- *
- * Unit tests for the disability sub-system: age-dependent base probability,
- * environmental disability, and population-level transitions.
- */
-
 import { describe, it, expect } from 'vitest';
 import { educationLevelKeys } from './education';
 import { forEachPopulationCohort, SKILL } from './population';

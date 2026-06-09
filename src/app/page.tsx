@@ -10,7 +10,6 @@ import { redirect } from 'next/navigation';
 export default async function LandingPage() {
     const session = await getServerSession(authOptions);
 
-    // Step 1: not logged in → show login
     if (!session?.user?.id) {
         return (
             <Page title='Login'>
@@ -21,7 +20,6 @@ export default async function LandingPage() {
 
     const row = await db('user_data').where({ user_id: session.user.id }).first();
 
-    // Step 3: already has a company → server-side redirect to planet page
     if (row?.agent_id) {
         const { agent } = await workerQueries.getAgent(row.agent_id);
         if (agent?.associatedPlanetId) {
@@ -29,6 +27,5 @@ export default async function LandingPage() {
         }
     }
 
-    // Step 2: logged in but no company yet → founding mask
     return <FoundingPage />;
 }

@@ -15,9 +15,9 @@ export type OfferRow = {
 
 type Props = {
     offers: OfferRow[];
-    /** VWAP clearing price — used to identify the marginal seller. */
+
     clearingPrice: number;
-    /** Planet ID — used for currency symbol in column headers and revenue formatting. */
+
     planetId?: string;
 };
 
@@ -40,8 +40,6 @@ function OfferTableComponent({ offers, clearingPrice, planetId }: Props): React.
 
     const visibleOffers = offers.filter((row) => row.lastPlacedQuantity > 0);
 
-    // The marginal agent is the one whose offer price is closest to the
-    // clearing price from below (last infra-marginal or first supra-marginal).
     const marginalIdx = (() => {
         let best = -1;
         let bestDiff = Infinity;

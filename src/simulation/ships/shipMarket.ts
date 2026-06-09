@@ -12,14 +12,10 @@ export function effectiveShipValue(ship: Ship, gameState?: GameState): number {
     const { scale, speed } = ship.type;
     const { maintainanceStatus, maxMaintenance } = ship;
 
-    // Operational quality factor: how well the ship performs right now relative to its ceiling
     const qualityFactor = maxMaintenance > 0 ? maintainanceStatus / maxMaintenance : 0;
 
-    // Base heuristic: scale × speed × quality × remaining life ceiling
     const baseValue = scaleMapping[scale] * speed * qualityFactor * maxMaintenance;
 
-    // Maintenance cost discount: estimate cost to keep ship at maintainanceStatus for its
-    // remaining life. Uses the maintenance service price on the planet where the ship sits.
     let maintenanceCostPenalty = 0;
     if (gameState) {
         const planetId =
@@ -33,10 +29,7 @@ export function effectiveShipValue(ship: Ship, gameState?: GameState): number {
             const maintenancePrice =
                 gameState.planets.get(planetId)?.marketPrices[maintenanceServiceResourceType.name] ?? 0;
             if (maintenancePrice > 0) {
-                // Remaining repair cycles ≈ maxMaintenance / MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE
-                // Cost per cycle ≈ maintenancePrice * 1 (one full unit of maintenance per cycle)
-                // We use a simple linear discount: penalty = cost × remaining life fraction
-                const remainingRepairCycles = maxMaintenance / MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE; // inverse of degradation constant
+                const remainingRepairCycles = maxMaintenance / MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE;
                 maintenanceCostPenalty = maintenancePrice * remainingRepairCycles * maxMaintenance * 0.5;
             }
         }
@@ -52,17 +45,6 @@ export type CompatibleTrade = {
     effectiveValue: number;
 };
 
-/**
- * Pure discovery function — finds all compatible (listing, buy-offer) pairs.
- *
- * Compatibility criteria:
- * - offer.shipType matches listing.shipTypeName
- * - offer.price >= listing.askPrice
- * - offer.status === 'open'
- *
- * Results are sorted by surplus (offer.price - listing.askPrice) descending.
- * No trades are executed.
- */
 export function findCompatibleTrades(gameState: GameState): CompatibleTrade[] {
     const allListings: (ShipListing & { sellerAgentId: string })[] = [];
     const allOffers: (ShipBuyingOffer & {
@@ -91,7 +73,6 @@ export function findCompatibleTrades(gameState: GameState): CompatibleTrade[] {
 
     const results: CompatibleTrade[] = [];
 
-    // Build a lookup from ShipTypeKey -> display name for offer.shipType comparison
     const shipTypeKeyToName = Object.fromEntries(
         Object.values(shiptypes).flatMap((cat) => Object.entries(cat).map(([k, v]) => [k, v.name])),
     ) as Record<string, string>;
@@ -125,11 +106,6 @@ function findShipById(gameState: GameState, agentId: string, shipId: string): Sh
     return gameState.agents.get(agentId)?.ships.find((s) => s.id === shipId);
 }
 
-/**
- * Finds the cheapest open ship listing for a given ship type name across all
- * agents (including shipbuilders).  Returns the listing and the seller agent,
- * or null if none is available at or below maxPrice.
- */
 export function findCheapestShipListing(
     gameState: GameState,
     shipTypeName: string,
@@ -156,25 +132,11 @@ export function findCheapestShipListing(
     return best;
 }
 
-/**
- * Creates a ship listing and marks the ship as listed.
- * This is the single authoritative place that mutates both ship.state and
- * assets.shipListings — callers must only call this when they have already
- * validated that the ship is idle and not already listed.
- */
 export function createShipListing(ship: Ship, assets: { shipListings: ShipListing[] }, listing: ShipListing): void {
     ship.state = { type: 'listed', planetId: listing.planetId };
     assets.shipListings.push(listing);
 }
 
-/**
- * Executes an atomic ship purchase: deducts funds from the buyer, credits the
- * seller, transfers the ship to the buyer's fleet, and removes the listing.
- * Updates the ship capital market EMA and appends a trade record.
- *
- * Does nothing and returns false if the listing is not found or the buyer
- * lacks sufficient deposits on the specified planet.
- */
 export function executeShipPurchase(
     gameState: GameState,
     listing: ShipListing,
@@ -192,29 +154,25 @@ export function executeShipPurchase(
         return false;
     }
 
-    // Verify ship exists before mutating any state (keep operation atomic)
     const shipIdx = sellerAgent.ships.findIndex((s) => s.id === listing.shipId);
     if (shipIdx === -1) {
         return false;
     }
 
-    // Remove listing
     const idx = sellerAssets.shipListings.findIndex((l) => l.id === listing.id);
     if (idx === -1) {
         return false;
     }
     sellerAssets.shipListings.splice(idx, 1);
     const [ship] = sellerAgent.ships.splice(shipIdx, 1);
-    // Ship stays at the listing planet (not teleported to buyer's planet)
+
     ship.state = { type: 'idle', planetId: listing.planetId };
     ship.idleAtTick = gameState.tick;
     buyerAgent.ships.push(ship);
 
-    // Transfer funds
     buyerAssets.deposits -= listing.askPrice;
     sellerAssets.deposits += listing.askPrice;
 
-    // Update market data
     updateShipEma(gameState.shipCapitalMarket, listing.shipTypeName, listing.askPrice);
     appendTradeRecord(gameState.shipCapitalMarket, {
         shipTypeName: listing.shipTypeName,
@@ -228,10 +186,6 @@ export function executeShipPurchase(
     return true;
 }
 
-/**
- * Updates the EMA price for a ship type after a completed trade.
- * Initialises from the trade price on first trade.
- */
 export function updateShipEma(market: ShipCapitalMarket, shipTypeName: string, tradePrice: number): void {
     const prev = market.emaPrice[shipTypeName];
     if (prev === undefined) {
@@ -241,13 +195,9 @@ export function updateShipEma(market: ShipCapitalMarket, shipTypeName: string, t
     }
 }
 
-/**
- * Appends a trade record to the global market history for a ship type.
- * Caps history at SHIP_MARKET_MAX_TRADE_HISTORY per type.
- */
 export function appendTradeRecord(market: ShipCapitalMarket, record: ShipTradeRecord): void {
     market.tradeHistory.push(record);
-    // Trim to cap: keep the most recent records
+
     if (market.tradeHistory.length > SHIP_MARKET_MAX_TRADE_HISTORY) {
         market.tradeHistory.splice(0, market.tradeHistory.length - SHIP_MARKET_MAX_TRADE_HISTORY);
     }

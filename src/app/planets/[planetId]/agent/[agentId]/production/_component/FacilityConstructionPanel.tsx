@@ -21,7 +21,7 @@ export function FacilityConstructionPanel({
     onScaleChange,
 }: {
     facilityType: FacilityType;
-    /** 0 for a new build; facility.maxScale for an expand */
+
     fromScale: number;
     constructionServicePrice: number | undefined;
     planetId: string;

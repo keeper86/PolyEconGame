@@ -19,10 +19,6 @@ function averageStarvationLevel(population: Population): number {
     return totalPop > 0 ? weightedStarvation / totalPop : 0;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 export const START_FERTILE_AGE = 18;
 
 export const END_FERTILE_AGE = 45;
@@ -33,14 +29,6 @@ export function fertReductionFromPollution(pollution: Environment['pollution']):
     return Math.min(1, pollution.air * 0.01 + pollution.water * 0.002 + pollution.soil * 0.0005);
 }
 
-/**
- * Compute the number of births for this tick.
- *
- * @param fertileWomen   estimated number of fertile women in the population
- * @param starvationLevel current starvation level (0–1)
- * @param pollution      planet pollution levels
- * @returns number of newborns to add to age-cohort 0 this tick
- */
 export function computeBirthsThisTick(
     fertileWomen: number,
     starvationLevel: number,
@@ -51,15 +39,12 @@ export function computeBirthsThisTick(
     }
 
     const fertReduction = fertReductionFromPollution(pollution);
-    // Nonlinear starvation suppression: S^1.5 gives steeper drop under severe famine
+
     const lifetimeFertilityAdjusted =
         LIFETIME_FERTILITY * (1 - 0.75 * Math.pow(starvationLevel, STARVATION_ACUTE_POWER)) * (1 - 0.5 * fertReduction);
 
     const birthsPerYear = (lifetimeFertilityAdjusted * fertileWomen) / (END_FERTILE_AGE - START_FERTILE_AGE + 1);
 
-    // Single stochastic round at the end — avoids the systematic downward
-    // bias of the previous double-floor which would permanently suppress
-    // births on small planets (e.g. expected 0.8 → always 0).
     return stochasticRound(birthsPerYear / TICKS_PER_YEAR);
 }
 
@@ -68,16 +53,11 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         const cat = population.demography[0].education.none.novice;
         const prevTotal = cat.total;
         const newTotal = prevTotal + birthsThisTick;
-        // Newborns arrive with zero wealth.  Preserve existing aggregate wealth
-        // (prevTotal × mean) by scaling the mean down — do NOT touch
-        // bank.householdDeposits because no money entered or left the system.
+
         cat.wealth.mean = prevTotal > 0 ? (prevTotal * cat.wealth.mean) / newTotal : 0;
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
-        // Newborns arrive with a small grocery service buffer gifted by their "neighbors" to get them started.
-        // 10 ticks worth of grocery service buffer per newborn.  Distribute the
-        // total gifted ticks across the (new) cohort so the buffer remains a
-        // per-person metric (weighted average), matching how wealth is handled.
+
         const prevBuffer = cat.services.grocery.buffer;
         const giftedTicksTotal = birthsThisTick * 30;
         cat.services.grocery.buffer = prevTotal > 0 ? (prevTotal * prevBuffer + giftedTicksTotal) / newTotal : 10;

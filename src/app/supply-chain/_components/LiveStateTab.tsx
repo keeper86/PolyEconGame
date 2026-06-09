@@ -16,8 +16,6 @@ import { computeSupplyChainBalance } from './computeBalance';
 import type { ArbitrageRouteRow } from '@/server/controller/simulation';
 import { ARBITRAGE_MIN_PROFIT_PER_TICK } from '@/simulation/constants';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
         return `${(n / 1_000_000).toFixed(1)}M`;
@@ -42,23 +40,21 @@ function effColor(eff: number): string {
     return 'text-red-600';
 }
 
-// ─── Data types ───────────────────────────────────────────────────────────────
-
 interface FacilityAggRow {
     name: string;
     instanceCount: number;
     totalScale: number;
     totalMaxScale: number;
     avgEfficiency: number;
-    // Production actuals
+
     totalActualProduced: Record<string, number>;
-    // Bottleneck analysis
+
     mainBottleneck: 'workers' | 'resources' | 'none';
     worstWorkerLevel: string;
     worstWorkerEff: number;
     worstResourceName: string;
     worstResourceEff: number;
-    // Per-resource avg efficiency across instances (for tooltip)
+
     avgResourceEff: Record<string, number>;
     avgWorkerEff: Record<string, number>;
 }
@@ -70,8 +66,6 @@ interface ResourceActualRow {
     effectivenessRatio: number;
 }
 
-// ─── Aggregation ──────────────────────────────────────────────────────────────
-
 function aggregateFacilities(agents: Agent[], filterPlanetId?: string): FacilityAggRow[] {
     const map = new Map<
         string,
@@ -81,7 +75,7 @@ function aggregateFacilities(agents: Agent[], filterPlanetId?: string): Facility
             totalMaxScale: number;
             effWeightedSum: number;
             actualProduced: Record<string, number>;
-            // Per-resource sums for averages (weighted by scale)
+
             resourceEffWeighted: Record<string, number>;
             resourceEffScaleSum: Record<string, number>;
             workerEffWeighted: Record<string, number>;
@@ -121,18 +115,15 @@ function aggregateFacilities(agents: Agent[], filterPlanetId?: string): Facility
                 const eff = fac.lastTickResults?.overallEfficiency ?? 0;
                 entry.effWeightedSum += eff * fac.scale;
 
-                // Accumulate actual production
                 for (const [rn, qty] of Object.entries(fac.lastTickResults?.lastProduced ?? {})) {
                     entry.actualProduced[rn] = (entry.actualProduced[rn] ?? 0) + qty;
                 }
 
-                // Accumulate resource efficiency (weighted by scale for averaging)
                 for (const [rn, re] of Object.entries(fac.lastTickResults?.resourceEfficiency ?? {})) {
                     entry.resourceEffWeighted[rn] = (entry.resourceEffWeighted[rn] ?? 0) + re * fac.scale;
                     entry.resourceEffScaleSum[rn] = (entry.resourceEffScaleSum[rn] ?? 0) + fac.scale;
                 }
 
-                // Accumulate worker efficiency
                 for (const [edu, we] of Object.entries(fac.lastTickResults?.workerEfficiency ?? {})) {
                     if (we !== undefined) {
                         entry.workerEffWeighted[edu] = (entry.workerEffWeighted[edu] ?? 0) + we * fac.scale;
@@ -148,21 +139,18 @@ function aggregateFacilities(agents: Agent[], filterPlanetId?: string): Facility
     for (const [name, entry] of map.entries()) {
         const avgEff = entry.totalScale > 0 ? entry.effWeightedSum / entry.totalScale : 0;
 
-        // Average resource efficiencies
         const avgResourceEff: Record<string, number> = {};
         for (const [rn, ws] of Object.entries(entry.resourceEffWeighted)) {
             const ss = entry.resourceEffScaleSum[rn] ?? 1;
             avgResourceEff[rn] = ss > 0 ? ws / ss : 0;
         }
 
-        // Average worker efficiencies
         const avgWorkerEff: Record<string, number> = {};
         for (const [edu, ws] of Object.entries(entry.workerEffWeighted)) {
             const ss = entry.workerEffScaleSum[edu] ?? 1;
             avgWorkerEff[edu] = ss > 0 ? ws / ss : 0;
         }
 
-        // Worst resource + worker bottleneck
         let worstResourceName = '';
         let worstResourceEff = 1;
         for (const [rn, re] of Object.entries(avgResourceEff)) {
@@ -209,7 +197,6 @@ function buildResourceActuals(
     maxScales: Record<string, number>,
     pop: number,
 ): ResourceActualRow[] {
-    // Tally actual production per resource across all facility types
     const actualByResource: Record<string, number> = {};
     for (const row of rows) {
         for (const [rn, qty] of Object.entries(row.totalActualProduced)) {
@@ -217,7 +204,6 @@ function buildResourceActuals(
         }
     }
 
-    // Theoretical production at maxScale + 100% efficiency
     const theoretical = computeSupplyChainBalance(maxScales, pop);
     const theoreticalByResource: Record<string, number> = {};
     for (const r of theoretical.resources) {
@@ -226,7 +212,6 @@ function buildResourceActuals(
         }
     }
 
-    // Merge
     const allResources = new Set([...Object.keys(actualByResource), ...Object.keys(theoreticalByResource)]);
     const result: ResourceActualRow[] = [];
     for (const rn of allResources) {
@@ -246,10 +231,6 @@ function buildResourceActuals(
     return result.sort((a, b) => a.effectivenessRatio - b.effectivenessRatio);
 }
 
-// ─── Origin bottleneck tracing ────────────────────────────────────────────────
-
-// Static supply-chain dependency graph – computed once at module load.
-// Calling with empty scales still populates `producedBy`/`consumedBy` correctly.
 const _STATIC_SC = computeSupplyChainBalance({}, 0);
 const RESOURCE_PRODUCERS: Map<string, string[]> = new Map(
     _STATIC_SC.resources.map((r) => [r.resourceName, r.producedBy]),
@@ -260,23 +241,15 @@ const FACILITY_OUTPUTS: Map<string, string[]> = new Map(
 
 type OriginResult = {
     rootFacility: string;
-    /**
-     * - `workers`          – not enough staff assigned
-     * - `resource_shortage`– the input resource is not being produced in sufficient quantity
-     * - `market_failure`   – the resource IS produced at scale but isn't reaching consumers
-     *                        (price mismatch, missing buy orders, etc.)
-     */
+
     rootType: 'workers' | 'resource_shortage' | 'market_failure';
     rootResource?: string;
-    /** Upstream production effectiveness (0-1) when rootType is market_failure. */
+
     rootResourceProductionRatio?: number;
-    /** True when THIS facility is the root cause (not a downstream victim). */
+
     isRoot: boolean;
 };
 
-// Production effectiveness threshold above which we consider a resource
-// "available on the market" (i.e. being produced) and any shortage is a
-// market/price failure rather than a physical supply shortage.
 const MARKET_FAILURE_PRODUCTION_THRESHOLD = 0.7;
 
 function traceOriginFrom(
@@ -299,11 +272,9 @@ function traceOriginFrom(
         return { rootFacility: facilityName, rootType: 'workers' };
     }
 
-    // Resource bottleneck: trace upstream through the worst constrained input.
     const worstResource = row.worstResourceName;
     const producers = RESOURCE_PRODUCERS.get(worstResource) ?? [];
 
-    // Sort bottlenecked upstream producers by worst efficiency first.
     const bottlenecked = [...producers]
         .filter((p) => (rowsMap.get(p)?.mainBottleneck ?? 'none') !== 'none')
         .sort((a, b) => (rowsMap.get(a)?.avgEfficiency ?? 1) - (rowsMap.get(b)?.avgEfficiency ?? 1));
@@ -315,12 +286,8 @@ function traceOriginFrom(
         }
     }
 
-    // No bottlenecked upstream producer found – this facility IS the root cause.
-    // Determine whether the input resource exists in the economy but isn't
-    // being traded (market/price failure) or is simply not produced enough.
     const productionRatio = resourceProductionRatios.get(worstResource) ?? 0;
     if (productionRatio >= MARKET_FAILURE_PRODUCTION_THRESHOLD) {
-        // Resource is being produced at scale – consumers can't obtain it.
         return {
             rootFacility: facilityName,
             rootType: 'market_failure',
@@ -353,8 +320,6 @@ function computeOriginMap(rows: FacilityAggRow[], resourceActuals: ResourceActua
 
     return result;
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ScaleBar({ scale, maxScale }: { scale: number; maxScale: number }) {
     const pctVal = maxScale > 0 ? Math.min(1, scale / maxScale) : 0;
@@ -531,8 +496,6 @@ function OriginBadge({ facilityName, originMap }: { facilityName: string; origin
     );
 }
 
-// ─── Trade opportunity inline ─────────────────────────────────────────────────
-
 function TradeOpportunityInline({
     route,
     direction,
@@ -574,8 +537,6 @@ function TradeOpportunityInline({
         </div>
     );
 }
-
-// ─── Sorting helpers ──────────────────────────────────────────────────────────
 
 type FacilitySortKey = 'name' | 'instances' | 'scale' | 'efficiency' | 'bottleneck' | 'output' | 'origin';
 type ResourceSortKey = 'name' | 'actual' | 'theoretical' | 'effectiveness';
@@ -619,7 +580,7 @@ function sortFacilityRows(
             case 'origin': {
                 const oa = originMap?.get(a.name);
                 const ob = originMap?.get(b.name);
-                // none (0) → downstream victim (1) → root cause (2)
+
                 const rank = (o: OriginResult | undefined) => (!o ? 0 : o.isRoot ? 2 : 1);
                 return rank(oa) - rank(ob);
             }
@@ -643,8 +604,6 @@ function sortResourceRows(rows: ResourceActualRow[], key: ResourceSortKey, dir: 
     });
     return dir === 'asc' ? sorted : sorted.reverse();
 }
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 interface LiveStateTabProps {
     onApplyScales: (scales: Record<string, number>) => void;
@@ -808,7 +767,6 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
 
     const isLoading = agentsLoading || planetsLoading;
 
-    // Summary stats
     const totalAgents = agentData?.agents.length ?? 0;
     const underperforming = facilityRows.filter((r) => r.avgEfficiency < 0.8).length;
     const globalAvgEff =
@@ -822,7 +780,6 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
     const resourceBottlenecks = facilityRows.filter((r) => r.mainBottleneck === 'resources').length;
     const workerBottlenecks = facilityRows.filter((r) => r.mainBottleneck === 'workers').length;
 
-    // Resources with worst effectiveness ratio (top 5)
     const worstResources = resourceActuals.filter((r) => r.theoreticalMaxPerTick > 0 && r.effectivenessRatio < 0.99);
 
     if (isLoading && tick === 0) {
@@ -839,7 +796,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
 
     return (
         <div className='space-y-4'>
-            {/* Planet selector */}
+            {}
             <div className='flex items-center gap-3'>
                 <span className='text-sm font-medium text-muted-foreground shrink-0'>Planet</span>
                 <Select value={selectedPlanetId} onValueChange={setSelectedPlanetId}>
@@ -857,7 +814,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </Select>
             </div>
 
-            {/* Status bar */}
+            {}
             <div className='flex flex-wrap items-center gap-4 p-3 bg-muted/40 rounded-lg border text-sm'>
                 <span>
                     Tick: <span className='font-mono font-semibold'>{tick}</span>
@@ -883,7 +840,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </div>
             </div>
 
-            {/* Summary cards */}
+            {}
             <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
                 <Card>
                     <CardHeader className='pb-1 pt-3 px-4'>
@@ -954,7 +911,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </Card>
             </div>
 
-            {/* Root Cause Bottleneck Analysis */}
+            {}
             {rootCausesArray.length > 0 && (
                 <Card className='border-orange-200 dark:border-orange-900'>
                     <CardHeader className='pb-2 pt-3 px-4'>
@@ -1020,7 +977,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </Card>
             )}
 
-            {/* Production effectiveness heat-map (worst resources) */}
+            {}
             {worstResources.length > 0 && (
                 <Card className='border-red-200'>
                     <CardHeader className='pb-2 pt-3 px-4'>
@@ -1047,7 +1004,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </Card>
             )}
 
-            {/* Facility breakdown table */}
+            {}
             <Card>
                 <CardHeader className='pb-2 pt-3 px-4'>
                     <CardTitle className='text-sm font-semibold'>
@@ -1156,7 +1113,7 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </CardContent>
             </Card>
 
-            {/* Resource production: actual vs theoretical */}
+            {}
             <Card>
                 <CardHeader className='pb-2 pt-3 px-4'>
                     <CardTitle className='text-sm font-semibold'>

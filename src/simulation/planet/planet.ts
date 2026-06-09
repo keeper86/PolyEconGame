@@ -34,52 +34,52 @@ export type Infrastructure = {
     universities: number;
     hospitals: number;
     mobility: {
-        roads: number; // total length of roads in km
-        railways: number; // total length of railways in km
-        airports: number; // number of airports
-        seaports: number; // number of seaports
-        spaceports: number; // number of spaceports
+        roads: number;
+        railways: number;
+        airports: number;
+        seaports: number;
+        spaceports: number;
     };
     energy: {
-        production: number; // total energy production in MWh
+        production: number;
     };
 };
 
 export type Environment = {
     naturalDisasters: {
-        earthquakes: number; // average number of earthquakes per year
-        floods: number; // average number of floods per year
-        storms: number; // average number of storms per year
+        earthquakes: number;
+        floods: number;
+        storms: number;
     };
 
     pollution: {
-        air: number; // scale from 0 (clean) to 100 (hazardous), affects population health and growth
-        water: number; // scale from 0 (clean) to 100 (heavily polluted)
-        soil: number; // scale from 0 (clean) to 100 (heavily contaminated)
+        air: number;
+        water: number;
+        soil: number;
     };
 
     regenerationRates: {
         air: {
-            constant: number; // IndexPoints per year that the air quality index improves naturally
-            percentage: number; // percentage of current air pollution that regenerates naturally per year
+            constant: number;
+            percentage: number;
         };
         water: {
-            constant: number; // IndexPoints per year that the water pollution level decreases naturally
-            percentage: number; // percentage of current water pollution that regenerates naturally per year
+            constant: number;
+            percentage: number;
         };
         soil: {
-            constant: number; // IndexPoints per year that the soil contamination level decreases naturally
-            percentage: number; // percentage of current soil contamination that regenerates naturally per year
+            constant: number;
+            percentage: number;
         };
     };
 };
 
 export type AgentMarketPosition = {
     limits: {
-        mass: number; // maximum mass of resources this agent can buy/sell per tick
-        volume: number; // maximum volume of resources this agent can buy/sell per tick
-        buy: number; // maximum total expenditure this agent can spend on buying resources per tick (currency units)
-        sell: number; // maximum total revenue this agent can earn from selling resources per tick (currency units)
+        mass: number;
+        volume: number;
+        buy: number;
+        sell: number;
     };
 
     buy: {
@@ -99,11 +99,6 @@ export type PlanetaryMarket = {
     };
 };
 
-/**
- * A single side of an order book for one resource, as a sorted price ladder.
- * asks: ascending by price (cheapest first).
- * bids: descending by price (highest first).
- */
 export type ResourceOrderBook = {
     asks: Array<{ price: number; quantity: number }>;
     bids: Array<{ price: number; quantity: number }>;
@@ -152,24 +147,10 @@ export type Planet = {
         [resourceName in string]: number;
     };
 
-    /**
-     * Total production cost allocated to each output resource this tick (reset each tick).
-     * Costs include inputs + wages, distributed across outputs by market-value share.
-     */
     productionCosts: Record<string, number>;
 
-    /**
-     * Persistent cost-per-unit floor per output resource.
-     * Only updated when producedResources[r] > 0 in the same tick — never drops to zero
-     * due to a temporary production gap.
-     */
     lastProductionCostFloors: Record<string, number>;
 
-    /**
-     * Planet-wide average cost per unit for each land-bound resource.
-     * Computed in claimBillingTick across all active tenant claims on this planet.
-     * Renewables: Σ(costPerTick) / Σ(quantity). Non-renewables: Σ(tenantCostInCoins) / Σ(maximumCapacity).
-     */
     landBoundCostPerUnit: Record<string, number>;
 };
 
@@ -293,8 +274,6 @@ export type AgentPlanetAssets = {
 
     allocatedWorkers: PerEducation;
 
-    /** Total slot body capacity (pre-scaled by age/skill/xp productivity) per education level,
-     *  computed by productionTick from the waterfill slot capacities. */
     totalSlotCapacity: Record<EducationLevelType, number>;
 
     unusedWorkers: Record<EducationLevelType, number>;
@@ -320,9 +299,6 @@ export type AgentPlanetAssets = {
     };
 };
 
-/**
- * Returns true if the agent has the given license on a planet and it is not frozen.
- */
 export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): boolean {
     const license = assets.licenses?.[type];
     return license !== undefined && !license.frozen;
@@ -349,9 +325,9 @@ export interface GameState {
     agents: Map<string, Agent>;
     shipCapitalMarket: ShipCapitalMarket;
     forexMarketMakers: Map<string, Agent>;
-    /** Role-indexed view of shipbuilder agents (also present in agents). */
+
     shipbuilderAgents: Map<string, Agent>;
-    /** Role-indexed view of arbitrage trader agents (also present in agents). */
+
     arbitrageTraders: Map<string, Agent>;
     tickerEvents: TickerEvent[];
     nextEventId: number;
@@ -411,11 +387,10 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
 }
 
 export function accumulatePlanetPrices(planet: Planet, tick: number): void {
-    // Reset at the start of each new month so the accumulator always reflects
-    // only the current month's trades — no separate flush step needed.
     if (tick % TICKS_PER_MONTH === 1) {
         planet.monthPriceAcc = {};
     }
+
     for (const result of Object.values(planet.lastMarketResult)) {
         if (!result || result.totalVolume <= 0) {
             continue;
@@ -424,6 +399,7 @@ export function accumulatePlanetPrices(planet: Planet, tick: number): void {
         if (!isFinite(price) || price <= 0) {
             continue;
         }
+
         const acc = planet.monthPriceAcc[result.resourceName];
         if (acc) {
             acc.min = Math.min(acc.min, price);

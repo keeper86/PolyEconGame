@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -8,8 +9,6 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-
-type Granularity = 'monthly' | 'yearly' | 'decades';
 
 type RawPoint = { bucket: number; avgPopulation: number };
 
@@ -25,8 +24,6 @@ type LiveData = {
     tick: number;
     population: number;
 };
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function yDomainFor(points: { value: number }[]): [number, number] | ['auto', 'auto'] {
     if (points.length === 0) {
@@ -66,7 +63,6 @@ function computeMonthlyData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
             };
         });
 
-    // Anchor at monthIdx=0 (previous December)
     const prevDecPoint = pts.find((p) => {
         const { year, monthIndex } = tickToDate(p.bucket);
         return year === latestYear - 1 && monthIndex === 11;
@@ -90,7 +86,6 @@ function computeMonthlyData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
         }
     }
 
-    // Live fractional point
     if (live.tick > 0) {
         const { year: liveYear, monthIndex: liveMi, day: liveDay } = tickToDate(live.tick);
         if (liveYear === latestYear) {
@@ -131,8 +126,6 @@ function computeMonthlyGhostData(allPts: RawPoint[], live: LiveData): ChartPoint
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
-// ─── Shared Tooltip ──────────────────────────────────────────────────────────
-
 function populationTooltipContent(label: string, value: number | undefined | null): React.ReactElement | null {
     if (value == null) {
         return null;
@@ -153,8 +146,6 @@ function populationTooltipContent(label: string, value: number | undefined | nul
     );
 }
 
-// ─── EmptyChart ───────────────────────────────────────────────────────────────
-
 function EmptyChart() {
     return (
         <div
@@ -165,39 +156,6 @@ function EmptyChart() {
         </div>
     );
 }
-
-// ─── GranularityButton ────────────────────────────────────────────────────────
-
-function GranularityButton({
-    active,
-    disabled,
-    onClick,
-    children,
-}: {
-    active: boolean;
-    disabled?: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={[
-                'px-2 py-0.5 rounded text-[11px] transition-colors',
-                active
-                    ? 'bg-slate-600 text-slate-100'
-                    : disabled
-                      ? 'text-slate-600 cursor-not-allowed'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700',
-            ].join(' ')}
-        >
-            {children}
-        </button>
-    );
-}
-
-// ─── MonthlyChart ─────────────────────────────────────────────────────────────
 
 function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live?: LiveData }) {
     const data = useMemo(
@@ -212,7 +170,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
     const mergedData = useMemo(() => {
         const ghostByMonth = new Map(ghostData.map((p) => [p.monthIdx!, p]));
         const result = data.map((p) => ({ ...p, ghostValue: ghostByMonth.get(p.monthIdx!)?.value ?? null }));
-        // Append ghost-only points (months not yet reached in current year)
+
         for (const g of ghostData) {
             if (!data.some((d) => d.monthIdx === g.monthIdx)) {
                 result.push({ ...g, value: null as unknown as number, ghostValue: g.value });
@@ -336,8 +294,6 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
     );
 }
 
-// ─── YearlyChart ──────────────────────────────────────────────────────────────
-
 function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
     const data = useMemo(
         (): ChartPoint[] =>
@@ -423,8 +379,6 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
     );
 }
 
-// ─── DecadesChart ─────────────────────────────────────────────────────────────
-
 function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
     const data = useMemo(
         (): ChartPoint[] =>
@@ -498,8 +452,6 @@ function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
     );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 type Props = {
     planetId: string;
     live?: LiveData;
@@ -507,7 +459,7 @@ type Props = {
 
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetPopulationHistory.queryOptions(
@@ -524,19 +476,16 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getPlanetPopulationHistory.queryOptions(
             { planetId, granularity: 'decade' },
-            { enabled: granularity === 'decades' },
+            { enabled: granularity === 'decade' },
         ),
     );
 
     const isLoading =
         (granularity === 'monthly' && (loadingMonthly || !monthly)) ||
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
-        (granularity === 'decades' && (loadingDecade || !decade));
+        (granularity === 'decade' && (loadingDecade || !decade));
 
     const currentTick = live?.tick ?? 0;
-    const yearsElapsed = currentTick / TICKS_PER_YEAR;
-    const showYearly = yearsElapsed >= 2;
-    const showDecades = yearsElapsed >= 10;
 
     const monthlyPoints = useMemo(
         () => (monthly?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
@@ -557,30 +506,16 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
                     <div className='flex gap-1 mb-1'>
                         Population:
-                        <GranularityButton active={granularity === 'monthly'} onClick={() => setGranularity('monthly')}>
-                            Monthly
-                        </GranularityButton>
-                        <GranularityButton
-                            active={granularity === 'yearly'}
-                            disabled={!showYearly}
-                            onClick={() => setGranularity('yearly')}
-                        >
-                            Yearly
-                        </GranularityButton>
-                        <GranularityButton
-                            active={granularity === 'decades'}
-                            disabled={!showDecades}
-                            onClick={() => setGranularity('decades')}
-                        >
-                            Decades
-                        </GranularityButton>
+                        <GranularityButtonGroup
+                            granularity={granularity}
+                            onChange={setGranularity}
+                            currentTick={currentTick}
+                        />
                     </div>
                     {granularity === 'monthly' && <MonthlyChart monthlyPoints={monthlyPoints} live={live} />}
                     {granularity === 'yearly' &&
-                        (showYearly || isLoading) &&
                         (yearlyPoints.length > 0 ? <YearlyChart yearlyPoints={yearlyPoints} /> : <EmptyChart />)}
-                    {granularity === 'decades' &&
-                        (showDecades || isLoading) &&
+                    {granularity === 'decade' &&
                         (decadePoints.length > 0 ? <DecadesChart decadePoints={decadePoints} /> : <EmptyChart />)}
                 </div>
             </CardContent>

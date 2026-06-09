@@ -36,7 +36,7 @@ describe('stale price convergence — sellers but no buyers', () => {
         const initialPrice = 10;
         planet.marketPrices[COAL] = initialPrice;
 
-        const askPrice = 6; // below current price — should drag it down
+        const askPrice = 6;
         const seller = makeSellerAgent(1000, askPrice);
 
         marketTick(agentMap(seller), planet);
@@ -50,7 +50,7 @@ describe('stale price convergence — sellers but no buyers', () => {
         const initialPrice = 5;
         planet.marketPrices[COAL] = initialPrice;
 
-        const askPrice = 20; // above current price — should push it up
+        const askPrice = 20;
         const seller = makeSellerAgent(1000, askPrice);
 
         marketTick(agentMap(seller), planet);
@@ -70,8 +70,6 @@ describe('stale price convergence — sellers but no buyers', () => {
             marketTick(agentMap(seller), planet);
         }
 
-        // After 30 ticks at rate 1/30, the price should be ~63 % of the way
-        // from 100 to 1 — i.e. roughly around 37.
         expect(planet.marketPrices[COAL]).toBeLessThan(50);
         expect(planet.marketPrices[COAL]).toBeGreaterThanOrEqual(PRICE_FLOOR);
     });
@@ -81,7 +79,6 @@ describe('stale price convergence — sellers but no buyers', () => {
         const initialPrice = 42;
         planet.marketPrices[COAL] = initialPrice;
 
-        // No agents at all → no sellers
         marketTick(new Map(), planet);
 
         expect(planet.marketPrices[COAL]).toBe(initialPrice);
@@ -91,7 +88,6 @@ describe('stale price convergence — sellers but no buyers', () => {
         const planet = makePlanet();
         planet.marketPrices[COAL] = PRICE_FLOOR * 2;
 
-        // Ask below the floor — the converged value should still be ≥ PRICE_FLOOR
         const seller = makeSellerAgent(1000, 0);
         marketTick(agentMap(seller), planet);
 

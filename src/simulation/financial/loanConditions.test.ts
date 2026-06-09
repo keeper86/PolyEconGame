@@ -36,10 +36,6 @@ function makeEstablishedAgent(
 }
 
 describe('computeLoanConditions', () => {
-    // ----------------------------------------------------------------
-    // Starter-loan path
-    // ----------------------------------------------------------------
-
     it('grants STARTER_LOAN_AMOUNT to a brand-new agent (starterLoanTaken=false)', () => {
         const planet = makePlanet();
         const agent = makeAgent('a1', planet.id, 'Player', { automated: false });
@@ -63,14 +59,10 @@ describe('computeLoanConditions', () => {
         expect(result.isNewAgent).toBe(true);
     });
 
-    // ----------------------------------------------------------------
-    // Blending logic
-    // ----------------------------------------------------------------
-
     it('at tick % TICKS_PER_MONTH === 0 (progress 0) uses 100% last month', () => {
         const planet = makePlanet();
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1200, lastMonthWages: 0 });
-        // tick = TICKS_PER_MONTH → progress = 0
+
         const result = computeLoanConditions(agent, planet);
         expect(result.lastMonthlyRevenue).toBeCloseTo(1200);
     });
@@ -85,10 +77,6 @@ describe('computeLoanConditions', () => {
         const result = computeLoanConditions(agent, planet);
         expect(result.maxLoanAmount).toBe(0);
     });
-
-    // ----------------------------------------------------------------
-    // Cash-flow negative / zero path
-    // ----------------------------------------------------------------
 
     it('cash-flow negative without storage: maxLoanAmount is 0', () => {
         const planet = makePlanet();
@@ -117,10 +105,6 @@ describe('computeLoanConditions', () => {
         expect(result.storageCollateral).toBeCloseTo(expectedCollateral);
         expect(result.maxLoanAmount).toBe(Math.floor(expectedCollateral - 1));
     });
-
-    // ----------------------------------------------------------------
-    // Storage collateral
-    // ----------------------------------------------------------------
 
     it('storage collateral adds to credit limit for profitable agents', () => {
         const planet = makePlanet();
@@ -163,10 +147,6 @@ describe('computeLoanConditions', () => {
         const result = computeLoanConditions(agent, planet);
         expect(result.storageCollateral).toBe(0);
     });
-
-    // ----------------------------------------------------------------
-    // Informational fields
-    // ----------------------------------------------------------------
 
     it('reports annualInterestRate as bank.loanRate × 360', () => {
         const planet = makePlanet();

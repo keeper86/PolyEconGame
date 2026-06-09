@@ -12,7 +12,7 @@ describe('user endpoint (integration)', async () => {
         expect(Array.isArray(result.users)).toBe(true);
 
         const users = Object.values(testUsers);
-        // The normal dev seeding will have an extra user created.
+
         expect(result.total).toBe(users.length + 1);
         expect(result.users).toEqual(
             expect.arrayContaining(
@@ -49,7 +49,7 @@ describe('user endpoint (integration)', async () => {
     });
 
     it('getting user without a session should fail', async () => {
-        const anonCaller = getUnauthenticatedCaller(); // no session
+        const anonCaller = getUnauthenticatedCaller();
 
         await expect(anonCaller.getUser({ userId: testUsers.testUser.user_id })).rejects.toThrow();
     });

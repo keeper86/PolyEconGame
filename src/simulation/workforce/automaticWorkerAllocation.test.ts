@@ -4,10 +4,6 @@ import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 
-// ---------------------------------------------------------------------------
-// updateAllocatedWorkers
-// ---------------------------------------------------------------------------
-
 describe('updateAllocatedWorkers', () => {
     it('sets allocatedWorkers to buffered requirement x scale when no prior tick results', () => {
         const { planet } = makePlanetWithPopulation({ none: 50000, primary: 20000 });
@@ -18,8 +14,6 @@ describe('updateAllocatedWorkers', () => {
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
-        // No lastTickResults usage yet → deficit = full requirement, totalUsed = 0
-        // target = ceil((0 + 1000) * 1.05)
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(525);
         expect(agent.assets.p.allocatedWorkers.secondary).toBe(0);
@@ -44,7 +38,7 @@ describe('updateAllocatedWorkers', () => {
         const { planet } = makePlanetWithPopulation({ none: 50000, primary: 50000 });
         const agent = makeAgent();
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
-        // Simulate: 900 none-tier workers used exactly, 0 overqualified
+
         fac.lastTickResults.totalUsedByEdu = { none: 900, primary: 0, secondary: 0, tertiary: 0 };
         fac.lastTickResults.exactUsedByEdu = { none: 900, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
@@ -52,7 +46,6 @@ describe('updateAllocatedWorkers', () => {
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
-        // deficit = max(0, 1000 - 900) = 100; target = ceil((900 + 100) * 1.05) = 1050
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
     });
 
@@ -60,7 +53,7 @@ describe('updateAllocatedWorkers', () => {
         const { planet } = makePlanetWithPopulation({ none: 50000 });
         const agent = makeAgent();
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
-        // All 1000 slots filled exactly — surplus of none workers
+
         fac.lastTickResults.totalUsedByEdu = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
         fac.lastTickResults.exactUsedByEdu = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
@@ -68,7 +61,6 @@ describe('updateAllocatedWorkers', () => {
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
-        // deficit = 0; target = ceil(1000 * 1.05) = 1050
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
     });
 
@@ -76,7 +68,7 @@ describe('updateAllocatedWorkers', () => {
         const { planet } = makePlanetWithPopulation({ none: 0, primary: 50000 });
         const agent = makeAgent();
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
-        // 1000 none-slots filled by 1000 primary workers (overqualified)
+
         fac.lastTickResults.totalUsedByEdu = { none: 0, primary: 1000, secondary: 0, tertiary: 0 };
         fac.lastTickResults.exactUsedByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
@@ -84,8 +76,6 @@ describe('updateAllocatedWorkers', () => {
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
-        // none: deficit=1000, totalUsed=0 → target=ceil(1000*1.05)=1050 (but no none workers → hireWorkforce does nothing)
-        // primary: deficit=0, totalUsed=1000 → target=ceil(1000*1.05)=1050
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(1050);
     });
@@ -98,8 +88,6 @@ describe('updateAllocatedWorkers', () => {
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
-        // No tick results: none deficit=1000, primary deficit=500
-        // none: target=ceil(1000*1.05)=1050; primary: target=ceil(500*1.05)=525
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
         expect(agent.assets.p.allocatedWorkers.primary).toBe(525);
     });
@@ -127,7 +115,6 @@ describe('updateAllocatedWorkers', () => {
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
-        // No lastTickResults → full deficit path: target = ceil(1000 * 1.05) = 1050
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
     });
 });

@@ -31,8 +31,6 @@ export function settleHouseholds(
         const category = demography[record.age][record.occ][record.edu][record.skill];
         const perPersonCost = record.population > 0 ? bidCosts[i] / record.population : 0;
 
-        // Convert filled units to buffer ticks using the per-service consumption rate.
-        // bufferTicks = filled / (rate × population)
         const bufferTicks = filled / (rate * category.total);
         category.services[serviceName].buffer += bufferTicks;
 
@@ -56,7 +54,6 @@ export function settleAgentSellers(planet: Planet, askOrders: AskOrder[]): void 
         const revenue = ask.revenue;
         const unfilled = ask.quantity - filled;
 
-        // Transfer sold goods out of escrow (removes them from storage too).
         if (filled > 0) {
             transferFromEscrow(assets.storageFacility, ask.resource.name, filled);
             assets.deposits += revenue;
@@ -73,7 +70,6 @@ export function settleAgentSellers(planet: Planet, askOrders: AskOrder[]): void 
             }
         }
 
-        // Release unsold goods from escrow back to free stock.
         if (unfilled > 0) {
             releaseFromEscrow(assets.storageFacility, ask.resource.name, unfilled);
         }
@@ -90,7 +86,6 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
         const holdConsumed = bid.cost;
         const holdUnused = bid.quantity * bid.bidPrice - holdConsumed;
 
-        // Return the unused portion of the hold to free deposits.
         if (holdUnused > 0) {
             assets.depositHold -= holdUnused;
             assets.deposits += holdUnused;
@@ -100,7 +95,6 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
             continue;
         }
 
-        // Consume the hold for the filled amount.
         assets.depositHold -= holdConsumed;
 
         const actuallyStored = putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
@@ -164,7 +158,6 @@ export function settleForexTrades(
 ): void {
     const curName = getCurrencyResourceName(issuingPlanetId);
 
-    // --- Seller settlement ---
     for (const ask of askOrders) {
         const localAssets = ask.agent.assets[tradingPlanet.id];
         if (!localAssets) {
@@ -173,13 +166,9 @@ export function settleForexTrades(
         const filled = ask.filled;
         const unfilled = ask.quantity - filled;
 
-        // Credit local-currency revenue
         if (filled > 0) {
             localAssets.deposits += ask.revenue;
             localAssets.monthAcc.forexRevenue += ask.revenue;
-
-            // NOTE: foreign currency was already deducted from deposits at collection time
-            // (deposits -= quantity in collectForexAsks). We do not deduct again here.
 
             const offer = localAssets.market?.sell[curName];
             if (offer) {
@@ -188,10 +177,9 @@ export function settleForexTrades(
             }
         }
 
-        // Return unsold foreign currency and clear the reservation
         const issuingAssets = ask.agent.assets[issuingPlanetId]!;
-        issuingAssets.deposits += unfilled; // return unsold
-        issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity); // clear hold
+        issuingAssets.deposits += unfilled;
+        issuingAssets.depositHold = Math.max(0, issuingAssets.depositHold - ask.quantity);
 
         if (process.env.SIM_DEBUG === '1') {
             if (issuingAssets.depositHold < 0) {
@@ -202,7 +190,6 @@ export function settleForexTrades(
         }
     }
 
-    // --- Buyer settlement ---
     for (const bid of agentBids) {
         const localAssets = bid.agent.assets[tradingPlanet.id];
         if (!localAssets) {
@@ -212,7 +199,6 @@ export function settleForexTrades(
         const holdConsumed = bid.cost;
         const holdUnused = bid.quantity * bid.bidPrice - holdConsumed;
 
-        // Return unused portion of the hold
         if (holdUnused > 0) {
             localAssets.depositHold -= holdUnused;
             localAssets.deposits += holdUnused;
@@ -222,7 +208,6 @@ export function settleForexTrades(
             continue;
         }
 
-        // Consume the hold for the filled amount
         localAssets.depositHold -= holdConsumed;
         localAssets.monthAcc.forexPurchases += holdConsumed;
 

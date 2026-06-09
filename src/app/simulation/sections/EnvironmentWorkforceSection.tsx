@@ -4,9 +4,6 @@ import { StarvationDynamicsChart } from '../charts/StarvationDynamicsChart';
 export function EnvironmentWorkforceSection() {
     return (
         <>
-            {/* ---------------------------------------------------------------- */}
-            {/* 1. ENVIRONMENT TICK                                               */}
-            {/* ---------------------------------------------------------------- */}
             <section id='environment'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>1. Environment Tick (every tick)</h2>
                 <p>
@@ -39,9 +36,6 @@ export function EnvironmentWorkforceSection() {
                 </pre>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 2. WORKFORCE DEMOGRAPHIC TICK                                     */}
-            {/* ---------------------------------------------------------------- */}
             <section id='workforce-demographic'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>2. Workforce Demographic Tick (every tick)</h2>
                 <p>
@@ -81,9 +75,6 @@ retirees        = stochasticRound(active × perTickProb)
                 </p>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 3. POPULATION TICK                                                */}
-            {/* ---------------------------------------------------------------- */}
             <section id='population'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>3. Population Tick (every tick)</h2>
                 <p>
@@ -175,9 +166,6 @@ birthsPerTick = stochasticRound(birthsPerYear / 360)`}
                 </pre>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 4. HIRE / FIRE (monthly)                                          */}
-            {/* ---------------------------------------------------------------- */}
             <section id='workforce-hire'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>4. Worker Allocation &amp; Hire/Fire (every tick)</h2>
                 <p>

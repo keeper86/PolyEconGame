@@ -27,7 +27,6 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
     const acquireMutation = useMutation(
         trpc.acquireLicense.mutationOptions({
             onSuccess: () => {
-                // Invalidate agent detail queries to refresh license state
                 void queryClient.invalidateQueries(
                     trpc.simulation.getAgentPlanetDetail.queryOptions({ agentId, planetId }),
                 );

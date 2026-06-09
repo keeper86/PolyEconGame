@@ -1,9 +1,9 @@
 export function ProductionPostSection() {
     return (
         <>
-            {/* ---------------------------------------------------------------- */}
-            {/* 9. PRODUCTION TICK                                                */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='production'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>9. Production Tick (every tick)</h2>
                 <p>
@@ -72,9 +72,9 @@ For services output:
                 </p>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 10. WAGE ADJUSTMENT                                               */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='financial-post'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>10. Wage Adjustment (monthly)</h2>
                 <p>
@@ -99,9 +99,9 @@ MIN_WAGE             = 5.0`}
                 </p>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 11. LABOR MARKET MONTH TICK                                       */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='labor-month'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>11. Labor Market Month Tick (every 30 ticks)</h2>
                 <p>
@@ -122,9 +122,9 @@ Shift pipelines:
                 </p>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 12. POPULATION YEAR TICK                                          */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='population-year'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>12. Population Year Tick (every 360 ticks)</h2>
                 <p>Once per year the entire population ages by one year and education transitions are applied.</p>
@@ -158,9 +158,9 @@ Level parameters  (type / graduationAge / P_grad / P_transition / P_dropout):
                 </pre>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 13. WORKFORCE YEAR TICK                                           */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='labor-year'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>13. Workforce Year Tick (every 360 ticks)</h2>
                 <p>

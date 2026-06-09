@@ -18,7 +18,6 @@ export type ServiceDefinition = {
     readonly consumptionRatePerPersonPerTick: number;
 };
 
-/** Derives the ServiceName key from a ServiceDefinition by lowercasing the resource name. */
 export const serviceKeyOf = (def: ServiceDefinition): ServiceName => def.resource.name.toLowerCase() as ServiceName;
 
 const groceryDefinition: ServiceDefinition = {
@@ -86,7 +85,6 @@ export const getServiceDefinitionByResourceName = (resourceName: string): Servic
 
 export const allServices = Object.values(SERVICE_DEFINITIONS);
 
-// Priority order derived from the definition array order.
 export const householdDemandPriority: string[] = allServices.map((d) => d.resource.name);
 
 export type ServiceTierSupportWeightOverride = {
@@ -123,3 +121,21 @@ export const SERVICE_TIERS: ServiceTier[] = [
         mandatoryForOwnConsumption: false,
     },
 ];
+
+export function computeTierCost(marketPrices: Record<string, number>, tier: ServiceTier): number {
+    return tier.services.reduce((sum, key) => {
+        const def = SERVICE_DEFINITIONS[key];
+        const price = marketPrices[def.resource.name] ?? 0;
+        return sum + def.consumptionRatePerPersonPerTick * price;
+    }, 0);
+}
+
+export function computeCostOfLiving(marketPrices: Record<string, number>, whenRich: boolean): number {
+    let total = 0;
+    for (const tier of SERVICE_TIERS) {
+        if (tier.mandatoryForOwnConsumption || whenRich) {
+            total += computeTierCost(marketPrices, tier);
+        }
+    }
+    return total;
+}

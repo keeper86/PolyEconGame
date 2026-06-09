@@ -12,11 +12,7 @@ import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP } from './demographicsTypes';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type ChartRow = Record<string, number>;
-
-// ─── BufferBar — filled portion + faded empty portion in one shape ────────────
 
 interface BufferBarProps {
     x?: number;
@@ -47,8 +43,6 @@ function BufferBar({ x = 0, y = 0, width = 0, height = 0, payload, groupKey, col
         </g>
     );
 }
-
-// ─── Tooltip ─────────────────────────────────────────────────────────────────
 
 function makeTooltip(
     keys: readonly string[],
@@ -101,8 +95,6 @@ function makeTooltip(
     };
 }
 
-// ─── mergePairs ───────────────────────────────────────────────────────────────
-
 function mergePairs(rows: ChartRow[], rowKeys: readonly string[], targetPerPerson: number): ChartRow[] {
     const result: ChartRow[] = [];
     for (let i = 0; i < rows.length; i += 2) {
@@ -130,15 +122,11 @@ function mergePairs(rows: ChartRow[], rowKeys: readonly string[], targetPerPerso
     return result;
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 type Props = {
     rows: AggRow[];
     groupMode: GroupMode;
     serviceKey: ServiceName;
 };
-
-// ─── Empty placeholder ────────────────────────────────────────────────────────
 
 function EmptyChart({ height = 180 }: { height?: number }) {
     return (
@@ -150,8 +138,6 @@ function EmptyChart({ height = 180 }: { height?: number }) {
         </div>
     );
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Props): React.ReactElement {
     const isVerySmall = useIsSmallScreen();
@@ -171,7 +157,7 @@ export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Prop
                 for (let gi = 0; gi < keys.length; gi++) {
                     const key = keys[gi];
                     const pop = r.groupValues[gi][GV_POP];
-                    // Extract totalBufferUnits: grocery lives in groupValues, others in serviceBuffers
+
                     const totalBuffer =
                         serviceKey === 'grocery'
                             ? r.groupValues[gi][GV_FOOD]

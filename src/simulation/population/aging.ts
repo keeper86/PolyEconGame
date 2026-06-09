@@ -5,7 +5,6 @@ import { MAX_AGE, OCCUPATIONS, SKILL, forEachPopulationCohort, transferPopulatio
 export const populationAdvanceYear = (planet: Planet): void => {
     const demo = planet.population.demography;
 
-    // Descending loop: write age+1 before reading age, so there is no aliasing.
     for (let age = MAX_AGE - 1; age >= 0; age--) {
         const targetAge = age + 1;
 
@@ -20,7 +19,6 @@ export const populationAdvanceYear = (planet: Planet): void => {
                     if (occ === 'education') {
                         applyEducationTransition(planet, age, targetAge, edu, skill);
                     } else {
-                        // Plain cohort shift — zero-sum wealth move, no bank change.
                         transferPopulation(
                             planet,
                             { age, occ, edu, skill },
@@ -39,7 +37,7 @@ export const populationAdvanceYear = (planet: Planet): void => {
                 console.warn('[populationAdvanceYear] age-0 cohort not empty after shift — forcing zero');
                 cat.total = 0;
                 cat.wealth = { mean: 0, variance: 0 };
-                // Reset all service buffers and starvation levels
+
                 for (const serviceName of Object.keys(cat.services) as (keyof typeof cat.services)[]) {
                     cat.services[serviceName] = { buffer: 0, starvationLevel: 0 };
                 }

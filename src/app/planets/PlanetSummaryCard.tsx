@@ -37,7 +37,6 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
 
                 <CardContent>
                     <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-                        {/* Population */}
                         <div className='space-y-1'>
                             <div className='flex items-center gap-1 text-xs text-muted-foreground'>
                                 <Users className='h-3 w-3' />
@@ -48,7 +47,6 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                             </div>
                         </div>
 
-                        {/* Money supply */}
                         {bank && (
                             <div className='space-y-1'>
                                 <div className='flex items-center gap-1 text-xs text-muted-foreground'>
@@ -61,7 +59,6 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                             </div>
                         )}
 
-                        {/* Food price */}
                         {foodPrice !== undefined && (
                             <div className='space-y-1'>
                                 <div className='flex items-center gap-1 text-xs text-muted-foreground'>
@@ -75,7 +72,6 @@ export default function PlanetSummaryCard({ summary }: PlanetSummaryCardProps): 
                         )}
                     </div>
 
-                    {/* Badges */}
                     <div className='mt-3 flex flex-wrap gap-1.5'>
                         {bank && bank.equity < 0 && <Badge variant='destructive'>Negative bank equity</Badge>}
                         {populationTotal === 0 && <Badge variant='secondary'>Uninhabited</Badge>}

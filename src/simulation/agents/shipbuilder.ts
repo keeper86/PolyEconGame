@@ -8,7 +8,6 @@ import { createShip, shiptypes } from '../ships/ships';
 import type { ShipListing } from '../ships/ships';
 import type { ShipConstructionFacility } from '../planet/facility';
 
-/** Bootstrap ship types a shipbuilder pre-builds at seed time (one per category). */
 const BOOTSTRAP_SHIP_TYPES = [
     shiptypes.solid.bulkCarrier1,
     shiptypes.liquid.tanker1,
@@ -67,13 +66,12 @@ export function seedShipbuilderAgents(gameState: GameState): void {
         assets.market = { sell: {}, buy: {} };
         assets.shipConstructionFacilities.push(makeShipyard(planet.id, agentId));
 
-        // Working-capital loan to fund operations and input purchases
         grantLoan(assets, planet.bank, SHIPBUILDER_WORKING_CAPITAL, 'shipbuilderBootstrap', 0);
 
         const agent: Agent = {
             id: agentId,
             name: `Shipbuilder (${planet.name})`,
-            automated: false, // we manage market positions in shipbuilderTick
+            automated: false,
             automateWorkerAllocation: true,
             foundedTick: 0,
             starterLoanTaken: true,
@@ -83,7 +81,6 @@ export function seedShipbuilderAgents(gameState: GameState): void {
             assets: { [planet.id]: assets },
         };
 
-        // Bootstrap fleet: pre-build one ship of each transport type and list for sale
         const bootstrapLoanTotal = SHIPBUILDER_BOOTSTRAP_LOAN * BOOTSTRAP_SHIP_TYPES.length;
         grantLoan(assets, planet.bank, bootstrapLoanTotal, 'shipbuilderBootstrap', 0);
 
@@ -104,7 +101,6 @@ export function seedShipbuilderAgents(gameState: GameState): void {
             createShipListing(ship, assets, listing);
         }
 
-        // Register in both the role-index Map and the main agents Map
         gameState.shipbuilderAgents.set(agentId, agent);
         gameState.agents.set(agentId, agent);
     }

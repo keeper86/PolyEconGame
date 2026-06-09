@@ -55,7 +55,6 @@ export const calculateCostsForConstruction = (
     currentScale: number,
     targetScale: number,
 ): number => {
-    // Integerate the construction cost over the scale increase, using the constructionCatalog function for the facility type
     let totalCost = 0;
     for (let scale = currentScale + 1; scale <= targetScale; scale++) {
         totalCost += constructionServiceCostPerScaleIncrease[facilityType](scale);
@@ -163,7 +162,7 @@ export type ManagementFacility = FacilityBase & {
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
     shipName: string;
-    produces: ShipType | null; // null = idle (no ship being built)
+    produces: ShipType | null;
     progress: number;
     lastTickResults: LastManagementTickResults;
 };
@@ -205,7 +204,7 @@ export const putIntoStorageFacility = (
     storage.current.volume += additionalQuantity * resource.volumePerQuantity * overallRestriction;
     storage.current.mass += additionalQuantity * resource.massPerQuantity * overallRestriction;
 
-    return additionalQuantity * overallRestriction; // return true if we were able to store the entire additional quantity, false if we hit a capacity limit and only stored part of it
+    return additionalQuantity * overallRestriction;
 };
 
 export const queryStorageFacility = (storage: StorageFacility | undefined, resourceName: string): number => {
@@ -225,7 +224,6 @@ export const getAvailableStorageCapacity = (storage: StorageFacility, resource: 
     return Math.max(0, Math.min(byVolume, byMass));
 };
 
-// TODO: USE resource not only name
 export const removeFromStorageFacility = (
     storage: StorageFacility | undefined,
     resourceName: string,

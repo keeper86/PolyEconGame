@@ -22,7 +22,7 @@ function setupWorld() {
 describe('handleAcquireLicense — new planet (no prior assets)', () => {
     it('acquires commercial license and creates an initial loan', () => {
         const { gameState, planet, company } = setupWorld();
-        // Remove existing assets so this is a "new planet" scenario
+
         delete company.assets[planet.id];
         const bankLoansBefore = planet.bank.loans;
         const bankDepositsBefore = planet.bank.deposits;
@@ -46,10 +46,9 @@ describe('handleAcquireLicense — new planet (no prior assets)', () => {
         const assets = company.assets[planet.id]!;
         expect(assets.licenses.commercial).toBeDefined();
         expect(assets.licenses.commercial!.frozen).toBe(false);
-        // workforce license must NOT be auto-granted
+
         expect(assets.licenses.workforce).toBeUndefined();
 
-        // initial loan created
         expect(totalOutstandingLoans(assets.activeLoans)).toBe(COMMERCIAL_LICENSE_COST);
         expect(assets.deposits).toBe(0);
         expect(planet.bank.loans).toBe(bankLoansBefore + COMMERCIAL_LICENSE_COST);
@@ -82,7 +81,7 @@ describe('handleAcquireLicense — existing planet assets', () => {
     it('deducts cost from deposits when agent already has assets on the planet', () => {
         const { gameState, planet, company } = setupWorld();
         company.assets[planet.id]!.deposits = 200_000;
-        // Remove commercial license first so we can acquire it
+
         delete company.assets[planet.id]!.licenses.commercial;
         const bankDepositsBefore = planet.bank.deposits;
         const { messages, post } = makeMessages();
@@ -101,7 +100,7 @@ describe('handleAcquireLicense — existing planet assets', () => {
 
         expect(messages[0]).toMatchObject({ type: 'licenseAcquired', licenseType: 'commercial' });
         expect(company.assets[planet.id]!.deposits).toBe(200_000 - COMMERCIAL_LICENSE_COST);
-        // bank.deposits must not change: agent paid cost, gov received cost — net zero per monetary invariant
+
         expect(planet.bank.deposits).toBe(bankDepositsBefore);
     });
 
@@ -147,14 +146,14 @@ describe('handleAcquireLicense — existing planet assets', () => {
 
         expect(messages[0]).toMatchObject({ type: 'licenseAcquisitionFailed' });
         expect(company.assets[planet.id]!.licenses.commercial).toBeUndefined();
-        expect(company.assets[planet.id]!.deposits).toBe(1000); // unchanged
+        expect(company.assets[planet.id]!.deposits).toBe(1000);
     });
 });
 
 describe('handleAcquireLicense — duplicate prevention', () => {
     it('rejects a duplicate commercial license and does NOT double-grant', () => {
         const { gameState, planet, company } = setupWorld();
-        // company already has commercial license from makeWorld
+
         const licensesBefore = { ...company.assets[planet.id]!.licenses };
         const { messages, post } = makeMessages();
 
@@ -171,7 +170,7 @@ describe('handleAcquireLicense — duplicate prevention', () => {
         );
 
         expect(messages[0]).toMatchObject({ type: 'licenseAcquisitionFailed' });
-        // License state unchanged
+
         expect(company.assets[planet.id]!.licenses).toEqual(licensesBefore);
     });
 
@@ -222,8 +221,8 @@ describe('handleAcquireLicense — monetary invariants', () => {
     it('preserves monetary conservation when paying for a commercial license from existing deposits', () => {
         const { gameState, planet, company } = setupWorld();
         company.assets[planet.id]!.deposits = 200_000;
-        planet.bank.deposits = 200_000; // balance bank to match agent deposits
-        planet.bank.loans = 200_000; // balance sheet: deposits = loans
+        planet.bank.deposits = 200_000;
+        planet.bank.loans = 200_000;
         delete company.assets[planet.id]!.licenses.commercial;
         const { post } = makeMessages();
 
@@ -246,8 +245,8 @@ describe('handleAcquireLicense — monetary invariants', () => {
     it('preserves monetary conservation when paying for a workforce license from existing deposits', () => {
         const { gameState, planet, company } = setupWorld();
         company.assets[planet.id]!.deposits = 200_000;
-        planet.bank.deposits = 200_000; // balance bank to match agent deposits
-        planet.bank.loans = 200_000; // balance sheet: deposits = loans
+        planet.bank.deposits = 200_000;
+        planet.bank.loans = 200_000;
         delete company.assets[planet.id]!.licenses.workforce;
         const { post } = makeMessages();
 

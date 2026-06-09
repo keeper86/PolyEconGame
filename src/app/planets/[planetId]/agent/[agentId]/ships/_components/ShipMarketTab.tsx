@@ -81,7 +81,6 @@ export function ShipMarketTab({
 
     return (
         <div className='space-y-6 mt-3'>
-            {/* Transport Contracts */}
             <section className='space-y-3'>
                 <div className='flex items-center justify-between'>
                     <h3 className='text-sm font-semibold'>
@@ -176,7 +175,6 @@ export function ShipMarketTab({
                 })}
             </section>
 
-            {/* Ship Market */}
             <section className='space-y-3'>
                 <div className='flex items-center justify-between'>
                     <h3 className='text-sm font-semibold'>
@@ -301,7 +299,6 @@ export function ShipMarketTab({
                 })}
             </section>
 
-            {/* Dialogs */}
             {acceptContractTarget && (
                 <AcceptTransportContractDialog
                     agentId={agentId}

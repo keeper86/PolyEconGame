@@ -1,4 +1,3 @@
-// A simple client-side logger that sends them to the server and shows toasts
 import { toast } from 'sonner';
 import type { LogEntry } from '../server/controller/logs';
 

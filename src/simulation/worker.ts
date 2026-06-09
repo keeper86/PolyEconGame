@@ -7,43 +7,45 @@ import {
     getLatestGameSnapshot,
     insertAgentMonthlyHistory,
     insertGameSnapshot,
+    insertPlanetEconomyHistory,
     insertPlanetPopulationHistory,
     insertProductPriceHistory,
     pruneGameSnapshots,
     refreshContinuousAggregates,
 } from './gameSnapshotRepository';
 import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
+import { computeCostOfLiving } from './market/serviceDefinitions';
 import type { GameState } from './planet/planet';
 
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
+import { createInitialGameState } from './initialUniverse';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { computePopulationTotal } from './snapshotRepository';
-import { createInitialGameState } from './initialUniverse';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
-import {
-    handlePostTransportContract,
-    handleAcceptTransportContract,
-    handleCancelTransportContract,
-    handleDispatchShip,
-    handleDispatchPassengerShip,
-    handleDispatchConstructionShip,
-    handlePostConstructionContract,
-    handleAcceptConstructionContract,
-    handleCancelConstructionContract,
-    handlePostShipBuyingOffer,
-    handleAcceptShipBuyingOffer,
-    handlePostShipListing,
-    handleCancelShipListing,
-    handleAcceptShipListing,
-} from './workerClient/shipContractActions';
-import { handleAcquireLicense } from './workerClient/licenseActions';
 import { handleFinancialAction } from './workerClient/financialActions';
+import { handleAcquireLicense } from './workerClient/licenseActions';
 import { handleMarketAction } from './workerClient/marketActions';
 import type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 import { handleResourceAction } from './workerClient/resourceActions';
+import {
+    handleAcceptConstructionContract,
+    handleAcceptShipBuyingOffer,
+    handleAcceptShipListing,
+    handleAcceptTransportContract,
+    handleCancelConstructionContract,
+    handleCancelShipListing,
+    handleCancelTransportContract,
+    handleDispatchConstructionShip,
+    handleDispatchPassengerShip,
+    handleDispatchShip,
+    handlePostConstructionContract,
+    handlePostShipBuyingOffer,
+    handlePostShipListing,
+    handlePostTransportContract,
+} from './workerClient/shipContractActions';
 export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
 
 interface TaskPayload {
@@ -52,20 +54,7 @@ interface TaskPayload {
 }
 
 export default async function simulationTask(task: TaskPayload): Promise<void> {
-    // -----------------------------------------------------------------
-    // Messaging channel
-    //
-    // Piscina owns `parentPort` for its internal task dispatch protocol.
-    // We use a dedicated MessagePort (passed in the task payload) for all
-    // custom communication.  If no port was provided (e.g. in tests that
-    // don't use the full workerManager), fall back to parentPort.
-    // -----------------------------------------------------------------
-
     const messagePort = task.port ?? parentPort;
-
-    // -----------------------------------------------------------------
-    // Database connection (for snapshot persistence & recovery)
-    // -----------------------------------------------------------------
 
     let snapshotDb: import('knex').Knex | null = null;
 
@@ -74,9 +63,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return snapshotDb;
         }
         try {
-            // Use dynamic import() for knex itself so this works in both
-            // the dev (tsx/ts-node) environment and the esbuild ESM bundle
-            // (.next/standalone/worker.mjs) where `require` is not available.
             const { default: knexModule } = await import('knex');
             const isDevelopment = process.env.NODE_ENV === 'development';
             const dbConfig = isDevelopment ? knexConfig.development : knexConfig.production;
@@ -88,7 +74,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             snapshotDb = knexModule({
                 ...dbConfig,
-                pool: { min: 1, max: 2 }, // smaller pool for the worker
+                pool: { min: 1, max: 2 },
             });
             return snapshotDb;
         } catch (err) {
@@ -97,17 +83,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // -----------------------------------------------------------------
-    // State  (private to this worker invocation)
-    // -----------------------------------------------------------------
-
     const TICK_INTERVAL_MS: number = typeof workerData?.tickIntervalMs === 'number' ? workerData.tickIntervalMs : 0;
 
     seedRng(42);
-
-    // -----------------------------------------------------------------
-    // Recovery bootstrap — attempt to restore from the latest cold snapshot
-    // -----------------------------------------------------------------
 
     let state: GameState;
     let currentSnapshot: GameStateRecord;
@@ -133,13 +111,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     }
 
     if (!recovered) {
-        // Fall back to fresh initial state
         state = createInitialGameState();
         currentSnapshot = toImmutableGameState(state);
 
-        // Seed the population history at tick=0 so the chart has a starting
-        // point visible in the very first month. The bucket [0,30) requires a
-        // CAGG window end >= 30, so we refresh immediately after inserting.
         if (snapshotDb) {
             const db = snapshotDb;
             const seedRows = [...state.planets.values()].map((planet) => ({
@@ -154,7 +128,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     }
 
     const pendingActions: PendingAction[] = [];
-    let processingTick = false; // True during advanceTick + snapshot creation
+    let processingTick = false;
 
     function drainActionQueue(): void {
         if (pendingActions.length === 0) {
@@ -261,7 +235,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         try {
             messagePort?.postMessage(msg);
         } catch (err: unknown) {
-            // EPIPE / ERR_WORKER_OUT means the channel is closed — nothing to do.
             if (
                 err instanceof Error &&
                 ('code' in err
@@ -276,7 +249,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // Forward console output to the main thread so it appears in the server logger.
     const _origLog = console.log.bind(console);
     const _origWarn = console.warn.bind(console);
     const _origError = console.error.bind(console);
@@ -285,7 +257,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         try {
             safePostMessage({ type: 'workerLog', level, message });
         } catch {
-            // If posting fails, fall back to original console to avoid silent loss
             _origError('[worker] Failed to forward log:', message);
         }
     }
@@ -370,11 +341,53 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    /**
-     * Flush accumulated intra-month price stats to the DB at month boundaries,
-     * then reset the accumulator for the next month.
-     * Falls back to the current spot price when no trades occurred this month.
-     */
+    function flushPlanetEconomyHistory(gs: GameStateRecord, tick: number): Promise<void> {
+        const db = snapshotDb;
+        if (!db) {
+            return Promise.resolve();
+        }
+        const rows = [...gs.planets.values()].map((planet) => {
+            const p = planet.data;
+            const bank = p.bank;
+
+            const gdp =
+                Object.values(p.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                TICKS_PER_YEAR;
+
+            const costOfLiving = computeCostOfLiving(p.marketPrices, false);
+            const costOfLivingRich = computeCostOfLiving(p.marketPrices, true);
+            const wageEdu0 = p.wagePerEdu.none ?? 0;
+            const wageEdu1 = p.wagePerEdu.primary ?? 0;
+            const wageEdu2 = p.wagePerEdu.secondary ?? 0;
+            const wageEdu3 = p.wagePerEdu.tertiary ?? 0;
+
+            const policyRate = bank.loanRate;
+            const bankEquity = bank.equity;
+            const moneySupply = bank.deposits;
+
+            return {
+                tick,
+                planet_id: planet.id,
+                gdp,
+                cost_of_living: costOfLiving,
+                cost_of_living_rich: costOfLivingRich,
+                wage_edu0: wageEdu0,
+                wage_edu1: wageEdu1,
+                wage_edu2: wageEdu2,
+                wage_edu3: wageEdu3,
+                policy_rate: policyRate,
+                bank_equity: bankEquity,
+                money_supply: moneySupply,
+            };
+        });
+        if (rows.length === 0) {
+            return Promise.resolve();
+        }
+        return insertPlanetEconomyHistory(db, rows).catch((err) => {
+            console.error(`[worker] Failed to save planet economy history rows at tick ${tick}:`, err);
+        });
+    }
+
     function flushProductPrices(gs: GameStateRecord, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
@@ -397,9 +410,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 const avgPrice = acc ? acc.sum / acc.count : spotPrice;
                 const minPrice = acc ? acc.min : spotPrice;
                 const maxPrice = acc ? acc.max : spotPrice;
-                // Persist the completed month at its boundary tick (30, 60, …),
-                // which is the last tick of that month in the game's 1-based tick domain.
-                // This keeps downstream month buckets decodable as valid game ticks.
+
                 const bucketTick = tick;
                 rows.push({
                     tick: bucketTick,
@@ -419,18 +430,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    // -----------------------------------------------------------------
-    // Cold snapshot persistence (async, non-blocking)
-    // -----------------------------------------------------------------
-
     let snapshotInFlight = false;
 
-    /**
-     * Persist the current snapshot to PostgreSQL asynchronously.
-     * Runs compression + DB insert without blocking the tick loop.
-     * Only one snapshot operation is allowed in flight at a time to
-     * prevent accumulation if writes are slower than the interval.
-     */
     function spawnSnapshotTask(snapshot: GameStateRecord, tick: number): void {
         if (snapshotInFlight) {
             console.warn(`[worker] Skipping snapshot at tick ${tick} — previous write still in flight`);
@@ -486,7 +487,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
 
             scheduleTick();
-            // Start tick processing - prevent eager draining during tick
+
             processingTick = true;
 
             const start = Date.now();
@@ -506,14 +507,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             if (currentSnapshot.tick % 30 === 0) {
                 const tickAtFlush = currentSnapshot.tick;
-                // Chain the CAGG refresh after the insert so it never races against uncommitted data.
-                // TimescaleDB only materializes buckets that are FULLY contained in [start, end).
-                // The monthly bucket at tick T spans [T, T+TICKS_PER_MONTH), so the end of the
-                // window must be >= T + TICKS_PER_MONTH to include it.
+
                 void Promise.all([
                     flushProductPrices(currentSnapshot, tickAtFlush),
                     flushPopulationHistory(currentSnapshot, tickAtFlush),
                     flushAgentMonthlyHistory(currentSnapshot, tickAtFlush),
+                    flushPlanetEconomyHistory(currentSnapshot, tickAtFlush),
                 ])
                     .then(() => {
                         if (snapshotDb) {
@@ -554,10 +553,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             tryFlushMessages(Date.now());
         }, interval);
     }
-
-    // -----------------------------------------------------------------
-    // Query handler — reads from the current immutable snapshot
-    // -----------------------------------------------------------------
 
     function handleQuery(msg: WorkerQueryMessage): void {
         const { requestId } = msg;
@@ -668,10 +663,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    // -----------------------------------------------------------------
-    // Message handler
-    // -----------------------------------------------------------------
-
     messagePort?.on('message', async (msg: InboundMessage) => {
         if (msg.type === 'ping') {
             const reply: OutboundMessage = { type: 'pong', tick: state.tick };
@@ -683,7 +674,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             running = false;
             console.log('[worker] Received shutdown request — cleaning up resources');
 
-            // Clean up database connection
             if (snapshotDb) {
                 try {
                     await snapshotDb.destroy();
@@ -693,7 +683,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 }
             }
 
-            // Remove event listeners
             process.removeAllListeners('uncaughtException');
             if (messagePort) {
                 messagePort.removeAllListeners('message');
@@ -710,7 +699,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
         if (msg.type === 'createAgent') {
             const { requestId, agentId, agentName, planetId } = msg;
-            // Validate eagerly so clients get immediate feedback on bad input.
+
             if (state.agents.has(agentId)) {
                 safePostMessage({ type: 'agentCreationFailed', requestId, reason: 'Agent ID already exists' });
                 return;
@@ -745,9 +734,9 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 });
                 return;
             }
-            // Enqueue the validated action
+
             pendingActions.push({ type: 'createAgent', requestId, agentId, agentName, planetId });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -756,7 +745,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
         if (msg.type === 'requestLoan') {
             const { requestId, agentId, planetId, amount } = msg;
-            // Validate eagerly
+
             if (!state.agents.has(agentId)) {
                 safePostMessage({ type: 'loanDenied', requestId, reason: 'Agent not found' });
                 return;
@@ -770,7 +759,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'requestLoan', requestId, agentId, planetId, amount });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -814,7 +803,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 agentId,
                 automateWorkerAllocation,
             });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -836,7 +825,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setWorkerAllocationTargets', requestId, agentId, planetId, targets });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -854,7 +843,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setSellOffers', requestId, agentId, planetId, offers });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -876,7 +865,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'cancelSellOffer', requestId, agentId, planetId, resourceName });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -898,7 +887,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'cancelBuyBid', requestId, agentId, planetId, resourceName });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -916,7 +905,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setBuyBids', requestId, agentId, planetId, bids });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1053,7 +1042,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'buildFacility', requestId, agentId, planetId, facilityKey, targetScale });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1071,7 +1060,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'expandFacility', requestId, agentId, planetId, facilityId, targetScale });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1093,7 +1082,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setFacilityScale', requestId, agentId, planetId, facilityId, scaleFraction });
-            // Eager draining if not currently processing a tick
+
             if (!processingTick) {
                 drainActionQueue();
             }
@@ -1509,7 +1498,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             return;
         }
 
-        // All remaining message types are query messages with a requestId.
         if ('requestId' in msg) {
             handleQuery(msg as WorkerQueryMessage);
             return;
@@ -1521,17 +1509,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             running = false;
             return;
         }
-        // Re-throw anything else so it surfaces normally.
+
         throw err;
     });
 
     console.log(`[worker] Simulation worker started (tick interval: ${TICK_INTERVAL_MS}ms)`);
     scheduleTick();
 
-    // The promise resolves only when `running` is set to false (shutdown).
-    // In normal operation this keeps the Piscina thread busy indefinitely.
-    return new Promise<void>(() => {
-        // intentionally never resolved — Piscina will terminate the thread
-        // via pool.destroy() when the manager shuts down.
-    });
+    return new Promise<void>(() => {});
 }

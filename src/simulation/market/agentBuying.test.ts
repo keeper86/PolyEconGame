@@ -10,21 +10,12 @@ import { marketTick } from './market';
 import { settleAgentBuyers } from './settlement';
 import { intensiveFarmFacility, ironSmelter } from '../planet/productionFacilities';
 
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
 const COAL = coalResourceType.name;
 const FOOD = agriculturalProductResourceType.name;
 
-/**
- * An agent that produces steel and consumes coal as input.
- * Uses a large storage capacity to avoid capacity being a confound.
- */
 function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
-    // A well-capitalised producer; tests that want a specific deposit level
-    // override this explicitly (e.g. buyer.assets.p.deposits = 5).
+
     agent.assets[planetId].deposits = 1_000_000;
     agent.assets[planetId].storageFacility = makeStorageFacility({
         planetId,
@@ -35,7 +26,6 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     return agent;
 }
 
-/** A coal-selling agent with a given stock and ask price. */
 function makeCoalSeller(coalStock: number, askPrice: number, id = 'coal-seller', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
     agent.assets[planetId].storageFacility = makeStorageFacility({
@@ -57,18 +47,13 @@ function makeCoalSeller(coalStock: number, askPrice: number, id = 'coal-seller',
     return agent;
 }
 
-// ---------------------------------------------------------------------------
-// automaticPricing — buy side
-// ---------------------------------------------------------------------------
-
 describe('automaticPricing — buy side', () => {
     let planet: Planet;
 
     beforeEach(() => {
         planet = makePlanet();
         planet.marketPrices[COAL] = 2.0;
-        // Ensure a sensible production cost floor so the bid ceiling (floor × BID_OFFER_MAX_COST_MULTIPLIER)
-        // is above the market price and the ceiling spring does not suppress bid adjustments in tests.
+
         planet.lastProductionCostFloors[COAL] = 1.0;
     });
 
@@ -102,7 +87,7 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        // facility needs 30/tick × scale 1 × INPUT_BUFFER_TARGET_TICKS
+
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
         expect(bid.bidStorageTarget).toBe(30 * 1 * INPUT_BUFFER_TARGET_TICKS);
     });
@@ -113,8 +98,6 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        // The storage target is the desired inventory level, not the remaining shortfall.
-        // Effective buy quantity (target − inventory) is computed dynamically each tick.
         const bid = buyer.assets.p.market!.buy[COAL]!;
         expect(bid.bidStorageTarget).toBe(30 * 1 * INPUT_BUFFER_TARGET_TICKS);
         const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
@@ -132,13 +115,13 @@ describe('automaticPricing — buy side', () => {
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
         const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
-        // Storage target is still set (300), but effective qty = target − inventory = 0
+
         expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(0);
     });
 
     it('bootstraps bidPrice from market price on first tick', () => {
         planet.marketPrices[COAL] = 2.0;
-        planet.marketPrices[steelResourceType.name] = 8.0; // ceiling = (50×8)/100 = 4.0 — non-binding
+        planet.marketPrices[steelResourceType.name] = 8.0;
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
@@ -147,18 +130,17 @@ describe('automaticPricing — buy side', () => {
     });
 
     it('uses seeded market price as initial bid when no prior bid exists', () => {
-        // planet.marketPrices is always populated; coal is 2.0 from beforeEach
-        planet.marketPrices[steelResourceType.name] = 4.0; // ceiling = (50×4)/100 = 2.0 — non-binding
+        planet.marketPrices[steelResourceType.name] = 4.0;
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidPrice).toBeCloseTo(planet.marketPrices[COAL]); // starts from marketPrices
+        expect(bid.bidPrice).toBeCloseTo(planet.marketPrices[COAL]);
     });
 
     it('uses planet.marketPrices as initial bid price when available', () => {
         planet.marketPrices[COAL] = 3.5;
-        planet.marketPrices[steelResourceType.name] = 10.0; // ceiling = (50×10)/100 = 5.0 — non-binding
+        planet.marketPrices[steelResourceType.name] = 10.0;
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
@@ -167,7 +149,6 @@ describe('automaticPricing — buy side', () => {
     });
 
     it('raises bid price when nothing was bought last tick (unfilled demand → bid up)', () => {
-        // Steel at 8.0 → ceiling = (50 × 8) / 100 = 4.0, well above coal price of 2.0
         planet.marketPrices[steelResourceType.name] = 8.0;
 
         const buyer = makeSteelProducer();
@@ -182,13 +163,12 @@ describe('automaticPricing — buy side', () => {
     });
 
     it('lowers bid price when fully filled last tick (abundant supply → bid down)', () => {
-        // Steel at 8.0 → ceiling = (50 × 8) / 100 = 4.0, well above coal price of 2.0
         planet.marketPrices[steelResourceType.name] = 8.0;
 
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // Simulate fully filled: lastEffectiveQty = storage target (storage empty), lastBought = same
+
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget;
@@ -199,16 +179,13 @@ describe('automaticPricing — buy side', () => {
     });
 
     it('raises bid price when previous tick was partially filled', () => {
-        // Use a coal price below the production-cost ceiling so the ceiling spring doesn't
-        // suppress the fill-rate adjustment. The ceiling is coalMine template cost (≈0.1/unit)
-        // × BID_OFFER_MAX_COST_MULTIPLIER (6) = 0.6. Coal at 0.4 is safely below that.
         planet.marketPrices[COAL] = 0.4;
         planet.marketPrices[steelResourceType.name] = 8.0;
 
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // Simulate half-filled: lastEffectiveQty = storage target, lastBought = half
+
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget / 2;
@@ -259,10 +236,6 @@ describe('automaticPricing — buy side', () => {
     });
 
     it('break-even ceiling uses sum of all facility outputs for the same input', () => {
-        // Two facilities both need coal; their combined output value raises the ceiling
-        // Facility A: 100 coal → 50 steel (price 4.0) → per-coal value = 2.0
-        // Facility B: 200 coal → 100 steel (price 4.0) → per-coal value = 2.0  (same ratio)
-        // Each facility computes its own ceiling; agent takes the max → still 2.0
         planet.marketPrices[COAL] = 1.0;
         planet.marketPrices[steelResourceType.name] = 4.0;
 
@@ -303,16 +276,10 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        // Facility 1 (steel) has full output buffer → contributes 0 to target.
-        // Facility 2 (food) still needs coal → target = 200 * 1 * 10 = 2000 > 0.
         const bid = buyer.assets.p.market!.buy[COAL]!;
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
     });
 });
-
-// ---------------------------------------------------------------------------
-// marketTick — agent buying
-// ---------------------------------------------------------------------------
 
 describe('marketTick — agent buying', () => {
     let planet: Planet;
@@ -320,7 +287,7 @@ describe('marketTick — agent buying', () => {
     beforeEach(() => {
         planet = makePlanetWithPopulation({ none: 100 }).planet;
         planet.marketPrices[COAL] = 1.0;
-        // Steel at 4.0 → ceiling for coal = (50×4)/100 = 2.0, above the coal ask price of 1.0
+
         planet.marketPrices[steelResourceType.name] = 4.0;
     });
 
@@ -486,7 +453,6 @@ describe('marketTick — agent buying', () => {
         const firstBought = buyer.assets.p.market!.buy[COAL]!.lastBought;
         expect(firstBought).toBeGreaterThan(0);
 
-        // Zero the storage target so the bid becomes inactive in the next tick.
         buyer.assets.p.market!.buy[COAL]!.bidStorageTarget = 0;
 
         marketTick(agentMap(seller, buyer), planet);
@@ -604,9 +570,9 @@ describe('marketTick — agent buying', () => {
 
         expect(coalReceived).toBeCloseTo(50, 1);
         expect(depositsSpent).toBeCloseTo(coalReceived * 1.0, 5);
-        // With validation consolidation, bid storage target remains unchanged in the agent's state
+
         expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBe(100);
-        // Storage is not full because we only bid for what we can store (50 units)
+
         expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBeUndefined();
     });
 

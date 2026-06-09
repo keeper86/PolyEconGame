@@ -30,16 +30,13 @@ export default function SellSection({
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
 
-    // Currency resources (CUR_<planetId>) are denominated in foreign deposits, not local storage.
     const isCurrency = resourceName.startsWith('CUR_');
 
     const isFacilityOutput = !isCurrency && producedPerTick > 0;
 
-    // Effective quantities derived from retainment / storage-target settings
     const effectiveSellQty =
         offer?.offerRetainment !== undefined ? Math.max(0, inventoryQty - offer.offerRetainment) : undefined;
 
-    // Retainment presets for sell: 0 = sell all, or N ticks of production
     const retainmentPresets =
         isFacilityOutput && producedPerTick > 0
             ? ([
@@ -52,7 +49,6 @@ export default function SellSection({
               : null;
 
     const canSell =
-        // Currencies hold deposits on the issuing planet — always show the section as sellable.
         isCurrency ||
         inventoryQty > 0 ||
         isFacilityOutput ||
@@ -61,13 +57,10 @@ export default function SellSection({
 
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
-    // Check if sell section has any dirty fields
     const hasDirtySellFields = local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment;
 
-    // Check if there are any validation errors
     const hasValidationErrors = local.validationErrors.offerPrice || local.validationErrors.offerRetainment;
 
-    // Helper function to get field styling based on dirty state and validation
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
         const baseClass = 'h-8 text-sm tabular-nums';
         if (isDisabled) {
@@ -98,7 +91,7 @@ export default function SellSection({
                         <span className='text-[10px] font-normal text-muted-foreground'>— nothing to sell</span>
                     )}
                 </AccordionPrimitive.Trigger>
-                {/* Controls are outside the trigger button to avoid nested buttons */}
+                {}
                 <div className='flex items-center gap-2 pl-2'>
                     {hasActiveOffer && (
                         <Button
@@ -143,7 +136,7 @@ export default function SellSection({
                     )}
 
                     <div className='grid grid-cols-2 gap-3'>
-                        {/* Price / unit box */}
+                        {}
                         <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                             <Label
                                 htmlFor={`offer-price-${resourceName}`}
@@ -184,7 +177,7 @@ export default function SellSection({
                             )}
                         </div>
 
-                        {/* Retainment box + presets */}
+                        {}
                         <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
                             <Label
                                 htmlFor={`offer-retainment-${resourceName}`}
@@ -207,7 +200,7 @@ export default function SellSection({
                                 onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
                                 className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
                             />
-                            {/* Effective sell qty with fulfillment colour — hidden for currencies (balance is in foreign deposits) */}
+                            {}
                             {!isCurrency && offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
                                 <div
                                     className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
@@ -265,7 +258,7 @@ export default function SellSection({
                         </div>
                     )}
 
-                    {/* Validation error messages */}
+                    {}
                     {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
                         <div className='space-y-1'>
                             {local.validationErrors.offerPrice && (
@@ -283,7 +276,7 @@ export default function SellSection({
                         </div>
                     )}
 
-                    {/* Sell section save button and feedback */}
+                    {}
                     <div className='flex items-center justify-between gap-3 pt-2'>
                         <div className='flex items-center gap-3'>
                             {sellSuccessMsg && (

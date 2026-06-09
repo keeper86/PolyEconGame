@@ -3,11 +3,6 @@ import { clothingResourceType, coalResourceType } from '../planet/resources';
 import type { StorageFacility } from '../planet/facility';
 import { validateBuyBid, validateSellOffer } from './validation';
 
-/**
- * Builds a minimal assets object for validateBuyBid tests.
- * volumeCapacity / massCapacity control what getAvailableStorageCapacity returns.
- * Coal: volumePerQuantity=0.7, massPerQuantity=1 → capacity(50) needs volume=35, mass=50.
- */
 function makeAssets(deposits: number, volumeCapacity = 1e9, massCapacity = 1e9) {
     return {
         deposits,
@@ -122,7 +117,6 @@ describe('market validation', () => {
         });
 
         it('returns invalid when quantity exceeds available storage capacity', () => {
-            // Coal: volumePerQuantity=0.7 → volume=35 gives capacity 50; massPerQuantity=1 → mass=50 gives capacity 50
             const result = validateBuyBid(
                 { bidPrice: 2.0, bidStorageTarget: 100 },
                 coalResource,
@@ -147,14 +141,12 @@ describe('market validation', () => {
         });
 
         it('resolves effectiveQty from bidStorageTarget minus current inventory', () => {
-            // inventory=0, storageTarget=100 → effectiveQty=100, cost=200 > deposits=150 → invalid
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, makeAssets(150));
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Insufficient deposits');
         });
 
         it('returns valid when storageTarget already met by inventory', () => {
-            // inventory=0, storageTarget=0 → effectiveQty=0 → cost=0 → valid
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 0 }, coalResource, makeAssets(150));
             expect(result.isValid).toBe(true);
         });

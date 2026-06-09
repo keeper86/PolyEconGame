@@ -33,26 +33,11 @@ export const getPlanetOverview = () =>
             };
         });
 
-// ---------------------------------------------------------------------------
-// Demographics
-// ---------------------------------------------------------------------------
-
-/**
- * Slim demography for the demographics sub-page.
- *
- * The full `Population.demography` matrix is large (100 ages × 4 occs ×
- * 4 edus × 3 skills = 4800 cells).  For PlanetDemography we only need
- * per-age totals already broken down by edu/occ — the charts never drill
- * into individual (occ, edu, skill) triples.
- *
- * Shape sent: one row per age with { age, edu0..3, occ0..3, total }.
- */
-
 type DemographyRow = {
     age: number;
     total: number;
-    edu: [number, number, number, number]; // none, primary, secondary, tertiary
-    occ: [number, number, number, number]; // unoccupied, employed, education, unableToWork
+    edu: [number, number, number, number];
+    occ: [number, number, number, number];
 };
 
 function buildDemographyRows(planet: Planet): DemographyRow[] {
@@ -165,9 +150,9 @@ type SvcBands4 = [SvcGroupPair, SvcGroupPair, SvcGroupPair, SvcGroupPair];
 type AggRow = {
     age: number;
     total: number;
-    /** Population pyramid totals — always over all skills, occupation-indexed. */
+
     occ: [number, number, number, number];
-    /** Population pyramid totals — always over all skills, education-indexed. */
+
     edu: [number, number, number, number];
 
     groupValues: [
@@ -249,7 +234,7 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
             for (let ei = 0; ei < educationLevelKeys.length; ei++) {
                 const e = educationLevelKeys[ei];
                 let cell = 0;
-                // Only count the skills the caller requested.
+
                 for (const skill of activeSkills) {
                     cell += cohort[o][e][skill].total;
                 }
@@ -263,7 +248,6 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
             continue;
         }
 
-        // Compact group aggregates (skill-filtered)
         const groupValues: [
             [number, number, number, number],
             [number, number, number, number],
@@ -300,8 +284,7 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                             continue;
                         }
                         gPop += cat.total;
-                        // Convert buffer (ticks) → service units so the client
-                        // ratio = gFoodStock/pop / SERVICE_TARGET_PER_PERSON normalises correctly.
+
                         gFoodStock +=
                             cat.services.grocery.buffer *
                             SERVICE_DEFINITIONS.grocery.consumptionRatePerPersonPerTick *
@@ -331,10 +314,8 @@ const groupModeSchema = z.enum(['occupation', 'education']);
 const skillLevelSchema = z.enum(SKILL);
 const skillsSchema = z.array(skillLevelSchema).min(1);
 
-/** 4-tuple: [population, totalFoodStock, weightedStarvation, weightedWealth] */
 const groupValueTuple = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 
-/** Per-service: 4 groups × [totalBufferUnits, weightedStarvation] */
 const svcGroupPair = z.tuple([z.number(), z.number()]);
 const svcBands4 = z.tuple([svcGroupPair, svcGroupPair, svcGroupPair, svcGroupPair]);
 const serviceBuffersSchema = z.object({
@@ -352,9 +333,9 @@ export const getPlanetDemographicsFull = () =>
         .input(
             z.object({
                 planetId: z.string(),
-                /** Which dimension to group by. Default: 'occupation'. */
+
                 groupMode: groupModeSchema.default('occupation'),
-                /** Skills to include in groupValues. Default: all three. */
+
                 activeSkills: skillsSchema.default([...SKILL]),
             }),
         )
@@ -365,11 +346,7 @@ export const getPlanetDemographicsFull = () =>
                     .object({
                         planetName: z.string(),
                         groupMode: groupModeSchema,
-                        /**
-                         * One entry per living age.
-                         * occ/edu are full-skill pyramid totals.
-                         * groupValues is skill-filtered, grouped by groupMode.
-                         */
+
                         rows: z.array(
                             z.object({
                                 age: z.number(),
@@ -500,14 +477,12 @@ function buildAgentBids(agents: Agent[], planetId: string, resourceName: string)
         }
 
         const bidPrice = bid.lastBidPrice ?? bid.bidPrice ?? 0;
-        // Use lastEffectiveQty when available; otherwise fall back to (bidStorageTarget - currentInventory)
-        // so newly placed bids show up before the first tick processes them.
+
         const effectiveQty = bid.lastEffectiveQty ?? 0;
         const lastBought = bid.lastBought ?? 0;
         const lastSpent = bid.lastSpent ?? 0;
         const fillRatio = effectiveQty > 0 ? Math.min(1, lastBought / effectiveQty) : 0;
 
-        // Show any bid that has an active price set, even if not yet processed.
         const isActiveBid = bidPrice > 0;
         if (!isActiveBid && effectiveQty <= 0 && lastBought <= 0) {
             continue;
@@ -617,7 +592,6 @@ export const getPlanetMarket = () =>
             }[] = [];
             if (result?.populationBids) {
                 result.populationBids.forEach((bin) => {
-                    // Skip bins from old snapshot format (pre-log-price-bins) that lack price range fields
                     if (bin.priceMin === undefined || bin.priceMax === undefined || bin.priceMid === undefined) {
                         return;
                     }
@@ -660,10 +634,6 @@ export const getPlanetMarket = () =>
             };
         });
 
-// ---------------------------------------------------------------------------
-// Claims overview (land-bound resources)
-// ---------------------------------------------------------------------------
-
 const claimResourceSummarySchema = z.object({
     resourceName: z.string(),
     totalCapacity: z.number(),
@@ -672,7 +642,7 @@ const claimResourceSummarySchema = z.object({
     totalClaims: z.number(),
     tenantedClaims: z.number(),
     renewable: z.boolean(),
-    /** Sum of regenerationRate across all unclaimed + free capacity for this resource. */
+
     regenerationRatePerUnit: z.number(),
 });
 
@@ -720,7 +690,6 @@ export const getPlanetClaims = () =>
                         }
                     }
 
-                    // regenerationRatePerUnit: ratio of regeneration to capacity (0 for non-renewable, 1 for fully renewable)
                     const regenerationRatePerUnit = totalCapacity > 0 ? totalRegenerationRate / totalCapacity : 0;
 
                     return {
@@ -822,10 +791,6 @@ export const getAgentClaims = () =>
             return { tick, claims };
         });
 
-// ---------------------------------------------------------------------------
-// Market overview (all resources)
-// ---------------------------------------------------------------------------
-
 const marketOverviewRowSchema = z.object({
     resourceName: z.string(),
     level: z.string(),
@@ -882,8 +847,6 @@ export const getPlanetMarketOverview = () =>
                 };
             }).filter((row) => row.totalSupply > 0 || row.totalDemand > 0 || row.totalProduction > 0);
 
-            // Append active forex (currency) rows from live market data.
-            // These are keyed under CUR_<planetId> in marketResults and never appear in ALL_RESOURCES.
             for (const [resourceName, result] of Object.entries(marketResults)) {
                 if (!resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                     continue;

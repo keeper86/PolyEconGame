@@ -1,10 +1,3 @@
-/**
- * population/fertility.test.ts
- *
- * Unit tests for the fertility sub-system: birth-rate calculation,
- * pollution reduction, and newborn placement.
- */
-
 import { describe, it, expect } from 'vitest';
 import { fertReductionFromPollution, computeBirthsThisTick, applyBirths } from './fertility';
 import { makePopulation } from '../utils/testHelper';
@@ -36,7 +29,6 @@ describe('computeBirthsThisTick', () => {
     });
 
     it('returns positive births for a substantial fertile-women population', () => {
-        // 100000 fertile women, no starvation, no pollution
         const births = computeBirthsThisTick(100000, 0, { air: 0, water: 0, soil: 0 });
         expect(births).toBeGreaterThan(0);
     });
@@ -50,7 +42,7 @@ describe('computeBirthsThisTick', () => {
     it('starvation (S=1) reduces births by 75%', () => {
         const moderateStarved = computeBirthsThisTick(100000, 1, { air: 0, water: 0, soil: 0 });
         const normal = computeBirthsThisTick(100000, 0, { air: 0, water: 0, soil: 0 });
-        expect(moderateStarved).toBeLessThan(normal * 0.3); // stricter than old linear
+        expect(moderateStarved).toBeLessThan(normal * 0.3);
     });
 
     it('pollution reduces births', () => {

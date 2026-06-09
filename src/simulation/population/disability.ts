@@ -4,35 +4,21 @@ import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
 
-/**
- * Coefficient for starvation-driven disability: `c × S²`.
- * Chosen to be small relative to the pollution term so that chronic famine
- * produces meaningful but not catastrophic workforce degradation.
- * At S = 1: 0.05 annual disability probability.
- * At S = 0.5: 0.05 × 0.25 = 0.0125.
- */
 export const STARVATION_DISABILITY_COEFFICIENT = 0.05;
 
-/**
- * Genuine disability probability by age (annual).
- *
- * This only captures real medical / occupational disability transitions.
- * Retirement is handled by a separate workforce pipeline.
- */
 export function ageDependentBaseDisabilityProb(age: number): number {
     if (age < 15) {
-        return 0.001; // children: baseline (congenital conditions)
+        return 0.001;
     } else if (age < 50) {
-        return 0.0005; // working-age adults: low baseline
+        return 0.0005;
     } else if (age < 60) {
-        return 0.005; // 50–59: slight increase
+        return 0.005;
     } else if (age < 70) {
-        return 0.01; // 60–69: moderate genuine disability
+        return 0.01;
     } else if (age <= 90) {
-        // 70–90: linear ramp from 0.01 to 0.33
         return 0.01 + ((age - 70) / 20) * (0.33 - 0.01);
     } else {
-        return 0.33; // 90+: cap at 0.33
+        return 0.33;
     }
 }
 
@@ -41,10 +27,6 @@ export interface EnvironmentalDisability {
     disasterDisabilityProb: number;
 }
 
-/**
- * Compute annual disability probabilities from pollution and natural
- * disasters.
- */
 export function computeEnvironmentalDisability(environment: Environment): EnvironmentalDisability {
     const { pollution, naturalDisasters } = environment;
 
@@ -84,7 +66,7 @@ export function applyDisability(planet: Planet, workforceEvents: WorkforceEventA
     population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
             if (occ === 'unableToWork') {
-                return; // skip already disabled
+                return;
             }
 
             let disabilityEvents = 0;

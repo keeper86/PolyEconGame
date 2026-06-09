@@ -1,9 +1,9 @@
 export function FinancialTransfersSection() {
     return (
         <>
-            {/* ---------------------------------------------------------------- */}
-            {/* 5. PRE-PRODUCTION FINANCIAL TICK                                  */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='financial-pre'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>5. Pre-Production Financial Tick (every tick)</h2>
                 <p>
@@ -47,9 +47,9 @@ bank.equity   = bank.deposits − bank.loans`}
                 </pre>
             </section>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* 6. INTERGENERATIONAL TRANSFERS                                    */}
-            {/* ---------------------------------------------------------------- */}
+            {}
+            {}
+            {}
             <section id='transfers'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>6. Intergenerational Transfers (every tick)</h2>
                 <p>

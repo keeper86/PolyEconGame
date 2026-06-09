@@ -130,22 +130,16 @@ export function boardPassengersFromWorkforce(
                     continue;
                 }
 
-                // Snapshot wealth before mutating planetCell — if take exhausts
-                // the cohort we zero out planetCell.wealth, but boarded
-                // passengers should inherit the original wealth.
                 const preMutationWealth = { ...planetCell.wealth };
 
-                // Remove from agent workforce
                 workforce.active -= take;
 
-                // Remove from planet demography
                 planetCell.total -= take;
                 planet.population.summedPopulation.employed[edu][skill].total -= take;
                 if (planetCell.total === 0) {
                     planetCell.wealth = { mean: 0, variance: 0 };
                 }
 
-                // Add to manifest using the pre-mutation wealth snapshot
                 const key = manifestKey(age, 'employed', edu, skill);
                 mergeIntoManifest(manifest, key, { ...planetCell, wealth: preMutationWealth }, take);
 
@@ -222,13 +216,11 @@ export function refundBoardedPassengers(
         }
         const idx = parseManifestKey(key);
 
-        // Restore agent workforce
         const workforce = assets?.workforceDemography[idx.age]?.[idx.edu]?.[idx.skill];
         if (workforce) {
             workforce.active += category.total;
         }
 
-        // Restore planet demography
         const planetCell = planet.population.demography[idx.age]?.[idx.occ]?.[idx.edu]?.[idx.skill];
         if (planetCell) {
             const mergedWealth = mergeGaussianMoments(
@@ -257,7 +249,6 @@ export function refundBoardedPassengers(
         }
     }
 
-    // Clear manifest
     for (const key of Object.keys(manifest)) {
         delete manifest[key];
     }
@@ -274,10 +265,6 @@ export function advanceManifestAge(
 
     const yearsElapsed = flightTicks / TICKS_PER_YEAR;
 
-    // -----------------------------------------------------------------------
-    // Phase 1: Mortality — compound per-tick rate over the full flight
-    // -----------------------------------------------------------------------
-    // Work on a shallow-cloned result so we don't mutate the input.
     const working: PassengerManifest = {};
     for (const [key, category] of Object.entries(manifest)) {
         if (category.total <= 0) {
@@ -310,29 +297,20 @@ export function advanceManifestAge(
         const newTotal = category.total - deaths;
 
         if (newTotal > 0) {
-            // Redistribute dead wealth to survivors: conservation of total wealth.
-            // total_wealth = total * mean  →  new_mean = total_wealth / newTotal
             category.wealth = {
                 mean: (category.total * category.wealth.mean) / newTotal,
                 variance: category.wealth.variance,
             };
             category.total = newTotal;
         } else {
-            // Category entirely wiped out — accumulate orphaned wealth.
             orphanedWealth += category.total * category.wealth.mean;
             category.total = 0;
             category.wealth = { mean: 0, variance: 0 };
         }
 
-        // Starvation: no active consumption in transit, buffers drain but we
-        // have no tick-by-tick simulation here. Leave service state as-is;
-        // provisions were loaded at departure for exactly flightTicks.
-        void deaths; // intentionally unused — could log if desired
+        void deaths;
     }
 
-    // Redistribute orphaned wealth to a deterministically chosen surviving
-    // category (highest total; ties broken by key order) so manifest aging
-    // remains reproducible across runs.
     if (orphanedWealth > 0) {
         const survivingKeys = Object.keys(working).filter((k) => working[k]!.total > 0);
         if (survivingKeys.length > 0) {
@@ -348,19 +326,14 @@ export function advanceManifestAge(
                 return bestKey;
             });
             const target = working[targetKey]!;
-            // Boost mean of the chosen category.
+
             target.wealth = {
                 mean: target.wealth.mean + orphanedWealth / target.total,
                 variance: target.wealth.variance,
             };
         }
-        // If no survivors remain, wealth is truly lost (all passengers dead).
     }
 
-    // -----------------------------------------------------------------------
-    // Phase 2: Disability — compound per-tick rate, all occ except unableToWork
-    // -----------------------------------------------------------------------
-    // Iterate over a snapshot of keys because we may add new unableToWork keys.
     for (const key of Object.keys(working)) {
         const category = working[key]!;
         if (category.total <= 0) {
@@ -380,24 +353,16 @@ export function advanceManifestAge(
             continue;
         }
 
-        // Remove from source cohort (wealth mean unchanged — proportional split).
         category.total -= disabledCount;
 
-        // Merge into the unableToWork cohort at the same age/edu/skill.
         const disabledKey = manifestKey(idx.age, 'unableToWork', idx.edu, idx.skill);
         mergeIntoManifest(working, disabledKey, category, disabledCount);
-        // Note: mergeIntoManifest uses sourceCategory.wealth for the incoming
-        // slice, which still holds the original mean — correct for a proportional split.
     }
 
-    // -----------------------------------------------------------------------
-    // Phase 3: Age advancement — discrete, one year per boundary crossed
-    // -----------------------------------------------------------------------
     const yearBoundariesCrossed =
         Math.floor((departureTick + flightTicks) / TICKS_PER_YEAR) - Math.floor(departureTick / TICKS_PER_YEAR);
 
     if (yearBoundariesCrossed <= 0) {
-        // No boundaries: remove zero-total entries and return.
         for (const key of Object.keys(working)) {
             if (working[key]!.total <= 0) {
                 delete working[key];
@@ -408,8 +373,6 @@ export function advanceManifestAge(
 
     const result: PassengerManifest = {};
 
-    // Process keys in descending age order to avoid aliasing when multiple
-    // source ages can map to the same target age (including MAX_AGE merging).
     const sortedKeys = Object.keys(working).sort((a, b) => {
         return parseManifestKey(b).age - parseManifestKey(a).age;
     });
@@ -485,7 +448,6 @@ export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerMani
         planetCell.total += category.total;
         planetCell.wealth = mergedWealth;
 
-        // Set all service buffers to max — full provisions were loaded at departure
         setBuffersToMax(planetCell);
 
         planet.population.summedPopulation[idx.occ][idx.edu][idx.skill].total += category.total;

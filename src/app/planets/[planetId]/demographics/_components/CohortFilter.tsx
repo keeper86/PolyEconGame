@@ -8,10 +8,6 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import type { Occupation } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
 export const EDU_COLORS: Record<EducationLevelType, string> = {
     none: '#94a3b8',
     primary: '#60a5fa',
@@ -40,42 +36,22 @@ export const OCC_LABELS: Record<Occupation, string> = {
     unableToWork: 'Unable to work',
 };
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
 export type CohortFilterState = {
-    /** Selected education level, or null for "all" (marginalised). */
     edu: EducationLevelType | null;
-    /** Selected occupation, or null for "all" (marginalised). */
+
     occ: Occupation | null;
 };
 
 type Props = {
     value: CohortFilterState;
     onChange: (next: CohortFilterState) => void;
-    /** Compact mode: smaller badges, single row */
+
     compact?: boolean;
 };
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-/**
- * CohortFilter — badge-based selector for education × occupation filtering.
- *
- * Users can select:
- * - Nothing → aggregate view (all edu, all occ)
- * - 1 edu → marginalise over all occupations for that education level
- * - 1 edu + 1 occ → single cohort-class
- *
- * Clicking the already-selected badge deselects it.
- */
 export default function CohortFilter({ value, onChange, compact }: Props): React.ReactElement {
     const toggleEdu = (edu: EducationLevelType) => {
         if (value.edu === edu) {
-            // Deselect education → also deselect occupation
             onChange({ edu: null, occ: null });
         } else {
             onChange({ edu, occ: value.occ });
@@ -94,7 +70,6 @@ export default function CohortFilter({ value, onChange, compact }: Props): React
 
     return (
         <div className={cn('flex flex-col gap-1', compact && 'gap-0.5')}>
-            {/* Education row */}
             <div className='flex items-center gap-1 flex-wrap'>
                 <span className='text-[10px] text-muted-foreground w-8 shrink-0'>Edu</span>
                 {educationLevelKeys.map((edu) => {
@@ -123,7 +98,6 @@ export default function CohortFilter({ value, onChange, compact }: Props): React
                 })}
             </div>
 
-            {/* Occupation row */}
             <div className='flex items-center gap-1 flex-wrap'>
                 <span className='text-[10px] text-muted-foreground w-8 shrink-0'>Occ</span>
                 {OCCUPATIONS.map((occ) => {

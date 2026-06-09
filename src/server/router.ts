@@ -43,6 +43,7 @@ import {
     getLatestPlanetSummaries,
     getLoanConditions,
     getPlanetDetail,
+    getPlanetEconomyHistory,
     getPlanetPopulationHistory,
     getProductPriceHistory,
     getTickerEvents,
@@ -84,6 +85,7 @@ const simulationRouter = trpcRoot.router({
     getAgentOverview: getAgentOverview(),
     getAgentPlanetDetail: getAgentPlanetDetail(),
     getPlanetDetail: getPlanetDetail(),
+    getPlanetEconomyHistory: getPlanetEconomyHistory(),
     getPlanetPopulationHistory: getPlanetPopulationHistory(),
     getProductPriceHistory: getProductPriceHistory(),
     getAgentHistory: getAgentHistory(),
@@ -100,7 +102,6 @@ const simulationRouter = trpcRoot.router({
     getAgentClaims: getAgentClaims(),
     getTickerEvents: getTickerEvents(),
     getArbitrageForResources: getArbitrageForResources(),
-    // historical endpoints removed
 });
 
 const protectedAppRouter = trpcRoot.router({

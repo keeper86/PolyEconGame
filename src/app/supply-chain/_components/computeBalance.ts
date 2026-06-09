@@ -9,7 +9,6 @@ import {
     retailServiceResourceType,
 } from '@/simulation/planet/services';
 
-/** Services that the population consumes (education is workforce-only, not direct pop demand). */
 const POPULATION_DEMANDED_SERVICES = [
     groceryServiceResourceType,
     healthcareServiceResourceType,
@@ -27,12 +26,12 @@ export interface ResourceBalance {
     resourceName: string;
     resourceLevel: string;
     resourceForm: string;
-    /** Land-bound deposits (coal deposit, oil reservoir, etc.) – treated as unlimited external supply. */
+
     isExternalSource: boolean;
     producedPerTick: number;
     consumedByFacilitiesPerTick: number;
     populationDemandPerTick: number;
-    /** positive = surplus, negative = deficit. Always 0 for external sources. */
+
     balance: number;
     producedBy: string[];
     consumedBy: string[];
@@ -44,7 +43,7 @@ export interface FacilityInfo {
     needs: { resourceName: string; quantity: number }[];
     produces: { resourceName: string; quantity: number }[];
     workerRequirement: { none: number; primary: number; secondary: number; tertiary: number };
-    /** Negative = power producer (e.g. coal power plant). */
+
     powerConsumptionPerTick: number;
 }
 
@@ -100,7 +99,6 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
             powerConsumptionPerTick: f.powerConsumptionPerTick,
         });
 
-        // Power accounting (coal power plant has negative consumption = produces power)
         if (f.powerConsumptionPerTick < 0) {
             totalPowerProducedPerTick += Math.abs(f.powerConsumptionPerTick) * scale;
         } else {
@@ -132,7 +130,6 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
         }
     }
 
-    // Population service demand: each service consumed at its consumptionRatePerPersonPerTick per person per tick
     if (population > 0) {
         for (const svc of POPULATION_DEMANDED_SERVICES) {
             const r = getOrCreate(svc.name, 'services', 'services', false);
@@ -143,7 +140,7 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
 
     for (const r of resourceMap.values()) {
         r.balance = r.isExternalSource
-            ? 0 // deposits are unlimited – balance shown as N/A
+            ? 0
             : r.producedPerTick - r.consumedByFacilitiesPerTick - r.populationDemandPerTick;
     }
 

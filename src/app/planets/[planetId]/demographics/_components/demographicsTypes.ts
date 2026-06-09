@@ -19,12 +19,10 @@ export type AggRow = {
     serviceBuffers: { [K in Exclude<ServiceName, 'grocery'>]: SvcBands4 };
 };
 
-/** Index into groupValues tuple: population count. */
 export const GV_POP = 0 as const;
 
-/** Index into groupValues tuple: total service stock (sum over all people in group). */
 export const GV_FOOD = 1 as const;
-/** Index into groupValues tuple: population-weighted starvation sum. */
+
 export const GV_STARV = 2 as const;
-/** Index into groupValues tuple: population-weighted wealth sum. */
+
 export const GV_WEALTH = 3 as const;

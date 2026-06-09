@@ -1,12 +1,5 @@
 import type { InboundMessage, OutboundMessage } from './messages';
 
-/**
- * Binds a command's inbound message, success response, failure response, and
- * result extractor into a single cohesive unit.
- *
- * Having all four pieces co-located makes it impossible to accidentally wire
- * an inbound message to the wrong response types.
- */
 export interface CommandSpec<
     _TInbound extends InboundMessage & { requestId: string },
     TSuccess extends OutboundMessage & { requestId: string },
@@ -200,8 +193,6 @@ export const quitClaimSpec: CommandSpec<
     extract: (msg) => msg.claimId,
 };
 
-// --- Ship contract specs ---
-
 type PostTransportContractSuccess = Extract<OutboundMessage, { type: 'transportContractPosted' }>;
 type PostTransportContractFailure = Extract<OutboundMessage, { type: 'transportContractPostFailed' }>;
 export const postTransportContractSpec: CommandSpec<
@@ -306,8 +297,6 @@ export const acceptShipBuyingOfferSpec: CommandSpec<
     extract: (msg) => msg.offerId,
 };
 
-// --- Ship listing specs ---
-
 type PostShipListingSuccess = Extract<OutboundMessage, { type: 'shipListingPosted' }>;
 type PostShipListingFailure = Extract<OutboundMessage, { type: 'shipListingPostFailed' }>;
 export const postShipListingSpec: CommandSpec<
@@ -385,8 +374,6 @@ export const dispatchPassengerShipSpec: CommandSpec<
     failureType: 'passengerShipDispatchFailed',
     extract: (msg) => msg.shipId,
 };
-
-// --- Ship construction facility specs ---
 
 type BuildShipConstructionFacilitySuccess = Extract<OutboundMessage, { type: 'shipConstructionFacilityBuilt' }>;
 type BuildShipConstructionFacilityFailure = Extract<OutboundMessage, { type: 'shipConstructionFacilityBuildFailed' }>;
