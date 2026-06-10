@@ -1,5 +1,4 @@
 import type { TickerEvent } from 'src/server/controller/simulation';
-import { TICKS_PER_MONTH } from '../constants';
 import type { Loan } from '../financial/loanTypes';
 import type { EducationLevelType, Population } from '../population/population';
 import type {
@@ -135,6 +134,8 @@ export type Planet = {
     avgMarketResult: {
         [resourceName: string]: MarketResult;
     };
+
+    monthTransferVolume: number;
 
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
@@ -386,11 +387,7 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
     }
 }
 
-export function accumulatePlanetPrices(planet: Planet, tick: number): void {
-    if (tick % TICKS_PER_MONTH === 1) {
-        planet.monthPriceAcc = {};
-    }
-
+export function accumulatePlanetPrices(planet: Planet): void {
     for (const result of Object.values(planet.lastMarketResult)) {
         if (!result || result.totalVolume <= 0) {
             continue;

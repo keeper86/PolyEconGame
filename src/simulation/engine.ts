@@ -41,6 +41,8 @@ export function advanceTick(gameState: GameState) {
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
             resetAgentMetrics(gameState.forexMarketMakers, planet);
+            planet.monthPriceAcc = {};
+            planet.monthTransferVolume = 0;
         }
 
         environmentTick(planet);
@@ -80,8 +82,7 @@ export function advanceTick(gameState: GameState) {
         automaticPricing(gameState.agents, planet);
 
         marketTick(gameState.agents, planet);
-
-        accumulatePlanetPrices(planet, gameState.tick);
+        accumulatePlanetPrices(planet);
 
         constructionTick(gameState, planet);
 

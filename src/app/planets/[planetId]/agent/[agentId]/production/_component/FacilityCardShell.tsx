@@ -19,11 +19,11 @@ export function FacilityCardShell({
     return (
         <Card className={cn('overflow-hidden flex flex-col min-w-[300px] sm:min-w-[485px]', className)}>
             <CardHeader className='p-3 pb-2'>
-                <div className='flex items-start gap-3 flex-wrap'>
+                <div className='flex items-center gap-3 flex-wrap'>
                     <div className='flex-1 min-w-[150px]' style={{ minHeight: `${defaultHeight}px` }}>
                         {headerContent}
                     </div>
-                    {icon}
+                    <span className='center inline-block my-auto mx-auto'>{icon}</span>
                 </div>
             </CardHeader>
             <CardContent className={cn('px-3 pb-3', 'max-w-[485px] sm:max-w-[485px]', contentClassName)}>

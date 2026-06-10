@@ -1,5 +1,6 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import type { Planet } from '../planet/planet';
+import { computeCostOfLiving } from '../market/serviceDefinitions';
+import type { GameState, Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { PopulationCategoryIndex } from '../population/population';
 import {
@@ -62,16 +63,19 @@ export const sumWorkForceCohort = (
     return total;
 };
 
-export const nullWorkforceCohort = (): WorkforceCohort<WorkforceCategory> => {
-    const cohort = {} as WorkforceCohort<WorkforceCategory>;
+export const nullWorkforceCohortFactory = <T>(nullFactory: () => T): WorkforceCohort<T> => {
+    const cohort = {} as WorkforceCohort<T>;
     for (const l of educationLevelKeys) {
-        cohort[l] = {} as Record<Skill, WorkforceCategory>;
+        cohort[l] = {} as Record<Skill, T>;
         for (const s of SKILL) {
-            cohort[l][s] = nullWorkforceCategory();
+            cohort[l][s] = nullFactory();
         }
     }
     return cohort;
 };
+
+export const nullWorkforceCohort = (): WorkforceCohort<WorkforceCategory> =>
+    nullWorkforceCohortFactory(nullWorkforceCategory);
 
 export const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory): WorkforceCategory => ({
     active: a.active + b.active,
@@ -137,12 +141,6 @@ export const minimumWage = (planet: Planet, age: number, edu: EducationLevelType
         tertiary: 40,
     };
 
-    const skillMultiplier: Record<Skill, number> = {
-        novice: 0.8,
-        professional: 1.0,
-        expert: 1.2,
-    };
-
     let ageMultiplier = 1.0;
     if (age < 25) {
         ageMultiplier = 0.9;
@@ -151,6 +149,35 @@ export const minimumWage = (planet: Planet, age: number, edu: EducationLevelType
     }
 
     return baseWageByEdu[edu] * skillMultiplier[skill] * ageMultiplier;
+};
+
+export const nullWageMapFactory = (): WorkforceCohort<number> => nullWorkforceCohortFactory(() => 0);
+
+const skillMultiplier: Record<Skill, number> = {
+    novice: 0.7,
+    professional: 1.0,
+    expert: 1.3,
+};
+
+export const buildCurrentMinimumWageMap = (planet: Planet): ((category: WorkforceCategoryIndex) => number) => {
+    // this is the absolute minimum for every worker (himself and half of dependents -> working poor)
+    const costOfLiving = computeCostOfLiving(planet.marketPrices) * 2;
+    // this covers all available services for 10 dependents
+    const costOfLivingRich = computeCostOfLiving(planet.marketPrices, true) * 10;
+
+    return (category: WorkforceCategoryIndex): number => {
+        const baseWage = costOfLiving * skillMultiplier[category.skill];
+        // We want to ensure that the wage is at least enough to cover the cost of living, even for the poorest workers.
+        // For richer workers, we want to ensure that the wage is at least enough to cover the cost of living with services.
+        const requiredWage = Math.max(costOfLiving, baseWage);
+        const requiredWageRich = Math.max(costOfLivingRich, baseWage);
+        // We can use a simple linear scaling between these two points based on education level and skill.
+        // This is a simplification and can be adjusted for more realism.
+        const eduFactor = (educationLevelKeys.indexOf(category.edu) + 1) / educationLevelKeys.length;
+        const skillFactor = (SKILL.indexOf(category.skill) + 1) / SKILL.length;
+        const scalingFactor = 0.5 * eduFactor + 0.5 * skillFactor; // simple average of edu and skill factors
+        return requiredWage + scalingFactor * (requiredWageRich - requiredWage);
+    };
 };
 
 export function hireFromPopulation(

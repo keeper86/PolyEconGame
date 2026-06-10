@@ -352,7 +352,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             const gdp =
                 Object.values(p.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
-                TICKS_PER_YEAR;
+                    TICKS_PER_YEAR +
+                (p.monthTransferVolume * 1) / 3; // assume part of transfer volume is commercial p2p activity
 
             const costOfLiving = computeCostOfLiving(p.marketPrices, false);
             const costOfLivingRich = computeCostOfLiving(p.marketPrices, true);
