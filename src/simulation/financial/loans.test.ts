@@ -3,9 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
 
-import { TICKS_PER_MONTH } from '../constants';
-
-import { automaticLoanRepayment, preProductionFinancialTick } from './financialTick';
+import { automaticLoanRepayment } from './financialTick';
 import { makeLoan, totalOutstandingLoans } from './loanTypes';
 
 describe('per-agent loan bookkeeping', () => {

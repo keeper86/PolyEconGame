@@ -11,7 +11,13 @@ import { MAX_AGE, SKILL } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
-import { forEachWorkforceCohort, subtractProportionalXP, totalDeparting, totalOnboarding, totalWorkersInCategory } from './workforce';
+import {
+    forEachWorkforceCohort,
+    subtractProportionalXP,
+    totalDeparting,
+    totalOnboarding,
+    totalWorkersInCategory,
+} from './workforce';
 
 export const VOLUNTARY_QUIT_RATE_PER_TICK = 0.0003;
 

@@ -1,5 +1,5 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import type { GameState, Planet } from '../planet/planet';
+import type { Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { PopulationCategoryIndex } from '../population/population';
 import { SKILL, transferPopulation, type Skill } from '../population/population';
