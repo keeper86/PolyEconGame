@@ -1,6 +1,6 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { computeCostOfLiving } from '../market/serviceDefinitions';
-import type { GameState, Planet } from '../planet/planet';
+import type { Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { PopulationCategoryIndex } from '../population/population';
 import {
@@ -133,30 +133,24 @@ export const productivityFromXP = (xp: number): number => {
     return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
 };
 
-export const minimumWage = (planet: Planet, age: number, edu: EducationLevelType, skill: Skill): number => {
-    const baseWageByEdu: Record<EducationLevelType, number> = {
-        none: 10,
-        primary: 15,
-        secondary: 25,
-        tertiary: 40,
-    };
-
-    let ageMultiplier = 1.0;
-    if (age < 25) {
-        ageMultiplier = 0.9;
-    } else if (age > 60) {
-        ageMultiplier = 0.95;
-    }
-
-    return baseWageByEdu[edu] * skillMultiplier[skill] * ageMultiplier;
-};
-
 export const nullWageMapFactory = (): WorkforceCohort<number> => nullWorkforceCohortFactory(() => 0);
 
 const skillMultiplier: Record<Skill, number> = {
     novice: 0.7,
     professional: 1.0,
     expert: 1.3,
+};
+
+const ageMultiplier: (age: number) => number = (age) => {
+    if (age < 25) {
+        return 0.8;
+    } else if (age < 35) {
+        return 1.0;
+    } else if (age < 50) {
+        return 1.2;
+    } else {
+        return 1.5;
+    }
 };
 
 export const buildCurrentMinimumWageMap = (planet: Planet): ((category: WorkforceCategoryIndex) => number) => {
@@ -166,17 +160,15 @@ export const buildCurrentMinimumWageMap = (planet: Planet): ((category: Workforc
     const costOfLivingRich = computeCostOfLiving(planet.marketPrices, true) * 10;
 
     return (category: WorkforceCategoryIndex): number => {
-        const baseWage = costOfLiving * skillMultiplier[category.skill];
+        const baseWage = costOfLiving * skillMultiplier[category.skill] * ageMultiplier(category.age);
         // We want to ensure that the wage is at least enough to cover the cost of living, even for the poorest workers.
         // For richer workers, we want to ensure that the wage is at least enough to cover the cost of living with services.
         const requiredWage = Math.max(costOfLiving, baseWage);
         const requiredWageRich = Math.max(costOfLivingRich, baseWage);
-        // We can use a simple linear scaling between these two points based on education level and skill.
-        // This is a simplification and can be adjusted for more realism.
+
         const eduFactor = (educationLevelKeys.indexOf(category.edu) + 1) / educationLevelKeys.length;
-        const skillFactor = (SKILL.indexOf(category.skill) + 1) / SKILL.length;
-        const scalingFactor = 0.5 * eduFactor + 0.5 * skillFactor; // simple average of edu and skill factors
-        return requiredWage + scalingFactor * (requiredWageRich - requiredWage);
+
+        return requiredWage + eduFactor * (requiredWageRich - requiredWage);
     };
 };
 
