@@ -93,11 +93,21 @@ function clearResourceMarket(
 
         let noTradePrice = referencePrice;
         if (askOrders.length > 0) {
-            const bestAsk = askOrders[0].askPrice;
-            noTradePrice = referencePrice + (bestAsk - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
-            noTradePrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, noTradePrice));
-            planet.marketPrices[resourceName] = noTradePrice;
+            // Supply exists but zero demand → price decays toward floor
+            noTradePrice = referencePrice + (PRICE_FLOOR - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
+        } else if (agentBids.length > 0 || householdBids.length > 0) {
+            // Demand exists but no supply → converge toward best bid
+            let bestBid = -Infinity;
+            for (const bid of agentBids) {
+                bestBid = Math.max(bestBid, bid.bidPrice);
+            }
+            for (const bid of householdBids) {
+                bestBid = Math.max(bestBid, bid.bidPrice);
+            }
+            noTradePrice = referencePrice + (bestBid - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
         }
+        noTradePrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, noTradePrice));
+        planet.marketPrices[resourceName] = noTradePrice;
 
         planet.lastMarketResult[resourceName] = {
             resourceName,
@@ -130,8 +140,14 @@ function clearResourceMarket(
     if (totalVolume > 0) {
         planet.marketPrices[resourceName] = clearingPrice;
     } else if (askOrders.length > 0) {
-        const bestAsk = askOrders[0].askPrice;
-        price = referencePrice + (bestAsk - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
+        let bestBid = -Infinity;
+        for (const bid of agentBids) {
+            bestBid = Math.max(bestBid, bid.bidPrice);
+        }
+        for (const bid of householdBids) {
+            bestBid = Math.max(bestBid, bid.bidPrice);
+        }
+        price = referencePrice + (bestBid - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
         price = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, price));
         planet.marketPrices[resourceName] = price;
     }

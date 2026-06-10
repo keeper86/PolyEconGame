@@ -1,7 +1,8 @@
+import assert from 'assert';
 import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
-import { governmentTick } from './agents/governmentAgent';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
+import { governmentTick } from './agents/governmentAgent';
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
@@ -25,7 +26,6 @@ import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
-import assert from 'assert';
 
 export { seedRng };
 

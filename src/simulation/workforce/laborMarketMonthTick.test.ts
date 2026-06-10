@@ -229,9 +229,17 @@ describe('pipeline drain edge cases', () => {
         const before = totalPopulation(planet);
 
         const wf = agent.assets.p.workforceDemography!;
+
+        // After hireWorkforce, workers are in onboarding[NOTICE_PERIOD_MONTHS-1], not active.
+        // The postProductionLaborMarketTick promotes onboarding[0] to active,
+        // but since onboarding pipeline just started, the workers are at the end.
+        // Move them to active directly for this test then put them in departing.
         for (let age = 0; age < wf.length; age++) {
             for (const skill of SKILL) {
                 const cat = wf[age].none[skill];
+                // Sum all onboarding slots and put into active
+                cat.active += cat.onboarding.reduce((s, n) => s + n, 0);
+                cat.onboarding.fill(0);
                 if (cat.active > 0) {
                     cat.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] += cat.active;
                     cat.active = 0;

@@ -1,19 +1,15 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import { computeCostOfLiving } from '../market/serviceDefinitions';
-import type { Planet } from '../planet/planet';
+import type { GameState, Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { PopulationCategoryIndex } from '../population/population';
-import {
-    emptySkillCategory,
-    emptySkillDemography,
-    SKILL,
-    transferPopulation,
-    type Skill,
-} from '../population/population';
+import { SKILL, transferPopulation, type Skill } from '../population/population';
 import { distributeProportionally } from '../utils/distributeProportionally';
+
+export const ONBOARDING_EFFICIENCY = 0.75;
 
 export type WorkforceCategory = {
     active: number;
+    onboarding: number[];
     voluntaryDeparting: number[];
     departingFired: number[];
     departingRetired: number[];
@@ -27,6 +23,7 @@ export const totalDeparting = (category: WorkforceCategory): number =>
 
 export const nullWorkforceCategory = (): WorkforceCategory => ({
     active: 0,
+    onboarding: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     voluntaryDeparting: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     departingRetired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
@@ -79,6 +76,7 @@ export const nullWorkforceCohort = (): WorkforceCohort<WorkforceCategory> =>
 
 export const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory): WorkforceCategory => ({
     active: a.active + b.active,
+    onboarding: a.onboarding.map((count, i) => count + (b.onboarding[i] ?? 0)),
     voluntaryDeparting: a.voluntaryDeparting.map((count, i) => count + (b.voluntaryDeparting[i] ?? 0)),
     departingFired: a.departingFired.map((count, i) => count + (b.departingFired[i] ?? 0)),
     departingRetired: a.departingRetired.map((count, i) => count + (b.departingRetired[i] ?? 0)),
@@ -106,9 +104,11 @@ export const forEachWorkforceCohort = (
     }
 };
 
-export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): void {
+export const XP_TO_PROFESSIONAL_THRESHOLD = 5;
+// returns true if worker should gain skill === professional
+export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): boolean {
     if (totalWorkersBefore <= 0 || n <= 0) {
-        return;
+        return false;
     }
     if (!Number.isFinite(category.workforceExperience)) {
         if (process.env.SIM_DEBUG === '1') {
@@ -117,60 +117,28 @@ export function subtractProportionalXP(category: WorkforceCategory, n: number, t
             );
         }
         category.workforceExperience = 0;
-        return;
+        return false;
     }
     const fraction = Math.min(n / totalWorkersBefore, 1);
     category.workforceExperience -= fraction * category.workforceExperience;
+    console.log(category.workforceExperience);
+
+    return category.workforceExperience > XP_TO_PROFESSIONAL_THRESHOLD;
 }
 
+export const totalOnboarding = (category: WorkforceCategory): number =>
+    category.onboarding.reduce((sum, count) => sum + count, 0);
+
 export const totalWorkersInCategory = (category: WorkforceCategory): number =>
-    category.active + totalDeparting(category);
+    category.active + totalOnboarding(category) + totalDeparting(category);
 
-export const productivityFromXP = (xp: number): number => {
-    const A = 1;
-    const Y = 0.95;
-    const T = 40;
-    return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
-};
+const emptySkillCategory = (): Record<Skill, number> => ({
+    novice: 0,
+    professional: 0,
+    expert: 0,
+});
 
-export const nullWageMapFactory = (): WorkforceCohort<number> => nullWorkforceCohortFactory(() => 0);
-
-const skillMultiplier: Record<Skill, number> = {
-    novice: 0.7,
-    professional: 1.0,
-    expert: 1.3,
-};
-
-const ageMultiplier: (age: number) => number = (age) => {
-    if (age < 25) {
-        return 0.8;
-    } else if (age < 35) {
-        return 1.0;
-    } else if (age < 50) {
-        return 1.2;
-    } else {
-        return 1.5;
-    }
-};
-
-export const buildCurrentMinimumWageMap = (planet: Planet): ((category: WorkforceCategoryIndex) => number) => {
-    // this is the absolute minimum for every worker (himself and half of dependents -> working poor)
-    const costOfLiving = computeCostOfLiving(planet.marketPrices) * 2;
-    // this covers all available services for 10 dependents
-    const costOfLivingRich = computeCostOfLiving(planet.marketPrices, true) * 10;
-
-    return (category: WorkforceCategoryIndex): number => {
-        const baseWage = costOfLiving * skillMultiplier[category.skill] * ageMultiplier(category.age);
-        // We want to ensure that the wage is at least enough to cover the cost of living, even for the poorest workers.
-        // For richer workers, we want to ensure that the wage is at least enough to cover the cost of living with services.
-        const requiredWage = Math.max(costOfLiving, baseWage);
-        const requiredWageRich = Math.max(costOfLivingRich, baseWage);
-
-        const eduFactor = (educationLevelKeys.indexOf(category.edu) + 1) / educationLevelKeys.length;
-
-        return requiredWage + eduFactor * (requiredWageRich - requiredWage);
-    };
-};
+const emptySkillDemography: Record<Skill, number>[] = [];
 
 export function hireFromPopulation(
     planet: Planet,
@@ -214,7 +182,7 @@ export function hireFromPopulation(
     const hiredByAge: {
         [S in Skill]: number;
     }[] = new Array(demography.length).fill(0).map(() => ({
-        ...emptySkillCategory,
+        ...emptySkillCategory(),
     }));
     let hired = 0;
 
@@ -232,6 +200,12 @@ export function hireFromPopulation(
             hired += actual;
         }
     }
-
     return { count: hired, hiredByAge };
 }
+
+export const productivityFromXP = (xp: number): number => {
+    const A = 1;
+    const Y = 0.95;
+    const T = 40;
+    return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
+};

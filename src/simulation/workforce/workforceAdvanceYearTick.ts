@@ -18,6 +18,11 @@ const mergeCategories = (destination: WorkforceCategory, source: WorkforceCatego
             source[type][m] = 0;
         }
     }
+
+    for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+        destination.onboarding[m] = (destination.onboarding[m] || 0) + (source.onboarding[m] || 0);
+        source.onboarding[m] = 0;
+    }
 };
 
 const zeroCohort = (cohort: WorkforceCohort<WorkforceCategory>): void => {
@@ -30,6 +35,7 @@ const zeroCohort = (cohort: WorkforceCohort<WorkforceCategory>): void => {
                 cat.voluntaryDeparting[m] = 0;
                 cat.departingFired[m] = 0;
                 cat.departingRetired[m] = 0;
+                cat.onboarding[m] = 0;
             }
         }
     }
@@ -47,6 +53,7 @@ const cloneCohort = (cohort: WorkforceCohort<WorkforceCategory>): WorkforceCohor
                 dst.voluntaryDeparting[m] = src.voluntaryDeparting[m] ?? 0;
                 dst.departingFired[m] = src.departingFired[m] ?? 0;
                 dst.departingRetired[m] = src.departingRetired[m] ?? 0;
+                dst.onboarding[m] = src.onboarding[m] ?? 0;
             }
             out[edu][skill] = dst;
         }

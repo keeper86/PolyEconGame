@@ -15,8 +15,12 @@ import { SKILL, type Skill } from '../population/population';
 import { createShip } from '../ships/ships';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
-import { totalActiveForEduSkill, totalDepartingForEduSkill } from '../workforce/workforceAggregates';
-import { productivityFromXP, totalWorkersInCategory } from '../workforce/workforce';
+import {
+    totalActiveForEduSkill,
+    totalDepartingForEduSkill,
+    totalOnboardingForEduSkill,
+} from '../workforce/workforceAggregates';
+import { ONBOARDING_EFFICIENCY, productivityFromXP, totalWorkersInCategory } from '../workforce/workforce';
 import type { ResourceQuantity } from './claims';
 import { extractFromClaimedResource, getLandBoundCostPerUnit, queryClaimedResource } from './claims';
 import type {
@@ -598,7 +602,11 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             for (const skill of SKILL) {
                 const active = workforce ? totalActiveForEduSkill(workforce, edu, skill) : 0;
                 const departing = workforce ? totalDepartingForEduSkill(workforce, edu, skill) : 0;
-                workerPool[edu][skill] = active + stochasticRound(departing * DEPARTING_EFFICIENCY);
+                const onboarding = workforce ? totalOnboardingForEduSkill(workforce, edu, skill) : 0;
+                workerPool[edu][skill] =
+                    active +
+                    stochasticRound(departing * DEPARTING_EFFICIENCY) +
+                    stochasticRound(onboarding * ONBOARDING_EFFICIENCY);
             }
         }
 
@@ -717,6 +725,9 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                         const unassigned = remaining[edu][skill];
                         const assignmentRatio = pool > 0 ? (pool - unassigned) / pool / TICKS_PER_YEAR : 0;
                         cat.workforceExperience += cat.active * assignmentRatio;
+                        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                            cat.workforceExperience += cat.onboarding[m] * ONBOARDING_EFFICIENCY * assignmentRatio;
+                        }
                         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
                             cat.workforceExperience +=
                                 (cat.voluntaryDeparting[m] + cat.departingFired[m] + cat.departingRetired[m]) *
