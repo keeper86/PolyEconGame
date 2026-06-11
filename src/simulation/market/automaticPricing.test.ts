@@ -9,7 +9,7 @@ import {
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import type { StorageFacility } from '../planet/facility';
 import {
-    agriculturalProductResourceType,
+    produceResourceType,
     clothingResourceType,
     fabricResourceType,
     ironOreResourceType,
@@ -59,23 +59,23 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
     it('does not offer for sale the portion of inventory reserved for own facility inputs', () => {
         const producer = makeProductionFacility({ none: 1 }, { id: 'proc', scale: 10 });
         producer.needs = [];
-        producer.produces = [{ resource: agriculturalProductResourceType, quantity: 1000 }];
+        producer.produces = [{ resource: produceResourceType, quantity: 1000 }];
 
         const consumer = makeProductionFacility({ none: 1 }, { id: 'bev', scale: 10 });
-        consumer.needs = [{ resource: agriculturalProductResourceType, quantity: 200 }];
+        consumer.needs = [{ resource: produceResourceType, quantity: 200 }];
         consumer.produces = [{ resource: ironOreResourceType, quantity: 100 }];
 
-        const planet = makePlanetWithPrice({ [agriculturalProductResourceType.name]: 5 });
+        const planet = makePlanetWithPrice({ [produceResourceType.name]: 5 });
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [producer, consumer];
         agent.assets[PLANET_ID].storageFacility = makeStorageWith({
-            [agriculturalProductResourceType.name]: { resource: agriculturalProductResourceType, quantity: 5_000 },
+            [produceResourceType.name]: { resource: produceResourceType, quantity: 5_000 },
         });
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
+        const offer = agent.assets[PLANET_ID].market?.sell[produceResourceType.name];
 
         expect(offer?.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
@@ -83,23 +83,23 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
     it('offers surplus above the reserved buffer', () => {
         const producer = makeProductionFacility({ none: 1 }, { id: 'proc', scale: 10 });
         producer.needs = [];
-        producer.produces = [{ resource: agriculturalProductResourceType, quantity: 1000 }];
+        producer.produces = [{ resource: produceResourceType, quantity: 1000 }];
 
         const consumer = makeProductionFacility({ none: 1 }, { id: 'bev', scale: 10 });
-        consumer.needs = [{ resource: agriculturalProductResourceType, quantity: 200 }];
+        consumer.needs = [{ resource: produceResourceType, quantity: 200 }];
         consumer.produces = [{ resource: ironOreResourceType, quantity: 100 }];
 
-        const planet = makePlanetWithPrice({ [agriculturalProductResourceType.name]: 5 });
+        const planet = makePlanetWithPrice({ [produceResourceType.name]: 5 });
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [producer, consumer];
         agent.assets[PLANET_ID].storageFacility = makeStorageWith({
-            [agriculturalProductResourceType.name]: { resource: agriculturalProductResourceType, quantity: 65_000 },
+            [produceResourceType.name]: { resource: produceResourceType, quantity: 65_000 },
         });
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        const offer = agent.assets[PLANET_ID].market?.sell[agriculturalProductResourceType.name];
+        const offer = agent.assets[PLANET_ID].market?.sell[produceResourceType.name];
 
         expect(offer?.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
@@ -267,14 +267,14 @@ describe('automaticPricing — cost-floor brake zone', () => {
         const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit);
 
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 1 });
-        facility.needs = [{ resource: agriculturalProductResourceType, quantity: NEEDS_QTY }];
+        facility.needs = [{ resource: produceResourceType, quantity: NEEDS_QTY }];
         facility.produces = [{ resource: clothingResourceType, quantity: PRODUCES_QTY }];
         facility.lastTickResults.lastProduced = { [clothingResourceType.name]: PRODUCES_QTY };
-        facility.lastTickResults.lastConsumed = { [agriculturalProductResourceType.name]: NEEDS_QTY };
+        facility.lastTickResults.lastConsumed = { [produceResourceType.name]: NEEDS_QTY };
         facility.lastTickResults.costBalance = PRIOR_PRICE * PRODUCES_QTY - inputCost - wageCost;
 
         const planet = makePlanetWithPrice({
-            [agriculturalProductResourceType.name]: INPUT_PRICE,
+            [produceResourceType.name]: INPUT_PRICE,
             [clothingResourceType.name]: PRIOR_PRICE,
         });
         planet.lastProductionCostFloors[clothingResourceType.name] = costPerUnit;

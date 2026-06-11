@@ -1,11 +1,12 @@
 'use client';
 
 import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
+import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
-import { Landmark, Percent, Scale, TrendingDown, Users, Wallet } from 'lucide-react';
+import { Percent, Scale, Search, TrendingDown, Users, Wallet } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfLivingChart';
 import { PlanetMacroChart, type EconomyPoint } from './PlanetMacroChart';
@@ -84,11 +85,6 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
 
     return (
         <>
-            <p className='text-sm font-semibold flex items-center gap-2'>
-                <Landmark className='h-4 w-4 text-muted-foreground' />
-                Planetary Bank
-            </p>
-
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2'>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
@@ -119,6 +115,12 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                     <Stat label='Deposit rate' value={pct(bank.depositRate)} icon={<Percent className='h-3 w-3' />} />
                 </div>
             </div>
+
+            <Separator />
+            <p className='text-sm font-semibold flex items-center gap-2'>
+                <Search className='h-4 w-4 text-muted-foreground' />
+                Details
+            </p>
 
             <div className='mt-4 border-t border-border pt-4'>
                 <div className='flex gap-1 items-center mb-2'>

@@ -4,6 +4,7 @@ import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/mar
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { MonthAccumulator } from '@/simulation/planet/planet';
+import { LayoutGroup, motion } from 'motion/react';
 import Link from 'next/link';
 
 type Props = {
@@ -29,16 +30,20 @@ function ProductCell({
 }): React.ReactElement {
     const href = `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resourceName)}`;
     return (
-        <Link
-            href={href as never}
-            className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 hover:ring-2 hover:ring-primary/50 transition-all w-[100px]'
-        >
-            <ProductIcon productName={resourceName} size={36} />
-            <span className='flex flex-col flex-grow text-xs font-medium text-right'>
-                {formatNumberWithUnit(currentValue, 'currency', planetId)}
-                <span className='text-muted-foreground'>{formatNumberWithUnit(lastValue, 'currency', planetId)}</span>
-            </span>
-        </Link>
+        <motion.div layout>
+            <Link
+                href={href as never}
+                className='inline-flex items-center gap-1.5 rounded bg-muted px-2 py-1 hover:ring-2 hover:ring-primary/50 transition-all w-[100px]'
+            >
+                <ProductIcon productName={resourceName} size={36} />
+                <span className='flex flex-col flex-grow text-xs font-medium text-right'>
+                    {formatNumberWithUnit(currentValue, 'currency', planetId)}
+                    <span className='text-muted-foreground'>
+                        {formatNumberWithUnit(lastValue, 'currency', planetId)}
+                    </span>
+                </span>
+            </Link>
+        </motion.div>
     );
 }
 
@@ -56,18 +61,20 @@ function ProductList({
         return <span className='text-xs text-muted-foreground'>None</span>;
     }
     return (
-        <div className='flex flex-wrap gap-1.5'>
-            {entries.map(([name, currentEntry, lastEntry]) => (
-                <ProductCell
-                    key={name}
-                    currentValue={currentEntry.value}
-                    lastValue={lastEntry.value}
-                    resourceName={name}
-                    planetId={planetId}
-                    agentId={agentId}
-                />
-            ))}
-        </div>
+        <LayoutGroup>
+            <div className='flex flex-wrap gap-1.5'>
+                {entries.map(([name, currentEntry, lastEntry]) => (
+                    <ProductCell
+                        key={name}
+                        currentValue={currentEntry.value}
+                        lastValue={lastEntry.value}
+                        resourceName={name}
+                        planetId={planetId}
+                        agentId={agentId}
+                    />
+                ))}
+            </div>
+        </LayoutGroup>
     );
 }
 
@@ -135,17 +142,21 @@ export default function ProductResolutionPanel({
         <div className='space-y-3'>
             <div className='flex flex-wrap gap-4'>
                 <div className='min-w-[200px] flex-1 basis-[250px] space-y-1.5'>
-                    <p className='text-xs font-medium text-muted-foreground'>Purchases: current month (last month)</p>
+                    <p className='text-xs font-medium text-muted-foreground'>
+                        Purchases: <span className='text-foreground'>current month </span> (last month)
+                    </p>
                     <ProductList entries={boughtEntries} tick={tick} planetId={planetId} agentId={agentId} />
                 </div>
                 <div className='min-w-[200px] flex-1 basis-[250px] space-y-1.5'>
-                    <p className='text-xs font-medium text-muted-foreground'>Revenue: current month (last month)</p>
+                    <p className='text-xs font-medium text-muted-foreground'>
+                        Revenue: <span className='text-foreground'>current month </span> (last month)
+                    </p>
                     <ProductList entries={soldEntries} tick={tick} planetId={planetId} agentId={agentId} />
                 </div>
                 {depreciatedEntries.length > 0 && (
                     <div className='min-w-[200px] flex-1 basis-[250px] space-y-1.5'>
                         <p className='text-xs font-medium text-muted-foreground'>
-                            Depreciation: current month (last month)
+                            Depreciation: <span className='text-foreground'>current month</span> (last month)
                         </p>
                         <ProductList entries={depreciatedEntries} tick={tick} planetId={planetId} agentId={agentId} />
                     </div>

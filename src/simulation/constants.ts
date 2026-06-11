@@ -42,7 +42,7 @@ export const OUTPUT_BUFFER_MAX_TICKS = 10;
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 
 export const MIN_WAGE = 1.0;
-export const MAX_WAGE = 20.0;
+export const MAX_WAGE = 1000.0;
 
 export const WAGE_ADJUSTMENT_RATE = 0.02;
 

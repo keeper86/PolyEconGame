@@ -16,8 +16,8 @@ export const waterResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const agriculturalProductResourceType: Resource = {
-    name: 'Agricultural Product',
+export const produceResourceType: Resource = {
+    name: 'Produce',
     form: 'solid',
     level: 'raw',
     volumePerQuantity: 0.5,
@@ -248,8 +248,8 @@ export const siliconWaferResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const electronicComponentResourceType: Resource = {
-    name: 'Electronic Component',
+export const electronicsResourceType: Resource = {
+    name: 'Electronics',
     form: 'pieces',
     level: 'refined',
     volumePerQuantity: 5.0,
@@ -257,7 +257,7 @@ export const electronicComponentResourceType: Resource = {
 };
 
 export const consumerElectronicsResourceType: Resource = {
-    name: 'Consumer Electronics',
+    name: 'IT Devices',
     form: 'pieces',
     level: 'manufactured',
     volumePerQuantity: 5.0,
@@ -290,7 +290,7 @@ export const packagingResourceType: Resource = {
 
 export const defaultBuildingCost: ResourceQuantity[] = [
     { resource: steelResourceType, quantity: 100 },
-    { resource: electronicComponentResourceType, quantity: 50 },
+    { resource: electronicsResourceType, quantity: 50 },
     { resource: machineryResourceType, quantity: 30 },
     { resource: plasticResourceType, quantity: 20 },
 ];

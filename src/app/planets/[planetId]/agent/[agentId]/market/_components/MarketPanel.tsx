@@ -78,13 +78,7 @@ export default function MarketPanel({
     );
 
     const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
-    const planetNames = useMemo(() => {
-        const map = new Map<string, string>();
-        for (const p of planetSummariesData?.planets ?? []) {
-            map.set(p.planetId, p.name);
-        }
-        return map;
-    }, [planetSummariesData]);
+
     const availableCurrencies = useMemo(
         () =>
             (planetSummariesData?.planets ?? [])
@@ -378,10 +372,9 @@ export default function MarketPanel({
                                                     buildInitialState([{ name }], buyBids, sellOffers)[name]
                                                 }
                                                 onLocalChange={handleLocalChange}
-                                                _isOpen={openItem === name}
+                                                isOpen={openItem === name}
                                                 overviewRow={overviewRows[name]}
                                                 visibleColumns={visibleColumns}
-                                                planetNames={planetNames}
                                                 allPlanetDeposits={allPlanetDeposits}
                                             />
                                         ))}

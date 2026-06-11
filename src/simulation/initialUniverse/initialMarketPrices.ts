@@ -1,5 +1,5 @@
 import {
-    agriculturalProductResourceType,
+    produceResourceType,
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
@@ -12,7 +12,7 @@ import {
     copperResourceType,
     cottonResourceType,
     crudeOilResourceType,
-    electronicComponentResourceType,
+    electronicsResourceType,
     fabricResourceType,
     fuelResourceType,
     furnitureResourceType,
@@ -48,7 +48,7 @@ import {
 
 const baselineFactor = 10;
 export const initialMarketPrices: Record<string, number> = {
-    [agriculturalProductResourceType.name]: 1.0 * baselineFactor,
+    [produceResourceType.name]: 1.0 * baselineFactor,
     [ironOreResourceType.name]: 1.0 * baselineFactor,
     [coalResourceType.name]: 1.0 * baselineFactor,
     [crudeOilResourceType.name]: 1.5 * baselineFactor,
@@ -80,7 +80,7 @@ export const initialMarketPrices: Record<string, number> = {
 
     [clothingResourceType.name]: 6.0 * baselineFactor,
     [furnitureResourceType.name]: 5.0 * baselineFactor,
-    [electronicComponentResourceType.name]: 15.0 * baselineFactor,
+    [electronicsResourceType.name]: 15.0 * baselineFactor,
     [consumerElectronicsResourceType.name]: 15.0 * baselineFactor,
     [machineryResourceType.name]: 15.0 * baselineFactor,
     [vehicleResourceType.name]: 30.0 * baselineFactor,

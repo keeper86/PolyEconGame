@@ -5,15 +5,16 @@ import AgentFinancialOverview from '@/app/planets/[planetId]/agent/[agentId]/fin
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
+import { Page } from '@/components/client/Page';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
-import { EuroIcon, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { LicensePanel } from '../../_component/LicensePanel';
+import LoanPanel from './_components/LoanPanel';
 import ProductResolutionPanel from './_components/ProductResolutionPanel';
-import { Page } from '@/components/client/Page';
 
 export default function FinancialPage() {
     const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId, tick } =
@@ -39,15 +40,12 @@ export default function FinancialPage() {
                     <span className='flex flex-col gap-3'>
                         <Card>
                             <CardContent className='px-3 py-3 space-y-3'>
-                                <p className='text-sm font-semibold flex items-center gap-2'>
-                                    <EuroIcon className='h-4 w-4 text-muted-foreground' />
-                                    Financial Position
-                                </p>
                                 <AgentFinancialOverview
                                     deposits={assets.deposits ?? 0}
                                     loans={totalOutstandingLoans(assets.activeLoans ?? [])}
                                     loanConditions={loanConditions}
                                     planetId={planetId}
+                                    agentId={agentId}
                                 />
                                 <Separator />
                                 <p className='text-sm font-semibold flex items-center gap-2'>
@@ -62,6 +60,9 @@ export default function FinancialPage() {
                                     planetId={planetId}
                                     agentId={agentId}
                                 />
+                                <Separator />
+
+                                <LoanPanel agentId={agentId} planetId={planetId} deposits={assets.deposits ?? 0} />
                             </CardContent>
                         </Card>
                         <LicensePanel

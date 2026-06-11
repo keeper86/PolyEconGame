@@ -20,7 +20,7 @@ import {
     totalPopulation,
 } from './utils/testHelper';
 import { createWorkforceEventAccumulator } from './workforce/workforceDemographicTick';
-import { agriculturalProductResourceType } from './planet/resources';
+import { produceResourceType } from './planet/resources';
 import type { ProductionFacility } from './planet/facility';
 import { putIntoStorageFacility, queryStorageFacility } from './planet/facility';
 import type { Resource } from './planet/claims';
@@ -89,7 +89,7 @@ describe('engine basic behavior', () => {
                 planetId: planet.id,
                 id: 'pf1',
                 name: 'farm',
-                produces: [{ resource: agriculturalProductResourceType, quantity: 10 }],
+                produces: [{ resource: produceResourceType, quantity: 10 }],
             },
         );
 
@@ -97,7 +97,7 @@ describe('engine basic behavior', () => {
 
         productionTick(makeGameState([planet], [agent]), planet);
 
-        const entry = agent.assets[planet.id].storageFacility.currentInStorage[agriculturalProductResourceType.name];
+        const entry = agent.assets[planet.id].storageFacility.currentInStorage[produceResourceType.name];
         expect(entry).toBeDefined();
         expect(entry!.quantity).toBeGreaterThanOrEqual(10);
     });
@@ -123,7 +123,7 @@ describe('engine basic behavior', () => {
                 id: 'pf1',
                 name: 'factory',
                 needs: [{ resource: neededResource, quantity: neededResourceQuantity }],
-                produces: [{ resource: agriculturalProductResourceType, quantity: producedResourceQuantity }],
+                produces: [{ resource: produceResourceType, quantity: producedResourceQuantity }],
             },
         );
 
@@ -138,7 +138,7 @@ describe('engine basic behavior', () => {
         expect(storageOfNeededResource).toBeDefined();
         expect(storageOfNeededResource).toBe(0);
 
-        const storageOfProducedResource = queryStorageFacility(storage, agriculturalProductResourceType.name);
+        const storageOfProducedResource = queryStorageFacility(storage, produceResourceType.name);
         expect(storageOfProducedResource).toBeDefined();
         expect(storageOfProducedResource).toBe(producedResourceQuantity);
     });
@@ -164,7 +164,7 @@ describe('engine basic behavior', () => {
                 id: 'pf1',
                 name: 'factory',
                 needs: [{ resource: neededResource, quantity: neededResourceQuantity }],
-                produces: [{ resource: agriculturalProductResourceType, quantity: producedResourceQuantity }],
+                produces: [{ resource: produceResourceType, quantity: producedResourceQuantity }],
             },
         );
         agent.assets[planet.id].productionFacilities.push(prod);
@@ -178,7 +178,7 @@ describe('engine basic behavior', () => {
 
         productionTick(makeGameState([planet], [agent]), planet);
 
-        const storageOfProducedResource = queryStorageFacility(storage, agriculturalProductResourceType.name);
+        const storageOfProducedResource = queryStorageFacility(storage, produceResourceType.name);
         expect(storageOfProducedResource).toBeDefined();
 
         expect(storageOfProducedResource).toBe(producedResourceQuantity / 10);
@@ -193,7 +193,7 @@ describe('engine basic behavior', () => {
                 planetId: planet.id,
                 id: 'pf1',
                 name: 'factory',
-                produces: [{ resource: agriculturalProductResourceType, quantity: 10 }],
+                produces: [{ resource: produceResourceType, quantity: 10 }],
             },
         );
         agent.assets[planet.id].productionFacilities.push(prod);
@@ -204,7 +204,7 @@ describe('engine basic behavior', () => {
 
         productionTick(makeGameState([planet], [agent]), planet);
 
-        const storageOfProducedResource = queryStorageFacility(storage, agriculturalProductResourceType.name);
+        const storageOfProducedResource = queryStorageFacility(storage, produceResourceType.name);
         expect(storageOfProducedResource).toBeDefined();
 
         expect(storageOfProducedResource).toBe(5);
@@ -237,7 +237,7 @@ describe('productionTick worker education fallback', () => {
             planetId,
             id: 'pf-test',
             name: 'test-facility',
-            produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
+            produces: [{ resource: produceResourceType, quantity: 100 }],
         });
     }
 
@@ -359,7 +359,7 @@ describe('productionTick proportional worker allocation', () => {
             planetId,
             id: `pf-${Math.random().toString(36).slice(2, 8)}`,
             name: 'test-facility',
-            produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
+            produces: [{ resource: produceResourceType, quantity: 100 }],
         });
     }
 
@@ -520,7 +520,7 @@ describe('population ↔ workforce consistency', () => {
                 ),
             );
 
-            putIntoStorageFacility(gov.assets[planet.id].storageFacility, agriculturalProductResourceType, 1e9);
+            putIntoStorageFacility(gov.assets[planet.id].storageFacility, produceResourceType, 1e9);
 
             for (let t = 1; t <= 60; t++) {
                 gameState.tick = t;

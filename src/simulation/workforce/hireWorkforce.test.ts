@@ -69,12 +69,24 @@ describe('hireWorkforce', () => {
     it('hires workers from unoccupied pool when under target', () => {
         const { planet: p } = makePlanetWithPopulation({ primary: 1000 });
         agent.assets.p.allocatedWorkers.primary = 500;
+        agent.assets.p.wagePerEdu.primary = 1e9;
 
         hireWorkforce(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
-        const hired = totalActiveForEdu(workforce, 'primary');
-        expect(hired).toBe(500);
+        // Workers go to onboarding pipeline, not active directly
+        expect(totalActiveForEdu(workforce, 'primary')).toBe(0);
+        let onboardingTotal = 0;
+        for (let age = 0; age < workforce.length; age++) {
+            for (const skill of SKILL) {
+                onboardingTotal += workforce[age].primary[skill].onboarding[NOTICE_PERIOD_MONTHS - 1];
+            }
+        }
+        // With probToAccept ≈ 1.0 * 0.05 = 0.05 (friction scalar), totalWilling = 1000 * 0.05 = 50
+        // Cap: Math.floor(min(500, 50)) = 50
+        expect(onboardingTotal).toBe(50);
+        // Population should have been transferred from unoccupied to employed
+        expect(sumPopOcc(p, 'primary', 'employed')).toBe(50);
     });
 
     it('does not hire when already at target', () => {
@@ -96,8 +108,13 @@ describe('hireWorkforce', () => {
         hireWorkforce(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
-        const hired = totalActiveForEdu(workforce, 'none');
-        expect(hired).toBeLessThanOrEqual(5);
+        let onboardingTotal = 0;
+        for (let age = 0; age < workforce.length; age++) {
+            for (const skill of SKILL) {
+                onboardingTotal += workforce[age].none[skill].onboarding[NOTICE_PERIOD_MONTHS - 1];
+            }
+        }
+        expect(onboardingTotal).toBeLessThanOrEqual(5);
     });
 
     it('does not hire people under the minimum employable age', () => {
@@ -110,22 +127,39 @@ describe('hireWorkforce', () => {
         hireWorkforce(agentMap(agent), planet);
 
         const workforce = agent.assets.p.workforceDemography!;
-        const hired = totalActiveForEdu(workforce, 'none');
-        expect(hired).toBe(0);
+        let onboardingTotal = 0;
+        for (let age = 0; age < workforce.length; age++) {
+            for (const skill of SKILL) {
+                onboardingTotal += workforce[age].none[skill].onboarding.reduce((s, n) => s + n, 0);
+            }
+        }
+        expect(onboardingTotal).toBe(0);
 
         for (let age = 0; age < MIN_EMPLOYABLE_AGE; age++) {
             expect(p.population.demography[age].unoccupied.none.novice.total).toBe(100);
         }
     });
 
-    it('fills positions instantly in a single tick', () => {
+    it('fills positions in the onboarding pipeline', () => {
         const { planet: p } = makePlanetWithPopulation({ primary: 100000 });
         agent.assets.p.allocatedWorkers.primary = 3000;
+        agent.assets.p.wagePerEdu.primary = 1e9;
 
         hireWorkforce(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
-        expect(totalActiveForEdu(workforce, 'primary')).toBe(3000);
+        // Workers go to the last onboarding slot, not directly to active
+        expect(totalActiveForEdu(workforce, 'primary')).toBe(0);
+        // Check the last onboarding slot has the workers
+        let onboardingTotal = 0;
+        for (let age = 0; age < workforce.length; age++) {
+            for (const skill of SKILL) {
+                onboardingTotal += workforce[age].primary[skill].onboarding[NOTICE_PERIOD_MONTHS - 1];
+            }
+        }
+        // With probToAccept ≈ 0.05, totalWilling = 100000 * 0.05 = 5000
+        // Cap: Math.floor(min(3000, 5000)) = 3000
+        expect(onboardingTotal).toBe(3000);
     });
 
     it('multiple agents cannot hire more workers than available on the planet', () => {
@@ -178,16 +212,27 @@ describe('hireWorkforce', () => {
         expect(sumPopOcc(p, 'none', 'unoccupied')).toBe(10_000);
     });
 
-    it('contrast: agent WITH a workforce license does hire workers', () => {
+    it('contrast: agent WITH a workforce license does hire workers into onboarding', () => {
         const { planet: p } = makePlanetWithPopulation({ none: 10_000 });
 
         const regularAgent = makeAgent();
         regularAgent.assets.p.allocatedWorkers.none = 500;
+        regularAgent.assets.p.wagePerEdu.none = 1e9;
 
         hireWorkforce(agentMap(regularAgent), p);
 
-        const hired = totalActiveForEdu(regularAgent.assets.p.workforceDemography!, 'none');
-        expect(hired).toBe(500);
+        const wf = regularAgent.assets.p.workforceDemography!;
+        // Workers go to onboarding pipeline, not active
+        expect(totalActiveForEdu(wf, 'none')).toBe(0);
+        let onboardingTotal = 0;
+        for (let age = 0; age < wf.length; age++) {
+            for (const skill of SKILL) {
+                onboardingTotal += wf[age].none[skill].onboarding[NOTICE_PERIOD_MONTHS - 1];
+            }
+        }
+        // With probToAccept ≈ 0.05, totalWilling = 10000 * 0.05 = 500
+        // Cap: Math.floor(min(500, 500)) = 500
+        expect(onboardingTotal).toBe(500);
     });
 });
 
@@ -302,14 +347,32 @@ describe('per-education level isolation', () => {
 
         agent.assets.p.allocatedWorkers.none = 500;
         agent.assets.p.allocatedWorkers.primary = 500;
+        agent.assets.p.wagePerEdu.primary = 1e9;
+        agent.assets.p.wagePerEdu.none = 1e9;
         hireWorkforce(agentMap(agent), planet);
+
+        // After first hire, workers are in the last onboarding slot
+        // Move them to active for the firing test
+        const wf = agent.assets.p.workforceDemography!;
+        for (let age = 0; age < wf.length; age++) {
+            for (const skill of SKILL) {
+                const cat = wf[age].none[skill];
+                cat.active += cat.onboarding[NOTICE_PERIOD_MONTHS - 1];
+                cat.onboarding[NOTICE_PERIOD_MONTHS - 1] = 0;
+                const catPrimary = wf[age].primary[skill];
+                catPrimary.active += catPrimary.onboarding[NOTICE_PERIOD_MONTHS - 1];
+                catPrimary.onboarding[NOTICE_PERIOD_MONTHS - 1] = 0;
+            }
+        }
 
         agent.assets.p.allocatedWorkers.none = 200;
         agent.assets.p.allocatedWorkers.primary = 500;
 
         hireWorkforce(agentMap(agent), planet);
 
-        expect(totalActiveForEdu(agent.assets.p.workforceDemography!, 'primary')).toBe(500);
+        // With probToAccept ≈ 0.05, totalWilling = 10000 * 0.05 = 500
+        // Cap: Math.floor(min(500, 500)) = 500
+        expect(totalActiveForEdu(wf, 'primary')).toBe(500);
     });
 });
 

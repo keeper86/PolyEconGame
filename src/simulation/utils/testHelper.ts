@@ -62,6 +62,7 @@ export function makePopulationCategory(overrides?: Partial<PopulationCategory>):
 export function makeWorkforceCategory(overrides?: Partial<WorkforceCategory>): WorkforceCategory {
     return {
         active: 0,
+        onboarding: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
         voluntaryDeparting: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
         departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
         departingRetired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
@@ -371,6 +372,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
+        profitShareBonus: 0,
         monthAcc: {
             depositsAtMonthStart: 0,
             ...createEmptyAccumulator(),
@@ -425,6 +427,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
             tertiary: DEFAULT_WAGE_PER_EDU,
         },
         transportPipeline: {},
+        monthTransferVolume: 0,
         orderBooks: {},
         lastMarketResult: {},
         avgMarketResult: {},
@@ -531,6 +534,9 @@ export function sumWorkforceForEdu(agent: Agent, planetId: string, edu: Educatio
         for (const skill of SKILL) {
             const cell = cohort[edu][skill];
             total += cell.active;
+            for (const dep of cell.onboarding) {
+                total += dep;
+            }
             for (const dep of cell.voluntaryDeparting) {
                 total += dep;
             }
@@ -577,6 +583,7 @@ export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>,
                 for (const skill of SKILL) {
                     const cell = wf[age][edu][skill];
                     wfTotal += cell.active;
+                    wfTotal += cell.onboarding.reduce((s: number, d: number) => s + d, 0);
                     wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
                     wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
                     wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
@@ -614,6 +621,7 @@ export function assertPerCellWorkforcePopulationConsistency(
                     }
                     const cell = wf[age][edu][skill];
                     wfTotal += cell.active;
+                    wfTotal += cell.onboarding.reduce((s: number, d: number) => s + d, 0);
                     wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
                     wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
                     wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);

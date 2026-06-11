@@ -1,3 +1,5 @@
+'use client';
+
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { WorkforceCohort, WorkforceCategory } from '@/simulation/workforce/workforce';
@@ -9,6 +11,8 @@ export type WorkforceDemography = WorkforceCohort<WorkforceCategory>[];
 
 export type WorkforceSummary = {
     activeByEdu: Record<EducationLevelType, number>;
+    onboardingByEdu: Record<EducationLevelType, number>;
+    nextMonthOnboardingByEdu: Record<EducationLevelType, number>;
     departingByEdu: Record<EducationLevelType, number>;
 
     firedByEdu: Record<EducationLevelType, number>;
@@ -23,6 +27,7 @@ export type WorkforceSummary = {
 
     nextMonthRetiredByEdu: Record<EducationLevelType, number>;
     totalActive: number;
+    totalOnboarding: number;
     totalDeparting: number;
     totalFired: number;
     totalVoluntary: number;
@@ -47,6 +52,7 @@ export type WorkforceSummary = {
     ageChartByStatus: {
         age: number;
         active: number;
+        onboarding: number;
         quitting: number;
         fired: number;
         retired: number;
@@ -60,6 +66,7 @@ export type WorkforceSummary = {
     experienceChartByStatus: {
         age: number;
         active: number;
+        onboarding: number;
         quitting: number;
         fired: number;
         retired: number;
@@ -77,6 +84,8 @@ function sumArray(arr: number[]): number {
 
 export function computeSummary(workforce: WorkforceDemography): WorkforceSummary {
     const activeByEdu = {} as Record<EducationLevelType, number>;
+    const onboardingByEdu = {} as Record<EducationLevelType, number>;
+    const nextMonthOnboardingByEdu = {} as Record<EducationLevelType, number>;
     const departingByEdu = {} as Record<EducationLevelType, number>;
     const firedByEdu = {} as Record<EducationLevelType, number>;
     const nextMonthDepartingByEdu = {} as Record<EducationLevelType, number>;
@@ -85,6 +94,8 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     const nextMonthRetiredByEdu = {} as Record<EducationLevelType, number>;
     for (const edu of educationLevelKeys) {
         activeByEdu[edu] = 0;
+        onboardingByEdu[edu] = 0;
+        nextMonthOnboardingByEdu[edu] = 0;
         departingByEdu[edu] = 0;
         firedByEdu[edu] = 0;
         nextMonthDepartingByEdu[edu] = 0;
@@ -94,6 +105,7 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     }
 
     let totalActive = 0;
+    let totalOnboarding = 0;
     let totalDeparting = 0;
 
     const ageSumByEdu = {} as Record<EducationLevelType, { count: number; weightedAge: number }>;
@@ -119,6 +131,7 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         }
 
         let ageActive = 0;
+        let ageOnboarding = 0;
         let ageDeparting = 0;
         let ageFired = 0;
         let ageRetired = 0;
@@ -128,6 +141,7 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         }
 
         let ageXPActive = 0;
+        let ageXPOnboarding = 0;
         let ageXPDeparting = 0;
         let ageXPFired = 0;
         let ageXPRetired = 0;
@@ -140,11 +154,17 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
             for (const skill of SKILL) {
                 const cat = cohort[edu][skill];
                 const act = cat.active;
+                const onb = sumArray(cat.onboarding);
+                const onbNext = cat.onboarding[cat.onboarding.length - 1] ?? 0;
 
                 activeByEdu[edu] += act;
+                onboardingByEdu[edu] += onb;
+                nextMonthOnboardingByEdu[edu] += onbNext;
                 totalActive += act;
+                totalOnboarding += onb;
                 ageActive += act;
-                ageByEdu[edu] += act;
+                ageOnboarding += onb;
+                ageByEdu[edu] += act + onb;
 
                 if (act > 0) {
                     ageSumByEdu[edu].weightedAge += act * age;
@@ -180,18 +200,21 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
 
                 const xp = cat.workforceExperience;
                 if (xp > 0) {
+                    const sumOnboarding = sumArray(cat.onboarding);
                     const sumVoluntary = sumArray(cat.voluntaryDeparting);
                     const sumFired = sumArray(cat.departingFired);
                     const sumRetired = sumArray(cat.departingRetired);
-                    const totalWorkers = act + sumVoluntary + sumFired + sumRetired;
+                    const totalWorkers = act + sumOnboarding + sumVoluntary + sumFired + sumRetired;
 
                     if (totalWorkers > 0) {
                         const xpActive = (xp * act) / totalWorkers;
+                        const xpOnboarding = (xp * sumOnboarding) / totalWorkers;
                         const xpQuitting = (xp * sumVoluntary) / totalWorkers;
                         const xpFired = (xp * sumFired) / totalWorkers;
                         const xpRetired = (xp * sumRetired) / totalWorkers;
 
                         ageXPActive += xpActive;
+                        ageXPOnboarding += xpOnboarding;
                         ageXPDeparting += xpQuitting;
                         ageXPFired += xpFired;
                         ageXPRetired += xpRetired;
@@ -202,25 +225,35 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
             }
         }
 
-        if (ageActive + ageDeparting + ageFired + ageRetired > 0) {
+        if (ageActive + ageOnboarding + ageDeparting + ageFired + ageRetired > 0) {
             const quitting = ageDeparting;
-            ageChartByStatus.push({ age, active: ageActive, quitting, fired: ageFired, retired: ageRetired });
+            ageChartByStatus.push({
+                age,
+                active: ageActive,
+                onboarding: ageOnboarding,
+                quitting,
+                fired: ageFired,
+                retired: ageRetired,
+            });
             ageChartByEdu.push({ age, byEdu: { ...ageByEdu } });
         }
 
-        const totalWorkers = ageActive + ageDeparting + ageFired + ageRetired;
+        const totalWorkers = ageActive + ageOnboarding + ageDeparting + ageFired + ageRetired;
 
         const xpPerCapitaActive = totalWorkers > 0 ? ageXPActive / totalWorkers : 0;
+        const xpPerCapitaOnboarding = totalWorkers > 0 ? ageXPOnboarding / totalWorkers : 0;
         const xpPerCapitaQuitting = totalWorkers > 0 ? ageXPDeparting / totalWorkers : 0;
         const xpPerCapitaFired = totalWorkers > 0 ? ageXPFired / totalWorkers : 0;
         const xpPerCapitaRetired = totalWorkers > 0 ? ageXPRetired / totalWorkers : 0;
 
-        const hasXP = ageXPActive + ageXPDeparting + ageXPFired + ageXPRetired > 0 || totalWorkers > 0;
+        const hasXP =
+            ageXPActive + ageXPOnboarding + ageXPDeparting + ageXPFired + ageXPRetired > 0 || totalWorkers > 0;
 
         if (hasXP) {
             experienceChartByStatus.push({
                 age,
                 active: xpPerCapitaActive,
+                onboarding: xpPerCapitaOnboarding,
                 quitting: xpPerCapitaQuitting,
                 fired: xpPerCapitaFired,
                 retired: xpPerCapitaRetired,
@@ -285,6 +318,8 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
 
     return {
         activeByEdu,
+        onboardingByEdu,
+        nextMonthOnboardingByEdu,
         departingByEdu,
         firedByEdu,
         voluntaryByEdu,
@@ -293,6 +328,7 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         retiredByEdu,
         nextMonthRetiredByEdu,
         totalActive,
+        totalOnboarding,
         totalDeparting,
         totalFired,
         totalVoluntary,

@@ -3,7 +3,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { eduLabel, EDU_COLORS, sumByEdu } from './workforceTheme';
+import { eduLabel, EDU_COLORS, sumByEdu, CHART_COLORS } from './workforceTheme';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -62,6 +62,7 @@ function EducationCard({
     headcount,
     overqualified,
     onNotice,
+    onboarding,
     demographicEvents,
     productivity,
     isTotal,
@@ -77,6 +78,7 @@ function EducationCard({
         retiredNext: number;
         retiredTotal: number;
     };
+    onboarding: { current: number; nextMonth: number };
     demographicEvents?: { deaths?: number; disabilities?: number };
     productivity: { meanAge: number; ageProd: number; meanTenure: number; tenureProd: number; hasWorkers: boolean };
     isTotal?: boolean;
@@ -85,15 +87,18 @@ function EducationCard({
     const { target, active, unused } = headcount;
     const { count: overqualifiedCount, breakdown: overqualifiedBreakdown } = overqualified ?? {};
     const { voluntaryNext, voluntaryTotal, firedNext, firedTotal, retiredNext, retiredTotal } = onNotice;
+    const { current: onboardingCurrent, nextMonth: onboardingNext } = onboarding;
     const { deaths, disabilities } = demographicEvents ?? {};
     const { meanAge, ageProd, meanTenure, tenureProd, hasWorkers } = productivity;
     const totalOnNotice = voluntaryTotal + firedTotal + retiredTotal;
-    const totalWorkforce = active + totalOnNotice;
+    const totalWorkforce = active + onboardingCurrent + totalOnNotice;
     const combinedProd = ageProd * tenureProd;
 
     const totalNextOnNotice = voluntaryNext + firedNext + retiredNext;
     const [onNoticeOpen, setOnNoticeOpen] = React.useState(isTotal || totalOnNotice > 0);
     const onNoticeId = React.useId();
+    const [onboardingOpen, setOnboardingOpen] = React.useState(isTotal || onboardingCurrent > 0);
+    const onboardingId = React.useId();
 
     return (
         <div
@@ -156,6 +161,53 @@ function EducationCard({
             <Rule />
 
             <Stat label='Active' value={formatNumberWithUnit(active, 'persons')} />
+
+            <div className='flex items-baseline justify-between gap-2'>
+                <button
+                    type='button'
+                    onClick={() => setOnboardingOpen((s) => !s)}
+                    aria-expanded={onboardingOpen}
+                    aria-controls={onboardingId}
+                    className='flex items-center gap-2 text-left'
+                >
+                    <span className='truncate text-muted-foreground'>Onboarding</span>
+                    <svg
+                        className={`w-3 h-3 text-muted-foreground transition-transform ${onboardingOpen ? 'rotate-180' : ''}`}
+                        viewBox='0 0 20 20'
+                        fill='none'
+                        aria-hidden
+                    >
+                        <path
+                            d='M5 8l5 5 5-5'
+                            stroke='currentColor'
+                            strokeWidth='1.5'
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                        />
+                    </svg>
+                </button>
+
+                <span
+                    className='tabular-nums whitespace-nowrap text-purple-500'
+                    style={{ color: CHART_COLORS.onboarding }}
+                >
+                    {formatNumberWithUnit(onboardingCurrent, 'persons')}
+                </span>
+            </div>
+
+            {onboardingOpen && (
+                <>
+                    <div id={onboardingId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>
+                        next month
+                    </div>
+                    <Stat
+                        label='Completing'
+                        value={formatNumberWithUnit(onboardingNext, 'persons')}
+                        valueClassName={onboardingNext > 0 ? 'text-violet-600' : 'text-muted-foreground'}
+                        indent
+                    />
+                </>
+            )}
 
             {typeof deaths === 'number' && (
                 <Stat
@@ -277,6 +329,7 @@ export function EducationLevelCards({
     disabilities,
 }: EducationLevelCardsProps): React.ReactElement {
     const totalActive = summary.totalActive;
+    const totalOnboarding = summary.totalOnboarding;
     const totalFired = summary.totalFired;
     const totalVol = summary.totalVoluntary;
     const totalUnused = unusedWorkers ? sumByEdu(unusedWorkers) : 0;
@@ -306,6 +359,10 @@ export function EducationLevelCards({
                         firedTotal: summary.firedByEdu[edu],
                         retiredNext: summary.nextMonthRetiredByEdu[edu],
                         retiredTotal: summary.retiredByEdu[edu],
+                    }}
+                    onboarding={{
+                        current: summary.onboardingByEdu[edu],
+                        nextMonth: summary.nextMonthOnboardingByEdu[edu],
                     }}
                     demographicEvents={{
                         deaths: deaths?.thisMonth?.[edu],
@@ -339,6 +396,10 @@ export function EducationLevelCards({
                     firedTotal: totalFired,
                     retiredNext: totalNextRetired,
                     retiredTotal: totalRetired,
+                }}
+                onboarding={{
+                    current: totalOnboarding,
+                    nextMonth: sumByEdu(summary.nextMonthOnboardingByEdu),
                 }}
                 productivity={{
                     meanAge: summary.overallMeanAge,

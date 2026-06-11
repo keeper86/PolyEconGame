@@ -8,11 +8,11 @@ import {
     coalPowerPlant,
     concretePlant,
     constructionFacility,
-    consumerElectronicsFactory,
+    itDevicesFactory,
     copperMine,
     copperSmelter,
     cottonFarm,
-    electronicComponentFactory,
+    electronicsFactory,
     foodProcessingPlant,
     furnitureFactory,
     glassFactory,
@@ -683,8 +683,8 @@ function getFacilityFactory(type: string): FacilityFactory {
         pharmaceuticalPlant,
         clothingFactory,
         furnitureFactory,
-        electronicComponentFactory,
-        consumerElectronicsFactory,
+        electronicComponentFactory: electronicsFactory,
+        consumerElectronicsFactory: itDevicesFactory,
         machineryFactory,
         vehicleFactory,
         intensiveFarmFacility,
@@ -957,7 +957,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         const f1 = siliconWaferFactory(PROC_PLANET_ID, 'chipmaker-wafer');
         f1.scale = waferScale;
         f1.maxScale = waferScale;
-        const f2 = electronicComponentFactory(PROC_PLANET_ID, 'chipmaker-comp');
+        const f2 = electronicsFactory(PROC_PLANET_ID, 'chipmaker-comp');
         f2.scale = compScale;
         f2.maxScale = compScale;
         agents.push(
@@ -975,7 +975,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     {
         const ceScale = Math.round(TARGETS.consumerElectronicsFactory.totalScale * 0.08);
         const retScale = Math.round(TARGETS.retailChain.totalScale * 0.06);
-        const f1 = consumerElectronicsFactory(PROC_PLANET_ID, 'techretail-ce');
+        const f1 = itDevicesFactory(PROC_PLANET_ID, 'techretail-ce');
         f1.scale = ceScale;
         f1.maxScale = ceScale;
         const f2 = retailChain(PROC_PLANET_ID, 'techretail-retail');
@@ -1277,6 +1277,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         },
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 },
         marketPrices: { ...initialMarketPrices },
+        monthTransferVolume: 0,
         transportPipeline: {},
         orderBooks: {},
         lastMarketResult: {},

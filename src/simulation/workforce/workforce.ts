@@ -2,17 +2,14 @@ import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { PopulationCategoryIndex } from '../population/population';
-import {
-    emptySkillCategory,
-    emptySkillDemography,
-    SKILL,
-    transferPopulation,
-    type Skill,
-} from '../population/population';
+import { SKILL, transferPopulation, type Skill } from '../population/population';
 import { distributeProportionally } from '../utils/distributeProportionally';
+
+export const ONBOARDING_EFFICIENCY = 0.75;
 
 export type WorkforceCategory = {
     active: number;
+    onboarding: number[];
     voluntaryDeparting: number[];
     departingFired: number[];
     departingRetired: number[];
@@ -26,6 +23,7 @@ export const totalDeparting = (category: WorkforceCategory): number =>
 
 export const nullWorkforceCategory = (): WorkforceCategory => ({
     active: 0,
+    onboarding: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     voluntaryDeparting: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     departingFired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
     departingRetired: Array.from({ length: NOTICE_PERIOD_MONTHS }, () => 0),
@@ -62,19 +60,23 @@ export const sumWorkForceCohort = (
     return total;
 };
 
-export const nullWorkforceCohort = (): WorkforceCohort<WorkforceCategory> => {
-    const cohort = {} as WorkforceCohort<WorkforceCategory>;
+export const nullWorkforceCohortFactory = <T>(nullFactory: () => T): WorkforceCohort<T> => {
+    const cohort = {} as WorkforceCohort<T>;
     for (const l of educationLevelKeys) {
-        cohort[l] = {} as Record<Skill, WorkforceCategory>;
+        cohort[l] = {} as Record<Skill, T>;
         for (const s of SKILL) {
-            cohort[l][s] = nullWorkforceCategory();
+            cohort[l][s] = nullFactory();
         }
     }
     return cohort;
 };
 
+export const nullWorkforceCohort = (): WorkforceCohort<WorkforceCategory> =>
+    nullWorkforceCohortFactory(nullWorkforceCategory);
+
 export const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory): WorkforceCategory => ({
     active: a.active + b.active,
+    onboarding: a.onboarding.map((count, i) => count + (b.onboarding[i] ?? 0)),
     voluntaryDeparting: a.voluntaryDeparting.map((count, i) => count + (b.voluntaryDeparting[i] ?? 0)),
     departingFired: a.departingFired.map((count, i) => count + (b.departingFired[i] ?? 0)),
     departingRetired: a.departingRetired.map((count, i) => count + (b.departingRetired[i] ?? 0)),
@@ -102,9 +104,11 @@ export const forEachWorkforceCohort = (
     }
 };
 
-export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): void {
+export const XP_TO_PROFESSIONAL_THRESHOLD = 5;
+// returns true if worker should gain skill === professional
+export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): boolean {
     if (totalWorkersBefore <= 0 || n <= 0) {
-        return;
+        return false;
     }
     if (!Number.isFinite(category.workforceExperience)) {
         if (process.env.SIM_DEBUG === '1') {
@@ -113,45 +117,26 @@ export function subtractProportionalXP(category: WorkforceCategory, n: number, t
             );
         }
         category.workforceExperience = 0;
-        return;
+        return false;
     }
     const fraction = Math.min(n / totalWorkersBefore, 1);
     category.workforceExperience -= fraction * category.workforceExperience;
+    return (fraction * category.workforceExperience) / n > XP_TO_PROFESSIONAL_THRESHOLD;
 }
 
+export const totalOnboarding = (category: WorkforceCategory): number =>
+    category.onboarding.reduce((sum, count) => sum + count, 0);
+
 export const totalWorkersInCategory = (category: WorkforceCategory): number =>
-    category.active + totalDeparting(category);
+    category.active + totalOnboarding(category) + totalDeparting(category);
 
-export const productivityFromXP = (xp: number): number => {
-    const A = 1;
-    const Y = 0.95;
-    const T = 40;
-    return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
-};
+const emptySkillCategory = (): Record<Skill, number> => ({
+    novice: 0,
+    professional: 0,
+    expert: 0,
+});
 
-export const minimumWage = (planet: Planet, age: number, edu: EducationLevelType, skill: Skill): number => {
-    const baseWageByEdu: Record<EducationLevelType, number> = {
-        none: 10,
-        primary: 15,
-        secondary: 25,
-        tertiary: 40,
-    };
-
-    const skillMultiplier: Record<Skill, number> = {
-        novice: 0.8,
-        professional: 1.0,
-        expert: 1.2,
-    };
-
-    let ageMultiplier = 1.0;
-    if (age < 25) {
-        ageMultiplier = 0.9;
-    } else if (age > 60) {
-        ageMultiplier = 0.95;
-    }
-
-    return baseWageByEdu[edu] * skillMultiplier[skill] * ageMultiplier;
-};
+const emptySkillDemography: Record<Skill, number>[] = [];
 
 export function hireFromPopulation(
     planet: Planet,
@@ -195,7 +180,7 @@ export function hireFromPopulation(
     const hiredByAge: {
         [S in Skill]: number;
     }[] = new Array(demography.length).fill(0).map(() => ({
-        ...emptySkillCategory,
+        ...emptySkillCategory(),
     }));
     let hired = 0;
 
@@ -213,6 +198,12 @@ export function hireFromPopulation(
             hired += actual;
         }
     }
-
     return { count: hired, hiredByAge };
 }
+
+export const productivityFromXP = (xp: number): number => {
+    const A = 1;
+    const Y = 0.95;
+    const T = 40;
+    return A * (1 - Math.pow(1 - Y, xp / T)) + 1;
+};

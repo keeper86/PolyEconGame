@@ -211,6 +211,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
     const transferMatrix: PopulationTransferMatrix = createZeroTransferMatrix(numAges);
 
+    let totalTransferVolume = 0;
     let cumulativeMandatoryCost = 0;
     let activeCache = buildAggregateCache(demography);
 
@@ -295,6 +296,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 remaining[supAge] -= debited;
                 actualTotalDebited += debited;
             }
+            totalTransferVolume += actualTotalDebited;
 
             if (actualTotalDebited <= 0) {
                 continue;
@@ -325,6 +327,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
         }
     }
     planet.population.lastTransferMatrix = transferMatrix;
+    planet.monthTransferVolume += totalTransferVolume;
 }
 
 function debitSupporters(

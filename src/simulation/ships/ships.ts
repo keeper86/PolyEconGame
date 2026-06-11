@@ -3,7 +3,7 @@ import type { Facility } from '../planet/facility';
 import type { GameState, Planet } from '../planet/planet';
 import {
     defaultBuildingCost,
-    electronicComponentResourceType,
+    electronicsResourceType,
     machineryResourceType,
     plasticResourceType,
     steelResourceType,
@@ -17,7 +17,7 @@ export const transportShipBuildResources = [
     steelResourceType.name,
     machineryResourceType.name,
     plasticResourceType.name,
-    electronicComponentResourceType.name,
+    electronicsResourceType.name,
 ];
 
 export type BaseShipType = {
@@ -422,7 +422,7 @@ export const passengerLiner: PassengerShipType = {
     },
     buildingCost: [
         { resource: steelResourceType, quantity: 600 },
-        { resource: electronicComponentResourceType, quantity: 200 },
+        { resource: electronicsResourceType, quantity: 200 },
         { resource: machineryResourceType, quantity: 150 },
         { resource: plasticResourceType, quantity: 100 },
     ],

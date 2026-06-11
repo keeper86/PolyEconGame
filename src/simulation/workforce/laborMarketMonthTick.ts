@@ -94,14 +94,22 @@ export function postProductionLaborMarketTick(agents: Map<string, Agent>, planet
 
             for (let age = 0; age < workforce.length; age++) {
                 forEachWorkforceCohort(workforce[age], (category) => {
+                    // Promote onboarding graduates to active
+                    const onboardingComplete = category.onboarding[0];
+                    if (onboardingComplete > 0) {
+                        category.active += onboardingComplete;
+                    }
+
                     for (let i = 0; i < NOTICE_PERIOD_MONTHS - 1; i++) {
                         category.voluntaryDeparting[i] = category.voluntaryDeparting[i + 1] ?? 0;
                         category.departingFired[i] = category.departingFired[i + 1] ?? 0;
                         category.departingRetired[i] = category.departingRetired[i + 1] ?? 0;
+                        category.onboarding[i] = category.onboarding[i + 1] ?? 0;
                     }
                     category.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 0;
                     category.departingFired[NOTICE_PERIOD_MONTHS - 1] = 0;
                     category.departingRetired[NOTICE_PERIOD_MONTHS - 1] = 0;
+                    category.onboarding[NOTICE_PERIOD_MONTHS - 1] = 0;
                 });
             }
         }

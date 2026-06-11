@@ -130,7 +130,7 @@ export function computeTierCost(marketPrices: Record<string, number>, tier: Serv
     }, 0);
 }
 
-export function computeCostOfLiving(marketPrices: Record<string, number>, whenRich: boolean): number {
+export function computeCostOfLiving(marketPrices: Record<string, number>, whenRich: boolean = false): number {
     let total = 0;
     for (const tier of SERVICE_TIERS) {
         if (tier.mandatoryForOwnConsumption || whenRich) {

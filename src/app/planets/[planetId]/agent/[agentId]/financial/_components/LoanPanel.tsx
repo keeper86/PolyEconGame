@@ -240,8 +240,10 @@ function OutstandingLoansSection({
     planetId: string;
 }) {
     return (
-        <Collapsible defaultOpen={false} className='space-y-2'>
-            <CollapsibleTrigger className='text-sm font-semibold flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity [&[data-state=closed]>svg:last-child]:rotate-0 [&[data-state=open]>svg:last-child]:rotate-180'>
+        <Collapsible defaultOpen={false} className={'space-y-2 '} disabled={activeLoans.length === 0}>
+            <CollapsibleTrigger
+                className={`text-sm font-semibold flex items-center gap-2 hover:opacity-80 transition-opacity [&[data-state=closed]>svg:last-child]:rotate-0 [&[data-state=open]>svg:last-child]:rotate-180 ${activeLoans.length === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+            >
                 <Landmark className='h-4 w-4 text-muted-foreground' />
                 Outstanding loans ({activeLoans.length})
                 <ChevronDown className='h-4 w-4 text-muted-foreground transition-transform duration-200' />

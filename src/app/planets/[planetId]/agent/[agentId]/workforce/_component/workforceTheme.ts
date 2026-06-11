@@ -15,7 +15,8 @@ export const EDU_COLORS: Record<EducationLevelType, { badge: string; text: strin
 export const EDU_CHART_COLORS: string[] = educationLevelKeys.map((edu) => EDU_COLORS[edu].chart);
 
 export const CHART_COLORS = {
-    active: '#60a5fa',
+    active: '#3054cc',
+    onboarding: '#65a7d3',
     departing: '#f97316',
 } as const;
 

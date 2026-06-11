@@ -1,6 +1,6 @@
 import { CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1, TICKS_PER_YEAR } from '@/simulation/constants';
 
-export const SY_TIERS = [1, 10, 100, 1000, 10000, 100000] as const;
+export const SY_TIERS = [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000] as const;
 
 export function calcClaimQuantity(resourceName: string, tierIndex: number, renewable: boolean): number {
     const sy = SY_TIERS[tierIndex] ?? 1;

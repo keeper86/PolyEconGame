@@ -13,6 +13,7 @@ type Props = {
         monthlyNetCashFlow: number;
     };
     planetId: string;
+    agentId: string;
 };
 
 function Stat({

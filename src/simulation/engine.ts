@@ -1,7 +1,8 @@
+import assert from 'assert';
 import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
-import { governmentTick } from './agents/governmentAgent';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
+import { governmentTick } from './agents/governmentAgent';
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
@@ -20,12 +21,11 @@ import { populationAdvanceYearTick, populationTick } from './population/populati
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
-import { automaticAdjustmentWages, automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
+import { automaticWageAdjustment, automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
-import assert from 'assert';
 
 export { seedRng };
 
@@ -41,6 +41,8 @@ export function advanceTick(gameState: GameState) {
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
             resetAgentMetrics(gameState.forexMarketMakers, planet);
+            planet.monthPriceAcc = {};
+            planet.monthTransferVolume = 0;
         }
 
         environmentTick(planet);
@@ -80,13 +82,12 @@ export function advanceTick(gameState: GameState) {
         automaticPricing(gameState.agents, planet);
 
         marketTick(gameState.agents, planet);
-
-        accumulatePlanetPrices(planet, gameState.tick);
+        accumulatePlanetPrices(planet);
 
         constructionTick(gameState, planet);
 
         productionTick(gameState, planet);
-        automaticAdjustmentWages(gameState.agents, planet);
+        automaticWageAdjustment(gameState.agents, planet);
         updateAgentProductionScale(gameState.agents, planet);
 
         if (isMonthBoundary(gameState.tick)) {

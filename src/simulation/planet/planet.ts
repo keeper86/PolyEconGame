@@ -1,5 +1,4 @@
 import type { TickerEvent } from 'src/server/controller/simulation';
-import { TICKS_PER_MONTH } from '../constants';
 import type { Loan } from '../financial/loanTypes';
 import type { EducationLevelType, Population } from '../population/population';
 import type {
@@ -136,6 +135,8 @@ export type Planet = {
         [resourceName: string]: MarketResult;
     };
 
+    monthTransferVolume: number;
+
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
@@ -243,6 +244,7 @@ export type MonthAccumulator = {
     totalWorkersTicks: number;
     forexRevenue: number;
     forexPurchases: number;
+    profitShareBonuses: number;
     producedResources: Record<string, ResourceAccumulator>;
     consumedResources: Record<string, ResourceAccumulator>;
     boughtResources: Record<string, ResourceAccumulator>;
@@ -286,6 +288,8 @@ export type AgentPlanetAssets = {
 
     deaths: DemographicEventCounters;
     disabilities: DemographicEventCounters;
+
+    profitShareBonus: number;
 
     monthAcc: {
         depositsAtMonthStart: number;
@@ -349,6 +353,7 @@ export function createEmptyAccumulator(): MonthAccumulator {
         totalWorkersTicks: 0,
         forexRevenue: 0,
         forexPurchases: 0,
+        profitShareBonuses: 0,
         producedResources: {},
         consumedResources: {},
         boughtResources: {},
@@ -373,6 +378,7 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
             forexRevenue: assets.monthAcc.forexRevenue,
             forexPurchases: assets.monthAcc.forexPurchases,
+            profitShareBonuses: assets.monthAcc.profitShareBonuses,
             producedResources: { ...assets.monthAcc.producedResources },
             consumedResources: { ...assets.monthAcc.consumedResources },
             boughtResources: { ...assets.monthAcc.boughtResources },
@@ -386,11 +392,7 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
     }
 }
 
-export function accumulatePlanetPrices(planet: Planet, tick: number): void {
-    if (tick % TICKS_PER_MONTH === 1) {
-        planet.monthPriceAcc = {};
-    }
-
+export function accumulatePlanetPrices(planet: Planet): void {
     for (const result of Object.values(planet.lastMarketResult)) {
         if (!result || result.totalVolume <= 0) {
             continue;

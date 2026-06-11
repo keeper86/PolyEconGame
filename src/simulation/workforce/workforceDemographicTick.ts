@@ -11,7 +11,13 @@ import { MAX_AGE, SKILL } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
-import { forEachWorkforceCohort, subtractProportionalXP, totalDeparting, totalWorkersInCategory } from './workforce';
+import {
+    forEachWorkforceCohort,
+    subtractProportionalXP,
+    totalDeparting,
+    totalOnboarding,
+    totalWorkersInCategory,
+} from './workforce';
 
 export const VOLUNTARY_QUIT_RATE_PER_TICK = 0.0003;
 
@@ -67,7 +73,7 @@ export function workforceDemographicTick(agents: Map<string, Agent>, planet: Pla
             forEachWorkforceCohort(workforce[age], (category, edu, skill) => {
                 applyVoluntaryQuits(category);
 
-                if (category.active <= 0 && totalDeparting(category) <= 0) {
+                if (category.active <= 0 && totalDeparting(category) <= 0 && totalOnboarding(category) <= 0) {
                     return;
                 }
 
@@ -121,6 +127,29 @@ export function workforceDemographicTick(agents: Map<string, Agent>, planet: Pla
                             subtractProportionalXP(category, disabled, totalBeforeActive);
                             category.active -= disabled;
                             disabilities += disabled;
+                        }
+                    }
+                }
+
+                // Apply demographic events to onboarding pipeline workers
+                for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
+                    if (category.onboarding[month] > 0) {
+                        // Mortality
+                        if (mortalityProbabilityPerTick > 0) {
+                            const dead = stochasticRound(category.onboarding[month] * mortalityProbabilityPerTick);
+                            if (dead > 0) {
+                                category.onboarding[month] -= dead;
+                                deaths += dead;
+                            }
+                        }
+
+                        // Disability
+                        if (disabilityProbabilityPerTick > 0) {
+                            const disabled = stochasticRound(category.onboarding[month] * disabilityProbabilityPerTick);
+                            if (disabled > 0) {
+                                category.onboarding[month] -= disabled;
+                                disabilities += disabled;
+                            }
                         }
                     }
                 }

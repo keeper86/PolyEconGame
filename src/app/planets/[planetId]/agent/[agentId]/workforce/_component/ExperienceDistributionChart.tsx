@@ -51,7 +51,8 @@ function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string
         return null;
     }
     const row = payload[0]?.payload as ChartRow;
-    const total = (row?.Active ?? 0) + (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
+    const total =
+        (row?.Active ?? 0) + (row?.Onboarding ?? 0) + (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
     const totalLeaving = (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
     return (
         <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
@@ -104,6 +105,7 @@ export function ExperienceDistributionChart({
         const raw: ChartRow[] = experienceChartByStatus.map((d) => ({
             age: d.age,
             Active: d.active,
+            Onboarding: d.onboarding,
             Quitting: d.quitting,
             Fired: d.fired,
             Retired: d.retired,
@@ -146,6 +148,13 @@ export function ExperienceDistributionChart({
                             dataKey='Active'
                             stackId='a'
                             fill={CHART_COLORS.active}
+                            isAnimationActive={false}
+                            radius={[0, 0, 0, 0]}
+                        />
+                        <Bar
+                            dataKey='Onboarding'
+                            stackId='a'
+                            fill={CHART_COLORS.onboarding}
                             isAnimationActive={false}
                             radius={[0, 0, 0, 0]}
                         />
