@@ -1,8 +1,11 @@
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
+import { SKILL } from '../population/population';
 import { MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
+import { totalDepartingForEdu, totalWorkingForEdu } from './workforceAggregates';
+import { creditWageIncome } from '../financial/wealthOps';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -55,10 +58,6 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
     }
 }
 
-/**
- * Computes the reservation capital for an agent: 1 year of estimated operating costs
- * including wages and input purchases, based on last month's actuals.
- */
 function computeReservationCapital(assets: AgentPlanetAssets): number {
     const lastMonthWages = assets.lastMonthAcc.wages ?? 0;
     const lastMonthPurchases = assets.lastMonthAcc.purchases ?? 0;
@@ -69,6 +68,9 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
 }
 
 export function automaticProfitDistribution(agents: Map<string, Agent>, planet: Planet): void {
+    const bank = planet.bank;
+    const demography = planet.population.demography;
+
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
             continue;
@@ -77,22 +79,67 @@ export function automaticProfitDistribution(agents: Map<string, Agent>, planet: 
         if (!assets) {
             continue;
         }
+        const workforce = assets.workforceDemography;
+        if (!workforce) {
+            continue;
+        }
 
         const profitDelta = assets.deposits - assets.monthAcc.depositsAtMonthStart;
         const netBalance = assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
 
+        const reservationCapital = computeReservationCapital(assets);
         if (profitDelta < 0) {
             // Loss case: reduce wages to stay competitive
             for (const edu of educationLevelKeys) {
                 assets.wagePerEdu[edu] = Math.max(MIN_WAGE, assets.wagePerEdu[edu] * (1 - WAGE_ADJUSTMENT_RATE));
             }
-        } else if (profitDelta > 0 && netBalance > 0) {
+        } else {
             // Profit case: compute reservation capital and distribute excess as bonus
-            const reservationCapital = computeReservationCapital(assets);
-            const excessCash = assets.deposits - reservationCapital;
+            const excessCash = netBalance - reservationCapital;
 
             if (excessCash > 0) {
-                assets.profitShareBonus = excessCash;
+                // Distribute directly to workers
+                const totalWorkersForEdu: Record<EducationLevelType, number> = {
+                    none: 0,
+                    primary: 0,
+                    secondary: 0,
+                    tertiary: 0,
+                };
+                for (const edu of educationLevelKeys) {
+                    const activeWorkers = totalWorkingForEdu(workforce, edu);
+                    const departingWorkers = totalDepartingForEdu(workforce, edu);
+                    totalWorkersForEdu[edu] = activeWorkers + departingWorkers;
+                }
+
+                const totalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
+                if (totalWorkers > 0) {
+                    const perWorkerBonus = excessCash / totalWorkers;
+                    for (let age = 0; age < demography.length; age++) {
+                        for (const edu of educationLevelKeys) {
+                            for (const skill of SKILL) {
+                                const agentWorkers = workforce[age]?.[edu]?.[skill];
+                                if (!agentWorkers) {
+                                    continue;
+                                }
+                                const activeWorkers = agentWorkers.active;
+                                const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
+                                const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
+                                const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
+                                if (agentWorkersHere <= 0) {
+                                    continue;
+                                }
+                                const cat = demography[age].employed[edu][skill];
+                                if (cat.total <= 0) {
+                                    continue;
+                                }
+
+                                creditWageIncome(bank, cat, perWorkerBonus, agentWorkersHere);
+                            }
+                        }
+                    }
+                }
+
+                assets.monthAcc.profitShareBonuses += excessCash;
                 assets.deposits -= excessCash;
             }
         }
