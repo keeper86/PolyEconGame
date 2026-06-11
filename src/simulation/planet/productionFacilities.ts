@@ -421,6 +421,7 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
         { resource: produceResourceType, quantity: 60 },
         { resource: chemicalResourceType, quantity: 5 },
         { resource: waterResourceType, quantity: 100 },
+        { resource: packagingResourceType, quantity: 1 },
     ],
     produces: [{ resource: processedFoodResourceType, quantity: 80 }],
 });
@@ -441,6 +442,8 @@ export const beveragePlant = (planetId: string, id: string): ProductionFacility 
         { resource: waterResourceType, quantity: 110 },
         { resource: produceResourceType, quantity: 20 },
         { resource: chemicalResourceType, quantity: 1 },
+        { resource: glassResourceType, quantity: 5 },
+        { resource: packagingResourceType, quantity: 1 },
     ],
     produces: [{ resource: beverageResourceType, quantity: 100 }],
 });
@@ -748,10 +751,9 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
     },
     needs: [
         { resource: paperResourceType, quantity: 5 },
-        { resource: furnitureResourceType, quantity: 2 },
-        { resource: itDevicesResourceType, quantity: 1 },
+        { resource: furnitureResourceType, quantity: 1 },
     ],
-    produces: [{ resource: administrativeServiceResourceType, quantity: 200 }],
+    produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
 });
 
 export const logisticsHub = (planetId: string, id: string): ProductionFacility => ({
@@ -771,7 +773,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
         { resource: fuelResourceType, quantity: 10.0 },
         { resource: administrativeServiceResourceType, quantity: 5 },
     ],
-    produces: [{ resource: logisticsServiceResourceType, quantity: 200 }],
+    produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
 
 export const constructionFacility = (planetId: string, id: string): ProductionFacility => ({
@@ -811,7 +813,6 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
     needs: [
         { resource: processedFoodResourceType, quantity: 30 },
         { resource: beverageResourceType, quantity: 20 },
-        { resource: packagingResourceType, quantity: 5 },
         { resource: logisticsServiceResourceType, quantity: 5 },
         { resource: administrativeServiceResourceType, quantity: 5 },
     ],
@@ -899,10 +900,14 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
             tertiary: 10,
         },
         pollutionPerTick: { ...defaultPollutionPerTick },
-        needs: defaultBuildingCost.map((rq) => ({
-            resource: rq.resource,
-            quantity: rq.quantity,
-        })),
+        needs: [
+            ...defaultBuildingCost.map((rq) => ({
+                resource: rq.resource,
+                quantity: rq.quantity * 0.1,
+            })),
+            { resource: logisticsServiceResourceType, quantity: 1 },
+            { resource: administrativeServiceResourceType, quantity: 1 },
+        ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
         lastTickResults: { ...zeroLastTicksProductionResults },
         pidState: null,
