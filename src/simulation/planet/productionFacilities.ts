@@ -1,4 +1,3 @@
-import { defaultBuildingCost } from './resources';
 import type { ResourceProcessLevel } from './claims';
 import type { ProductionFacility } from './facility';
 import {
@@ -14,9 +13,9 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from './landBoundResources';
+import { defaultBuildingCost } from './resources';
 
 import {
-    produceResourceType,
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
@@ -24,7 +23,6 @@ import {
     clothingResourceType,
     coalResourceType,
     concreteResourceType,
-    consumerElectronicsResourceType as itDevicesResourceType,
     copperOreResourceType,
     copperResourceType,
     cottonResourceType,
@@ -35,6 +33,7 @@ import {
     furnitureResourceType,
     glassResourceType,
     ironOreResourceType,
+    consumerElectronicsResourceType as itDevicesResourceType,
     limestoneResourceType,
     logsResourceType,
     lumberResourceType,
@@ -45,6 +44,7 @@ import {
     pharmaceuticalResourceType,
     plasticResourceType,
     processedFoodResourceType,
+    produceResourceType,
     sandResourceType,
     siliconWaferResourceType,
     steelResourceType,
@@ -62,8 +62,6 @@ import {
     maintenanceServiceResourceType,
     retailServiceResourceType,
 } from './services';
-
-const MAINTENANCE_COST_MULTIPLIER = 0.1;
 
 export const zeroLastTicksProductionResults = {
     overallEfficiency: 0,
