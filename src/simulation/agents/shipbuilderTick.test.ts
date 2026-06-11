@@ -15,10 +15,10 @@ import { handleAcceptShipListing } from '../workerClient/shipContractActions';
 const SHIP_TYPE = shiptypes.solid.bulkCarrier1;
 
 const RESOURCE_PRICES: Record<string, number> = {
-    'Steel': 50,
-    'Electronics': 200,
-    'Machinery': 300,
-    'Plastic': 20,
+    Steel: 50,
+    Electronics: 200,
+    Machinery: 300,
+    Plastic: 20,
 };
 
 const ESTIMATED_COST =
