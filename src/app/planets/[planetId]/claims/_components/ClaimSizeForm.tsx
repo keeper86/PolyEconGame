@@ -6,6 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { AlertTriangle, InfoIcon, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { LogSlider } from '@/components/ui/log-slider';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
 import { SY_TIERS, calcClaimQuantity, calcClaimCost } from './claimCalculations';
@@ -81,30 +82,16 @@ export function ClaimSizeForm({
                         </span>
                     )}
                 </div>
-                <Slider
-                    min={0}
-                    max={SY_TIERS.length - 1}
-                    step={1}
-                    value={[tierIndex]}
-                    onValueChange={([v]) => onTierChange(v ?? 0)}
+                <LogSlider
+                    values={[...SY_TIERS]}
+                    value={tierIndex}
+                    onValueChange={onTierChange}
                     disabled={isPending || isSubmitted}
+                    formatLabel={(v) => formatNumberWithUnit(v, 'units')}
+                    className='pt-2'
                 />
-                <div className='relative h-4 text-[10px] text-muted-foreground'>
-                    {SY_TIERS.map((t, i) => {
-                        const pct = (i / (SY_TIERS.length - 1)) * 100 - 0.3 * (i - 2.3);
-                        const translate = i === 0 ? '100%' : i === SY_TIERS.length - 1 ? '-80%' : '-50%';
-                        return (
-                            <span
-                                key={t}
-                                className='absolute'
-                                style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
-                            >
-                                {formatNumberWithUnit(t, 'units')}
-                            </span>
-                        );
-                    })}
-                </div>
             </div>
+
             <div className='space-y-0.5 text-xs'>
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Quantity</span>
