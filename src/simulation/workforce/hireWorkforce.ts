@@ -41,7 +41,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                     // Collect eligible buckets: (age, skill, available count)
                     type Bucket = { age: number; skill: Skill; avail: number; probToAccept: number };
                     const buckets: Bucket[] = [];
-                    let totalEligible = 0;
+                    let totalWilling = 0;
 
                     const demography = planet.population.demography;
                     for (let age = MIN_EMPLOYABLE_AGE; age < workforce.length; age++) {
@@ -54,13 +54,13 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                             const reservationWage = minimumWageMap({ age, edu, skill });
                             assert(reservationWage > 0, `reservationWage must be > 0, got ${reservationWage}`);
 
-                            const probToAccept = 1.0 / (1 + Math.exp(-(wage / reservationWage - 1)));
+                            const probToAccept = (1.0 / (1 + Math.exp(-(wage / reservationWage - 1)))) * 0.05;
                             buckets.push({ age, skill, avail, probToAccept });
-                            totalEligible += avail;
+                            totalWilling += avail * probToAccept;
                         }
                     }
 
-                    const toHire = Math.min(gap, totalEligible);
+                    const toHire = Math.floor(Math.min(gap, totalWilling));
                     if (toHire > 0) {
                         const allocatedBuckets = distributeProportionally(
                             toHire,
