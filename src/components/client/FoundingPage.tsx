@@ -31,12 +31,10 @@ export function FoundingPage() {
 
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
-            onSuccess: (data) => {
+            onSuccess: () => {
                 setSubmitted(true);
                 void queryClient.invalidateQueries({ queryKey: trpc.getUser.queryKey() });
-                router.push(
-                    `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(data.agentId)}/financial` as unknown as '/',
-                );
+                router.push(`/planets/${encodeURIComponent(planetId)}/central-bank` as unknown as '/');
             },
             onError: (err: unknown) => {
                 setError(err instanceof Error ? err.message : 'Failed to found company');

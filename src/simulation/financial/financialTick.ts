@@ -3,7 +3,7 @@ import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { totalActiveForEdu, totalDepartingForEdu, totalOnboardingForEdu } from '../workforce/workforceAggregates';
+import { totalDepartingForEdu, totalWorkingForEdu } from '../workforce/workforceAggregates';
 import type { Loan } from './loanTypes';
 import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
@@ -56,10 +56,9 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             tertiary: 0,
         };
         for (const edu of educationLevelKeys) {
-            const activeWorkers = totalActiveForEdu(workforce, edu);
-            const onboardingWorkers = totalOnboardingForEdu(workforce, edu);
+            const activeWorkers = totalWorkingForEdu(workforce, edu);
             const departingWorkers = totalDepartingForEdu(workforce, edu);
-            const totalWorkers = activeWorkers + onboardingWorkers + departingWorkers;
+            const totalWorkers = activeWorkers + departingWorkers;
             totalWorkersForEdu[edu] = totalWorkers;
             wageBill += totalWorkers * assets.wagePerEdu[edu];
             weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;

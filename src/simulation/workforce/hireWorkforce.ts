@@ -9,7 +9,7 @@ import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 import type { WorkforceCategoryIndex, WorkforceCohort } from './workforce';
 import { nullWorkforceCohortFactory } from './workforce';
-import { totalActiveForEdu } from './workforceAggregates';
+import { totalWorkingForEdu } from './workforceAggregates';
 
 export const ACCEPTABLE_IDLE_FRACTION = 0.05;
 
@@ -30,7 +30,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
 
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;
-                const currentActive = totalActiveForEdu(workforce, edu);
+                const currentActive = totalWorkingForEdu(workforce, edu);
 
                 const gap = target - currentActive;
 
@@ -42,7 +42,6 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                     type Bucket = { age: number; skill: Skill; avail: number; probToAccept: number };
                     const buckets: Bucket[] = [];
                     let totalEligible = 0;
-                    let totalProbToAccept = 0;
 
                     const demography = planet.population.demography;
                     for (let age = MIN_EMPLOYABLE_AGE; age < workforce.length; age++) {
@@ -58,12 +57,11 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                             const probToAccept = 1.0 / (1 + Math.exp(-(wage / reservationWage - 1)));
                             buckets.push({ age, skill, avail, probToAccept });
                             totalEligible += avail;
-                            totalProbToAccept += probToAccept;
                         }
                     }
 
                     const toHire = Math.min(gap, totalEligible);
-                    if (toHire > 0 && totalProbToAccept > 0) {
+                    if (toHire > 0) {
                         const allocatedBuckets = distributeProportionally(
                             toHire,
                             buckets.map((b) => b.avail * b.probToAccept),

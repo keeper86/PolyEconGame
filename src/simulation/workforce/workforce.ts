@@ -121,9 +121,7 @@ export function subtractProportionalXP(category: WorkforceCategory, n: number, t
     }
     const fraction = Math.min(n / totalWorkersBefore, 1);
     category.workforceExperience -= fraction * category.workforceExperience;
-    console.log(category.workforceExperience);
-
-    return category.workforceExperience > XP_TO_PROFESSIONAL_THRESHOLD;
+    return (fraction * category.workforceExperience) / n > XP_TO_PROFESSIONAL_THRESHOLD;
 }
 
 export const totalOnboarding = (category: WorkforceCategory): number =>
