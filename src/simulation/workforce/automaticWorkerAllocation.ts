@@ -2,10 +2,30 @@ import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
+import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
 import { totalDepartingForEdu, totalWorkingForEdu } from './workforceAggregates';
 import { creditWageIncome } from '../financial/wealthOps';
+
+function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
+    const allFacilities = [
+        ...assets.productionFacilities,
+        ...assets.managementFacilities,
+        assets.storageFacility,
+        ...assets.shipConstructionFacilities,
+    ];
+    const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    for (const facility of allFacilities) {
+        const tick = facility.lastTickResults;
+        if (!tick) {
+            continue;
+        }
+        for (const edu of educationLevelKeys) {
+            exactUsed[edu] += tick.exactUsedByEdu[edu] ?? 0;
+        }
+    }
+    return exactUsed;
+}
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -67,7 +87,7 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
     return effectiveMonthlyRunRate * 12; // 1 year of operating costs
 }
 
-export function automaticProfitDistribution(agents: Map<string, Agent>, planet: Planet): void {
+export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
 
@@ -84,64 +104,92 @@ export function automaticProfitDistribution(agents: Map<string, Agent>, planet: 
             continue;
         }
 
-        const profitDelta = assets.deposits - assets.monthAcc.depositsAtMonthStart;
-        const netBalance = assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
+        const exactUsed = computeExactUsedByEdu(assets);
+        const totalSlotCapacity: Record<EducationLevelType, number> = assets.totalSlotCapacity ?? {
+            none: 0,
+            primary: 0,
+            secondary: 0,
+            tertiary: 0,
+        };
 
-        const reservationCapital = computeReservationCapital(assets);
-        if (profitDelta < 0) {
-            // Loss case: reduce wages to stay competitive
-            for (const edu of educationLevelKeys) {
-                assets.wagePerEdu[edu] = Math.max(MIN_WAGE, assets.wagePerEdu[edu] * (1 - WAGE_ADJUSTMENT_RATE));
+        const last = assets.lastMonthAcc;
+        const operationalProfit = last.revenue - last.wages - last.purchases - last.claimPayments;
+
+        const hasLastMonthData = last.revenue !== 0 || last.wages !== 0;
+        const isProfitable = hasLastMonthData
+            ? operationalProfit > 0
+            : assets.deposits - assets.monthAcc.depositsAtMonthStart > 0;
+
+        for (const edu of educationLevelKeys) {
+            const gap = totalSlotCapacity[edu] - exactUsed[edu];
+            const isUnderStaffed = gap > 0;
+
+            let factor: number;
+            if (isProfitable && isUnderStaffed) {
+                // Raise wages: we are leaving money on the table because machines are idle
+                factor = 1 + WAGE_ADJUSTMENT_RATE;
+            } else if (isProfitable && !isUnderStaffed) {
+                // Test the floor: we have the workers we need, slowly lower wages
+                factor = 1 - WAGE_ADJUSTMENT_RATE * 0.25;
+            } else if (!isProfitable && isUnderStaffed) {
+                // Hold or lower: raising wages accelerates bankruptcy
+                factor = 1 - WAGE_ADJUSTMENT_RATE * 0.5;
+            } else {
+                // Lower aggressively: bleeding cash, cut payroll even if it triggers resignations
+                factor = 1 - WAGE_ADJUSTMENT_RATE * 2;
             }
-        } else {
-            // Profit case: compute reservation capital and distribute excess as bonus
-            const excessCash = netBalance - reservationCapital;
 
-            if (excessCash > 0) {
-                // Distribute directly to workers
-                const totalWorkersForEdu: Record<EducationLevelType, number> = {
-                    none: 0,
-                    primary: 0,
-                    secondary: 0,
-                    tertiary: 0,
-                };
-                for (const edu of educationLevelKeys) {
-                    const activeWorkers = totalWorkingForEdu(workforce, edu);
-                    const departingWorkers = totalDepartingForEdu(workforce, edu);
-                    totalWorkersForEdu[edu] = activeWorkers + departingWorkers;
-                }
+            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, assets.wagePerEdu[edu] * factor));
+        }
 
-                const totalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
-                if (totalWorkers > 0) {
-                    const perWorkerBonus = excessCash / totalWorkers;
-                    for (let age = 0; age < demography.length; age++) {
-                        for (const edu of educationLevelKeys) {
-                            for (const skill of SKILL) {
-                                const agentWorkers = workforce[age]?.[edu]?.[skill];
-                                if (!agentWorkers) {
-                                    continue;
-                                }
-                                const activeWorkers = agentWorkers.active;
-                                const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
-                                const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
-                                const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
-                                if (agentWorkersHere <= 0) {
-                                    continue;
-                                }
-                                const cat = demography[age].employed[edu][skill];
-                                if (cat.total <= 0) {
-                                    continue;
-                                }
+        const netBalance = assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
+        const reservationCapital = computeReservationCapital(assets);
+        const excessCash = netBalance - reservationCapital;
 
-                                creditWageIncome(bank, cat, perWorkerBonus, agentWorkersHere);
+        if (excessCash > 0) {
+            // Distribute directly to workers
+            const totalWorkersForEdu: Record<EducationLevelType, number> = {
+                none: 0,
+                primary: 0,
+                secondary: 0,
+                tertiary: 0,
+            };
+            for (const edu of educationLevelKeys) {
+                const activeWorkers = totalWorkingForEdu(workforce, edu);
+                const departingWorkers = totalDepartingForEdu(workforce, edu);
+                totalWorkersForEdu[edu] = activeWorkers + departingWorkers;
+            }
+
+            const totalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
+            if (totalWorkers > 0) {
+                const perWorkerBonus = excessCash / totalWorkers;
+                for (let age = 0; age < demography.length; age++) {
+                    for (const edu of educationLevelKeys) {
+                        for (const skill of SKILL) {
+                            const agentWorkers = workforce[age]?.[edu]?.[skill];
+                            if (!agentWorkers) {
+                                continue;
                             }
+                            const activeWorkers = agentWorkers.active;
+                            const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
+                            const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
+                            const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
+                            if (agentWorkersHere <= 0) {
+                                continue;
+                            }
+                            const cat = demography[age].employed[edu][skill];
+                            if (cat.total <= 0) {
+                                continue;
+                            }
+
+                            creditWageIncome(bank, cat, perWorkerBonus, agentWorkersHere);
                         }
                     }
                 }
-
-                assets.monthAcc.profitShareBonuses += excessCash;
-                assets.deposits -= excessCash;
             }
+
+            assets.monthAcc.profitShareBonuses += excessCash;
+            assets.deposits -= excessCash;
         }
     }
 }
