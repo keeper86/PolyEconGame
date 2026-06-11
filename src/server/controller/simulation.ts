@@ -154,7 +154,7 @@ export const getLatestAgents = () =>
 
 export const getAgentListSummaries = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string().optional() }))
+        .input(z.object({ planetId: z.string().optional(), showAll: z.boolean().default(false) }))
         .output(
             z.object({
                 tick: z.number(),
@@ -190,9 +190,9 @@ export const getAgentListSummaries = () =>
                 }
             }
 
-            return {
-                tick,
-                agents: agents.map((a: Agent) => {
+            const resultAgents = agents
+                .filter((agent) => input.showAll || (input.planetId && agent.assets[input.planetId]))
+                .map((a: Agent) => {
                     const summary = summariseAgentBlob(a.id, a);
                     let normalizedBalance = summary.balance;
                     if (forexRates && summary.associatedPlanetId !== input.planetId) {
@@ -201,7 +201,11 @@ export const getAgentListSummaries = () =>
                         normalizedBalance = summary.balance * rate;
                     }
                     return { ...summary, normalizedBalance };
-                }),
+                });
+
+            return {
+                tick,
+                agents: resultAgents,
             };
         });
 

@@ -1,28 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTRPC } from '@/lib/trpc';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useParams } from 'next/navigation';
-import { PRICE_FLOOR } from '@/simulation/constants';
-import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
-import type { ResourceAccordionItemProps } from './marketTypes';
-import { TTL_FEEDBACK, MARKET_STATUS_CONFIG } from './marketTypes';
-import { getResourceByName } from './marketHelpers';
-import { classifyMarket } from './marketHelpers';
+import { useTRPC } from '@/lib/trpc';
 import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
-import ResourceTrigger from './ResourceTrigger';
+import { PRICE_FLOOR } from '@/simulation/constants';
+import { CURRENCY_RESOURCE_PREFIX, currencyMapping } from '@/simulation/market/currencyResources';
+import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import React, { useEffect, useRef, useState } from 'react';
 import BuySection from './BuySection';
-import SellSection from './SellSection';
 import MarketDetailsSection from './MarketDetailsSection';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
-import { resourceNameToSlug } from './marketHelpers';
-import { currencyMapping, CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
+import ResourceTrigger from './ResourceTrigger';
+import SellSection from './SellSection';
+import { classifyMarket, getResourceByName, resourceNameToSlug } from './marketHelpers';
+import type { ResourceAccordionItemProps } from './marketTypes';
+import { MARKET_STATUS_CONFIG, TTL_FEEDBACK } from './marketTypes';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -30,10 +28,9 @@ export default function ResourceAccordionItem({
     assets,
     local,
     onLocalChange,
-    _isOpen: isOpen,
+    isOpen,
     overviewRow,
     visibleColumns,
-    planetNames,
     allPlanetDeposits,
 }: ResourceAccordionItemProps): React.ReactElement {
     const bid = assets.market?.buy[resourceName];
@@ -127,9 +124,7 @@ export default function ResourceAccordionItem({
     const resource = getResourceByName(resourceName);
 
     const issuingPlanetId = resourceName.startsWith('CUR_') ? resourceName.slice(4) : null;
-    const displayName = issuingPlanetId
-        ? currencyMapping[issuingPlanetId]?.resource.name + ' (' + planetNames?.get(issuingPlanetId) + ')'
-        : undefined;
+    const displayName = issuingPlanetId ? currencyMapping[issuingPlanetId]?.resource.name : undefined;
 
     useEffect(() => {
         return () => {

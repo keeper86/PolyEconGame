@@ -105,12 +105,9 @@ export type ResourceAccordionItemProps = {
     assets: AgentPlanetAssets;
     local: LocalResourceState;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
-    _isOpen: boolean;
+    isOpen: boolean;
     overviewRow?: MarketOverviewRow;
     visibleColumns: import('./columnConfig').ColumnConfig[];
-
-    planetNames?: Map<string, string>;
-
     allPlanetDeposits?: Record<string, number>;
 };
 
