@@ -51,7 +51,8 @@ function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string
         return null;
     }
     const row = payload[0]?.payload as ChartRow;
-    const total = (row?.Active ?? 0) + (row?.Onboarding ?? 0) + (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
+    const total =
+        (row?.Active ?? 0) + (row?.Onboarding ?? 0) + (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
     const totalLeaving = (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
     return (
         <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>

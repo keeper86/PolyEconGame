@@ -372,6 +372,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
+        profitShareBonus: 0,
         monthAcc: {
             depositsAtMonthStart: 0,
             ...createEmptyAccumulator(),

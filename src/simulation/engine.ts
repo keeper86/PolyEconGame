@@ -21,7 +21,7 @@ import { populationAdvanceYearTick, populationTick } from './population/populati
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
-import { automaticAdjustmentWages, automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
+import { automaticProfitDistribution, automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
@@ -87,7 +87,7 @@ export function advanceTick(gameState: GameState) {
         constructionTick(gameState, planet);
 
         productionTick(gameState, planet);
-        automaticAdjustmentWages(gameState.agents, planet);
+        automaticProfitDistribution(gameState.agents, planet);
         updateAgentProductionScale(gameState.agents, planet);
 
         if (isMonthBoundary(gameState.tick)) {

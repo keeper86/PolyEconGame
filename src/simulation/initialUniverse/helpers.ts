@@ -138,6 +138,7 @@ export function makeAgentPlanetAssets(
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
+        profitShareBonus: 0,
         monthAcc: {
             depositsAtMonthStart: 0,
             ...createEmptyAccumulator(),

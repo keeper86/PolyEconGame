@@ -197,7 +197,9 @@ function EducationCard({
 
             {onboardingOpen && (
                 <>
-                    <div id={onboardingId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>next month</div>
+                    <div id={onboardingId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>
+                        next month
+                    </div>
                     <Stat
                         label='Completing'
                         value={formatNumberWithUnit(onboardingNext, 'persons')}

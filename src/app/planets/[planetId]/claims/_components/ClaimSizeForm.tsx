@@ -1,15 +1,14 @@
 'use client';
 
-import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { AlertTriangle, InfoIcon, Loader2 } from 'lucide-react';
+import { LogSlider } from '@/components/ui/log-slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { LogSlider } from '@/components/ui/log-slider';
-import { TICKS_PER_MONTH } from '@/simulation/constants';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
-import { SY_TIERS, calcClaimQuantity, calcClaimCost } from './claimCalculations';
+import { TICKS_PER_MONTH } from '@/simulation/constants';
+import { AlertTriangle, InfoIcon, Loader2 } from 'lucide-react';
+import React from 'react';
+import { SY_TIERS, calcClaimCost, calcClaimQuantity } from './claimCalculations';
 
 interface ClaimSizeFormProps {
     planetId: string;

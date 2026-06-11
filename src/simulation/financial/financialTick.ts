@@ -79,6 +79,38 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
 
         assets.deposits -= wageBill;
 
+        if (assets.profitShareBonus > 0) {
+            const totalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
+            if (totalWorkers > 0) {
+                const perWorkerBonus = assets.profitShareBonus / totalWorkers;
+                for (let age = 0; age < demography.length; age++) {
+                    for (const edu of educationLevelKeys) {
+                        for (const skill of SKILL) {
+                            const agentWorkers = workforce[age]?.[edu]?.[skill];
+                            if (!agentWorkers) {
+                                continue;
+                            }
+                            const activeWorkers = agentWorkers.active;
+                            const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
+                            const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
+                            const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
+                            if (agentWorkersHere <= 0) {
+                                continue;
+                            }
+                            const cat = demography[age].employed[edu][skill];
+                            if (cat.total <= 0) {
+                                continue;
+                            }
+
+                            creditWageIncome(bank, cat, perWorkerBonus, agentWorkersHere);
+                        }
+                    }
+                }
+            }
+            assets.monthAcc.profitShareBonuses += assets.profitShareBonus;
+            assets.profitShareBonus = 0;
+        }
+
         if (agent.automated) {
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {

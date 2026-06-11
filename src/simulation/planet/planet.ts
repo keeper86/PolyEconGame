@@ -244,6 +244,7 @@ export type MonthAccumulator = {
     totalWorkersTicks: number;
     forexRevenue: number;
     forexPurchases: number;
+    profitShareBonuses: number;
     producedResources: Record<string, ResourceAccumulator>;
     consumedResources: Record<string, ResourceAccumulator>;
     boughtResources: Record<string, ResourceAccumulator>;
@@ -287,6 +288,8 @@ export type AgentPlanetAssets = {
 
     deaths: DemographicEventCounters;
     disabilities: DemographicEventCounters;
+
+    profitShareBonus: number;
 
     monthAcc: {
         depositsAtMonthStart: number;
@@ -350,6 +353,7 @@ export function createEmptyAccumulator(): MonthAccumulator {
         totalWorkersTicks: 0,
         forexRevenue: 0,
         forexPurchases: 0,
+        profitShareBonuses: 0,
         producedResources: {},
         consumedResources: {},
         boughtResources: {},
@@ -374,6 +378,7 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
             forexRevenue: assets.monthAcc.forexRevenue,
             forexPurchases: assets.monthAcc.forexPurchases,
+            profitShareBonuses: assets.monthAcc.profitShareBonuses,
             producedResources: { ...assets.monthAcc.producedResources },
             consumedResources: { ...assets.monthAcc.consumedResources },
             boughtResources: { ...assets.monthAcc.boughtResources },
