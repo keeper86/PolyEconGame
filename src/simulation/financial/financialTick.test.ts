@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
-import { TICKS_PER_MONTH } from '../constants';
 import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financialTick';
 
+import { coalDepositResourceType } from '../planet/landBoundResources';
+import { ironOreResourceType } from '../planet/resources';
+import type { EducationLevelType } from '../population/education';
 import { agentMap, makeAgent, makePlanetWithPopulation, makeProductionFacility } from '../utils/testHelper';
 import { makeLoan, totalOutstandingLoans } from './loanTypes';
-import type { EducationLevelType } from '../population/education';
-import { ironOreResourceType } from '../planet/resources';
-import { coalDepositResourceType } from '../planet/landBoundResources';
 
 function addWorker(
     assets: AgentPlanetAssets,
@@ -25,14 +24,6 @@ function addWorker(
 function addEmployed(planet: Planet, age: number, edu: EducationLevelType, skill: string, count: number): void {
     const s = skill as 'novice' | 'professional' | 'expert';
     planet.population.demography[age].employed[edu][s].total += count;
-}
-
-function totalFirmDeposits(agents: Map<string, Agent>, planetId: string): number {
-    let total = 0;
-    for (const agent of agents.values()) {
-        total += agent.assets[planetId]?.deposits ?? 0;
-    }
-    return total;
 }
 
 describe('preProductionFinancialTick', () => {

@@ -85,6 +85,7 @@ export default function MarketPanel({
         }
         return map;
     }, [planetSummariesData]);
+
     const availableCurrencies = useMemo(
         () =>
             (planetSummariesData?.planets ?? [])

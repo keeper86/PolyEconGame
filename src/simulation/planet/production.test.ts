@@ -13,12 +13,7 @@ import {
     makeStorageFacility,
 } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
-import {
-    agriculturalProductResourceType,
-    ironOreResourceType,
-    steelResourceType,
-    waterResourceType,
-} from './resources';
+import { produceResourceType, ironOreResourceType, steelResourceType, waterResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
 
 describe('productionTick (basic)', () => {
@@ -259,7 +254,7 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         const facilityA = makeProductionFacility({ none: 1 }, { id: 'fac-a', scale: 400 });
         facilityA.needs = [{ resource: waterResourceType, quantity: 800 }];
-        facilityA.produces = [{ resource: agriculturalProductResourceType, quantity: 1000 }];
+        facilityA.produces = [{ resource: produceResourceType, quantity: 1000 }];
 
         const facilityB = makeProductionFacility({ none: 1 }, { id: 'fac-b', scale: 800 });
         facilityB.needs = [{ resource: waterResourceType, quantity: 500 }];
@@ -298,7 +293,7 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         const facilityA = makeProductionFacility({ none: 1 }, { id: 'fac-a', scale: 100 });
         facilityA.needs = [{ resource: waterResourceType, quantity: 100 }];
-        facilityA.produces = [{ resource: agriculturalProductResourceType, quantity: 100 }];
+        facilityA.produces = [{ resource: produceResourceType, quantity: 100 }];
 
         const facilityB = makeProductionFacility({ none: 1 }, { id: 'fac-b', scale: 100 });
         facilityB.needs = [{ resource: waterResourceType, quantity: 100 }];

@@ -1,6 +1,6 @@
 import type { Resource, ResourceProcessLevel } from './claims';
 import {
-    agriculturalProductResourceType,
+    produceResourceType,
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
@@ -13,7 +13,7 @@ import {
     copperResourceType,
     cottonResourceType,
     crudeOilResourceType,
-    electronicComponentResourceType,
+    electronicsResourceType,
     fabricResourceType,
     fuelResourceType,
     furnitureResourceType,
@@ -50,7 +50,7 @@ import {
 export const ALL_RESOURCES: Resource[] = [
     ironOreResourceType,
     waterResourceType,
-    agriculturalProductResourceType,
+    produceResourceType,
     coalResourceType,
     crudeOilResourceType,
     logsResourceType,
@@ -78,7 +78,7 @@ export const ALL_RESOURCES: Resource[] = [
     clothingResourceType,
     furnitureResourceType,
     siliconWaferResourceType,
-    electronicComponentResourceType,
+    electronicsResourceType,
     consumerElectronicsResourceType,
     machineryResourceType,
     vehicleResourceType,

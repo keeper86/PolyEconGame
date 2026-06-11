@@ -218,6 +218,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         },
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },
+        monthTransferVolume: 0,
         transportPipeline: {},
         orderBooks: {},
         lastMarketResult: {},

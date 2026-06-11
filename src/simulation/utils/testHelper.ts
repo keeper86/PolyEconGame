@@ -427,6 +427,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
             tertiary: DEFAULT_WAGE_PER_EDU,
         },
         transportPipeline: {},
+        monthTransferVolume: 0,
         orderBooks: {},
         lastMarketResult: {},
         avgMarketResult: {},

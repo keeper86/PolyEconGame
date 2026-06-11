@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { automaticPricing } from './automaticPricing';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import {
-    electronicComponentResourceType,
+    electronicsResourceType,
     ironOreResourceType,
     machineryResourceType,
     plasticResourceType,
@@ -43,7 +43,7 @@ function makeMachineryAgent(id: string) {
     const facility = makeProductionFacility({ none: 1 }, { id: `${id}-machinery`, scale: 1 });
     facility.needs = [
         { resource: steelResourceType, quantity: MACHINERY_FACTORY_STEEL_QTY },
-        { resource: electronicComponentResourceType, quantity: MACHINERY_FACTORY_ELEC_QTY },
+        { resource: electronicsResourceType, quantity: MACHINERY_FACTORY_ELEC_QTY },
         { resource: plasticResourceType, quantity: MACHINERY_FACTORY_PLASTIC_QTY },
     ];
     facility.produces = [{ resource: machineryResourceType, quantity: MACHINERY_FACTORY_OUTPUT_QTY }];
@@ -82,7 +82,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
         const planet = makePlanet({
             marketPrices: {
                 [steelResourceType.name]: STEEL_PRICE,
-                [electronicComponentResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
+                [electronicsResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
                 [plasticResourceType.name]: PLASTIC_PRICE,
             },
         });
@@ -101,7 +101,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
         const planet = makePlanet({
             marketPrices: {
                 [steelResourceType.name]: STEEL_PRICE,
-                [electronicComponentResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
+                [electronicsResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
                 [plasticResourceType.name]: PLASTIC_PRICE,
             },
         });
@@ -118,7 +118,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
         const planet = makePlanet({
             marketPrices: {
                 [steelResourceType.name]: STEEL_PRICE,
-                [electronicComponentResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
+                [electronicsResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
                 [plasticResourceType.name]: PLASTIC_PRICE,
             },
         });
@@ -137,7 +137,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
             marketPrices: {
                 [ironOreResourceType.name]: IRON_ORE_PRICE,
                 [steelResourceType.name]: STEEL_PRICE,
-                [electronicComponentResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
+                [electronicsResourceType.name]: ELECTRONIC_COMPONENT_PRICE,
                 [plasticResourceType.name]: PLASTIC_PRICE,
             },
         });

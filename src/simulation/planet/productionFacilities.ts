@@ -16,7 +16,7 @@ import {
 } from './landBoundResources';
 
 import {
-    agriculturalProductResourceType,
+    produceResourceType,
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
@@ -24,12 +24,12 @@ import {
     clothingResourceType,
     coalResourceType,
     concreteResourceType,
-    consumerElectronicsResourceType,
+    consumerElectronicsResourceType as itDevicesResourceType,
     copperOreResourceType,
     copperResourceType,
     cottonResourceType,
     crudeOilResourceType,
-    electronicComponentResourceType,
+    electronicsResourceType,
     fabricResourceType,
     fuelResourceType,
     furnitureResourceType,
@@ -399,7 +399,7 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
         tertiary: 5,
     },
     needs: [
-        { resource: agriculturalProductResourceType, quantity: 20 },
+        { resource: produceResourceType, quantity: 20 },
         { resource: chemicalResourceType, quantity: 100 },
         { resource: waterResourceType, quantity: 100 },
     ],
@@ -420,7 +420,7 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
     },
 
     needs: [
-        { resource: agriculturalProductResourceType, quantity: 60 },
+        { resource: produceResourceType, quantity: 60 },
         { resource: chemicalResourceType, quantity: 5 },
         { resource: waterResourceType, quantity: 100 },
     ],
@@ -441,7 +441,7 @@ export const beveragePlant = (planetId: string, id: string): ProductionFacility 
     },
     needs: [
         { resource: waterResourceType, quantity: 110 },
-        { resource: agriculturalProductResourceType, quantity: 20 },
+        { resource: produceResourceType, quantity: 20 },
         { resource: chemicalResourceType, quantity: 1 },
     ],
     produces: [{ resource: beverageResourceType, quantity: 100 }],
@@ -564,11 +564,11 @@ export const siliconWaferFactory = (planetId: string, id: string): ProductionFac
     produces: [{ resource: siliconWaferResourceType, quantity: 80 }],
 });
 
-export const electronicComponentFactory = (planetId: string, id: string): ProductionFacility => ({
+export const electronicsFactory = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Electronics Component Factory',
+    name: 'Electronics Factory',
     powerConsumptionPerTick: 0.8,
     workerRequirement: {
         none: 5,
@@ -581,14 +581,14 @@ export const electronicComponentFactory = (planetId: string, id: string): Produc
         { resource: copperResourceType, quantity: 40 },
         { resource: plasticResourceType, quantity: 20 },
     ],
-    produces: [{ resource: electronicComponentResourceType, quantity: 40 }],
+    produces: [{ resource: electronicsResourceType, quantity: 40 }],
 });
 
-export const consumerElectronicsFactory = (planetId: string, id: string): ProductionFacility => ({
+export const itDevicesFactory = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Consumer Electronics Factory',
+    name: 'IT Devices Factory',
     powerConsumptionPerTick: 0.7,
     workerRequirement: {
         none: 8,
@@ -597,11 +597,11 @@ export const consumerElectronicsFactory = (planetId: string, id: string): Produc
         tertiary: 6,
     },
     needs: [
-        { resource: electronicComponentResourceType, quantity: 20 },
+        { resource: electronicsResourceType, quantity: 20 },
         { resource: plasticResourceType, quantity: 30 },
         { resource: glassResourceType, quantity: 30 },
     ],
-    produces: [{ resource: consumerElectronicsResourceType, quantity: 20 }],
+    produces: [{ resource: itDevicesResourceType, quantity: 20 }],
 });
 
 export const machineryFactory = (planetId: string, id: string): ProductionFacility => ({
@@ -640,7 +640,7 @@ export const vehicleFactory = (planetId: string, id: string): ProductionFacility
         { resource: steelResourceType, quantity: 10 },
         { resource: plasticResourceType, quantity: 10 },
         { resource: glassResourceType, quantity: 2 },
-        { resource: electronicComponentResourceType, quantity: 2 },
+        { resource: electronicsResourceType, quantity: 2 },
         { resource: fabricResourceType, quantity: 5 },
         { resource: machineryResourceType, quantity: 10 },
     ],
@@ -665,7 +665,7 @@ export const intensiveFarmFacility = (planetId: string, id: string): ProductionF
         { resource: pesticideResourceType, quantity: 10 },
         { resource: chemicalResourceType, quantity: 20 },
     ],
-    produces: [{ resource: agriculturalProductResourceType, quantity: 120 }],
+    produces: [{ resource: produceResourceType, quantity: 120 }],
 });
 
 export const waterExtractionFacility = (planetId: string, id: string): ProductionFacility => ({
@@ -751,7 +751,7 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
     needs: [
         { resource: paperResourceType, quantity: 5 },
         { resource: furnitureResourceType, quantity: 2 },
-        { resource: consumerElectronicsResourceType, quantity: 1 },
+        { resource: itDevicesResourceType, quantity: 1 },
     ],
     produces: [{ resource: administrativeServiceResourceType, quantity: 100 }],
 });
@@ -833,7 +833,7 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
         tertiary: 5,
     },
     needs: [
-        { resource: consumerElectronicsResourceType, quantity: 10 },
+        { resource: itDevicesResourceType, quantity: 10 },
         { resource: clothingResourceType, quantity: 30 },
         { resource: furnitureResourceType, quantity: 30 },
         { resource: packagingResourceType, quantity: 10 },
@@ -959,8 +959,8 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(pharmaceuticalPlant),
     entry(clothingFactory),
     entry(furnitureFactory),
-    entry(electronicComponentFactory),
-    entry(consumerElectronicsFactory),
+    entry(electronicsFactory),
+    entry(itDevicesFactory),
     entry(machineryFactory),
     entry(vehicleFactory),
     entry(intensiveFarmFacility),

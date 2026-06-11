@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { INPUT_BUFFER_TARGET_TICKS, OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
-import { agriculturalProductResourceType, coalResourceType, steelResourceType } from '../planet/resources';
+import { produceResourceType, coalResourceType, steelResourceType } from '../planet/resources';
 import { putIntoStorageFacility } from '../planet/facility';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
@@ -11,7 +11,7 @@ import { settleAgentBuyers } from './settlement';
 import { intensiveFarmFacility, ironSmelter } from '../planet/productionFacilities';
 
 const COAL = coalResourceType.name;
-const FOOD = agriculturalProductResourceType.name;
+const FOOD = produceResourceType.name;
 
 function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
@@ -268,7 +268,7 @@ describe('automaticPricing — buy side', () => {
             ...buyer.assets.p.productionFacilities[0],
             id: 'steel-fac-2',
             needs: [{ resource: coalResourceType, quantity: 200 }],
-            produces: [{ resource: agriculturalProductResourceType, quantity: 100 }],
+            produces: [{ resource: produceResourceType, quantity: 100 }],
         });
 
         const fullBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
@@ -511,11 +511,11 @@ describe('marketTick — agent buying', () => {
             planetId: 'p',
             capacity: { volume: 1e9, mass: 1e9 },
         });
-        putIntoStorageFacility(foodAgent.assets.p.storageFacility, agriculturalProductResourceType, 10000);
+        putIntoStorageFacility(foodAgent.assets.p.storageFacility, produceResourceType, 10000);
         foodAgent.assets.p.market = {
             sell: {
                 [FOOD]: {
-                    resource: agriculturalProductResourceType,
+                    resource: produceResourceType,
                     offerPrice: 1.0,
                     offerRetainment: 0,
                 },

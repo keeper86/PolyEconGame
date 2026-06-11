@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
 import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
-import { agriculturalProductResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
+import { produceResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
 
-const RESOURCE = agriculturalProductResourceType;
+const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
 
 function makeMarketResult(overrides?: Partial<MarketResult>): MarketResult {
