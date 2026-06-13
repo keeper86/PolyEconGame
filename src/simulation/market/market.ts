@@ -1,4 +1,11 @@
-import { EPSILON, PRICE_CEIL, PRICE_FLOOR, PRICE_NO_TRADE_CONVERGENCE_RATE, TICKS_PER_MONTH } from '../constants';
+import {
+    BID_OFFER_MAX_COST_MULTIPLIER,
+    EPSILON,
+    PRICE_CEIL,
+    PRICE_FLOOR,
+    PRICE_NO_TRADE_CONVERGENCE_RATE,
+    TICKS_PER_MONTH,
+} from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/facility';
 import type { BidOrder } from './marketTypes';
@@ -74,6 +81,9 @@ function clearResourceMarket(
         throw new Error(`Market price for resource ${resourceName} is undefined. Check initialMarketPrices.`);
     }
 
+    const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
+    const dynamicPriceCeil = costFloor * BID_OFFER_MAX_COST_MULTIPLIER;
+
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
         for (const ask of askOrders) {
             const assets = ask.agent.assets[planet.id];
@@ -93,8 +103,9 @@ function clearResourceMarket(
 
         let noTradePrice = referencePrice;
         if (askOrders.length > 0) {
-            // Supply exists but zero demand → price decays toward floor
-            noTradePrice = referencePrice + (PRICE_FLOOR - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
+            // Supply exists but zero demand → price decays toward cost floor
+            const noTradeFloor = Math.min(costFloor, referencePrice);
+            noTradePrice = referencePrice + (noTradeFloor - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
         } else if (agentBids.length > 0 || householdBids.length > 0) {
             // Demand exists but no supply → converge toward best bid
             let bestBid = -Infinity;
@@ -104,6 +115,7 @@ function clearResourceMarket(
             for (const bid of householdBids) {
                 bestBid = Math.max(bestBid, bid.bidPrice);
             }
+            bestBid = Math.min(bestBid, dynamicPriceCeil);
             noTradePrice = referencePrice + (bestBid - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
         }
         noTradePrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, noTradePrice));
@@ -147,6 +159,8 @@ function clearResourceMarket(
         for (const bid of householdBids) {
             bestBid = Math.max(bestBid, bid.bidPrice);
         }
+
+        bestBid = Math.min(bestBid, dynamicPriceCeil);
         price = referencePrice + (bestBid - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
         price = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, price));
         planet.marketPrices[resourceName] = price;

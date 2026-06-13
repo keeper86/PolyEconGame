@@ -104,13 +104,13 @@ export type ServiceTier = {
 export const SERVICE_TIERS: ServiceTier[] = [
     {
         name: 'survival',
-        services: ['grocery', 'healthcare'],
+        services: ['grocery', 'healthcare', 'education'],
         coverageFraction: 1.0,
         mandatoryForOwnConsumption: true,
     },
     {
         name: 'comfort',
-        services: ['logistics', 'education', 'administration'],
+        services: ['logistics', 'administration'],
         coverageFraction: 0.5,
         mandatoryForOwnConsumption: true,
     },
