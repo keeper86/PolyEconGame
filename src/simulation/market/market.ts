@@ -103,9 +103,8 @@ function clearResourceMarket(
 
         let noTradePrice = referencePrice;
         if (askOrders.length > 0) {
-            // Supply exists but zero demand → price decays toward cost floor
-            const noTradeFloor = Math.min(costFloor, referencePrice);
-            noTradePrice = referencePrice + (noTradeFloor - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
+            // Supply exists but zero demand → price converges toward cost floor
+            noTradePrice = referencePrice + (costFloor - referencePrice) * PRICE_NO_TRADE_CONVERGENCE_RATE;
         } else if (agentBids.length > 0 || householdBids.length > 0) {
             // Demand exists but no supply → converge toward best bid
             let bestBid = -Infinity;
