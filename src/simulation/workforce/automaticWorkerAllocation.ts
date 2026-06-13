@@ -111,6 +111,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             secondary: 0,
             tertiary: 0,
         };
+        const overqualified = assets.overqualifiedWorkers ?? {};
 
         const last = assets.lastMonthAcc;
         const operationalProfit = last.revenue - last.wages - last.purchases - last.claimPayments;
@@ -121,75 +122,103 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             : assets.deposits - assets.monthAcc.depositsAtMonthStart > 0;
 
         for (const edu of educationLevelKeys) {
+            // How many exact matches are we missing?
             const gap = totalSlotCapacity[edu] - exactUsed[edu];
-            const isUnderStaffed = gap > 0;
+
+            // How many higher-tier workers are actively covering this job?
+            let substitutesCovering = 0;
+            if (overqualified[edu]) {
+                for (const count of Object.values(overqualified[edu]!)) {
+                    substitutesCovering += count;
+                }
+            }
+
+            // Are machines actually sitting empty?
+            const idleSlots = gap - Math.floor(substitutesCovering);
 
             let factor: number;
-            if (isProfitable && isUnderStaffed) {
-                // Raise wages: we are leaving money on the table because machines are idle
+            if (isProfitable && idleSlots > 0) {
+                // True Emergency: Leaving money on the table because machines are empty.
                 factor = 1 + WAGE_ADJUSTMENT_RATE;
-            } else if (isProfitable && !isUnderStaffed) {
-                // Test the floor: we have the workers we need, slowly lower wages
+            } else if (isProfitable && gap > 0) {
+                // Inefficient: Machines are running via substitutes, but payroll is bloated.
+                // Nudge the wage up gently to attract the exact match.
+                factor = 1 + WAGE_ADJUSTMENT_RATE * 0.25;
+            } else if (isProfitable && gap <= 0) {
+                // Optimized: We have the exact workers we need. Slowly lower wages.
                 factor = 1 - WAGE_ADJUSTMENT_RATE * 0.25;
-            } else if (!isProfitable && isUnderStaffed) {
-                // Hold or lower: raising wages accelerates bankruptcy
+            } else if (!isProfitable && idleSlots > 0) {
+                // Unprofitable but missing bodies: Hold or lower slightly.
                 factor = 1 - WAGE_ADJUSTMENT_RATE * 0.5;
             } else {
-                // Lower aggressively: bleeding cash, cut payroll even if it triggers resignations
+                // Unprofitable and fully staffed/substituted: Bleeding cash, cut payroll heavily.
                 factor = 1 - WAGE_ADJUSTMENT_RATE * 2;
             }
 
             assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, assets.wagePerEdu[edu] * factor));
         }
 
-        const netBalance = assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
-        const reservationCapital = computeReservationCapital(assets);
-        const excessCash = netBalance - reservationCapital;
+        // --- Enforce Monotonicity
+        for (let i = 0; i < educationLevelKeys.length - 1; i++) {
+            const currentEdu = educationLevelKeys[i];
+            const nextEdu = educationLevelKeys[i + 1];
 
-        if (excessCash > 0) {
-            // Distribute directly to workers
-            const totalWorkersForEdu: Record<EducationLevelType, number> = {
-                none: 0,
-                primary: 0,
-                secondary: 0,
-                tertiary: 0,
-            };
-            for (const edu of educationLevelKeys) {
-                const activeWorkers = totalWorkingForEdu(workforce, edu);
-                const departingWorkers = totalDepartingForEdu(workforce, edu);
-                totalWorkersForEdu[edu] = activeWorkers + departingWorkers;
+            if (assets.wagePerEdu[currentEdu] > assets.wagePerEdu[nextEdu]) {
+                assets.wagePerEdu[currentEdu] = assets.wagePerEdu[nextEdu];
             }
+        }
 
-            const totalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
-            if (totalWorkers > 0) {
-                const perWorkerBonus = excessCash / totalWorkers;
-                for (let age = 0; age < demography.length; age++) {
-                    for (const edu of educationLevelKeys) {
-                        for (const skill of SKILL) {
-                            const agentWorkers = workforce[age]?.[edu]?.[skill];
-                            if (!agentWorkers) {
-                                continue;
-                            }
-                            const activeWorkers = agentWorkers.active;
-                            const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
-                            const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
-                            const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
-                            if (agentWorkersHere <= 0) {
-                                continue;
-                            }
-                            const cat = demography[age].employed[edu][skill];
-                            if (cat.total <= 0) {
-                                continue;
-                            }
+        if (agent.automated) {
+            const netBalance =
+                assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
+            const reservationCapital = computeReservationCapital(assets);
+            const excessCash = netBalance - reservationCapital;
 
-                            creditWageIncome(bank, cat, perWorkerBonus, agentWorkersHere);
+            if (excessCash > 0) {
+                // Distribute directly to workers
+                const totalWorkersForEdu: Record<EducationLevelType, number> = {
+                    none: 0,
+                    primary: 0,
+                    secondary: 0,
+                    tertiary: 0,
+                };
+                for (const edu of educationLevelKeys) {
+                    const activeWorkers = totalWorkingForEdu(workforce, edu);
+                    const departingWorkers = totalDepartingForEdu(workforce, edu);
+                    totalWorkersForEdu[edu] = activeWorkers + departingWorkers;
+                }
+
+                const totalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
+                if (totalWorkers > 0) {
+                    const perWorkerBonus = excessCash / totalWorkers;
+                    for (let age = 0; age < demography.length; age++) {
+                        for (const edu of educationLevelKeys) {
+                            for (const skill of SKILL) {
+                                const agentWorkers = workforce[age]?.[edu]?.[skill];
+                                if (!agentWorkers) {
+                                    continue;
+                                }
+                                const activeWorkers = agentWorkers.active;
+                                const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
+                                const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
+                                const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
+                                if (agentWorkersHere <= 0) {
+                                    continue;
+                                }
+                                const cat = demography[age].employed[edu][skill];
+                                if (cat.total <= 0) {
+                                    continue;
+                                }
+
+                                creditWageIncome(bank, cat, perWorkerBonus, agentWorkersHere);
+                            }
                         }
                     }
                 }
-            }
 
-            assets.monthAcc.profitShareBonuses += excessCash;
-            assets.deposits -= excessCash;
+                assets.monthAcc.profitShareBonuses += excessCash;
+                assets.deposits -= excessCash;
+            }
         }
     }
 }
