@@ -9,7 +9,7 @@ import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
 import { z } from 'zod';
-import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
+import { LOAN_TYPES, totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
     getAgentFinancialHistoryAggregated as dbGetAgentFinancialHistory,
     getAgentHistoryAggregated as dbGetAgentHistory,
@@ -34,17 +34,7 @@ import { protectedProcedure } from '../trpcRoot';
 
 const loanSchema = z.object({
     id: z.string(),
-    type: z.enum([
-        'starter',
-        'discretionary',
-        'wageCoverage',
-        'bufferCoverage',
-        'claimCoverage',
-        'shipPenaltyCoverage',
-        'licenseBootstrap',
-        'forexWorkingCapital',
-        'shipbuilderBootstrap',
-    ]),
+    type: z.enum(LOAN_TYPES),
     principal: z.number(),
     remainingPrincipal: z.number(),
     annualInterestRate: z.number(),

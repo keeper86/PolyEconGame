@@ -157,27 +157,16 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
 
         const totalDue = maturedLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
 
-        const canRepay = Math.min(totalDue, assets.deposits);
-        const shortfall = totalDue - canRepay;
-
-        if (canRepay > 0) {
-            assets.deposits -= canRepay;
-            bank.loans -= canRepay;
-            bank.deposits -= canRepay;
-        }
-
+        // If deposits are insufficient, borrow the shortfall so the agent can repay
+        const shortfall = totalDue - assets.deposits;
         if (shortfall > 0) {
-            const rolloverPrincipal = shortfall;
-
-            grantLoan(assets, bank, rolloverPrincipal, 'discretionary', tick);
-
-            assets.deposits -= shortfall;
-            bank.loans -= shortfall;
-            bank.deposits -= shortfall;
-
-            const rolloverLoan = assets.activeLoans.pop()!;
-            remainingLoans.push(rolloverLoan);
+            remainingLoans.push(grantLoan(assets, bank, shortfall, 'rollover', tick));
         }
+
+        // Repay all matured loans in full
+        assets.deposits -= totalDue;
+        bank.loans -= totalDue;
+        bank.deposits -= totalDue;
 
         assets.activeLoans = remainingLoans;
     });

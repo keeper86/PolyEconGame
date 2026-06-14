@@ -51,38 +51,21 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
     for (const output of produces) {
         const lastResult = planet.lastMarketResult[output.resource.name];
-        const orderBook = planet.orderBooks[output.resource.name];
 
-        if (!lastResult && !orderBook?.bids.length) {
+        if (!lastResult) {
             noData++;
             continue;
         }
 
-        const avg =
-            lastResult ??
-            (() => {
-                const totalBidQty = orderBook!.bids.reduce((sum, b) => sum + b.quantity, 0);
-                return {
-                    resourceName: output.resource.name,
-                    clearingPrice: 0,
-                    totalVolume: 0,
-                    totalDemand: totalBidQty,
-                    totalSupply: 0,
-                    unfilledDemand: totalBidQty,
-                    unsoldSupply: 0,
-                    productionCost: 0,
-                };
-            })();
+        const totalProduced = planet.producedResources[output.resource.name] ?? 0;
+        const totalConsumed = planet.consumedResources[output.resource.name] ?? 0;
 
-        const price =
-            avg.totalSupply > 0
-                ? avg.clearingPrice
-                : (orderBook?.bids[0]?.price ?? planet.marketPrices[output.resource.name] ?? 0);
+        const avg = lastResult;
+
+        const price = avg.clearingPrice;
 
         assert(isFinite(price) && price > 0, 'Price should be positive and finite, but got' + price);
 
-        const totalDemand = avg.totalDemand;
-        const totalSupply = avg.totalSupply;
         const ownSupply = queryStorageFacility(storage, output.resource.name);
 
         assert(
@@ -95,46 +78,15 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
         assert(isFinite(buffer) && buffer >= 0, 'Buffer should be non-negative and finite, but got' + buffer);
 
-        const overfilled =
-            buffer >= OUTPUT_BUFFER_FULL_TICKS ? (buffer / (buffer + OUTPUT_BUFFER_FULL_TICKS) - 0.5) * 2 : 0;
-        assert(
-            overfilled >= -1 && overfilled <= 1,
-            'Overfill signal should be between -1 and 1, but got' +
-                overfilled +
-                ' (buffer=' +
-                buffer +
-                ')' +
-                ', supply=' +
-                ownSupply +
-                ', perTick=' +
-                perTick,
-        );
+        // we do not smooth service inventory. We must take depreciation into account as we should target more supply as demand on average
+        let balance = avg.unfilledDemand - avg.unsoldSupply - totalProduced + totalConsumed;
+        if (balance > 0 && buffer >= OUTPUT_BUFFER_FULL_TICKS) {
+            balance = 0;
+        }
+        const maxFlow = Math.max(avg.unfilledDemand, avg.unsoldSupply, totalProduced, totalConsumed);
 
-        const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
-        const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
-        const balance = (avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, avg.unfilledDemand + avg.unsoldSupply);
-
-        assert(
-            unfilledFrac >= 0 && unfilledFrac <= 1,
-            'Unfilled fraction should be between 0 and 1, but got' + unfilledFrac,
-        );
-        assert(unsoldFrac >= 0 && unsoldFrac <= 1, 'Unsold fraction should be between 0 and 1, but got' + unsoldFrac);
-        assert(avg.unfilledDemand >= 0, 'Unfilled demand should be non-negative, but got' + avg.unfilledDemand);
-        assert(avg.unsoldSupply >= 0, 'Unsold supply should be non-negative, but got' + JSON.stringify(avg));
-        assert(balance >= -1 && balance <= 1, 'Balance should be between -1 and 1, but got' + balance);
-
-        const WEIGHT_UNFILLED = 1.0;
-        const WEIGHT_UNSOLD = 0.5;
-        const WEIGHT_BALANCE = 2.0;
-        const OVERFILL_PENALTY = 1.0;
-
-        weightedOutputSignalSum +=
-            price *
-            (WEIGHT_UNFILLED * unfilledFrac -
-                WEIGHT_UNSOLD * unsoldFrac -
-                OVERFILL_PENALTY * overfilled +
-                WEIGHT_BALANCE * balance);
-        totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + OVERFILL_PENALTY);
+        weightedOutputSignalSum += (price * balance) / (maxFlow != 0 ? maxFlow : 1);
+        totalWeight += price;
     }
 
     if (totalWeight === 0) {
@@ -148,24 +100,24 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     const costs = lastTickResults.inputCosts + lastTickResults.wageCosts;
     const hasOperated = costs > 0 || lastTickResults.revenue > 0;
     if (hasOperated && isFinite(costs)) {
-        const margin = costs > 0 ? (lastTickResults.revenue - costs) / costs : 1;
+        const margin = costs > 0 ? (lastTickResults.revenue - costs) / Math.max(costs, lastTickResults.revenue) : 1;
         profitSignal = Math.max(-1, Math.min(1, margin));
     }
 
-    const maxOutputSignal = weightedOutputSignalSum / totalWeight;
+    const maxOutputSignal = Math.max(-1, Math.min(1, weightedOutputSignalSum / totalWeight));
 
     assert(
         isFinite(maxOutputSignal) && maxOutputSignal >= -1 && maxOutputSignal <= 1,
         'Max output signal should be between -1 and 1, but got' + maxOutputSignal,
     );
 
-    let signal = profitSignal !== undefined ? (maxOutputSignal + profitSignal) / 2 : maxOutputSignal;
+    let signal = profitSignal !== undefined ? (2 * maxOutputSignal + profitSignal) / 3 : maxOutputSignal;
     if (signal > 0) {
         const eff = Math.max(0.1, lastTickResults.overallEfficiency);
         signal = eff * signal;
     }
 
-    return signal;
+    return Math.max(-1, Math.min(1, signal));
 }
 
 function computePidDelta(signal: number, state: PidState, maxScale: number): number {
@@ -299,9 +251,7 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             }
 
             const hasAnyMarketData = facility.produces.some(
-                (o) =>
-                    planet.lastMarketResult[o.resource.name] !== undefined ||
-                    (planet.orderBooks[o.resource.name]?.bids.length ?? 0) > 0,
+                (o) => planet.lastMarketResult[o.resource.name] !== undefined,
             );
             if (!hasAnyMarketData) {
                 continue;

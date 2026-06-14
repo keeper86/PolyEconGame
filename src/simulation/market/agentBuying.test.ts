@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { INPUT_BUFFER_TARGET_TICKS, OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA, OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { produceResourceType, coalResourceType, steelResourceType } from '../planet/resources';
-import { putIntoStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
@@ -82,28 +82,42 @@ describe('automaticPricing — buy side', () => {
         expect(agent.assets.p.market?.buy[arableLandResourceType.name]).toBeUndefined();
     });
 
-    it('sets bidStorageTarget to the full input buffer target when storage is empty', () => {
+    it('sets bidStorageTarget proportional to the input buffer target when storage is empty', () => {
         const buyer = makeSteelProducer();
+        const facility = buyer.assets.p.productionFacilities[0]!;
+        const coalNeed = facility.needs.find(n => n.resource.name === COAL)!;
+        const rawTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
 
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
-        expect(bid.bidStorageTarget).toBe(30 * 1 * INPUT_BUFFER_TARGET_TICKS);
+        // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
+        const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
+        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 
-    it('keeps bidStorageTarget at the full buffer target regardless of current inventory', () => {
+    it('keeps bidStorageTarget proportional when storage has some inventory', () => {
         const buyer = makeSteelProducer();
+        const facility = buyer.assets.p.productionFacilities[0]!;
+        const coalNeed = facility.needs.find(n => n.resource.name === COAL)!;
+        const rawTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+
         putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, 500);
 
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidStorageTarget).toBe(30 * 1 * INPUT_BUFFER_TARGET_TICKS);
         const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
-        expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(
-            Math.max(0, 30 * 1 * INPUT_BUFFER_TARGET_TICKS - 500),
-        );
+
+        // With smoothing, bidStorageTarget should be <= rawTarget and >= inventoryQty
+        expect(bid.bidStorageTarget).toBeGreaterThanOrEqual(inventoryQty);
+        expect(bid.bidStorageTarget).toBeLessThanOrEqual(rawTarget);
+        // The effective buy quantity is the shortfall after smoothing
+        const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventoryQty);
+        expect(effectiveQty).toBeGreaterThan(0);
     });
 
     it('effective buy quantity is 0 when buffer is already fully covered by storage', () => {

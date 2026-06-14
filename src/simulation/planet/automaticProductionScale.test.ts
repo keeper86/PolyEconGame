@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeAgent, makeAgentPlanetAssets, makePlanet, makePopulationByEducation, makeProductionFacility } from '../utils/testHelper';
-import { EXPANSION_INTEGRAL_THRESHOLD, EXPANSION_PRICE_INFLATION_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
+import {
+    makeAgent,
+    makeAgentPlanetAssets,
+    makePlanet,
+    makePopulationByEducation,
+    makeProductionFacility,
+} from '../utils/testHelper';
+import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
-import { produceResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
+import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
@@ -70,10 +76,7 @@ function makeSetup(
 
 /** Create a planet with enough unemployed workers to pass hasSufficientUnemployedWorkers check
  * and with lastProductionCostFloors set so price inflation factor stays below the caution threshold. */
-function makePlanetWithWorkersAndCostFloor(
-    clearingPrice: number,
-    costFloor: number,
-): Planet {
+function makePlanetWithWorkersAndCostFloor(clearingPrice: number, costFloor: number): Planet {
     const planet = makePlanet({
         lastMarketResult: {
             [RESOURCE_NAME]: {

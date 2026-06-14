@@ -302,7 +302,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 }
 
 const TARGET_SELL_THROUGH = 0.9;
-const SERVICE_SELL_THROUGH_TARGET = 0.97;
+const SERVICE_SELL_THROUGH_TARGET = 0.95;
 
 function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THROUGH): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
@@ -334,7 +334,7 @@ export function adjustOfferPrice(
     // Apply sell-side inventory smoothing
     const rawRetainment = offer.offerRetainment ?? 0;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
-    if (surplus > EPSILON && baseRate > EPSILON) {
+    if (surplus > EPSILON && baseRate > EPSILON && offer.resource.form !== 'services') {
         // reference quantity: how much surplus corresponds to "full" (OUTPUT_BUFFER_MAX_TICKS worth of production)
         const referenceQty = baseRate * OUTPUT_BUFFER_MAX_TICKS;
         const surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
@@ -365,7 +365,7 @@ export function adjustOfferPrice(
         offer.resource.form === 'services' ? SERVICE_SELL_THROUGH_TARGET : TARGET_SELL_THROUGH,
     );
 
-    const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER * (offer.resource.form === 'services' ? 0.5 : 1));
+    const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER);
 
     const overPriceGuard = costFloor > PRICE_FLOOR ? costFloor * (BID_OFFER_MAX_COST_MULTIPLIER - 1) : PRICE_CEIL;
 
