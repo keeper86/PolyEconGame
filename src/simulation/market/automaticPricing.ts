@@ -5,6 +5,8 @@ import {
     EPSILON,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
+    OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -113,11 +115,20 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
+    // Compute per-tick production rate for each output resource (may be produced by multiple facilities)
+    const productionRate = new Map<string, number>();
+
     for (const facility of assets.productionFacilities) {
-        for (const { resource } of facility.produces) {
+        for (const { resource, quantity } of facility.produces) {
             if (!agent.automated && assets.market.sell[resource.name]?.automated !== true) {
                 continue;
             }
+
+            // Accumulate aggregate production rate for this resource
+            productionRate.set(
+                resource.name,
+                (productionRate.get(resource.name) ?? 0) + quantity * facility.scale,
+            );
 
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
@@ -140,7 +151,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 );
             }
 
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
+            const baseRate = productionRate.get(resource.name) ?? 0;
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, baseRate);
         }
     }
 
@@ -258,6 +270,19 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
+        // Apply inventory smoothing to buy demand
+        const bufferTargetTicks =
+            resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
+        const baseRateConsumption = storageTarget / bufferTargetTicks;
+        let smoothedShortfall = shortfall;
+        let smoothedTarget = storageTarget;
+        if (baseRateConsumption > EPSILON && storageTarget > EPSILON && shortfall > EPSILON) {
+            const fillRatio = Math.min(1, currentInventory / storageTarget);
+            const smoothedDemand = baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA * (1 - fillRatio));
+            smoothedTarget = Math.min(storageTarget, currentInventory + smoothedDemand);
+            smoothedShortfall = Math.max(0, smoothedTarget - currentInventory);
+        }
+
         const marketPrice = planet.marketPrices[resourceName];
         const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
         const bidCeil = Math.min(PRICE_CEIL, costFloor * BID_OFFER_MAX_COST_MULTIPLIER);
@@ -267,7 +292,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     `This may lead to unstable pricing. Setting bid ceiling to PRICE_FLOOR.`,
             );
         }
-        adjustBidPrice(bid, shortfall, storageTarget, marketPrice, bidCeil);
+        adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             console.warn(
@@ -299,6 +324,7 @@ export function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
+    baseRate: number = 0,
 ): void {
     const sold = offer.lastSold;
     const price = offer.offerPrice;
@@ -306,6 +332,22 @@ export function adjustOfferPrice(
     if (sold === undefined || price === undefined) {
         offer.offerPrice = Math.max(PRICE_FLOOR, initialPrice);
         return;
+    }
+
+    // Apply sell-side inventory smoothing
+    const rawRetainment = offer.offerRetainment ?? 0;
+    const surplus = Math.max(0, inventoryQty - rawRetainment);
+    if (surplus > EPSILON && baseRate > EPSILON) {
+        // reference quantity: how much surplus corresponds to "full" (OUTPUT_BUFFER_MAX_TICKS worth of production)
+        const referenceQty = baseRate * OUTPUT_BUFFER_MAX_TICKS;
+        const surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
+        // Smoothed offer: baseRate * (1 + maxExtra * surplusRatio)
+        const smoothedOffer = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA * surplusRatio);
+        // Increase retainment to hold back everything above the smoothed offer
+        const effectiveRetainment = Math.max(rawRetainment, inventoryQty - smoothedOffer);
+        // Clamp retainment so we never offer more than the surplus
+        const clampedRetainment = Math.min(effectiveRetainment, inventoryQty);
+        offer.offerRetainment = clampedRetainment;
     }
 
     const retainment = offer.offerRetainment ?? 0;
