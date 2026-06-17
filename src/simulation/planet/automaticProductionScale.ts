@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { OUTPUT_BUFFER_MAX_TICKS } from '../constants';
+import { MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import type { PidState, ProductionFacility } from './facility';
 import {
     calculateCostsForConstruction,
@@ -9,6 +9,8 @@ import {
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
+import { educationLevelKeys } from '../population/education';
+import { SKILL } from '../population/population';
 
 export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
 export const INPUT_EFFICIENCY_MIN = 0.5;
@@ -29,6 +31,10 @@ export const EXPANSION_INTEGRAL_THRESHOLD = 30;
 export const EXPANSION_INTEGRAL_MAX = 60;
 
 export const EXPANSION_INTEGRAL_DECAY = 0.5;
+
+export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
+
+export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
 function getDefaultPidState(): PidState {
     return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
@@ -185,6 +191,63 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
     return output * maxScale;
 }
 
+function computePriceInflationFactor(facility: ProductionFacility, planet: Planet): number {
+    let maxFactor = 1;
+    for (const output of facility.produces) {
+        const costFloor = planet.lastProductionCostFloors[output.resource.name];
+        if (costFloor === undefined || costFloor <= 0) {
+            continue;
+        }
+
+        const lastResult = planet.lastMarketResult[output.resource.name];
+        const price =
+            lastResult && lastResult.totalSupply > 0
+                ? lastResult.clearingPrice
+                : (planet.marketPrices[output.resource.name] ?? 0);
+
+        if (price > 0 && isFinite(price)) {
+            const factor = price / costFloor;
+            if (factor > maxFactor) {
+                maxFactor = factor;
+            }
+        }
+    }
+    return maxFactor;
+}
+
+function hasSufficientUnemployedWorkers(facility: ProductionFacility, planet: Planet): boolean {
+    const demography = planet.population.demography;
+    let totalAvailableUnemployed = 0;
+
+    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
+        for (const edu of educationLevelKeys) {
+            for (const skill of SKILL) {
+                totalAvailableUnemployed += demography[age].unoccupied[edu][skill].total;
+            }
+        }
+    }
+
+    let totalRequiredNewWorkers = 0;
+    for (const edu of educationLevelKeys) {
+        const req = facility.workerRequirement[edu] ?? 0;
+        if (req > 0) {
+            // We expand by MAX_SCALE_EXPAND_FRACTION of current maxScale, at minimum +1
+            const currentMax = facility.maxScale;
+            const targetMax = Math.max(Math.ceil(currentMax * (1 + MAX_SCALE_EXPAND_FRACTION)), currentMax + 1);
+            const additionalWorkers = req * (targetMax - currentMax);
+            totalRequiredNewWorkers += additionalWorkers;
+        }
+    }
+
+    if (totalRequiredNewWorkers <= 0) {
+        return false;
+    }
+
+    // Require at least a margin of reserve workers beyond what we need
+    const requiredWithReserve = totalRequiredNewWorkers * (1 + EXPANSION_WORKER_RESERVE_MARGIN);
+    return totalAvailableUnemployed >= requiredWithReserve;
+}
+
 function hasSufficientFundsForExpansion(
     assets: AgentPlanetAssets,
     planet: Planet,
@@ -259,11 +322,22 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
+            // Compute inflation-aware dynamic threshold
+            const priceInflationFactor = computePriceInflationFactor(facility, planet);
+            const dynamicThreshold = Math.min(
+                EXPANSION_INTEGRAL_MAX,
+                EXPANSION_INTEGRAL_THRESHOLD * Math.max(1, priceInflationFactor / EXPANSION_PRICE_INFLATION_THRESHOLD),
+            );
+
+            // Check worker availability
+            const hasWorkers = hasSufficientUnemployedWorkers(facility, planet);
+
             if (
                 facility.scale >= facility.maxScale &&
                 facility.construction === null &&
-                state.expansionIntegral >= EXPANSION_INTEGRAL_THRESHOLD &&
-                facility.lastTickResults?.overallEfficiency > 0.95
+                state.expansionIntegral >= dynamicThreshold &&
+                facility.lastTickResults?.overallEfficiency > 0.95 &&
+                hasWorkers
             ) {
                 const expanded = initiateCapacityExpansion(facility, assets, planet);
                 if (expanded) {
