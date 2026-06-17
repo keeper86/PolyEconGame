@@ -13,6 +13,7 @@ import { totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
     getAgentFinancialHistoryAggregated as dbGetAgentFinancialHistory,
     getAgentHistoryAggregated as dbGetAgentHistory,
+    getPlanetBufferHistory as dbGetPlanetBufferHistory,
     getPlanetEconomyHistoryAggregated as dbGetPlanetEconomyHistory,
     getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
@@ -432,6 +433,57 @@ export const getPlanetPopulationHistory = () =>
                     .map((r) => ({
                         bucket: Number(r.bucket),
                         avgPopulation: r.avg_population ?? 0,
+                    }))
+                    .sort((a, b) => a.bucket - b.bucket),
+            };
+        });
+
+export const getPlanetBufferHistory = () =>
+    protectedProcedure
+        .input(
+            z.object({
+                planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
+                limit: z.number().int().min(1).max(1000).default(100),
+            }),
+        )
+        .output(
+            z.object({
+                planetId: z.string(),
+                granularity: z.enum(['monthly', 'yearly', 'decade']),
+                history: z.array(
+                    z.object({
+                        bucket: z.number(),
+                        avgPopulation: z.number(),
+                        avgGroceryBuffer: z.number(),
+                        avgHealthcareBuffer: z.number(),
+                        avgLogisticsBuffer: z.number(),
+                        avgEducationBuffer: z.number(),
+                        avgRetailBuffer: z.number(),
+                        avgConstructionBuffer: z.number(),
+                        avgMaintenanceBuffer: z.number(),
+                        avgAdministrationBuffer: z.number(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input }) => {
+            const rows = await dbGetPlanetBufferHistory(db, input.planetId, input.granularity, input.limit);
+            return {
+                planetId: input.planetId,
+                granularity: input.granularity,
+                history: rows
+                    .map((r) => ({
+                        bucket: Number(r.bucket),
+                        avgPopulation: r.avg_population ?? 0,
+                        avgGroceryBuffer: r.avg_grocery_buffer ?? 0,
+                        avgHealthcareBuffer: r.avg_healthcare_buffer ?? 0,
+                        avgLogisticsBuffer: r.avg_logistics_buffer ?? 0,
+                        avgEducationBuffer: r.avg_education_buffer ?? 0,
+                        avgRetailBuffer: r.avg_retail_buffer ?? 0,
+                        avgConstructionBuffer: r.avg_construction_buffer ?? 0,
+                        avgMaintenanceBuffer: r.avg_maintenance_buffer ?? 0,
+                        avgAdministrationBuffer: r.avg_administration_buffer ?? 0,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };

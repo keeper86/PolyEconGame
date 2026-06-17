@@ -148,7 +148,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 );
             }
 
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
+            const baseRate = productionRate.get(resource.name) ?? 0;
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, baseRate);
         }
     }
 
@@ -301,7 +302,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 }
 
 const TARGET_SELL_THROUGH = 0.9;
-const SERVICE_SELL_THROUGH_TARGET = 0.95;
+const SERVICE_SELL_THROUGH_TARGET = 0.97;
 
 function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THROUGH): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
@@ -320,6 +321,7 @@ export function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
+    baseRate: number = 0,
 ): void {
     const sold = offer.lastSold;
     const price = offer.offerPrice;
@@ -327,6 +329,22 @@ export function adjustOfferPrice(
     if (sold === undefined || price === undefined) {
         offer.offerPrice = Math.max(PRICE_FLOOR, initialPrice);
         return;
+    }
+
+    // Apply sell-side inventory smoothing
+    const rawRetainment = offer.offerRetainment ?? 0;
+    const surplus = Math.max(0, inventoryQty - rawRetainment);
+    if (surplus > EPSILON && baseRate > EPSILON) {
+        // reference quantity: how much surplus corresponds to "full" (OUTPUT_BUFFER_MAX_TICKS worth of production)
+        const referenceQty = baseRate * OUTPUT_BUFFER_MAX_TICKS;
+        const surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
+        // Smoothed offer: baseRate * (1 + maxExtra * surplusRatio)
+        const smoothedOffer = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA * surplusRatio);
+        // Increase retainment to hold back everything above the smoothed offer
+        const effectiveRetainment = Math.max(rawRetainment, inventoryQty - smoothedOffer);
+        // Clamp retainment so we never offer more than the surplus
+        const clampedRetainment = Math.min(effectiveRetainment, inventoryQty);
+        offer.offerRetainment = clampedRetainment;
     }
 
     const retainment = offer.offerRetainment ?? 0;

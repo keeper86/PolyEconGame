@@ -202,7 +202,7 @@ describe('planet population history: write-refresh-read', () => {
         const JAN_TICK = 30;
 
         await insertPlanetPopulationHistory(db, [
-            { tick: JAN_TICK, planet_id: 'test-planet-pop-jan', population: 1_000_000 },
+            { tick: JAN_TICK, planet_id: 'test-planet-pop-jan', population: 1_000_000, grocery_buffer: 0, healthcare_buffer: 0, logistics_buffer: 0, education_buffer: 0, retail_buffer: 0, construction_buffer: 0, maintenance_buffer: 0, administration_buffer: 0 },
         ]);
 
         await refreshPopulationMonthly(JAN_TICK + 30);
@@ -219,7 +219,7 @@ describe('planet population history: write-refresh-read', () => {
         const db = getDb();
 
         await insertPlanetPopulationHistory(db, [
-            { tick: 30, planet_id: 'test-planet-pop-clean', population: 500_000 },
+            { tick: 30, planet_id: 'test-planet-pop-clean', population: 500_000, grocery_buffer: 0, healthcare_buffer: 0, logistics_buffer: 0, education_buffer: 0, retail_buffer: 0, construction_buffer: 0, maintenance_buffer: 0, administration_buffer: 0 },
         ]);
 
         await refreshPopulationMonthly(30);
@@ -238,7 +238,7 @@ describe('planet population history: write-refresh-read', () => {
 
         await insertPlanetPopulationHistory(
             db,
-            planets.map((planet_id, i) => ({ tick: TICK, planet_id, population: (i + 1) * 1_000_000 })),
+            planets.map((planet_id, i) => ({ tick: TICK, planet_id, population: (i + 1) * 1_000_000, grocery_buffer: 0, healthcare_buffer: 0, logistics_buffer: 0, education_buffer: 0, retail_buffer: 0, construction_buffer: 0, maintenance_buffer: 0, administration_buffer: 0 })),
         );
 
         await refreshPopulationMonthly(TICK + 30);
@@ -256,9 +256,9 @@ describe('planet population history: write-refresh-read', () => {
 
         const PLANET2 = 'test-pop-consecutive';
         const insertRows = [
-            { tick: 30, planet_id: PLANET2, population: 1_000_000 },
-            { tick: 60, planet_id: PLANET2, population: 1_100_000 },
-            { tick: 90, planet_id: PLANET2, population: 1_200_000 },
+            { tick: 30, planet_id: PLANET2, population: 1_000_000, grocery_buffer: 0, healthcare_buffer: 0, logistics_buffer: 0, education_buffer: 0, retail_buffer: 0, construction_buffer: 0, maintenance_buffer: 0, administration_buffer: 0 },
+            { tick: 60, planet_id: PLANET2, population: 1_100_000, grocery_buffer: 0, healthcare_buffer: 0, logistics_buffer: 0, education_buffer: 0, retail_buffer: 0, construction_buffer: 0, maintenance_buffer: 0, administration_buffer: 0 },
+            { tick: 90, planet_id: PLANET2, population: 1_200_000, grocery_buffer: 0, healthcare_buffer: 0, logistics_buffer: 0, education_buffer: 0, retail_buffer: 0, construction_buffer: 0, maintenance_buffer: 0, administration_buffer: 0 },
         ];
 
         await insertPlanetPopulationHistory(db, insertRows);

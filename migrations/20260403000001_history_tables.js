@@ -3,10 +3,20 @@ exports.up = async function (knex) {
 
     await knex.raw(`
         CREATE TABLE planet_population_history (
-            tick             BIGINT           NOT NULL,
-            planet_id        TEXT             NOT NULL,
-            population       BIGINT           NOT NULL,
-            created_at       TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+            tick                  BIGINT           NOT NULL,
+            planet_id             TEXT             NOT NULL,
+            population            BIGINT           NOT NULL,
+
+            grocery_buffer        DOUBLE PRECISION NOT NULL DEFAULT 0,
+            healthcare_buffer     DOUBLE PRECISION NOT NULL DEFAULT 0,
+            logistics_buffer      DOUBLE PRECISION NOT NULL DEFAULT 0,
+            education_buffer      DOUBLE PRECISION NOT NULL DEFAULT 0,
+            retail_buffer         DOUBLE PRECISION NOT NULL DEFAULT 0,
+            construction_buffer   DOUBLE PRECISION NOT NULL DEFAULT 0,
+            maintenance_buffer    DOUBLE PRECISION NOT NULL DEFAULT 0,
+            administration_buffer DOUBLE PRECISION NOT NULL DEFAULT 0,
+
+            created_at            TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
             UNIQUE (planet_id, tick)
         )
     `);
@@ -142,9 +152,17 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_population_monthly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(30, tick)          AS bucket,
+            time_bucket(30, tick)               AS bucket,
             planet_id,
-            avg(population)::float8        AS avg_population
+            avg(population)::float8             AS avg_population,
+            avg(grocery_buffer)::float8         AS avg_grocery_buffer,
+            avg(healthcare_buffer)::float8      AS avg_healthcare_buffer,
+            avg(logistics_buffer)::float8       AS avg_logistics_buffer,
+            avg(education_buffer)::float8       AS avg_education_buffer,
+            avg(retail_buffer)::float8          AS avg_retail_buffer,
+            avg(construction_buffer)::float8    AS avg_construction_buffer,
+            avg(maintenance_buffer)::float8     AS avg_maintenance_buffer,
+            avg(administration_buffer)::float8  AS avg_administration_buffer
         FROM planet_population_history
         GROUP BY time_bucket(30, tick), planet_id
         WITH NO DATA
@@ -189,9 +207,17 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_population_yearly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(360, bucket)       AS bucket,
+            time_bucket(360, bucket)                AS bucket,
             planet_id,
-            avg(avg_population)            AS avg_population
+            avg(avg_population)                     AS avg_population,
+            avg(avg_grocery_buffer)::float8         AS avg_grocery_buffer,
+            avg(avg_healthcare_buffer)::float8      AS avg_healthcare_buffer,
+            avg(avg_logistics_buffer)::float8       AS avg_logistics_buffer,
+            avg(avg_education_buffer)::float8       AS avg_education_buffer,
+            avg(avg_retail_buffer)::float8          AS avg_retail_buffer,
+            avg(avg_construction_buffer)::float8    AS avg_construction_buffer,
+            avg(avg_maintenance_buffer)::float8     AS avg_maintenance_buffer,
+            avg(avg_administration_buffer)::float8  AS avg_administration_buffer
         FROM planet_population_monthly
         GROUP BY time_bucket(360, bucket), planet_id
         WITH NO DATA
@@ -236,9 +262,17 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_population_decade
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(3600, bucket)      AS bucket,
+            time_bucket(3600, bucket)               AS bucket,
             planet_id,
-            avg(avg_population)            AS avg_population
+            avg(avg_population)                     AS avg_population,
+            avg(avg_grocery_buffer)::float8         AS avg_grocery_buffer,
+            avg(avg_healthcare_buffer)::float8      AS avg_healthcare_buffer,
+            avg(avg_logistics_buffer)::float8       AS avg_logistics_buffer,
+            avg(avg_education_buffer)::float8       AS avg_education_buffer,
+            avg(avg_retail_buffer)::float8          AS avg_retail_buffer,
+            avg(avg_construction_buffer)::float8    AS avg_construction_buffer,
+            avg(avg_maintenance_buffer)::float8     AS avg_maintenance_buffer,
+            avg(avg_administration_buffer)::float8  AS avg_administration_buffer
         FROM planet_population_yearly
         GROUP BY time_bucket(3600, bucket), planet_id
         WITH NO DATA
