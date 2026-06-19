@@ -329,11 +329,7 @@ function BufferAreaChart({
                             );
                         }}
                     />
-                    <Legend
-                        wrapperStyle={{ fontSize: 10, color: '#94a3b8', paddingTop: 4 }}
-                        iconType='line'
-                        iconSize={12}
-                    />
+                    <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8', paddingTop: 4 }} />
                     {BUFFER_KEYS.map((key) => (
                         <Area
                             key={key}
@@ -427,7 +423,7 @@ export default function PlanetBufferChart({ planetId, currentTick }: Props): Rea
             const mi = Math.round(v) - 1;
             return MONTH_NAMES[((mi % 12) + 12) % 12] ?? '';
         }
-        return `${Math.round(v)}`;
+        return `${Math.round(v - 1)}`;
     };
 
     const yearTicks = useMemo(() => {
@@ -458,7 +454,7 @@ export default function PlanetBufferChart({ planetId, currentTick }: Props): Rea
         <Card className='mt-3'>
             <CardContent className='px-3 pt-3 pb-2'>
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
-                    <div className='flex gap-1 mb-1'>
+                    <div className='flex gap-1 mb-2 items-center'>
                         Service Buffers:
                         <GranularityButtonGroup
                             granularity={granularity}

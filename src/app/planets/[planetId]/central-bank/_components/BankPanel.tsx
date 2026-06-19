@@ -122,7 +122,7 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                 Details
             </p>
 
-            <div className='mt-4 border-t border-border pt-4'>
+            <div>
                 <div className='flex gap-1 items-center mb-2'>
                     <span className='text-xs text-muted-foreground mr-1'>Granularity:</span>
                     <GranularityButtonGroup
