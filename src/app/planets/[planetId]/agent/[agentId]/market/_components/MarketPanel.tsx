@@ -253,8 +253,8 @@ export default function MarketPanel({
                 return overviewRows[resourceName]?.totalDemand ?? 0;
             case 'totalSold':
                 return overviewRows[resourceName]?.totalSold ?? 0;
-            case 'marketFill':
-                return overviewRows[resourceName]?.fillRatio ?? 0;
+            case 'priceCostRatio':
+                return overviewRows[resourceName]?.priceCostRatio ?? 0;
             case 'name':
                 return resourceName;
             default:

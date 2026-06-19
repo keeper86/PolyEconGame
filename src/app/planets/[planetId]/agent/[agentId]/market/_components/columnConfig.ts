@@ -85,10 +85,10 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
         priority: 4,
     },
     {
-        id: 'marketFill',
-        label: 'Fill',
+        id: 'priceCostRatio',
+        label: 'P/C',
         widthClass: 'w-[72px]',
-        title: 'Market fill status',
+        title: 'Revenue / cost',
         align: 'text-right',
         enabled: true,
         priority: 1,

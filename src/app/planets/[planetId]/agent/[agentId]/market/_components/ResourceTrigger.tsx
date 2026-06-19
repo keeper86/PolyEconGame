@@ -4,10 +4,21 @@ import { Bot } from 'lucide-react';
 import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { ResourceTriggerProps } from './marketTypes';
-import { classifyMarket, getResourceByName } from './marketHelpers';
-import { MARKET_STATUS_CONFIG } from './marketTypes';
+import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
+import { getResourceByName } from './marketHelpers';
 import { getColumnClasses } from './columnConfig';
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
+
+function getPriceCostRatioBand(ratio: number): (typeof BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST)[number] {
+    for (const band of BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST) {
+        if (ratio <= band.limit) {
+            return band;
+        }
+    }
+    return BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST[
+        BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST.length - 1
+    ];
+}
 
 export default function ResourceTrigger({
     name,
@@ -19,8 +30,6 @@ export default function ResourceTrigger({
     visibleColumns,
     planetId,
 }: ResourceTriggerProps): React.ReactElement {
-    const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
-    const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
@@ -48,12 +57,18 @@ export default function ResourceTrigger({
                 return overviewRow ? formatNumberWithUnit(overviewRow.totalDemand, qtyUnit) : null;
             case 'totalSold':
                 return overviewRow ? formatNumberWithUnit(overviewRow.totalSold, qtyUnit) : null;
-            case 'marketFill':
-                return statusConfig ? (
-                    <Badge variant='outline' className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}>
-                        {statusConfig.label}
+            case 'priceCostRatio': {
+                if (!overviewRow) {
+                    return null;
+                }
+                const ratio = overviewRow.priceCostRatio;
+                const band = getPriceCostRatioBand(ratio);
+                return (
+                    <Badge variant='outline' className={`text-[9px] px-1.5 py-0 h-5 ${band.className}`}>
+                        {band.label}
                     </Badge>
-                ) : null;
+                );
+            }
             default:
                 return null;
         }
@@ -96,6 +111,8 @@ export default function ResourceTrigger({
                 return overviewRow?.totalDemand ?? 0;
             case 'totalSold':
                 return overviewRow?.totalSold ?? 0;
+            case 'priceCostRatio':
+                return overviewRow?.priceCostRatio ?? 0;
             default:
                 return 0;
         }
@@ -154,14 +171,14 @@ export default function ResourceTrigger({
 
             {visibleColumns.map((column) => {
                 const value = getColumnValue(column.id);
-                const isMarketFillColumn = column.id === 'marketFill';
+                const isPriceCostRatioColumn = column.id === 'priceCostRatio';
                 const numericValue = getNumericValue(column.id);
 
-                return isMarketFillColumn ? (
+                return isPriceCostRatioColumn ? (
                     <div
                         key={column.id}
                         className={cn(getColumnClasses(column.id), 'flex justify-end')}
-                        title={column.title}
+                        title={column.title + ' ' + overviewRow?.priceCostRatio.toFixed(2)}
                     >
                         {value}
                     </div>

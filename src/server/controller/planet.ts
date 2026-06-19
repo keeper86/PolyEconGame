@@ -520,7 +520,6 @@ const marketSnapshotSchema = z.object({
     totalDemand: z.number(),
     totalSupply: z.number(),
     totalSold: z.number(),
-    fillRatio: z.number(),
     unfilledDemand: z.number(),
     unsoldSupply: z.number(),
     offers: z.array(agentOfferSchema),
@@ -574,7 +573,6 @@ export const getPlanetMarket = () =>
             const totalSold = result?.totalVolume ?? 0;
             const unfilledDemand = result?.unfilledDemand ?? 0;
             const unsoldSupply = result?.unsoldSupply ?? 0;
-            const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
 
             const offers = buildAgentOffers(agents, input.planetId, input.resourceName);
             const bids = buildAgentBids(agents, input.planetId, input.resourceName);
@@ -621,7 +619,6 @@ export const getPlanetMarket = () =>
                     totalDemand,
                     totalSupply,
                     totalSold,
-                    fillRatio,
                     unfilledDemand,
                     unsoldSupply,
                     offers,
@@ -800,7 +797,7 @@ const marketOverviewRowSchema = z.object({
     totalSupply: z.number(),
     totalDemand: z.number(),
     totalSold: z.number(),
-    fillRatio: z.number(),
+    priceCostRatio: z.number(),
 });
 
 export type MarketOverviewRow = z.infer<typeof marketOverviewRowSchema>;
@@ -832,7 +829,8 @@ export const getPlanetMarketOverview = () =>
                 const totalSupply = result?.totalSupply ?? 0;
                 const totalDemand = result?.totalDemand ?? 0;
                 const totalSold = result?.totalVolume ?? 0;
-                const fillRatio = totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1;
+                const costFloor = planet.lastProductionCostFloors[resource.name] ?? 0;
+                const priceCostRatio = costFloor > 0 ? clearingPrice / costFloor : 0;
 
                 return {
                     resourceName: resource.name,
@@ -843,7 +841,7 @@ export const getPlanetMarketOverview = () =>
                     totalSupply,
                     totalDemand,
                     totalSold,
-                    fillRatio,
+                    priceCostRatio,
                 };
             }).filter((row) => row.totalSupply > 0 || row.totalDemand > 0 || row.totalProduction > 0);
 
@@ -866,7 +864,7 @@ export const getPlanetMarketOverview = () =>
                     totalSupply,
                     totalDemand,
                     totalSold,
-                    fillRatio: totalDemand > 0 ? Math.min(1, totalSold / totalDemand) : 1,
+                    priceCostRatio: 1,
                 });
             }
 
